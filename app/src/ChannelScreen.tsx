@@ -113,14 +113,19 @@ export default function ChannelScreen(props: Props) {
           icon={videoOn ? '\u{1F4F9}' : '\u{1F4F5}'}
           active={videoOn}
           onPress={press(onToggleVideo)}
-          // Tenendo premuto si gira la camera, senza un quinto pulsante.
-          onLongPress={videoOn ? press(onSwitchCamera) : undefined}
         />
         <CircleButton
           label={audioOn ? 'Audio' : 'Muto'}
           icon={audioOn ? '\u{1F3A4}' : '\u{1F507}'}
           active={audioOn}
           onPress={press(onToggleAudio)}
+        />
+        <CircleButton
+          label="Gira"
+          icon={'\u{1F504}'}
+          // Senza camera accesa non c'e' nulla da girare.
+          disabled={!videoOn}
+          onPress={press(onSwitchCamera)}
         />
         <CircleButton
           label={knockPending ? 'Avvisato' : 'Avvisa'}
@@ -204,7 +209,6 @@ function CircleButton(props: {
   label: string;
   icon: string;
   onPress: () => void;
-  onLongPress?: () => void;
   active?: boolean;
   highlight?: boolean;
   danger?: boolean;
@@ -214,7 +218,6 @@ function CircleButton(props: {
     <TouchableOpacity
       style={styles.ctrlItem}
       onPress={props.onPress}
-      onLongPress={props.onLongPress}
       disabled={props.disabled}
       activeOpacity={0.6}>
       <View
@@ -266,12 +269,13 @@ const styles = StyleSheet.create({
   badgeText: { color: '#e6ebf1', fontSize: 13, fontWeight: '600' },
 
   controls: {
-    position: 'absolute', bottom: 30, left: 0, right: 0,
+    // Cinque pulsanti: su schermi stretti servono misure contenute.
+    position: 'absolute', bottom: 30, left: 4, right: 4,
     flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'flex-end',
   },
-  ctrlItem: { alignItems: 'center', minWidth: 68 },
+  ctrlItem: { alignItems: 'center', flex: 1 },
   circle: {
-    width: 60, height: 60, borderRadius: 30,
+    width: 54, height: 54, borderRadius: 27,
     alignItems: 'center', justifyContent: 'center',
     // Un bordo chiaro li tiene leggibili anche sopra un video chiaro.
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)',
@@ -281,9 +285,9 @@ const styles = StyleSheet.create({
   circleHighlight: { backgroundColor: '#2f7cf6' },
   circleDanger: { backgroundColor: '#e5484d' },
   circleDisabled: { opacity: 0.45 },
-  circleIcon: { fontSize: 25 },
+  circleIcon: { fontSize: 23 },
   ctrlLabel: {
-    color: '#eef2f7', marginTop: 6, fontSize: 12, fontWeight: '600',
+    color: '#eef2f7', marginTop: 6, fontSize: 11, fontWeight: '600',
     textShadowColor: 'rgba(0,0,0,0.9)', textShadowRadius: 4,
   },
 });

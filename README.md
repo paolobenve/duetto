@@ -126,18 +126,19 @@ Dettagli e modello di minaccia in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 Il riquadrino usa `cover` (riempie, quindi ritaglia un po') perché è una miniatura: se
 lo vuoi integro anche lì, cambia `PIP_FIT` in `app/src/VideoStage.tsx`.
 
-## I quattro pulsanti
+## I cinque pulsanti
 
-In basso, **sempre presenti**: `Video`, `Audio`, `Avvisa`, `Esci`. Non spariscono mai —
-dopo 4 secondi di inattività si attenuano al 40% per non coprire l'immagine, e tornano
-pieni al primo tocco ovunque sullo schermo. Restano premibili anche da attenuati: il
-tocco esegue subito l'azione, non serve svegliarli prima.
+In basso, **sempre presenti**: `Video`, `Audio`, `Gira`, `Avvisa`, `Esci`. Non spariscono
+mai — dopo 4 secondi di inattività si attenuano al 40% per non coprire l'immagine, e
+tornano pieni al primo tocco ovunque sullo schermo. Restano premibili anche da attenuati:
+il tocco esegue subito l'azione, non serve svegliarli prima.
 
 | Pulsante | Cosa fa |
 |---|---|
-| **Video** | accende/spegne la camera. **Tenendo premuto**: passa da frontale a posteriore |
+| **Video** | accende/spegne la camera |
 | **Audio** | mette in muto il microfono |
-| **Avvisa** | manda la notifica all'altro; disattivato se è già nel canale |
+| **Gira** | passa da fotocamera frontale a posteriore; spento se il video è off |
+| **Avvisa** | manda la notifica all'altro; spento se è già nel canale |
 | **Esci** | lascia il canale, ferma il servizio e torna alle impostazioni |
 
 Le soglie si regolano da `IDLE_MS` e `DIM_OPACITY` in `app/src/ChannelScreen.tsx`.
