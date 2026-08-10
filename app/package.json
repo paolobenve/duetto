@@ -1,0 +1,37 @@
+{
+  "name": "DuoTalk",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "android": "react-native run-android",
+    "start": "react-native start",
+    "build:apk": "cd android && ./gradlew assembleRelease",
+    "lint": "eslint .",
+    "tsc": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "^2.1.0",
+    "react": "18.3.1",
+    "react-native": "0.76.5",
+    "react-native-get-random-values": "^1.11.0",
+    "react-native-webrtc": "^124.0.5",
+    "tweetnacl": "^1.0.3",
+    "tweetnacl-util": "^0.15.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.0",
+    "@babel/preset-env": "^7.25.0",
+    "@babel/runtime": "^7.25.0",
+    "@react-native/babel-preset": "0.76.5",
+    "@react-native/eslint-config": "0.76.5",
+    "@react-native/metro-config": "0.76.5",
+    "@react-native/typescript-config": "0.76.5",
+    "@types/react": "^18.3.12",
+    "eslint": "^8.57.0",
+    "prettier": "^3.3.3",
+    "typescript": "5.6.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,34 @@
+# Dipendenze
+node_modules/
+**/node_modules/
+
+# Cartelle native generate da bootstrap.sh (rigenerabili, tenute fuori dal repo)
+app/android/
+app/ios/
+app/Gemfile
+app/.watchmanconfig
+
+# Build / cache
+app/android/app/build/
+**/build/
+.gradle/
+*.apk
+*.aab
+
+# Metro / RN
+.metro-health-check*
+app/.expo/
+
+# Segreti / config locali
+server/.env
+*.local
+
+# Log e sistema
+*.log
+.DS_Store
+npm-debug.log*
+yarn-error.log*
+
+# Editor
+.idea/
+.vscode/

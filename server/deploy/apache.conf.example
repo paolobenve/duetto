@@ -1,0 +1,18 @@
+# DuoTalk - snippet Apache per esporre il signaling WebSocket con TLS.
+# Richiede i moduli: proxy, proxy_http, proxy_wstunnel, rewrite.
+#   sudo a2enmod proxy proxy_http proxy_wstunnel rewrite
+#
+# Inseriscilo dentro il tuo <VirtualHost *:443> gia' in HTTPS.
+#   L'app si collegera' a:  wss://TUO_DOMINIO/duotalk/ws
+
+# Instrada l'upgrade WebSocket verso il signaling locale
+RewriteEngine On
+RewriteCond %{HTTP:Upgrade} =websocket [NC]
+RewriteRule ^/duotalk/ws$ ws://127.0.0.1:8787/ [P,L]
+
+# Fallback / health-check via HTTP normale
+ProxyPass        /duotalk/healthz http://127.0.0.1:8787/healthz
+ProxyPassReverse /duotalk/healthz http://127.0.0.1:8787/healthz
+
+# Timeout lungo per chiamate prolungate
+ProxyTimeout 3600

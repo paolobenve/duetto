@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# DuoTalk - genera la parte nativa Android (cartella android/) e installa le dipendenze.
+#
+# La logica dell'app (src/) e la configurazione JS sono gia' nel repo.
+# Qui usiamo la CLI ufficiale di React Native per creare lo "scheletro"
+# nativo (Gradle, MainActivity, ecc.) alla versione giusta, e poi lo
+# innestiamo nel progetto. Cosi' il repo resta leggero e riproducibile.
+#
+# Uso:   cd app && ./bootstrap.sh
+# Richiede: Node 18+, un JDK 17+, e l'SDK Android (ANDROID_HOME).
+
+set -euo pipefail
+
+RN_VERSION="0.76.5"
+APP_NAME="DuoTalk"
+HERE="$(cd "$(dirname "$0")" && pwd)"
+
+if [ -d "$HERE/android" ]; then
+  echo "==> android/ esiste gia': salto la generazione nativa."
+else
+  echo "==> Genero lo scheletro nativo React Native $RN_VERSION in una cartella temporanea..."
+  TMP="$(mktemp -d)"
+  trap 'rm -rf "$TMP"' EXIT
+  ( cd "$TMP" && npx --yes @react-native-community/cli@latest init "$APP_NAME" \
+      --version "$RN_VERSION" --skip-install --pm npm --install-pods false )
+
+  echo "==> Copio le cartelle native nel progetto..."
+  cp -R "$TMP/$APP_NAME/android" "$HERE/android"
+  if [ -d "$TMP/$APP_NAME/ios" ]; then cp -R "$TMP/$APP_NAME/ios" "$HERE/ios"; fi
+  # Alcuni file di root utili se mancano
+  for f in Gemfile .watchmanconfig; do
+    [ -f "$HERE/$f" ] || cp "$TMP/$APP_NAME/$f" "$HERE/$f" 2>/dev/null || true
+  done
+fi
+
+echo "==> Applico i permessi Android (camera, microfono, rete)..."
+node "$HERE/scripts/patch-android-manifest.js"
+
+echo "==> Installo le dipendenze npm..."
+( cd "$HERE" && npm install )
+
+cat <<'EOF'
+
+==> Fatto.
+Passi successivi:
+  1) Collega un telefono Android (debug USB attivo) oppure avvia un emulatore.
+  2) Avvia il bundler:   npm start
+  3) In un altro terminale:   npm run android
+  4) Ripeti l'installazione sul secondo telefono.
+  5) Su entrambi inserisci gli stessi Server / Stanza / Passphrase.
+
+Per un APK installabile a mano:  npm run build:apk
+(l'APK esce in android/app/build/outputs/apk/release/)
+EOF

@@ -1,0 +1,45 @@
+# DuoTalk - configurazione coturn (server TURN/STUN).
+# Serve solo come "fallback" quando i due telefoni non riescono a
+# connettersi direttamente (NAT simmetrici, reti mobili chiuse).
+# Anche quando il traffico passa dal TURN resta cifrato end-to-end
+# (DTLS-SRTP): il TURN vede solo pacchetti opachi che inoltra.
+#
+# Installazione (Debian/Ubuntu):  sudo apt install coturn
+# Poi copia questo file in /etc/turnserver.conf e abilita il servizio.
+
+# --- Rete ---
+listening-port=3478
+tls-listening-port=5349
+# IP pubblico del server (sostituisci):
+external-ip=TUO_IP_PUBBLICO
+# Se dietro NAT: external-ip=IP_PUBBLICO/IP_PRIVATO
+
+# --- Dominio / relay ---
+realm=TUO_DOMINIO
+server-name=TUO_DOMINIO
+
+# --- Autenticazione a credenziali statiche ---
+# Semplice per 2 utenti. In alternativa usa "use-auth-secret" per token a tempo.
+lt-cred-mech
+user=duotalk:METTI_UNA_PASSWORD_LUNGA
+
+# --- TLS (consigliato: riusa i certificati del tuo dominio) ---
+cert=/etc/letsencrypt/live/TUO_DOMINIO/fullchain.pem
+pkey=/etc/letsencrypt/live/TUO_DOMINIO/privkey.pem
+
+# --- Sicurezza / hardening ---
+no-cli
+no-multicast-peers
+# Limita l'uso improprio come relay generico:
+denied-peer-ip=0.0.0.0-0.255.255.255
+denied-peer-ip=10.0.0.0-10.255.255.255
+denied-peer-ip=169.254.0.0-169.254.255.255
+denied-peer-ip=192.168.0.0-192.168.255.255
+allowed-peer-ip=
+# Intervallo porte relay (apri sul firewall UDP):
+min-port=49152
+max-port=65535
+
+# Log
+log-file=/var/log/turnserver.log
+simple-log
