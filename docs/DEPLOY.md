@@ -1,147 +1,170 @@
 # Guida al deploy sul tuo server
 
-Tre pezzi: il **signaling** (obbligatorio), **ntfy** per le notifiche, **coturn** per il
-fallback di rete. Signaling e ntfy stanno dietro il reverse proxy che hai già.
+Due pezzi: il **signaling** (obbligatorio) e **coturn** per il collegamento di riserva
+(consigliato). Nient'altro: le notifiche non passano da servizi esterni.
 
 ## 1. Signaling server
 
+Sul server:
+
 ```bash
-sudo mkdir -p /opt/duotalk
-sudo chown $USER /opt/duotalk
-cp -R server /opt/duotalk/server
-cd /opt/duotalk/server
-
-cp .env.example .env
-sed -i "s|ACCESS_TOKEN=|ACCESS_TOKEN=$(openssl rand -base64 32)|" .env
-cat .env      # annota l'ACCESS_TOKEN: va messo nell'app
-
-npm install --omit=dev
-npm run test:smoke     # verifica presenza, inoltro e campanello
+sudo mkdir -p /opt/duotalk && sudo chown $USER /opt/duotalk
 ```
 
-Avvio permanente:
+Dal **PC**, per copiare il codice:
 
 ```bash
-sudo cp deploy/duotalk-signaling.service /etc/systemd/system/
-# adatta User=, WorkingDirectory=, EnvironmentFile= e il path di node (which node)
+rsync -rltvz --no-owner --no-group --exclude node_modules --exclude .env \
+  /percorso/duotalk/server/ utente@TUO_SERVER:/opt/duotalk/server/
+```
+
+Di nuovo sul **server**:
+
+```bash
+cd /opt/duotalk/server
+cp .env.example .env      # va bene com'è: il token è facoltativo
+npm install --omit=dev
+npm run test:smoke        # deve stampare TUTTO OK
+```
+
+### Avvio permanente
+
+Un utente di servizio dedicato, che deve solo **leggere** i file:
+
+```bash
+sudo useradd --system --no-create-home --shell /usr/sbin/nologin duotalk
+sudo chown -R $USER:duotalk /opt/duotalk
+sudo chmod -R u+rwX,g+rX,o-rwx /opt/duotalk
+sudo find /opt/duotalk -type d -exec chmod g+s {} \;   # i nuovi file ereditano il gruppo
+sudo chmod 640 /opt/duotalk/server/.env
+
+sudo cp /opt/duotalk/server/deploy/duotalk-signaling.service /etc/systemd/system/
+sudo sed -i "s|^User=.*|User=duotalk|; s|^ExecStart=.*|ExecStart=$(which node) src/index.js|" \
+  /etc/systemd/system/duotalk-signaling.service
+
 sudo systemctl daemon-reload
 sudo systemctl enable --now duotalk-signaling
-sudo systemctl status duotalk-signaling
+curl -s http://127.0.0.1:8787/healthz      # {"ok":true,"rooms":0}
 ```
 
-## 2. Reverse proxy (TLS)
+Il bit `g+s` sulle cartelle evita un problema ricorrente: senza, i file copiati in
+seguito con rsync nascono con un gruppo che il servizio non può leggere.
 
-Il signaling resta su `127.0.0.1:8787`; il proxy gli dà TLS e lo espone.
+## 2. Esporlo in HTTPS
 
-**nginx**: inserisci `server/deploy/nginx.conf.example` nel `server {}` del tuo dominio,
-poi `sudo nginx -t && sudo systemctl reload nginx`.
+Il signaling resta su `127.0.0.1:8787`; davanti ci va quello che già hai.
+In `server/deploy/` trovi gli esempi per i tre casi.
 
-**Apache**:
+### HAProxy
+
+Se la 443 è di HAProxy, mandagli `/duotalk/` **direttamente** a Node, senza attraversare
+il resto della catena. Non è solo comodità: Varnish, se c'è, non gestisce i WebSocket
+senza un `pipe` esplicito, e una cache davanti al signaling non avrebbe senso.
+
+Nel frontend della 443, **dopo** le eventuali regole `http-request`:
+
+```
+    acl duotalk_path path_beg /duotalk/
+    use_backend duotalk_backend if duotalk_path
+```
+
+In fondo al file:
+
+```
+backend duotalk_backend
+    mode http
+    option http-keep-alive
+    timeout tunnel 3600s
+    timeout server 3600s
+    server duotalk 127.0.0.1:8787 check
+```
+
+⚠️ **`timeout tunnel` non è facoltativo.** Senza, eredita `timeout client`/`server` da
+`defaults` (spesso 50 secondi) e tronca il WebSocket di continuo: il sintomo è "la
+presenza cade da sola ogni tanto", difficilissimo da ricondurre a HAProxy.
+E `option http-keep-alive` serve a scavalcare `option http-server-close`, se l'hai in
+`defaults`.
+
+### Apache
+
+Dentro il `<VirtualHost *:443>` esistente, e **prima** di eventuali altre regole di
+rewrite del sito:
+
+```apache
+RewriteEngine On
+RewriteCond %{HTTP:Upgrade} =websocket [NC]
+RewriteRule ^/duotalk/ws$ ws://127.0.0.1:8787/ [P,L]
+ProxyPass        /duotalk/healthz http://127.0.0.1:8787/healthz
+ProxyPassReverse /duotalk/healthz http://127.0.0.1:8787/healthz
+ProxyTimeout 3600
+```
+
 ```bash
 sudo a2enmod proxy proxy_http proxy_wstunnel rewrite
-# inserisci server/deploy/apache.conf.example nel VirtualHost :443
 sudo apachectl configtest && sudo systemctl reload apache2
 ```
 
-Verifica: `curl https://TUO_DOMINIO/duotalk/healthz` → deve rispondere
-`{"ok":true,...,"ntfy":true}`.
+### nginx
 
-## 3. ntfy (notifiche)
+Vedi `server/deploy/nginx.conf.example`.
 
-### Installazione
-
-```bash
-sudo apt install ntfy       # oppure: docker run -d -p 2586:80 binwiederhier/ntfy serve
-sudo systemctl enable --now ntfy
-```
-
-In `/etc/ntfy/server.yml`:
-
-```yaml
-base-url: "https://ntfy.TUO_DOMINIO"
-listen-http: "127.0.0.1:2586"
-auth-file: "/var/lib/ntfy/user.db"
-auth-default-access: "deny-all"     # importante: niente topic pubblici
-```
-
-Esponilo con il reverse proxy su `https://ntfy.TUO_DOMINIO` (proxy verso
-`127.0.0.1:2586`, con supporto WebSocket come per il signaling).
-
-### Autenticazione (consigliata)
-
-Con `deny-all` nessuno può leggere i vostri topic senza credenziali.
+### Verifica
 
 ```bash
-# utente per i due telefoni (riceve)
-sudo ntfy user add duo
-sudo ntfy access duo "duotalk-*" rw
-
-# token per il server DuoTalk (pubblica)
-sudo ntfy user add --role=admin duotalk-server
-sudo ntfy token add duotalk-server     # -> copia il token in NTFY_TOKEN nel .env
+curl -s https://TUO_DOMINIO/duotalk/healthz
 ```
 
-Poi in `/opt/duotalk/server/.env`:
+Atteso: `{"ok":true,"rooms":0}`. E il collaudo che conta davvero, l'upgrade a WebSocket:
 
-```
-NTFY_URL=https://ntfy.TUO_DOMINIO
-NTFY_TOKEN=tk_xxxxxxxxxxxxxxxx
-```
-
-e `sudo systemctl restart duotalk-signaling`.
-
-### Sui telefoni
-
-Installa l'app **ntfy** (F-Droid o Play Store) su entrambi:
-1. impostazioni → server predefinito → `https://ntfy.TUO_DOMINIO`, con utente `duo`;
-2. iscrivi ciascun telefono **al proprio** topic (es. `duotalk-anna-x7k2`);
-3. togli ntfy dall'ottimizzazione batteria, o le notifiche arriveranno in ritardo.
-
-Scegli nomi di topic lunghi e casuali: `duotalk-<nome>-$(openssl rand -hex 3)`.
-
-Prova manuale:
 ```bash
-curl -H "Authorization: Bearer tk_xxx" \
-     -d '{"topic":"duotalk-anna-x7k2","message":"prova"}' \
-     https://ntfy.TUO_DOMINIO
+curl -s -i -N -H "Connection: Upgrade" -H "Upgrade: websocket" \
+  -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" -H "Sec-WebSocket-Version: 13" \
+  https://TUO_DOMINIO/duotalk/ws | head -3
 ```
 
-## 4. TURN (coturn) — fallback
+Atteso: `HTTP/1.1 101 Switching Protocols`. Se il primo risponde ma il secondo no, la
+richiesta non sta arrivando al backend giusto: quasi sempre è l'ordine delle regole.
+
+## 3. TURN (coturn) — collegamento di riserva
+
+Serve quando le due reti impediscono il collegamento diretto (NAT simmetrici, certe reti
+mobili). Anche passando dal TURN il traffico resta cifrato end-to-end: il relay inoltra
+pacchetti che non può leggere.
 
 ```bash
 sudo apt install coturn
-sudo cp server/deploy/coturn.conf.example /etc/turnserver.conf
+sudo cp /opt/duotalk/server/deploy/coturn.conf.example /etc/turnserver.conf
 sudoedit /etc/turnserver.conf     # external-ip, realm, user=..., cert/pkey
 sudo sed -i 's/#TURNSERVER_ENABLED=1/TURNSERVER_ENABLED=1/' /etc/default/coturn
 sudo systemctl enable --now coturn
 ```
 
-Apri sul firewall: **TCP/UDP 3478**, **TCP 5349**, **UDP 49152-65535**.
+Firewall: **TCP/UDP 3478**, **TCP 5349**, **UDP 49152-65535**.
 
-## 5. Configurazione dell'app
+Nell'app, sotto «Altre impostazioni»: url `turn:TUO_DOMINIO:3478`, utente e password.
 
-Vedi la tabella nel [README](../README.md#3-configurazione). In sintesi: server, token,
-canale e passphrase **identici**; i due topic ntfy **incrociati**.
+## 4. Sui telefoni
+
+Nell'app basta il **nome del server**. Poi accoppiamento a codice, e non si tocca più
+nulla.
+
+Perché la presenza regga davvero:
+
+1. *Impostazioni → App → DuoTalk → Batteria → **Senza restrizioni***. Su
+   Xiaomi/Huawei/Samsung cerca anche "avvio automatico" e attivalo.
+2. Concedi microfono, camera e **notifiche** (senza notifiche il foreground service non
+   può mostrare la sua, e Android lo chiude).
 
 ## Troubleshooting
 
 | Sintomo | Causa probabile | Rimedio |
 |---------|-----------------|---------|
-| "Token errato" | ACCESS_TOKEN diverso | allinea app e `.env` |
-| Resta "Sei nel canale" | canale diverso, o l'altro non ha aperto l'app | stesso nome canale; usa "Avvisa" |
-| "Passphrase diversa" | le due passphrase non coincidono | riallineale |
-| Notifiche mai ricevute | NTFY_URL vuoto, topic non iscritto, batteria | `/duotalk/healthz` deve dire `ntfy:true`; controlla l'iscrizione |
-| Notifica arriva ma non apre l'app | deep link mancante | rilancia `node scripts/patch-android-manifest.js` e ricompila |
-| Si collegano ma niente audio | rete che blocca il P2P | configura coturn |
-| Esci dal canale in background | il sistema chiude l'app | escludi DuoTalk dall'ottimizzazione batteria (vedi sotto) |
-| Nessuna notifica fissa "Sei nel canale" | permesso notifiche negato | concedilo: il servizio ne ha bisogno per restare vivo |
-
-## 6. Impostazioni sui telefoni
-
-Perché la presenza nel canale regga davvero:
-
-1. **DuoTalk**: *Impostazioni → App → DuoTalk → Batteria → Senza restrizioni*.
-   Su Xiaomi/Huawei/Samsung cerca anche "avvio automatico" e attivalo.
-2. **DuoTalk**: concedi microfono, camera e **notifiche** (senza notifiche il foreground
-   service non può mostrare la sua notifica fissa).
-3. **ntfy**: stessa esenzione dalla batteria, o gli avvisi arriveranno in ritardo.
+| `Upgrade Required` da healthz | il proxy inoltra un percorso che il server non riconosce | aggiorna il server: accetta qualsiasi prefisso |
+| healthz risponde ma l'app non si collega | le regole del WebSocket non vengono raggiunte | controlla l'**ordine** delle regole nel proxy |
+| La presenza cade ogni ~50 secondi | `timeout tunnel` non impostato | mettilo a 3600s |
+| "Access token non valido" | token sul server ma non nell'app | svuotalo nel `.env`, o mettilo anche nell'app |
+| "Nessuna risposta dall'altro telefono" | codice diverso, o l'altro non è collegato | rifate l'accoppiamento con un codice nuovo |
+| "Il codice non coincide" | cifre digitate male | è la verifica che funziona: rigenerate il codice |
+| Si collegano ma niente audio | la rete blocca il P2P | configura coturn |
+| Esce dal canale in background | il sistema chiude l'app | escludi DuoTalk dall'ottimizzazione batteria |
+| Dopo il riavvio del telefono non è più in ascolto | limite noto | riapri l'app una volta |

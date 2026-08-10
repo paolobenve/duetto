@@ -2,43 +2,48 @@
 
 Un mini "Discord" fatto su misura per **due sole persone**. Non è un'app per
 *chiamare*: è un **canale permanente**. Apri l'app e sei dentro; se c'è anche l'altro
-vi collegate da soli, altrimenti resti lì ad aspettare — e puoi **avvisarlo** che sei
-arrivato, con una notifica che gli arriva anche ad app chiusa.
+vi collegate da soli, altrimenti resti in ascolto — e vieni avvisato appena arriva.
 
 Audio e video viaggiano **cifrati end-to-end direttamente tra i due telefoni**. Il tuo
-server serve solo a farvi trovare e a suonare il campanello: **non può leggere nulla**.
+server serve solo a farvi trovare: **non può leggere nulla**.
+
+## Come si installa, dal punto di vista di chi la usa
+
+1. Installi l'app
+2. Scrivi il nome del tuo server
+3. Su un telefono premi «Crea il codice», sull'altro digiti le otto cifre che appaiono
+
+Fatto, per sempre. Nessun altro servizio da installare, nessuna password da inventare,
+nessun canale o passphrase da tenere uguali.
 
 ## Come funziona
 
 ```
-  Telefono A  ⇄  [ tuo server: signaling + ntfy (campanello) + TURN ]  ⇄  Telefono B
-      └──────────────  audio/video P2P cifrato (DTLS-SRTP)  ──────────────┘
+  Telefono A  ⇄  [ tuo server: signaling + TURN di riserva ]  ⇄  Telefono B
+      └──────────  audio/video P2P cifrato (DTLS-SRTP)  ──────────┘
 ```
 
-- **Canale, non chiamata**: entri e resti. Il server tiene la presenza (max 2).
-- **Resti dentro anche in background e a schermo spento**, grazie a un *foreground
-  service* Android (il modulo nativo `app/modules/duotalk-platform`). Esci dal canale
-  solo chiudendo l'app o scartandola dai recenti.
-- **Audio subito, video a richiesta**: entrando si apre il microfono; la camera si
-  accende solo se la vuoi — e quando la spegni viene **rilasciata davvero**.
-- **Campanello ntfy**: quando entri nel canale e l'altro non c'è, il server pubblica una
-  notifica sul suo topic ntfy. Toccandola si apre DuoTalk. C'è anche un pulsante
-  **Avvisa** per richiamarlo quando vuoi.
-- **Cifratura**: il media è cifrato da WebRTC (DTLS-SRTP). In più il **signaling stesso**
-  (SDP/ICE) è cifrato con una passphrase nota solo ai due telefoni, quindi il server
-  inoltra buste opache e non può fare da man-in-the-middle.
+- **Canale, non chiamata**: entri e resti. Il server tiene la presenza, massimo due.
+- **Sempre raggiungibile**: fuori dal canale l'app resta *in ascolto* — microfono chiuso,
+  connessione aperta — e ti avvisa quando l'altro entra. La notifica se la mostra l'app
+  stessa: nessun servizio di terzi, nessun Firebase.
+- **Audio subito, video a richiesta**: entrando si apre il microfono; la camera si accende
+  solo se la vuoi, e quando la spegni viene rilasciata davvero.
+- **Cifratura**: il media è cifrato da WebRTC (DTLS-SRTP). In più lo è anche il
+  **signaling** (SDP/ICE), con la chiave nata dall'accoppiamento: il server inoltra buste
+  opache e non può mettersi in mezzo.
 
 ## Struttura
 
 ```
 duotalk/
-├── server/              # Signaling WebSocket + push ntfy
-│   ├── src/index.js     # presenza nel canale, inoltro buste, campanello
-│   ├── src/ntfy.js      # pubblicazione notifiche
-│   ├── smoke-test.mjs   # test end-to-end del server
-│   └── deploy/          # nginx, apache, coturn, systemd
+├── server/              # Signaling WebSocket
+│   ├── src/index.js     # presenza, stati listening/active, inoltro buste
+│   ├── smoke-test.mjs   # 21 controlli end-to-end
+│   └── deploy/          # haproxy, apache, nginx, coturn, systemd
 ├── app/                 # App Android in React Native
-│   ├── src/             # crypto, signaling, webrtc, UI del canale
+│   ├── src/             # accoppiamento, crypto, signaling, webrtc, UI
+│   ├── modules/duotalk-platform/   # modulo nativo Kotlin
 │   ├── bootstrap.sh     # genera la parte nativa Android
 │   └── scripts/
 └── docs/                # architettura e guida al deploy
@@ -46,147 +51,112 @@ duotalk/
 
 ## Avvio rapido
 
-### 1. Server
+### Server
 
 ```bash
 cd server
-cp .env.example .env
-# genera il token:  openssl rand -base64 32   -> mettilo in ACCESS_TOKEN
-# imposta NTFY_URL con l'indirizzo del tuo ntfy
+cp .env.example .env      # va bene com'è: il token è facoltativo
 npm install
-npm start                 # ascolta su 127.0.0.1:8787
-npm run test:smoke        # verifica che tutto funzioni
+npm run test:smoke        # deve stampare TUTTO OK
+npm start
 ```
 
-Poi esponilo in HTTPS dietro il tuo reverse proxy e installa **ntfy** e **coturn**:
-tutti i passaggi sono in [docs/DEPLOY.md](docs/DEPLOY.md).
+Poi esponilo in HTTPS dietro il proxy che già hai — vedi
+[docs/DEPLOY.md](docs/DEPLOY.md), che copre HAProxy, Apache e nginx. L'app si collegherà
+a `wss://TUODOMINIO/duotalk/ws`.
 
-### 2. App Android (su entrambi i telefoni)
+### App Android
 
-Prerequisiti: Node 18+, JDK 17+, Android SDK (`ANDROID_HOME`).
+Prerequisiti: Node 18+, JDK 17, Android SDK (`ANDROID_HOME`).
 
 ```bash
 cd app
-./bootstrap.sh     # crea android/, applica permessi e deep link, npm install
-npm start          # bundler Metro
-npm run android    # compila e installa sul telefono collegato
+./bootstrap.sh          # crea android/, applica manifest e permessi, npm install
+npm run build:apk       # APK di release
+adb install -g -r android/app/build/outputs/apk/release/app-release.apk
 ```
 
-Per il secondo telefono conviene un APK: `npm run build:apk`
-(→ `android/app/build/outputs/apk/release/`).
+Il flag `-g` di `adb` concede tutti i permessi all'installazione, evitando le richieste
+al primo avvio. Per il secondo telefono basta copiare lo stesso APK.
 
-Installa anche l'**app ntfy** su entrambi i telefoni e iscrivi ciascuno al proprio topic.
+## L'accoppiamento
 
-### 3. Configurazione
+Chi crea la coppia riceve **otto cifre**. L'altro le digita. Da lì in poi i due telefoni
+sono accoppiati per sempre e il codice non serve più: buttalo.
 
-Valori **identici** sui due telefoni:
+Cosa succede sotto:
 
-| Campo | Cosa metterci |
-|-------|---------------|
-| Server | `wss://TUO_DOMINIO/duotalk/ws` |
-| Access token | lo stesso di `ACCESS_TOKEN` nel `.env` |
-| Nome del canale | es. `casa` |
-| Passphrase | segreto lungo e casuale, scambiato a voce |
+1. Dal codice si ricava `pairId`, l'unica cosa che il server vede. Il codice **non gli
+   arriva mai**.
+2. I due telefoni si scambiano chiavi pubbliche e fanno un Diffie-Hellman (X25519),
+   mescolando il codice nella derivazione.
+3. Ognuno manda una prova di possesso della chiave. Se il codice digitato è sbagliato la
+   prova non torna e l'accoppiamento **fallisce dicendolo**, invece di lasciarvi con una
+   connessione muta.
 
-Valori **incrociati** (quello che per uno è "mio" per l'altro è "dell'altro"):
+Dettale il codice **a voce o di persona**, non per messaggio: chi lo intercetta mentre vi
+state accoppiando, e sa anche dov'è il vostro server, potrebbe prendere il posto
+dell'altro. Dopo l'accoppiamento non conta più nulla.
 
-| Telefono di Anna | Telefono di Bruno |
-|---|---|
-| Il tuo topic: `duotalk-anna-x7k2` | Il tuo topic: `duotalk-bruno-9m4p` |
-| Topic dell'altro: `duotalk-bruno-9m4p` | Topic dell'altro: `duotalk-anna-x7k2` |
+## L'interfaccia
 
-Ogni telefono si iscrive **al proprio** topic nell'app ntfy. Usa nomi lunghi e casuali:
-su ntfy chi conosce il nome di un topic può leggerlo (a meno di attivare l'autenticazione,
-consigliata e spiegata in DEPLOY).
+**In ascolto** — microfono chiuso, connessione aperta. Vedi se l'altro è raggiungibile,
+puoi avvisarlo, e c'è l'ingranaggio per le impostazioni.
 
-## Sicurezza
-
-- ✅ Audio/video cifrati end-to-end, anche quando passano dal TURN.
-- ✅ Signaling cifrato e autenticato: il server non può leggerlo né alterarlo.
-- ✅ Massimo due presenze per canale, protette da token.
-- ⚠️ Tutto dipende dalla **passphrase**: lunga, casuale, scambiata di persona.
-- ⚠️ Le notifiche ntfy contengono solo `"<nome> è nel canale"` — nessun contenuto della
-  conversazione — ma passano dal server ntfy: tienilo tuo e con autenticazione attiva.
-- ⚠️ Il server vede i **metadati**: chi è connesso e quando, non cosa vi dite.
-
-Dettagli e modello di minaccia in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-
-## Video: come viene mostrato
-
-- Chi è **a schermo intero non viene mai tagliato** (`objectFit: contain`): se le
-  proporzioni non combaciano si vedono bande nere, ma l'immagine resta integra.
-- Il secondo video sta in un **riquadrino** che ha **sempre le proporzioni della sua
-  camera** — mai quadrato, mai deformato. Chi manda il video comunica all'altro la forma
-  con cui lo sta inquadrando (dentro il messaggio cifrato di stato), così il riquadrino
-  è giusto da entrambe le parti anche se uno dei due gira il telefono.
-- Il riquadrino è **trascinabile** e **ridimensionabile**: trascina la maniglia
-  nell'angolo in basso a destra, oppure allarga con **due dita**. Resta comunque dentro
-  i bordi dello schermo, e va da circa il 18% al 62% della larghezza.
-- **Toccandolo i due si scambiano**: vai tu a schermo intero e l'altro nel riquadrino,
-  e toccando di nuovo torni indietro.
-- Se **uno solo** dei due ha il video acceso, quello va a schermo intero e il riquadrino
-  non compare.
-- Se nessuno ha il video, al posto dell'immagine c'è lo stato della presenza.
-
-## Tasto Indietro: finestrella PiP
-
-Il tasto Indietro **non fa uscire dal canale**: mette l'app nella finestrella
-Picture-in-Picture di sistema, che resta sopra le altre app mentre continui a parlare.
-La finestrella prende le proporzioni del video a schermo intero, e al suo interno
-compare solo il video: comandi e badge spariscono, perché non ci starebbero.
-
-Per tornare grande basta toccare la finestrella. Se il telefono non supporta il PiP
-(prima di Android 8, o funzione disattivata) il tasto Indietro torna a comportarsi
-normalmente, invece di non fare nulla.
-
-## I sei pulsanti
-
-In basso, **sempre presenti**: `Video`, `Audio`, `Gira`, `Uscita audio`, `Avvisa`,
-`Esci`. Non spariscono mai — dopo 4 secondi di inattività si attenuano al 40% per non
-coprire l'immagine, e tornano pieni al primo tocco ovunque sullo schermo. Restano
-premibili anche da attenuati: il tocco esegue subito l'azione, non serve svegliarli.
+**Nel canale** — sei dentro. Sei pulsanti sempre presenti in basso, che dopo 4 secondi si
+attenuano al 40% per non coprire l'immagine e tornano pieni al primo tocco ovunque:
 
 | Pulsante | Cosa fa |
 |---|---|
 | **Video** | accende/spegne la camera |
 | **Audio** | mette in muto il microfono |
-| **Gira** | passa da fotocamera frontale a posteriore; spento se il video è off |
+| **Gira** | frontale ↔ posteriore; spento se il video è off |
 | **Uscita audio** | cicla fra vivavoce, auricolare, cuffie, Bluetooth |
 | **Avvisa** | manda la notifica all'altro; spento se è già nel canale |
-| **Esci** | lascia il canale, ferma il servizio e torna alle impostazioni |
+| **Esci** | torna in ascolto |
 
-### Uscita audio
+L'uscita audio scelta viene **ricordata** e ripristinata al rientro, se quel dispositivo è
+ancora collegato. L'app non decide mai di testa sua.
 
-Le uscite possibili su un telefono sono quattro e non di più: **vivavoce**,
-**auricolare** (l'altoparlante in alto), **cuffie con filo**, **Bluetooth**. Il pulsante
-mostra sempre quella attiva e a ogni tocco passa alla successiva, saltando quelle non
-collegate: se non hai cuffie né Bluetooth, cicla solo fra vivavoce e auricolare.
+### Video
 
-**L'ultima scelta viene ricordata** e ripristinata quando rientri nel canale, purché quel
-dispositivo sia ancora collegato. L'app non decide mai di testa sua: se la preferenza
-salvata non è disponibile, lascia l'uscita scelta dal sistema.
+- Chi è a schermo intero **non viene mai tagliato** (`contain`): eventuali bande nere sono
+  il prezzo dell'immagine integra.
+- Il riquadrino ha **sempre le proporzioni della sua camera**, mai quadrato. È
+  trascinabile e ridimensionabile: maniglia nell'angolo o due dita.
+- **Toccandolo i due si scambiano** di posto.
+- Se uno solo ha il video acceso, quello va a schermo intero e il riquadrino non compare.
 
-Le soglie si regolano da `IDLE_MS` e `DIM_OPACITY` in `app/src/ChannelScreen.tsx`.
+### Tasto Indietro
 
-## Permessi
+Non fa uscire dal canale: mette l'app nella **finestrella Picture-in-Picture**, che resta
+sopra le altre app mentre continui a parlare. Dentro la finestrella restano solo i video.
 
-Microfono, camera e notifiche vengono chiesti **tutti insieme al primo avvio**, non
-spezzettati durante l'uso: dopo la prima volta Android non li richiede più.
+## Sicurezza
 
-Non è possibile concederli **all'installazione**: da Android 6 questi sono *runtime
-permissions* e il sistema impone di chiederli all'utente mentre l'app gira. Nessuna app
-può aggirarlo — chiederli tutti al primo avvio è il massimo consentito.
+- ✅ Audio/video cifrati end-to-end, anche quando passano dal TURN.
+- ✅ Signaling cifrato e autenticato: il server non può leggerlo né alterarlo.
+- ✅ La chiave è a 256 bit e nasce da uno scambio Diffie-Hellman, non da una password.
+- ✅ Massimo due presenze per coppia; coppie diverse non si vedono fra loro.
+- ⚠️ Il momento delicato è **solo l'accoppiamento**: proteggi il codice mentre lo detti.
+- ⚠️ Il server vede i **metadati**: quali coppie sono connesse e quando, non cosa vi dite.
 
-## Restare nel canale in background
+Modello di minaccia completo in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-Il *foreground service* mostra una **notifica fissa** ("Sei nel canale"): non è
-rimovibile, è Android che la impone in cambio del diritto di restare attivi. Da Android
-14 il tipo `microphone` è anche l'unico modo consentito per usare il microfono fuori dal
-primo piano; quando accendi il video il servizio aggiunge il tipo `camera`.
+## Restare raggiungibili
+
+Un *foreground service* tiene viva la connessione anche in background e a schermo spento,
+e mostra una **notifica fissa** ("In ascolto" / "Sei nel canale"): non è rimovibile, è
+Android che la impone in cambio del diritto di restare attivi.
 
 Su molti telefoni (Xiaomi, Huawei, Samsung, OnePlus…) serve comunque **escludere DuoTalk
-dall'ottimizzazione della batteria**, altrimenti il sistema lo chiude lo stesso:
-*Impostazioni → App → DuoTalk → Batteria → Senza restrizioni*.
+dall'ottimizzazione della batteria**: *Impostazioni → App → DuoTalk → Batteria → Senza
+restrizioni*.
 
-Un `PARTIAL_WAKE_LOCK` (con scadenza di sicurezza a 8 ore) tiene sveglia la CPU mentre
-sei nel canale. Ha un costo in batteria: è il prezzo di restare sempre raggiungibile.
+**Limite attuale**: dopo un riavvio del telefono bisogna aprire l'app una volta per
+rimetterla in ascolto. La connessione vive ancora nel JavaScript; spostarla nel servizio
+nativo con un ricevitore di avvio è il prossimo passo.
+
+## Licenza
+
+Uso personale.
