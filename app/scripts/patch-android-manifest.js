@@ -30,6 +30,15 @@ const permissions = [
   'android.permission.CAMERA',
   'android.permission.MODIFY_AUDIO_SETTINGS',
   'android.permission.BLUETOOTH_CONNECT', // auricolari BT
+  // Restare nel canale in background / a schermo spento.
+  // Il servizio e' dichiarato dal modulo duotalk-foreground e i suoi
+  // permessi arrivano dal merge dei manifest; li ripetiamo qui perche'
+  // siano visibili leggendo il manifest dell'app.
+  'android.permission.FOREGROUND_SERVICE',
+  'android.permission.FOREGROUND_SERVICE_MICROPHONE',
+  'android.permission.FOREGROUND_SERVICE_CAMERA',
+  'android.permission.WAKE_LOCK',
+  'android.permission.POST_NOTIFICATIONS',
 ];
 
 for (const p of permissions) {

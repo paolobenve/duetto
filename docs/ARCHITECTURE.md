@@ -72,6 +72,39 @@ mezzo. Senza la passphrase il MITM non è possibile.
 - Un messaggio cifrato `state` comunica all'altro se hai mic/camera attivi, per mostrarlo
   nell'interfaccia.
 
+### 5. Presenza in background (`app/modules/duotalk-foreground`)
+
+Un canale permanente che sopravvive solo con l'app aperta non è permanente. Android
+sospende i processi in background e a schermo spento, quindi serve un **foreground
+service**: è l'unico meccanismo supportato per restare attivi, e da Android 14 il tipo
+`microphone` è anche l'unico modo consentito per registrare audio fuori dal primo piano.
+
+È un modulo nativo Kotlin locale, agganciato dall'**autolinking** tramite
+`"duotalk-foreground": "file:modules/duotalk-foreground"` in `package.json`: così non
+serve modificare `MainApplication`, che è generato da `bootstrap.sh` e verrebbe
+sovrascritto.
+
+| Aspetto | Scelta |
+|---|---|
+| Tipo servizio | `microphone`, più `camera` quando accendi il video |
+| Notifica | obbligatoria, canale a importanza `LOW` (silenziosa) |
+| Riavvio | `START_STICKY`: se Android lo uccide per memoria, riparte |
+| Uscita | `stopWithTask="true"`: scartare l'app dai recenti esce dal canale |
+| Wake lock | `PARTIAL_WAKE_LOCK` con scadenza di sicurezza a 8 ore |
+
+Il modulo è scritto per l'architettura classica; `bootstrap.sh` imposta
+`newArchEnabled=false`, pienamente supportato in RN 0.76.
+
+### 6. Layout video (`app/src/VideoStage.tsx`)
+
+- Chi è a schermo intero usa `objectFit: contain`: **mai tagliato**, eventuali bande
+  nere sono accettate come prezzo dell'integrità dell'immagine.
+- L'altro video sta in un riquadrino trascinabile (`PanResponder` + `Animated.ValueXY`),
+  vincolato dentro lo schermo e riportato dentro se ruoti il telefono.
+- Il tocco si distingue dal trascinamento con una soglia di 4 px: tocco = scambio fra
+  grande e piccolo, trascinamento = spostamento.
+- Con un solo video acceso il riquadrino non compare e lo scambio viene azzerato.
+
 ## Flusso
 
 ```
@@ -108,9 +141,11 @@ Punto debole principale: la **passphrase**. Lunga, casuale, scambiata fuori band
 
 ## Limiti noti e possibili estensioni
 
-- **Background**: se l'app va in background, Android può sospendere la connessione e
-  quindi la presenza. Per restare nel canale a schermo spento serve un *foreground
-  service* con `FOREGROUND_SERVICE_MICROPHONE` (Android 14+). Non implementato.
+- **OEM aggressivi**: Xiaomi, Huawei, Samsung e altri chiudono i servizi in background
+  nonostante le regole di Android. Serve escludere l'app dall'ottimizzazione batteria;
+  non c'è modo di ottenerlo solo da codice.
+- **Consumo**: wake lock e connessione sempre aperta costano batteria. È il prezzo della
+  presenza continua.
 - **Codice di sicurezza visivo**: si potrebbe mostrare un SAS derivato dai fingerprint
   DTLS, per confermare a voce che non c'è un MITM. Oggi la garanzia è la passphrase.
 - **Chat testuale**: un `RTCDataChannel` sulla connessione esistente sarebbe già cifrato.

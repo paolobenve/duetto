@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { RTCView, MediaStream } from 'react-native-webrtc';
+import { MediaStream } from 'react-native-webrtc';
 import type { PresenceStatus } from './signaling';
+import VideoStage from './VideoStage';
 
 type Props = {
   channel: string;
@@ -34,39 +35,27 @@ export default function ChannelScreen(props: Props) {
 
   const together = status === 'together';
   const linked = connectionState === 'connected';
-  const remoteVideo = remoteStream && peerState.video && remoteStream.getVideoTracks().length > 0;
+  const remoteHasVideo =
+    !!remoteStream && peerState.video && remoteStream.getVideoTracks().length > 0;
+  const localHasVideo =
+    !!localStream && videoOn && localStream.getVideoTracks().length > 0;
 
   return (
     <View style={styles.root}>
-      {/* Area principale */}
-      {remoteVideo ? (
-        <RTCView
-          streamURL={remoteStream!.toURL()}
-          style={styles.remote}
-          objectFit="cover"
-          mirror={false}
-        />
-      ) : (
-        <View style={[styles.remote, styles.stage]}>
+      <VideoStage
+        localStream={localStream}
+        remoteStream={remoteStream}
+        localHasVideo={localHasVideo}
+        remoteHasVideo={remoteHasVideo}
+        placeholder={
           <PresenceCard
             status={status}
             linked={linked}
             peerName={peerName}
             peerAudio={peerState.audio}
           />
-        </View>
-      )}
-
-      {/* Anteprima locale, solo se ho il video acceso */}
-      {localStream && videoOn ? (
-        <RTCView
-          streamURL={localStream.toURL()}
-          style={styles.local}
-          objectFit="cover"
-          mirror
-          zOrder={1}
-        />
-      ) : null}
+        }
+      />
 
       {/* Barra in alto: canale + stato */}
       <View style={styles.topBar}>
@@ -204,8 +193,6 @@ function CircleButton(props: {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#0b0e14' },
-  remote: { ...StyleSheet.absoluteFillObject },
-  stage: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#0b0e14' },
 
   card: { alignItems: 'center', paddingHorizontal: 32 },
   avatar: {
@@ -219,11 +206,6 @@ const styles = StyleSheet.create({
   cardTitle: { color: '#e6ebf1', fontSize: 21, fontWeight: '700', textAlign: 'center' },
   cardSub: { color: '#8892a0', fontSize: 15, textAlign: 'center', marginTop: 10, lineHeight: 22 },
   bold: { color: '#c9d2de', fontWeight: '700' },
-
-  local: {
-    position: 'absolute', top: 92, right: 16, width: 108, height: 156,
-    borderRadius: 14, backgroundColor: '#111', borderWidth: 1, borderColor: '#333',
-  },
 
   topBar: {
     position: 'absolute', top: 14, left: 14, right: 14,

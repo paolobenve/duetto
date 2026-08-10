@@ -133,4 +133,15 @@ canale e passphrase **identici**; i due topic ntfy **incrociati**.
 | Notifiche mai ricevute | NTFY_URL vuoto, topic non iscritto, batteria | `/duotalk/healthz` deve dire `ntfy:true`; controlla l'iscrizione |
 | Notifica arriva ma non apre l'app | deep link mancante | rilancia `node scripts/patch-android-manifest.js` e ricompila |
 | Si collegano ma niente audio | rete che blocca il P2P | configura coturn |
-| Esci dal canale mettendo l'app in background | limite noto | tieni l'app in primo piano |
+| Esci dal canale in background | il sistema chiude l'app | escludi DuoTalk dall'ottimizzazione batteria (vedi sotto) |
+| Nessuna notifica fissa "Sei nel canale" | permesso notifiche negato | concedilo: il servizio ne ha bisogno per restare vivo |
+
+## 6. Impostazioni sui telefoni
+
+Perché la presenza nel canale regga davvero:
+
+1. **DuoTalk**: *Impostazioni → App → DuoTalk → Batteria → Senza restrizioni*.
+   Su Xiaomi/Huawei/Samsung cerca anche "avvio automatico" e attivalo.
+2. **DuoTalk**: concedi microfono, camera e **notifiche** (senza notifiche il foreground
+   service non può mostrare la sua notifica fissa).
+3. **ntfy**: stessa esenzione dalla batteria, o gli avvisi arriveranno in ritardo.

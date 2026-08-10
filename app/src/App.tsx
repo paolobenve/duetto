@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
+import Foreground from 'duotalk-foreground';
 import { DuoConfig, loadConfig, saveConfig, isConfigComplete } from './config';
 import { Signaling, PresenceStatus } from './signaling';
 import { ChannelSession } from './webrtc';
@@ -55,6 +56,7 @@ export default function App() {
     signalingRef.current?.close();
     sessionRef.current = null;
     signalingRef.current = null;
+    Foreground.stop().catch(() => { /* noop */ });
     try { InCallManager.stop(); } catch { /* noop */ }
     setLocalStream(null);
     setRemoteStream(null);
@@ -73,6 +75,21 @@ export default function App() {
         'Senza microfono non puoi parlare nel canale.',
       );
       if (!ok || cancelled) { if (!ok) setScreen('settings'); return; }
+
+      // Android 13+: senza questo la notifica del servizio non si vede.
+      // Il servizio parte comunque, quindi non blocchiamo se viene negato.
+      if (Platform.OS === 'android' && Number(Platform.Version) >= 33) {
+        try {
+          await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+          );
+        } catch { /* noop */ }
+      }
+      if (cancelled) return;
+
+      // Foreground service: e' cio' che tiene viva la connessione quando
+      // l'app va in background o si spegne lo schermo.
+      Foreground.start('Sei nel canale', false).catch(() => { /* noop */ });
 
       // Audio in vivavoce, come su Discord.
       try {
@@ -108,6 +125,7 @@ export default function App() {
         onPeerJoined: async (name) => {
           setPeerName(name);
           setKnockPending(false);
+          Foreground.setText(`${name} e' nel canale`).catch(() => { /* noop */ });
           try {
             await sessionRef.current?.attachPeer(politeRef.current);
             sessionRef.current?.broadcastState();
@@ -119,6 +137,7 @@ export default function App() {
           sessionRef.current?.detachPeer();
           setPeerState({ audio: true, video: false });
           setConnState('new');
+          Foreground.setText('Sei nel canale').catch(() => { /* noop */ });
         },
 
         onSignal: (msg) => { sessionRef.current?.onSignal(msg); },
@@ -157,6 +176,8 @@ export default function App() {
     if (!s) return;
     if (s.isVideoEnabled()) {
       setVideoOn(await s.disableVideo());
+      // Il servizio torna al solo tipo "microphone".
+      Foreground.setCameraActive(false).catch(() => { /* noop */ });
       try { InCallManager.setForceSpeakerphoneOn(true); } catch { /* noop */ }
       return;
     }
@@ -165,9 +186,13 @@ export default function App() {
       'Serve il permesso camera per attivare il video.',
     );
     if (!ok) return;
+    // Android 14+: per usare la camera anche in background il servizio
+    // deve dichiarare il tipo "camera" PRIMA di aprirla.
+    await Foreground.setCameraActive(true).catch(() => { /* noop */ });
     try {
       setVideoOn(await s.enableVideo());
     } catch (e: any) {
+      Foreground.setCameraActive(false).catch(() => { /* noop */ });
       Alert.alert('Errore camera', String(e?.message ?? e));
     }
   }, []);

@@ -16,6 +16,9 @@ server serve solo a farvi trovare e a suonare il campanello: **non può leggere 
 ```
 
 - **Canale, non chiamata**: entri e resti. Il server tiene la presenza (max 2).
+- **Resti dentro anche in background e a schermo spento**, grazie a un *foreground
+  service* Android (il modulo nativo `app/modules/duotalk-foreground`). Esci dal canale
+  solo chiudendo l'app o scartandola dai recenti.
 - **Audio subito, video a richiesta**: entrando si apre il microfono; la camera si
   accende solo se la vuoi — e quando la spegni viene **rilasciata davvero**.
 - **Campanello ntfy**: quando entri nel canale e l'altro non c'è, il server pubblica una
@@ -108,9 +111,31 @@ consigliata e spiegata in DEPLOY).
 
 Dettagli e modello di minaccia in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## Limite noto
+## Video: come viene mostrato
 
-Se metti l'app in background, Android può sospendere la connessione e quindi farti
-uscire dal canale. Per restare presente a schermo spento servirebbe un *foreground
-service* con permesso microfono: è la naturale evoluzione successiva, non ancora
-implementata.
+- Chi è **a schermo intero non viene mai tagliato** (`objectFit: contain`): se le
+  proporzioni non combaciano si vedono bande nere, ma l'immagine resta integra.
+- Il secondo video sta in un **riquadrino trascinabile**: spostalo dove vuoi, resta
+  dentro i bordi dello schermo.
+- **Toccando il riquadrino i due si scambiano**: vai tu a schermo intero e l'altro nel
+  riquadrino, e toccando di nuovo torni indietro.
+- Se **uno solo** dei due ha il video acceso, quello va a schermo intero e il riquadrino
+  non compare.
+- Se nessuno ha il video, al posto dell'immagine c'è lo stato della presenza.
+
+Il riquadrino usa `cover` (riempie, quindi ritaglia un po') perché è una miniatura: se
+lo vuoi integro anche lì, cambia `PIP_FIT` in `app/src/VideoStage.tsx`.
+
+## Restare nel canale in background
+
+Il *foreground service* mostra una **notifica fissa** ("Sei nel canale"): non è
+rimovibile, è Android che la impone in cambio del diritto di restare attivi. Da Android
+14 il tipo `microphone` è anche l'unico modo consentito per usare il microfono fuori dal
+primo piano; quando accendi il video il servizio aggiunge il tipo `camera`.
+
+Su molti telefoni (Xiaomi, Huawei, Samsung, OnePlus…) serve comunque **escludere DuoTalk
+dall'ottimizzazione della batteria**, altrimenti il sistema lo chiude lo stesso:
+*Impostazioni → App → DuoTalk → Batteria → Senza restrizioni*.
+
+Un `PARTIAL_WAKE_LOCK` (con scadenza di sicurezza a 8 ore) tiene sveglia la CPU mentre
+sei nel canale. Ha un costo in batteria: è il prezzo di restare sempre raggiungibile.

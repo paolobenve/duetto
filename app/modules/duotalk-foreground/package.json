@@ -1,0 +1,11 @@
+{
+  "name": "duotalk-foreground",
+  "version": "1.0.0",
+  "description": "Foreground service Android: tiene viva la presenza nel canale anche in background e a schermo spento.",
+  "main": "index.js",
+  "react-native": "index.js",
+  "private": true,
+  "peerDependencies": {
+    "react-native": ">=0.76.0"
+  }
+}
