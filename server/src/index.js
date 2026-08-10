@@ -1,32 +1,44 @@
 // DuoTalk - Signaling server
 // -------------------------------------------------------------
 // Modello "canale": non ci sono chiamate da fare o ricevere. Esiste un
-// canale permanente; chi entra ci resta e aspetta l'altro. Quando il
-// secondo entra, i due si collegano da soli.
+// canale permanente per una coppia; chi entra ci resta e aspetta l'altro.
+//
+// Ogni telefono tiene UNA connessione sempre aperta, in uno di due stati:
+//
+//   listening  il telefono e' raggiungibile ma non nel canale: microfono
+//              chiuso, nessun media. Serve solo a poter essere avvisati.
+//   active     il telefono e' nel canale: si negozia il WebRTC.
 //
 // Compiti del server:
-//  1) Tenere il canale (max 2 presenze, nessun terzo puo' entrare).
-//  2) Inoltrare buste OPACHE: i payload di signaling (SDP/ICE) arrivano
-//     gia' cifrati dal client, il server non puo' leggerli ne' alterarli.
-//  3) Suonare il campanello via ntfy sull'altro telefono quando qualcuno
-//     entra nel canale (o preme "Bussa"), anche ad app chiusa.
-//  4) Richiedere un ACCESS_TOKEN condiviso (barriera anti-abuso).
+//  1) Tenere la coppia (max 2 presenze per stanza, nessun terzo entra).
+//  2) Avvisare l'altro quando uno passa ad "active", o quando bussa:
+//     e' l'app stessa a mostrarsi la notifica, niente servizi esterni.
+//  3) Inoltrare buste OPACHE: i payload di signaling arrivano gia'
+//     cifrati dal client e il server non puo' leggerli ne' alterarli.
+//  4) Inoltrare lo scambio di chiavi dell'accoppiamento (chiavi
+//     pubbliche: non c'e' nulla da nascondere, e senza il codice il
+//     server non puo' comunque calcolare la chiave finale).
+//
+// La stanza si chiama `pairId` ed e' un'impronta del codice di
+// accoppiamento: il codice vero al server non arriva mai. Coppie diverse
+// hanno pairId diversi e non si vedono fra loro.
 // -------------------------------------------------------------
 
 import { createServer } from 'node:http';
 import { WebSocketServer } from 'ws';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
-import { ntfyPublish, ntfyEnabled } from './ntfy.js';
 
 const PORT = parseInt(process.env.PORT || '8787', 10);
 const HOST = process.env.HOST || '127.0.0.1'; // dietro reverse proxy: solo loopback
-const ACCESS_TOKEN = process.env.ACCESS_TOKEN || ''; // se vuoto, nessun controllo token
+const ACCESS_TOKEN = process.env.ACCESS_TOKEN || ''; // se vuoto, nessun controllo
 const MAX_PER_ROOM = 2;
-const MAX_MESSAGE_BYTES = 256 * 1024; // le buste di signaling sono piccole
+const MAX_MESSAGE_BYTES = 256 * 1024;
 const HEARTBEAT_MS = 30_000;
-const KNOCK_COOLDOWN_MS = 15_000; // anti-martellamento del pulsante "Bussa"
+const KNOCK_COOLDOWN_MS = 15_000;
 
-/** @type {Map<string, Set<import('ws').WebSocket>>} presenze per canale */
+const MODES = ['listening', 'active'];
+
+/** @type {Map<string, Set<import('ws').WebSocket>>} presenze per pairId */
 const rooms = new Map();
 
 function safeEqual(a, b) {
@@ -57,7 +69,7 @@ function leaveRoom(ws) {
   ws.roomId = null;
 }
 
-/** Nome mostrato nella notifica, ripulito (finisce in un push, non fidarsi). */
+/** Nome mostrato nelle notifiche dell'altro: ripulito, non ci fidiamo. */
 function cleanName(raw) {
   const s = typeof raw === 'string' ? raw.trim() : '';
   if (!s) return 'Qualcuno';
@@ -65,10 +77,9 @@ function cleanName(raw) {
 }
 
 const httpServer = createServer((req, res) => {
-  // Piccolo health-check per il reverse proxy / monitoraggio
   if (req.url === '/healthz') {
     res.writeHead(200, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ ok: true, rooms: rooms.size, ntfy: ntfyEnabled() }));
+    res.end(JSON.stringify({ ok: true, rooms: rooms.size }));
     return;
   }
   res.writeHead(426, { 'content-type': 'text/plain' });
@@ -82,14 +93,14 @@ wss.on('connection', (ws) => {
   ws.peerId = randomUUID();
   ws.roomId = null;
   ws.joined = false;
-  ws.peerTopic = '';   // topic ntfy da suonare = quello DELL'ALTRA persona
+  ws.mode = 'listening';
   ws.name = 'Qualcuno';
   ws.lastKnock = 0;
 
   ws.on('pong', () => { ws.isAlive = true; });
 
   ws.on('message', (data, isBinary) => {
-    if (isBinary) return; // usiamo solo JSON testuale
+    if (isBinary) return;
     let msg;
     try {
       msg = JSON.parse(data.toString());
@@ -98,7 +109,7 @@ wss.on('connection', (ws) => {
       return;
     }
 
-    // 1) Handshake: primo messaggio deve essere "join"
+    // --- 1) Handshake ---------------------------------------------------
     if (!ws.joined) {
       if (msg.type !== 'join') {
         send(ws, { type: 'error', error: 'expected-join' });
@@ -127,30 +138,56 @@ wss.on('connection', (ws) => {
       set.add(ws);
       ws.roomId = roomId;
       ws.joined = true;
-      ws.peerTopic = typeof msg.peerTopic === 'string' ? msg.peerTopic.trim().slice(0, 128) : '';
       ws.name = cleanName(msg.name);
+      ws.mode = MODES.includes(msg.mode) ? msg.mode : 'listening';
 
       // "polite" nel senso della perfect negotiation WebRTC: chi era gia'
-      // nel canale cede in caso di collisione di offerte. Deterministico,
+      // nella stanza cede in caso di collisione di offerte. Deterministico,
       // cosi' i due ruoli non coincidono mai.
-      const polite = others.length === 0;
-      send(ws, { type: 'joined', peerId: ws.peerId, polite, peers: others.length });
-      for (const peer of others) send(peer, { type: 'peer-joined', peerId: ws.peerId, name: ws.name });
+      const other = others[0];
+      send(ws, {
+        type: 'joined',
+        peerId: ws.peerId,
+        polite: others.length === 0,
+        peerPresent: !!other,
+        peerActive: other ? other.mode === 'active' : false,
+        peerName: other ? other.name : '',
+      });
 
-      // Campanello: solo se l'altro NON e' gia' nel canale (altrimenti
-      // se ne accorge da solo e la notifica sarebbe rumore inutile).
-      if (others.length === 0 && ws.peerTopic) {
-        ntfyPublish(ws.peerTopic, {
-          title: 'DuoTalk',
-          message: `${ws.name} e' nel canale`,
-          priority: 4,
-          tags: ['wave'],
+      for (const peer of others) {
+        send(peer, {
+          type: 'peer-joined',
+          peerId: ws.peerId,
+          name: ws.name,
+          mode: ws.mode,
         });
+        // Se entra gia' nel canale mentre l'altro e' solo in ascolto,
+        // e' il momento di farglielo sapere.
+        if (ws.mode === 'active' && peer.mode === 'listening') {
+          send(peer, { type: 'notify', reason: 'peer-active', name: ws.name });
+        }
       }
       return;
     }
 
-    // 2) Post-join: inoltra le buste (cifrate) all'altro peer.
+    // --- 2) Cambio di stato ---------------------------------------------
+    if (msg.type === 'mode') {
+      const next = MODES.includes(msg.mode) ? msg.mode : null;
+      if (!next || next === ws.mode) return;
+      const before = ws.mode;
+      ws.mode = next;
+      for (const peer of peersOf(ws.roomId, ws)) {
+        send(peer, { type: 'peer-mode', mode: next, name: ws.name });
+        // Notifica solo la transizione che conta: qualcuno E' ENTRATO
+        // nel canale mentre l'altro stava soltanto in ascolto.
+        if (before === 'listening' && next === 'active' && peer.mode === 'listening') {
+          send(peer, { type: 'notify', reason: 'peer-active', name: ws.name });
+        }
+      }
+      return;
+    }
+
+    // --- 3) Inoltro delle buste cifrate ---------------------------------
     if (msg.type === 'signal') {
       for (const peer of peersOf(ws.roomId, ws)) {
         send(peer, { type: 'signal', from: ws.peerId, payload: msg.payload });
@@ -158,24 +195,31 @@ wss.on('connection', (ws) => {
       return;
     }
 
-    // 3) "Bussa": notifica esplicita all'altro ("sono qui, vieni").
+    // --- 4) Accoppiamento: scambio di chiavi pubbliche -------------------
+    if (msg.type === 'pair') {
+      for (const peer of peersOf(ws.roomId, ws)) {
+        send(peer, { type: 'pair', from: ws.peerId, payload: msg.payload });
+      }
+      return;
+    }
+
+    // --- 5) "Avvisa": notifica esplicita all'altro -----------------------
     if (msg.type === 'knock') {
       const now = Date.now();
       if (now - ws.lastKnock < KNOCK_COOLDOWN_MS) {
         send(ws, { type: 'knock-result', ok: false, error: 'too-soon' });
         return;
       }
-      ws.lastKnock = now;
-      if (!ws.peerTopic) {
-        send(ws, { type: 'knock-result', ok: false, error: 'no-topic' });
+      const others = peersOf(ws.roomId, ws);
+      if (others.length === 0) {
+        send(ws, { type: 'knock-result', ok: false, error: 'peer-offline' });
         return;
       }
-      ntfyPublish(ws.peerTopic, {
-        title: 'DuoTalk',
-        message: `${ws.name} ti aspetta nel canale`,
-        priority: 5,
-        tags: ['bell'],
-      }).then((ok) => send(ws, { type: 'knock-result', ok }));
+      ws.lastKnock = now;
+      for (const peer of others) {
+        send(peer, { type: 'notify', reason: 'knock', name: ws.name });
+      }
+      send(ws, { type: 'knock-result', ok: true });
       return;
     }
 
@@ -183,8 +227,6 @@ wss.on('connection', (ws) => {
       leaveRoom(ws);
       return;
     }
-
-    // messaggi non riconosciuti: ignora silenziosamente
   });
 
   ws.on('close', () => leaveRoom(ws));
@@ -205,7 +247,6 @@ wss.on('close', () => clearInterval(heartbeat));
 httpServer.listen(PORT, HOST, () => {
   console.log(`[duotalk] signaling in ascolto su ws://${HOST}:${PORT}`);
   console.log(`[duotalk] access token: ${ACCESS_TOKEN ? 'attivo' : 'DISATTIVATO (imposta ACCESS_TOKEN)'}`);
-  console.log(`[duotalk] notifiche ntfy: ${ntfyEnabled() ? 'attive' : 'disattivate (imposta NTFY_URL)'}`);
 });
 
 for (const sig of ['SIGINT', 'SIGTERM']) {
