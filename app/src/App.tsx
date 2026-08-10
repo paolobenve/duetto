@@ -14,14 +14,35 @@ import ChannelScreen from './ChannelScreen';
 
 type Screen = 'loading' | 'settings' | 'channel';
 
-async function askPermission(perm: any, motivo: string): Promise<boolean> {
-  if (Platform.OS !== 'android') return true;
-  const res = await PermissionsAndroid.request(perm, undefined);
-  if (res !== 'granted') {
-    Alert.alert('Permesso negato', motivo);
-    return false;
+/**
+ * Chiede TUTTI i permessi in un colpo solo, al primo avvio.
+ *
+ * Nota: da Android 6 microfono, camera e notifiche sono "runtime
+ * permissions" e il sistema NON permette di concederle al momento
+ * dell'installazione. Chiederle tutte insieme all'avvio e' la cosa piu'
+ * vicina possibile: dopo la prima volta Android non le richiede piu'.
+ */
+async function requestAllPermissions(): Promise<{ mic: boolean; camera: boolean }> {
+  if (Platform.OS !== 'android') return { mic: true, camera: true };
+
+  const wanted: any[] = [
+    PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+    PermissionsAndroid.PERMISSIONS.CAMERA,
+  ];
+  // Android 13+: senza questo non si vede la notifica del foreground service.
+  if (Number(Platform.Version) >= 33) {
+    wanted.push(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
   }
-  return true;
+
+  try {
+    const res = await PermissionsAndroid.requestMultiple(wanted);
+    return {
+      mic: res[PermissionsAndroid.PERMISSIONS.RECORD_AUDIO] === 'granted',
+      camera: res[PermissionsAndroid.PERMISSIONS.CAMERA] === 'granted',
+    };
+  } catch {
+    return { mic: false, camera: false };
+  }
 }
 
 export default function App() {
@@ -41,6 +62,7 @@ export default function App() {
   const signalingRef = useRef<Signaling | null>(null);
   const sessionRef = useRef<ChannelSession | null>(null);
   const politeRef = useRef(false);
+  const cameraGranted = useRef(false);
 
   // All'avvio: se la configurazione c'e', si entra dritti nel canale.
   useEffect(() => {
@@ -70,20 +92,12 @@ export default function App() {
     let cancelled = false;
 
     (async () => {
-      const ok = await askPermission(
-        PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-        'Senza microfono non puoi parlare nel canale.',
-      );
-      if (!ok || cancelled) { if (!ok) setScreen('settings'); return; }
-
-      // Android 13+: senza questo la notifica del servizio non si vede.
-      // Il servizio parte comunque, quindi non blocchiamo se viene negato.
-      if (Platform.OS === 'android' && Number(Platform.Version) >= 33) {
-        try {
-          await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
-          );
-        } catch { /* noop */ }
+      const perms = await requestAllPermissions();
+      cameraGranted.current = perms.camera;
+      if (!perms.mic) {
+        Alert.alert('Permesso negato', 'Senza microfono non puoi stare nel canale.');
+        setScreen('settings');
+        return;
       }
       if (cancelled) return;
 
@@ -181,11 +195,16 @@ export default function App() {
       try { InCallManager.setForceSpeakerphoneOn(true); } catch { /* noop */ }
       return;
     }
-    const ok = await askPermission(
-      PermissionsAndroid.PERMISSIONS.CAMERA,
-      'Serve il permesso camera per attivare il video.',
-    );
-    if (!ok) return;
+    // Normalmente il permesso c'e' gia' dall'avvio; se allora l'avevi
+    // negato lo richiediamo qui, invece di lasciarti con un pulsante muto.
+    if (!cameraGranted.current) {
+      const res = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA);
+      cameraGranted.current = res === 'granted';
+      if (!cameraGranted.current) {
+        Alert.alert('Permesso negato', 'Serve il permesso camera per attivare il video.');
+        return;
+      }
+    }
     // Android 14+: per usare la camera anche in background il servizio
     // deve dichiarare il tipo "camera" PRIMA di aprirla.
     await Foreground.setCameraActive(true).catch(() => { /* noop */ });
@@ -239,7 +258,7 @@ export default function App() {
         onToggleVideo={onToggleVideo}
         onSwitchCamera={() => sessionRef.current?.switchCamera()}
         onKnock={() => signalingRef.current?.knock()}
-        onOpenSettings={() => setScreen('settings')}
+        onLeave={() => setScreen('settings')}
       />
     </View>
   );

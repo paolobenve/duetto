@@ -2,8 +2,8 @@
 
 Un mini "Discord" fatto su misura per **due sole persone**. Non è un'app per
 *chiamare*: è un **canale permanente**. Apri l'app e sei dentro; se c'è anche l'altro
-vi collegate da soli, altrimenti resti lì ad aspettare — e puoi **bussare** per
-avvisarlo che sei arrivato, con una notifica che gli arriva anche ad app chiusa.
+vi collegate da soli, altrimenti resti lì ad aspettare — e puoi **avvisarlo** che sei
+arrivato, con una notifica che gli arriva anche ad app chiusa.
 
 Audio e video viaggiano **cifrati end-to-end direttamente tra i due telefoni**. Il tuo
 server serve solo a farvi trovare e a suonare il campanello: **non può leggere nulla**.
@@ -23,7 +23,7 @@ server serve solo a farvi trovare e a suonare il campanello: **non può leggere 
   accende solo se la vuoi — e quando la spegni viene **rilasciata davvero**.
 - **Campanello ntfy**: quando entri nel canale e l'altro non c'è, il server pubblica una
   notifica sul suo topic ntfy. Toccandola si apre DuoTalk. C'è anche un pulsante
-  **Bussa** per richiamarlo quando vuoi.
+  **Avvisa** per richiamarlo quando vuoi.
 - **Cifratura**: il media è cifrato da WebRTC (DTLS-SRTP). In più il **signaling stesso**
   (SDP/ICE) è cifrato con una passphrase nota solo ai due telefoni, quindi il server
   inoltra buste opache e non può fare da man-in-the-middle.
@@ -125,6 +125,31 @@ Dettagli e modello di minaccia in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 Il riquadrino usa `cover` (riempie, quindi ritaglia un po') perché è una miniatura: se
 lo vuoi integro anche lì, cambia `PIP_FIT` in `app/src/VideoStage.tsx`.
+
+## I quattro pulsanti
+
+In basso, **sempre presenti**: `Video`, `Audio`, `Avvisa`, `Esci`. Non spariscono mai —
+dopo 4 secondi di inattività si attenuano al 40% per non coprire l'immagine, e tornano
+pieni al primo tocco ovunque sullo schermo. Restano premibili anche da attenuati: il
+tocco esegue subito l'azione, non serve svegliarli prima.
+
+| Pulsante | Cosa fa |
+|---|---|
+| **Video** | accende/spegne la camera. **Tenendo premuto**: passa da frontale a posteriore |
+| **Audio** | mette in muto il microfono |
+| **Avvisa** | manda la notifica all'altro; disattivato se è già nel canale |
+| **Esci** | lascia il canale, ferma il servizio e torna alle impostazioni |
+
+Le soglie si regolano da `IDLE_MS` e `DIM_OPACITY` in `app/src/ChannelScreen.tsx`.
+
+## Permessi
+
+Microfono, camera e notifiche vengono chiesti **tutti insieme al primo avvio**, non
+spezzettati durante l'uso: dopo la prima volta Android non li richiede più.
+
+Non è possibile concederli **all'installazione**: da Android 6 questi sono *runtime
+permissions* e il sistema impone di chiederli all'utente mentre l'app gira. Nessuna app
+può aggirarlo — chiederli tutti al primo avvio è il massimo consentito.
 
 ## Restare nel canale in background
 

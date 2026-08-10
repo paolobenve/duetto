@@ -1,8 +1,14 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useCallback, useEffect, useRef } from 'react';
+import {
+  View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated,
+} from 'react-native';
 import { MediaStream } from 'react-native-webrtc';
 import type { PresenceStatus } from './signaling';
 import VideoStage from './VideoStage';
+
+/** Dopo quanto i pulsanti si attenuano, e quanto restano visibili. */
+const IDLE_MS = 4000;
+const DIM_OPACITY = 0.4;
 
 type Props = {
   channel: string;
@@ -19,18 +25,18 @@ type Props = {
   onToggleVideo: () => void;
   onSwitchCamera: () => void;
   onKnock: () => void;
-  onOpenSettings: () => void;
+  onLeave: () => void;
 };
 
 /**
  * La schermata del canale. Non c'e' nulla da "chiamare": sei dentro,
- * e vedi se c'e' anche l'altro. Se non c'e', puoi bussare.
+ * e vedi se c'e' anche l'altro. Se non c'e', puoi avvisarlo.
  */
 export default function ChannelScreen(props: Props) {
   const {
     channel, peerName, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, knockPending,
-    onToggleAudio, onToggleVideo, onSwitchCamera, onKnock, onOpenSettings,
+    onToggleAudio, onToggleVideo, onSwitchCamera, onKnock, onLeave,
   } = props;
 
   const together = status === 'together';
@@ -40,8 +46,38 @@ export default function ChannelScreen(props: Props) {
   const localHasVideo =
     !!localStream && videoOn && localStream.getVideoTracks().length > 0;
 
+  // I pulsanti restano SEMPRE sullo schermo: non spariscono mai, si
+  // attenuano soltanto, e tornano pieni al primo tocco.
+  const opacity = useRef(new Animated.Value(1)).current;
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const wake = useCallback(() => {
+    Animated.timing(opacity, {
+      toValue: 1, duration: 120, useNativeDriver: true,
+    }).start();
+    if (idleTimer.current) clearTimeout(idleTimer.current);
+    idleTimer.current = setTimeout(() => {
+      Animated.timing(opacity, {
+        toValue: DIM_OPACITY, duration: 700, useNativeDriver: true,
+      }).start();
+    }, IDLE_MS);
+  }, [opacity]);
+
+  useEffect(() => {
+    wake();
+    return () => { if (idleTimer.current) clearTimeout(idleTimer.current); };
+  }, [wake]);
+
+  /** Ogni pressione riporta i pulsanti in evidenza e poi fa il suo lavoro. */
+  const press = useCallback(
+    (action: () => void) => () => { wake(); action(); },
+    [wake],
+  );
+
   return (
-    <View style={styles.root}>
+    // onTouchStart non ruba il gesto ai figli: il riquadrino resta
+    // trascinabile, ma un tocco ovunque risveglia i pulsanti.
+    <View style={styles.root} onTouchStart={wake}>
       <VideoStage
         localStream={localStream}
         remoteStream={remoteStream}
@@ -58,7 +94,7 @@ export default function ChannelScreen(props: Props) {
       />
 
       {/* Barra in alto: canale + stato */}
-      <View style={styles.topBar}>
+      <Animated.View style={[styles.topBar, { opacity }]} pointerEvents="none">
         <View style={styles.badge}>
           <View style={[styles.dot, together ? styles.dotGreen : styles.dotGrey]} />
           <Text style={styles.badgeText}>#{channel}</Text>
@@ -68,37 +104,38 @@ export default function ChannelScreen(props: Props) {
             <Text style={styles.badgeText}>{'\u{1F512}'} cifrato E2E</Text>
           </View>
         ) : null}
-        <View style={styles.spacer} />
-        <TouchableOpacity style={styles.gear} onPress={onOpenSettings}>
-          <Text style={styles.gearText}>{'⚙'}</Text>
-        </TouchableOpacity>
-      </View>
+      </Animated.View>
 
-      {/* Controlli */}
-      <View style={styles.controls}>
-        <CircleButton
-          label={audioOn ? 'Microfono' : 'Muto'}
-          icon={audioOn ? '\u{1F3A4}' : '\u{1F507}'}
-          active={audioOn}
-          onPress={onToggleAudio}
-        />
+      {/* Controlli: sempre presenti, in basso */}
+      <Animated.View style={[styles.controls, { opacity }]}>
         <CircleButton
           label={videoOn ? 'Video' : 'Video off'}
           icon={videoOn ? '\u{1F4F9}' : '\u{1F4F5}'}
           active={videoOn}
-          onPress={onToggleVideo}
+          onPress={press(onToggleVideo)}
+          // Tenendo premuto si gira la camera, senza un quinto pulsante.
+          onLongPress={videoOn ? press(onSwitchCamera) : undefined}
         />
-        {videoOn ? (
-          <CircleButton label="Gira" icon={'\u{1F504}'} active onPress={onSwitchCamera} />
-        ) : null}
         <CircleButton
-          label={knockPending ? 'Inviata' : 'Bussa'}
-          icon={'\u{1F514}'}
-          highlight={!together}
-          disabled={together || knockPending}
-          onPress={onKnock}
+          label={audioOn ? 'Audio' : 'Muto'}
+          icon={audioOn ? '\u{1F3A4}' : '\u{1F507}'}
+          active={audioOn}
+          onPress={press(onToggleAudio)}
         />
-      </View>
+        <CircleButton
+          label={knockPending ? 'Avvisato' : 'Avvisa'}
+          icon={'\u{1F514}'}
+          highlight={!together && !knockPending}
+          disabled={together || knockPending}
+          onPress={press(onKnock)}
+        />
+        <CircleButton
+          label="Esci"
+          icon={'\u{1F6AA}'}
+          danger
+          onPress={press(onLeave)}
+        />
+      </Animated.View>
     </View>
   );
 }
@@ -140,13 +177,12 @@ function PresenceCard(props: {
         <Text style={styles.cardTitle}>Sei nel canale</Text>
         <Text style={styles.cardSub}>
           {peerName ? `${peerName} non c'e' ancora.` : 'L’altro non c’e’ ancora.'}
-          {'\n'}Tocca <Text style={styles.bold}>Bussa</Text> per farglielo sapere.
+          {'\n'}Tocca <Text style={styles.bold}>Avvisa</Text> per farglielo sapere.
         </Text>
       </View>
     );
   }
 
-  // together
   return (
     <View style={styles.card}>
       <View style={[styles.avatar, styles.avatarLive]}>
@@ -168,20 +204,29 @@ function CircleButton(props: {
   label: string;
   icon: string;
   onPress: () => void;
+  onLongPress?: () => void;
   active?: boolean;
   highlight?: boolean;
+  danger?: boolean;
   disabled?: boolean;
 }) {
   return (
     <TouchableOpacity
       style={styles.ctrlItem}
       onPress={props.onPress}
+      onLongPress={props.onLongPress}
       disabled={props.disabled}
-      activeOpacity={0.7}>
+      activeOpacity={0.6}>
       <View
         style={[
           styles.circle,
-          props.highlight ? styles.circleHighlight : props.active ? styles.circleOn : styles.circleOff,
+          props.danger
+            ? styles.circleDanger
+            : props.highlight
+              ? styles.circleHighlight
+              : props.active
+                ? styles.circleOn
+                : styles.circleOff,
           props.disabled && styles.circleDisabled,
         ]}>
         <Text style={styles.circleIcon}>{props.icon}</Text>
@@ -211,7 +256,6 @@ const styles = StyleSheet.create({
     position: 'absolute', top: 14, left: 14, right: 14,
     flexDirection: 'row', alignItems: 'center', gap: 8,
   },
-  spacer: { flex: 1 },
   badge: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 18,
@@ -220,22 +264,26 @@ const styles = StyleSheet.create({
   dotGreen: { backgroundColor: '#38d16a' },
   dotGrey: { backgroundColor: '#6b7686' },
   badgeText: { color: '#e6ebf1', fontSize: 13, fontWeight: '600' },
-  gear: {
-    width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.55)',
-  },
-  gearText: { color: '#e6ebf1', fontSize: 18 },
 
   controls: {
-    position: 'absolute', bottom: 34, left: 0, right: 0,
+    position: 'absolute', bottom: 30, left: 0, right: 0,
     flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'flex-end',
   },
-  ctrlItem: { alignItems: 'center' },
-  circle: { width: 62, height: 62, borderRadius: 31, alignItems: 'center', justifyContent: 'center' },
-  circleOn: { backgroundColor: 'rgba(255,255,255,0.20)' },
-  circleOff: { backgroundColor: 'rgba(255,255,255,0.38)' },
+  ctrlItem: { alignItems: 'center', minWidth: 68 },
+  circle: {
+    width: 60, height: 60, borderRadius: 30,
+    alignItems: 'center', justifyContent: 'center',
+    // Un bordo chiaro li tiene leggibili anche sopra un video chiaro.
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)',
+  },
+  circleOn: { backgroundColor: 'rgba(30,36,48,0.82)' },
+  circleOff: { backgroundColor: 'rgba(255,255,255,0.34)' },
   circleHighlight: { backgroundColor: '#2f7cf6' },
-  circleDisabled: { opacity: 0.35 },
-  circleIcon: { fontSize: 26 },
-  ctrlLabel: { color: '#dfe5ec', marginTop: 7, fontSize: 12 },
+  circleDanger: { backgroundColor: '#e5484d' },
+  circleDisabled: { opacity: 0.45 },
+  circleIcon: { fontSize: 25 },
+  ctrlLabel: {
+    color: '#eef2f7', marginTop: 6, fontSize: 12, fontWeight: '600',
+    textShadowColor: 'rgba(0,0,0,0.9)', textShadowRadius: 4,
+  },
 });

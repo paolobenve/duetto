@@ -38,14 +38,14 @@ Pubblicazione HTTP verso il tuo ntfy self-hosted. Due casi:
 | Evento | Priorità | Testo |
 |---|---|---|
 | Entri e l'altro non c'è | 4 (alta) | `<nome> e' nel canale` |
-| Premi "Bussa" | 5 (massima) | `<nome> ti aspetta nel canale` |
+| Premi "Avvisa" | 5 (massima) | `<nome> ti aspetta nel canale` |
 
 La notifica porta un `click` con deep link `duotalk://channel`: toccandola si apre
 DuoTalk (l'intent filter è aggiunto al manifest da `scripts/patch-android-manifest.js`,
 con `launchMode="singleTask"` per non aprire una seconda istanza).
 
 Il testo è volutamente generico: passa dal server ntfy, quindi non contiene nulla della
-conversazione. Il pulsante "Bussa" ha un cooldown di 15 secondi lato server.
+conversazione. Il pulsante "Avvisa" ha un cooldown di 15 secondi lato server.
 
 ### 3. Cifratura del signaling (`app/src/crypto.ts`)
 

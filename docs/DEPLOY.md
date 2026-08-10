@@ -128,7 +128,7 @@ canale e passphrase **identici**; i due topic ntfy **incrociati**.
 | Sintomo | Causa probabile | Rimedio |
 |---------|-----------------|---------|
 | "Token errato" | ACCESS_TOKEN diverso | allinea app e `.env` |
-| Resta "Sei nel canale" | canale diverso, o l'altro non ha aperto l'app | stesso nome canale; bussa |
+| Resta "Sei nel canale" | canale diverso, o l'altro non ha aperto l'app | stesso nome canale; usa "Avvisa" |
 | "Passphrase diversa" | le due passphrase non coincidono | riallineale |
 | Notifiche mai ricevute | NTFY_URL vuoto, topic non iscritto, batteria | `/duotalk/healthz` deve dire `ntfy:true`; controlla l'iscrizione |
 | Notifica arriva ma non apre l'app | deep link mancante | rilancia `node scripts/patch-android-manifest.js` e ricompila |
