@@ -78,6 +78,14 @@ export default function App() {
 
   const audio = useAudioRoute(inChannel);
 
+  /** Il nome e' facoltativo: se manca non mostriamo il segnaposto del server. */
+  const shownName =
+    peerName && peerName !== 'Qualcuno'
+      ? peerName
+      : cfg?.pair?.peerName && cfg.pair.peerName !== 'Qualcuno'
+        ? cfg.pair.peerName
+        : '';
+
   useEffect(() => { inChannelRef.current = inChannel; }, [inChannel]);
 
   // Sapere se siamo in primo piano decide se mostrare una notifica o no.
@@ -171,10 +179,12 @@ export default function App() {
             setKnockPending(false);
             // In primo piano la notifica sarebbe rumore: si vede gia' tutto.
             if (appStateRef.current !== 'active') {
-              Foreground.notify(
-                'DuoTalk',
-                reason === 'knock' ? `${n} ti aspetta nel canale` : `${n} è nel canale`,
-              ).catch(() => {});
+              // Il nome e' facoltativo: senza, si evita di scrivere "Qualcuno".
+              const named = n && n !== 'Qualcuno';
+              const text = reason === 'knock'
+                ? (named ? `${n} ti aspetta nel canale` : 'Ti aspettano nel canale')
+                : (named ? `${n} è nel canale` : 'C’è qualcuno nel canale');
+              Foreground.notify('DuoTalk', text).catch(() => {});
             }
           },
 
@@ -405,7 +415,7 @@ export default function App() {
       <View style={styles.safe}>
         <StatusBar barStyle="light-content" />
         <ListeningScreen
-          peerName={peerName || cfg.pair?.peerName || ''}
+          peerName={shownName}
           status={status}
           peerPresent={peerPresent}
           knockPending={knockPending}
@@ -421,8 +431,8 @@ export default function App() {
     <View style={styles.safe}>
       <StatusBar barStyle="light-content" />
       <ChannelScreen
-        channel={peerName || cfg.pair?.peerName || 'canale'}
-        peerName={peerName || cfg.pair?.peerName || ''}
+        channel={shownName || 'DuoTalk'}
+        peerName={shownName}
         localStream={localStream}
         remoteStream={remoteStream}
         status={status}

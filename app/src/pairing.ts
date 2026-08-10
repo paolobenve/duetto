@@ -4,74 +4,92 @@ import { decodeUTF8, encodeBase64, decodeBase64 } from 'tweetnacl-util';
 /**
  * Accoppiamento fra i due telefoni.
  *
- * Chi crea la coppia genera un CODICE. L'altro lo digita. Da quel
- * momento i due sono accoppiati per sempre e il codice non serve piu'.
+ * Chi crea la coppia riceve un CODICE NUMERICO di 8 cifre. L'altro lo
+ * digita. Da quel momento i due sono accoppiati per sempre e il codice
+ * non serve piu'.
  *
  * Il codice NON viene mai inviato al server: al server arriva solo
- * `pairId`, cioe' un'impronta del codice, che serve solo a farvi
- * incontrare nella stessa stanza.
+ * `pairId`, un'impronta del codice, che serve a farvi incontrare nella
+ * stessa stanza.
  *
- * La chiave di cifratura non si ricava dal solo codice: i due telefoni
- * fanno uno scambio Diffie-Hellman (X25519) e mescolano il codice nel
- * risultato. Cosi':
- *  - un server che ascolta non puo' calcolare la chiave (non ha i
- *    segreti privati);
- *  - un server che prova a mettersi in mezzo non puo' farlo, perche'
- *    non conosce il codice e la verifica finale fallirebbe;
- *  - finito l'accoppiamento la chiave e' a 256 bit e la forza del
+ * La chiave non si ricava dal codice: i due telefoni fanno uno scambio
+ * Diffie-Hellman (X25519) e mescolano il codice nel risultato. Quindi:
+ *  - chi ascolta non puo' calcolare la chiave (non ha i segreti privati);
+ *  - chi volesse mettersi in mezzo dovrebbe conoscere il codice, e la
+ *    verifica finale lo smaschererebbe;
+ *  - finito l'accoppiamento la chiave e' a 256 bit e la debolezza del
  *    codice non conta piu' nulla.
+ *
+ * PERCHE' pairId E' COSTOSO DA CALCOLARE
+ * Otto cifre sono solo 100 milioni di combinazioni: chi vede pairId
+ * potrebbe provarle tutte e risalire al codice. Per questo pairId non e'
+ * un semplice hash ma il risultato di 200.000 hash concatenati: provare
+ * tutti i codici costa allora 2*10^13 operazioni, fuori portata nei
+ * secondi che dura un accoppiamento. Il costo per noi e' circa un
+ * secondo, una volta sola nella vita della coppia.
  */
 
-/** Alfabeto senza caratteri confondibili (niente 0/O, 1/I/L). */
-const ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
-const CODE_LEN = 8; // ~39 bit: abbastanza, visto che serve solo ad autenticare
+const CODE_DIGITS = 8;
 
-/** Genera un codice del tipo "K7M2-9QXF". */
+/** Quanto rendere costoso risalire al codice da pairId. */
+const KDF_ROUNDS = 200_000;
+/** Ogni quanti giri cedere il controllo, per non congelare l'interfaccia. */
+const KDF_CHUNK = 10_000;
+
+/** Genera un codice numerico, uniforme (niente modulo sbilanciato). */
 export function generateCode(): string {
-  const bytes = nacl.randomBytes(CODE_LEN);
   let out = '';
-  for (let i = 0; i < CODE_LEN; i++) {
-    out += ALPHABET[bytes[i] % ALPHABET.length];
+  while (out.length < CODE_DIGITS) {
+    for (const b of nacl.randomBytes(CODE_DIGITS)) {
+      // Scarta 250-255: userebbero le cifre 0-5 piu' spesso delle altre.
+      if (b >= 250) continue;
+      out += String(b % 10);
+      if (out.length === CODE_DIGITS) break;
+    }
   }
-  return `${out.slice(0, 4)}-${out.slice(4)}`;
+  return out;
 }
 
-/** Ripulisce quello che l'utente ha digitato: maiuscole, niente trattini. */
+/** Tiene solo le cifre di quello che l'utente ha digitato. */
 export function normalizeCode(raw: string): string {
-  return (raw || '')
-    .toUpperCase()
-    .split('')
-    .filter((c) => ALPHABET.includes(c))
-    .join('');
+  return (raw || '').replace(/\D/g, '').slice(0, CODE_DIGITS);
 }
 
 export function isCodeComplete(raw: string): boolean {
-  return normalizeCode(raw).length === CODE_LEN;
+  return normalizeCode(raw).length === CODE_DIGITS;
 }
 
-/** Come mostrarlo all'utente: "K7M29QXF" -> "K7M2-9QXF". */
+/** Come mostrarlo: "12345678" -> "1234 5678", piu' facile da dettare. */
 export function formatCode(raw: string): string {
   const c = normalizeCode(raw);
-  return c.length > 4 ? `${c.slice(0, 4)}-${c.slice(4)}` : c;
+  return c.length > 4 ? `${c.slice(0, 4)} ${c.slice(4)}` : c;
 }
 
-function sha512(...parts: Uint8Array[]): Uint8Array {
+function concat(...parts: Uint8Array[]): Uint8Array {
   const total = parts.reduce((n, p) => n + p.length, 0);
   const buf = new Uint8Array(total);
   let at = 0;
   for (const p of parts) { buf.set(p, at); at += p.length; }
-  return nacl.hash(buf);
+  return buf;
 }
 
+const sha512 = (...parts: Uint8Array[]) => nacl.hash(concat(...parts));
 const label = (s: string) => decodeUTF8(s);
 
 /**
- * Identificativo della coppia: e' l'UNICA cosa che il server vede.
- * Da qui non si risale al codice in tempo utile, e comunque il codice
- * da solo non basta per la chiave.
+ * Identificativo della coppia: l'unica cosa che il server vede.
+ * Volutamente lento da calcolare (vedi sopra). Asincrono per non
+ * bloccare l'interfaccia mentre gira.
  */
-export function pairIdFromCode(code: string): string {
-  const h = sha512(label('duotalk-pair-id|'), label(normalizeCode(code)));
+export async function pairIdFromCode(code: string): Promise<string> {
+  const clean = normalizeCode(code);
+  let h = sha512(label('duotalk-pair-id|'), label(clean));
+  for (let i = 0; i < KDF_ROUNDS; i++) {
+    h = nacl.hash(h);
+    // Ogni tanto restituiamo il controllo al ciclo di eventi, cosi'
+    // l'indicatore di attesa continua ad animarsi.
+    if (i % KDF_CHUNK === 0) await new Promise<void>((r) => setTimeout(() => r(), 0));
+  }
   return encodeBase64(h.slice(0, 16)).replace(/[+/=]/g, '');
 }
 
@@ -89,8 +107,8 @@ export function newKeyPair(): PairKeys {
 
 /**
  * Chiave condivisa = KDF(segreto Diffie-Hellman, codice).
- * Senza il codice il risultato e' diverso: e' questo che impedisce a un
- * server di mettersi in mezzo.
+ * Qui non serve rallentare nulla: il segreto Diffie-Hellman e' gia'
+ * casuale a 256 bit, e senza di quello il codice non basta.
  */
 export function deriveSharedKey(
   mySecret: Uint8Array,

@@ -63,9 +63,31 @@ export async function saveConfig(cfg: DuoConfig): Promise<void> {
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
 }
 
+/**
+ * Dal nome del server all'indirizzo completo.
+ *
+ * All'utente chiediamo solo "cathopedia.org": il resto lo mettiamo noi,
+ * accettando comunque un indirizzo completo se qualcuno lo scrive.
+ *
+ *   cathopedia.org                  -> wss://cathopedia.org/duotalk/ws
+ *   https://cathopedia.org          -> wss://cathopedia.org/duotalk/ws
+ *   wss://cathopedia.org/altro/ws   -> lasciato com'e'
+ */
+export function normalizeServerUrl(raw: string): string {
+  let s = (raw || '').trim();
+  if (!s) return '';
+  s = s.replace(/^https?:\/\//i, '');
+  if (!/^wss?:\/\//i.test(s)) s = `wss://${s}`;
+  const m = s.match(/^(wss?:\/\/[^/]+)(\/.*)?$/i);
+  if (!m) return s;
+  const path = m[2] && m[2] !== '/' ? m[2] : '/duotalk/ws';
+  return m[1] + path;
+}
+
 /** Il minimo per potersi collegare al server e accoppiarsi. */
 export function isServerConfigured(cfg: DuoConfig): boolean {
-  return /^wss?:\/\/.+/.test(cfg.serverUrl.trim());
+  const url = normalizeServerUrl(cfg.serverUrl);
+  return /^wss?:\/\/[^/]+\/.+/.test(url);
 }
 
 /** Vero quando c'e' gia' una coppia: si va dritti nel canale. */

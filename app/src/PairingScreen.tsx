@@ -17,7 +17,7 @@ type Props = {
   onBack: () => void;
 };
 
-type Step = 'choose' | 'create' | 'join' | 'exchanging' | 'error';
+type Step = 'choose' | 'preparing' | 'create' | 'join' | 'exchanging' | 'error';
 
 /** Se in un minuto e mezzo non succede nulla, meglio dirlo che restare a girare. */
 const TIMEOUT_MS = 90_000;
@@ -27,12 +27,11 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
   const [code, setCode] = useState('');
   const [typed, setTyped] = useState('');
   const [message, setMessage] = useState('');
-  const [waiting, setWaiting] = useState(false);
 
   const signalingRef = useRef<Signaling | null>(null);
   const keysRef = useRef(newKeyPair());
-  const sideRef = useRef<'A' | 'B'>('A');
   const codeRef = useRef('');
+  const pairIdRef = useRef('');
   const sharedRef = useRef<Uint8Array | null>(null);
   const sentPubRef = useRef(false);
   const peerNameRef = useRef('');
@@ -56,16 +55,22 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
     setStep('error');
   }, [cleanup]);
 
-  /** Avvia la connessione e lo scambio. Uguale per chi crea e chi si unisce. */
-  const startExchange = useCallback((rawCode: string, side: 'A' | 'B') => {
+  /** Connessione e scambio. Identico per chi crea e per chi si unisce. */
+  const startExchange = useCallback(async (rawCode: string, side: 'A' | 'B') => {
     const clean = normalizeCode(rawCode);
     codeRef.current = clean;
-    sideRef.current = side;
     keysRef.current = newKeyPair();
     doneRef.current = false;
     sentPubRef.current = false;
     sharedRef.current = null;
-    setWaiting(true);
+
+    // Volutamente lento (vedi pairing.ts): un secondo circa, una volta sola.
+    setStep('preparing');
+    const pairId = await pairIdFromCode(clean);
+    pairIdRef.current = pairId;
+    if (doneRef.current) return;
+
+    setStep(side === 'A' ? 'create' : 'exchanging');
 
     const otherSide: 'A' | 'B' = side === 'A' ? 'B' : 'A';
 
@@ -75,7 +80,7 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
       sig.sendPair({
         kind: 'pubkey',
         pub: pubToBase64(keysRef.current.publicKey),
-        name: cfg.displayName || 'Qualcuno',
+        name: cfg.displayName || '',
       });
     };
 
@@ -83,30 +88,28 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
       {
         serverUrl: cfg.serverUrl.trim(),
         accessToken: cfg.accessToken,
-        room: pairIdFromCode(clean),
-        displayName: cfg.displayName || 'Qualcuno',
+        room: pairId,
+        displayName: cfg.displayName || '',
         key: null,
         mode: 'listening',
       },
       {
-        onJoined: ({ peerPresent }) => {
-          if (peerPresent) sendPubOnce(sig);
-        },
+        onJoined: ({ peerPresent }) => { if (peerPresent) sendPubOnce(sig); },
         onPeerJoined: () => sendPubOnce(sig),
 
         onPair: (msg: PairMessage) => {
           if (msg.kind === 'pubkey') {
-            // L'altro c'e': se non l'abbiamo ancora fatto, tocca a noi.
             sendPubOnce(sig);
             if (sharedRef.current) return; // gia' calcolata
             try {
-              peerNameRef.current = msg.name || 'Qualcuno';
+              peerNameRef.current = msg.name || '';
               const key = deriveSharedKey(
                 keysRef.current.secretKey,
                 pubFromBase64(msg.pub),
                 codeRef.current,
               );
               sharedRef.current = key;
+              setStep('exchanging');
               sig.sendPair({ kind: 'confirm', proof: confirmationFor(key, side) });
             } catch {
               fail('Lo scambio di chiavi non è riuscito. Riprova.');
@@ -116,19 +119,18 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
 
           if (msg.kind === 'confirm') {
             const key = sharedRef.current;
-            if (!key) return; // la conferma è arrivata prima della chiave: aspettiamo
+            if (!key) return; // arrivata prima della chiave: aspettiamo
             if (msg.proof !== confirmationFor(key, otherSide)) {
-              // Chiavi diverse: il codice digitato non coincide.
               fail(
                 'Il codice non coincide.\n\n' +
-                'Controlla di aver digitato esattamente quello mostrato sull’altro telefono.',
+                'Controlla di aver digitato esattamente le cifre mostrate sull’altro telefono.',
               );
               return;
             }
             doneRef.current = true;
             cleanup();
             onPaired({
-              id: pairIdFromCode(codeRef.current),
+              id: pairIdRef.current,
               key: keyToBase64(key),
               side,
               peerName: peerNameRef.current,
@@ -138,9 +140,10 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
         },
 
         onError: (err) => {
-          if (err === 'bad-token') fail('Access token non valido: controllalo nelle impostazioni.');
-          else if (err === 'room-full') {
-            fail('Quel codice è già usato da due dispositivi.\n\nGenerane uno nuovo.');
+          if (err === 'bad-token') {
+            fail('Access token non valido: controllalo in «Altre impostazioni».');
+          } else if (err === 'room-full') {
+            fail('Quel codice è già usato da due dispositivi.\n\nGeneratene uno nuovo.');
           }
         },
       },
@@ -160,19 +163,17 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
   const startCreate = useCallback(() => {
     const c = generateCode();
     setCode(c);
-    setStep('create');
     startExchange(c, 'A');
   }, [startExchange]);
 
   const startJoin = useCallback(() => {
     if (!isCodeComplete(typed)) return;
-    setStep('exchanging');
     startExchange(typed, 'B');
   }, [typed, startExchange]);
 
   const reset = useCallback(() => {
     cleanup();
-    setWaiting(false);
+    doneRef.current = true; // ferma un calcolo eventualmente in corso
     setTyped('');
     setCode('');
     setStep('choose');
@@ -191,6 +192,16 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
     );
   }
 
+  if (step === 'preparing') {
+    return (
+      <Screen>
+        <ActivityIndicator size="large" color="#2f7cf6" />
+        <Text style={[styles.title, { marginTop: 24 }]}>Un istante…</Text>
+        <Text style={styles.body}>Sto preparando l’accoppiamento.</Text>
+      </Screen>
+    );
+  }
+
   if (step === 'create') {
     return (
       <Screen>
@@ -200,15 +211,14 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
           {'\n'}Serve una volta sola: dopo non vi servirà mai più.
         </Text>
         <View style={styles.codeBox}>
-          <Text style={styles.code}>{code}</Text>
+          <Text style={styles.code}>{formatCode(code)}</Text>
         </View>
         <View style={styles.waitRow}>
           <ActivityIndicator color="#2f7cf6" />
           <Text style={styles.waitText}>In attesa dell’altro telefono…</Text>
         </View>
         <Text style={styles.hint}>
-          Dettalo a voce o di persona. Chi lo intercetta, e sa anche dov’è il tuo
-          server, potrebbe prendere il posto dell’altra persona.
+          Dettalo a voce o di persona, non per messaggio.
         </Text>
         <Secondary label="Annulla" onPress={reset} />
       </Screen>
@@ -220,22 +230,18 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <Screen>
           <Text style={styles.title}>Digita il codice</Text>
-          <Text style={styles.body}>Quello mostrato sull’altro telefono.</Text>
+          <Text style={styles.body}>Le otto cifre mostrate sull’altro telefono.</Text>
           <TextInput
             style={styles.codeInput}
             value={formatCode(typed)}
             onChangeText={(t) => setTyped(normalizeCode(t))}
-            placeholder="ABCD-EFGH"
-            placeholderTextColor="#4a5462"
-            autoCapitalize="characters"
+            placeholder="0000 0000"
+            placeholderTextColor="#3a4353"
+            keyboardType="number-pad"
             autoCorrect={false}
             maxLength={9}
           />
-          <Primary
-            label="Accoppia"
-            disabled={!isCodeComplete(typed)}
-            onPress={startJoin}
-          />
+          <Primary label="Accoppia" disabled={!isCodeComplete(typed)} onPress={startJoin} />
           <Secondary label="Indietro" onPress={reset} />
         </Screen>
       </KeyboardAvoidingView>
@@ -256,22 +262,21 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
   return (
     <Screen>
       <Text style={styles.big}>{'\u{1F517}'}</Text>
-      <Text style={styles.title}>Accoppia i due telefoni</Text>
+      <Text style={styles.title}>Collega i due telefoni</Text>
       <Text style={styles.body}>
-        Da fare una volta sola. Su un telefono crei la coppia, sull’altro digiti
-        il codice che appare.
+        Da fare una volta sola. Su un telefono premi «Crea il codice»,
+        sull’altro digita le cifre che appaiono.
       </Text>
-      <Primary label="Crea la coppia" onPress={startCreate} />
+      <Primary label="Crea il codice" onPress={startCreate} />
       <Primary label="Ho un codice" outline onPress={() => setStep('join')} />
-      <Secondary label="Impostazioni" onPress={onBack} />
-      {waiting ? null : null}
+      <Secondary label="Cambia server" onPress={onBack} />
     </Screen>
   );
 }
 
 // --- pezzi di interfaccia ---------------------------------------------------
 
-function Screen({ children }: { children: React.ReactNode }) {
+function Screen({ children }: { children?: React.ReactNode }) {
   return (
     <ScrollView
       style={styles.flex}
@@ -309,7 +314,7 @@ function Secondary(props: { label: string; onPress: () => void }) {
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: '#0b0e14' },
-  container: { padding: 26, paddingTop: 60, paddingBottom: 40, alignItems: 'center' },
+  container: { padding: 26, paddingTop: 70, paddingBottom: 40, alignItems: 'center' },
   big: { fontSize: 56, marginBottom: 18 },
   icon: { fontSize: 46, marginBottom: 14 },
   title: { color: '#fff', fontSize: 25, fontWeight: '800', textAlign: 'center' },
@@ -319,20 +324,21 @@ const styles = StyleSheet.create({
   },
   codeBox: {
     backgroundColor: '#151a23', borderRadius: 16, paddingVertical: 26,
-    paddingHorizontal: 30, borderWidth: 1, borderColor: '#2a313d', marginBottom: 24,
+    paddingHorizontal: 26, borderWidth: 1, borderColor: '#2a313d', marginBottom: 24,
   },
-  code: { color: '#7cc4ff', fontSize: 40, fontWeight: '800', letterSpacing: 4 },
+  code: {
+    color: '#7cc4ff', fontSize: 44, fontWeight: '800', letterSpacing: 6,
+    fontVariant: ['tabular-nums'],
+  },
   codeInput: {
     backgroundColor: '#151a23', color: '#fff', borderRadius: 14,
-    paddingVertical: 18, paddingHorizontal: 20, fontSize: 30, fontWeight: '700',
-    letterSpacing: 3, textAlign: 'center', borderWidth: 1, borderColor: '#2a313d',
-    width: '100%', marginBottom: 22,
+    paddingVertical: 18, paddingHorizontal: 20, fontSize: 34, fontWeight: '700',
+    letterSpacing: 5, textAlign: 'center', borderWidth: 1, borderColor: '#2a313d',
+    width: '100%', marginBottom: 22, fontVariant: ['tabular-nums'],
   },
-  waitRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 },
+  waitRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18 },
   waitText: { color: '#c9d2de', fontSize: 15 },
-  hint: {
-    color: '#6b7686', fontSize: 13, textAlign: 'center', lineHeight: 19, marginBottom: 10,
-  },
+  hint: { color: '#6b7686', fontSize: 13, textAlign: 'center', lineHeight: 19 },
   button: {
     backgroundColor: '#2f7cf6', borderRadius: 12, paddingVertical: 16,
     alignItems: 'center', width: '100%', marginTop: 12,

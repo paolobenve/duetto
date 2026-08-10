@@ -4,7 +4,7 @@ import {
   KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import type { DuoConfig } from './config';
-import { isServerConfigured, isPaired } from './config';
+import { isServerConfigured, isPaired, normalizeServerUrl } from './config';
 
 type Props = {
   initial: DuoConfig;
@@ -13,19 +13,24 @@ type Props = {
 };
 
 /**
- * Impostazioni. Qui si mette solo dove sta il server: la coppia non si
- * configura a mano, nasce dall'accoppiamento a codice.
+ * Impostazioni. In primo piano c'e' una cosa sola: dove sta il server.
+ * Tutto il resto e' facoltativo e sta sotto "Altre impostazioni".
  */
 export default function SettingsScreen({ initial, onSave, onUnpair }: Props) {
   const [cfg, setCfg] = useState<DuoConfig>(initial);
+  const [advanced, setAdvanced] = useState(false);
   const set = (k: keyof DuoConfig) => (v: string) => setCfg({ ...cfg, [k]: v });
+
   const ready = isServerConfigured(cfg);
   const paired = isPaired(cfg);
+  const resolved = normalizeServerUrl(cfg.serverUrl);
 
   const confirmUnpair = () => {
     Alert.alert(
       'Sciogliere la coppia?',
-      'Dovrete rifare l’accoppiamento con un codice nuovo su entrambi i telefoni.',
+      'Dovrete rifare l’accoppiamento con un codice nuovo.\n\n' +
+      'Ricordati di sciogliere la coppia anche sull’altro telefono, ' +
+      'altrimenti continuerà a cercarti.',
       [
         { text: 'Annulla', style: 'cancel' },
         { text: 'Sciogli', style: 'destructive', onPress: onUnpair },
@@ -44,45 +49,34 @@ export default function SettingsScreen({ initial, onSave, onUnpair }: Props) {
           vi collegate da soli.
         </Text>
 
-        <Text style={styles.section}>Server</Text>
-        <Text style={styles.sectionHint}>
-          Gli stessi valori sui due telefoni. Si digitano una volta sola.
-        </Text>
-        <Field
-          label="Indirizzo del signaling"
-          value={cfg.serverUrl}
-          onChange={set('serverUrl')}
-          placeholder="wss://tuodominio/duotalk/ws"
-          autoCapitalize="none"
-          hint="Deve cominciare con wss://"
-        />
-        <Field label="Access token" value={cfg.accessToken} onChange={set('accessToken')} secure />
-        <Field
-          label="Il tuo nome"
-          value={cfg.displayName}
-          onChange={set('displayName')}
-          placeholder="Paolo"
-          hint="Compare sull’altro telefono quando entri nel canale."
-        />
-
-        <Text style={styles.section}>Collegamento di riserva (TURN)</Text>
-        <Text style={styles.sectionHint}>
-          Facoltativo. Serve solo se le vostre reti impediscono il collegamento diretto.
-        </Text>
-        <Field label="TURN url" value={cfg.turnUrl} onChange={set('turnUrl')}
-          placeholder="turn:tuodominio:3478" autoCapitalize="none" />
-        <Field label="TURN utente" value={cfg.turnUser} onChange={set('turnUser')} autoCapitalize="none" />
-        <Field label="TURN password" value={cfg.turnPass} onChange={set('turnPass')} secure />
+        <View style={styles.field}>
+          <Text style={styles.label}>Server</Text>
+          <TextInput
+            style={styles.input}
+            value={cfg.serverUrl}
+            onChangeText={set('serverUrl')}
+            placeholder="iltuoserver.org"
+            placeholderTextColor="#4a5462"
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+          />
+          <Text style={styles.hint}>
+            {cfg.serverUrl.trim()
+              ? `Mi collegherò a: ${resolved}`
+              : 'Basta il nome: al resto dell’indirizzo penso io.'}
+          </Text>
+        </View>
 
         {paired ? (
           <>
             <Text style={styles.section}>Coppia</Text>
             <View style={styles.pairBox}>
               <Text style={styles.pairName}>
-                {cfg.pair?.peerName || 'L’altra persona'}
+                {cfg.pair?.peerName || 'Accoppiato'}
               </Text>
               <Text style={styles.pairMeta}>
-                Accoppiati dal{' '}
+                Dal{' '}
                 {cfg.pair?.pairedAt
                   ? new Date(cfg.pair.pairedAt).toLocaleDateString()
                   : '—'}
@@ -94,12 +88,48 @@ export default function SettingsScreen({ initial, onSave, onUnpair }: Props) {
           </>
         ) : null}
 
+        <TouchableOpacity style={styles.toggle} onPress={() => setAdvanced(!advanced)}>
+          <Text style={styles.toggleText}>
+            {advanced ? '▾' : '▸'}  Altre impostazioni
+          </Text>
+        </TouchableOpacity>
+
+        {advanced ? (
+          <View style={styles.advanced}>
+            <Text style={styles.sectionHint}>
+              Nulla di obbligatorio: senza, funziona lo stesso.
+            </Text>
+            <Field
+              label="Il tuo nome"
+              value={cfg.displayName}
+              onChange={set('displayName')}
+              placeholder="Paolo"
+              hint="Se lo metti, compare nelle notifiche dell’altro."
+            />
+            <Field
+              label="Access token"
+              value={cfg.accessToken}
+              onChange={set('accessToken')}
+              secure
+              hint="Solo se sul server hai impostato ACCESS_TOKEN."
+            />
+            <Text style={styles.subsection}>Collegamento di riserva (TURN)</Text>
+            <Text style={styles.sectionHint}>
+              Serve solo se le vostre reti impediscono il collegamento diretto.
+            </Text>
+            <Field label="TURN url" value={cfg.turnUrl} onChange={set('turnUrl')}
+              placeholder="turn:iltuoserver.org:3478" autoCapitalize="none" />
+            <Field label="TURN utente" value={cfg.turnUser} onChange={set('turnUser')} autoCapitalize="none" />
+            <Field label="TURN password" value={cfg.turnPass} onChange={set('turnPass')} secure />
+          </View>
+        ) : null}
+
         <TouchableOpacity
           style={[styles.button, !ready && styles.buttonDisabled]}
           disabled={!ready}
-          onPress={() => onSave(cfg)}>
+          onPress={() => onSave({ ...cfg, serverUrl: resolved })}>
           <Text style={styles.buttonText}>
-            {paired ? 'Salva' : 'Salva e accoppia'}
+            {paired ? 'Salva' : 'Avanti'}
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -136,27 +166,31 @@ function Field(props: {
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: '#0b0e14' },
-  container: { padding: 20, paddingBottom: 60 },
-  title: { fontSize: 34, fontWeight: '800', color: '#fff', marginTop: 16 },
-  subtitle: { color: '#8892a0', marginTop: 8, lineHeight: 21 },
-  section: { color: '#7cc4ff', fontWeight: '700', fontSize: 16, marginTop: 26 },
+  container: { padding: 20, paddingTop: 40, paddingBottom: 60 },
+  title: { fontSize: 34, fontWeight: '800', color: '#fff' },
+  subtitle: { color: '#8892a0', marginTop: 8, marginBottom: 28, lineHeight: 21 },
+  section: { color: '#7cc4ff', fontWeight: '700', fontSize: 16, marginTop: 24 },
+  subsection: { color: '#c9d2de', fontWeight: '700', fontSize: 15, marginTop: 18 },
   sectionHint: { color: '#6b7686', fontSize: 13, marginTop: 4, marginBottom: 12, lineHeight: 19 },
-  field: { marginBottom: 14 },
+  field: { marginBottom: 16 },
   label: { color: '#c9d2de', marginBottom: 6, fontWeight: '600' },
   input: {
     backgroundColor: '#151a23', color: '#fff', borderRadius: 10,
-    paddingHorizontal: 14, paddingVertical: 12, fontSize: 16,
+    paddingHorizontal: 14, paddingVertical: 13, fontSize: 16,
     borderWidth: 1, borderColor: '#252c38',
   },
-  hint: { color: '#6b7686', fontSize: 12, marginTop: 5, lineHeight: 17 },
+  hint: { color: '#6b7686', fontSize: 12, marginTop: 6, lineHeight: 17 },
   pairBox: {
-    backgroundColor: '#151a23', borderRadius: 12, padding: 16,
+    backgroundColor: '#151a23', borderRadius: 12, padding: 16, marginTop: 10,
     borderWidth: 1, borderColor: '#252c38',
   },
   pairName: { color: '#e6ebf1', fontSize: 17, fontWeight: '700' },
   pairMeta: { color: '#6b7686', fontSize: 13, marginTop: 4 },
-  danger: { marginTop: 12, paddingVertical: 12, alignItems: 'center' },
+  danger: { marginTop: 10, paddingVertical: 12, alignItems: 'center' },
   dangerText: { color: '#e5484d', fontSize: 15, fontWeight: '600' },
+  toggle: { marginTop: 20, paddingVertical: 10 },
+  toggleText: { color: '#7cc4ff', fontSize: 15, fontWeight: '600' },
+  advanced: { borderLeftWidth: 2, borderLeftColor: '#252c38', paddingLeft: 14 },
   button: {
     backgroundColor: '#2f7cf6', borderRadius: 12, paddingVertical: 16,
     alignItems: 'center', marginTop: 30,
