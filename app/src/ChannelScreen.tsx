@@ -30,6 +30,8 @@ type Props = {
   peerState: { audio: boolean; video: boolean; aspect?: number };
   /** traccia video dell'altro davvero in arrivo */
   remoteHasVideo: boolean;
+  /** cambia a ogni ripartenza del video remoto, per ricreare il visualizzatore */
+  remoteVideoKey: number;
   /** proporzioni dei due video, per la forma del riquadrino */
   localAspect?: number;
   remoteAspect?: number;
@@ -51,7 +53,7 @@ type Props = {
 export default function ChannelScreen(props: Props) {
   const {
     channel, peerName, localStream, remoteStream, status, connectionState,
-    audioOn, videoOn, peerState, remoteHasVideo, localAspect, remoteAspect,
+    audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, canCycleRoute,
     onToggleAudio, onToggleVideo, onSwitchCamera, onCycleRoute, onKnock, onLeave,
   } = props;
@@ -105,6 +107,7 @@ export default function ChannelScreen(props: Props) {
         remoteStream={remoteStream}
         localHasVideo={localHasVideo}
         remoteHasVideo={remoteHasVideo}
+        remoteVideoKey={remoteVideoKey}
         localAspect={localAspect}
         remoteAspect={remoteAspect}
         compact={compact}

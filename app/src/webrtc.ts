@@ -114,20 +114,42 @@ export class ChannelSession {
     pc.addEventListener('track', (event: any) => {
       const stream = this.remoteStream;
       if (!stream) return;
-      event.streams[0]?.getTracks().forEach((t: any) => {
-        if (!stream.getTracks().find((x: any) => x.id === t.id)) stream.addTrack(t);
-      });
+      const incoming: any = event.track;
+      log('traccia in arrivo:', incoming?.kind, 'id', incoming?.id);
+
+      if (incoming) {
+        // Via le tracce dello stesso tipo ormai chiuse. Se restassero, il
+        // renderer continuerebbe a disegnare la prima della lista - cioe'
+        // quella morta - e si vedrebbe uno schermo nero invece del video.
+        stream.getTracks()
+          .filter((x: any) =>
+            x.kind === incoming.kind && x.id !== incoming.id && x.readyState === 'ended')
+          .forEach((x: any) => {
+            log('tolgo traccia esaurita:', x.kind, x.id);
+            try { stream.removeTrack(x); } catch { /* noop */ }
+          });
+        if (!stream.getTracks().find((x: any) => x.id === incoming.id)) {
+          stream.addTrack(incoming);
+        }
+      }
+
       this.events.onRemoteStream?.(stream);
       this.reportRemoteVideo();
 
-      // ATTENZIONE: la traccia NON va rimossa dallo stream quando l'altro
-      // spegne il video. WebRTC riusa lo stesso transceiver quando lo
-      // riaccende, quindi non arriva un secondo evento "track": si
-      // riattiva quella di prima. Togliendola, alla riaccensione non
-      // avremmo piu' nulla da mostrare e il video non tornerebbe.
-      event.track?.addEventListener?.('ended', () => this.reportRemoteVideo());
-      event.track?.addEventListener?.('mute', () => this.reportRemoteVideo());
-      event.track?.addEventListener?.('unmute', () => this.reportRemoteVideo());
+      incoming?.addEventListener?.('ended', () => {
+        log('traccia terminata:', incoming.kind, incoming.id);
+        try { stream.removeTrack(incoming); } catch { /* noop */ }
+        this.events.onRemoteStream?.(stream);
+        this.reportRemoteVideo();
+      });
+      incoming?.addEventListener?.('mute', () => {
+        log('traccia sospesa:', incoming.kind);
+        this.reportRemoteVideo();
+      });
+      incoming?.addEventListener?.('unmute', () => {
+        log('traccia ripresa:', incoming.kind);
+        this.reportRemoteVideo();
+      });
     });
 
     // @ts-ignore
@@ -269,7 +291,12 @@ export class ChannelSession {
   }
 
   private reportRemoteVideo() {
-    this.events.onRemoteVideo?.(this.hasRemoteVideo());
+    const tracks: any[] = this.remoteStream?.getVideoTracks() ?? [];
+    const present = this.hasRemoteVideo();
+    log('video remoto:', present ? 'presente' : 'assente',
+      '- tracce video nello stream:', tracks.length,
+      tracks.map((t) => `${t.id}:${t.readyState}`).join(' '));
+    this.events.onRemoteVideo?.(present);
   }
 
   private async flushCandidates() {

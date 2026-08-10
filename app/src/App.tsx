@@ -69,6 +69,12 @@ export default function App() {
   const [knockPending, setKnockPending] = useState(false);
   /** traccia video dell'altro effettivamente in arrivo (non solo annunciata) */
   const [remoteHasVideo, setRemoteHasVideo] = useState(false);
+  /**
+   * Cambia a ogni ripartenza del video dell'altro. Serve come chiave di
+   * React: costringe a ricreare il visualizzatore invece di riagganciarlo
+   * a una superficie vecchia, che resterebbe nera.
+   */
+  const [remoteVideoKey, setRemoteVideoKey] = useState(0);
 
   const signalingRef = useRef<Signaling | null>(null);
   const sessionRef = useRef<ChannelSession | null>(null);
@@ -262,7 +268,10 @@ export default function App() {
         onRemoteStream: setRemoteStream,
         onConnectionState: setConnState,
         onPeerState: setPeerState,
-        onRemoteVideo: setRemoteHasVideo,
+        onRemoteVideo: (present) => {
+          setRemoteHasVideo(present);
+          if (present) setRemoteVideoKey((k) => k + 1);
+        },
       });
     }
     try {
@@ -458,6 +467,7 @@ export default function App() {
         videoOn={videoOn}
         peerState={peerState}
         remoteHasVideo={remoteHasVideo && peerState.video}
+        remoteVideoKey={remoteVideoKey}
         localAspect={localAspect}
         remoteAspect={peerState.aspect}
         knockPending={knockPending}

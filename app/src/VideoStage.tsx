@@ -37,6 +37,8 @@ type Props = {
   localAspect?: number;
   /** larghezza/altezza del video dell'altro */
   remoteAspect?: number;
+  /** cambia a ogni ripartenza del video remoto: ricrea il visualizzatore */
+  remoteVideoKey?: number;
   /** in Picture-in-Picture: solo il video grande, senza riquadrino */
   compact?: boolean;
   /** mostrato quando non c'e' nessun video */
@@ -46,7 +48,7 @@ type Props = {
 export default function VideoStage(props: Props) {
   const {
     localStream, remoteStream, localHasVideo, remoteHasVideo,
-    localAspect, remoteAspect, compact, placeholder,
+    localAspect, remoteAspect, remoteVideoKey, compact, placeholder,
   } = props;
   const { width, height } = useWindowDimensions();
 
@@ -207,6 +209,7 @@ export default function VideoStage(props: Props) {
     <View style={styles.root}>
       {bigStream ? (
         <RTCView
+          key={bigIsSelf ? 'big-self' : `big-remote-${remoteVideoKey ?? 0}`}
           streamURL={bigStream.toURL()}
           style={styles.big}
           objectFit="contain"
@@ -231,6 +234,7 @@ export default function VideoStage(props: Props) {
           {/* Anche qui "contain": il riquadrino ha gia' le proporzioni
               giuste, quindi non c'e' nulla da tagliare. */}
           <RTCView
+            key={pipIsSelf ? 'pip-self' : `pip-remote-${remoteVideoKey ?? 0}`}
             streamURL={pipStream.toURL()}
             style={styles.pipVideo}
             objectFit="contain"
