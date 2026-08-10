@@ -1,7 +1,10 @@
 {
   "extends": "@react-native/typescript-config/tsconfig.json",
   "compilerOptions": {
-    "strict": true
+    "strict": true,
+    // Il preset di React Native include i tipi di Jest, che qui non serve:
+    // i test stanno lato server (server/smoke-test.mjs).
+    "types": []
   },
   "include": ["src", "index.js", "*.d.ts"]
 }

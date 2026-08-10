@@ -1,27 +1,32 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  SafeAreaView, StatusBar, Platform, PermissionsAndroid, Alert, View,
+  StatusBar, Platform, PermissionsAndroid, Alert, View, AppState,
   ActivityIndicator, StyleSheet, BackHandler, Dimensions,
 } from 'react-native';
 import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
 import { Foreground, Pip } from 'duotalk-platform';
-import { DuoConfig, loadConfig, saveConfig, isConfigComplete } from './config';
-import { Signaling, PresenceStatus } from './signaling';
+import {
+  DuoConfig, PairInfo, loadConfig, saveConfig,
+  isServerConfigured, isPaired,
+} from './config';
+import { Signaling, PresenceStatus, Mode } from './signaling';
 import { ChannelSession } from './webrtc';
 import SettingsScreen from './SettingsScreen';
+import PairingScreen from './PairingScreen';
+import ListeningScreen from './ListeningScreen';
 import ChannelScreen from './ChannelScreen';
 import { useAudioRoute } from './audioRoute';
 
-type Screen = 'loading' | 'settings' | 'channel';
+type Screen = 'loading' | 'settings' | 'pairing' | 'listening' | 'channel';
 
 /**
  * Chiede TUTTI i permessi in un colpo solo, al primo avvio.
  *
  * Nota: da Android 6 microfono, camera e notifiche sono "runtime
  * permissions" e il sistema NON permette di concederle al momento
- * dell'installazione. Chiederle tutte insieme all'avvio e' la cosa piu'
- * vicina possibile: dopo la prima volta Android non le richiede piu'.
+ * dell'installazione. Chiederle tutte insieme e' la cosa piu' vicina:
+ * dopo la prima volta Android non le richiede piu'.
  */
 async function requestAllPermissions(): Promise<{ mic: boolean; camera: boolean }> {
   if (Platform.OS !== 'android') return { mic: true, camera: true };
@@ -30,11 +35,9 @@ async function requestAllPermissions(): Promise<{ mic: boolean; camera: boolean 
     PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
     PermissionsAndroid.PERMISSIONS.CAMERA,
   ];
-  // Android 13+: senza questo non si vede la notifica del foreground service.
   if (Number(Platform.Version) >= 33) {
     wanted.push(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
   }
-
   try {
     const res = await PermissionsAndroid.requestMultiple(wanted);
     return {
@@ -49,181 +52,260 @@ async function requestAllPermissions(): Promise<{ mic: boolean; camera: boolean 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('loading');
   const [cfg, setCfg] = useState<DuoConfig | null>(null);
+  const [inChannel, setInChannel] = useState(false);
 
   const [status, setStatus] = useState<PresenceStatus>('connecting');
+  const [peerPresent, setPeerPresent] = useState(false);
+  const [peerName, setPeerName] = useState('');
   const [connState, setConnState] = useState('new');
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [audioOn, setAudioOn] = useState(true);
   const [videoOn, setVideoOn] = useState(false);
+  const [localAspect, setLocalAspect] = useState<number | undefined>(undefined);
   const [peerState, setPeerState] = useState<{
     audio: boolean; video: boolean; aspect?: number;
   }>({ audio: true, video: false });
-  const [peerName, setPeerName] = useState('');
   const [knockPending, setKnockPending] = useState(false);
-  /** proporzioni del proprio video, per dare al riquadrino la forma giusta */
-  const [localAspect, setLocalAspect] = useState<number | undefined>(undefined);
 
   const signalingRef = useRef<Signaling | null>(null);
   const sessionRef = useRef<ChannelSession | null>(null);
   const politeRef = useRef(false);
+  const peerActiveRef = useRef(false);
   const cameraGranted = useRef(false);
+  const inChannelRef = useRef(false);
+  const appStateRef = useRef(AppState.currentState);
 
-  // Uscita audio: ricorda l'ultima scelta e la ripristina al rientro.
-  const audio = useAudioRoute(screen === 'channel');
+  const audio = useAudioRoute(inChannel);
 
-  // All'avvio: se la configurazione c'e', si entra dritti nel canale.
+  useEffect(() => { inChannelRef.current = inChannel; }, [inChannel]);
+
+  // Sapere se siamo in primo piano decide se mostrare una notifica o no.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => {
+      appStateRef.current = s;
+      if (s === 'active') Foreground.clearNotification().catch(() => {});
+    });
+    return () => sub.remove();
+  }, []);
+
+  // --- avvio ---------------------------------------------------------------
   useEffect(() => {
     (async () => {
       const c = await loadConfig();
       setCfg(c);
-      setScreen(isConfigComplete(c) ? 'channel' : 'settings');
+      if (!isServerConfigured(c)) setScreen('settings');
+      else if (!isPaired(c)) setScreen('pairing');
+      else setScreen('listening');
     })();
   }, []);
 
-  const teardown = useCallback(() => {
-    sessionRef.current?.leaveChannel();
-    signalingRef.current?.close();
-    sessionRef.current = null;
-    signalingRef.current = null;
-    Foreground.stop().catch(() => { /* noop */ });
-    try { InCallManager.stop(); } catch { /* noop */ }
-    setLocalStream(null);
-    setRemoteStream(null);
-    setVideoOn(false);
-    setLocalAspect(undefined);
-    setConnState('new');
-  }, []);
-
-  // Proporzioni di cio' che sta a schermo intero: servono a dare al PiP di
-  // sistema la forma giusta, invece di una finestrella sempre uguale.
-  const stageAspect =
-    (peerState.video ? peerState.aspect : undefined) ??
-    (videoOn ? localAspect : undefined) ??
-    9 / 16;
-
-  // Ciclo di vita del canale
+  // --- connessione persistente --------------------------------------------
+  // Vive finche' c'e' una coppia: passare da "in ascolto" a "nel canale"
+  // non riconnette nulla, cambia solo lo stato dichiarato al server.
   useEffect(() => {
-    if (screen !== 'channel' || !cfg) return;
+    if (!cfg || !isPaired(cfg) || !isServerConfigured(cfg)) return;
+    const pair = cfg.pair!;
     let cancelled = false;
 
     (async () => {
       const perms = await requestAllPermissions();
       cameraGranted.current = perms.camera;
       if (!perms.mic) {
-        Alert.alert('Permesso negato', 'Senza microfono non puoi stare nel canale.');
+        Alert.alert('Permesso negato', 'Senza microfono non puoi usare il canale.');
         setScreen('settings');
         return;
       }
       if (cancelled) return;
 
-      // Foreground service: e' cio' che tiene viva la connessione quando
-      // l'app va in background o si spegne lo schermo.
-      Foreground.start('Sei nel canale', false).catch(() => { /* noop */ });
+      Foreground.start('In ascolto', false).catch(() => {});
 
-      // Avvia la gestione audio; l'uscita la sceglie useAudioRoute,
-      // ripristinando quella impostata l'ultima volta.
-      try {
-        InCallManager.start({ media: 'audio' });
-      } catch { /* noop */ }
+      const sig = new Signaling(
+        {
+          serverUrl: cfg.serverUrl.trim(),
+          accessToken: cfg.accessToken,
+          room: pair.id,
+          displayName: cfg.displayName || 'Qualcuno',
+          key: pair.key,
+          mode: 'listening',
+        },
+        {
+          onStatus: setStatus,
 
-      const signaling = new Signaling(cfg, {
-        onStatus: setStatus,
+          onJoined: ({ polite, peerPresent: present, peerActive, peerName: n }) => {
+            politeRef.current = polite;
+            peerActiveRef.current = peerActive;
+            setPeerPresent(present);
+            if (n) setPeerName(n);
+            if (peerActive && inChannelRef.current) attachPeer();
+          },
 
-        onJoined: async ({ polite, peerPresent }) => {
-          politeRef.current = polite;
-          if (!sessionRef.current) {
-            sessionRef.current = new ChannelSession(cfg, signaling, {
-              onLocalStream: setLocalStream,
-              onRemoteStream: setRemoteStream,
-              onConnectionState: setConnState,
-              onPeerState: setPeerState,
-            });
-          }
-          try {
-            await sessionRef.current.enterChannel();
-            setAudioOn(sessionRef.current.isAudioEnabled());
-            if (peerPresent) {
-              await sessionRef.current.attachPeer(polite);
-              sessionRef.current.broadcastState();
+          onPeerJoined: (n, mode) => {
+            setPeerPresent(true);
+            setPeerName(n);
+            peerActiveRef.current = mode === 'active';
+            if (mode === 'active' && inChannelRef.current) attachPeer();
+          },
+
+          onPeerLeft: () => {
+            setPeerPresent(false);
+            peerActiveRef.current = false;
+            sessionRef.current?.detachPeer();
+            setPeerState({ audio: true, video: false });
+            setConnState('new');
+          },
+
+          onPeerMode: (mode, n) => {
+            if (n) setPeerName(n);
+            peerActiveRef.current = mode === 'active';
+            if (mode === 'active') {
+              if (inChannelRef.current) attachPeer();
+            } else {
+              sessionRef.current?.detachPeer();
+              setConnState('new');
             }
-          } catch (e: any) {
-            Alert.alert('Errore microfono', String(e?.message ?? e));
-          }
+          },
+
+          onNotify: (reason, n) => {
+            setPeerName(n);
+            setKnockPending(false);
+            // In primo piano la notifica sarebbe rumore: si vede gia' tutto.
+            if (appStateRef.current !== 'active') {
+              Foreground.notify(
+                'DuoTalk',
+                reason === 'knock' ? `${n} ti aspetta nel canale` : `${n} è nel canale`,
+              ).catch(() => {});
+            }
+          },
+
+          onSignal: (msg) => { sessionRef.current?.onSignal(msg); },
+
+          onKnockResult: (ok, error) => {
+            if (ok) {
+              setKnockPending(true);
+              setTimeout(() => setKnockPending(false), 15000);
+            } else if (error === 'peer-offline') {
+              Alert.alert('Non raggiungibile', 'L’altro telefono non è collegato in questo momento.');
+            } else if (error === 'too-soon') {
+              Alert.alert('Aspetta un momento', 'Hai già avvisato da poco.');
+            }
+          },
+
+          onError: (code) => {
+            if (code === 'bad-token') Alert.alert('Token errato', 'Access token non valido.');
+            else if (code === 'room-full') Alert.alert('Coppia occupata', 'Ci sono già due dispositivi.');
+            else if (code === 'decrypt-failed') {
+              Alert.alert(
+                'Chiavi diverse',
+                'I due telefoni non condividono la stessa chiave: rifate l’accoppiamento.',
+              );
+            }
+          },
         },
+      );
 
-        onPeerJoined: async (name) => {
-          setPeerName(name);
-          setKnockPending(false);
-          Foreground.setText(`${name} e' nel canale`).catch(() => { /* noop */ });
-          try {
-            await sessionRef.current?.attachPeer(politeRef.current);
-            sessionRef.current?.broadcastState();
-          } catch { /* noop */ }
-        },
-
-        onPeerLeft: () => {
-          // L'altro e' uscito: chiudiamo la connessione ma restiamo nel canale.
-          sessionRef.current?.detachPeer();
-          setPeerState({ audio: true, video: false });
-          setConnState('new');
-          Foreground.setText('Sei nel canale').catch(() => { /* noop */ });
-        },
-
-        onSignal: (msg) => { sessionRef.current?.onSignal(msg); },
-
-        onKnockResult: (ok, error) => {
-          if (ok) {
-            setKnockPending(true);
-            setTimeout(() => setKnockPending(false), 15000);
-          } else if (error === 'no-topic') {
-            Alert.alert('Notifiche non configurate', 'Imposta il "topic dell’altro" nelle impostazioni.');
-          } else if (error === 'too-soon') {
-            Alert.alert('Aspetta un momento', 'Hai gia’ bussato da poco.');
-          } else {
-            Alert.alert('Notifica non inviata', 'Il server ntfy non ha risposto.');
-          }
-        },
-
-        onError: (code) => {
-          if (code === 'bad-token') Alert.alert('Token errato', 'Access token non valido.');
-          else if (code === 'room-full') Alert.alert('Canale pieno', 'Ci sono gia’ due dispositivi.');
-          else if (code === 'decrypt-failed') {
-            Alert.alert('Passphrase diversa', 'I due telefoni hanno passphrase differenti.');
-          }
-        },
-      });
-
-      signalingRef.current = signaling;
-      signaling.connect();
+      signalingRef.current = sig;
+      sig.connect();
     })();
 
-    return () => { cancelled = true; teardown(); };
-  }, [screen, cfg, teardown]);
+    return () => {
+      cancelled = true;
+      sessionRef.current?.leaveChannel();
+      sessionRef.current = null;
+      signalingRef.current?.close();
+      signalingRef.current = null;
+      Foreground.stop().catch(() => {});
+      try { InCallManager.stop(); } catch { /* noop */ }
+    };
+    // attachPeer e' stabile: usa solo ref
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cfg]);
 
-  // Tasto Indietro: invece di uscire dal canale, l'app va nella
-  // finestrella Picture-in-Picture e resta sopra le altre app.
+  /** Collega il WebRTC, quando siamo entrambi nel canale. */
+  const attachPeer = useCallback(async () => {
+    const sig = signalingRef.current;
+    const s = sessionRef.current;
+    if (!sig || !s) return;
+    try {
+      await s.attachPeer(politeRef.current);
+      s.broadcastState();
+    } catch { /* noop */ }
+  }, []);
+
+  // --- entrare e uscire dal canale ----------------------------------------
+  const enterChannel = useCallback(async () => {
+    const sig = signalingRef.current;
+    if (!sig || !cfg) return;
+
+    if (!sessionRef.current) {
+      sessionRef.current = new ChannelSession(cfg, sig, {
+        onLocalStream: setLocalStream,
+        onRemoteStream: setRemoteStream,
+        onConnectionState: setConnState,
+        onPeerState: setPeerState,
+      });
+    }
+    try {
+      await sessionRef.current.enterChannel();
+      setAudioOn(sessionRef.current.isAudioEnabled());
+    } catch (e: any) {
+      Alert.alert('Errore microfono', String(e?.message ?? e));
+      return;
+    }
+
+    try {
+      InCallManager.start({ media: 'audio' });
+    } catch { /* noop */ }
+
+    Foreground.setText('Sei nel canale').catch(() => {});
+    setInChannel(true);
+    inChannelRef.current = true;
+    setScreen('channel');
+    sig.setMode('active');
+
+    if (peerActiveRef.current) attachPeer();
+  }, [cfg, attachPeer]);
+
+  const leaveChannel = useCallback(() => {
+    const sig = signalingRef.current;
+    sessionRef.current?.leaveChannel();
+    sessionRef.current = null;
+    try { InCallManager.stop(); } catch { /* noop */ }
+    Foreground.setCameraActive(false).catch(() => {});
+    Foreground.setText('In ascolto').catch(() => {});
+    setLocalStream(null);
+    setRemoteStream(null);
+    setVideoOn(false);
+    setLocalAspect(undefined);
+    setConnState('new');
+    setInChannel(false);
+    inChannelRef.current = false;
+    sig?.setMode('listening');
+    setScreen('listening');
+  }, []);
+
+  // --- tasto Indietro: Picture-in-Picture ----------------------------------
   const pipSupported = useRef(false);
   useEffect(() => {
-    Pip.isSupported()
-      .then((v) => { pipSupported.current = v; })
-      .catch(() => { /* noop */ });
+    Pip.isSupported().then((v) => { pipSupported.current = v; }).catch(() => {});
   }, []);
+
+  const stageAspect =
+    (peerState.video ? peerState.aspect : undefined) ??
+    (videoOn ? localAspect : undefined) ??
+    9 / 16;
 
   useEffect(() => {
     if (screen !== 'channel') return;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      // Se il telefono non supporta il PiP lasciamo fare al tasto il suo
-      // mestiere normale, invece di ingoiare la pressione senza effetto.
       if (!pipSupported.current) return false;
-      Pip.enter(stageAspect).catch(() => { /* noop */ });
+      Pip.enter(stageAspect).catch(() => {});
       return true;
     });
     return () => sub.remove();
   }, [screen, stageAspect]);
 
-  // Ruotando il telefono cambiano le proporzioni del proprio video:
-  // vanno ricalcolate e ricomunicate all'altro.
+  // Ruotando cambiano le proporzioni del proprio video: vanno ricomunicate.
   useEffect(() => {
     if (screen !== 'channel') return;
     const sub = Dimensions.addEventListener('change', () => {
@@ -241,12 +323,9 @@ export default function App() {
     if (s.isVideoEnabled()) {
       setVideoOn(await s.disableVideo());
       setLocalAspect(undefined);
-      // Il servizio torna al solo tipo "microphone".
-      Foreground.setCameraActive(false).catch(() => { /* noop */ });
+      Foreground.setCameraActive(false).catch(() => {});
       return;
     }
-    // Normalmente il permesso c'e' gia' dall'avvio; se allora l'avevi
-    // negato lo richiediamo qui, invece di lasciarti con un pulsante muto.
     if (!cameraGranted.current) {
       const res = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA);
       cameraGranted.current = res === 'granted';
@@ -255,24 +334,41 @@ export default function App() {
         return;
       }
     }
-    // Android 14+: per usare la camera anche in background il servizio
-    // deve dichiarare il tipo "camera" PRIMA di aprirla.
-    await Foreground.setCameraActive(true).catch(() => { /* noop */ });
+    await Foreground.setCameraActive(true).catch(() => {});
     try {
       setVideoOn(await s.enableVideo());
       setLocalAspect(s.getLocalVideoAspect());
     } catch (e: any) {
-      Foreground.setCameraActive(false).catch(() => { /* noop */ });
+      Foreground.setCameraActive(false).catch(() => {});
       Alert.alert('Errore camera', String(e?.message ?? e));
     }
   }, []);
 
-  const onSave = useCallback(async (next: DuoConfig) => {
+  // --- salvataggi ----------------------------------------------------------
+  const onSaveSettings = useCallback(async (next: DuoConfig) => {
     await saveConfig(next);
     setCfg(next);
-    setScreen('channel');
+    setScreen(isPaired(next) ? 'listening' : 'pairing');
   }, []);
 
+  const onPaired = useCallback(async (pair: PairInfo) => {
+    if (!cfg) return;
+    const next = { ...cfg, pair };
+    await saveConfig(next);
+    setCfg(next);
+    setPeerName(pair.peerName);
+    setScreen('listening');
+  }, [cfg]);
+
+  const onUnpair = useCallback(async () => {
+    if (!cfg) return;
+    const next = { ...cfg, pair: null };
+    await saveConfig(next);
+    setCfg(next);
+    setScreen('pairing');
+  }, [cfg]);
+
+  // --- resa ----------------------------------------------------------------
   if (screen === 'loading' || !cfg) {
     return (
       <View style={styles.center}>
@@ -284,10 +380,40 @@ export default function App() {
 
   if (screen === 'settings') {
     return (
-      <SafeAreaView style={styles.safe}>
+      <View style={styles.safe}>
         <StatusBar barStyle="light-content" />
-        <SettingsScreen initial={cfg} onSave={onSave} />
-      </SafeAreaView>
+        <SettingsScreen initial={cfg} onSave={onSaveSettings} onUnpair={onUnpair} />
+      </View>
+    );
+  }
+
+  if (screen === 'pairing') {
+    return (
+      <View style={styles.safe}>
+        <StatusBar barStyle="light-content" />
+        <PairingScreen
+          cfg={cfg}
+          onPaired={onPaired}
+          onBack={() => setScreen('settings')}
+        />
+      </View>
+    );
+  }
+
+  if (screen === 'listening') {
+    return (
+      <View style={styles.safe}>
+        <StatusBar barStyle="light-content" />
+        <ListeningScreen
+          peerName={peerName || cfg.pair?.peerName || ''}
+          status={status}
+          peerPresent={peerPresent}
+          knockPending={knockPending}
+          onEnter={enterChannel}
+          onKnock={() => signalingRef.current?.knock()}
+          onSettings={() => setScreen('settings')}
+        />
+      </View>
     );
   }
 
@@ -295,8 +421,8 @@ export default function App() {
     <View style={styles.safe}>
       <StatusBar barStyle="light-content" />
       <ChannelScreen
-        channel={cfg.channel}
-        peerName={peerName}
+        channel={peerName || cfg.pair?.peerName || 'canale'}
+        peerName={peerName || cfg.pair?.peerName || ''}
         localStream={localStream}
         remoteStream={remoteStream}
         status={status}
@@ -314,7 +440,7 @@ export default function App() {
         onSwitchCamera={() => sessionRef.current?.switchCamera()}
         onCycleRoute={audio.cycle}
         onKnock={() => signalingRef.current?.knock()}
-        onLeave={() => setScreen('settings')}
+        onLeave={leaveChannel}
       />
     </View>
   );

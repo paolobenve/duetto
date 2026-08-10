@@ -1,46 +1,53 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /**
- * Configurazione dei due telefoni.
+ * Configurazione dell'app.
  *
- * Alcuni valori sono UGUALI sui due (server, token, canale, passphrase),
- * altri sono INCROCIATI: il "mio topic" di uno e' il "topic dell'altro"
- * per l'altro telefono.
+ * Due parti ben distinte:
+ *  - `server`: dove sta il signaling. Uguale sui due telefoni, si digita
+ *    una volta sola.
+ *  - `pair`: nasce dall'accoppiamento a codice e non si digita mai. Una
+ *    volta stabilito resta per sempre: il codice non serve piu'.
  */
+
+export type PairInfo = {
+  /** impronta del codice: l'unica cosa che il server vede */
+  id: string;
+  /** chiave a 256 bit dallo scambio Diffie-Hellman, in base64 */
+  key: string;
+  /** quale dei due lati siamo: serve solo a distinguere le conferme */
+  side: 'A' | 'B';
+  /** come si chiama l'altro, per mostrarlo nelle notifiche */
+  peerName: string;
+  /** quando e' stato fatto l'accoppiamento (ISO) */
+  pairedAt: string;
+};
+
 export type DuoConfig = {
   /** wss://TUO_DOMINIO/duotalk/ws */
   serverUrl: string;
   /** token anti-abuso, uguale a ACCESS_TOKEN del server */
   accessToken: string;
-  /** nome del canale: identico sui due telefoni */
-  channel: string;
-  /** passphrase segreta condivisa: cifra il signaling, mai inviata al server */
-  secret: string;
-  /** come mi vede l'altro nelle notifiche */
+  /** come mi vede l'altro */
   displayName: string;
-  /** topic ntfy su cui IO ricevo (da iscrivere nell'app ntfy di questo telefono) */
-  myTopic: string;
-  /** topic ntfy DELL'ALTRO: e' quello che faccio suonare io */
-  peerTopic: string;
+  /** null finche' non ci si e' accoppiati */
+  pair: PairInfo | null;
   turnUrl: string;
   turnUser: string;
   turnPass: string;
 };
 
 export const DEFAULT_CONFIG: DuoConfig = {
-  serverUrl: 'wss://TUO_DOMINIO/duotalk/ws',
+  serverUrl: '',
   accessToken: '',
-  channel: 'casa',
-  secret: '',
   displayName: '',
-  myTopic: '',
-  peerTopic: '',
-  turnUrl: 'turn:TUO_DOMINIO:3478',
-  turnUser: 'duotalk',
+  pair: null,
+  turnUrl: '',
+  turnUser: '',
   turnPass: '',
 };
 
-const STORAGE_KEY = 'duotalk.config.v2';
+const STORAGE_KEY = 'duotalk.config.v3';
 
 export async function loadConfig(): Promise<DuoConfig> {
   try {
@@ -56,18 +63,19 @@ export async function saveConfig(cfg: DuoConfig): Promise<void> {
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
 }
 
-/** Il minimo per poter entrare nel canale. I topic ntfy sono facoltativi. */
-export function isConfigComplete(cfg: DuoConfig): boolean {
-  return (
-    cfg.serverUrl.trim().length > 0 &&
-    cfg.channel.trim().length > 0 &&
-    cfg.secret.trim().length >= 8
-  );
+/** Il minimo per potersi collegare al server e accoppiarsi. */
+export function isServerConfigured(cfg: DuoConfig): boolean {
+  return /^wss?:\/\/.+/.test(cfg.serverUrl.trim());
+}
+
+/** Vero quando c'e' gia' una coppia: si va dritti nel canale. */
+export function isPaired(cfg: DuoConfig): boolean {
+  return !!cfg.pair && !!cfg.pair.id && !!cfg.pair.key;
 }
 
 type RTCIceServer = { urls: string; username?: string; credential?: string };
 
-/** Lista di ICE server: STUN pubblico + TURN di fallback se configurato. */
+/** Lista di ICE server: STUN pubblico + TURN di riserva se configurato. */
 export function iceServers(cfg: DuoConfig): RTCIceServer[] {
   const servers: RTCIceServer[] = [{ urls: 'stun:stun.l.google.com:19302' }];
   if (cfg.turnUrl.trim() && cfg.turnPass.trim()) {

@@ -122,7 +122,7 @@ export default function ChannelScreen(props: Props) {
       <Animated.View style={[styles.topBar, { opacity }]} pointerEvents="none">
         <View style={styles.badge}>
           <View style={[styles.dot, together ? styles.dotGreen : styles.dotGrey]} />
-          <Text style={styles.badgeText}>#{channel}</Text>
+          <Text style={styles.badgeText}>{channel}</Text>
         </View>
         {together && linked ? (
           <View style={styles.badge}>

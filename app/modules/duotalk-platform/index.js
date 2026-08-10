@@ -36,8 +36,17 @@ export const Foreground = isAndroid && NativeForeground
 
       /** Ferma il servizio e rilascia il wake lock. */
       stop: () => NativeForeground.stop(),
+
+      /** Avviso da mostrare quando l'app non e' in primo piano. */
+      notify: (title, text) => NativeForeground.notify(String(title), String(text)),
+
+      /** Toglie l'avviso, quando si rientra nell'app. */
+      clearNotification: () => NativeForeground.clearNotification(),
     }
-  : { start: no, setCameraActive: no, setText: no, stop: no };
+  : {
+      start: no, setCameraActive: no, setText: no, stop: no,
+      notify: no, clearNotification: no,
+    };
 
 /**
  * Picture-in-Picture di sistema: la finestrella che resta sopra le altre

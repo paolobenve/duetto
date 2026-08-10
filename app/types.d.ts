@@ -14,6 +14,8 @@ declare module 'duotalk-platform' {
     setCameraActive(active: boolean): Promise<boolean>;
     setText(text: string): Promise<boolean>;
     stop(): Promise<boolean>;
+    notify(title: string, text: string): Promise<boolean>;
+    clearNotification(): Promise<boolean>;
   };
 
   /** Picture-in-Picture di sistema. */

@@ -5,29 +5,27 @@ import { decodeUTF8, encodeUTF8, encodeBase64, decodeBase64 } from 'tweetnacl-ut
  * Cifratura simmetrica autenticata dei messaggi di signaling.
  *
  * Usiamo NaCl secretbox (XSalsa20-Poly1305):
- *  - chiave a 32 byte derivata dalla passphrase condivisa
+ *  - chiave a 32 byte, quella stabilita durante l'accoppiamento
  *  - nonce casuale a 24 byte per ogni messaggio
  *  - il ciphertext e' anche AUTENTICATO: se il server (o chiunque)
- *    modifica anche un solo byte, la decifratura fallisce.
+ *    modifica un solo byte, la decifratura fallisce.
  *
- * Cosi' il server e' un semplice inoltratore di buste opache e non
- * puo' fare man-in-the-middle sui parametri WebRTC (fingerprint DTLS).
+ * Cosi' il server e' un semplice inoltratore di buste opache e non puo'
+ * fare man-in-the-middle sui parametri WebRTC (fingerprint DTLS).
  *
- * NOTA: la sicurezza dipende dalla robustezza della passphrase.
- * Scegline una lunga e casuale, condivisa a voce/di persona.
+ * La chiave NON deriva da una passphrase digitata: nasce dallo scambio
+ * Diffie-Hellman fatto all'accoppiamento (vedi pairing.ts), quindi e'
+ * casuale a 256 bit e non attaccabile per tentativi.
  */
-
-/** Deriva una chiave a 32 byte dalla passphrase (SHA-512 troncato). */
-function deriveKey(secret: string): Uint8Array {
-  const hash = nacl.hash(decodeUTF8(secret)); // 64 byte
-  return hash.slice(0, nacl.secretbox.keyLength); // 32 byte
-}
-
 export class SignalCrypto {
   private readonly key: Uint8Array;
 
-  constructor(secret: string) {
-    this.key = deriveKey(secret);
+  constructor(key: Uint8Array | string) {
+    const k = typeof key === 'string' ? decodeBase64(key) : key;
+    if (k.length !== nacl.secretbox.keyLength) {
+      throw new Error(`chiave di lunghezza errata: ${k.length}`);
+    }
+    this.key = k;
   }
 
   /** Cifra un oggetto JSON -> stringa base64 (nonce || ciphertext). */
@@ -41,7 +39,7 @@ export class SignalCrypto {
     return encodeBase64(out);
   }
 
-  /** Decifra base64 -> oggetto JSON. Ritorna null se l'autenticazione fallisce. */
+  /** Decifra base64 -> oggetto JSON. Null se l'autenticazione fallisce. */
   open<T = unknown>(b64: string): T | null {
     try {
       const data = decodeBase64(b64);

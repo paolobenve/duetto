@@ -1,25 +1,37 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import type { DuoConfig } from './config';
-import { isConfigComplete } from './config';
+import { isServerConfigured, isPaired } from './config';
 
 type Props = {
   initial: DuoConfig;
   onSave: (cfg: DuoConfig) => void;
+  onUnpair: () => void;
 };
 
 /**
- * Configurazione. Attenzione ai due topic ntfy: sono INCROCIATI.
- * Il "tuo topic" di questo telefono deve essere il "topic dell'altro"
- * sull'altro telefono, e viceversa.
+ * Impostazioni. Qui si mette solo dove sta il server: la coppia non si
+ * configura a mano, nasce dall'accoppiamento a codice.
  */
-export default function SettingsScreen({ initial, onSave }: Props) {
+export default function SettingsScreen({ initial, onSave, onUnpair }: Props) {
   const [cfg, setCfg] = useState<DuoConfig>(initial);
   const set = (k: keyof DuoConfig) => (v: string) => setCfg({ ...cfg, [k]: v });
-  const ready = isConfigComplete(cfg);
+  const ready = isServerConfigured(cfg);
+  const paired = isPaired(cfg);
+
+  const confirmUnpair = () => {
+    Alert.alert(
+      'Sciogliere la coppia?',
+      'Dovrete rifare l’accoppiamento con un codice nuovo su entrambi i telefoni.',
+      [
+        { text: 'Annulla', style: 'cancel' },
+        { text: 'Sciogli', style: 'destructive', onPress: onUnpair },
+      ],
+    );
+  };
 
   return (
     <KeyboardAvoidingView
@@ -32,41 +44,63 @@ export default function SettingsScreen({ initial, onSave }: Props) {
           vi collegate da soli.
         </Text>
 
-        <Text style={styles.section}>Canale</Text>
-        <Text style={styles.sectionHint}>Questi valori devono essere IDENTICI sui due telefoni.</Text>
-        <Field label="Server" value={cfg.serverUrl} onChange={set('serverUrl')}
-          placeholder="wss://tuodominio/duotalk/ws" autoCapitalize="none" />
-        <Field label="Access token" value={cfg.accessToken} onChange={set('accessToken')} secure />
-        <Field label="Nome del canale" value={cfg.channel} onChange={set('channel')}
-          placeholder="casa" autoCapitalize="none" />
-        <Field label="Passphrase segreta" value={cfg.secret} onChange={set('secret')} secure
-          hint="Almeno 8 caratteri. Cifra tutto lo scambio: il server non puo’ leggerlo." />
-
-        <Text style={styles.section}>Notifiche (ntfy)</Text>
+        <Text style={styles.section}>Server</Text>
         <Text style={styles.sectionHint}>
-          Questi vanno INCROCIATI: il “tuo topic” qui dev’essere il “topic dell’altro”
-          sull’altro telefono. Iscriviti al tuo topic nell’app ntfy per ricevere gli avvisi.
+          Gli stessi valori sui due telefoni. Si digitano una volta sola.
         </Text>
-        <Field label="Il tuo nome" value={cfg.displayName} onChange={set('displayName')}
-          placeholder="Paolo" hint="Compare nella notifica che riceve l’altro." />
-        <Field label="Il tuo topic (ricevi qui)" value={cfg.myTopic} onChange={set('myTopic')}
-          placeholder="duotalk-paolo-x7k2" autoCapitalize="none"
-          hint="Iscrivilo nell’app ntfy di QUESTO telefono." />
-        <Field label="Topic dell’altro (suoni qui)" value={cfg.peerTopic} onChange={set('peerTopic')}
-          placeholder="duotalk-altro-9m4p" autoCapitalize="none" />
+        <Field
+          label="Indirizzo del signaling"
+          value={cfg.serverUrl}
+          onChange={set('serverUrl')}
+          placeholder="wss://tuodominio/duotalk/ws"
+          autoCapitalize="none"
+          hint="Deve cominciare con wss://"
+        />
+        <Field label="Access token" value={cfg.accessToken} onChange={set('accessToken')} secure />
+        <Field
+          label="Il tuo nome"
+          value={cfg.displayName}
+          onChange={set('displayName')}
+          placeholder="Paolo"
+          hint="Compare sull’altro telefono quando entri nel canale."
+        />
 
-        <Text style={styles.section}>TURN di fallback (opzionale)</Text>
-        <Text style={styles.sectionHint}>Serve solo se le vostre reti impediscono il collegamento diretto.</Text>
+        <Text style={styles.section}>Collegamento di riserva (TURN)</Text>
+        <Text style={styles.sectionHint}>
+          Facoltativo. Serve solo se le vostre reti impediscono il collegamento diretto.
+        </Text>
         <Field label="TURN url" value={cfg.turnUrl} onChange={set('turnUrl')}
           placeholder="turn:tuodominio:3478" autoCapitalize="none" />
         <Field label="TURN utente" value={cfg.turnUser} onChange={set('turnUser')} autoCapitalize="none" />
         <Field label="TURN password" value={cfg.turnPass} onChange={set('turnPass')} secure />
 
+        {paired ? (
+          <>
+            <Text style={styles.section}>Coppia</Text>
+            <View style={styles.pairBox}>
+              <Text style={styles.pairName}>
+                {cfg.pair?.peerName || 'L’altra persona'}
+              </Text>
+              <Text style={styles.pairMeta}>
+                Accoppiati dal{' '}
+                {cfg.pair?.pairedAt
+                  ? new Date(cfg.pair.pairedAt).toLocaleDateString()
+                  : '—'}
+              </Text>
+            </View>
+            <TouchableOpacity style={styles.danger} onPress={confirmUnpair}>
+              <Text style={styles.dangerText}>Sciogli la coppia</Text>
+            </TouchableOpacity>
+          </>
+        ) : null}
+
         <TouchableOpacity
           style={[styles.button, !ready && styles.buttonDisabled]}
           disabled={!ready}
           onPress={() => onSave(cfg)}>
-          <Text style={styles.buttonText}>Entra nel canale</Text>
+          <Text style={styles.buttonText}>
+            {paired ? 'Salva' : 'Salva e accoppia'}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -90,7 +124,7 @@ function Field(props: {
         value={props.value}
         onChangeText={props.onChange}
         placeholder={props.placeholder}
-        placeholderTextColor="#5a6472"
+        placeholderTextColor="#4a5462"
         secureTextEntry={props.secure}
         autoCapitalize={props.autoCapitalize ?? 'sentences'}
         autoCorrect={false}
@@ -115,6 +149,14 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#252c38',
   },
   hint: { color: '#6b7686', fontSize: 12, marginTop: 5, lineHeight: 17 },
+  pairBox: {
+    backgroundColor: '#151a23', borderRadius: 12, padding: 16,
+    borderWidth: 1, borderColor: '#252c38',
+  },
+  pairName: { color: '#e6ebf1', fontSize: 17, fontWeight: '700' },
+  pairMeta: { color: '#6b7686', fontSize: 13, marginTop: 4 },
+  danger: { marginTop: 12, paddingVertical: 12, alignItems: 'center' },
+  dangerText: { color: '#e5484d', fontSize: 15, fontWeight: '600' },
   button: {
     backgroundColor: '#2f7cf6', borderRadius: 12, paddingVertical: 16,
     alignItems: 'center', marginTop: 30,

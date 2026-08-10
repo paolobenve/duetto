@@ -62,4 +62,22 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
             promise.reject("foreground_service_error", e)
         }
     }
+
+    /** Avviso da mostrare quando l'app non e' in primo piano. */
+    @ReactMethod
+    fun notify(title: String, text: String, promise: Promise) {
+        try {
+            Notifier.show(ctx, title, text)
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("notify_error", e)
+        }
+    }
+
+    /** Toglie l'avviso, quando l'utente e' rientrato nell'app. */
+    @ReactMethod
+    fun clearNotification(promise: Promise) {
+        Notifier.cancel(ctx)
+        promise.resolve(true)
+    }
 }

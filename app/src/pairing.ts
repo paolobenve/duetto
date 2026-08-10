@@ -75,16 +75,6 @@ export function pairIdFromCode(code: string): string {
   return encodeBase64(h.slice(0, 16)).replace(/[+/=]/g, '');
 }
 
-/**
- * Topic ntfy dei due lati, ricavati dal codice: il server li conosce
- * solo perche' glieli diciamo noi, non perche' possa indovinarli.
- */
-export function topicFromCode(code: string, side: 'A' | 'B'): string {
-  const h = sha512(label(`duotalk-ntfy|${side}|`), label(normalizeCode(code)));
-  const s = encodeBase64(h.slice(0, 12)).replace(/[+/=]/g, '');
-  return `duotalk-${s.toLowerCase()}`;
-}
-
 // --- Scambio di chiavi ------------------------------------------------------
 
 export type PairKeys = {
