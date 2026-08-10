@@ -31,7 +31,7 @@ const permissions = [
   'android.permission.MODIFY_AUDIO_SETTINGS',
   'android.permission.BLUETOOTH_CONNECT', // auricolari BT
   // Restare nel canale in background / a schermo spento.
-  // Il servizio e' dichiarato dal modulo duotalk-foreground e i suoi
+  // Il servizio e' dichiarato dal modulo duotalk-platform e i suoi
   // permessi arrivano dal merge dei manifest; li ripetiamo qui perche'
   // siano visibili leggendo il manifest dell'app.
   'android.permission.FOREGROUND_SERVICE',
@@ -83,6 +83,38 @@ if (!activityMatch) {
     );
     changes++;
   }
+  // Picture-in-Picture: il tasto Indietro mette l'app nella finestrella
+  // invece di farne uscire.
+  if (!/android:supportsPictureInPicture=/.test(tag)) {
+    tag = tag.replace(
+      /android:name="\.MainActivity"/,
+      'android:name=".MainActivity"\n        android:supportsPictureInPicture="true"',
+    );
+    changes++;
+  }
+
+  // Il PiP e' un cambio di configurazione: se l'activity non lo dichiara,
+  // Android la ricrea e la connessione si perde.
+  const neededConfig = ['screenSize', 'smallestScreenSize', 'screenLayout', 'orientation'];
+  const configMatch = tag.match(/android:configChanges="([^"]*)"/);
+  if (configMatch) {
+    const have = configMatch[1].split('|').filter(Boolean);
+    const missing = neededConfig.filter((c) => !have.includes(c));
+    if (missing.length > 0) {
+      tag = tag.replace(
+        /android:configChanges="[^"]*"/,
+        `android:configChanges="${[...have, ...missing].join('|')}"`,
+      );
+      changes++;
+    }
+  } else {
+    tag = tag.replace(
+      /android:name="\.MainActivity"/,
+      `android:name=".MainActivity"\n        android:configChanges="${neededConfig.join('|')}"`,
+    );
+    changes++;
+  }
+
   if (tag !== activityMatch[0]) {
     xml = xml.replace(activityRe, () => tag);
   }

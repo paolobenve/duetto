@@ -1,4 +1,4 @@
-package com.duotalk.foreground
+package com.duotalk.platform
 
 import android.content.Intent
 import androidx.core.content.ContextCompat

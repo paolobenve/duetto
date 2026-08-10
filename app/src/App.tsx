@@ -1,16 +1,17 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   SafeAreaView, StatusBar, Platform, PermissionsAndroid, Alert, View,
-  ActivityIndicator, StyleSheet,
+  ActivityIndicator, StyleSheet, BackHandler, Dimensions,
 } from 'react-native';
 import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
-import Foreground from 'duotalk-foreground';
+import { Foreground, Pip } from 'duotalk-platform';
 import { DuoConfig, loadConfig, saveConfig, isConfigComplete } from './config';
 import { Signaling, PresenceStatus } from './signaling';
 import { ChannelSession } from './webrtc';
 import SettingsScreen from './SettingsScreen';
 import ChannelScreen from './ChannelScreen';
+import { useAudioRoute } from './audioRoute';
 
 type Screen = 'loading' | 'settings' | 'channel';
 
@@ -55,14 +56,21 @@ export default function App() {
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [audioOn, setAudioOn] = useState(true);
   const [videoOn, setVideoOn] = useState(false);
-  const [peerState, setPeerState] = useState({ audio: true, video: false });
+  const [peerState, setPeerState] = useState<{
+    audio: boolean; video: boolean; aspect?: number;
+  }>({ audio: true, video: false });
   const [peerName, setPeerName] = useState('');
   const [knockPending, setKnockPending] = useState(false);
+  /** proporzioni del proprio video, per dare al riquadrino la forma giusta */
+  const [localAspect, setLocalAspect] = useState<number | undefined>(undefined);
 
   const signalingRef = useRef<Signaling | null>(null);
   const sessionRef = useRef<ChannelSession | null>(null);
   const politeRef = useRef(false);
   const cameraGranted = useRef(false);
+
+  // Uscita audio: ricorda l'ultima scelta e la ripristina al rientro.
+  const audio = useAudioRoute(screen === 'channel');
 
   // All'avvio: se la configurazione c'e', si entra dritti nel canale.
   useEffect(() => {
@@ -83,8 +91,16 @@ export default function App() {
     setLocalStream(null);
     setRemoteStream(null);
     setVideoOn(false);
+    setLocalAspect(undefined);
     setConnState('new');
   }, []);
+
+  // Proporzioni di cio' che sta a schermo intero: servono a dare al PiP di
+  // sistema la forma giusta, invece di una finestrella sempre uguale.
+  const stageAspect =
+    (peerState.video ? peerState.aspect : undefined) ??
+    (videoOn ? localAspect : undefined) ??
+    9 / 16;
 
   // Ciclo di vita del canale
   useEffect(() => {
@@ -105,10 +121,10 @@ export default function App() {
       // l'app va in background o si spegne lo schermo.
       Foreground.start('Sei nel canale', false).catch(() => { /* noop */ });
 
-      // Audio in vivavoce, come su Discord.
+      // Avvia la gestione audio; l'uscita la sceglie useAudioRoute,
+      // ripristinando quella impostata l'ultima volta.
       try {
         InCallManager.start({ media: 'audio' });
-        InCallManager.setForceSpeakerphoneOn(true);
       } catch { /* noop */ }
 
       const signaling = new Signaling(cfg, {
@@ -185,14 +201,48 @@ export default function App() {
     return () => { cancelled = true; teardown(); };
   }, [screen, cfg, teardown]);
 
+  // Tasto Indietro: invece di uscire dal canale, l'app va nella
+  // finestrella Picture-in-Picture e resta sopra le altre app.
+  const pipSupported = useRef(false);
+  useEffect(() => {
+    Pip.isSupported()
+      .then((v) => { pipSupported.current = v; })
+      .catch(() => { /* noop */ });
+  }, []);
+
+  useEffect(() => {
+    if (screen !== 'channel') return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      // Se il telefono non supporta il PiP lasciamo fare al tasto il suo
+      // mestiere normale, invece di ingoiare la pressione senza effetto.
+      if (!pipSupported.current) return false;
+      Pip.enter(stageAspect).catch(() => { /* noop */ });
+      return true;
+    });
+    return () => sub.remove();
+  }, [screen, stageAspect]);
+
+  // Ruotando il telefono cambiano le proporzioni del proprio video:
+  // vanno ricalcolate e ricomunicate all'altro.
+  useEffect(() => {
+    if (screen !== 'channel') return;
+    const sub = Dimensions.addEventListener('change', () => {
+      const s = sessionRef.current;
+      if (!s || !s.isVideoEnabled()) return;
+      setLocalAspect(s.getLocalVideoAspect());
+      s.broadcastState();
+    });
+    return () => sub.remove();
+  }, [screen]);
+
   const onToggleVideo = useCallback(async () => {
     const s = sessionRef.current;
     if (!s) return;
     if (s.isVideoEnabled()) {
       setVideoOn(await s.disableVideo());
+      setLocalAspect(undefined);
       // Il servizio torna al solo tipo "microphone".
       Foreground.setCameraActive(false).catch(() => { /* noop */ });
-      try { InCallManager.setForceSpeakerphoneOn(true); } catch { /* noop */ }
       return;
     }
     // Normalmente il permesso c'e' gia' dall'avvio; se allora l'avevi
@@ -210,6 +260,7 @@ export default function App() {
     await Foreground.setCameraActive(true).catch(() => { /* noop */ });
     try {
       setVideoOn(await s.enableVideo());
+      setLocalAspect(s.getLocalVideoAspect());
     } catch (e: any) {
       Foreground.setCameraActive(false).catch(() => { /* noop */ });
       Alert.alert('Errore camera', String(e?.message ?? e));
@@ -253,10 +304,15 @@ export default function App() {
         audioOn={audioOn}
         videoOn={videoOn}
         peerState={peerState}
+        localAspect={localAspect}
+        remoteAspect={peerState.aspect}
         knockPending={knockPending}
+        audioRoute={audio.route}
+        canCycleRoute={audio.canCycle}
         onToggleAudio={() => setAudioOn(sessionRef.current?.toggleAudio() ?? false)}
         onToggleVideo={onToggleVideo}
         onSwitchCamera={() => sessionRef.current?.switchCamera()}
+        onCycleRoute={audio.cycle}
         onKnock={() => signalingRef.current?.knock()}
         onLeave={() => setScreen('settings')}
       />

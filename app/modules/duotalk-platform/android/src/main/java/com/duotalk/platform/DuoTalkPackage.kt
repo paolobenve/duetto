@@ -1,4 +1,4 @@
-package com.duotalk.foreground
+package com.duotalk.platform
 
 import android.view.View
 import com.facebook.react.ReactPackage
@@ -9,14 +9,17 @@ import com.facebook.react.uimanager.ViewManager
 
 /**
  * Registrato automaticamente dall'autolinking di React Native, grazie alla
- * dipendenza "file:modules/duotalk-foreground" in package.json: non serve
+ * dipendenza "file:modules/duotalk-platform" in package.json: non serve
  * toccare MainApplication.
  */
-class ForegroundPackage : ReactPackage {
+class DuoTalkPackage : ReactPackage {
 
     override fun createNativeModules(
         reactContext: ReactApplicationContext,
-    ): List<NativeModule> = listOf(ForegroundModule(reactContext))
+    ): List<NativeModule> = listOf(
+        ForegroundModule(reactContext),
+        PipModule(reactContext),
+    )
 
     override fun createViewManagers(
         reactContext: ReactApplicationContext,

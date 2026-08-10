@@ -16,7 +16,10 @@ import type { DuoConfig } from './config';
 export type SignalMessage =
   | { kind: 'desc'; type: 'offer' | 'answer'; sdp: string }
   | { kind: 'ice'; candidate: any }
-  | { kind: 'state'; audio: boolean; video: boolean };
+  // `aspect` = larghezza/altezza del video COSI' COME VIENE MOSTRATO da chi
+  // lo manda (dipende dal suo orientamento), per dare al riquadrino le
+  // proporzioni giuste invece di un rettangolo fisso.
+  | { kind: 'state'; audio: boolean; video: boolean; aspect?: number };
 
 export type PresenceStatus =
   | 'connecting'   // sto raggiungendo il server

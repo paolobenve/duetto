@@ -1,3 +1,4 @@
+import { Dimensions } from 'react-native';
 import {
   RTCPeerConnection,
   RTCSessionDescription,
@@ -27,9 +28,12 @@ export type ChannelEvents = {
   onLocalStream?: (s: MediaStream | null) => void;
   onRemoteStream?: (s: MediaStream | null) => void;
   onConnectionState?: (state: string) => void;
-  /** stato di mic/camera dell'altra persona */
-  onPeerState?: (st: { audio: boolean; video: boolean }) => void;
+  /** stato di mic/camera dell'altra persona, con le proporzioni del suo video */
+  onPeerState?: (st: { audio: boolean; video: boolean; aspect?: number }) => void;
 };
+
+/** Proporzioni di ripiego: anteprima verticale 9:16, il caso piu' comune. */
+export const DEFAULT_ASPECT = 9 / 16;
 
 export class ChannelSession {
   private pc: RTCPeerConnection | null = null;
@@ -132,7 +136,11 @@ export class ChannelSession {
 
   async onSignal(msg: SignalMessage) {
     if (msg.kind === 'state') {
-      this.events.onPeerState?.({ audio: msg.audio, video: msg.video });
+      this.events.onPeerState?.({
+        audio: msg.audio,
+        video: msg.video,
+        aspect: msg.aspect,
+      });
       return;
     }
 
@@ -252,12 +260,42 @@ export class ChannelSession {
     if (track && typeof track._switchCamera === 'function') track._switchCamera();
   }
 
-  /** Comunica all'altro lo stato di mic/camera (cifrato). */
+  /**
+   * Proporzioni con cui il MIO video viene mostrato (larghezza/altezza).
+   *
+   * La camera consegna sempre un fotogramma orizzontale (es. 1280x720) e
+   * viene ruotato in base a come tieni il telefono: quindi il lato lungo
+   * segue l'orientamento dello schermo.
+   */
+  getLocalVideoAspect(): number | undefined {
+    const track: any = this.localStream?.getVideoTracks()[0];
+    if (!track) return undefined;
+
+    let w: number | undefined;
+    let h: number | undefined;
+    try {
+      const s = typeof track.getSettings === 'function' ? track.getSettings() : null;
+      w = s?.width;
+      h = s?.height;
+    } catch {
+      /* alcune versioni non espongono getSettings */
+    }
+    if (!w || !h) return undefined;
+
+    const longSide = Math.max(w, h);
+    const shortSide = Math.min(w, h);
+    const win = Dimensions.get('window');
+    const portrait = win.height >= win.width;
+    return portrait ? shortSide / longSide : longSide / shortSide;
+  }
+
+  /** Comunica all'altro lo stato di mic/camera e le proporzioni (cifrato). */
   broadcastState() {
     this.signaling.sendSignal({
       kind: 'state',
       audio: this.isAudioEnabled(),
       video: this.isVideoEnabled(),
+      aspect: this.getLocalVideoAspect(),
     });
   }
 

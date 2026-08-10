@@ -17,7 +17,7 @@ server serve solo a farvi trovare e a suonare il campanello: **non può leggere 
 
 - **Canale, non chiamata**: entri e resti. Il server tiene la presenza (max 2).
 - **Resti dentro anche in background e a schermo spento**, grazie a un *foreground
-  service* Android (il modulo nativo `app/modules/duotalk-foreground`). Esci dal canale
+  service* Android (il modulo nativo `app/modules/duotalk-platform`). Esci dal canale
   solo chiudendo l'app o scartandola dai recenti.
 - **Audio subito, video a richiesta**: entrando si apre il microfono; la camera si
   accende solo se la vuoi — e quando la spegni viene **rilasciata davvero**.
@@ -115,31 +115,56 @@ Dettagli e modello di minaccia in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 - Chi è **a schermo intero non viene mai tagliato** (`objectFit: contain`): se le
   proporzioni non combaciano si vedono bande nere, ma l'immagine resta integra.
-- Il secondo video sta in un **riquadrino trascinabile**: spostalo dove vuoi, resta
-  dentro i bordi dello schermo.
-- **Toccando il riquadrino i due si scambiano**: vai tu a schermo intero e l'altro nel
-  riquadrino, e toccando di nuovo torni indietro.
+- Il secondo video sta in un **riquadrino** che ha **sempre le proporzioni della sua
+  camera** — mai quadrato, mai deformato. Chi manda il video comunica all'altro la forma
+  con cui lo sta inquadrando (dentro il messaggio cifrato di stato), così il riquadrino
+  è giusto da entrambe le parti anche se uno dei due gira il telefono.
+- Il riquadrino è **trascinabile** e **ridimensionabile**: trascina la maniglia
+  nell'angolo in basso a destra, oppure allarga con **due dita**. Resta comunque dentro
+  i bordi dello schermo, e va da circa il 18% al 62% della larghezza.
+- **Toccandolo i due si scambiano**: vai tu a schermo intero e l'altro nel riquadrino,
+  e toccando di nuovo torni indietro.
 - Se **uno solo** dei due ha il video acceso, quello va a schermo intero e il riquadrino
   non compare.
 - Se nessuno ha il video, al posto dell'immagine c'è lo stato della presenza.
 
-Il riquadrino usa `cover` (riempie, quindi ritaglia un po') perché è una miniatura: se
-lo vuoi integro anche lì, cambia `PIP_FIT` in `app/src/VideoStage.tsx`.
+## Tasto Indietro: finestrella PiP
 
-## I cinque pulsanti
+Il tasto Indietro **non fa uscire dal canale**: mette l'app nella finestrella
+Picture-in-Picture di sistema, che resta sopra le altre app mentre continui a parlare.
+La finestrella prende le proporzioni del video a schermo intero, e al suo interno
+compare solo il video: comandi e badge spariscono, perché non ci starebbero.
 
-In basso, **sempre presenti**: `Video`, `Audio`, `Gira`, `Avvisa`, `Esci`. Non spariscono
-mai — dopo 4 secondi di inattività si attenuano al 40% per non coprire l'immagine, e
-tornano pieni al primo tocco ovunque sullo schermo. Restano premibili anche da attenuati:
-il tocco esegue subito l'azione, non serve svegliarli prima.
+Per tornare grande basta toccare la finestrella. Se il telefono non supporta il PiP
+(prima di Android 8, o funzione disattivata) il tasto Indietro torna a comportarsi
+normalmente, invece di non fare nulla.
+
+## I sei pulsanti
+
+In basso, **sempre presenti**: `Video`, `Audio`, `Gira`, `Uscita audio`, `Avvisa`,
+`Esci`. Non spariscono mai — dopo 4 secondi di inattività si attenuano al 40% per non
+coprire l'immagine, e tornano pieni al primo tocco ovunque sullo schermo. Restano
+premibili anche da attenuati: il tocco esegue subito l'azione, non serve svegliarli.
 
 | Pulsante | Cosa fa |
 |---|---|
 | **Video** | accende/spegne la camera |
 | **Audio** | mette in muto il microfono |
 | **Gira** | passa da fotocamera frontale a posteriore; spento se il video è off |
+| **Uscita audio** | cicla fra vivavoce, auricolare, cuffie, Bluetooth |
 | **Avvisa** | manda la notifica all'altro; spento se è già nel canale |
 | **Esci** | lascia il canale, ferma il servizio e torna alle impostazioni |
+
+### Uscita audio
+
+Le uscite possibili su un telefono sono quattro e non di più: **vivavoce**,
+**auricolare** (l'altoparlante in alto), **cuffie con filo**, **Bluetooth**. Il pulsante
+mostra sempre quella attiva e a ogni tocco passa alla successiva, saltando quelle non
+collegate: se non hai cuffie né Bluetooth, cicla solo fra vivavoce e auricolare.
+
+**L'ultima scelta viene ricordata** e ripristinata quando rientri nel canale, purché quel
+dispositivo sia ancora collegato. L'app non decide mai di testa sua: se la preferenza
+salvata non è disponibile, lascia l'uscita scelta dal sistema.
 
 Le soglie si regolano da `IDLE_MS` e `DIM_OPACITY` in `app/src/ChannelScreen.tsx`.
 

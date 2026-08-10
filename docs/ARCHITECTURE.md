@@ -72,7 +72,7 @@ mezzo. Senza la passphrase il MITM non è possibile.
 - Un messaggio cifrato `state` comunica all'altro se hai mic/camera attivi, per mostrarlo
   nell'interfaccia.
 
-### 5. Presenza in background (`app/modules/duotalk-foreground`)
+### 5. Presenza in background (`app/modules/duotalk-platform`)
 
 Un canale permanente che sopravvive solo con l'app aperta non è permanente. Android
 sospende i processi in background e a schermo spento, quindi serve un **foreground
@@ -80,7 +80,7 @@ service**: è l'unico meccanismo supportato per restare attivi, e da Android 14 
 `microphone` è anche l'unico modo consentito per registrare audio fuori dal primo piano.
 
 È un modulo nativo Kotlin locale, agganciato dall'**autolinking** tramite
-`"duotalk-foreground": "file:modules/duotalk-foreground"` in `package.json`: così non
+`"duotalk-platform": "file:modules/duotalk-platform"` in `package.json`: così non
 serve modificare `MainApplication`, che è generato da `bootstrap.sh` e verrebbe
 sovrascritto.
 
@@ -99,11 +99,46 @@ Il modulo è scritto per l'architettura classica; `bootstrap.sh` imposta
 
 - Chi è a schermo intero usa `objectFit: contain`: **mai tagliato**, eventuali bande
   nere sono accettate come prezzo dell'integrità dell'immagine.
-- L'altro video sta in un riquadrino trascinabile (`PanResponder` + `Animated.ValueXY`),
-  vincolato dentro lo schermo e riportato dentro se ruoti il telefono.
+- Il riquadrino ha **le proporzioni della camera che mostra**. Ricavarle non è banale:
+  la camera consegna sempre un fotogramma orizzontale (1280×720) che viene ruotato in
+  base a come tieni il telefono. `getLocalVideoAspect()` legge `track.getSettings()` e
+  fa seguire il lato lungo all'orientamento dello schermo; il risultato viaggia
+  nel messaggio cifrato `state`, così anche l'altro sa che forma dare al riquadrino.
+  Se le dimensioni non sono disponibili si ripiega su 9:16.
+- Trascinabile e **ridimensionabile**: maniglia d'angolo (un dito) e pizzico a due dita,
+  gestiti dallo stesso `PanResponder` guardando `nativeEvent.touches.length`.
+  Larghezza vincolata fra il 18% e il 62% dello schermo.
 - Il tocco si distingue dal trascinamento con una soglia di 4 px: tocco = scambio fra
   grande e piccolo, trascinamento = spostamento.
 - Con un solo video acceso il riquadrino non compare e lo scambio viene azzerato.
+
+### 7. Uscita audio (`app/src/audioRoute.ts`)
+
+Quattro uscite possibili — vivavoce, auricolare, cuffie con filo, Bluetooth — e non ne
+esistono altre. L'elenco di quelle *disponibili* cambia da solo, quindi lo prendiamo
+dall'evento `onAudioDeviceChanged` di InCallManager invece di indovinarlo.
+
+Il pulsante cicla fra le sole disponibili. La scelta viene **salvata in AsyncStorage** e
+ripristinata al rientro nel canale se quel dispositivo è ancora collegato; altrimenti si
+lascia stare la selezione di sistema, senza imporne una nostra. `chooseAudioRoute` viene
+chiamato attraverso un controllo di esistenza, con ripiego su `setForceSpeakerphoneOn`
+se la versione della libreria non lo espone.
+
+### 8. Picture-in-Picture (`PipModule.kt`)
+
+Il tasto Indietro chiama `enterPictureInPictureMode` invece di uscire dal canale, con le
+proporzioni di ciò che sta a schermo intero (Android accetta rapporti fra 0.4184 e 2.39,
+quindi il valore viene limitato).
+
+Per accorgersi di essere in PiP **non serve intercettare il callback dell'Activity**:
+in PiP la finestra si rimpicciolisce, quindi `useWindowDimensions()` restituisce una
+larghezza minima e sotto i 340 dp l'interfaccia passa in modalità compatta, mostrando
+solo il video. Questo evita di dover modificare `MainActivity`, che è generato da
+`bootstrap.sh`.
+
+Il manifest ha bisogno di `supportsPictureInPicture="true"` e di avere fra i
+`configChanges` almeno `screenSize|smallestScreenSize|screenLayout|orientation`,
+altrimenti Android ricrea l'activity entrando in PiP e la connessione si perde.
 
 ## Flusso
 

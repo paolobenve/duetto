@@ -1,14 +1,22 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated,
+  useWindowDimensions,
 } from 'react-native';
 import { MediaStream } from 'react-native-webrtc';
 import type { PresenceStatus } from './signaling';
 import VideoStage from './VideoStage';
+import { AudioRoute, ROUTE_ICON, ROUTE_LABEL } from './audioRoute';
 
 /** Dopo quanto i pulsanti si attenuano, e quanto restano visibili. */
 const IDLE_MS = 4000;
 const DIM_OPACITY = 0.4;
+
+/**
+ * Sotto questa larghezza siamo nella finestrella Picture-in-Picture:
+ * li' comandi e badge non ci starebbero, mostriamo solo il video.
+ */
+const COMPACT_WIDTH = 340;
 
 type Props = {
   channel: string;
@@ -19,11 +27,17 @@ type Props = {
   connectionState: string;
   audioOn: boolean;
   videoOn: boolean;
-  peerState: { audio: boolean; video: boolean };
+  peerState: { audio: boolean; video: boolean; aspect?: number };
+  /** proporzioni dei due video, per la forma del riquadrino */
+  localAspect?: number;
+  remoteAspect?: number;
   knockPending: boolean;
+  audioRoute: AudioRoute;
+  canCycleRoute: boolean;
   onToggleAudio: () => void;
   onToggleVideo: () => void;
   onSwitchCamera: () => void;
+  onCycleRoute: () => void;
   onKnock: () => void;
   onLeave: () => void;
 };
@@ -35,9 +49,14 @@ type Props = {
 export default function ChannelScreen(props: Props) {
   const {
     channel, peerName, localStream, remoteStream, status, connectionState,
-    audioOn, videoOn, peerState, knockPending,
-    onToggleAudio, onToggleVideo, onSwitchCamera, onKnock, onLeave,
+    audioOn, videoOn, peerState, localAspect, remoteAspect,
+    knockPending, audioRoute, canCycleRoute,
+    onToggleAudio, onToggleVideo, onSwitchCamera, onCycleRoute, onKnock, onLeave,
   } = props;
+
+  // In Picture-in-Picture la finestra e' minuscola: niente comandi.
+  const { width: winWidth } = useWindowDimensions();
+  const compact = winWidth < COMPACT_WIDTH;
 
   const together = status === 'together';
   const linked = connectionState === 'connected';
@@ -83,6 +102,9 @@ export default function ChannelScreen(props: Props) {
         remoteStream={remoteStream}
         localHasVideo={localHasVideo}
         remoteHasVideo={remoteHasVideo}
+        localAspect={localAspect}
+        remoteAspect={remoteAspect}
+        compact={compact}
         placeholder={
           <PresenceCard
             status={status}
@@ -93,6 +115,9 @@ export default function ChannelScreen(props: Props) {
         }
       />
 
+      {/* In PiP finisce qui: la finestrella mostra solo il video. */}
+      {compact ? null : (
+        <>
       {/* Barra in alto: canale + stato */}
       <Animated.View style={[styles.topBar, { opacity }]} pointerEvents="none">
         <View style={styles.badge}>
@@ -128,6 +153,14 @@ export default function ChannelScreen(props: Props) {
           onPress={press(onSwitchCamera)}
         />
         <CircleButton
+          // L'etichetta dice sempre dove sta uscendo l'audio adesso.
+          label={ROUTE_LABEL[audioRoute]}
+          icon={ROUTE_ICON[audioRoute]}
+          active
+          disabled={!canCycleRoute}
+          onPress={press(onCycleRoute)}
+        />
+        <CircleButton
           label={knockPending ? 'Avvisato' : 'Avvisa'}
           icon={'\u{1F514}'}
           highlight={!together && !knockPending}
@@ -141,6 +174,8 @@ export default function ChannelScreen(props: Props) {
           onPress={press(onLeave)}
         />
       </Animated.View>
+        </>
+      )}
     </View>
   );
 }
@@ -269,13 +304,13 @@ const styles = StyleSheet.create({
   badgeText: { color: '#e6ebf1', fontSize: 13, fontWeight: '600' },
 
   controls: {
-    // Cinque pulsanti: su schermi stretti servono misure contenute.
-    position: 'absolute', bottom: 30, left: 4, right: 4,
+    // Sei pulsanti: su schermi stretti servono misure contenute.
+    position: 'absolute', bottom: 30, left: 2, right: 2,
     flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'flex-end',
   },
   ctrlItem: { alignItems: 'center', flex: 1 },
   circle: {
-    width: 54, height: 54, borderRadius: 27,
+    width: 50, height: 50, borderRadius: 25,
     alignItems: 'center', justifyContent: 'center',
     // Un bordo chiaro li tiene leggibili anche sopra un video chiaro.
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)',
@@ -285,9 +320,9 @@ const styles = StyleSheet.create({
   circleHighlight: { backgroundColor: '#2f7cf6' },
   circleDanger: { backgroundColor: '#e5484d' },
   circleDisabled: { opacity: 0.45 },
-  circleIcon: { fontSize: 23 },
+  circleIcon: { fontSize: 21 },
   ctrlLabel: {
-    color: '#eef2f7', marginTop: 6, fontSize: 11, fontWeight: '600',
+    color: '#eef2f7', marginTop: 5, fontSize: 10, fontWeight: '600',
     textShadowColor: 'rgba(0,0,0,0.9)', textShadowRadius: 4,
   },
 });

@@ -1,4 +1,4 @@
-package com.duotalk.foreground
+package com.duotalk.platform
 
 import android.app.Notification
 import android.app.NotificationChannel
