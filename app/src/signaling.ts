@@ -2,43 +2,47 @@ import { SignalCrypto } from './crypto';
 import type { DuoConfig } from './config';
 
 /**
- * Client di signaling.
+ * Client di signaling per il canale.
  *
- * Verso il server viaggiano solo:
- *   - il messaggio "join" (room + token in chiaro: servono al server)
- *   - messaggi "signal" il cui campo `payload` e' una BUSTA CIFRATA
+ * In chiaro verso il server viaggiano solo i dati che gli servono per
+ * fare il suo mestiere: canale, token, topic ntfy da suonare e nome
+ * mostrato nella notifica.
  *
- * Il contenuto WebRTC (SDP/ICE) sta dentro la busta cifrata: il server
- * non lo vede. Qui gestiamo anche la riconnessione automatica.
+ * Tutto il resto (SDP, ICE, stato di mic e camera) sta dentro `payload`,
+ * che e' una BUSTA CIFRATA con la passphrase condivisa: il server la
+ * inoltra senza poterla leggere.
  */
 
 export type SignalMessage =
-  | { kind: 'offer'; sdp: string }
-  | { kind: 'answer'; sdp: string }
-  | { kind: 'ice'; candidate: any };
+  | { kind: 'desc'; type: 'offer' | 'answer'; sdp: string }
+  | { kind: 'ice'; candidate: any }
+  | { kind: 'state'; audio: boolean; video: boolean };
+
+export type PresenceStatus =
+  | 'connecting'   // sto raggiungendo il server
+  | 'alone'        // sono nel canale, l'altro non c'e'
+  | 'together'     // ci siamo entrambi
+  | 'offline';     // niente rete / server irraggiungibile
 
 export type SignalingEvents = {
-  onStatus?: (s: SignalingStatus) => void;
-  onJoined?: (info: { initiator: boolean; peers: number }) => void;
-  onPeerJoined?: () => void;
+  onStatus?: (s: PresenceStatus) => void;
+  onJoined?: (info: { polite: boolean; peerPresent: boolean }) => void;
+  onPeerJoined?: (name: string) => void;
   onPeerLeft?: () => void;
   onSignal?: (msg: SignalMessage) => void;
+  onKnockResult?: (ok: boolean, error?: string) => void;
   onError?: (code: string) => void;
 };
 
-export type SignalingStatus =
-  | 'connecting'
-  | 'waiting-peer' // connesso al server, aspetto l'altro
-  | 'peer-present' // l'altro c'e'
-  | 'disconnected';
-
-const RECONNECT_MS = 2000;
+const RECONNECT_MIN_MS = 1000;
+const RECONNECT_MAX_MS = 15000;
 
 export class Signaling {
   private ws: WebSocket | null = null;
   private crypto: SignalCrypto;
   private closedByUser = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private backoff = RECONNECT_MIN_MS;
 
   constructor(private cfg: DuoConfig, private events: SignalingEvents) {
     this.crypto = new SignalCrypto(cfg.secret);
@@ -46,6 +50,7 @@ export class Signaling {
 
   connect() {
     this.closedByUser = false;
+    this.backoff = RECONNECT_MIN_MS;
     this.open();
   }
 
@@ -61,22 +66,21 @@ export class Signaling {
     this.ws = ws;
 
     ws.onopen = () => {
-      // handshake: room + token in chiaro (necessari al server)
+      this.backoff = RECONNECT_MIN_MS;
+      // Handshake. peerTopic e nome servono al server per il campanello ntfy.
       this.rawSend({
         type: 'join',
-        room: this.cfg.room,
+        room: this.cfg.channel,
         token: this.cfg.accessToken,
+        peerTopic: this.cfg.peerTopic,
+        name: this.cfg.displayName || 'Qualcuno',
       });
     };
 
     ws.onmessage = (ev) => this.handle(ev.data);
-
-    ws.onerror = () => {
-      // la chiusura seguira'; gestiamo li' il reconnect
-    };
-
+    ws.onerror = () => { /* la chiusura seguira': il reconnect e' gestito li' */ };
     ws.onclose = () => {
-      this.events.onStatus?.('disconnected');
+      this.events.onStatus?.('offline');
       if (!this.closedByUser) this.scheduleReconnect();
     };
   }
@@ -89,38 +93,52 @@ export class Signaling {
       return;
     }
     switch (msg.type) {
-      case 'joined':
-        this.events.onStatus?.(msg.peers > 0 ? 'peer-present' : 'waiting-peer');
-        this.events.onJoined?.({ initiator: !!msg.initiator, peers: msg.peers ?? 0 });
+      case 'joined': {
+        const peerPresent = (msg.peers ?? 0) > 0;
+        this.events.onStatus?.(peerPresent ? 'together' : 'alone');
+        this.events.onJoined?.({ polite: !!msg.polite, peerPresent });
         break;
+      }
       case 'peer-joined':
-        this.events.onStatus?.('peer-present');
-        this.events.onPeerJoined?.();
+        this.events.onStatus?.('together');
+        this.events.onPeerJoined?.(msg.name || 'Qualcuno');
         break;
       case 'peer-left':
-        this.events.onStatus?.('waiting-peer');
+        this.events.onStatus?.('alone');
         this.events.onPeerLeft?.();
         break;
       case 'signal': {
         const clear = this.crypto.open<SignalMessage>(msg.payload);
         if (!clear) {
-          // Busta non decifrabile: passphrase diversa o tentativo di manomissione.
+          // Busta non decifrabile: passphrase diversa fra i due telefoni,
+          // oppure qualcuno ha provato a manometterla lungo la strada.
           this.events.onError?.('decrypt-failed');
           return;
         }
         this.events.onSignal?.(clear);
         break;
       }
+      case 'knock-result':
+        this.events.onKnockResult?.(!!msg.ok, msg.error);
+        break;
       case 'error':
         this.events.onError?.(msg.error || 'unknown');
         break;
     }
   }
 
-  /** Invia un messaggio WebRTC cifrato all'altro peer. */
+  /** Invia un messaggio WebRTC/stato cifrato all'altro. */
   sendSignal(msg: SignalMessage) {
-    const payload = this.crypto.seal(msg);
-    this.rawSend({ type: 'signal', payload });
+    this.rawSend({ type: 'signal', payload: this.crypto.seal(msg) });
+  }
+
+  /** Chiede al server di far suonare la notifica sul telefono dell'altro. */
+  knock() {
+    this.rawSend({ type: 'knock' });
+  }
+
+  get connected(): boolean {
+    return this.ws?.readyState === WebSocket.OPEN;
   }
 
   private rawSend(obj: unknown) {
@@ -131,10 +149,12 @@ export class Signaling {
 
   private scheduleReconnect() {
     if (this.closedByUser || this.reconnectTimer) return;
+    const delay = this.backoff;
+    this.backoff = Math.min(this.backoff * 2, RECONNECT_MAX_MS);
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       this.open();
-    }, RECONNECT_MS);
+    }, delay);
   }
 
   close() {

@@ -1,52 +1,107 @@
 #!/usr/bin/env node
 /**
- * Aggiunge i permessi necessari al AndroidManifest.xml generato da RN,
- * in modo idempotente (si puo' rilanciare senza duplicare).
+ * Adatta l'AndroidManifest.xml generato da React Native:
+ *  - permessi (rete, microfono, camera, audio)
+ *  - intent filter per il deep link "duotalk://channel", cosi' toccando
+ *    la notifica ntfy si apre direttamente DuoTalk
+ *
+ * Idempotente: si puo' rilanciare senza duplicare nulla.
  */
 const fs = require('fs');
 const path = require('path');
 
-const manifest = path.join(
+const manifestPath = path.join(
   __dirname, '..', 'android', 'app', 'src', 'main', 'AndroidManifest.xml',
 );
 
-if (!fs.existsSync(manifest)) {
+if (!fs.existsSync(manifestPath)) {
   console.log('AndroidManifest.xml non trovato: esegui prima bootstrap.sh');
   process.exit(0);
 }
 
-let xml = fs.readFileSync(manifest, 'utf8');
+let xml = fs.readFileSync(manifestPath, 'utf8');
+let changes = 0;
 
+// --- Permessi ---------------------------------------------------------------
 const permissions = [
   'android.permission.INTERNET',
-  'android.permission.CAMERA',
-  'android.permission.RECORD_AUDIO',
-  'android.permission.MODIFY_AUDIO_SETTINGS',
   'android.permission.ACCESS_NETWORK_STATE',
-  'android.permission.BLUETOOTH', // audio da auricolari BT
+  'android.permission.RECORD_AUDIO',
+  'android.permission.CAMERA',
+  'android.permission.MODIFY_AUDIO_SETTINGS',
+  'android.permission.BLUETOOTH_CONNECT', // auricolari BT
 ];
 
-const lines = permissions
-  .filter((p) => !xml.includes(`android:name="${p}"`))
-  .map((p) => `    <uses-permission android:name="${p}" />`);
-
-if (lines.length > 0) {
-  xml = xml.replace(
-    /<manifest([^>]*)>/,
-    (m) => `${m}\n${lines.join('\n')}`,
-  );
-}
-
-// Le feature camera/microfono non sono obbligatorie a livello di Play Store
-const features = [
-  '    <uses-feature android:name="android.hardware.camera" android:required="false" />',
-  '    <uses-feature android:name="android.hardware.microphone" android:required="false" />',
-];
-for (const f of features) {
-  if (!xml.includes(f.trim().split('"')[1])) {
-    xml = xml.replace(/<manifest([^>]*)>/, (m) => `${m}\n${f}`);
+for (const p of permissions) {
+  if (!xml.includes(`android:name="${p}"`)) {
+    xml = xml.replace(/<manifest([^>]*)>/, (m) => `${m}\n    <uses-permission android:name="${p}" />`);
+    changes++;
   }
 }
 
-fs.writeFileSync(manifest, xml);
-console.log(`Manifest aggiornato (${lines.length} permessi aggiunti).`);
+// --- Feature non obbligatorie ----------------------------------------------
+const features = ['android.hardware.camera', 'android.hardware.microphone'];
+for (const f of features) {
+  if (!xml.includes(`<uses-feature android:name="${f}"`)) {
+    xml = xml.replace(
+      /<manifest([^>]*)>/,
+      (m) => `${m}\n    <uses-feature android:name="${f}" android:required="false" />`,
+    );
+    changes++;
+  }
+}
+
+// --- MainActivity: deep link + launchMode ----------------------------------
+const activityRe = /<activity\b[^>]*android:name="\.MainActivity"[^>]*>/;
+const activityMatch = xml.match(activityRe);
+
+if (!activityMatch) {
+  console.warn('Attenzione: MainActivity non trovata, deep link non aggiunto.');
+} else {
+  // launchMode singleTask: senza, toccare la notifica aprirebbe una seconda
+  // istanza dell'app invece di riportare in primo piano quella gia' aperta.
+  // Se l'attributo c'e' gia' va SOSTITUITO: duplicarlo fa fallire il build.
+  let tag = activityMatch[0];
+  if (/android:launchMode="[^"]*"/.test(tag)) {
+    if (!/android:launchMode="singleTask"/.test(tag)) {
+      tag = tag.replace(/android:launchMode="[^"]*"/, 'android:launchMode="singleTask"');
+      changes++;
+    }
+  } else {
+    tag = tag.replace(
+      /android:name="\.MainActivity"/,
+      'android:name=".MainActivity"\n        android:launchMode="singleTask"',
+    );
+    changes++;
+  }
+  if (tag !== activityMatch[0]) {
+    xml = xml.replace(activityRe, () => tag);
+  }
+
+  // Deep link, inserito dentro LA MainActivity (dopo il suo primo
+  // intent-filter), non dopo il primo intent-filter del documento.
+  if (!xml.includes('android:scheme="duotalk"')) {
+    const activityAt = xml.search(activityRe);
+    const closeTag = '</intent-filter>';
+    const filterEnd = xml.indexOf(closeTag, activityAt);
+    const activityEnd = xml.indexOf('</activity>', activityAt);
+
+    if (filterEnd !== -1 && (activityEnd === -1 || filterEnd < activityEnd)) {
+      const at = filterEnd + closeTag.length;
+      const deepLink = `
+        <intent-filter>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="duotalk" android:host="channel" />
+        </intent-filter>`;
+      xml = xml.slice(0, at) + deepLink + xml.slice(at);
+      changes++;
+    } else {
+      console.warn('Attenzione: intent-filter della MainActivity non trovato.');
+    }
+  }
+}
+
+fs.writeFileSync(manifestPath, xml);
+console.log(`Manifest aggiornato (${changes} modifiche).`);

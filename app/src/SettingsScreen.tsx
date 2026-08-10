@@ -1,13 +1,7 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
+  View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import type { DuoConfig } from './config';
 import { isConfigComplete } from './config';
@@ -17,7 +11,11 @@ type Props = {
   onSave: (cfg: DuoConfig) => void;
 };
 
-/** Schermata di configurazione: gli stessi valori vanno messi su entrambi i telefoni. */
+/**
+ * Configurazione. Attenzione ai due topic ntfy: sono INCROCIATI.
+ * Il "tuo topic" di questo telefono deve essere il "topic dell'altro"
+ * sull'altro telefono, e viceversa.
+ */
 export default function SettingsScreen({ initial, onSave }: Props) {
   const [cfg, setCfg] = useState<DuoConfig>(initial);
   const set = (k: keyof DuoConfig) => (v: string) => setCfg({ ...cfg, [k]: v });
@@ -27,23 +25,38 @@ export default function SettingsScreen({ initial, onSave }: Props) {
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>DuoTalk</Text>
         <Text style={styles.subtitle}>
-          Metti gli stessi valori sui due telefoni. La "passphrase" resta segreta:
-          non viene mai inviata al server e cifra tutto lo scambio.
+          Un canale solo per voi due. Entri e resti: quando entra anche l’altro,
+          vi collegate da soli.
         </Text>
 
-        <Field label="Server (wss://)" value={cfg.serverUrl} onChange={set('serverUrl')}
+        <Text style={styles.section}>Canale</Text>
+        <Text style={styles.sectionHint}>Questi valori devono essere IDENTICI sui due telefoni.</Text>
+        <Field label="Server" value={cfg.serverUrl} onChange={set('serverUrl')}
           placeholder="wss://tuodominio/duotalk/ws" autoCapitalize="none" />
-        <Field label="Access token (uguale al server)" value={cfg.accessToken}
-          onChange={set('accessToken')} secure />
-        <Field label="Stanza (uguale sui due telefoni)" value={cfg.room}
-          onChange={set('room')} autoCapitalize="none" />
-        <Field label="Passphrase segreta condivisa" value={cfg.secret}
-          onChange={set('secret')} secure hint="Almeno 8 caratteri. Piu' e' lunga, meglio e'." />
+        <Field label="Access token" value={cfg.accessToken} onChange={set('accessToken')} secure />
+        <Field label="Nome del canale" value={cfg.channel} onChange={set('channel')}
+          placeholder="casa" autoCapitalize="none" />
+        <Field label="Passphrase segreta" value={cfg.secret} onChange={set('secret')} secure
+          hint="Almeno 8 caratteri. Cifra tutto lo scambio: il server non puo’ leggerlo." />
+
+        <Text style={styles.section}>Notifiche (ntfy)</Text>
+        <Text style={styles.sectionHint}>
+          Questi vanno INCROCIATI: il “tuo topic” qui dev’essere il “topic dell’altro”
+          sull’altro telefono. Iscriviti al tuo topic nell’app ntfy per ricevere gli avvisi.
+        </Text>
+        <Field label="Il tuo nome" value={cfg.displayName} onChange={set('displayName')}
+          placeholder="Paolo" hint="Compare nella notifica che riceve l’altro." />
+        <Field label="Il tuo topic (ricevi qui)" value={cfg.myTopic} onChange={set('myTopic')}
+          placeholder="duotalk-paolo-x7k2" autoCapitalize="none"
+          hint="Iscrivilo nell’app ntfy di QUESTO telefono." />
+        <Field label="Topic dell’altro (suoni qui)" value={cfg.peerTopic} onChange={set('peerTopic')}
+          placeholder="duotalk-altro-9m4p" autoCapitalize="none" />
 
         <Text style={styles.section}>TURN di fallback (opzionale)</Text>
+        <Text style={styles.sectionHint}>Serve solo se le vostre reti impediscono il collegamento diretto.</Text>
         <Field label="TURN url" value={cfg.turnUrl} onChange={set('turnUrl')}
           placeholder="turn:tuodominio:3478" autoCapitalize="none" />
         <Field label="TURN utente" value={cfg.turnUser} onChange={set('turnUser')} autoCapitalize="none" />
@@ -53,7 +66,7 @@ export default function SettingsScreen({ initial, onSave }: Props) {
           style={[styles.button, !ready && styles.buttonDisabled]}
           disabled={!ready}
           onPress={() => onSave(cfg)}>
-          <Text style={styles.buttonText}>Salva e connetti</Text>
+          <Text style={styles.buttonText}>Entra nel canale</Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -77,7 +90,7 @@ function Field(props: {
         value={props.value}
         onChangeText={props.onChange}
         placeholder={props.placeholder}
-        placeholderTextColor="#667"
+        placeholderTextColor="#5a6472"
         secureTextEntry={props.secure}
         autoCapitalize={props.autoCapitalize ?? 'sentences'}
         autoCorrect={false}
@@ -88,23 +101,24 @@ function Field(props: {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#0e1117' },
+  flex: { flex: 1, backgroundColor: '#0b0e14' },
   container: { padding: 20, paddingBottom: 60 },
-  title: { fontSize: 34, fontWeight: '800', color: '#fff', marginTop: 20 },
-  subtitle: { color: '#9aa4b2', marginTop: 8, marginBottom: 16, lineHeight: 20 },
-  section: { color: '#7cc4ff', fontWeight: '700', marginTop: 18, marginBottom: 4 },
+  title: { fontSize: 34, fontWeight: '800', color: '#fff', marginTop: 16 },
+  subtitle: { color: '#8892a0', marginTop: 8, lineHeight: 21 },
+  section: { color: '#7cc4ff', fontWeight: '700', fontSize: 16, marginTop: 26 },
+  sectionHint: { color: '#6b7686', fontSize: 13, marginTop: 4, marginBottom: 12, lineHeight: 19 },
   field: { marginBottom: 14 },
   label: { color: '#c9d2de', marginBottom: 6, fontWeight: '600' },
   input: {
-    backgroundColor: '#1a1f29', color: '#fff', borderRadius: 10,
+    backgroundColor: '#151a23', color: '#fff', borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12, fontSize: 16,
-    borderWidth: 1, borderColor: '#2a313d',
+    borderWidth: 1, borderColor: '#252c38',
   },
-  hint: { color: '#6b7686', fontSize: 12, marginTop: 4 },
+  hint: { color: '#6b7686', fontSize: 12, marginTop: 5, lineHeight: 17 },
   button: {
     backgroundColor: '#2f7cf6', borderRadius: 12, paddingVertical: 16,
-    alignItems: 'center', marginTop: 24,
+    alignItems: 'center', marginTop: 30,
   },
-  buttonDisabled: { backgroundColor: '#3a4353' },
+  buttonDisabled: { backgroundColor: '#333c4a' },
   buttonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
 });

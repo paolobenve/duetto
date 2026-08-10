@@ -1,103 +1,116 @@
 # DuoTalk
 
-Un mini "Discord" fatto su misura per **due sole persone**: chiamate **audio e video**
-tra due telefoni Android, con traffico **cifrato end-to-end direttamente tra i due
-dispositivi**. Il tuo server serve solo a farvi trovare (signaling) e, se serve, come
-relay di fallback — ma **non può leggere né audio/video né i dati di connessione**.
+Un mini "Discord" fatto su misura per **due sole persone**. Non è un'app per
+*chiamare*: è un **canale permanente**. Apri l'app e sei dentro; se c'è anche l'altro
+vi collegate da soli, altrimenti resti lì ad aspettare — e puoi **bussare** per
+avvisarlo che sei arrivato, con una notifica che gli arriva anche ad app chiusa.
 
-## Come funziona (in breve)
+Audio e video viaggiano **cifrati end-to-end direttamente tra i due telefoni**. Il tuo
+server serve solo a farvi trovare e a suonare il campanello: **non può leggere nulla**.
+
+## Come funziona
 
 ```
-  Telefono A  ⇄  [ tuo server: signaling (postino) + TURN (relay) ]  ⇄  Telefono B
-      └──────────────  media audio/video P2P cifrato (DTLS-SRTP)  ──────────────┘
+  Telefono A  ⇄  [ tuo server: signaling + ntfy (campanello) + TURN ]  ⇄  Telefono B
+      └──────────────  audio/video P2P cifrato (DTLS-SRTP)  ──────────────┘
 ```
 
-- **Media (audio/video)**: WebRTC li cifra sempre end-to-end (DTLS-SRTP). Quando la rete
-  lo permette vanno **diretti** da telefono a telefono; altrimenti passano dal tuo **TURN**
-  (coturn), restando comunque cifrati e illeggibili per il server.
-- **Signaling (lo scambio iniziale per "trovarsi")**: i parametri WebRTC (SDP/ICE) vengono
-  **cifrati con una passphrase condivisa** nota solo ai due telefoni, con NaCl secretbox.
-  Il server inoltra buste opache: non può leggerle né alterarle (niente man-in-the-middle).
-- **Solo due utenti**: ogni "stanza" accetta al massimo 2 dispositivi; un eventuale terzo
-  viene rifiutato. Un token condiviso fa da ulteriore barriera anti-abuso.
+- **Canale, non chiamata**: entri e resti. Il server tiene la presenza (max 2).
+- **Audio subito, video a richiesta**: entrando si apre il microfono; la camera si
+  accende solo se la vuoi — e quando la spegni viene **rilasciata davvero**.
+- **Campanello ntfy**: quando entri nel canale e l'altro non c'è, il server pubblica una
+  notifica sul suo topic ntfy. Toccandola si apre DuoTalk. C'è anche un pulsante
+  **Bussa** per richiamarlo quando vuoi.
+- **Cifratura**: il media è cifrato da WebRTC (DTLS-SRTP). In più il **signaling stesso**
+  (SDP/ICE) è cifrato con una passphrase nota solo ai due telefoni, quindi il server
+  inoltra buste opache e non può fare da man-in-the-middle.
 
-## Struttura del repository
+## Struttura
 
 ```
 duotalk/
-├── server/              # Signaling server Node.js (WebSocket) + config di deploy
-│   ├── src/index.js
+├── server/              # Signaling WebSocket + push ntfy
+│   ├── src/index.js     # presenza nel canale, inoltro buste, campanello
+│   ├── src/ntfy.js      # pubblicazione notifiche
+│   ├── smoke-test.mjs   # test end-to-end del server
 │   └── deploy/          # nginx, apache, coturn, systemd
 ├── app/                 # App Android in React Native
-│   ├── src/             # Tutta la logica: crypto, signaling, webrtc, UI
-│   ├── bootstrap.sh     # Genera la parte nativa Android e installa le dipendenze
+│   ├── src/             # crypto, signaling, webrtc, UI del canale
+│   ├── bootstrap.sh     # genera la parte nativa Android
 │   └── scripts/
-└── docs/                # Architettura e guida al deploy dettagliata
+└── docs/                # architettura e guida al deploy
 ```
 
 ## Avvio rapido
 
-### 1. Server (sul tuo host)
+### 1. Server
 
 ```bash
 cd server
 cp .env.example .env
-# genera un token: openssl rand -base64 32  -> mettilo in ACCESS_TOKEN
+# genera il token:  openssl rand -base64 32   -> mettilo in ACCESS_TOKEN
+# imposta NTFY_URL con l'indirizzo del tuo ntfy
 npm install
-npm start          # ascolta su 127.0.0.1:8787
+npm start                 # ascolta su 127.0.0.1:8787
+npm run test:smoke        # verifica che tutto funzioni
 ```
 
-Poi esponilo in HTTPS dietro il tuo reverse proxy (vedi `server/deploy/` e
-[docs/DEPLOY.md](docs/DEPLOY.md)). L'app si collegherà a `wss://TUO_DOMINIO/duotalk/ws`.
+Poi esponilo in HTTPS dietro il tuo reverse proxy e installa **ntfy** e **coturn**:
+tutti i passaggi sono in [docs/DEPLOY.md](docs/DEPLOY.md).
 
-Per la connettività su reti difficili, installa **coturn** con
-`server/deploy/coturn.conf.example`.
+### 2. App Android (su entrambi i telefoni)
 
-### 2. App Android (per ciascuno dei due telefoni)
-
-Prerequisiti: Node 18+, un JDK 17+, Android SDK (`ANDROID_HOME`).
+Prerequisiti: Node 18+, JDK 17+, Android SDK (`ANDROID_HOME`).
 
 ```bash
 cd app
-./bootstrap.sh     # crea android/, applica i permessi, npm install
-npm start          # avvia il bundler Metro
+./bootstrap.sh     # crea android/, applica permessi e deep link, npm install
+npm start          # bundler Metro
 npm run android    # compila e installa sul telefono collegato
 ```
 
-Per un APK da installare a mano sul secondo telefono:
+Per il secondo telefono conviene un APK: `npm run build:apk`
+(→ `android/app/build/outputs/apk/release/`).
 
-```bash
-npm run build:apk  # -> android/app/build/outputs/apk/release/app-release.apk
-```
+Installa anche l'**app ntfy** su entrambi i telefoni e iscrivi ciascuno al proprio topic.
 
-### 3. Configurazione (uguale sui due telefoni)
+### 3. Configurazione
 
-All'avvio l'app chiede:
+Valori **identici** sui due telefoni:
 
 | Campo | Cosa metterci |
 |-------|---------------|
-| **Server** | `wss://TUO_DOMINIO/duotalk/ws` |
-| **Access token** | lo stesso valore di `ACCESS_TOKEN` nel `.env` del server |
-| **Stanza** | un nome qualsiasi, **identico** sui due telefoni (es. `casa`) |
-| **Passphrase** | segreto condiviso, lungo e casuale — **non lasciarlo passare dal server** |
-| TURN (opzionale) | url/utente/password del tuo coturn |
+| Server | `wss://TUO_DOMINIO/duotalk/ws` |
+| Access token | lo stesso di `ACCESS_TOKEN` nel `.env` |
+| Nome del canale | es. `casa` |
+| Passphrase | segreto lungo e casuale, scambiato a voce |
 
-Quando entrambi i telefoni sono nella stessa stanza con la stessa passphrase, la chiamata
-parte da sola. In chiamata puoi: **mutare il microfono**, **togliere/mettere il video**,
-**cambiare camera**, **chiudere**.
+Valori **incrociati** (quello che per uno è "mio" per l'altro è "dell'altro"):
 
-## Sicurezza — cosa garantisce e cosa no
+| Telefono di Anna | Telefono di Bruno |
+|---|---|
+| Il tuo topic: `duotalk-anna-x7k2` | Il tuo topic: `duotalk-bruno-9m4p` |
+| Topic dell'altro: `duotalk-bruno-9m4p` | Topic dell'altro: `duotalk-anna-x7k2` |
 
-- ✅ Audio/video cifrati end-to-end (WebRTC/DTLS-SRTP), anche se passano dal TURN.
-- ✅ Signaling cifrato e autenticato con la passphrase: il server non fa MITM.
-- ✅ Massimo due partecipanti per stanza.
-- ⚠️ La sicurezza dipende dalla **robustezza della passphrase**: scegline una lunga e
-  scambiala di persona/a voce, mai via canali insicuri.
-- ⚠️ Il server (metadati): vede *che* due dispositivi sono connessi e *quando*, ma non i
-  contenuti. Usa sempre HTTPS/WSS sul reverse proxy.
+Ogni telefono si iscrive **al proprio** topic nell'app ntfy. Usa nomi lunghi e casuali:
+su ntfy chi conosce il nome di un topic può leggerlo (a meno di attivare l'autenticazione,
+consigliata e spiegata in DEPLOY).
 
-Dettagli in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+## Sicurezza
 
-## Licenza
+- ✅ Audio/video cifrati end-to-end, anche quando passano dal TURN.
+- ✅ Signaling cifrato e autenticato: il server non può leggerlo né alterarlo.
+- ✅ Massimo due presenze per canale, protette da token.
+- ⚠️ Tutto dipende dalla **passphrase**: lunga, casuale, scambiata di persona.
+- ⚠️ Le notifiche ntfy contengono solo `"<nome> è nel canale"` — nessun contenuto della
+  conversazione — ma passano dal server ntfy: tienilo tuo e con autenticazione attiva.
+- ⚠️ Il server vede i **metadati**: chi è connesso e quando, non cosa vi dite.
 
-Uso personale. Vedi il file, adattalo alle tue esigenze.
+Dettagli e modello di minaccia in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Limite noto
+
+Se metti l'app in background, Android può sospendere la connessione e quindi farti
+uscire dal canale. Per restare presente a schermo spento servirebbe un *foreground
+service* con permesso microfono: è la naturale evoluzione successiva, non ancora
+implementata.

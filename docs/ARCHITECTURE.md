@@ -1,80 +1,116 @@
 # Architettura di DuoTalk
 
-## Obiettivo
+## Modello: canale, non chiamata
 
-Chiamate audio/video tra **due soli** dispositivi Android, con contenuto **illeggibile
-per il server** che li mette in contatto.
+Non esiste il concetto di "chiamare" o "rispondere". Esiste un **canale permanente**
+per due persone. Ci entri, ci resti, e quando entra anche l'altro il collegamento si
+stabilisce da solo. È il modello di un canale vocale Discord, ridotto a due posti.
+
+Ne conseguono tre cose:
+1. **L'ingresso è automatico** all'apertura dell'app: non c'è nulla da premere.
+2. **Serve un campanello**, perché l'altro potrebbe non avere l'app aperta → ntfy.
+3. **La presenza è lo stato principale** dell'interfaccia: "sei solo" / "ci siete
+   entrambi", non "sta squillando".
 
 ## Componenti
 
-### 1. Signaling server (`server/src/index.js`)
-WebSocket minimale in Node.js. Ha tre compiti:
+### 1. Signaling e presenza (`server/src/index.js`)
 
-1. **Pairing**: mette in comunicazione i due client che indicano la stessa `room`.
-2. **Limite a 2**: rifiuta un terzo dispositivo (`room-full`).
-3. **Inoltro**: gira i messaggi `signal` da un peer all'altro senza leggerne il contenuto.
+WebSocket minimale in Node.js:
 
-Il primo messaggio del client è `join { room, token }`. Il `token` (in chiaro) è un
-segreto anti-abuso confrontato con `ACCESS_TOKEN`. La `room` serve solo ad accoppiare.
-Tutto il resto viaggia dentro `signal.payload`, che è **cifrato**.
+- **Presenza**: ogni canale accetta al massimo 2 connessioni; la terza riceve `room-full`.
+- **Ruoli**: chi entra per primo è `polite`, il secondo è `impolite`. Servono alla
+  perfect negotiation (sotto). L'assegnazione è deterministica, così i due ruoli non
+  coincidono mai.
+- **Inoltro**: gira i messaggi `signal` da un peer all'altro **senza leggerne il
+  contenuto**.
+- **Campanello**: quando qualcuno entra e l'altro *non* c'è, pubblica su ntfy. Se l'altro
+  è già presente non notifica nulla: se ne accorge da sé, e sarebbe solo rumore.
 
-Il secondo client a entrare riceve `initiator: true` e avvia la negoziazione WebRTC.
+Il primo messaggio è `join { room, token, peerTopic, name }`. In chiaro viaggia solo ciò
+che serve al server per lavorare; `peerTopic` è il topic **dell'altra persona**, cioè
+quello che vogliamo far suonare.
 
-### 2. Cifratura del signaling (`app/src/crypto.ts`)
-- KDF: `SHA-512(passphrase)` troncato a 32 byte → chiave.
+### 2. Notifiche (`server/src/ntfy.js`)
+
+Pubblicazione HTTP verso il tuo ntfy self-hosted. Due casi:
+
+| Evento | Priorità | Testo |
+|---|---|---|
+| Entri e l'altro non c'è | 4 (alta) | `<nome> e' nel canale` |
+| Premi "Bussa" | 5 (massima) | `<nome> ti aspetta nel canale` |
+
+La notifica porta un `click` con deep link `duotalk://channel`: toccandola si apre
+DuoTalk (l'intent filter è aggiunto al manifest da `scripts/patch-android-manifest.js`,
+con `launchMode="singleTask"` per non aprire una seconda istanza).
+
+Il testo è volutamente generico: passa dal server ntfy, quindi non contiene nulla della
+conversazione. Il pulsante "Bussa" ha un cooldown di 15 secondi lato server.
+
+### 3. Cifratura del signaling (`app/src/crypto.ts`)
+
+- Chiave: `SHA-512(passphrase)` troncato a 32 byte.
 - Cifrario: **NaCl secretbox** (XSalsa20-Poly1305), nonce casuale a 24 byte per messaggio.
 - Il ciphertext è **autenticato**: qualsiasi manomissione fa fallire `open()`.
 
-Conseguenza: il server (o chi intercetta il WSS) vede solo base64 opaco. Non può leggere
-gli SDP/ICE né sostituire il **fingerprint DTLS** per inserirsi nel mezzo, perché non
-conosce la passphrase.
+Il server vede solo base64 opaco. Non potendo leggere né riscrivere gli SDP, non può
+sostituire il **fingerprint DTLS**, che è ciò che gli permetterebbe di inserirsi nel
+mezzo. Senza la passphrase il MITM non è possibile.
 
-### 3. Trasporto media (`app/src/webrtc.ts`)
-WebRTC standard tramite `react-native-webrtc`:
-- `getUserMedia` per microfono + camera.
-- `RTCPeerConnection` con ICE server (STUN pubblico + TURN opzionale).
-- Negoziazione offer/answer; ICE candidate scambiati (cifrati) via signaling.
-- Il media è **DTLS-SRTP**: cifrato end-to-end per costruzione, anche via TURN relay.
+### 4. Media (`app/src/webrtc.ts`)
 
-Controlli in chiamata: `toggleAudio`, `toggleVideo`, `switchCamera` agiscono sulle tracce
-locali (`track.enabled`) — immediati e senza rinegoziazione.
+- Entrando nel canale si apre **solo il microfono**.
+- La **camera** si accende su richiesta: `getUserMedia` + `addTrack`, e spegnendola si
+  fa `removeTrack` + `track.stop()`, così la camera è davvero rilasciata (l'indicatore
+  privacy di Android si spegne).
+- Aggiungere o togliere una traccia richiede una **rinegoziazione**. Se entrambi
+  accendono il video nello stesso istante si ha una *collisione di offerte*: la
+  risolviamo con la **perfect negotiation** — il peer `polite` annulla la propria
+  offerta (rollback) e accetta quella dell'altro, l'`impolite` ignora quella in arrivo.
+- Gli **ICE candidate** che arrivano prima della remote description finiscono in coda e
+  vengono applicati dopo, altrimenti andrebbero persi.
+- Un messaggio cifrato `state` comunica all'altro se hai mic/camera attivi, per mostrarlo
+  nell'interfaccia.
 
-## Flusso di una chiamata
+## Flusso
 
 ```
-A: join(room, token) ──▶ server ──▶ joined{initiator:false}   (A aspetta)
-B: join(room, token) ──▶ server ──▶ joined{initiator:true}    (B è l'initiator)
-                          server ──▶ peer-joined ──▶ A
+A apre l'app ─▶ join(canale) ─▶ joined{polite:true, peers:0}
+                                 └─▶ ntfy: "Anna e' nel canale" ──▶ 📱 telefono di B
 
-B: createOffer → setLocalDescription
-B: signal{ SEAL(offer) } ──▶ server ──▶ A: signal ──▶ OPEN → setRemoteDescription
-A: createAnswer → setLocalDescription
-A: signal{ SEAL(answer) } ──▶ server ──▶ B: OPEN → setRemoteDescription
+B apre l'app ─▶ join(canale) ─▶ joined{polite:false, peers:1}
+                                 └─▶ peer-joined ──▶ A     (niente notifica: c'e' gia')
 
-A/B: onicecandidate → signal{ SEAL(ice) } ──▶ (reciproco)
-      ⇒ ICE trova il percorso migliore: diretto P2P, o via TURN se necessario
-      ⇒ DTLS handshake ⇒ media SRTP cifrato scorre tra i due telefoni
+B (impolite) apre la negoziazione:
+  createOffer → signal{ SEAL(offer) } ─▶ server ─▶ A: OPEN → setRemoteDescription
+  A: createAnswer → signal{ SEAL(answer) } ─▶ server ─▶ B: OPEN
+  entrambi: onicecandidate → signal{ SEAL(ice) }
+
+  ⇒ ICE sceglie il percorso: diretto, o via TURN se le reti lo impongono
+  ⇒ DTLS handshake ⇒ audio SRTP cifrato tra i due telefoni
+
+Poi, quando uno accende il video: addTrack → negotiationneeded → nuova offerta
 ```
 
 `SEAL`/`OPEN` = cifra/decifra con la passphrase condivisa.
 
 ## Modello di minaccia
 
-| Avversario | Può fare | Non può fare |
-|-----------|----------|--------------|
-| Chi ascolta la rete (WSS) | vedere che c'è traffico | leggere media o signaling |
-| Server compromesso | vedere metadati (chi/quando), fare DoS | leggere/alterare i contenuti (MITM) |
-| Terzo con l'URL del server | tentare `join` | entrare senza token; entrare come 3°; decifrare senza passphrase |
-| TURN relay | inoltrare pacchetti | decifrare il media (DTLS-SRTP) |
+| Avversario | Può | Non può |
+|-----------|-----|---------|
+| Chi ascolta la rete | vedere che c'è traffico | leggere media o signaling |
+| Server compromesso | metadati (chi/quando), DoS | leggere o alterare i contenuti |
+| Terzo con l'URL | tentare `join` | entrare senza token, entrare come 3°, decifrare |
+| TURN relay | inoltrare pacchetti | decifrare il media |
+| Server ntfy | vedere *che* c'è un avviso e il nome | sapere cosa vi dite |
 
-Punto debole principale: la **passphrase**. Va lunga, casuale e scambiata fuori banda.
+Punto debole principale: la **passphrase**. Lunga, casuale, scambiata fuori banda.
 
-## Scelte e possibili estensioni
+## Limiti noti e possibili estensioni
 
-- **SAS/verifica fingerprint**: già coperto implicitamente dalla passphrase (il server non
-  può sostituire il fingerprint). Volendo si può mostrare a schermo un "codice di sicurezza"
-  derivato dai fingerprint DTLS per conferma visiva.
-- **Notifiche/squillo**: ora la chiamata parte quando entrambi aprono l'app. Per uno
-  "squillo" servirebbe FCM/push (fuori dallo scopo minimale).
-- **Chat testuale**: si può aggiungere un `RTCDataChannel` (già cifrato) riusando lo stesso
-  `CallSession`.
+- **Background**: se l'app va in background, Android può sospendere la connessione e
+  quindi la presenza. Per restare nel canale a schermo spento serve un *foreground
+  service* con `FOREGROUND_SERVICE_MICROPHONE` (Android 14+). Non implementato.
+- **Codice di sicurezza visivo**: si potrebbe mostrare un SAS derivato dai fingerprint
+  DTLS, per confermare a voce che non c'è un MITM. Oggi la garanzia è la passphrase.
+- **Chat testuale**: un `RTCDataChannel` sulla connessione esistente sarebbe già cifrato.

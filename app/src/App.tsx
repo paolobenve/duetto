@@ -1,109 +1,150 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   SafeAreaView, StatusBar, Platform, PermissionsAndroid, Alert, View,
-  ActivityIndicator, StyleSheet, Text, TouchableOpacity,
+  ActivityIndicator, StyleSheet,
 } from 'react-native';
 import { MediaStream } from 'react-native-webrtc';
+import InCallManager from 'react-native-incall-manager';
 import { DuoConfig, loadConfig, saveConfig, isConfigComplete } from './config';
-import { Signaling, SignalingStatus } from './signaling';
-import { CallSession } from './webrtc';
+import { Signaling, PresenceStatus } from './signaling';
+import { ChannelSession } from './webrtc';
 import SettingsScreen from './SettingsScreen';
-import CallScreen from './CallScreen';
+import ChannelScreen from './ChannelScreen';
 
-type Screen = 'loading' | 'settings' | 'call';
+type Screen = 'loading' | 'settings' | 'channel';
 
-/** Chiede i permessi runtime di camera e microfono su Android. */
-async function ensurePermissions(): Promise<boolean> {
+async function askPermission(perm: any, motivo: string): Promise<boolean> {
   if (Platform.OS !== 'android') return true;
-  const res = await PermissionsAndroid.requestMultiple([
-    PermissionsAndroid.PERMISSIONS.CAMERA,
-    PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-  ]);
-  return (
-    res[PermissionsAndroid.PERMISSIONS.CAMERA] === 'granted' &&
-    res[PermissionsAndroid.PERMISSIONS.RECORD_AUDIO] === 'granted'
-  );
+  const res = await PermissionsAndroid.request(perm, undefined);
+  if (res !== 'granted') {
+    Alert.alert('Permesso negato', motivo);
+    return false;
+  }
+  return true;
 }
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('loading');
   const [cfg, setCfg] = useState<DuoConfig | null>(null);
 
-  const [status, setStatus] = useState<SignalingStatus>('connecting');
-  const [connState, setConnState] = useState<string>('new');
+  const [status, setStatus] = useState<PresenceStatus>('connecting');
+  const [connState, setConnState] = useState('new');
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [audioOn, setAudioOn] = useState(true);
-  const [videoOn, setVideoOn] = useState(true);
+  const [videoOn, setVideoOn] = useState(false);
+  const [peerState, setPeerState] = useState({ audio: true, video: false });
+  const [peerName, setPeerName] = useState('');
+  const [knockPending, setKnockPending] = useState(false);
 
   const signalingRef = useRef<Signaling | null>(null);
-  const callRef = useRef<CallSession | null>(null);
+  const sessionRef = useRef<ChannelSession | null>(null);
+  const politeRef = useRef(false);
 
+  // All'avvio: se la configurazione c'e', si entra dritti nel canale.
   useEffect(() => {
     (async () => {
       const c = await loadConfig();
       setCfg(c);
-      setScreen(isConfigComplete(c) ? 'call' : 'settings');
+      setScreen(isConfigComplete(c) ? 'channel' : 'settings');
     })();
   }, []);
 
   const teardown = useCallback(() => {
-    callRef.current?.stop();
+    sessionRef.current?.leaveChannel();
     signalingRef.current?.close();
-    callRef.current = null;
+    sessionRef.current = null;
     signalingRef.current = null;
+    try { InCallManager.stop(); } catch { /* noop */ }
     setLocalStream(null);
     setRemoteStream(null);
+    setVideoOn(false);
+    setConnState('new');
   }, []);
 
-  // Avvia signaling + chiamata quando si entra nella schermata call.
+  // Ciclo di vita del canale
   useEffect(() => {
-    if (screen !== 'call' || !cfg) return;
+    if (screen !== 'channel' || !cfg) return;
     let cancelled = false;
 
     (async () => {
-      const ok = await ensurePermissions();
-      if (!ok) {
-        Alert.alert('Permessi mancanti', 'Servono camera e microfono per la chiamata.');
-        setScreen('settings');
-        return;
-      }
-      if (cancelled) return;
+      const ok = await askPermission(
+        PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+        'Senza microfono non puoi parlare nel canale.',
+      );
+      if (!ok || cancelled) { if (!ok) setScreen('settings'); return; }
+
+      // Audio in vivavoce, come su Discord.
+      try {
+        InCallManager.start({ media: 'audio' });
+        InCallManager.setForceSpeakerphoneOn(true);
+      } catch { /* noop */ }
 
       const signaling = new Signaling(cfg, {
         onStatus: setStatus,
-        onJoined: async ({ initiator }) => {
-          // Crea la sessione una sola volta
-          if (callRef.current) return;
-          const call = new CallSession(cfg, signaling, {
-            onLocalStream: (s) => { setLocalStream(s); setAudioOn(true); setVideoOn(true); },
-            onRemoteStream: setRemoteStream,
-            onConnectionState: setConnState,
-          });
-          callRef.current = call;
+
+        onJoined: async ({ polite, peerPresent }) => {
+          politeRef.current = polite;
+          if (!sessionRef.current) {
+            sessionRef.current = new ChannelSession(cfg, signaling, {
+              onLocalStream: setLocalStream,
+              onRemoteStream: setRemoteStream,
+              onConnectionState: setConnState,
+              onPeerState: setPeerState,
+            });
+          }
           try {
-            await call.start(initiator);
+            await sessionRef.current.enterChannel();
+            setAudioOn(sessionRef.current.isAudioEnabled());
+            if (peerPresent) {
+              await sessionRef.current.attachPeer(polite);
+              sessionRef.current.broadcastState();
+            }
           } catch (e: any) {
-            Alert.alert('Errore media', String(e?.message ?? e));
+            Alert.alert('Errore microfono', String(e?.message ?? e));
           }
         },
-        onPeerLeft: () => {
-          // L'altro se n'e' andato: chiudiamo la sessione ma restiamo in attesa.
-          callRef.current?.stop();
-          callRef.current = null;
-          setRemoteStream(null);
-          setLocalStream(null);
+
+        onPeerJoined: async (name) => {
+          setPeerName(name);
+          setKnockPending(false);
+          try {
+            await sessionRef.current?.attachPeer(politeRef.current);
+            sessionRef.current?.broadcastState();
+          } catch { /* noop */ }
         },
-        onSignal: (msg) => { callRef.current?.onSignal(msg); },
+
+        onPeerLeft: () => {
+          // L'altro e' uscito: chiudiamo la connessione ma restiamo nel canale.
+          sessionRef.current?.detachPeer();
+          setPeerState({ audio: true, video: false });
+          setConnState('new');
+        },
+
+        onSignal: (msg) => { sessionRef.current?.onSignal(msg); },
+
+        onKnockResult: (ok, error) => {
+          if (ok) {
+            setKnockPending(true);
+            setTimeout(() => setKnockPending(false), 15000);
+          } else if (error === 'no-topic') {
+            Alert.alert('Notifiche non configurate', 'Imposta il "topic dell’altro" nelle impostazioni.');
+          } else if (error === 'too-soon') {
+            Alert.alert('Aspetta un momento', 'Hai gia’ bussato da poco.');
+          } else {
+            Alert.alert('Notifica non inviata', 'Il server ntfy non ha risposto.');
+          }
+        },
+
         onError: (code) => {
           if (code === 'bad-token') Alert.alert('Token errato', 'Access token non valido.');
-          else if (code === 'room-full') Alert.alert('Stanza piena', 'Ci sono gia’ due dispositivi.');
+          else if (code === 'room-full') Alert.alert('Canale pieno', 'Ci sono gia’ due dispositivi.');
           else if (code === 'decrypt-failed') {
-            // Passphrase diversa tra i due telefoni
-            setStatus('waiting-peer');
+            Alert.alert('Passphrase diversa', 'I due telefoni hanno passphrase differenti.');
           }
         },
       });
+
       signalingRef.current = signaling;
       signaling.connect();
     })();
@@ -111,10 +152,30 @@ export default function App() {
     return () => { cancelled = true; teardown(); };
   }, [screen, cfg, teardown]);
 
+  const onToggleVideo = useCallback(async () => {
+    const s = sessionRef.current;
+    if (!s) return;
+    if (s.isVideoEnabled()) {
+      setVideoOn(await s.disableVideo());
+      try { InCallManager.setForceSpeakerphoneOn(true); } catch { /* noop */ }
+      return;
+    }
+    const ok = await askPermission(
+      PermissionsAndroid.PERMISSIONS.CAMERA,
+      'Serve il permesso camera per attivare il video.',
+    );
+    if (!ok) return;
+    try {
+      setVideoOn(await s.enableVideo());
+    } catch (e: any) {
+      Alert.alert('Errore camera', String(e?.message ?? e));
+    }
+  }, []);
+
   const onSave = useCallback(async (next: DuoConfig) => {
     await saveConfig(next);
     setCfg(next);
-    setScreen('call');
+    setScreen('channel');
   }, []);
 
   if (screen === 'loading' || !cfg) {
@@ -138,31 +199,28 @@ export default function App() {
   return (
     <View style={styles.safe}>
       <StatusBar barStyle="light-content" />
-      <CallScreen
+      <ChannelScreen
+        channel={cfg.channel}
+        peerName={peerName}
         localStream={localStream}
         remoteStream={remoteStream}
         status={status}
         connectionState={connState}
         audioOn={audioOn}
         videoOn={videoOn}
-        onToggleAudio={() => setAudioOn(callRef.current?.toggleAudio() ?? false)}
-        onToggleVideo={() => setVideoOn(callRef.current?.toggleVideo() ?? false)}
-        onSwitchCamera={() => callRef.current?.switchCamera()}
-        onHangUp={() => { teardown(); setScreen('settings'); }}
+        peerState={peerState}
+        knockPending={knockPending}
+        onToggleAudio={() => setAudioOn(sessionRef.current?.toggleAudio() ?? false)}
+        onToggleVideo={onToggleVideo}
+        onSwitchCamera={() => sessionRef.current?.switchCamera()}
+        onKnock={() => signalingRef.current?.knock()}
+        onOpenSettings={() => setScreen('settings')}
       />
-      <TouchableOpacity style={styles.settingsLink} onPress={() => { teardown(); setScreen('settings'); }}>
-        <Text style={styles.settingsLinkText}>{'⚙'}</Text>
-      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0e1117' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0e1117' },
-  settingsLink: {
-    position: 'absolute', top: 14, right: 14, width: 40, height: 40, borderRadius: 20,
-    alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  settingsLinkText: { color: '#fff', fontSize: 20 },
+  safe: { flex: 1, backgroundColor: '#0b0e14' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0b0e14' },
 });
