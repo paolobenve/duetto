@@ -3,11 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "android": "react-native run-android",
+    "sync": "node scripts/sync-local-modules.js",
+    "android": "npm run sync && react-native run-android",
     "start": "react-native start",
-    "build:apk": "cd android && ./gradlew assembleRelease",
+    "build:apk": "npm run sync && cd android && ./gradlew assembleRelease",
     "lint": "eslint .",
-    "tsc": "tsc --noEmit"
+    "tsc": "tsc --noEmit",
+    "postinstall": "node scripts/sync-local-modules.js"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.1.0",

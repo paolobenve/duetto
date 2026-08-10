@@ -33,10 +33,17 @@ else
   done
 fi
 
+# Gradle deve sapere dov'e' l'SDK anche quando viene lanciato da npm, che
+# non eredita ANDROID_HOME dall'ambiente della shell.
+if [ -n "${ANDROID_HOME:-}" ] && [ ! -f "$HERE/android/local.properties" ]; then
+  echo "sdk.dir=$ANDROID_HOME" > "$HERE/android/local.properties"
+  echo "==> Scritto android/local.properties (sdk.dir=$ANDROID_HOME)"
+fi
+
 echo "==> Applico permessi, deep link e foreground service al manifest..."
 node "$HERE/scripts/patch-android-manifest.js"
 
-# Il modulo nativo duotalk-foreground e' scritto per l'architettura classica,
+# Il modulo nativo duotalk-platform e' scritto per l'architettura classica,
 # pienamente supportata in RN 0.76. Con la New Architecture servirebbe il
 # livello di interop e non tutte le dipendenze lo gradiscono.
 GRADLE_PROPS="$HERE/android/gradle.properties"

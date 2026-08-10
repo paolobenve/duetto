@@ -4,48 +4,75 @@ const isAndroid = Platform.OS === 'android';
 const NativeForeground = NativeModules.DuoTalkForeground;
 const NativePip = NativeModules.DuoTalkPip;
 
-const no = async () => false;
+/**
+ * Chiama un metodo nativo solo se esiste davvero.
+ *
+ * Il lato JS e il lato nativo possono disallinearsi: basta un APK
+ * costruito con una versione precedente del modulo. Senza questa
+ * protezione una chiamata a un metodo mancante fa cadere l'intera app
+ * con "undefined is not a function", per giunta lontano dal punto in cui
+ * sta il vero problema. Meglio non fare nulla e restituire false.
+ */
+function call(mod, name, ...args) {
+  const fn = mod && mod[name];
+  if (typeof fn !== 'function') {
+    if (__DEV__) console.warn(`[duotalk-platform] metodo nativo assente: ${name}`);
+    return Promise.resolve(false);
+  }
+  try {
+    return Promise.resolve(fn.apply(mod, args));
+  } catch (e) {
+    return Promise.resolve(false);
+  }
+}
+
+const unavailable = () => Promise.resolve(false);
 
 /**
  * Foreground service Android.
  *
- * Senza questo, mettendo l'app in background o spegnendo lo schermo Android
- * sospende il processo: la connessione cadrebbe e usciresti dal canale.
- * Un foreground service con tipo "microphone" e' l'unico modo supportato
- * per restare attivi (ed e' anche l'unico modo consentito da Android 14+
- * per continuare a usare il microfono fuori dal primo piano).
+ * Senza questo, mettendo l'app in background o spegnendo lo schermo
+ * Android sospende il processo: la connessione cadrebbe e usciresti dal
+ * canale. Il tipo "microphone" e' anche l'unico modo consentito da
+ * Android 14+ per usare il microfono fuori dal primo piano.
  *
- * Il prezzo e' la notifica fissa nella barra di stato: obbligatoria, e'
- * Android che la impone come contropartita per restare vivi.
+ * Il prezzo e' la notifica fissa nella barra di stato: obbligatoria,
+ * e' Android che la impone come contropartita.
  */
 export const Foreground = isAndroid && NativeForeground
   ? {
-      /** Avvia il servizio. `withCamera` aggiunge il tipo camera al servizio. */
-      start: (text = 'Sei nel canale', withCamera = false) =>
-        NativeForeground.start(String(text), !!withCamera),
+      /** Avvia il servizio. `withCamera` aggiunge il tipo camera. */
+      start: (text = 'In ascolto', withCamera = false) =>
+        call(NativeForeground, 'start', String(text), !!withCamera),
 
       /**
-       * Aggiorna il tipo di servizio quando accendi/spegni il video.
-       * Su Android 14+ usare la camera in background richiede che il
-       * servizio dichiari anche il tipo "camera".
+       * Da chiamare quando accendi/spegni il video: su Android 14+ usare
+       * la camera fuori dal primo piano richiede che il servizio
+       * dichiari anche il tipo "camera".
        */
-      setCameraActive: (active) => NativeForeground.setCameraActive(!!active),
+      setCameraActive: (active) =>
+        call(NativeForeground, 'setCameraActive', !!active),
 
-      /** Aggiorna il testo della notifica (es. "Anna e' nel canale"). */
-      setText: (text) => NativeForeground.setText(String(text)),
+      /** Aggiorna il testo della notifica fissa. */
+      setText: (text) => call(NativeForeground, 'setText', String(text)),
 
       /** Ferma il servizio e rilascia il wake lock. */
-      stop: () => NativeForeground.stop(),
+      stop: () => call(NativeForeground, 'stop'),
 
       /** Avviso da mostrare quando l'app non e' in primo piano. */
-      notify: (title, text) => NativeForeground.notify(String(title), String(text)),
+      notify: (title, text) =>
+        call(NativeForeground, 'notify', String(title), String(text)),
 
       /** Toglie l'avviso, quando si rientra nell'app. */
-      clearNotification: () => NativeForeground.clearNotification(),
+      clearNotification: () => call(NativeForeground, 'clearNotification'),
     }
   : {
-      start: no, setCameraActive: no, setText: no, stop: no,
-      notify: no, clearNotification: no,
+      start: unavailable,
+      setCameraActive: unavailable,
+      setText: unavailable,
+      stop: unavailable,
+      notify: unavailable,
+      clearNotification: unavailable,
     };
 
 /**
@@ -54,13 +81,11 @@ export const Foreground = isAndroid && NativeForeground
  */
 export const Pip = isAndroid && NativePip
   ? {
-      /** Vero se il telefono supporta il PiP (Android 8+ e feature presente). */
-      isSupported: () => NativePip.isSupported(),
+      /** Vero se il telefono lo supporta (Android 8+ e funzione presente). */
+      isSupported: () => call(NativePip, 'isSupported'),
 
-      /**
-       * Entra in PiP con le proporzioni date (larghezza/altezza).
-       * Risolve false se il sistema rifiuta.
-       */
-      enter: (aspect = 9 / 16) => NativePip.enter(Number(aspect) || 9 / 16),
+      /** Entra in PiP con le proporzioni date (larghezza/altezza). */
+      enter: (aspect = 9 / 16) =>
+        call(NativePip, 'enter', Number(aspect) || 9 / 16),
     }
-  : { isSupported: no, enter: no };
+  : { isSupported: unavailable, enter: unavailable };
