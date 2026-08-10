@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import type { DuoConfig } from './config';
 import { isServerConfigured, isPaired, normalizeServerUrl } from './config';
+import { VERSION_LABEL } from './version';
 
 type Props = {
   initial: DuoConfig;
@@ -132,6 +133,8 @@ export default function SettingsScreen({ initial, onSave, onUnpair }: Props) {
             {paired ? 'Salva' : 'Avanti'}
           </Text>
         </TouchableOpacity>
+
+        <Text style={styles.version}>{VERSION_LABEL}</Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -197,4 +200,5 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: { backgroundColor: '#333c4a' },
   buttonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  version: { color: '#3a4353', fontSize: 12, textAlign: 'center', marginTop: 24 },
 });

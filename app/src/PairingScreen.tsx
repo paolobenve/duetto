@@ -10,6 +10,7 @@ import {
   pairIdFromCode, newKeyPair, deriveSharedKey, confirmationFor,
   keyToBase64, pubToBase64, pubFromBase64,
 } from './pairing';
+import { VERSION_LABEL } from './version';
 
 type Props = {
   cfg: DuoConfig;
@@ -270,6 +271,7 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
       <Primary label="Crea il codice" onPress={startCreate} />
       <Primary label="Ho un codice" outline onPress={() => setStep('join')} />
       <Secondary label="Cambia server" onPress={onBack} />
+      <Text style={styles.version}>{VERSION_LABEL}</Text>
     </Screen>
   );
 }
@@ -349,4 +351,5 @@ const styles = StyleSheet.create({
   buttonOutlineText: { color: '#7cc4ff' },
   link: { marginTop: 22, padding: 10 },
   linkText: { color: '#6b7686', fontSize: 15 },
+  version: { color: '#3a4353', fontSize: 12, marginTop: 20 },
 });

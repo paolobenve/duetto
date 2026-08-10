@@ -7,6 +7,7 @@ import { MediaStream } from 'react-native-webrtc';
 import type { PresenceStatus } from './signaling';
 import VideoStage from './VideoStage';
 import { AudioRoute, ROUTE_ICON, ROUTE_LABEL } from './audioRoute';
+import { VERSION_LABEL } from './version';
 
 /** Dopo quanto i pulsanti si attenuano, e quanto restano visibili. */
 const IDLE_MS = 4000;
@@ -136,6 +137,8 @@ export default function ChannelScreen(props: Props) {
             <Text style={styles.badgeText}>{'\u{1F512}'} cifrato E2E</Text>
           </View>
         ) : null}
+        <View style={styles.spacer} />
+        <Text style={styles.version}>{VERSION_LABEL}</Text>
       </Animated.View>
 
       {/* Controlli: sempre presenti, in basso */}
@@ -315,6 +318,8 @@ const styles = StyleSheet.create({
   dotGreen: { backgroundColor: '#38d16a' },
   dotGrey: { backgroundColor: '#6b7686' },
   badgeText: { color: '#e6ebf1', fontSize: 13, fontWeight: '600' },
+  spacer: { flex: 1 },
+  version: { color: 'rgba(255,255,255,0.45)', fontSize: 10 },
 
   controls: {
     // Sei pulsanti: su schermi stretti servono misure contenute.

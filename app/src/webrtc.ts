@@ -17,11 +17,15 @@ import type { Signaling, SignalMessage } from './signaling';
  * solo quando la chiedi: cosi' non resta occupata (e l'indicatore privacy
  * di Android non resta acceso) mentre stai nel canale solo per esserci.
  *
- * Accendere/spegnere il video aggiunge o rimuove una traccia, quindi
- * richiede una rinegoziazione. Per gestire il caso in cui entrambi
- * facciano la stessa cosa nello stesso istante usiamo la "perfect
- * negotiation": uno dei due (il polite, cioe' chi era gia' nel canale)
- * cede e annulla la propria offerta.
+ * Il canale video verso l'altro viene pero' aperto SUBITO, anche se
+ * vuoto: accendere e spegnere la camera si limita a mettere o togliere
+ * la traccia al suo interno, senza rinegoziare nulla. E' la differenza
+ * fra un video che si riaccende sempre e uno che dopo il primo giro
+ * mostra uno schermo nero.
+ *
+ * La "perfect negotiation" resta per le rinegoziazioni che possono
+ * comunque capitare: se i due si accavallano, il polite (chi era gia'
+ * nel canale) cede e annulla la propria offerta.
  */
 
 export type ChannelEvents = {
@@ -101,12 +105,36 @@ export class ChannelSession {
     const pc = new RTCPeerConnection({ iceServers: servers });
     this.pc = pc;
 
-    this.localStream!.getTracks().forEach((track) => {
-      const sender = pc.addTrack(track, this.localStream as MediaStream);
-      // Il video puo' essere gia' acceso (l'hai attivato mentre eri da solo):
-      // teniamo il riferimento al sender, o non potremmo piu' spegnerlo.
-      if (track.kind === 'video') this.videoSender = sender;
-    });
+    // Audio: c'e' sempre.
+    const audioTrack = this.localStream!.getAudioTracks()[0];
+    if (audioTrack) pc.addTrack(audioTrack, this.localStream as MediaStream);
+
+    // Video: il canale viene aperto SUBITO, anche senza traccia dentro.
+    //
+    // E' la scelta che rende affidabile l'accensione e lo spegnimento.
+    // Aggiungendo e togliendo la traccia ogni volta si rinegozia, si
+    // creano tracce nuove che si accavallano alle vecchie, e dall'altra
+    // parte si finisce per disegnare quella morta (schermo nero). Con il
+    // canale sempre aperto basta sostituire la traccia al suo interno:
+    // niente rinegoziazione e niente tracce che si accumulano.
+    try {
+      const vt: any = (pc as any).addTransceiver('video', { direction: 'sendrecv' });
+      this.videoSender = vt?.sender ?? null;
+      log('canale video aperto in anticipo:', !!this.videoSender);
+    } catch (e) {
+      log('addTransceiver non disponibile, ripiego su addTrack:', String(e));
+      this.videoSender = null;
+    }
+
+    // Se il video era gia' acceso, la traccia entra nel canale appena aperto.
+    const existingVideo = this.localStream!.getVideoTracks()[0];
+    if (existingVideo) {
+      if (this.videoSender) {
+        try { await this.videoSender.replaceTrack(existingVideo); } catch { /* noop */ }
+      } else {
+        this.videoSender = pc.addTrack(existingVideo, this.localStream as MediaStream);
+      }
+    }
 
     this.remoteStream = new MediaStream();
 
@@ -320,7 +348,7 @@ export class ChannelSession {
     return track.enabled;
   }
 
-  /** Accende la camera: aggiunge la traccia e rinegozia. */
+  /** Accende la camera: mette la traccia nel canale gia' aperto. */
   async enableVideo(): Promise<boolean> {
     if (!this.localStream || this.localStream.getVideoTracks().length > 0) return true;
     const cam = await mediaDevices.getUserMedia({
@@ -333,25 +361,47 @@ export class ChannelSession {
     });
     const track = cam.getVideoTracks()[0];
     if (!track) return false;
-    this.localStream.addTrack(track);
-    // addTrack fa scattare "negotiationneeded": la rinegoziazione parte da sola.
-    if (this.pc) this.videoSender = this.pc.addTrack(track, this.localStream);
+
+    this.localStream.addTrack(track);          // anteprima locale
+    log('camera accesa, traccia', track.id);
+
+    if (this.videoSender) {
+      // Nessuna rinegoziazione: l'altro vede semplicemente ripartire i
+      // fotogrammi sulla traccia che gia' aveva.
+      try {
+        await this.videoSender.replaceTrack(track);
+      } catch (e) {
+        log('replaceTrack fallita:', String(e));
+      }
+    } else if (this.pc) {
+      // Ripiego, se il canale video non era stato aperto in anticipo.
+      this.videoSender = this.pc.addTrack(track, this.localStream);
+    }
+
     this.events.onLocalStream?.(this.localStream);
     this.broadcastState();
     return true;
   }
 
-  /** Spegne la camera: rilascia davvero la traccia e rinegozia. */
+  /** Spegne la camera: svuota il canale e rilascia davvero la camera. */
   async disableVideo(): Promise<boolean> {
     const track = this.localStream?.getVideoTracks()[0];
-    if (this.pc && this.videoSender) {
-      try { this.pc.removeTrack(this.videoSender); } catch { /* noop */ }
-      this.videoSender = null;
+
+    if (this.videoSender) {
+      // Il canale resta aperto e pronto per la prossima accensione.
+      try {
+        await this.videoSender.replaceTrack(null);
+      } catch (e) {
+        log('replaceTrack(null) fallita:', String(e));
+      }
     }
+
     if (track && this.localStream) {
       this.localStream.removeTrack(track);
-      track.stop(); // libera la camera (via l'indicatore privacy di Android)
+      track.stop(); // libera la camera e spegne l'indicatore di Android
+      log('camera spenta, traccia', track.id);
     }
+
     this.events.onLocalStream?.(this.localStream);
     this.broadcastState();
     return false;
