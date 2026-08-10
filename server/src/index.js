@@ -77,7 +77,10 @@ function cleanName(raw) {
 }
 
 const httpServer = createServer((req, res) => {
-  if (req.url === '/healthz') {
+  // Accettiamo sia /healthz sia /qualsiasi/prefisso/healthz: davanti puo'
+  // esserci un proxy che inoltra il percorso senza riscriverlo (HAProxy)
+  // o che lo riscrive (Apache, nginx). Cosi' funziona in entrambi i casi.
+  if (req.url === '/healthz' || req.url.endsWith('/healthz')) {
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ ok: true, rooms: rooms.size }));
     return;
