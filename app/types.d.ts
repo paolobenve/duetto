@@ -23,4 +23,9 @@ declare module 'duotalk-platform' {
     isSupported(): Promise<boolean>;
     enter(aspect?: number): Promise<boolean>;
   };
+
+  /** La finestra dell'app. */
+  export const AppWindow: {
+    minimize(): Promise<boolean>;
+  };
 }

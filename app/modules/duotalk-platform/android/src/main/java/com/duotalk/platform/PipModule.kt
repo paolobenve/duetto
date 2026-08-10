@@ -28,6 +28,28 @@ class PipModule(private val ctx: ReactApplicationContext) :
         private const val MAX_RATIO = 2.39f
     }
 
+    /**
+     * Manda l'app in secondo piano, come farebbe il tasto Home.
+     *
+     * Serve per "Esci": l'app deve sparire dallo schermo, ma il processo
+     * deve restare vivo. Chiuderla davvero (finish) distruggerebbe il
+     * contesto JavaScript e con esso la connessione che ci tiene
+     * raggiungibili, quindi non arriverebbero piu' le notifiche.
+     */
+    @ReactMethod
+    fun minimize(promise: Promise) {
+        val activity = currentActivity
+        if (activity == null) {
+            promise.resolve(false)
+            return
+        }
+        try {
+            promise.resolve(activity.moveTaskToBack(true))
+        } catch (e: Exception) {
+            promise.reject("minimize_error", e)
+        }
+    }
+
     @ReactMethod
     fun isSupported(promise: Promise) {
         val ok = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&

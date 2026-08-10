@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
-import { Foreground, Pip } from 'duotalk-platform';
+import { Foreground, Pip, AppWindow } from 'duotalk-platform';
 import {
   DuoConfig, PairInfo, loadConfig, saveConfig,
   isServerConfigured, isPaired,
@@ -303,6 +303,12 @@ export default function App() {
     inChannelRef.current = false;
     sig?.setMode('listening');
     setScreen('listening');
+
+    // Uscire dal canale e' uscire dall'app: la finestra sparisce. Il
+    // processo pero' resta vivo, cosi' continui a essere raggiungibile e
+    // ricevi la notifica quando l'altro entra. Riaprendo l'app si rientra
+    // direttamente nel canale.
+    AppWindow.minimize().catch(() => {});
   }, []);
 
   // --- tasto Indietro: Picture-in-Picture ----------------------------------
@@ -451,7 +457,7 @@ export default function App() {
         audioOn={audioOn}
         videoOn={videoOn}
         peerState={peerState}
-        remoteHasVideo={remoteHasVideo}
+        remoteHasVideo={remoteHasVideo && peerState.video}
         localAspect={localAspect}
         remoteAspect={peerState.aspect}
         knockPending={knockPending}

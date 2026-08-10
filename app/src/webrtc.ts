@@ -120,13 +120,12 @@ export class ChannelSession {
       this.events.onRemoteStream?.(stream);
       this.reportRemoteVideo();
 
-      // Se l'altro toglie il video, la traccia finisce: va detto alla UI.
-      event.track?.addEventListener?.('ended', () => {
-        try { stream.removeTrack(event.track); } catch { /* noop */ }
-        this.events.onRemoteStream?.(stream);
-        this.reportRemoteVideo();
-      });
-      // Alcune versioni segnalano la sospensione invece della fine.
+      // ATTENZIONE: la traccia NON va rimossa dallo stream quando l'altro
+      // spegne il video. WebRTC riusa lo stesso transceiver quando lo
+      // riaccende, quindi non arriva un secondo evento "track": si
+      // riattiva quella di prima. Togliendola, alla riaccensione non
+      // avremmo piu' nulla da mostrare e il video non tornerebbe.
+      event.track?.addEventListener?.('ended', () => this.reportRemoteVideo());
       event.track?.addEventListener?.('mute', () => this.reportRemoteVideo());
       event.track?.addEventListener?.('unmute', () => this.reportRemoteVideo());
     });
@@ -256,10 +255,17 @@ export class ChannelSession {
     }
   }
 
-  /** Stiamo ricevendo una traccia video viva? */
+  /**
+   * C'e' una traccia video dall'altro, non ancora chiusa.
+   *
+   * Di proposito NON guardiamo "muted": la semantica varia fra versioni
+   * e piattaforme. Se il video sia effettivamente acceso lo dice l'altro
+   * col messaggio di stato; qui rispondiamo solo se il canale video
+   * esiste. Le due informazioni vengono combinate nell'interfaccia.
+   */
   hasRemoteVideo(): boolean {
     const t: any = this.remoteStream?.getVideoTracks()[0];
-    return !!t && t.readyState !== 'ended' && t.muted !== true;
+    return !!t && t.readyState !== 'ended';
   }
 
   private reportRemoteVideo() {

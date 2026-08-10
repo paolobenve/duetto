@@ -89,3 +89,14 @@ export const Pip = isAndroid && NativePip
         call(NativePip, 'enter', Number(aspect) || 9 / 16),
     }
   : { isSupported: unavailable, enter: unavailable };
+
+/**
+ * La finestra dell'app.
+ *
+ * "minimize" manda l'app in secondo piano come il tasto Home, senza
+ * chiuderla: il processo resta vivo e con esso la connessione che ci
+ * tiene raggiungibili. Chiuderla davvero interromperebbe le notifiche.
+ */
+export const AppWindow = isAndroid && NativePip
+  ? { minimize: () => call(NativePip, 'minimize') }
+  : { minimize: unavailable };
