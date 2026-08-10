@@ -30,6 +30,14 @@ export type ChannelEvents = {
   onConnectionState?: (state: string) => void;
   /** stato di mic/camera dell'altra persona, con le proporzioni del suo video */
   onPeerState?: (st: { audio: boolean; video: boolean; aspect?: number }) => void;
+  /**
+   * Se stiamo ricevendo una traccia video.
+   *
+   * Serve un evento esplicito: le tracce vengono aggiunte DENTRO lo
+   * stesso oggetto MediaStream, quindi rinotificare lo stream non
+   * cambierebbe il riferimento e React non ridisegnerebbe nulla.
+   */
+  onRemoteVideo?: (present: boolean) => void;
 };
 
 /** Proporzioni di ripiego: anteprima verticale 9:16, il caso piu' comune. */
@@ -88,11 +96,17 @@ export class ChannelSession {
         if (!stream.getTracks().find((x: any) => x.id === t.id)) stream.addTrack(t);
       });
       this.events.onRemoteStream?.(stream);
-      // Se l'altro toglie il video, la traccia finisce: aggiorniamo la UI.
+      this.reportRemoteVideo();
+
+      // Se l'altro toglie il video, la traccia finisce: va detto alla UI.
       event.track?.addEventListener?.('ended', () => {
         try { stream.removeTrack(event.track); } catch { /* noop */ }
         this.events.onRemoteStream?.(stream);
+        this.reportRemoteVideo();
       });
+      // Alcune versioni segnalano la sospensione invece della fine.
+      event.track?.addEventListener?.('mute', () => this.reportRemoteVideo());
+      event.track?.addEventListener?.('unmute', () => this.reportRemoteVideo());
     });
 
     // @ts-ignore
@@ -194,6 +208,16 @@ export class ChannelSession {
         // candidate duplicato o fuori ordine: ignorabile
       }
     }
+  }
+
+  /** Stiamo ricevendo una traccia video viva? */
+  hasRemoteVideo(): boolean {
+    const t: any = this.remoteStream?.getVideoTracks()[0];
+    return !!t && t.readyState !== 'ended' && t.muted !== true;
+  }
+
+  private reportRemoteVideo() {
+    this.events.onRemoteVideo?.(this.hasRemoteVideo());
   }
 
   private async flushCandidates() {
@@ -317,6 +341,7 @@ export class ChannelSession {
     this.makingOffer = false;
     this.ignoreOffer = false;
     this.events.onRemoteStream?.(null);
+    this.events.onRemoteVideo?.(false);
     if (this.pc) {
       try { this.pc.close(); } catch { /* noop */ }
       this.pc = null;

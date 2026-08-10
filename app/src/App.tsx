@@ -67,6 +67,8 @@ export default function App() {
     audio: boolean; video: boolean; aspect?: number;
   }>({ audio: true, video: false });
   const [knockPending, setKnockPending] = useState(false);
+  /** traccia video dell'altro effettivamente in arrivo (non solo annunciata) */
+  const [remoteHasVideo, setRemoteHasVideo] = useState(false);
 
   const signalingRef = useRef<Signaling | null>(null);
   const sessionRef = useRef<ChannelSession | null>(null);
@@ -253,6 +255,7 @@ export default function App() {
         onRemoteStream: setRemoteStream,
         onConnectionState: setConnState,
         onPeerState: setPeerState,
+        onRemoteVideo: setRemoteHasVideo,
       });
     }
     try {
@@ -285,6 +288,7 @@ export default function App() {
     Foreground.setText('In ascolto').catch(() => {});
     setLocalStream(null);
     setRemoteStream(null);
+    setRemoteHasVideo(false);
     setVideoOn(false);
     setLocalAspect(undefined);
     setConnState('new');
@@ -440,6 +444,7 @@ export default function App() {
         audioOn={audioOn}
         videoOn={videoOn}
         peerState={peerState}
+        remoteHasVideo={remoteHasVideo}
         localAspect={localAspect}
         remoteAspect={peerState.aspect}
         knockPending={knockPending}

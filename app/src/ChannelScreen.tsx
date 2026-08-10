@@ -28,6 +28,8 @@ type Props = {
   audioOn: boolean;
   videoOn: boolean;
   peerState: { audio: boolean; video: boolean; aspect?: number };
+  /** traccia video dell'altro davvero in arrivo */
+  remoteHasVideo: boolean;
   /** proporzioni dei due video, per la forma del riquadrino */
   localAspect?: number;
   remoteAspect?: number;
@@ -49,7 +51,7 @@ type Props = {
 export default function ChannelScreen(props: Props) {
   const {
     channel, peerName, localStream, remoteStream, status, connectionState,
-    audioOn, videoOn, peerState, localAspect, remoteAspect,
+    audioOn, videoOn, peerState, remoteHasVideo, localAspect, remoteAspect,
     knockPending, audioRoute, canCycleRoute,
     onToggleAudio, onToggleVideo, onSwitchCamera, onCycleRoute, onKnock, onLeave,
   } = props;
@@ -60,8 +62,9 @@ export default function ChannelScreen(props: Props) {
 
   const together = status === 'together';
   const linked = connectionState === 'connected';
-  const remoteHasVideo =
-    !!remoteStream && peerState.video && remoteStream.getVideoTracks().length > 0;
+  // remoteHasVideo arriva come prop: e' un evento esplicito della sessione,
+  // perche' le tracce entrano dentro lo stesso MediaStream e React non se
+  // ne accorgerebbe guardando il riferimento.
   const localHasVideo =
     !!localStream && videoOn && localStream.getVideoTracks().length > 0;
 
