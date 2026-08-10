@@ -43,6 +43,25 @@ export type ChannelEvents = {
 /** Proporzioni di ripiego: anteprima verticale 9:16, il caso piu' comune. */
 export const DEFAULT_ASPECT = 9 / 16;
 
+/**
+ * Diagnostica del collegamento.
+ *
+ * Quando la connessione non si stabilisce, dall'esterno si vede solo
+ * "sto stabilendo la connessione". Serve sapere DOVE si ferma: se i
+ * candidati vengono raccolti, di che tipo sono (host = stessa rete,
+ * srflx = visto da fuori tramite STUN, relay = passa dal TURN), e a che
+ * punto si blocca lo stato di ICE. Si legge con:
+ *
+ *   adb logcat -s ReactNativeJS | grep duotalk
+ */
+const log = (...args: any[]) => console.log('[duotalk-rtc]', ...args);
+
+/** host / srflx / prflx / relay: dice che strada sta tentando ICE. */
+function candidateType(candidate: string): string {
+  const m = /(?:^| )typ ([a-z]+)/.exec(candidate || '');
+  return m ? m[1] : '?';
+}
+
 export class ChannelSession {
   private pc: RTCPeerConnection | null = null;
   private localStream: MediaStream | null = null;
@@ -76,7 +95,10 @@ export class ChannelSession {
     if (!this.localStream) await this.enterChannel();
 
     this.polite = polite;
-    const pc = new RTCPeerConnection({ iceServers: iceServers(this.cfg) });
+    const servers = iceServers(this.cfg);
+    log('collego il peer, polite =', polite, '- ICE server:',
+      servers.map((s2) => s2.urls).join(', '));
+    const pc = new RTCPeerConnection({ iceServers: servers });
     this.pc = pc;
 
     this.localStream!.getTracks().forEach((track) => {
@@ -112,12 +134,32 @@ export class ChannelSession {
     // @ts-ignore
     pc.addEventListener('icecandidate', (event: any) => {
       if (event.candidate) {
+        log('candidato locale', candidateType(event.candidate.candidate));
         this.signaling.sendSignal({ kind: 'ice', candidate: event.candidate });
+      } else {
+        log('raccolta candidati locali conclusa');
       }
     });
 
     // @ts-ignore
+    pc.addEventListener('icecandidateerror', (e: any) => {
+      // Tipico se STUN/TURN non risponde o le credenziali sono sbagliate.
+      log('errore su candidato:', e?.errorCode, e?.errorText, e?.url);
+    });
+
+    // @ts-ignore
+    pc.addEventListener('iceconnectionstatechange', () => {
+      log('ICE:', pc.iceConnectionState);
+    });
+
+    // @ts-ignore
+    pc.addEventListener('icegatheringstatechange', () => {
+      log('raccolta candidati:', pc.iceGatheringState);
+    });
+
+    // @ts-ignore
     pc.addEventListener('connectionstatechange', () => {
+      log('connessione:', pc.connectionState);
       this.events.onConnectionState?.(pc.connectionState);
     });
 
@@ -138,8 +180,10 @@ export class ChannelSession {
       const offer = await pc.createOffer({});
       await pc.setLocalDescription(offer);
       const desc = pc.localDescription!;
+      log('offerta inviata');
       this.signaling.sendSignal({ kind: 'desc', type: 'offer', sdp: desc.sdp });
-    } catch {
+    } catch (e) {
+      log('negoziazione fallita:', String(e));
       // se la negoziazione fallisce ci riprovera' il prossimo evento
     } finally {
       this.makingOffer = false;
@@ -162,12 +206,13 @@ export class ChannelSession {
     if (!pc) return;
 
     if (msg.kind === 'desc') {
+      log('ricevuto', msg.type, '- stato:', pc.signalingState);
       const collision =
         msg.type === 'offer' && (this.makingOffer || pc.signalingState !== 'stable');
 
       // Impolite: in caso di collisione ignora l'offerta dell'altro.
       this.ignoreOffer = !this.polite && collision;
-      if (this.ignoreOffer) return;
+      if (this.ignoreOffer) { log('offerta ignorata (collisione, siamo impolite)'); return; }
 
       if (collision) {
         // Polite: annulla la propria offerta e accetta quella dell'altro.
@@ -186,6 +231,7 @@ export class ChannelSession {
       if (msg.type === 'offer') {
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
+        log('risposta inviata');
         this.signaling.sendSignal({
           kind: 'desc',
           type: 'answer',
@@ -196,7 +242,7 @@ export class ChannelSession {
     }
 
     if (msg.kind === 'ice') {
-      if (this.ignoreOffer) return;
+      if (this.ignoreOffer) { log('offerta ignorata (collisione, siamo impolite)'); return; }
       // Se la remote description non c'e' ancora, il candidate va in coda.
       if (!pc.remoteDescription) {
         this.pendingCandidates.push(msg.candidate);

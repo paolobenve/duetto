@@ -112,6 +112,7 @@ export default function ChannelScreen(props: Props) {
           <PresenceCard
             status={status}
             linked={linked}
+            connectionState={connectionState}
             peerName={peerName}
             peerAudio={peerState.audio}
           />
@@ -186,10 +187,11 @@ export default function ChannelScreen(props: Props) {
 function PresenceCard(props: {
   status: PresenceStatus;
   linked: boolean;
+  connectionState: string;
   peerName: string;
   peerAudio: boolean;
 }) {
-  const { status, linked, peerName, peerAudio } = props;
+  const { status, linked, connectionState, peerName, peerAudio } = props;
   const initial = (peerName || '?').trim().charAt(0).toUpperCase();
 
   if (status === 'connecting') {
@@ -233,12 +235,16 @@ function PresenceCard(props: {
       </View>
       <Text style={styles.cardTitle}>{peerName || 'L’altro'} e’ nel canale</Text>
       <Text style={styles.cardSub}>
-        {!linked
-          ? 'Sto stabilendo la connessione diretta...'
-          : peerAudio
-            ? 'Audio collegato · video non attivo'
-            : 'Ha il microfono muto'}
+        {linked
+          ? (peerAudio ? 'Audio collegato · video non attivo' : 'Ha il microfono muto')
+          : connectionState === 'failed'
+            ? 'Collegamento diretto non riuscito.\nSenza un server TURN certe reti lo impediscono.'
+            : 'Sto stabilendo la connessione diretta…'}
       </Text>
+      {/* Lo stato grezzo aiuta a capire dove si e' fermato. */}
+      {linked ? null : (
+        <Text style={styles.cardTiny}>stato: {connectionState}</Text>
+      )}
     </View>
   );
 }
@@ -292,6 +298,7 @@ const styles = StyleSheet.create({
   cardTitle: { color: '#e6ebf1', fontSize: 21, fontWeight: '700', textAlign: 'center' },
   cardSub: { color: '#8892a0', fontSize: 15, textAlign: 'center', marginTop: 10, lineHeight: 22 },
   bold: { color: '#c9d2de', fontWeight: '700' },
+  cardTiny: { color: '#4a5462', fontSize: 12, marginTop: 10 },
 
   topBar: {
     position: 'absolute', top: 14, left: 14, right: 14,

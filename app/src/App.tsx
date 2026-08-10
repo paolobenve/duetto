@@ -106,7 +106,9 @@ export default function App() {
       setCfg(c);
       if (!isServerConfigured(c)) setScreen('settings');
       else if (!isPaired(c)) setScreen('pairing');
-      else setScreen('listening');
+      // Aprire l'app significa voler entrare nel canale: niente pulsanti
+      // di mezzo. Lo stato "in ascolto" resta per dopo aver premuto Esci.
+      else setScreen('channel');
     })();
   }, []);
 
@@ -218,6 +220,11 @@ export default function App() {
 
       signalingRef.current = sig;
       sig.connect();
+
+      // Ingresso automatico. setMode aggiorna lo stato dichiarato anche
+      // prima che il WebSocket sia aperto, e il join che parte dopo lo
+      // porta gia' corretto: non serve aspettare la connessione.
+      if (!cancelled) await enterChannel();
     })();
 
     return () => {
