@@ -123,6 +123,10 @@ scelta viene **ricordata** per la volta successiva.
 
 ### Video
 
+- **Non si trasmette a chi non guarda**: quando l'app dell'altro sparisce dallo schermo, il
+  tuo telefono smette di spedire il video e riprende appena torna. La camera resta accesa
+  per l'anteprima, ma la banda non se ne va verso uno schermo spento. In
+  Picture-in-Picture il video continua: lì lo stai guardando davvero.
 - Chi è a schermo intero **non viene mai tagliato**: eventuali bande nere sono il prezzo
   dell'immagine integra.
 - Il riquadrino ha **sempre le proporzioni della sua camera**, mai quadrato. È
@@ -189,6 +193,11 @@ adb logcat -s ReactNativeJS | grep duotalk
 Tre famiglie di righe: `duotalk-rtc` per il collegamento audio/video, `duotalk-sig` per la
 connessione al server (comprese le cadute, con codice e durata), `duotalk-presenza` per
 l'ascolto dopo il riavvio.
+
+La riga più utile quando qualcosa cade è `percorso:`, che dice da dove sta passando il
+traffico — `LOCALE (stessa rete)`, `DIRETTO attraverso NAT` o `RELAY (passa dal server)`.
+Le tre strade hanno fragilità diverse, e senza saperlo si finisce per incolpare la cosa
+sbagliata.
 
 Con due telefoni collegati serve indicare quale: `adb -s <seriale> logcat …`
 

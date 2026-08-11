@@ -130,6 +130,24 @@ mezzo.
   vengono applicati dopo, altrimenti andrebbero persi.
 - Un messaggio cifrato `state` comunica all'altro se hai mic/camera attivi e **con quali
   proporzioni** stai inquadrando.
+- **Non si trasmette a chi non guarda.** Quando l'app dell'altro sparisce dallo schermo,
+  chi manda il video stacca la traccia dal canale: la camera resta accesa per l'anteprima
+  locale, ma verso la rete non esce nulla. Senza, un video verso uno schermo spento
+  costava ~300 kB/s a chi lo mandava, che su rete cellulare si paga. Il segnale viaggia
+  nel messaggio `state` (campo `watching`); vale `true` quando manca, così una build
+  vecchia o un messaggio perso lasciano il video acceso invece di spegnerlo per sempre.
+- Ogni gestore di evento **verifica di appartenere alla connessione in uso**. Ricostruendo
+  il collegamento nascono più `RTCPeerConnection` in pochi secondi e quelle superate
+  continuano a emettere eventi: una connessione già morta infilava la propria traccia
+  nello stream nuovo — due video vivi, e il renderer disegnava quello sbagliato. Attenzione
+  alla trappola: **libwebrtc non marca `ended` le tracce di una connessione chiusa**,
+  quindi filtrarle per `readyState` non serve a nulla. Vale anche per gli stati, dove il
+  danno è peggiore: un `failed` in ritardo faceva ripartire la riparazione di una
+  connessione sana, e le ricostruzioni si innescavano a vicenda.
+- Il **percorso selezionato viene registrato** appena il collegamento si stabilisce —
+  `LOCALE (stessa rete)`, `DIRETTO attraverso NAT` o `RELAY (passa dal server)`. I
+  candidati raccolti non lo dicono: si raccolgono sempre tutti e poi ne vince uno, e senza
+  questo dato non si può dire se una caduta dipenda dalla strada che il traffico prende.
 - Il **formato della camera è fissato**: proporzioni dichiarate in acquisizione e
   `degradationPreference: maintain-resolution`. Il comportamento predefinito è l'opposto —
   sotto banda scarsa WebRTC abbassa la risoluzione — e molti sensori cambiando formato
@@ -189,6 +207,7 @@ Modulo Kotlin locale, agganciato dall'**autolinking** tramite
 | Notifiche di avviso | canale separato a importanza `HIGH` |
 | Riavvio | `START_STICKY`: se Android lo uccide per memoria, riparte |
 | Wake lock | `PARTIAL_WAKE_LOCK` con scadenza di sicurezza a 8 ore |
+| Visibilità | `onStart`/`onStop` dell'activity, **non** `AppState` |
 
 **Presenza dopo il riavvio.** Un ricevitore su `BOOT_COMPLETED` avvia `PresenceService`,
 che eredita da `HeadlessJsTaskService`: fa partire il motore JavaScript **senza aprire
@@ -213,6 +232,12 @@ limitato).
 Per accorgersi di essere in PiP **non serve intercettare il callback dell'Activity**: in
 PiP la finestra si rimpicciolisce, quindi sotto i 340 dp di larghezza l'interfaccia passa
 in modalità compatta. Questo evita di dover modificare `MainActivity`.
+
+**Perché la visibilità non usa `AppState`**: su Android quello segnala la *pausa*
+dell'activity, e in Picture-in-Picture l'activity è in pausa pur essendo perfettamente
+visibile — spegneremmo il video proprio nella finestrella fatta per continuare a guardarlo.
+`onStart`/`onStop` hanno invece il significato che serve: `onStop` arriva quando l'app
+sparisce davvero dalla vista, e in PiP non arriva.
 
 ### 7. Layout video (`app/src/VideoStage.tsx`)
 
