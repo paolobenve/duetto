@@ -15,18 +15,10 @@
       "Bash(npm run bump)",
       "Bash(npm run test:smoke)",
       "Bash(npx tsc --noEmit)",
-      "Bash(git status*)",
-      "Bash(git diff*)",
-      "Bash(git log*)",
-      "Bash(git show*)",
-      "Bash(git add*)",
-      "Bash(git commit*)"
+      "Bash(git *)"
     ],
     "ask": [
       "Bash(rsync*)",
-      "Bash(git push*)",
-      "Bash(git reset*)",
-      "Bash(git checkout*)",
       "Bash(rm *)",
       "Bash(sudo *)"
     ]
