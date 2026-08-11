@@ -38,8 +38,15 @@ realm=TUO_DOMINIO
 server-name=TUO_DOMINIO
 
 # Credenziali fisse: per due persone bastano, e sono quelle che metterai
-# in TURN_USER / TURN_PASS nel .env del signaling.
-#   genera la password con:  openssl rand -base64 24
+# in TURN_USER / TURN_PASS nel .env del signaling. Non serve inventarla:
+#
+#   openssl rand -hex 24
+#
+# Esadecimale e non base64: stessa robustezza (192 bit) ma senza +, / e =,
+# che in file di configurazione e righe di comando creano grattacapi.
+#
+# Se la perdi, e' comunque scritta qui sotto:
+#   sudo grep -oP '^user=duotalk:\K.*' /etc/turnserver.conf
 lt-cred-mech
 user=duotalk:METTI_UNA_PASSWORD_LUNGA
 
