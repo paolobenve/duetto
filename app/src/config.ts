@@ -76,7 +76,11 @@ export const DEFAULT_CONFIG: DuoConfig = {
   turnUser: '',
   turnPass: '',
   setupShown: false,
-  videoQuality: 'standard',
+  // Si parte dal profilo alto: è un tetto, non una pretesa, e con
+  // "balanced" una rete scarsa lo fa scendere da sé. Partire basso
+  // avrebbe lasciato in definizione ridotta chi non apre mai le
+  // impostazioni, anche avendo una rete ottima.
+  videoQuality: 'migliore',
   videoCodec: 'auto',
 };
 
@@ -145,10 +149,14 @@ export function isPaired(cfg: DuoConfig): boolean {
 /**
  * I quattro profili, in cifre.
  *
- * `degradation` dice cosa sacrificare quando la banda non basta.
- * "maintain-resolution" perde fotogrammi tenendo ferma l'immagine, ed è
- * quello che si vuole guardando una persona; "balanced" lascia scendere
- * anche la risoluzione, e in risparmio è il punto.
+ * `degradation` è "balanced" su tutti: quando la banda non basta,
+ * l'encoder può scendere di risoluzione invece di limitarsi a buttare
+ * fotogrammi. Con "maintain-resolution" un profilo alto su una rete
+ * cattiva non dava un'immagine un po' peggiore, dava una diapositiva
+ * nitida - misurato: 1920x1072 a UN fotogramma al secondo.
+ *
+ * Così il profilo è davvero un tetto: si prende il meglio che la rete
+ * concede, e si scende con grazia quando non concede.
  *
  * Le proporzioni restano 16:9 in tutti e quattro, così l'inquadratura non
  * cambia passando dall'uno all'altro: cambia la definizione, non cosa
@@ -167,21 +175,21 @@ export const VIDEO_PROFILES: Record<VideoQuality, {
     maxBitrate: 300_000,
     degradation: 'balanced',
     etichetta: 'Risparmio',
-    nota: '640×360 · tetto 300 kbit/s',
+    nota: 'fino a 640×360 · tetto 300 kbit/s',
   },
   standard: {
     capture: { width: 960, height: 540 },
     maxBitrate: 1_200_000,
-    degradation: 'maintain-resolution',
+    degradation: 'balanced',
     etichetta: 'Standard',
-    nota: '960×540 · tetto 1,2 Mbit/s',
+    nota: 'fino a 960×540 · tetto 1,2 Mbit/s',
   },
   migliore: {
     capture: { width: 1280, height: 720 },
     maxBitrate: 2_500_000,
-    degradation: 'maintain-resolution',
+    degradation: 'balanced',
     etichetta: 'Migliore',
-    nota: '1280×720 · tetto 2,5 Mbit/s',
+    nota: 'fino a 1280×720 · tetto 2,5 Mbit/s',
   },
   massima: {
     capture: { width: 1920, height: 1080 },
@@ -194,7 +202,7 @@ export const VIDEO_PROFILES: Record<VideoQuality, {
     // finché la banda non sale.
     degradation: 'balanced',
     etichetta: 'Massima',
-    nota: '1920×1080 · tetto 4 Mbit/s',
+    nota: 'fino a 1920×1080 · tetto 4 Mbit/s',
   },
 };
 
