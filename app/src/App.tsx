@@ -119,6 +119,9 @@ export default function App() {
       if (s !== 'active') return;
 
       Foreground.clearNotification().catch(() => {});
+      // Tornando in primo piano non ha senso aspettare il prossimo
+      // tentativo programmato: si riprova subito.
+      signalingRef.current?.reconnectNow();
       // Tornare in primo piano - da icona o toccando la notifica - vuol
       // dire voler stare nel canale: si rientra senza chiedere nulla.
       if (!wasActive && !inChannelRef.current && signalingRef.current) {
@@ -320,6 +323,14 @@ export default function App() {
     const s = sessionRef.current;
     if (!sig || !s) return;
     if (force || !s.isPeerHealthy()) s.detachPeer();
+
+    // Chi risponde non ricostruisce nulla di propria iniziativa: aspetta
+    // l'offerta, che fara' nascere la connessione al momento giusto
+    // (vedi onSignal). Ricostruirla subito significherebbe demolire, un
+    // istante dopo, proprio quella che l'offerta in arrivo sta creando:
+    // e' cosi' che nascevano tre ricostruzioni in due secondi.
+    if (politeRef.current) return;
+
     try {
       await s.attachPeer(politeRef.current);
       s.broadcastState();

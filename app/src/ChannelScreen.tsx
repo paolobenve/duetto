@@ -75,13 +75,21 @@ export default function ChannelScreen(props: Props) {
    * Non e' un "non c'e' nessuno": e' un'attesa, e va detto invece di
    * lasciare uno schermo nero senza spiegazione.
    */
-  const interrupted = together && !linked &&
-    (connectionState === 'disconnected' || connectionState === 'failed');
-  const notice = interrupted
-    ? (connectionState === 'failed'
-        ? 'Connessione persa, sto ricollegando…'
-        : 'Connessione persa, in attesa…')
-    : undefined;
+  const serverLost = status === 'offline';
+  const interrupted = serverLost ||
+    (together && !linked &&
+      (connectionState === 'disconnected' || connectionState === 'failed'));
+
+  // Senza questo, perdendo il server restava uno schermo nero muto: il
+  // video dell'altro e' ancora li' ma non ci arriva piu' nessun
+  // fotogramma, e nulla lo spiegava.
+  const notice = serverLost
+    ? 'Connessione persa, mi sto ricollegando…'
+    : interrupted
+      ? (connectionState === 'failed'
+          ? 'Collegamento perso, sto ricollegando…'
+          : 'Collegamento interrotto, in attesa…')
+      : undefined;
   // remoteHasVideo arriva come prop: e' un evento esplicito della sessione,
   // perche' le tracce entrano dentro lo stesso MediaStream e React non se
   // ne accorgerebbe guardando il riferimento.

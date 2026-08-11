@@ -61,8 +61,21 @@ export type SignalingEvents = {
   onError?: (code: string) => void;
 };
 
-const RECONNECT_MIN_MS = 1000;
-const RECONNECT_MAX_MS = 15000;
+/**
+ * Diagnostica della connessione al server.
+ *
+ * Le cadute avvengono qui, e finora non lasciavano traccia: si vedeva
+ * solo l'effetto sul video. Si legge con:
+ *
+ *   adb logcat -s ReactNativeJS | grep duotalk-sig
+ */
+const log = (...args: any[]) => console.log('[duotalk-sig]', ...args);
+
+// Attesa fra un tentativo e l'altro. Tenuta breve di proposito: qui la
+// riconnessione non e' un dettaglio, e' la differenza fra essere
+// raggiungibili o no. Il costo di un tentativo a vuoto e' trascurabile.
+const RECONNECT_MIN_MS = 500;
+const RECONNECT_MAX_MS = 4000;
 
 export type SignalingOptions = {
   serverUrl: string;
@@ -91,6 +104,24 @@ export class Signaling {
     this.mode = opts.mode ?? 'listening';
   }
 
+  /**
+   * Riprova subito, senza aspettare il tentativo programmato.
+   *
+   * Serve quando sappiamo che qualcosa e' cambiato - l'app torna in
+   * primo piano, la rete e' rientrata - e attendere sarebbe tempo perso.
+   */
+  reconnectNow() {
+    if (this.closedByUser) return;
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    this.backoff = RECONNECT_MIN_MS;
+    log('riprovo subito');
+    this.open();
+  }
+
   /** La chiave arriva solo a accoppiamento concluso. */
   setKey(key: Uint8Array | string) {
     this.crypto = new SignalCrypto(key);
@@ -113,7 +144,9 @@ export class Signaling {
     }
     this.ws = ws;
 
+    const openedAt = Date.now();
     ws.onopen = () => {
+      log('collegato al server');
       this.backoff = RECONNECT_MIN_MS;
       this.rawSend({
         type: 'join',
@@ -126,8 +159,14 @@ export class Signaling {
     };
 
     ws.onmessage = (ev) => this.handle(ev.data);
-    ws.onerror = () => { /* la chiusura seguira': il reconnect e' li' */ };
-    ws.onclose = () => {
+    ws.onerror = (e: any) => {
+      log('errore di rete:', e?.message ?? '(senza dettagli)');
+    };
+    ws.onclose = (e: any) => {
+      // Il codice dice CHI ha chiuso e perche': 1006 e' una caduta di
+      // rete, 1000/1001 una chiusura ordinata, 4xxx un rifiuto nostro.
+      log('caduto dopo', Math.round((Date.now() - openedAt) / 1000), 's',
+        '- codice', e?.code ?? '?', e?.reason ? `(${e.reason})` : '');
       this.events.onStatus?.('offline');
       if (!this.closedByUser) this.scheduleReconnect();
     };
@@ -246,6 +285,7 @@ export class Signaling {
     if (this.closedByUser || this.reconnectTimer) return;
     const delay = this.backoff;
     this.backoff = Math.min(this.backoff * 2, RECONNECT_MAX_MS);
+    log('riprovo fra', delay, 'ms');
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       this.open();
