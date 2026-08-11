@@ -35,7 +35,14 @@ import { DEFAULT_ASPECT } from './webrtc';
  * non scivolare verso il centro.
  */
 type Ancoraggio = {
-  /** a quale bordo del video è appoggiato, e a che distanza */
+  /**
+   * A quale bordo del video è appoggiato, e a che distanza da quello.
+   *
+   * La distanza è una FRAZIONE dello spazio in cui il riquadrino può
+   * muoversi, non una misura in pixel: i quadri hanno formati diversi -
+   * un 4:3 e un 16:9 lasciano bande nere di altezza diversa - e gli
+   * stessi pixel vi peserebbero in modo diverso.
+   */
   ax: 'sinistra' | 'destra';
   ay: 'alto' | 'basso';
   ox: number;
@@ -45,7 +52,7 @@ type Ancoraggio = {
 };
 
 let posizioneScelta: Ancoraggio | null = null;
-const CHIAVE_PIP = 'duotalk.pip.v1';
+const CHIAVE_PIP = 'duotalk.pip.v2';
 
 /** Scrittura pigra: trascinando si salverebbe a ogni fotogramma. */
 let salvaTimer: ReturnType<typeof setTimeout> | null = null;
@@ -252,8 +259,10 @@ export default function VideoStage(props: Props) {
     const a = posizioneScelta;
     posIniziale.current = a
       ? {
-          x: a.ax === 'sinistra' ? minX + a.ox : maxX - a.ox,
-          y: a.ay === 'alto' ? minY + a.oy : maxY - a.oy,
+          x: a.ax === 'sinistra'
+            ? minX + a.ox * (maxX - minX) : maxX - a.ox * (maxX - minX),
+          y: a.ay === 'alto'
+            ? minY + a.oy * (maxY - minY) : maxY - a.oy * (maxY - minY),
         }
       : { x: maxX, y: minY };  // in alto a destra
   }
@@ -272,15 +281,19 @@ export default function VideoStage(props: Props) {
    */
   const ricorda = useCallback(() => {
     const { minX, minY, maxX, maxY } = spazio();
+    const dx = Math.max(1, maxX - minX);
+    const dy = Math.max(1, maxY - minY);
     const daSinistra = posRef.current.x - minX;
     const daDestra = maxX - posRef.current.x;
     const daAlto = posRef.current.y - minY;
     const daBasso = maxY - posRef.current.y;
+    const frazione = (v: number, tot: number) =>
+      Math.min(1, Math.max(0, v / tot));
     posizioneScelta = {
       ax: daSinistra <= daDestra ? 'sinistra' : 'destra',
       ay: daAlto <= daBasso ? 'alto' : 'basso',
-      ox: Math.max(0, Math.round(Math.min(daSinistra, daDestra))),
-      oy: Math.max(0, Math.round(Math.min(daAlto, daBasso))),
+      ox: frazione(Math.min(daSinistra, daDestra), dx),
+      oy: frazione(Math.min(daAlto, daBasso), dy),
       fw: sizeRef.current.w / width,
     };
     salvaPosizione();
@@ -300,10 +313,12 @@ export default function VideoStage(props: Props) {
   const riposiziona = useCallback((animate = true) => {
     const { minX, minY, maxX, maxY } = spazio();
     const a = posizioneScelta;
+    const dx = maxX - minX;
+    const dy = maxY - minY;
     const x = !a ? maxX : a.ax === 'sinistra'
-      ? Math.min(maxX, minX + a.ox) : Math.max(minX, maxX - a.ox);
+      ? minX + a.ox * dx : maxX - a.ox * dx;
     const y = !a ? minY : a.ay === 'alto'
-      ? Math.min(maxY, minY + a.oy) : Math.max(minY, maxY - a.oy);
+      ? minY + a.oy * dy : maxY - a.oy * dy;
     if (Math.abs(x - posRef.current.x) < 0.5 && Math.abs(y - posRef.current.y) < 0.5) return;
     posRef.current = { x, y };
     if (animate) {
@@ -607,10 +622,19 @@ const styles = StyleSheet.create({
   placeholder: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#0b0e14' },
   pip: {
     position: 'absolute', top: 0, left: 0,
-    borderRadius: 14, overflow: 'hidden',
+    borderRadius: 14,
     backgroundColor: '#000',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
-    elevation: 8,
+    /**
+     * Il video RIENTRA nella cornice invece di essere ritagliato da lei.
+     *
+     * RTCView è una SurfaceView: disegna in un livello grafico proprio e
+     * nessun genitore può ritagliarla - né `overflow: hidden` né
+     * `borderRadius` la toccano, e i suoi angoli quadrati sbordavano
+     * dalla cornice arrotondata. Lasciandole un margine, gli angoli del
+     * video cadono dentro il nero e la forma tondeggiante resta pulita.
+     */
+    padding: 5,
     shadowColor: '#000', shadowOpacity: 0.5, shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
   },
