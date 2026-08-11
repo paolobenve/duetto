@@ -72,7 +72,7 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
 
     @ReactMethod
     fun requestBatteryUnrestricted(promise: Promise) {
-        promise.resolve(StartupHelper.requestIgnoreBatteryOptimizations(ctx))
+        promise.resolve(StartupHelper.requestIgnoreBatteryOptimizations(ctx, currentActivity))
     }
 
     @ReactMethod
@@ -82,12 +82,12 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
 
     @ReactMethod
     fun openAutoStartSettings(promise: Promise) {
-        promise.resolve(StartupHelper.openAutoStartSettings(ctx))
+        promise.resolve(StartupHelper.openAutoStartSettings(ctx, currentActivity))
     }
 
     @ReactMethod
     fun openAppSettings(promise: Promise) {
-        promise.resolve(StartupHelper.openAppSettings(ctx))
+        promise.resolve(StartupHelper.openAppSettings(ctx, currentActivity))
     }
 
     /** Avviso da mostrare quando l'app non e' in primo piano. */

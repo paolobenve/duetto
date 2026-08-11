@@ -1,5 +1,6 @@
 package com.duotalk.platform
 
+import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -28,16 +29,39 @@ object StartupHelper {
         return pm.isIgnoringBatteryOptimizations(ctx.packageName)
     }
 
-    /** Finestra di sistema: una spunta e l'app puo' restare attiva. */
-    fun requestIgnoreBatteryOptimizations(ctx: Context): Boolean {
+    /**
+     * Apre la richiesta di uso senza restrizioni.
+     *
+     * Va lanciata dall'ACTIVITY in primo piano, non dal contesto
+     * dell'applicazione: partendo da li' alcune interfacce (HyperOS fra
+     * queste) mostrano la finestra per un istante e la chiudono da sole.
+     *
+     * E se il produttore la blocca del tutto - Xiaomi lo fa - si ripiega
+     * sull'elenco di sistema e, in ultima istanza, sulla scheda dell'app:
+     * meglio una schermata da cui l'utente puo' comunque arrivarci che
+     * una finestra che sparisce.
+     */
+    fun requestIgnoreBatteryOptimizations(ctx: Context, activity: Activity?): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return false
+        val from = activity ?: ctx
+
+        @Suppress("BatteryLife")
+        val direct = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+            .setData(Uri.parse("package:${ctx.packageName}"))
+        if (start(from, direct, activity == null)) return true
+
+        val list = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+        if (start(from, list, activity == null)) return true
+
+        return openAppSettings(ctx, activity)
+    }
+
+    /** Avvia, aggiungendo NEW_TASK solo se non partiamo da un'activity. */
+    private fun start(from: Context, intent: Intent, needsNewTask: Boolean): Boolean {
         return try {
-            @Suppress("BatteryLife")
-            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                data = Uri.parse("package:${ctx.packageName}")
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            ctx.startActivity(intent)
+            if (needsNewTask) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (from.packageManager.resolveActivity(intent, 0) == null) return false
+            from.startActivity(intent)
             true
         } catch (e: Exception) {
             false
@@ -66,14 +90,9 @@ object StartupHelper {
     /** Vero se una schermata di avvio automatico esiste su questo telefono. */
     fun hasAutoStartScreen(ctx: Context): Boolean = findAutoStartIntent(ctx) != null
 
-    fun openAutoStartSettings(ctx: Context): Boolean {
+    fun openAutoStartSettings(ctx: Context, activity: Activity?): Boolean {
         val intent = findAutoStartIntent(ctx) ?: return false
-        return try {
-            ctx.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            true
-        } catch (e: Exception) {
-            false
-        }
+        return start(activity ?: ctx, intent, activity == null)
     }
 
     private fun findAutoStartIntent(ctx: Context): Intent? {
@@ -86,16 +105,9 @@ object StartupHelper {
     }
 
     /** Ripiego: la scheda dell'app nelle impostazioni di sistema. */
-    fun openAppSettings(ctx: Context): Boolean {
-        return try {
-            ctx.startActivity(
-                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                    .setData(Uri.parse("package:${ctx.packageName}"))
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-            )
-            true
-        } catch (e: Exception) {
-            false
-        }
+    fun openAppSettings(ctx: Context, activity: Activity? = null): Boolean {
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+            .setData(Uri.parse("package:${ctx.packageName}"))
+        return start(activity ?: ctx, intent, activity == null)
     }
 }
