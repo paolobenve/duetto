@@ -164,7 +164,13 @@ export const VIDEO_PROFILES: Record<VideoQuality, {
   },
   massima: {
     maxBitrate: 4_000_000,
-    degradation: 'maintain-resolution',
+    // 'balanced' e non 'maintain-resolution': all'accensione la stima di
+    // banda parte bassa, e obbligare l'encoder a produrre subito 1080p
+    // significa un primo fotogramma chiave che spesso non passa - da cui
+    // il video che all'altro non compare finché non lo si riaccende.
+    // Scalare l'uscita non cambia l'inquadratura, solo la nitidezza,
+    // finché la banda non sale.
+    degradation: 'balanced',
     capture: { width: 1920, height: 1080, frameRate: 30 },
     etichetta: 'Massima',
     nota: '~500 kB/s · 1080p, dalla prossima accensione del video',

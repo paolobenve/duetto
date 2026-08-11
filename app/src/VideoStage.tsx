@@ -18,7 +18,7 @@ import { DEFAULT_ASPECT } from './webrtc';
  */
 
 const MARGIN = 14;
-const TOP_SAFE = 108;    // sotto ingranaggio e badge, senza sfiorarli
+const TOP_SAFE = 116;    // sotto ingranaggio e badge, senza sfiorarli
 const BOTTOM_SAFE = 140; // sopra il pannello dei controlli
 
 /** Larghezza del riquadrino, come frazione della larghezza schermo. */
@@ -179,9 +179,9 @@ export default function VideoStage(props: Props) {
   const clampIntoScreen = useCallback((animate = true) => {
     const { w, h } = sizeRef.current;
     const minX = MARGIN + insetH;
-    // In alto i comandi stanno ai bordi dello schermo, quindi la zona di
-    // rispetto non segue il video; in basso invece il pannello lo segue.
-    const minY = TOP_SAFE;
+    // I comandi seguono il bordo del video: la zona di rispetto anche,
+    // altrimenti il riquadrino finisce sotto l'ingranaggio.
+    const minY = TOP_SAFE + insetV;
     const maxX = Math.max(minX, width - w - MARGIN - insetH);
     const maxY = Math.max(minY, height - h - BOTTOM_SAFE - insetV);
     const x = Math.min(Math.max(posRef.current.x, minX), maxX);

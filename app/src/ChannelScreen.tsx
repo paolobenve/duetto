@@ -196,10 +196,11 @@ export default function ChannelScreen(props: Props) {
       {compact ? null : (
         <>
       {/* Barra in alto: canale + stato */}
-      {/* La barra in alto resta ancorata allo schermo: rientrandola col
-          video finiva addosso al riquadrino, e in alto non c'è l'immagine
-          da proteggere che c'è in basso. */}
-      <Animated.View style={[styles.topBar, { opacity }]}>
+      {/* Anche la barra in alto sta dentro il video: fuori, sulla banda
+          nera, sembra staccata dall'immagine a cui appartiene. Il
+          riquadrino le lascia il posto scendendo, non lei salendo. */}
+      <Animated.View
+        style={[styles.topBar, { opacity, top: 14 + inset.v, left: 14 + inset.h, right: 14 + inset.h }]}>
         <TouchableOpacity style={styles.gear} onPress={press(onOpenSettings)}>
           <Text style={styles.gearText}>{'\u2699'}</Text>
         </TouchableOpacity>

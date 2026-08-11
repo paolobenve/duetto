@@ -201,6 +201,23 @@ export default function App() {
     })();
   }, []);
 
+  /**
+   * Cosa, cambiando, obbliga davvero a rifare la connessione.
+   *
+   * Prima l'effetto dipendeva da `cfg` intero: cambiare la qualità video
+   * - che è solo un parametro dell'encoder - abbatteva signaling e
+   * sessione e li ricostruiva. Si vedeva il proprio video spegnersi,
+   * l'altro leggeva "collegamento interrotto", e le preferenze si
+   * chiudevano da sole perché rientrare nel canale cambia schermata.
+   */
+  const connKey = cfg
+    ? [
+        cfg.serverUrl, cfg.accessToken, cfg.displayName,
+        cfg.turnUrl, cfg.turnUser, cfg.turnPass,
+        cfg.pair?.id, cfg.pair?.side, cfg.pair?.key,
+      ].join('|')
+    : '';
+
   // --- connessione persistente --------------------------------------------
   // Vive finché c'è una coppia: passare da "in ascolto" a "nel canale"
   // non riconnette nulla, cambia solo lo stato dichiarato al server.
@@ -395,9 +412,10 @@ export default function App() {
       Foreground.stop().catch(() => {});
       try { InCallManager.stop(); } catch { /* noop */ }
     };
-    // attachPeer è stabile: usa solo ref
+    // attachPeer è stabile: usa solo ref. `cfg` si legge dalla chiusura
+    // ma non è una dipendenza: solo connKey deve far rifare tutto.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cfg]);
+  }, [connKey]);
 
   /**
    * Assicura un collegamento diretto vivo, quando siamo entrambi nel canale.
