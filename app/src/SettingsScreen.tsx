@@ -123,6 +123,18 @@ export default function SettingsScreen({
           </Text>
         </View>
 
+        {/* Il passo avanti sta qui, non in fondo: appena sotto a ciò che si
+            è appena scritto. Sotto ci sono impostazioni che si applicano da
+            sole o che riguardano una coppia già fatta. */}
+        <TouchableOpacity
+          style={[styles.button, !ready && styles.buttonDisabled]}
+          disabled={!ready}
+          onPress={() => onSave({ ...cfg, serverUrl: resolved })}>
+          <Text style={styles.buttonText}>
+            {paired ? 'Salva' : 'Avanti'}
+          </Text>
+        </TouchableOpacity>
+
         {paired ? (
           <>
             <Text style={styles.section}>Coppia</Text>
@@ -247,14 +259,6 @@ export default function SettingsScreen({
           </View>
         ) : null}
 
-        <TouchableOpacity
-          style={[styles.button, !ready && styles.buttonDisabled]}
-          disabled={!ready}
-          onPress={() => onSave({ ...cfg, serverUrl: resolved })}>
-          <Text style={styles.buttonText}>
-            {paired ? 'Salva' : 'Avanti'}
-          </Text>
-        </TouchableOpacity>
 
         <Text style={styles.section}>Restare raggiungibili</Text>
         <Text style={styles.sectionHint}>
