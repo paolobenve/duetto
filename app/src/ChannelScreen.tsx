@@ -238,7 +238,6 @@ export default function ChannelScreen(props: Props) {
           styles.panel,
           { opacity, bottom: 22 + inset.v, left: 12 + inset.h, right: 12 + inset.h },
         ]}>
-        <View style={styles.handle} />
         <View style={styles.controls}>
         <CircleButton
           label={videoOn ? 'Video' : 'Video off'}
@@ -577,13 +576,10 @@ const styles = StyleSheet.create({
     position: 'absolute', bottom: 22, left: 12, right: 12,
     backgroundColor: 'rgba(30,31,34,0.94)',
     borderRadius: 28,
-    paddingTop: 10, paddingBottom: 14, paddingHorizontal: 4,
+    paddingTop: 14, paddingBottom: 14, paddingHorizontal: 4,
   },
   // La linguetta in cima, come nei pannelli che si trascinano.
-  handle: {
-    width: 42, height: 4, borderRadius: 2, alignSelf: 'center',
-    backgroundColor: 'rgba(255,255,255,0.22)', marginBottom: 10,
-  },
+
   controls: {
     flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'flex-start',
   },
