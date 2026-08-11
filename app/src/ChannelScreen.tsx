@@ -214,8 +214,11 @@ export default function ChannelScreen(props: Props) {
         <CircleButton
           label={knockPending ? 'Avvisato' : 'Avvisa'}
           icon={'\u{1F514}'}
+          // Acceso solo quando l'altro non c'e': li' e' la cosa da fare.
           highlight={!together && !knockPending}
-          disabled={together || knockPending}
+          // Resta premibile anche quando c'e': puo' essere nel canale ma
+          // distratto, e allora un richiamo e' esattamente cio' che serve.
+          disabled={knockPending}
           onPress={press(onKnock)}
         />
         <CircleButton

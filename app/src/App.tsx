@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   StatusBar, Platform, PermissionsAndroid, Alert, View, AppState,
-  ActivityIndicator, StyleSheet, BackHandler, Dimensions,
+  ActivityIndicator, StyleSheet, BackHandler, Dimensions, Vibration,
 } from 'react-native';
 import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
@@ -266,14 +266,28 @@ export default function App() {
           onNotify: (reason, n) => {
             setPeerName(n);
             setKnockPending(false);
-            // In primo piano la notifica sarebbe rumore: si vede gia' tutto.
+            // Il nome e' facoltativo: senza, si evita di scrivere "Qualcuno".
+            const named = n && n !== 'Qualcuno';
+
+            if (reason === 'knock') {
+              // Un richiamo esplicito passa sempre, anche con l'app aperta:
+              // chi bussa lo fa proprio perche' l'altro non risponde, e il
+              // telefono puo' essere acceso sul tavolo senza nessuno davanti.
+              Foreground.notify(
+                'DuoTalk',
+                named ? `${n} ti sta chiamando` : 'Ti stanno chiamando',
+              ).catch(() => {});
+              Vibration.vibrate([0, 400, 200, 400]);
+              return;
+            }
+
+            // L'arrivo dell'altro, invece, in primo piano si vede gia':
+            // notificarlo sarebbe solo rumore.
             if (appStateRef.current !== 'active') {
-              // Il nome e' facoltativo: senza, si evita di scrivere "Qualcuno".
-              const named = n && n !== 'Qualcuno';
-              const text = reason === 'knock'
-                ? (named ? `${n} ti aspetta nel canale` : 'Ti aspettano nel canale')
-                : (named ? `${n} è nel canale` : 'C’è qualcuno nel canale');
-              Foreground.notify('DuoTalk', text).catch(() => {});
+              Foreground.notify(
+                'DuoTalk',
+                named ? `${n} è nel canale` : 'C’è qualcuno nel canale',
+              ).catch(() => {});
             }
           },
 

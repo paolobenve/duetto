@@ -114,7 +114,7 @@ restano premibili anche da attenuati.
 | **Video** | accende/spegne la camera |
 | **Audio** | tocco: muto. **Pressione prolungata**: da dove esce l'audio |
 | **Gira** | frontale ↔ posteriore; spento se il video è off |
-| **Avvisa** | manda la notifica all'altro; spento se è già nel canale |
+| **Avvisa** | richiama l'altro: vale anche se è già nel canale ma distratto |
 | **Esci** | lascia il canale e chiude la finestra, restando raggiungibile |
 
 Le uscite audio possibili sono quattro e non di più: **vivavoce**, **telefono**
