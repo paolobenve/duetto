@@ -29,9 +29,11 @@ tls-listening-port=5349
 # Se sono diversi, indicali entrambi:  external-ip=PUBBLICO/PRIVATO
 #external-ip=TUO_IP_PUBBLICO
 
-# Intervallo delle porte di relay. Vanno aperte sul firewall, in UDP.
-min-port=49152
-max-port=65535
+# Porte usate per il relay vero e proprio. Vanno aperte sul firewall in
+# UDP, e conviene tenerle poche: il valore predefinito di coturn e'
+# 49152-65535, sedicimila porte che per due persone non hanno senso.
+min-port=49160
+max-port=49200
 
 # --- Identita' e credenziali --------------------------------------------
 realm=TUO_DOMINIO

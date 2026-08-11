@@ -139,9 +139,40 @@ sudo sed -i 's/#TURNSERVER_ENABLED=1/TURNSERVER_ENABLED=1/' /etc/default/coturn
 sudo systemctl enable --now coturn
 ```
 
-Firewall: **TCP/UDP 3478**, **TCP 5349**, **UDP 49152-65535**.
+Firewall: **TCP/UDP 3478**, **TCP 5349**, e l'intervallo di relay (per due persone
+bastano poche decine di porte: `min-port`/`max-port` in `turnserver.conf`).
 
-Nell'app, sotto «Altre impostazioni»: url `turn:TUO_DOMINIO:3478`, utente e password.
+```bash
+# con firewalld
+sudo firewall-cmd --permanent --add-port=3478/tcp --add-port=3478/udp
+sudo firewall-cmd --permanent --add-port=5349/tcp
+sudo firewall-cmd --permanent --add-port=49160-49200/udp
+sudo firewall-cmd --reload
+
+# con ufw
+sudo ufw allow 3478/tcp && sudo ufw allow 3478/udp
+sudo ufw allow 5349/tcp && sudo ufw allow 49160:49200/udp
+```
+
+⚠️ Se il tuo provider ha un firewall proprio (pannello web), le porte vanno aperte
+**anche lì**: il server non ne sa nulla, e dall'interno tutto sembra a posto.
+
+Verifica che il relay risponda **dall'esterno**, non dal server stesso:
+
+```bash
+node server/tools/stun-check.mjs TUO_DOMINIO 3478
+```
+
+Poi dillo al signaling, che lo comunichera' ai telefoni: nel `.env`
+
+```
+TURN_URL=turn:TUO_DOMINIO:3478
+TURN_USER=duotalk
+TURN_PASS=...        # la password scritta in /etc/turnserver.conf
+```
+
+e `sudo systemctl restart duotalk-signaling`. Il controllo di salute deve rispondere
+`"turn":true`. **Sui telefoni non si configura nulla.**
 
 ## 4. Sui telefoni
 
@@ -166,5 +197,6 @@ Perché la presenza regga davvero:
 | "Nessuna risposta dall'altro telefono" | codice diverso, o l'altro non è collegato | rifate l'accoppiamento con un codice nuovo |
 | "Il codice non coincide" | cifre digitate male | è la verifica che funziona: rigenerate il codice |
 | Si collegano ma niente audio | la rete blocca il P2P | configura coturn |
+| Resta in "connecting" poi "failed" su reti diverse | manca il relay, o è irraggiungibile | `stun-check.mjs` dall'esterno: se non risponde è il firewall |
 | Esce dal canale in background | il sistema chiude l'app | escludi DuoTalk dall'ottimizzazione batteria |
 | Dopo il riavvio del telefono non è più in ascolto | limite noto | riapri l'app una volta |
