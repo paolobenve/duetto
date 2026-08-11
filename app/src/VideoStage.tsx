@@ -87,6 +87,9 @@ export default function VideoStage(props: Props) {
   let bigIsSelf = false;
   let pipStream: MediaStream | null = null;
   let pipIsSelf = false;
+  // Riquadrino da disegnare comunque, anche senza immagine dentro:
+  // toglierlo e rimetterlo a ogni interruzione fa ballare il layout.
+  let pipEmpty = false;
 
   if (bothHaveVideo) {
     bigIsSelf = selfBig;
@@ -99,9 +102,11 @@ export default function VideoStage(props: Props) {
     // Interruzione in corso: si mantiene la disposizione scelta, cosi'
     // al ritorno nulla si sposta.
     if (selfBig) {
-      // Avevi messo te stesso davanti: resti davanti.
+      // Avevi messo te stesso davanti: resti davanti, e il riquadrino
+      // dell'altro resta al suo posto in attesa dell'immagine.
       bigStream = localStream;
       bigIsSelf = true;
+      pipEmpty = true;
     } else {
       // Il posto grande resta dell'altro, vuoto con l'avviso sopra:
       // promuovere il proprio farebbe vedere il proprio ingrandirsi e
@@ -381,7 +386,7 @@ export default function VideoStage(props: Props) {
         </View>
       ) : null}
 
-      {pipStream && !compact ? (
+      {(pipStream || pipEmpty) && !compact ? (
         <Animated.View
           {...dragResponder.panHandlers}
           style={[
@@ -394,16 +399,22 @@ export default function VideoStage(props: Props) {
           ]}>
           {/* Anche qui "contain": il riquadrino ha gia' le proporzioni
               giuste, quindi non c'e' nulla da tagliare. */}
-          <RTCView
-            key={pipIsSelf ? 'pip-self' : `pip-remote-${remoteVideoKey ?? 0}`}
-            streamURL={pipStream.toURL()}
-            style={styles.pipVideo}
-            objectFit="contain"
-            mirror={pipIsSelf}
-            zOrder={1}
-          />
+          {pipStream ? (
+            <RTCView
+              key={pipIsSelf ? 'pip-self' : `pip-remote-${remoteVideoKey ?? 0}`}
+              streamURL={pipStream.toURL()}
+              style={styles.pipVideo}
+              objectFit="contain"
+              mirror={pipIsSelf}
+              zOrder={1}
+            />
+          ) : (
+            <View style={styles.pipWaiting} />
+          )}
           <View style={styles.pipTag} pointerEvents="none">
-            <Text style={styles.pipTagText}>{pipIsSelf ? 'Tu' : 'Lui/Lei'}</Text>
+            <Text style={styles.pipTagText}>
+              {pipStream ? (pipIsSelf ? 'Tu' : 'Lui/Lei') : 'in attesa'}
+            </Text>
           </View>
           <View {...resizeResponder.panHandlers} style={styles.handle}>
             <View style={styles.handleGrip} />
@@ -429,6 +440,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
   },
   pipVideo: { flex: 1 },
+  pipWaiting: { flex: 1, backgroundColor: '#14171d' },
   notice: {
     position: 'absolute', left: 0, right: 0, top: '46%',
     alignItems: 'center', paddingHorizontal: 24,
