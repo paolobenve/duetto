@@ -76,7 +76,7 @@ export async function caricaPosizionePip(): Promise<void> {
 }
 
 const MARGIN = 14;
-const TOP_SAFE = 116;    // sotto ingranaggio e badge, senza sfiorarli
+const TOP_SAFE = 58;     // appena sotto ingranaggio e badge (14 + 36 + 8)
 const BOTTOM_SAFE = 140; // sopra il pannello dei controlli
 
 /** Larghezza del riquadrino, come frazione della larghezza schermo. */

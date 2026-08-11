@@ -264,6 +264,8 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
             keyboardType="number-pad"
             autoCorrect={false}
             maxLength={9}
+            // Si è qui per digitare: la tastiera non si fa aspettare.
+            autoFocus
           />
           <Primary label="Accoppia" disabled={!isCodeComplete(typed)} onPress={startJoin} />
           <Secondary label="Indietro" onPress={reset} />
