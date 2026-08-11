@@ -1,4 +1,4 @@
 // Generato da scripts/bump-build.js a ogni compilazione: non modificare a mano.
-export const BUILD = 5;
-export const BUILT_AT = '11/08 06:06';
-export const VERSION_LABEL = 'build 5 · 11/08 06:06';
+export const BUILD = 6;
+export const BUILT_AT = '11/08 06:10';
+export const VERSION_LABEL = 'build 6 · 11/08 06:10';

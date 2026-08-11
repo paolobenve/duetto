@@ -58,7 +58,7 @@ try {
   // --- A si collega solo in ascolto ------------------------------------
   const a = client();
   await a.open();
-  a.send({ type: 'join', room: 'coppia1', token: TOKEN, name: 'Anna', mode: 'listening' });
+  a.send({ type: 'join', room: 'coppia1', token: TOKEN, name: 'Anna', mode: 'listening', side: 'A' });
   const aJoined = await a.expect('joined');
   check(aJoined.polite === true, 'primo collegato: ruolo polite');
   check(aJoined.peerPresent === false, 'primo collegato: l’altro non c’e’');
@@ -66,7 +66,7 @@ try {
   // --- B si collega, anche lui in ascolto -------------------------------
   const b = client();
   await b.open();
-  b.send({ type: 'join', room: 'coppia1', token: TOKEN, name: 'Bruno', mode: 'listening' });
+  b.send({ type: 'join', room: 'coppia1', token: TOKEN, name: 'Bruno', mode: 'listening', side: 'B' });
   const bJoined = await b.expect('joined');
   check(bJoined.polite === false, 'secondo collegato: ruolo impolite (ruoli distinti)');
   check(bJoined.peerPresent === true, 'secondo collegato: vede l’altro');
@@ -126,6 +126,40 @@ try {
   c0.send({ type: 'knock' });
   const k3 = await c0.expect('knock-result');
   check(k3.ok === false && k3.error === 'peer-offline', 'avviso a un assente: segnalato');
+
+
+  // --- riaggancio dopo un calo di rete ------------------------------------
+  // Il telefono perde il wifi: il server non se ne accorge subito, la
+  // connessione morta resta nella stanza. Riconnettendosi, il telefono
+  // deve riprendersi il PROPRIO posto, non trovare "coppia occupata".
+  await wait(100);
+  const r1 = client();
+  await r1.open();
+  r1.send({ type: 'join', room: 'riaggancio', token: TOKEN, name: 'Anna', side: 'A' });
+  await r1.expect('joined');
+  const r2 = client();
+  await r2.open();
+  r2.send({ type: 'join', room: 'riaggancio', token: TOKEN, name: 'Bruno', side: 'B' });
+  await r2.expect('joined');
+
+  // Anna riappare senza che la vecchia connessione sia stata dichiarata morta
+  const r1bis = client();
+  await r1bis.open();
+  r1bis.send({ type: 'join', room: 'riaggancio', token: TOKEN, name: 'Anna', side: 'A' });
+  const again = await r1bis.expect('joined');
+  check(again.type === 'joined', 'riagganciandosi si riprende il proprio posto');
+  check(again.peerPresent === true, 'e ritrova l’altro ancora presente');
+  const kicked = await r1.expect('error');
+  check(kicked.error === 'replaced', 'la connessione vecchia viene congedata');
+  check(await r2.expectNone('peer-left'), 'all’altro non risulta nessuna uscita');
+
+  // Un terzo dispositivo vero resta comunque fuori
+  const r3 = client();
+  await r3.open();
+  r3.send({ type: 'join', room: 'riaggancio', token: TOKEN, name: 'Cip', side: null });
+  const r3res = await r3.expect('error');
+  check(r3res.error === 'room-full', 'un terzo dispositivo vero resta fuori');
+  r1bis.close(); r2.close(); r3.close();
 
   // --- terzo dispositivo --------------------------------------------------
   const d = client();

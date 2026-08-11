@@ -156,6 +156,7 @@ export default function App() {
           room: pair.id,
           displayName: cfg.displayName || 'Qualcuno',
           key: pair.key,
+          side: pair.side,
           mode: 'listening',
         },
         {
@@ -232,7 +233,12 @@ export default function App() {
 
           onError: (code) => {
             if (code === 'bad-token') Alert.alert('Token errato', 'Access token non valido.');
-            else if (code === 'room-full') Alert.alert('Coppia occupata', 'Ci sono già due dispositivi.');
+            else if (code === 'room-full' || code === 'replaced') {
+              // Quasi sempre transitorio: la connessione precedente non e'
+              // ancora stata dichiarata morta, o il telefono si e' riagganciato
+              // altrove. Il riaggancio automatico ci pensa da solo: un avviso
+              // qui sarebbe solo allarmismo.
+            }
             else if (code === 'decrypt-failed') {
               Alert.alert(
                 'Chiavi diverse',

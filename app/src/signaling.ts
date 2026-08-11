@@ -63,6 +63,9 @@ export type SignalingOptions = {
   displayName: string;
   /** chiave della coppia; assente durante l'accoppiamento */
   key?: Uint8Array | string | null;
+  /** lato della coppia: identifica il dispositivo, cosi' riagganciandosi
+   *  riprende il proprio posto invece di essere respinto */
+  side?: 'A' | 'B';
   mode?: Mode;
 };
 
@@ -109,6 +112,7 @@ export class Signaling {
         token: this.opts.accessToken,
         name: this.opts.displayName || 'Qualcuno',
         mode: this.mode,
+        side: this.opts.side,
       });
     };
 

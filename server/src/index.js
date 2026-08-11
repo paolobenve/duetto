@@ -100,7 +100,12 @@ function leaveRoom(ws) {
   const set = rooms.get(roomId);
   if (!set) return;
   set.delete(ws);
-  for (const peer of set) send(peer, { type: 'peer-left', peerId: ws.peerId });
+  // Se questa connessione e' stata rimpiazzata dallo stesso dispositivo che
+  // si riaggancia, l'altro non deve vedere nessuna uscita: il posto e' gia'
+  // occupato di nuovo, e annunciarla farebbe cadere il collegamento buono.
+  if (!ws.replaced) {
+    for (const peer of set) send(peer, { type: 'peer-left', peerId: ws.peerId });
+  }
   if (set.size === 0) rooms.delete(roomId);
   ws.roomId = null;
 }
@@ -134,6 +139,8 @@ wss.on('connection', (ws, req) => {
   ws.roomId = null;
   ws.joined = false;
   ws.mode = 'listening';
+  ws.side = null;      // 'A' o 'B': identifica il dispositivo
+  ws.replaced = false; // rimpiazzato dallo stesso dispositivo
   ws.name = 'Qualcuno';
   ws.lastKnock = 0;
 
@@ -173,12 +180,35 @@ wss.on('connection', (ws, req) => {
       }
       let set = rooms.get(roomId);
       if (!set) { set = new Set(); rooms.set(roomId, set); }
+
+      // Il lato ('A' o 'B') identifica il DISPOSITIVO, non la connessione:
+      // e' fissato all'accoppiamento e non cambia mai. Se troviamo una
+      // connessione dello stesso lato, e' lo stesso telefono che si
+      // riaggancia dopo un cambio di rete, e si riprende il suo posto.
+      //
+      // Senza questo, chi perde la rete trova i due posti occupati - uno
+      // dei quali da se stesso - e viene respinto come se fosse un terzo
+      // dispositivo, finche' il battito non si accorge della connessione
+      // morta: fino a un minuto di "coppia occupata" senza motivo.
+      const side = msg.side === 'A' || msg.side === 'B' ? msg.side : null;
+      if (side) {
+        for (const peer of [...set]) {
+          if (peer.side === side) {
+            peer.replaced = true;
+            send(peer, { type: 'error', error: 'replaced' });
+            try { peer.close(4005, 'replaced'); } catch { /* noop */ }
+            set.delete(peer);
+          }
+        }
+      }
+
       if (set.size >= MAX_PER_ROOM) {
         send(ws, { type: 'error', error: 'room-full' });
         ws.close(4003, 'room-full');
         return;
       }
 
+      ws.side = side;
       const others = peersOf(roomId, ws);
       set.add(ws);
       ws.roomId = roomId;

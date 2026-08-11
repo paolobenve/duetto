@@ -110,6 +110,7 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
         room: pairId,
         displayName: cfg.displayName || '',
         key: null,
+        side,
         mode: 'listening',
       },
       {
