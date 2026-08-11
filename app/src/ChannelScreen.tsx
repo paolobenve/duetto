@@ -399,8 +399,11 @@ function PresenceCard(props: {
 function StatsLine({ stats, quality }: { stats: VideoStats; quality: string }) {
   const fmt = (v?: { w: number; h: number; fps: number; kbps: number | null }) => {
     if (!v || !v.w || !v.h) return null;
-    const banda = v.kbps === null ? '' :
-      v.kbps >= 1000 ? ` · ${(v.kbps / 1000).toFixed(1)} Mbit/s` : ` · ${v.kbps} kbit/s`;
+    // In byte al secondo: è l'unità con cui si guarda il consumo di dati,
+    // ed è anche più corta da leggere di sfuggita sotto ai pulsanti.
+    const kBs = v.kbps === null ? null : v.kbps / 8;
+    const banda = kBs === null ? '' :
+      kBs >= 1000 ? ` · ${(kBs / 1000).toFixed(1)} MB/s` : ` · ${Math.round(kBs)} kB/s`;
     return `${v.w}×${v.h} · ${v.fps} fps${banda}`;
   };
   const su = fmt(stats.out);
