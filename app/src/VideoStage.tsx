@@ -342,6 +342,7 @@ export default function VideoStage(props: Props) {
    * o si staccherebbe dal bordo a cui era appoggiato.
    */
   const riposiziona = useCallback((animate = true) => {
+    if (gestoInCorso.current) return;
     const { minX, minY, maxX, maxY } = spazio();
     const a = posizioneScelta;
     const dx = maxX - minX;
@@ -394,6 +395,15 @@ export default function VideoStage(props: Props) {
   // --- Trascinamento (e pizzico a due dita per ridimensionare) ------------
   const pinchStart = useRef<{ dist: number; w: number } | null>(null);
   const inizioTrascinamento = useRef({ x: 0, y: 0 });
+  /**
+   * Un dito è appoggiato sul riquadrino.
+   *
+   * Mentre lo si muove, la ricollocazione automatica non deve
+   * intervenire: l'ancoraggio nuovo viene registrato solo al rilascio,
+   * quindi riporterebbe il riquadrino a quello vecchio - e da fuori si
+   * vede saltare da solo sotto il dito.
+   */
+  const gestoInCorso = useRef(false);
 
   const twoFingerDistance = (touches: any[]) => {
     const [a, b] = touches;
@@ -407,6 +417,7 @@ export default function VideoStage(props: Props) {
         onMoveShouldSetPanResponder: (_e, g) =>
           Math.abs(g.dx) > 3 || Math.abs(g.dy) > 3,
         onPanResponderGrant: () => {
+          gestoInCorso.current = true;
           dragged.current = false;
           pinchStart.current = null;
           // Niente `extractOffset`: la posizione resta in coordinate
@@ -441,6 +452,7 @@ export default function VideoStage(props: Props) {
           });
         },
         onPanResponderRelease: () => {
+          gestoInCorso.current = false;
           pinchStart.current = null;
           if (dragged.current) {
             // clampIntoScreen registra da sé la posizione finale.
@@ -451,6 +463,7 @@ export default function VideoStage(props: Props) {
           }
         },
         onPanResponderTerminate: () => {
+          gestoInCorso.current = false;
           pinchStart.current = null;
           clampIntoScreen();
         },
@@ -648,7 +661,7 @@ export default function VideoStage(props: Props) {
           )}
           <View style={styles.pipTag} pointerEvents="none">
             <Text style={styles.pipTagText}>
-              {pipStream ? (pipIsSelf ? 'Tu' : 'Lui/Lei') : 'in attesa'}
+              {pipStream ? (pipIsSelf ? 'Tu' : 'Non tu') : 'in attesa'}
             </Text>
           </View>
         </Animated.View>

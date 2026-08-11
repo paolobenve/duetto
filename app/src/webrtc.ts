@@ -253,6 +253,19 @@ export class ChannelSession {
       if (pc.connectionState === 'connected') {
         this.logSelectedPath(pc);
         /**
+         * Il percorso si rilegge subito, e poi ancora dopo un secondo.
+         *
+         * Nell'istante in cui la connessione si dichiara pronta la coppia
+         * di candidati scelta spesso non è ancora leggibile - nel log
+         * compare "non ancora determinato" - e aspettando il campione
+         * successivo l'indicazione a schermo resta indietro di secondi
+         * proprio quando è appena cambiata.
+         */
+        this.lastOutbound = null;
+        this.lastInbound = null;
+        this.logOutboundVideo();
+        setTimeout(() => this.logOutboundVideo(), 1000);
+        /**
          * Appena collegati si ridichiara il proprio stato.
          *
          * Chi accende il video PRIMA che l'altro arrivi manda il suo
