@@ -393,6 +393,7 @@ export class ChannelSession {
     if (localVideo) {
       try {
         await this.videoSender.replaceTrack(localVideo);
+        await this.keepResolutionStable();
         log('traccia locale inserita nel canale appena individuato');
       } catch (e) {
         log('inserimento traccia fallito:', String(e));
@@ -469,19 +470,31 @@ export class ChannelSession {
         width: { ideal: 1280 },
         height: { ideal: 720 },
         frameRate: { ideal: 30 },
+        // Proporzioni dichiarate esplicitamente: senza, il sensore puo'
+        // scegliere un formato diverso (4:3 invece di 16:9) e con esso
+        // cambia l'angolo di ripresa, quindi cosa resta dentro
+        // l'inquadratura.
+        aspectRatio: { ideal: 16 / 9 },
       },
-    });
+    } as any);
     const track = cam.getVideoTracks()[0];
     if (!track) return false;
 
     this.localStream.addTrack(track);          // anteprima locale
-    log('camera accesa, traccia', track.id);
+    try {
+      const st: any = (track as any).getSettings?.() ?? {};
+      log('camera accesa:', `${st.width ?? '?'}x${st.height ?? '?'}`,
+        st.frameRate ? `@${Math.round(st.frameRate)}fps` : '', '- traccia', track.id);
+    } catch {
+      log('camera accesa, traccia', track.id);
+    }
 
     if (this.videoSender) {
       // Nessuna rinegoziazione: l'altro vede semplicemente ripartire i
       // fotogrammi sulla traccia che gia' aveva.
       try {
         await this.videoSender.replaceTrack(track);
+        await this.keepResolutionStable();
       } catch (e) {
         log('replaceTrack fallita:', String(e));
       }
@@ -493,6 +506,31 @@ export class ChannelSession {
     this.events.onLocalStream?.(this.localStream);
     this.broadcastState();
     return true;
+  }
+
+  /**
+   * Chiede di non ridurre la risoluzione quando la banda scarseggia.
+   *
+   * Il comportamento predefinito e' l'opposto: WebRTC abbassa la
+   * risoluzione, e molti sensori cambiando formato cambiano anche
+   * l'angolo di ripresa. Dall'altra parte si vede l'inquadratura
+   * allargarsi e restringersi da sola. Meglio perdere fotogrammi che
+   * cambiare cosa si inquadra.
+   */
+  private async keepResolutionStable() {
+    const sender: any = this.videoSender;
+    if (!sender?.getParameters) return;
+    try {
+      const params = sender.getParameters();
+      params.degradationPreference = 'maintain-resolution';
+      if (Array.isArray(params.encodings) && params.encodings.length > 0) {
+        params.encodings[0].scaleResolutionDownBy = 1;
+      }
+      await sender.setParameters(params);
+      log('risoluzione bloccata: sotto banda scarsa calano i fotogrammi');
+    } catch (e) {
+      log('non riesco a bloccare la risoluzione:', String(e));
+    }
   }
 
   /** Spegne la camera: svuota il canale e rilascia davvero la camera. */
