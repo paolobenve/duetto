@@ -76,16 +76,31 @@ export default function ChannelScreen(props: Props) {
    * lasciare uno schermo nero senza spiegazione.
    */
   const serverLost = status === 'offline';
-  const interrupted = serverLost ||
-    (together && !linked &&
-      (connectionState === 'disconnected' || connectionState === 'failed'));
+
+  /**
+   * Non siamo collegati: caduto il server, oppure l'altro c'e' ma il
+   * collegamento diretto no - compreso mentre si sta ristabilendo.
+   *
+   * Includere il ristabilimento e' il punto: prima la fase "connecting"
+   * non contava come interruzione, e in quell'istante il posto grande
+   * veniva dato al proprio video. Si vedeva il proprio a schermo intero
+   * per un attimo e poi rimpicciolirsi, a ogni riconnessione.
+   */
+  const notConnected = serverLost || (together && !linked);
+
+  /**
+   * Riserviamo il posto grande all'altro solo se ci aspettiamo davvero
+   * il suo video: se ha la camera spenta, il proprio a schermo intero e'
+   * la cosa giusta da mostrare.
+   */
+  const interrupted = notConnected && peerState.video;
 
   // Senza questo, perdendo il server restava uno schermo nero muto: il
   // video dell'altro e' ancora li' ma non ci arriva piu' nessun
   // fotogramma, e nulla lo spiegava.
   const notice = serverLost
     ? 'Connessione persa, mi sto ricollegando…'
-    : interrupted
+    : notConnected
       ? (connectionState === 'failed'
           ? 'Collegamento perso, sto ricollegando…'
           : 'Collegamento interrotto, in attesa…')
