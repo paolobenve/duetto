@@ -37,8 +37,11 @@ se ne accorge da solo, e sarebbe rumore.
 WebSocket minimale in Node.js. Fa quattro cose:
 
 - **Presenza**: ogni stanza accetta al massimo 2 connessioni; la terza riceve `room-full`.
-- **Ruoli**: chi arriva per primo è `polite`, il secondo è `impolite`. Assegnazione
-  deterministica, così i due ruoli non coincidono mai (serve alla perfect negotiation).
+- **Riaggancio**: il lato della coppia (`A`/`B`) identifica il *dispositivo*, non la
+  connessione. Chi si riaggancia dopo un calo di rete si riprende il proprio posto,
+  congedando la connessione precedente: senza questo, il server non avrebbe ancora
+  dichiarato morta la vecchia e il telefono si vedrebbe respinto come un terzo
+  dispositivo per un minuto buono. All'altro non risulta nessuna uscita.
 - **Inoltro**: gira i messaggi `signal` da un peer all'altro **senza leggerne il
   contenuto**, e i messaggi `pair` durante l'accoppiamento.
 - **Avvisi**: `notify` quando qualcuno entra nel canale o preme "Avvisa" (con un freno di
@@ -70,13 +73,19 @@ Tre proprietà, e il motivo di ciascuna:
 
 **Il codice non arriva mai al server.** Ci arriva solo `pairId`, la sua impronta.
 
-**`pairId` è deliberatamente costoso da calcolare.** Otto cifre sono solo 10⁸
-combinazioni: con un hash normale il server potrebbe provarle tutte in pochi secondi,
-risalire al codice e fingersi l'altra persona. Per questo `pairId` è il risultato di
-**200.000 hash concatenati**: provare tutti i codici costa 2×10¹³ operazioni, fuori
-portata nei 90 secondi che dura un accoppiamento. Per noi sono ~600 ms su PC, 2-3 secondi
-su telefono, una volta sola. Il calcolo cede il controllo ogni 10.000 giri, così
-l'interfaccia non si congela.
+**Il calcolo di `pairId` è un po' costoso, ma non troppo.** Otto cifre sono solo 10⁸
+combinazioni: con un hash normale il server potrebbe provarle tutte in pochi secondi.
+Rallentare il calcolo alza quel costo, ma lo alza anche per noi: la prima versione, a
+200.000 giri, faceva aspettare dieci secondi a ogni accoppiamento, e non era accettabile.
+
+Ora sono 6.000 giri, una frazione di secondo, e la difesa contro chi prova codici a
+tappeto sta dove costa a chi attacca e non a chi usa l'app: il **server limita gli
+ingressi** (30 al minuto per indirizzo) e l'**app impone 20 secondi** prima di ritentare
+dopo un fallimento.
+
+Il limite che ne deriva è dichiarato: un server ostile, che vede `pairId`, potrebbe
+risalire a un codice di 8 cifre e inserirsi *durante* l'accoppiamento. Dopo, la chiave è a
+256 bit. La contromisura, se servisse, è allungare il codice — non rallentare il calcolo.
 
 **La chiave non deriva dal codice.** Nasce da uno scambio X25519 con il codice mescolato
 nella derivazione. Chi ascolta non può calcolarla (non ha i segreti privati); chi volesse
@@ -99,10 +108,19 @@ mezzo.
 - Entrando si apre **solo il microfono**. La camera si accende su richiesta e spegnendola
   si fa `removeTrack` + `track.stop()`: viene rilasciata davvero, e l'indicatore privacy
   di Android si spegne.
-- Aggiungere o togliere una traccia richiede una **rinegoziazione**. Se entrambi accendono
-  il video nello stesso istante si ha una collisione di offerte: la risolviamo con la
-  **perfect negotiation** — il `polite` annulla la propria offerta e accetta quella
-  dell'altro, l'`impolite` ignora quella in arrivo.
+- Il **canale video viene aperto subito**, anche vuoto: accendere la camera si limita a
+  metterci dentro la traccia (`replaceTrack`). Nessuna rinegoziazione, nessuna traccia che
+  si accumula. Aggiungere e togliere la traccia a ogni accensione — l'approccio iniziale —
+  produceva tracce nuove che si accavallavano alle vecchie, e il renderer finiva per
+  disegnare quella morta: schermo nero.
+- **Offre sempre e solo una delle due parti**. Il ruolo viene dal lato dell'accoppiamento
+  (`A` = risponde, `B` = offre), non dall'ordine di arrivo nella stanza: quello cambia a
+  ogni riaggancio, e bastavano due riconnessioni sfortunate perché entrambi si credessero
+  l'offerente e le offerte si scontrassero.
+- Chi risponde trova il canale video creato **in sola ricezione** — è così che WebRTC crea i
+  canali derivati da un'offerta altrui — e lo porta a `sendrecv` *prima* di preparare la
+  risposta, così la direzione corretta viaggia nella stessa negoziazione. Senza, quel
+  telefono vedrebbe il video dell'altro ma non riuscirebbe a inviare il proprio.
 - Gli **ICE candidate** arrivati prima della remote description finiscono in coda e
   vengono applicati dopo, altrimenti andrebbero persi.
 - Un messaggio cifrato `state` comunica all'altro se hai mic/camera attivi e **con quali
