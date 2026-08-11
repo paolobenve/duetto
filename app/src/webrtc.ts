@@ -248,7 +248,20 @@ export class ChannelSession {
       if (!isCurrent()) return;
       log('connessione:', pc.connectionState);
       this.events.onConnectionState?.(pc.connectionState);
-      if (pc.connectionState === 'connected') this.logSelectedPath(pc);
+      if (pc.connectionState === 'connected') {
+        this.logSelectedPath(pc);
+        /**
+         * Appena collegati si ridichiara il proprio stato.
+         *
+         * Chi accende il video PRIMA che l'altro arrivi manda il suo
+         * `state` quando non c'è nessuno ad ascoltarlo: entrando, il
+         * secondo telefono non sa che il primo ha la camera accesa, e
+         * poiché quel messaggio è uno dei due segnali con cui si decide
+         * se c'è video, non lo mostrava. Ridirlo al collegamento non
+         * costa nulla e chiude il buco da entrambi i lati.
+         */
+        this.broadcastState();
+      }
     });
 
     // @ts-ignore

@@ -351,7 +351,13 @@ export default function VideoStage(props: Props) {
   // Cambiando schermo, proporzioni o dimensione del riquadrino, si torna
   // alla posizione SCELTA ricalcolata sui bordi nuovi - non si riporta
   // dentro quella vecchia, che era espressa in pixel di un altro quadro.
-  useEffect(() => { riposiziona(); },
+  // Senza animazione: ridimensionando, questo scatta a ogni fotogramma e
+  // la molla resterebbe indietro rispetto al dito. Si vedeva il
+  // riquadrino scivolare verso destra mentre cresceva - perché cresce
+  // dall'angolo in alto a sinistra - e tornare al suo posto solo
+  // mollandolo. Ricollocandolo subito, il bordo a cui è ancorato resta
+  // fermo e la crescita va verso l'interno.
+  useEffect(() => { riposiziona(false); },
     [width, height, pipWidth, pipHeight, insetV, insetH, riposiziona]);
 
   // --- Trascinamento (e pizzico a due dita per ridimensionare) ------------
