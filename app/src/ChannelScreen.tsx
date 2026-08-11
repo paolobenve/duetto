@@ -117,17 +117,23 @@ export default function ChannelScreen(props: Props) {
   const notConnected = serverLost || (together && !linked);
 
   /**
-   * L'avviso di interruzione aspetta un attimo prima di comparire.
+   * Un'interruzione si dichiara solo se dura.
    *
-   * Rimettendo il wifi il collegamento si ristabilisce in poche centinaia
-   * di millisecondi, e l'avviso faceva in tempo a lampeggiare: un allarme
-   * per qualcosa che si era già risolto da solo dà l'impressione di
-   * un'app fragile proprio mentre sta funzionando bene.
+   * Il ritardo vale sia per l'avviso sia per la DISPOSIZIONE dei
+   * riquadri, ed è la seconda a contare di più: prima l'avviso aspettava
+   * ma il layout si riordinava subito, quindi il riquadrino saltava a
+   * schermo intero e tornava indietro a ogni rinegoziazione - la ricerca
+   * di una strada diretta, un cambio di risoluzione - senza che nulla
+   * fosse davvero successo.
+   *
+   * Tre secondi: sotto quella soglia le interruzioni si richiudono da
+   * sole, e l'unica cosa peggiore di un video che si ferma un attimo è
+   * un'interfaccia che si riordina due volte per dirlo.
    */
   const [showNotice, setShowNotice] = useState(false);
   useEffect(() => {
     if (!notConnected) { setShowNotice(false); return; }
-    const t = setTimeout(() => setShowNotice(true), 1200);
+    const t = setTimeout(() => setShowNotice(true), 3000);
     return () => clearTimeout(t);
   }, [notConnected]);
 
@@ -136,7 +142,7 @@ export default function ChannelScreen(props: Props) {
    * il suo video: se ha la camera spenta, il proprio a schermo intero è
    * la cosa giusta da mostrare.
    */
-  const interrupted = notConnected && peerState.video;
+  const interrupted = showNotice && peerState.video;
 
   // Senza questo, perdendo il server restava uno schermo nero muto: il
   // video dell'altro è ancora lì ma non ci arriva più nessun
