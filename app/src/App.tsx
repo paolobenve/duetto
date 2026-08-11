@@ -93,7 +93,12 @@ export default function App() {
   /** relay comunicato dal server, valido finche' dura la connessione */
   const serverTurnRef = useRef<any[]>([]);
   /** attesa prima di ricostruire un collegamento caduto */
-  const rebuildTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** attesa prima della riparazione leggera del collegamento */
+  const softTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** attesa prima di ricostruirlo del tutto, se la leggera non basta */
+  const hardTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** stato corrente del collegamento, leggibile dentro i timer */
+  const connStateRef = useRef('new');
   /**
    * La connessione al server e' caduta da quando eravamo collegati.
    *
@@ -102,6 +107,11 @@ export default function App() {
    * nostro lato la connessione sembrasse appena creata e quindi sana.
    */
   const signalingWasDown = useRef(false);
+
+  const clearRecovery = useCallback(() => {
+    if (softTimer.current) { clearTimeout(softTimer.current); softTimer.current = null; }
+    if (hardTimer.current) { clearTimeout(hardTimer.current); hardTimer.current = null; }
+  }, []);
 
   const audio = useAudioRoute(inChannel);
 
@@ -366,25 +376,36 @@ export default function App() {
         onRemoteStream: setRemoteStream,
         onConnectionState: (st) => {
           setConnState(st);
-          // Collegamento morto: si ricostruisce da soli, senza aspettare che
-          // l'utente chiuda e riapra l'app. Capita a ogni cambio di rete.
-          if (st === 'failed' || st === 'disconnected') {
-            if (rebuildTimer.current) clearTimeout(rebuildTimer.current);
-            // "disconnected" a volte rientra da solo: gli diamo qualche
-            // secondo prima di buttare via tutto.
-            rebuildTimer.current = setTimeout(() => {
-              // Senza server l'offerta verrebbe scartata: si aspetta il
-              // ritorno, che fara' ripartire la negoziazione da solo.
+          connStateRef.current = st;
+
+          if (st === 'connected') { clearRecovery(); return; }
+          if (st !== 'failed' && st !== 'disconnected') return;
+
+          // ICE si riprende spesso da solo, anche da "failed": nel log si
+          // e' visto passare da failed a connected senza alcun aiuto.
+          // Demolire subito interrompeva audio e video proprio mentre si
+          // stava risistemando, ed era la causa della maggior parte delle
+          // interruzioni visibili. Ora: si aspetta, si tenta la riparazione
+          // leggera, e solo se non basta si ricostruisce.
+          clearRecovery();
+          softTimer.current = setTimeout(async () => {
+            if (connStateRef.current === 'connected') return;
+            if (signalingWasDown.current) return;
+            if (!inChannelRef.current || !peerActiveRef.current) return;
+
+            if (politeRef.current) {
+              // Non possiamo offrire: lo chiediamo all'altro.
+              signalingRef.current?.sendSignal({ kind: 'renegotiate' });
+            } else {
+              await sessionRef.current?.restartIce();
+            }
+
+            hardTimer.current = setTimeout(() => {
+              if (connStateRef.current === 'connected') return;
               if (signalingWasDown.current) return;
               if (inChannelRef.current && peerActiveRef.current) attachPeer(true);
-            // "disconnected" rientra spesso da solo entro una decina di
-            // secondi: ricostruire subito causerebbe un'interruzione
-            // inutile, e a catena altre riconnessioni.
-            }, st === 'failed' ? 800 : 12000);
-          } else if (st === 'connected' && rebuildTimer.current) {
-            clearTimeout(rebuildTimer.current);
-            rebuildTimer.current = null;
-          }
+            }, 8000);
+          }, st === 'failed' ? 4000 : 12000);
         },
         onPeerState: setPeerState,
         onRemoteVideo: (present) => {

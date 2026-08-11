@@ -403,6 +403,38 @@ export class ChannelSession {
     }
   }
 
+  /**
+   * Riparazione leggera: rifa' solo la ricerca del percorso di rete,
+   * tenendo in piedi connessione e tracce.
+   *
+   * E' la prima cosa da provare quando il collegamento cede: demolire e
+   * ricostruire interrompe audio e video per un paio di secondi, mentre
+   * un riavvio di ICE spesso li ripristina senza che si noti nulla.
+   * Puo' farlo solo chi offre; all'altro resta il chiederlo.
+   */
+  async restartIce(): Promise<boolean> {
+    const pc: any = this.pc;
+    if (!pc || this.polite) return false;
+    try {
+      if (typeof pc.restartIce === 'function') {
+        pc.restartIce();
+        log('ICE riavviato');
+        return true;
+      }
+      // Versioni piu' vecchie: si ottiene lo stesso con un'offerta.
+      const offer = await pc.createOffer({ iceRestart: true });
+      await pc.setLocalDescription(offer);
+      this.signaling.sendSignal({
+        kind: 'desc', type: 'offer', sdp: pc.localDescription.sdp,
+      });
+      log('ICE riavviato con una nuova offerta');
+      return true;
+    } catch (e) {
+      log('riavvio di ICE fallito:', String(e));
+      return false;
+    }
+  }
+
   /** Esiste una connessione con l'altro, buona o meno che sia. */
   hasPeer(): boolean {
     return !!this.pc;
