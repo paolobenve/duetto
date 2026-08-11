@@ -80,6 +80,8 @@ export class ChannelSession {
    * devono lasciare il video acceso, non spegnerlo per sempre.
    */
   private peerWatching = true;
+  /** l'altro dichiara la camera accesa: lo dice il messaggio `state` */
+  private peerVideoDeclared = false;
   /** questo telefono sa encodare VP9 in hardware */
   private localVp9 = false;
   /** lo sa fare anche l'altro: VP9 ha senso solo se entrambi */
@@ -322,6 +324,7 @@ export class ChannelSession {
 
   async onSignal(msg: SignalMessage) {
     if (msg.kind === 'state') {
+      this.peerVideoDeclared = msg.video === true;
       this.peerVp9 = msg.hwVp9 === true;
       this.events.onPeerState?.({
         audio: msg.audio,
@@ -330,6 +333,9 @@ export class ChannelSession {
         hwVp9: this.peerVp9,
       });
       this.setPeerWatching(msg.watching !== false);
+      // Ciò che l'altro dichiara entra nel giudizio su "c'è il suo
+      // video": cambiandolo, va rifatto.
+      this.reportRemoteVideo();
       return;
     }
 
@@ -501,7 +507,17 @@ export class ChannelSession {
    */
   hasRemoteVideo(): boolean {
     const t: any = this.remoteStream?.getVideoTracks()[0];
-    return !!t && t.readyState !== 'ended';
+    if (!t || t.readyState === 'ended') return false;
+    // Una traccia il cui mittente ha smesso di trasmettere resta `live` e
+    // diventa `muted`: guardare solo readyState faceva credere che
+    // l'altro avesse la camera accesa appena aperta l'app, e il proprio
+    // video finiva nel riquadrino invece che a schermo intero.
+    //
+    // Il muto da solo però non basta: durante un'interruzione di rete la
+    // traccia ammutolisce pur avendo l'altro la camera accesa, e togliere
+    // il video lì farebbe ballare la disposizione a ogni caduta. Perciò
+    // conta anche cosa l'altro dichiara.
+    return !t.muted || this.peerVideoDeclared;
   }
 
   private reportRemoteVideo() {
