@@ -12,7 +12,7 @@ import type { Avatar } from './avatar';
 import type { VideoStats } from './webrtc';
 
 /** Dopo quanto i pulsanti si attenuano, e quanto restano visibili. */
-const IDLE_MS = 4000;
+const IDLE_MS = 9000;
 const DIM_OPACITY = 0.4;
 
 /**

@@ -115,6 +115,8 @@ export default function App() {
    * nostro lato la connessione sembrasse appena creata e quindi sana.
    */
   const signalingWasDown = useRef(false);
+  /** si è già ritentata una strada migliore su questo collegamento */
+  const relayRiprovato = useRef(false);
 
   const clearRecovery = useCallback(() => {
     if (softTimer.current) { clearTimeout(softTimer.current); softTimer.current = null; }
@@ -143,6 +145,31 @@ export default function App() {
   );
 
   useEffect(() => { inChannelRef.current = inChannel; }, [inChannel]);
+
+  /**
+   * Se stiamo passando dal relay, si tenta una volta la strada diretta.
+   *
+   * ICE non torna indietro da solo: scelta una strada che funziona, non
+   * la riconsidera più, nemmeno quando ne ricompare una molto migliore -
+   * tornando sul wifi il collegamento continuava a rimbalzare dal server
+   * all'infinito. Una rinegoziazione rifà la raccolta dei candidati e fa
+   * rivalutare le coppie: se la locale c'è, vince per priorità.
+   *
+   * Una volta sola per collegamento: se anche così resta il relay, vuol
+   * dire che di meglio non c'è, e insistere costerebbe interruzioni.
+   */
+  useEffect(() => {
+    if (connState !== 'connected') { relayRiprovato.current = false; return; }
+    if (videoStats.percorso !== 'relay' || relayRiprovato.current) return;
+    const t = setTimeout(() => {
+      if (!inChannelRef.current || !peerActiveRef.current) return;
+      relayRiprovato.current = true;
+      console.log('[duotalk-rtc]', 'passiamo dal relay: provo a cercare una strada diretta');
+      if (politeRef.current) signalingRef.current?.sendSignal({ kind: 'renegotiate' });
+      else sessionRef.current?.restartIce();
+    }, 8000);
+    return () => clearTimeout(t);
+  }, [connState, videoStats.percorso]);
 
   // Quale profilo l'interfaccia sta DAVVERO mostrando: distingue "non è
   // arrivato" da "è arrivato ma non si vede".
