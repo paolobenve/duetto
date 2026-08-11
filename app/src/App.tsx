@@ -277,7 +277,9 @@ export default function App() {
                 'DuoTalk',
                 named ? `${n} ti sta chiamando` : 'Ti stanno chiamando',
               ).catch(() => {});
-              Vibration.vibrate([0, 400, 200, 400]);
+              // Una vibrazione mancata e' un richiamo meno evidente, non
+              // un motivo per far cadere l'app addosso a chi la riceve.
+              try { Vibration.vibrate([0, 400, 200, 400]); } catch { /* noop */ }
               return;
             }
 

@@ -39,6 +39,7 @@ const permissions = [
   'android.permission.FOREGROUND_SERVICE_CAMERA',
   'android.permission.WAKE_LOCK',
   'android.permission.POST_NOTIFICATIONS',
+  'android.permission.VIBRATE', // il richiamo di "Avvisa"
 ];
 
 for (const p of permissions) {
