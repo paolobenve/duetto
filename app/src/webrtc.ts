@@ -703,7 +703,7 @@ export class ChannelSession {
       if (after === null || after > before) return;
       log('l\'encoder si è fermato dopo il cambio di scala: torno alla piena');
       try {
-        const sender: any = this.videoSender;
+        const sender: any = this.liveVideoSender();
         const params = sender.getParameters();
         if (Array.isArray(params.encodings) && params.encodings.length > 0) {
           params.encodings[0].scaleResolutionDownBy = 1;
@@ -811,8 +811,33 @@ export class ChannelSession {
    * su un encoder acceso lo fa smettere di produrre, e all'altro il video
    * sparisce mentre la nostra anteprima continua a funzionare.
    */
+  /**
+   * Il sender video della connessione VIVA, non quello che ci ricordiamo.
+   *
+   * `this.videoSender` viene catturato durante la negoziazione e, dopo
+   * una ricostruzione, può riferirsi a una connessione superata:
+   * scriverci i parametri riesce senza errori e non produce alcun
+   * effetto. È così che un telefono continuava a mandare 1080p con il
+   * profilo "risparmio" attivo, buttando fotogrammi invece di
+   * rimpicciolire, mentre l'altro obbediva.
+   */
+  private liveVideoSender(): any {
+    const pc: any = this.pc;
+    if (!pc) return this.videoSender;
+    try {
+      const conTraccia = pc.getSenders?.()
+        ?.find((x: any) => x.track?.kind === 'video');
+      if (conTraccia) return conTraccia;
+      // Camera spenta: la traccia non c'è, ma il canale sì.
+      const tv = pc.getTransceivers?.()
+        ?.find((t: any) => t.receiver?.track?.kind === 'video');
+      if (tv?.sender) return tv.sender;
+    } catch { /* si ripiega su quello ricordato */ }
+    return this.videoSender;
+  }
+
   private async applyVideoQuality() {
-    const sender: any = this.videoSender;
+    const sender: any = this.liveVideoSender();
     if (!sender?.getParameters) return;
     const profile = VIDEO_PROFILES[this.cfg.videoQuality] ?? VIDEO_PROFILES.standard;
     try {
@@ -832,6 +857,10 @@ export class ChannelSession {
       params.encodings[0].scaleResolutionDownBy = profile.scale;
       params.encodings[0].maxBitrate = profile.maxBitrate;
       await sender.setParameters(params);
+      if (sender !== this.videoSender) {
+        log('parametri scritti sul sender vivo, non su quello ricordato');
+        this.videoSender = sender;
+      }
       this.watchEncoderAlive(profile.scale);
       log('qualità video:', this.cfg.videoQuality,
         `- tetto ${Math.round(profile.maxBitrate / 1000)} kbit/s,`,
