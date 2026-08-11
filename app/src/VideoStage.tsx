@@ -18,7 +18,7 @@ import { DEFAULT_ASPECT } from './webrtc';
  */
 
 const MARGIN = 14;
-const TOP_SAFE = 86;     // sotto la barra di stato dell'app
+const TOP_SAFE = 108;    // sotto ingranaggio e badge, senza sfiorarli
 const BOTTOM_SAFE = 140; // sopra il pannello dei controlli
 
 /** Larghezza del riquadrino, come frazione della larghezza schermo. */
@@ -68,6 +68,15 @@ type Props = {
    * finisce a metà sull'immagine e metà sul nero.
    */
   onBigAspect?: (aspect: number | null) => void;
+  /**
+   * Di quanto i comandi sono rientrati rispetto ai bordi dello schermo.
+   *
+   * I comandi seguono il bordo del VIDEO, non quello dello schermo: senza
+   * saperlo, il riquadrino userebbe zone di rispetto misurate dallo
+   * schermo e finirebbe sotto l'ingranaggio o sotto il pannello.
+   */
+  insetV?: number;
+  insetH?: number;
 };
 
 export default function VideoStage(props: Props) {
@@ -77,7 +86,7 @@ export default function VideoStage(props: Props) {
     awaitingRemote, notice,
   } = props;
   const { width, height } = useWindowDimensions();
-  const { onBigAspect } = props;
+  const { onBigAspect, insetV = 0, insetH = 0 } = props;
 
   // false = l'altro è grande (default), true = sono io ad essere grande
   const [selfBig, setSelfBig] = useState(false);
@@ -169,10 +178,14 @@ export default function VideoStage(props: Props) {
 
   const clampIntoScreen = useCallback((animate = true) => {
     const { w, h } = sizeRef.current;
-    const maxX = Math.max(MARGIN, width - w - MARGIN);
-    const maxY = Math.max(TOP_SAFE, height - h - BOTTOM_SAFE);
-    const x = Math.min(Math.max(posRef.current.x, MARGIN), maxX);
-    const y = Math.min(Math.max(posRef.current.y, TOP_SAFE), maxY);
+    const minX = MARGIN + insetH;
+    // In alto i comandi stanno ai bordi dello schermo, quindi la zona di
+    // rispetto non segue il video; in basso invece il pannello lo segue.
+    const minY = TOP_SAFE;
+    const maxX = Math.max(minX, width - w - MARGIN - insetH);
+    const maxY = Math.max(minY, height - h - BOTTOM_SAFE - insetV);
+    const x = Math.min(Math.max(posRef.current.x, minX), maxX);
+    const y = Math.min(Math.max(posRef.current.y, minY), maxY);
     if (x === posRef.current.x && y === posRef.current.y) return;
     if (animate) {
       Animated.spring(pan, {
@@ -181,10 +194,11 @@ export default function VideoStage(props: Props) {
     } else {
       pan.setValue({ x, y });
     }
-  }, [pan, width, height]);
+  }, [pan, width, height, insetV, insetH]);
 
   // Se ruoti il telefono, o il riquadrino cresce, va riportato dentro.
-  useEffect(() => { clampIntoScreen(); }, [width, height, pipWidth, pipHeight, clampIntoScreen]);
+  useEffect(() => { clampIntoScreen(); },
+    [width, height, pipWidth, pipHeight, insetV, insetH, clampIntoScreen]);
 
   // --- Trascinamento (e pizzico a due dita per ridimensionare) ------------
   const pinchStart = useRef<{ dist: number; w: number } | null>(null);

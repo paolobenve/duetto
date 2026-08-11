@@ -646,13 +646,11 @@ export default function App() {
   const onSaveSettings = useCallback(async (next: DuoConfig) => {
     await saveConfig(next);
     setCfg(next);
-    // La qualità va applicata alla sessione già in corso, altrimenti si
-    // vedrebbe cambiare solo alla prossima accensione della camera - e
-    // va detta all'altro, perché vale per tutti e due.
-    sessionRef.current?.setVideoQuality(next.videoQuality);
-    signalingRef.current?.sendSignal({ kind: 'quality', value: next.videoQuality });
+    // La qualità è già stata applicata al tocco, ma applicarla di nuovo
+    // non costa nulla e copre il caso di una config arrivata da altrove.
+    applyQuality(next.videoQuality, true);
     setScreen(isPaired(next) ? 'channel' : 'pairing');
-  }, []);
+  }, [applyQuality]);
 
   const onPaired = useCallback(async (pair: PairInfo) => {
     if (!cfg) return;
@@ -691,6 +689,7 @@ export default function App() {
           onUnpair={onUnpair}
           onClose={isPaired(cfg) ? () => setScreen('channel') : undefined}
           onOpenSetup={() => { setSetupFrom('impostazioni'); setScreen('setup'); }}
+          onQualityChange={(q) => applyQuality(q, true)}
           vp9Here={localVp9}
           vp9Peer={peerVp9}
         />

@@ -178,6 +178,8 @@ export default function ChannelScreen(props: Props) {
         remoteAspect={remoteAspect}
         compact={compact}
         onBigAspect={setBigAspect}
+        insetV={compact ? 0 : inset.v}
+        insetH={compact ? 0 : inset.h}
         placeholder={
           <PresenceCard
             status={status}
@@ -194,8 +196,10 @@ export default function ChannelScreen(props: Props) {
       {compact ? null : (
         <>
       {/* Barra in alto: canale + stato */}
-      <Animated.View
-        style={[styles.topBar, { opacity, top: 14 + inset.v, left: 14 + inset.h, right: 14 + inset.h }]}>
+      {/* La barra in alto resta ancorata allo schermo: rientrandola col
+          video finiva addosso al riquadrino, e in alto non c'è l'immagine
+          da proteggere che c'è in basso. */}
+      <Animated.View style={[styles.topBar, { opacity }]}>
         <TouchableOpacity style={styles.gear} onPress={press(onOpenSettings)}>
           <Text style={styles.gearText}>{'\u2699'}</Text>
         </TouchableOpacity>

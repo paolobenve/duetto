@@ -26,6 +26,14 @@ type Props = {
    */
   vp9Here?: boolean;
   vp9Peer?: boolean;
+  /**
+   * La qualità si applica al tocco, senza passare da "Salva".
+   *
+   * È l'unica impostazione che si giudica guardando: si prova, si vede
+   * l'effetto, si cambia. Doverla confermare con un pulsante costringe a
+   * uscire dalle impostazioni per accorgersi di come è venuta.
+   */
+  onQualityChange?: (q: VideoQuality) => void;
 };
 
 /**
@@ -34,6 +42,7 @@ type Props = {
  */
 export default function SettingsScreen({
   initial, onSave, onUnpair, onClose, onOpenSetup, vp9Here, vp9Peer,
+  onQualityChange,
 }: Props) {
   const vp9Available = !!vp9Here && !!vp9Peer;
   const vp9Motivo = vp9Available
@@ -138,7 +147,10 @@ export default function SettingsScreen({
           <TouchableOpacity
             key={q}
             style={[styles.choice, cfg.videoQuality === q && styles.choicePicked]}
-            onPress={() => setCfg({ ...cfg, videoQuality: q })}>
+            onPress={() => {
+              setCfg({ ...cfg, videoQuality: q });
+              onQualityChange?.(q);
+            }}>
             <View style={[styles.radio, cfg.videoQuality === q && styles.radioPicked]} />
             <View style={styles.choiceText}>
               <Text style={styles.choiceLabel}>{VIDEO_PROFILES[q].etichetta}</Text>
@@ -147,8 +159,9 @@ export default function SettingsScreen({
           </TouchableOpacity>
         ))}
         <Text style={styles.sectionHint}>
-          L’inquadratura non cambia mai: si riduce ciò che esce dall’encoder,
-          non ciò che la camera riprende.
+          L’inquadratura non cambia mai, e il passaggio è immediato: la camera
+          riprende sempre allo stesso modo, cambia solo quanto l’encoder
+          riduce e comprime.
         </Text>
 
         <TouchableOpacity

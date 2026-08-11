@@ -26,10 +26,14 @@ export type PairInfo = {
 /**
  * Quanto spendere per il video.
  *
- * Non tocca MAI il formato di acquisizione della camera: cambiarlo fa
- * cambiare anche l'angolo di ripresa su molti sensori, e dall'altra parte
- * si vede l'inquadratura allargarsi e restringersi da sola. Si agisce
- * solo su cosa esce dall'encoder.
+ * A ripresa in corso si cambia SOLO il tetto di bitrate. Non la scala,
+ * non i fotogrammi: toccarli su un encoder già acceso lo fa smettere di
+ * produrre - l'immagine spariva all'altro mentre l'anteprima locale
+ * continuava, e il MediaCodec riportava zero buffer in uscita.
+ *
+ * Il tetto basta da solo: sotto un tetto più basso l'encoder comprime di
+ * più e, con `balanced`, cala anche la risoluzione. La differenza è che a
+ * decidere come rientrarci è lui, che sa farlo senza riconfigurarsi.
  */
 export type VideoQuality = 'risparmio' | 'standard' | 'migliore' | 'massima';
 
@@ -119,61 +123,51 @@ export function isPaired(cfg: DuoConfig): boolean {
 }
 
 /**
- * I tre profili, in cifre.
- *
- * `scale` riduce ciò che l'encoder produce, non ciò che la camera
- * acquisisce: l'inquadratura resta identica.
+ * I quattro profili, in cifre.
  *
  * `degradation` dice cosa sacrificare quando la banda non basta.
  * "maintain-resolution" perde fotogrammi tenendo ferma l'immagine, ed è
- * quello che si vuole guardando una persona; "balanced" lascia invece
- * scendere anche la risoluzione, e in risparmio è il punto.
+ * quello che si vuole guardando una persona; "balanced" lascia scendere
+ * anche la risoluzione, e in risparmio è il punto.
+ *
+ * `capture` si applica alla PROSSIMA accensione del video: cambiarlo a
+ * camera accesa significa riaprirla, e la riapertura lascia il canale
+ * agganciato a una traccia che non produce più.
  */
 export const VIDEO_PROFILES: Record<VideoQuality, {
   maxBitrate: number;
-  maxFramerate: number;
-  scale: number;
   degradation: string;
-  /** formato chiesto alla camera: cambiarlo fa ripartire la ripresa */
-  capture: { width: number; height: number };
+  capture: { width: number; height: number; frameRate: number };
   etichetta: string;
   nota: string;
 }> = {
   risparmio: {
-    maxBitrate: 350_000,
-    maxFramerate: 15,
-    scale: 2,
+    maxBitrate: 300_000,
     degradation: 'balanced',
-    capture: { width: 1280, height: 720 },
+    capture: { width: 1280, height: 720, frameRate: 24 },
     etichetta: 'Risparmio',
-    nota: '~45 kB/s · metà definizione, 15 fotogrammi',
+    nota: '~38 kB/s · cala la definizione se la rete stringe',
   },
   standard: {
     maxBitrate: 1_200_000,
-    maxFramerate: 24,
-    scale: 1,
     degradation: 'maintain-resolution',
-    capture: { width: 1280, height: 720 },
+    capture: { width: 1280, height: 720, frameRate: 30 },
     etichetta: 'Standard',
-    nota: '~150 kB/s · definizione piena, 24 fotogrammi',
+    nota: '~150 kB/s · 720p',
   },
   migliore: {
     maxBitrate: 2_500_000,
-    maxFramerate: 30,
-    scale: 1,
     degradation: 'maintain-resolution',
-    capture: { width: 1280, height: 720 },
+    capture: { width: 1280, height: 720, frameRate: 30 },
     etichetta: 'Migliore',
-    nota: '~310 kB/s · 720p, 30 fotogrammi',
+    nota: '~310 kB/s · 720p',
   },
   massima: {
     maxBitrate: 4_000_000,
-    maxFramerate: 30,
-    scale: 1,
     degradation: 'maintain-resolution',
-    capture: { width: 1920, height: 1080 },
+    capture: { width: 1920, height: 1080, frameRate: 30 },
     etichetta: 'Massima',
-    nota: '~500 kB/s · 1080p, 30 fotogrammi',
+    nota: '~500 kB/s · 1080p, dalla prossima accensione del video',
   },
 };
 

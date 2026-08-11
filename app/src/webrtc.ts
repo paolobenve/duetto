@@ -580,9 +580,12 @@ export class ChannelSession {
     const cam = await mediaDevices.getUserMedia({
       video: {
         facingMode: 'user',
+        // Il formato si fissa qui, all'accensione: cambiarlo dopo
+        // vorrebbe dire riaprire la camera, e la riapertura lascia il
+        // canale agganciato a una traccia che non produce più.
         width: { ideal: profile.capture.width },
         height: { ideal: profile.capture.height },
-        frameRate: { ideal: profile.maxFramerate },
+        frameRate: { ideal: profile.capture.frameRate },
         // Proporzioni dichiarate esplicitamente: senza, il sensore può
         // scegliere un formato diverso (4:3 invece di 16:9) e con esso
         // cambia l'angolo di ripresa, quindi cosa resta dentro
@@ -641,11 +644,9 @@ export class ChannelSession {
    * risoluzione, fotogrammi al secondo e tetto di bitrate. Il codec
    * cambia quanto bene sfrutta quel tetto, non quanto se ne consuma.
    *
-   * `scaleResolutionDownBy` riduce ciò che l'encoder produce, non ciò che
-   * la camera acquisisce: l'inquadratura resta identica. Ridurre invece
-   * il formato di acquisizione farebbe cambiare l'angolo di ripresa su
-   * molti sensori, e dall'altra parte si vedrebbe l'immagine allargarsi
-   * e restringersi da sola.
+   * A ripresa in corso si tocca solo il tetto: cambiare scala o fotogrammi
+   * su un encoder acceso lo fa smettere di produrre, e all'altro il video
+   * sparisce mentre la nostra anteprima continua a funzionare.
    */
   private async applyVideoQuality() {
     const sender: any = this.videoSender;
@@ -657,13 +658,15 @@ export class ChannelSession {
       if (!Array.isArray(params.encodings) || params.encodings.length === 0) {
         params.encodings = [{}];
       }
-      params.encodings[0].scaleResolutionDownBy = profile.scale;
+      // SOLO il tetto. Scala e fotogrammi, cambiati a encoder acceso, lo
+      // fanno smettere di produrre: sotto un tetto più basso ci pensa
+      // l'encoder a rientrare, che è l'unico che sa farlo senza
+      // riconfigurarsi.
       params.encodings[0].maxBitrate = profile.maxBitrate;
-      params.encodings[0].maxFramerate = profile.maxFramerate;
       await sender.setParameters(params);
       log('qualità video:', this.cfg.videoQuality,
         `- tetto ${Math.round(profile.maxBitrate / 1000)} kbit/s,`,
-        `${profile.maxFramerate} fps, scala 1/${profile.scale}`);
+        profile.degradation);
     } catch (e) {
       log('non riesco ad applicare la qualità video:', String(e));
     }
@@ -680,23 +683,9 @@ export class ChannelSession {
    */
   async setVideoQuality(q: DuoConfig['videoQuality']) {
     if (this.cfg.videoQuality === q) return;
-    const before = VIDEO_PROFILES[this.cfg.videoQuality] ?? VIDEO_PROFILES.standard;
-    const after = VIDEO_PROFILES[q] ?? VIDEO_PROFILES.standard;
     this.cfg = { ...this.cfg, videoQuality: q };
-
-    const cameraOn = !!this.localStream?.getVideoTracks()[0];
-    const formatChanged =
-      before.capture.width !== after.capture.width ||
-      before.capture.height !== after.capture.height;
-
-    if (cameraOn && formatChanged) {
-      log('cambio formato di ripresa: riapro la camera',
-        `${before.capture.width}x${before.capture.height}`,
-        '->', `${after.capture.width}x${after.capture.height}`);
-      await this.disableVideo();
-      await this.enableVideo();
-      return;
-    }
+    // Nessuna riapertura della camera: cambiano solo i parametri
+    // dell'encoder, e si applicano a ripresa in corso.
     await this.applyVideoQuality();
   }
 
