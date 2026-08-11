@@ -16,6 +16,11 @@ declare module 'duotalk-platform' {
     stop(): Promise<boolean>;
     notify(title: string, text: string): Promise<boolean>;
     clearNotification(): Promise<boolean>;
+    isBatteryUnrestricted(): Promise<boolean>;
+    requestBatteryUnrestricted(): Promise<boolean>;
+    hasAutoStartScreen(): Promise<boolean>;
+    openAutoStartSettings(): Promise<boolean>;
+    openAppSettings(): Promise<boolean>;
   };
 
   /** Picture-in-Picture di sistema. */

@@ -35,6 +35,8 @@ export type DuoConfig = {
   turnUrl: string;
   turnUser: string;
   turnPass: string;
+  /** le impostazioni di sistema sono gia' state proposte una volta */
+  setupShown: boolean;
 };
 
 export const DEFAULT_CONFIG: DuoConfig = {
@@ -45,6 +47,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   turnUrl: '',
   turnUser: '',
   turnPass: '',
+  setupShown: false,
 };
 
 const STORAGE_KEY = 'duotalk.config.v3';

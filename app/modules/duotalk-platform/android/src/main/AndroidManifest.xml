@@ -7,8 +7,30 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Android 13+: serve per mostrare la notifica del servizio -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Ripartire dopo il riavvio del telefono -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Chiedere l'uso senza restrizioni di batteria -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application>
+        <!-- Presenza senza interfaccia: rimette in piedi la connessione
+             dopo il riavvio, senza aprire l'app (vietato da Android 10). -->
+        <service
+            android:name=".PresenceService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="true"
+            android:enabled="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
+
         <service
             android:name=".ChannelForegroundService"
             android:exported="false"

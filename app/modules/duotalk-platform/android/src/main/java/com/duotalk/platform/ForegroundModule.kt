@@ -63,6 +63,33 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
         }
     }
 
+    // --- Impostazioni da cui dipende il restare raggiungibili ---------
+
+    @ReactMethod
+    fun isBatteryUnrestricted(promise: Promise) {
+        promise.resolve(StartupHelper.isIgnoringBatteryOptimizations(ctx))
+    }
+
+    @ReactMethod
+    fun requestBatteryUnrestricted(promise: Promise) {
+        promise.resolve(StartupHelper.requestIgnoreBatteryOptimizations(ctx))
+    }
+
+    @ReactMethod
+    fun hasAutoStartScreen(promise: Promise) {
+        promise.resolve(StartupHelper.hasAutoStartScreen(ctx))
+    }
+
+    @ReactMethod
+    fun openAutoStartSettings(promise: Promise) {
+        promise.resolve(StartupHelper.openAutoStartSettings(ctx))
+    }
+
+    @ReactMethod
+    fun openAppSettings(promise: Promise) {
+        promise.resolve(StartupHelper.openAppSettings(ctx))
+    }
+
     /** Avviso da mostrare quando l'app non e' in primo piano. */
     @ReactMethod
     fun notify(title: String, text: String, promise: Promise) {

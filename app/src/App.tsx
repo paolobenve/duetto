@@ -13,13 +13,15 @@ import {
 import { Signaling, PresenceStatus, Mode } from './signaling';
 import { ChannelSession } from './webrtc';
 import SettingsScreen from './SettingsScreen';
+import SetupScreen from './SetupScreen';
 import PairingScreen from './PairingScreen';
 import ChannelScreen from './ChannelScreen';
 import { useAudioRoute } from './audioRoute';
+import { stopListening } from './presence';
 
 // Nessuna schermata intermedia: o si configura, o ci si accoppia, o si e'
 // nel canale. Aprire l'app - da icona o da notifica - significa entrarci.
-type Screen = 'loading' | 'settings' | 'pairing' | 'channel';
+type Screen = 'loading' | 'settings' | 'pairing' | 'setup' | 'channel';
 
 /**
  * Chiede TUTTI i permessi in un colpo solo, al primo avvio.
@@ -138,6 +140,9 @@ export default function App() {
       setCfg(c);
       if (!isServerConfigured(c)) setScreen('settings');
       else if (!isPaired(c)) setScreen('pairing');
+      // Le impostazioni di sistema si propongono una volta sola, appena
+      // c'e' una coppia: prima non avrebbe senso spiegarle.
+      else if (!c.setupShown) setScreen('setup');
       // Aprire l'app significa voler entrare nel canale: niente pulsanti
       // di mezzo. Lo stato "in ascolto" resta per dopo aver premuto Esci.
       else setScreen('channel');
@@ -150,6 +155,11 @@ export default function App() {
   useEffect(() => {
     if (!cfg || !isPaired(cfg) || !isServerConfigured(cfg)) return;
     const pair = cfg.pair!;
+
+    // Se la presenza era tenuta viva dal servizio senza interfaccia
+    // (riavvio del telefono), ora il comando passa all'app: due
+    // connessioni dallo stesso dispositivo si scalzerebbero a vicenda.
+    stopListening();
     let cancelled = false;
 
     (async () => {
@@ -502,7 +512,7 @@ export default function App() {
     await saveConfig(next);
     setCfg(next);
     setPeerName(pair.peerName);
-    setScreen('channel');
+    setScreen(next.setupShown ? 'channel' : 'setup');
   }, [cfg]);
 
   const onUnpair = useCallback(async () => {
@@ -532,6 +542,22 @@ export default function App() {
           onSave={onSaveSettings}
           onUnpair={onUnpair}
           onClose={isPaired(cfg) ? () => setScreen('channel') : undefined}
+        />
+      </View>
+    );
+  }
+
+  if (screen === 'setup') {
+    return (
+      <View style={styles.safe}>
+        <StatusBar barStyle="light-content" />
+        <SetupScreen
+          onDone={async () => {
+            const next = { ...cfg, setupShown: true };
+            await saveConfig(next);
+            setCfg(next);
+            setScreen('channel');
+          }}
         />
       </View>
     );

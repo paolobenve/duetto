@@ -65,6 +65,22 @@ export const Foreground = isAndroid && NativeForeground
 
       /** Toglie l'avviso, quando si rientra nell'app. */
       clearNotification: () => call(NativeForeground, 'clearNotification'),
+
+      /** Vero se l'app puo' restare attiva senza limiti di batteria. */
+      isBatteryUnrestricted: () => call(NativeForeground, 'isBatteryUnrestricted'),
+
+      /** Finestra di sistema per concederlo: una spunta e basta. */
+      requestBatteryUnrestricted: () =>
+        call(NativeForeground, 'requestBatteryUnrestricted'),
+
+      /** Vero se questo telefono ha una schermata di avvio automatico. */
+      hasAutoStartScreen: () => call(NativeForeground, 'hasAutoStartScreen'),
+
+      /** Apre quella schermata: non e' concedibile da codice. */
+      openAutoStartSettings: () => call(NativeForeground, 'openAutoStartSettings'),
+
+      /** Ripiego: la scheda dell'app nelle impostazioni di sistema. */
+      openAppSettings: () => call(NativeForeground, 'openAppSettings'),
     }
   : {
       start: unavailable,
@@ -73,6 +89,11 @@ export const Foreground = isAndroid && NativeForeground
       stop: unavailable,
       notify: unavailable,
       clearNotification: unavailable,
+      isBatteryUnrestricted: unavailable,
+      requestBatteryUnrestricted: unavailable,
+      hasAutoStartScreen: unavailable,
+      openAutoStartSettings: unavailable,
+      openAppSettings: unavailable,
     };
 
 /**

@@ -21,6 +21,8 @@ object Notifier {
 
     private const val ALERT_CHANNEL_ID = "duotalk_alerts"
     private const val ALERT_NOTIFICATION_ID = 4712
+    private const val PRESENCE_CHANNEL_ID = "duotalk_presence"
+    private const val PRESENCE_NOTIFICATION_ID = 4711
 
     private fun ensureChannel(ctx: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -67,6 +69,61 @@ object Notifier {
             // e' un avviso mancato, non un buon motivo per far cadere l'app.
             NotificationManagerCompat.from(ctx).notify(ALERT_NOTIFICATION_ID, notification)
         } catch (_: SecurityException) {
+        }
+    }
+
+    /**
+     * Porta un servizio in primo piano con la notifica di presenza.
+     *
+     * Riusa il canale silenzioso del servizio principale: e' la stessa
+     * informazione ("sei raggiungibile"), e due notifiche fisse diverse
+     * sarebbero solo confusione.
+     */
+    fun startForegroundPresence(service: android.app.Service) {
+        val launch = service.packageManager
+            .getLaunchIntentForPackage(service.packageName)?.apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
+        val pending = PendingIntent.getActivity(
+            service, 2, launch,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val manager = service.getSystemService(NotificationManager::class.java)
+            if (manager?.getNotificationChannel(PRESENCE_CHANNEL_ID) == null) {
+                manager?.createNotificationChannel(
+                    NotificationChannel(
+                        PRESENCE_CHANNEL_ID,
+                        "Presenza nel canale",
+                        NotificationManager.IMPORTANCE_LOW,
+                    ).apply {
+                        description = "Mostra che sei raggiungibile"
+                        setShowBadge(false)
+                        enableVibration(false)
+                    },
+                )
+            }
+        }
+
+        val notification = NotificationCompat.Builder(service, PRESENCE_CHANNEL_ID)
+            .setContentTitle("DuoTalk")
+            .setContentText("In ascolto")
+            .setSmallIcon(android.R.drawable.ic_btn_speak_now)
+            .setContentIntent(pending)
+            .setOngoing(true)
+            .setSilent(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            service.startForeground(
+                PRESENCE_NOTIFICATION_ID,
+                notification,
+                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE,
+            )
+        } else {
+            service.startForeground(PRESENCE_NOTIFICATION_ID, notification)
         }
     }
 
