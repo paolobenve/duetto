@@ -13,14 +13,14 @@ import { Signaling } from './signaling';
  * l'altro entra nel canale, senza aver toccato nulla.
  *
  * Non "apre l'app da sola": da Android 10 avviare un'interfaccia dal
- * secondo piano e' vietato. L'app si apre quando tocchi la notifica.
+ * secondo piano è vietato. L'app si apre quando tocchi la notifica.
  */
 
 let sig: Signaling | null = null;
 
 const log = (...args: any[]) => console.log('[duotalk-presenza]', ...args);
 
-/** Attiva l'ascolto, se c'e' una coppia configurata. */
+/** Attiva l'ascolto, se c'è una coppia configurata. */
 export async function startListening(): Promise<boolean> {
   if (sig) return true;
 
@@ -73,12 +73,12 @@ export function isListening(): boolean {
 /**
  * Il compito eseguito dal servizio senza interfaccia.
  *
- * Di proposito non si conclude mai: finche' vive, vive la connessione.
+ * Di proposito non si conclude mai: finché vive, vive la connessione.
  * Se l'app viene aperta, `stopListening` la chiude e il compito resta
  * inerte in attesa che l'app la ceda di nuovo.
  */
 export async function presenceTask(): Promise<void> {
-  // Se l'app e' gia' in primo piano, e' lei ad avere il comando.
+  // Se l'app è già in primo piano, è lei ad avere il comando.
   if (AppState.currentState === 'active') {
     log('app gia\' aperta: lascio fare a lei');
   } else {

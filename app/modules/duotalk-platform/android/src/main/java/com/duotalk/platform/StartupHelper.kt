@@ -12,13 +12,13 @@ import android.provider.Settings
 /**
  * Le due impostazioni da cui dipende il "restare raggiungibili".
  *
- * 1) Uso senza restrizioni di batteria: e' standard di Android e si puo'
+ * 1) Uso senza restrizioni di batteria: è standard di Android e si può
  *    chiedere con una finestra di sistema, una spunta e via.
  *
- * 2) Avvio automatico: NON e' un'autorizzazione di Android, e' una
- *    schermata proprietaria dei produttori. Nessuna app puo' concederselo
- *    da sola; l'unica cosa possibile e' aprire quella schermata al posto
- *    dell'utente. Senza, dopo un riavvio del telefono i produttori piu'
+ * 2) Avvio automatico: NON è un'autorizzazione di Android, è una
+ *    schermata proprietaria dei produttori. Nessuna app può concederselo
+ *    da sola; l'unica cosa possibile è aprire quella schermata al posto
+ *    dell'utente. Senza, dopo un riavvio del telefono i produttori più
  *    aggressivi non consegnano nemmeno l'evento di avvio.
  */
 object StartupHelper {
@@ -33,12 +33,12 @@ object StartupHelper {
      * Apre la richiesta di uso senza restrizioni.
      *
      * Va lanciata dall'ACTIVITY in primo piano, non dal contesto
-     * dell'applicazione: partendo da li' alcune interfacce (HyperOS fra
+     * dell'applicazione: partendo da lì alcune interfacce (HyperOS fra
      * queste) mostrano la finestra per un istante e la chiudono da sole.
      *
      * E se il produttore la blocca del tutto - Xiaomi lo fa - si ripiega
      * sull'elenco di sistema e, in ultima istanza, sulla scheda dell'app:
-     * meglio una schermata da cui l'utente puo' comunque arrivarci che
+     * meglio una schermata da cui l'utente può comunque arrivarci che
      * una finestra che sparisce.
      */
     fun requestIgnoreBatteryOptimizations(ctx: Context, activity: Activity?): Boolean {
@@ -69,7 +69,7 @@ object StartupHelper {
     }
 
     /**
-     * Schermate di avvio automatico note, per produttore. L'elenco e'
+     * Schermate di avvio automatico note, per produttore. L'elenco è
      * per tentativi: i nomi cambiano fra versioni, e non esiste un modo
      * ufficiale per raggiungerle.
      */

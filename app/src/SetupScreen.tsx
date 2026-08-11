@@ -11,19 +11,19 @@ type Props = {
 /**
  * Le due impostazioni da cui dipende il restare raggiungibili.
  *
- * Vengono proposte una volta sola, subito dopo l'accoppiamento, perche'
+ * Vengono proposte una volta sola, subito dopo l'accoppiamento, perché
  * senza di esse il telefono chiude l'app quando gli pare e le notifiche
- * non arrivano piu' - un guasto che sembra dell'app ma non lo e'.
+ * non arrivano più - un guasto che sembra dell'app ma non lo è.
  *
- * Nessuna delle due si puo' concedere da codice: la prima ha una finestra
- * di sistema, la seconda e' una schermata dei produttori che possiamo
+ * Nessuna delle due si può concedere da codice: la prima ha una finestra
+ * di sistema, la seconda è una schermata dei produttori che possiamo
  * solo aprire.
  */
 export default function SetupScreen({ onDone }: Props) {
   const [batteryOk, setBatteryOk] = useState(false);
   const [hasAutoStart, setHasAutoStart] = useState(false);
   const [autoStartOpened, setAutoStartOpened] = useState(false);
-  /** la richiesta diretta e' stata tentata ma non ha cambiato nulla */
+  /** la richiesta diretta è stata tentata ma non ha cambiato nulla */
   const [batteryRefused, setBatteryRefused] = useState(false);
   const tried = useRef(false);
 
@@ -31,8 +31,8 @@ export default function SetupScreen({ onDone }: Props) {
     try {
       const ok = await Foreground.isBatteryUnrestricted();
       setBatteryOk(ok);
-      // Se avevamo gia' provato e nulla e' cambiato, la richiesta
-      // diretta non e' praticabile su questo telefono: si passa alla
+      // Se avevamo già provato e nulla è cambiato, la richiesta
+      // diretta non è praticabile su questo telefono: si passa alla
       // strada manuale invece di riproporre una finestra che sparisce.
       if (tried.current && !ok) setBatteryRefused(true);
       setHasAutoStart(await Foreground.hasAutoStartScreen());

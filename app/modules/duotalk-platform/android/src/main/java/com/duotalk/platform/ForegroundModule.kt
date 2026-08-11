@@ -90,7 +90,7 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
         promise.resolve(StartupHelper.openAppSettings(ctx, currentActivity))
     }
 
-    /** Avviso da mostrare quando l'app non e' in primo piano. */
+    /** Avviso da mostrare quando l'app non è in primo piano. */
     @ReactMethod
     fun notify(title: String, text: String, promise: Promise) {
         try {
@@ -101,7 +101,7 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
         }
     }
 
-    /** Toglie l'avviso, quando l'utente e' rientrato nell'app. */
+    /** Toglie l'avviso, quando l'utente è rientrato nell'app. */
     @ReactMethod
     fun clearNotification(promise: Promise) {
         Notifier.cancel(ctx)

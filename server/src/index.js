@@ -5,21 +5,21 @@
 //
 // Ogni telefono tiene UNA connessione sempre aperta, in uno di due stati:
 //
-//   listening  il telefono e' raggiungibile ma non nel canale: microfono
+//   listening  il telefono è raggiungibile ma non nel canale: microfono
 //              chiuso, nessun media. Serve solo a poter essere avvisati.
-//   active     il telefono e' nel canale: si negozia il WebRTC.
+//   active     il telefono è nel canale: si negozia il WebRTC.
 //
 // Compiti del server:
 //  1) Tenere la coppia (max 2 presenze per stanza, nessun terzo entra).
 //  2) Avvisare l'altro quando uno passa ad "active", o quando bussa:
-//     e' l'app stessa a mostrarsi la notifica, niente servizi esterni.
-//  3) Inoltrare buste OPACHE: i payload di signaling arrivano gia'
-//     cifrati dal client e il server non puo' leggerli ne' alterarli.
+//     è l'app stessa a mostrarsi la notifica, niente servizi esterni.
+//  3) Inoltrare buste OPACHE: i payload di signaling arrivano già
+//     cifrati dal client e il server non può leggerli né alterarli.
 //  4) Inoltrare lo scambio di chiavi dell'accoppiamento (chiavi
-//     pubbliche: non c'e' nulla da nascondere, e senza il codice il
-//     server non puo' comunque calcolare la chiave finale).
+//     pubbliche: non c'è nulla da nascondere, e senza il codice il
+//     server non può comunque calcolare la chiave finale).
 //
-// La stanza si chiama `pairId` ed e' un'impronta del codice di
+// La stanza si chiama `pairId` ed è un'impronta del codice di
 // accoppiamento: il codice vero al server non arriva mai. Coppie diverse
 // hanno pairId diversi e non si vedono fra loro.
 // -------------------------------------------------------------
@@ -33,13 +33,13 @@ const HOST = process.env.HOST || '127.0.0.1'; // dietro reverse proxy: solo loop
 const ACCESS_TOKEN = process.env.ACCESS_TOKEN || ''; // se vuoto, nessun controllo
 
 // Collegamento di riserva (TURN). Configurato QUI e non sui telefoni:
-// cosi' resta una cosa sola da mantenere, e cambiando password non si
+// così resta una cosa sola da mantenere, e cambiando password non si
 // deve rimettere mano a ogni dispositivo.
 const TURN_URL = process.env.TURN_URL || '';
 const TURN_USER = process.env.TURN_USER || '';
 const TURN_PASS = process.env.TURN_PASS || '';
 
-/** Da mandare ai client perche' sappiano come raggiungere il relay. */
+/** Da mandare ai client perché sappiano come raggiungere il relay. */
 function turnConfig() {
   if (!TURN_URL || !TURN_PASS) return null;
   return {
@@ -51,9 +51,8 @@ function turnConfig() {
 const MAX_PER_ROOM = 2;
 const MAX_MESSAGE_BYTES = 256 * 1024;
 const HEARTBEAT_MS = 30_000;
-const KNOCK_COOLDOWN_MS = 15_000;
 
-// Quanti ingressi al minuto per indirizzo. Non da' fastidio a nessuno
+// Quanti ingressi al minuto per indirizzo. Non dà fastidio a nessuno
 // (le riconnessioni sono poche), ma rende impraticabile provare codici
 // di accoppiamento a tappeto: 100 milioni di combinazioni a questo ritmo
 // richiederebbero millenni.
@@ -70,7 +69,7 @@ function clientIp(req) {
   return req.socket?.remoteAddress || 'sconosciuto';
 }
 
-/** Vero se questo indirizzo ha gia' esaurito i tentativi consentiti. */
+/** Vero se questo indirizzo ha già esaurito i tentativi consentiti. */
 function tooManyJoins(ip) {
   const now = Date.now();
   const recent = (joinAttempts.get(ip) || []).filter((t) => now - t < JOIN_WINDOW_MS);
@@ -117,8 +116,8 @@ function leaveRoom(ws) {
   const set = rooms.get(roomId);
   if (!set) return;
   set.delete(ws);
-  // Se questa connessione e' stata rimpiazzata dallo stesso dispositivo che
-  // si riaggancia, l'altro non deve vedere nessuna uscita: il posto e' gia'
+  // Se questa connessione è stata rimpiazzata dallo stesso dispositivo che
+  // si riaggancia, l'altro non deve vedere nessuna uscita: il posto è già
   // occupato di nuovo, e annunciarla farebbe cadere il collegamento buono.
   if (!ws.replaced) {
     for (const peer of set) send(peer, { type: 'peer-left', peerId: ws.peerId });
@@ -135,9 +134,9 @@ function cleanName(raw) {
 }
 
 const httpServer = createServer((req, res) => {
-  // Accettiamo sia /healthz sia /qualsiasi/prefisso/healthz: davanti puo'
+  // Accettiamo sia /healthz sia /qualsiasi/prefisso/healthz: davanti può
   // esserci un proxy che inoltra il percorso senza riscriverlo (HAProxy)
-  // o che lo riscrive (Apache, nginx). Cosi' funziona in entrambi i casi.
+  // o che lo riscrive (Apache, nginx). Così funziona in entrambi i casi.
   if (req.url === '/healthz' || req.url.endsWith('/healthz')) {
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ ok: true, rooms: rooms.size, turn: !!turnConfig() }));
@@ -159,7 +158,6 @@ wss.on('connection', (ws, req) => {
   ws.side = null;      // 'A' o 'B': identifica il dispositivo
   ws.replaced = false; // rimpiazzato dallo stesso dispositivo
   ws.name = 'Qualcuno';
-  ws.lastKnock = 0;
 
   ws.on('pong', () => { ws.isAlive = true; });
 
@@ -199,13 +197,13 @@ wss.on('connection', (ws, req) => {
       if (!set) { set = new Set(); rooms.set(roomId, set); }
 
       // Il lato ('A' o 'B') identifica il DISPOSITIVO, non la connessione:
-      // e' fissato all'accoppiamento e non cambia mai. Se troviamo una
-      // connessione dello stesso lato, e' lo stesso telefono che si
+      // è fissato all'accoppiamento e non cambia mai. Se troviamo una
+      // connessione dello stesso lato, è lo stesso telefono che si
       // riaggancia dopo un cambio di rete, e si riprende il suo posto.
       //
       // Senza questo, chi perde la rete trova i due posti occupati - uno
       // dei quali da se stesso - e viene respinto come se fosse un terzo
-      // dispositivo, finche' il battito non si accorge della connessione
+      // dispositivo, finché il battito non si accorge della connessione
       // morta: fino a un minuto di "coppia occupata" senza motivo.
       const side = msg.side === 'A' || msg.side === 'B' ? msg.side : null;
       if (side) {
@@ -233,9 +231,9 @@ wss.on('connection', (ws, req) => {
       ws.name = cleanName(msg.name);
       ws.mode = MODES.includes(msg.mode) ? msg.mode : 'listening';
 
-      // "polite" nel senso della perfect negotiation WebRTC: chi era gia'
+      // "polite" nel senso della perfect negotiation WebRTC: chi era già
       // nella stanza cede in caso di collisione di offerte. Deterministico,
-      // cosi' i due ruoli non coincidono mai.
+      // così i due ruoli non coincidono mai.
       const other = others[0];
       send(ws, {
         type: 'joined',
@@ -254,8 +252,8 @@ wss.on('connection', (ws, req) => {
           name: ws.name,
           mode: ws.mode,
         });
-        // Se entra gia' nel canale mentre l'altro e' solo in ascolto,
-        // e' il momento di farglielo sapere.
+        // Se entra già nel canale mentre l'altro è solo in ascolto,
+        // è il momento di farglielo sapere.
         if (ws.mode === 'active' && peer.mode === 'listening') {
           send(peer, { type: 'notify', reason: 'peer-active', name: ws.name });
         }
@@ -271,7 +269,7 @@ wss.on('connection', (ws, req) => {
       ws.mode = next;
       for (const peer of peersOf(ws.roomId, ws)) {
         send(peer, { type: 'peer-mode', mode: next, name: ws.name });
-        // Notifica solo la transizione che conta: qualcuno E' ENTRATO
+        // Notifica solo la transizione che conta: qualcuno È ENTRATO
         // nel canale mentre l'altro stava soltanto in ascolto.
         if (before === 'listening' && next === 'active' && peer.mode === 'listening') {
           send(peer, { type: 'notify', reason: 'peer-active', name: ws.name });
@@ -298,17 +296,14 @@ wss.on('connection', (ws, req) => {
 
     // --- 5) "Avvisa": notifica esplicita all'altro -----------------------
     if (msg.type === 'knock') {
-      const now = Date.now();
-      if (now - ws.lastKnock < KNOCK_COOLDOWN_MS) {
-        send(ws, { type: 'knock-result', ok: false, error: 'too-soon' });
-        return;
-      }
+      // Nessun freno: si bussa a una persona sola, che ti ha dato il
+      // codice di persona. Se non risponde, insistere è legittimo, e
+      // un limite qui si sente solo quando serve davvero insistere.
       const others = peersOf(ws.roomId, ws);
       if (others.length === 0) {
         send(ws, { type: 'knock-result', ok: false, error: 'peer-offline' });
         return;
       }
-      ws.lastKnock = now;
       for (const peer of others) {
         send(peer, { type: 'notify', reason: 'knock', name: ws.name });
       }

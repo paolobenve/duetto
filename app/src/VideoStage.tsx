@@ -8,8 +8,8 @@ import { DEFAULT_ASPECT } from './webrtc';
 /**
  * L'area video.
  *
- *  - chi e' a schermo intero non viene MAI tagliato: objectFit "contain",
- *    quindi si vedono eventuali bande nere ma l'immagine e' integra;
+ *  - chi è a schermo intero non viene MAI tagliato: objectFit "contain",
+ *    quindi si vedono eventuali bande nere ma l'immagine è integra;
  *  - il secondo video sta in un riquadrino con le PROPORZIONI della sua
  *    camera (mai quadrato), trascinabile e ridimensionabile;
  *  - toccando il riquadrino i due si scambiano di posto;
@@ -28,7 +28,7 @@ const MAX_FRACTION = 0.62;
 
 const HANDLE = 34; // area di presa per ridimensionare
 
-/** Quanto si puo' ingrandire il video grande col pizzico. */
+/** Quanto si può ingrandire il video grande col pizzico. */
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 5;
 /** Ingrandimento del doppio tocco. */
@@ -47,10 +47,10 @@ type Props = {
   /** cambia a ogni ripartenza del video remoto: ricrea il visualizzatore */
   remoteVideoKey?: number;
   /**
-   * Il video dell'altro e' atteso ma momentaneamente assente.
+   * Il video dell'altro è atteso ma momentaneamente assente.
    *
    * Serve a NON promuovere il proprio video a schermo intero durante
-   * un'interruzione: il posto grande resta dell'altro, cosi' al ritorno
+   * un'interruzione: il posto grande resta dell'altro, così al ritorno
    * non si vede prima il proprio ingrandirsi e poi rimpicciolirsi.
    */
   awaitingRemote?: boolean;
@@ -58,7 +58,7 @@ type Props = {
   notice?: string;
   /** in Picture-in-Picture: solo il video grande, senza riquadrino */
   compact?: boolean;
-  /** mostrato quando non c'e' nessun video */
+  /** mostrato quando non c'è nessun video */
   placeholder: React.ReactNode;
 };
 
@@ -70,12 +70,12 @@ export default function VideoStage(props: Props) {
   } = props;
   const { width, height } = useWindowDimensions();
 
-  // false = l'altro e' grande (default), true = sono io ad essere grande
+  // false = l'altro è grande (default), true = sono io ad essere grande
   const [selfBig, setSelfBig] = useState(false);
   const bothHaveVideo = localHasVideo && remoteHasVideo;
 
   // Con un solo video acceso lo scambio non ha senso e si torna al
-  // default - ma NON durante un'interruzione: li' il video dell'altro
+  // default - ma NON durante un'interruzione: lì il video dell'altro
   // manca solo momentaneamente, e azzerare la disposizione scelta
   // significherebbe ritrovarsela cambiata a ogni caduta di rete.
   useEffect(() => {
@@ -99,7 +99,7 @@ export default function VideoStage(props: Props) {
   } else if (remoteHasVideo) {
     bigStream = remoteStream;
   } else if (awaitingRemote && localHasVideo) {
-    // Interruzione in corso: si mantiene la disposizione scelta, cosi'
+    // Interruzione in corso: si mantiene la disposizione scelta, così
     // al ritorno nulla si sposta.
     if (selfBig) {
       // Avevi messo te stesso davanti: resti davanti, e il riquadrino
@@ -271,7 +271,7 @@ export default function VideoStage(props: Props) {
     ]).start();
   }, [zoom, shift]);
 
-  // Cambiando chi sta a schermo grande, l'ingrandimento non ha piu' senso.
+  // Cambiando chi sta a schermo grande, l'ingrandimento non ha più senso.
   useEffect(() => { resetZoom(); }, [bigIsSelf, remoteVideoKey, resetZoom]);
 
   /** Non lasciare che l'immagine ingrandita esca dai bordi. */
@@ -402,8 +402,8 @@ export default function VideoStage(props: Props) {
               transform: [{ translateX: pan.x }, { translateY: pan.y }],
             },
           ]}>
-          {/* Anche qui "contain": il riquadrino ha gia' le proporzioni
-              giuste, quindi non c'e' nulla da tagliare. */}
+          {/* Anche qui "contain": il riquadrino ha già le proporzioni
+              giuste, quindi non c'è nulla da tagliare. */}
           {pipStream ? (
             <RTCView
               key={pipIsSelf ? 'pip-self' : `pip-remote-${remoteVideoKey ?? 0}`}

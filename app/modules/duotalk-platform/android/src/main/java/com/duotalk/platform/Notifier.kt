@@ -10,11 +10,11 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 
 /**
- * Notifiche di avviso ("Anna e' nel canale").
+ * Notifiche di avviso ("Anna è nel canale").
  *
  * Sono cosa diversa dalla notifica fissa del foreground service: quella
- * e' silenziosa e serve solo a tenere vivo il processo, questa deve farsi
- * notare. Per questo stanno su due canali separati, cosi' puoi anche
+ * è silenziosa e serve solo a tenere vivo il processo, questa deve farsi
+ * notare. Per questo stanno su due canali separati, così puoi anche
  * regolarle indipendentemente dalle impostazioni di Android.
  */
 object Notifier {
@@ -65,8 +65,8 @@ object Notifier {
             .build()
 
         try {
-            // Se il permesso notifiche e' negato lancia SecurityException:
-            // e' un avviso mancato, non un buon motivo per far cadere l'app.
+            // Se il permesso notifiche è negato lancia SecurityException:
+            // è un avviso mancato, non un buon motivo per far cadere l'app.
             NotificationManagerCompat.from(ctx).notify(ALERT_NOTIFICATION_ID, notification)
         } catch (_: SecurityException) {
         }
@@ -75,7 +75,7 @@ object Notifier {
     /**
      * Porta un servizio in primo piano con la notifica di presenza.
      *
-     * Riusa il canale silenzioso del servizio principale: e' la stessa
+     * Riusa il canale silenzioso del servizio principale: è la stessa
      * informazione ("sei raggiungibile"), e due notifiche fisse diverse
      * sarebbero solo confusione.
      */

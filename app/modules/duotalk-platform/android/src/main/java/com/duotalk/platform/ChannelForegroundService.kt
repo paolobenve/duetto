@@ -17,11 +17,11 @@ import androidx.core.app.NotificationCompat
  *
  * Android sospende le app in background e a schermo spento: senza un
  * foreground service la connessione WebRTC cadrebbe dopo pochi secondi.
- * Da Android 14 il tipo "microphone" e' anche l'unico modo consentito
+ * Da Android 14 il tipo "microphone" è anche l'unico modo consentito
  * per continuare a registrare audio fuori dal primo piano.
  *
- * La notifica fissa nella barra di stato non e' un vezzo: e' Android che
- * la impone come contropartita, e non e' rimovibile.
+ * La notifica fissa nella barra di stato non è un vezzo: è Android che
+ * la impone come contropartita, e non è rimovibile.
  */
 class ChannelForegroundService : Service() {
 
@@ -79,7 +79,7 @@ class ChannelForegroundService : Service() {
         val channel = NotificationChannel(
             CHANNEL_ID,
             "Presenza nel canale",
-            // LOW: niente suono, la notifica e' solo informativa
+            // LOW: niente suono, la notifica è solo informativa
             NotificationManager.IMPORTANCE_LOW,
         ).apply {
             description = "Mostra che sei collegato al canale DuoTalk"
@@ -141,7 +141,7 @@ class ChannelForegroundService : Service() {
         try {
             if (wakeLock?.isHeld == true) wakeLock?.release()
         } catch (_: Exception) {
-            // gia' rilasciato: nulla da fare
+            // già rilasciato: nulla da fare
         }
         wakeLock = null
     }

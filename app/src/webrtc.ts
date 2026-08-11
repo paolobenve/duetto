@@ -14,17 +14,17 @@ import type { Signaling, SignalMessage } from './signaling';
  * Sessione del canale: audio sempre, video a richiesta.
  *
  * Entrando nel canale si apre SOLO il microfono. La camera viene accesa
- * solo quando la chiedi: cosi' non resta occupata (e l'indicatore privacy
+ * solo quando la chiedi: così non resta occupata (e l'indicatore privacy
  * di Android non resta acceso) mentre stai nel canale solo per esserci.
  *
- * Il canale video verso l'altro viene pero' aperto SUBITO, anche se
+ * Il canale video verso l'altro viene però aperto SUBITO, anche se
  * vuoto: accendere e spegnere la camera si limita a mettere o togliere
- * la traccia al suo interno, senza rinegoziare nulla. E' la differenza
+ * la traccia al suo interno, senza rinegoziare nulla. È la differenza
  * fra un video che si riaccende sempre e uno che dopo il primo giro
  * mostra uno schermo nero.
  *
  * La "perfect negotiation" resta per le rinegoziazioni che possono
- * comunque capitare: se i due si accavallano, il polite (chi era gia'
+ * comunque capitare: se i due si accavallano, il polite (chi era già
  * nel canale) cede e annulla la propria offerta.
  */
 
@@ -44,7 +44,7 @@ export type ChannelEvents = {
   onRemoteVideo?: (present: boolean) => void;
 };
 
-/** Proporzioni di ripiego: anteprima verticale 9:16, il caso piu' comune. */
+/** Proporzioni di ripiego: anteprima verticale 9:16, il caso più comune. */
 export const DEFAULT_ASPECT = 9 / 16;
 
 /**
@@ -123,7 +123,7 @@ export class ChannelSession {
 
       if (incoming) {
         // Via le tracce dello stesso tipo ormai chiuse. Se restassero, il
-        // renderer continuerebbe a disegnare la prima della lista - cioe'
+        // renderer continuerebbe a disegnare la prima della lista - cioè
         // quella morta - e si vedrebbe uno schermo nero invece del video.
         stream.getTracks()
           .filter((x: any) =>
@@ -195,7 +195,7 @@ export class ChannelSession {
       // Aprire il canale video scatena questo evento su entrambi i
       // telefoni: se offrissero tutti e due, le offerte si scontrerebbero
       // e la risoluzione dipenderebbe dal rollback, che in
-      // react-native-webrtc non e' affidabile. Era la causa del
+      // react-native-webrtc non è affidabile. Era la causa del
       // "a volte funziona, a volte no".
       if (this.polite) {
         log('rinegoziazione richiesta, ma tocca all\'altro: lascio fare');
@@ -206,18 +206,18 @@ export class ChannelSession {
 
     // --- Solo ORA le tracce -------------------------------------------
     // I gestori vanno registrati PRIMA di toccare tracce e canali.
-    // Qui sotto c'e' un await (replaceTrack, quando la camera e' gia'
+    // Qui sotto c'è un await (replaceTrack, quando la camera è già
     // accesa): durante quell'attesa scatta la richiesta di negoziazione,
     // e se il gestore non fosse ancora registrato andrebbe persa. Era
     // esattamente il caso del riaggancio a camera accesa: la connessione
     // veniva ricostruita ma l'offerta non partiva mai.
-    // Audio: c'e' sempre.
+    // Audio: c'è sempre.
     const audioTrack = this.localStream!.getAudioTracks()[0];
     if (audioTrack) pc.addTrack(audioTrack, this.localStream as MediaStream);
 
     // Video: il canale viene aperto SUBITO, anche senza traccia dentro.
     //
-    // E' la scelta che rende affidabile l'accensione e lo spegnimento.
+    // È la scelta che rende affidabile l'accensione e lo spegnimento.
     // Aggiungendo e togliendo la traccia ogni volta si rinegozia, si
     // creano tracce nuove che si accavallano alle vecchie, e dall'altra
     // parte si finisce per disegnare quella morta (schermo nero). Con il
@@ -226,7 +226,7 @@ export class ChannelSession {
     // Lo dichiara UNA SOLA delle due parti: quella che fa l'offerta.
     // Dichiarandolo entrambi, la dichiarazione di chi risponde rischia di
     // restare orfana - non entra nella negoziazione - e quel telefono non
-    // riesce piu' a inviare il proprio video pur ricevendo quello altrui.
+    // riesce più a inviare il proprio video pur ricevendo quello altrui.
     // Chi risponde se lo prende dalla negoziazione (captureVideoSender).
     if (!polite) {
       try {
@@ -241,7 +241,7 @@ export class ChannelSession {
       log('canale video: lo dichiara l\'altro, lo prendo a negoziazione fatta');
     }
 
-    // Se il video era gia' acceso, la traccia entra nel canale appena aperto.
+    // Se il video era già acceso, la traccia entra nel canale appena aperto.
     const existingVideo = this.localStream!.getVideoTracks()[0];
     if (existingVideo) {
       if (this.videoSender) {
@@ -253,7 +253,7 @@ export class ChannelSession {
 
 
     // E la negoziazione la avviamo comunque noi, invece di sperare
-    // nell'evento: se e' gia' partita, il controllo dentro negotiate()
+    // nell'evento: se è già partita, il controllo dentro negotiate()
     // la lascia proseguire senza sovrapporsi.
     if (!polite) await this.negotiate();
   }
@@ -313,7 +313,7 @@ export class ChannelSession {
         try {
           await pc.setLocalDescription({ type: 'rollback' } as any);
         } catch {
-          // se il rollback non e' supportato proseguiamo comunque
+          // se il rollback non è supportato proseguiamo comunque
         }
       }
 
@@ -341,7 +341,7 @@ export class ChannelSession {
 
     if (msg.kind === 'ice') {
       if (this.ignoreOffer) { log('offerta ignorata (collisione, siamo impolite)'); return; }
-      // Se la remote description non c'e' ancora, il candidate va in coda.
+      // Se la remote description non c'è ancora, il candidate va in coda.
       if (!pc.remoteDescription) {
         this.pendingCandidates.push(msg.candidate);
         return;
@@ -357,7 +357,7 @@ export class ChannelSession {
   /**
    * Individua il canale video dopo la negoziazione.
    *
-   * Serve a chi non lo ha dichiarato: il canale esiste perche' lo ha
+   * Serve a chi non lo ha dichiarato: il canale esiste perché lo ha
    * aperto l'altro, e da qui in poi possiamo usarlo anche noi per
    * inviare, mettendoci semplicemente dentro la traccia.
    */
@@ -373,11 +373,11 @@ export class ChannelSession {
     }
 
     // IMPORTANTE: un canale creato applicando l'offerta dell'altro nasce in
-    // sola ricezione. Cosi' com'e' potremmo vedere il video altrui ma non
+    // sola ricezione. Così com'e' potremmo vedere il video altrui ma non
     // inviare il nostro, e il difetto sarebbe asimmetrico - proprio quello
     // che si vedeva. Lo portiamo a bidirezionale ORA, prima di preparare la
-    // risposta, cosi' viaggia in questa stessa negoziazione senza doverne
-    // aprire un'altra (cosa che a noi, che non offriamo, e' preclusa).
+    // risposta, così viaggia in questa stessa negoziazione senza doverne
+    // aprire un'altra (cosa che a noi, che non offriamo, è preclusa).
     try {
       if (video.direction !== 'sendrecv') {
         log('canale video era', video.direction, '-> lo porto a sendrecv');
@@ -390,7 +390,7 @@ export class ChannelSession {
     this.videoSender = video.sender;
     log('canale video individuato, direzione', video.direction);
 
-    // Se nel frattempo la camera era gia' accesa, la traccia entra ora.
+    // Se nel frattempo la camera era già accesa, la traccia entra ora.
     const localVideo = this.localStream?.getVideoTracks()[0];
     if (localVideo) {
       try {
@@ -407,10 +407,10 @@ export class ChannelSession {
    * Riparazione leggera: rifa' solo la ricerca del percorso di rete,
    * tenendo in piedi connessione e tracce.
    *
-   * E' la prima cosa da provare quando il collegamento cede: demolire e
+   * È la prima cosa da provare quando il collegamento cede: demolire e
    * ricostruire interrompe audio e video per un paio di secondi, mentre
    * un riavvio di ICE spesso li ripristina senza che si noti nulla.
-   * Puo' farlo solo chi offre; all'altro resta il chiederlo.
+   * Può farlo solo chi offre; all'altro resta il chiederlo.
    */
   async restartIce(): Promise<boolean> {
     const pc: any = this.pc;
@@ -421,7 +421,7 @@ export class ChannelSession {
         log('ICE riavviato');
         return true;
       }
-      // Versioni piu' vecchie: si ottiene lo stesso con un'offerta.
+      // Versioni più vecchie: si ottiene lo stesso con un'offerta.
       const offer = await pc.createOffer({ iceRestart: true });
       await pc.setLocalDescription(offer);
       this.signaling.sendSignal({
@@ -441,9 +441,9 @@ export class ChannelSession {
   }
 
   /**
-   * Il collegamento diretto e' ancora buono?
+   * Il collegamento diretto è ancora buono?
    *
-   * Dopo un'interruzione di rete la connessione resta li' ma e' morta
+   * Dopo un'interruzione di rete la connessione resta lì ma è morta
    * ("failed" o "disconnected"): va ricostruita, non riusata.
    */
   isPeerHealthy(): boolean {
@@ -453,7 +453,7 @@ export class ChannelSession {
   }
 
   /**
-   * C'e' una traccia video dall'altro, non ancora chiusa.
+   * C'è una traccia video dall'altro, non ancora chiusa.
    *
    * Di proposito NON guardiamo "muted": la semantica varia fra versioni
    * e piattaforme. Se il video sia effettivamente acceso lo dice l'altro
@@ -495,7 +495,7 @@ export class ChannelSession {
     return track.enabled;
   }
 
-  /** Accende la camera: mette la traccia nel canale gia' aperto. */
+  /** Accende la camera: mette la traccia nel canale già aperto. */
   async enableVideo(): Promise<boolean> {
     if (!this.localStream || this.localStream.getVideoTracks().length > 0) return true;
     const cam = await mediaDevices.getUserMedia({
@@ -504,7 +504,7 @@ export class ChannelSession {
         width: { ideal: 1280 },
         height: { ideal: 720 },
         frameRate: { ideal: 30 },
-        // Proporzioni dichiarate esplicitamente: senza, il sensore puo'
+        // Proporzioni dichiarate esplicitamente: senza, il sensore può
         // scegliere un formato diverso (4:3 invece di 16:9) e con esso
         // cambia l'angolo di ripresa, quindi cosa resta dentro
         // l'inquadratura.
@@ -525,7 +525,7 @@ export class ChannelSession {
 
     if (this.videoSender) {
       // Nessuna rinegoziazione: l'altro vede semplicemente ripartire i
-      // fotogrammi sulla traccia che gia' aveva.
+      // fotogrammi sulla traccia che già aveva.
       try {
         await this.videoSender.replaceTrack(track);
         await this.keepResolutionStable();
@@ -545,7 +545,7 @@ export class ChannelSession {
   /**
    * Chiede di non ridurre la risoluzione quando la banda scarseggia.
    *
-   * Il comportamento predefinito e' l'opposto: WebRTC abbassa la
+   * Il comportamento predefinito è l'opposto: WebRTC abbassa la
    * risoluzione, e molti sensori cambiando formato cambiano anche
    * l'angolo di ripresa. Dall'altra parte si vede l'inquadratura
    * allargarsi e restringersi da sola. Meglio perdere fotogrammi che

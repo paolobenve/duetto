@@ -34,7 +34,7 @@ class PipModule(private val ctx: ReactApplicationContext) :
      * Serve per "Esci": l'app deve sparire dallo schermo, ma il processo
      * deve restare vivo. Chiuderla davvero (finish) distruggerebbe il
      * contesto JavaScript e con esso la connessione che ci tiene
-     * raggiungibili, quindi non arriverebbero piu' le notifiche.
+     * raggiungibili, quindi non arriverebbero più le notifiche.
      */
     @ReactMethod
     fun minimize(promise: Promise) {

@@ -2,10 +2,10 @@
 /**
  * Adatta l'AndroidManifest.xml generato da React Native:
  *  - permessi (rete, microfono, camera, audio)
- *  - intent filter per il deep link "duotalk://channel", cosi' toccando
+ *  - intent filter per il deep link "duotalk://channel", così toccando
  *    la notifica ntfy si apre direttamente DuoTalk
  *
- * Idempotente: si puo' rilanciare senza duplicare nulla.
+ * Idempotente: si può rilanciare senza duplicare nulla.
  */
 const fs = require('fs');
 const path = require('path');
@@ -31,8 +31,8 @@ const permissions = [
   'android.permission.MODIFY_AUDIO_SETTINGS',
   'android.permission.BLUETOOTH_CONNECT', // auricolari BT
   // Restare nel canale in background / a schermo spento.
-  // Il servizio e' dichiarato dal modulo duotalk-platform e i suoi
-  // permessi arrivano dal merge dei manifest; li ripetiamo qui perche'
+  // Il servizio è dichiarato dal modulo duotalk-platform e i suoi
+  // permessi arrivano dal merge dei manifest; li ripetiamo qui perché
   // siano visibili leggendo il manifest dell'app.
   'android.permission.FOREGROUND_SERVICE',
   'android.permission.FOREGROUND_SERVICE_MICROPHONE',
@@ -69,8 +69,8 @@ if (!activityMatch) {
   console.warn('Attenzione: MainActivity non trovata, deep link non aggiunto.');
 } else {
   // launchMode singleTask: senza, toccare la notifica aprirebbe una seconda
-  // istanza dell'app invece di riportare in primo piano quella gia' aperta.
-  // Se l'attributo c'e' gia' va SOSTITUITO: duplicarlo fa fallire il build.
+  // istanza dell'app invece di riportare in primo piano quella già aperta.
+  // Se l'attributo c'è già va SOSTITUITO: duplicarlo fa fallire il build.
   let tag = activityMatch[0];
   if (/android:launchMode="[^"]*"/.test(tag)) {
     if (!/android:launchMode="singleTask"/.test(tag)) {
@@ -94,7 +94,7 @@ if (!activityMatch) {
     changes++;
   }
 
-  // Il PiP e' un cambio di configurazione: se l'activity non lo dichiara,
+  // Il PiP è un cambio di configurazione: se l'activity non lo dichiara,
   // Android la ricrea e la connessione si perde.
   const neededConfig = ['screenSize', 'smallestScreenSize', 'screenLayout', 'orientation'];
   const configMatch = tag.match(/android:configChanges="([^"]*)"/);

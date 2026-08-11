@@ -11,7 +11,7 @@ import androidx.core.content.ContextCompat
  *
  * ATTENZIONE su Xiaomi/POCO e simili: questo evento non viene consegnato
  * affatto se l'app non ha "Avvio automatico" abilitato nelle impostazioni
- * di sistema. Non e' aggirabile da codice.
+ * di sistema. Non è aggirabile da codice.
  */
 class BootReceiver : BroadcastReceiver() {
 
@@ -30,8 +30,8 @@ class BootReceiver : BroadcastReceiver() {
             )
             Log.i("DuoTalk", "presenza riavviata dopo il boot")
         } catch (e: Exception) {
-            // Se il sistema lo vieta non c'e' molto da fare: l'utente
-            // aprira' l'app e la presenza ripartira' da li'.
+            // Se il sistema lo vieta non c'è molto da fare: l'utente
+            // aprira' l'app e la presenza ripartira' da lì.
             Log.w("DuoTalk", "impossibile riavviare la presenza: ${e.message}")
         }
     }

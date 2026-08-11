@@ -5,9 +5,9 @@
  * PERCHE' SERVE
  * I moduli dichiarati con "file:modules/..." vengono COPIATI da npm in
  * node_modules, non collegati. Le modifiche ai sorgenti quindi non si
- * vedono finche' non si rilancia "npm install", e nel frattempo Gradle e
+ * vedono finché non si rilancia "npm install", e nel frattempo Gradle e
  * Metro compilano la versione vecchia senza dare alcun errore: il build
- * riesce, ma l'app contiene codice obsoleto. E' un errore silenzioso e
+ * riesce, ma l'app contiene codice obsoleto. È un errore silenzioso e
  * molto difficile da riconoscere dall'esterno.
  *
  * Questo script viene eseguito prima di ogni build (vedi package.json).
@@ -44,7 +44,7 @@ for (const entry of fs.readdirSync(modulesDir, { withFileTypes: true })) {
   const src = path.join(modulesDir, entry.name);
   const dst = path.join(nodeModulesDir, entry.name);
 
-  // Se npm ha fatto un collegamento simbolico va gia' bene: non toccarlo.
+  // Se npm ha fatto un collegamento simbolico va già bene: non toccarlo.
   if (fs.existsSync(dst) && fs.lstatSync(dst).isSymbolicLink()) {
     console.log(`${entry.name}: collegato, niente da fare`);
     continue;

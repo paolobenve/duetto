@@ -1,6 +1,6 @@
 // Verifica che il relay risponda dall'esterno.
 // Manda una richiesta STUN "Binding" (non serve nessuna credenziale):
-// se il server risponde, la porta e' aperta e turnserver e' vivo.
+// se il server risponde, la porta è aperta e turnserver è vivo.
 import dgram from 'node:dgram';
 import { randomBytes } from 'node:crypto';
 
@@ -20,7 +20,7 @@ const started = Date.now();
 
 const timer = setTimeout(() => {
   console.log(`NESSUNA RISPOSTA da ${HOST}:${PORT}/udp entro 5 secondi`);
-  console.log('  -> porta chiusa dal firewall, oppure turnserver non ascolta li');
+  console.log('  -> porta chiusa dal firewall, oppure turnserver non ascolta lì);
   sock.close();
   process.exit(1);
 }, 5000);
@@ -34,7 +34,7 @@ sock.on('message', (msg) => {
     process.exit(1);
   }
 
-  // Cerca XOR-MAPPED-ADDRESS: e' l'indirizzo con cui il server ci vede.
+  // Cerca XOR-MAPPED-ADDRESS: è l'indirizzo con cui il server ci vede.
   let off = 20;
   let seen = null;
   while (off + 4 <= msg.length) {

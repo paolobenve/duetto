@@ -7,14 +7,14 @@ import { decodeUTF8, encodeUTF8, encodeBase64, decodeBase64 } from 'tweetnacl-ut
  * Usiamo NaCl secretbox (XSalsa20-Poly1305):
  *  - chiave a 32 byte, quella stabilita durante l'accoppiamento
  *  - nonce casuale a 24 byte per ogni messaggio
- *  - il ciphertext e' anche AUTENTICATO: se il server (o chiunque)
+ *  - il ciphertext è anche AUTENTICATO: se il server (o chiunque)
  *    modifica un solo byte, la decifratura fallisce.
  *
- * Cosi' il server e' un semplice inoltratore di buste opache e non puo'
+ * Così il server è un semplice inoltratore di buste opache e non può
  * fare man-in-the-middle sui parametri WebRTC (fingerprint DTLS).
  *
  * La chiave NON deriva da una passphrase digitata: nasce dallo scambio
- * Diffie-Hellman fatto all'accoppiamento (vedi pairing.ts), quindi e'
+ * Diffie-Hellman fatto all'accoppiamento (vedi pairing.ts), quindi è
  * casuale a 256 bit e non attaccabile per tentativi.
  */
 export class SignalCrypto {

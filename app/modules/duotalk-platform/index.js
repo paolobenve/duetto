@@ -33,11 +33,11 @@ const unavailable = () => Promise.resolve(false);
  *
  * Senza questo, mettendo l'app in background o spegnendo lo schermo
  * Android sospende il processo: la connessione cadrebbe e usciresti dal
- * canale. Il tipo "microphone" e' anche l'unico modo consentito da
+ * canale. Il tipo "microphone" è anche l'unico modo consentito da
  * Android 14+ per usare il microfono fuori dal primo piano.
  *
- * Il prezzo e' la notifica fissa nella barra di stato: obbligatoria,
- * e' Android che la impone come contropartita.
+ * Il prezzo è la notifica fissa nella barra di stato: obbligatoria,
+ * è Android che la impone come contropartita.
  */
 export const Foreground = isAndroid && NativeForeground
   ? {
@@ -59,14 +59,14 @@ export const Foreground = isAndroid && NativeForeground
       /** Ferma il servizio e rilascia il wake lock. */
       stop: () => call(NativeForeground, 'stop'),
 
-      /** Avviso da mostrare quando l'app non e' in primo piano. */
+      /** Avviso da mostrare quando l'app non è in primo piano. */
       notify: (title, text) =>
         call(NativeForeground, 'notify', String(title), String(text)),
 
       /** Toglie l'avviso, quando si rientra nell'app. */
       clearNotification: () => call(NativeForeground, 'clearNotification'),
 
-      /** Vero se l'app puo' restare attiva senza limiti di batteria. */
+      /** Vero se l'app può restare attiva senza limiti di batteria. */
       isBatteryUnrestricted: () => call(NativeForeground, 'isBatteryUnrestricted'),
 
       /** Finestra di sistema per concederlo: una spunta e basta. */
@@ -76,7 +76,7 @@ export const Foreground = isAndroid && NativeForeground
       /** Vero se questo telefono ha una schermata di avvio automatico. */
       hasAutoStartScreen: () => call(NativeForeground, 'hasAutoStartScreen'),
 
-      /** Apre quella schermata: non e' concedibile da codice. */
+      /** Apre quella schermata: non è concedibile da codice. */
       openAutoStartSettings: () => call(NativeForeground, 'openAutoStartSettings'),
 
       /** Ripiego: la scheda dell'app nelle impostazioni di sistema. */

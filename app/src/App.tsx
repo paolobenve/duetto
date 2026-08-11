@@ -20,7 +20,7 @@ import { useAudioRoute } from './audioRoute';
 import { stopListening } from './presence';
 import { avatarFor, peerAvatar } from './avatar';
 
-// Nessuna schermata intermedia: o si configura, o ci si accoppia, o si e'
+// Nessuna schermata intermedia: o si configura, o ci si accoppia, o si è
 // nel canale. Aprire l'app - da icona o da notifica - significa entrarci.
 type Screen = 'loading' | 'settings' | 'pairing' | 'setup' | 'channel';
 
@@ -29,8 +29,8 @@ type Screen = 'loading' | 'settings' | 'pairing' | 'setup' | 'channel';
  *
  * Nota: da Android 6 microfono, camera e notifiche sono "runtime
  * permissions" e il sistema NON permette di concederle al momento
- * dell'installazione. Chiederle tutte insieme e' la cosa piu' vicina:
- * dopo la prima volta Android non le richiede piu'.
+ * dell'installazione. Chiederle tutte insieme è la cosa più vicina:
+ * dopo la prima volta Android non le richiede più.
  */
 async function requestAllPermissions(): Promise<{ mic: boolean; camera: boolean }> {
   if (Platform.OS !== 'android') return { mic: true, camera: true };
@@ -91,7 +91,7 @@ export default function App() {
   const appStateRef = useRef(AppState.currentState);
   /** enterChannel serve dentro un effetto che nasce prima di lei */
   const enterChannelRef = useRef<(() => void) | null>(null);
-  /** relay comunicato dal server, valido finche' dura la connessione */
+  /** relay comunicato dal server, valido finché dura la connessione */
   const serverTurnRef = useRef<any[]>([]);
   /** attesa prima di ricostruire un collegamento caduto */
   /** attesa prima della riparazione leggera del collegamento */
@@ -101,9 +101,9 @@ export default function App() {
   /** stato corrente del collegamento, leggibile dentro i timer */
   const connStateRef = useRef('new');
   /**
-   * La connessione al server e' caduta da quando eravamo collegati.
+   * La connessione al server è caduta da quando eravamo collegati.
    *
-   * Serve perche' un'offerta mandata mentre il server e' irraggiungibile
+   * Serve perché un'offerta mandata mentre il server è irraggiungibile
    * viene scartata in silenzio: al ritorno va rifatta, anche se dal
    * nostro lato la connessione sembrasse appena creata e quindi sana.
    */
@@ -116,7 +116,7 @@ export default function App() {
 
   const audio = useAudioRoute(inChannel);
 
-  /** Il nome e' facoltativo: se manca non mostriamo il segnaposto del server. */
+  /** Il nome è facoltativo: se manca non mostriamo il segnaposto del server. */
   const shownName =
     peerName && peerName !== 'Qualcuno'
       ? peerName
@@ -165,7 +165,7 @@ export default function App() {
       if (!isServerConfigured(c)) setScreen('settings');
       else if (!isPaired(c)) setScreen('pairing');
       // Le impostazioni di sistema si propongono una volta sola, appena
-      // c'e' una coppia: prima non avrebbe senso spiegarle.
+      // c'è una coppia: prima non avrebbe senso spiegarle.
       else if (!c.setupShown) setScreen('setup');
       // Aprire l'app significa voler entrare nel canale: niente pulsanti
       // di mezzo. Lo stato "in ascolto" resta per dopo aver premuto Esci.
@@ -174,7 +174,7 @@ export default function App() {
   }, []);
 
   // --- connessione persistente --------------------------------------------
-  // Vive finche' c'e' una coppia: passare da "in ascolto" a "nel canale"
+  // Vive finché c'è una coppia: passare da "in ascolto" a "nel canale"
   // non riconnette nulla, cambia solo lo stato dichiarato al server.
   useEffect(() => {
     if (!cfg || !isPaired(cfg) || !isServerConfigured(cfg)) return;
@@ -219,17 +219,17 @@ export default function App() {
             serverTurnRef.current = turn ? [turn] : [];
             sessionRef.current?.setServerIceServers(serverTurnRef.current);
             // Se eravamo rimasti senza server, qualunque offerta partita
-            // nel frattempo e' andata persa: si riparte da zero.
+            // nel frattempo è andata persa: si riparte da zero.
             const afterOutage = signalingWasDown.current;
             signalingWasDown.current = false;
-            // Il ruolo NON puo' dipendere da chi entra per primo: la
+            // Il ruolo NON può dipendere da chi entra per primo: la
             // connessione si riaggancia a ogni cambio di rete, e chi era
-            // "primo" puo' ritrovarsi secondo. Sono bastate due
-            // riconnessioni sfortunate perche' entrambi si credessero
+            // "primo" può ritrovarsi secondo. Sono bastate due
+            // riconnessioni sfortunate perché entrambi si credessero
             // quello che deve offrire, e le offerte si scontrassero.
             //
-            // Il lato dell'accoppiamento invece e' fissato per sempre e
-            // per costruzione e' diverso sui due telefoni.
+            // Il lato dell'accoppiamento invece è fissato per sempre e
+            // per costruzione è diverso sui due telefoni.
             politeRef.current = pair.side === 'A';
             peerActiveRef.current = peerActive;
             setPeerPresent(present);
@@ -266,24 +266,24 @@ export default function App() {
           onNotify: (reason, n) => {
             setPeerName(n);
             setKnockPending(false);
-            // Il nome e' facoltativo: senza, si evita di scrivere "Qualcuno".
+            // Il nome è facoltativo: senza, si evita di scrivere "Qualcuno".
             const named = n && n !== 'Qualcuno';
 
             if (reason === 'knock') {
               // Un richiamo esplicito passa sempre, anche con l'app aperta:
-              // chi bussa lo fa proprio perche' l'altro non risponde, e il
-              // telefono puo' essere acceso sul tavolo senza nessuno davanti.
+              // chi bussa lo fa proprio perché l'altro non risponde, e il
+              // telefono può essere acceso sul tavolo senza nessuno davanti.
               Foreground.notify(
                 'DuoTalk',
                 named ? `${n} ti sta chiamando` : 'Ti stanno chiamando',
               ).catch(() => {});
-              // Una vibrazione mancata e' un richiamo meno evidente, non
+              // Una vibrazione mancata è un richiamo meno evidente, non
               // un motivo per far cadere l'app addosso a chi la riceve.
               try { Vibration.vibrate([0, 400, 200, 400]); } catch { /* noop */ }
               return;
             }
 
-            // L'arrivo dell'altro, invece, in primo piano si vede gia':
+            // L'arrivo dell'altro, invece, in primo piano si vede già:
             // notificarlo sarebbe solo rumore.
             if (appStateRef.current !== 'active') {
               Foreground.notify(
@@ -296,7 +296,7 @@ export default function App() {
           onSignal: async (msg) => {
             const sess = sessionRef.current;
             if (!sess) return;
-            // L'altro e' rimasto senza collegamento e ci chiede di
+            // L'altro è rimasto senza collegamento e ci chiede di
             // rifare l'offerta: tocca a noi, che siamo quelli che offrono.
             if (msg.kind === 'renegotiate') {
               if (!politeRef.current && inChannelRef.current) attachPeer(true);
@@ -313,20 +313,21 @@ export default function App() {
 
           onKnockResult: (ok, error) => {
             if (ok) {
+              // Solo una conferma a schermo: il pulsante resta premibile,
+              // perché insistere è precisamente ciò che si vuole fare
+              // quando il primo avviso non ha ottenuto risposta.
               setKnockPending(true);
-              setTimeout(() => setKnockPending(false), 15000);
+              setTimeout(() => setKnockPending(false), 2000);
             } else if (error === 'peer-offline') {
               Alert.alert('Non raggiungibile', 'L’altro telefono non è collegato in questo momento.');
-            } else if (error === 'too-soon') {
-              Alert.alert('Aspetta un momento', 'Hai già avvisato da poco.');
             }
           },
 
           onError: (code) => {
             if (code === 'bad-token') Alert.alert('Token errato', 'Access token non valido.');
             else if (code === 'room-full' || code === 'replaced') {
-              // Quasi sempre transitorio: la connessione precedente non e'
-              // ancora stata dichiarata morta, o il telefono si e' riagganciato
+              // Quasi sempre transitorio: la connessione precedente non è
+              // ancora stata dichiarata morta, o il telefono si è riagganciato
               // altrove. Il riaggancio automatico ci pensa da solo: un avviso
               // qui sarebbe solo allarmismo.
             }
@@ -345,7 +346,7 @@ export default function App() {
 
       // Ingresso automatico. setMode aggiorna lo stato dichiarato anche
       // prima che il WebSocket sia aperto, e il join che parte dopo lo
-      // porta gia' corretto: non serve aspettare la connessione.
+      // porta già corretto: non serve aspettare la connessione.
       if (!cancelled) await enterChannel();
     })();
 
@@ -358,20 +359,20 @@ export default function App() {
       Foreground.stop().catch(() => {});
       try { InCallManager.stop(); } catch { /* noop */ }
     };
-    // attachPeer e' stabile: usa solo ref
+    // attachPeer è stabile: usa solo ref
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cfg]);
 
   /**
    * Assicura un collegamento diretto vivo, quando siamo entrambi nel canale.
    *
-   * `force` serve quando l'altro si e' appena ricollegato: la sua
-   * connessione e' nuova per definizione, quindi la nostra e' comunque da
+   * `force` serve quando l'altro si è appena ricollegato: la sua
+   * connessione è nuova per definizione, quindi la nostra è comunque da
    * rifare, anche se dal nostro lato sembrasse ancora buona.
    *
    * Senza questo, dopo un'interruzione di rete restava in piedi una
-   * connessione morta e non si vedeva piu' nulla finche' non si chiudeva
-   * l'app: il codice trovava una connessione gia' presente e non faceva
+   * connessione morta e non si vedeva più nulla finché non si chiudeva
+   * l'app: il codice trovava una connessione già presente e non faceva
    * nulla.
    */
   const attachPeer = useCallback(async (force = false) => {
@@ -381,10 +382,10 @@ export default function App() {
     if (force || !s.isPeerHealthy()) s.detachPeer();
 
     // Chi risponde non ricostruisce nulla di propria iniziativa: aspetta
-    // l'offerta, che fara' nascere la connessione al momento giusto
+    // l'offerta, che farà nascere la connessione al momento giusto
     // (vedi onSignal). Ricostruirla subito significherebbe demolire, un
     // istante dopo, proprio quella che l'offerta in arrivo sta creando:
-    // e' cosi' che nascevano tre ricostruzioni in due secondi.
+    // è così che nascevano tre ricostruzioni in due secondi.
     if (politeRef.current) return;
 
     try {
@@ -410,7 +411,7 @@ export default function App() {
           if (st !== 'failed' && st !== 'disconnected') return;
 
           // ICE si riprende spesso da solo, anche da "failed": nel log si
-          // e' visto passare da failed a connected senza alcun aiuto.
+          // è visto passare da failed a connected senza alcun aiuto.
           // Demolire subito interrompeva audio e video proprio mentre si
           // stava risistemando, ed era la causa della maggior parte delle
           // interruzioni visibili. Ora: si aspetta, si tenta la riparazione
@@ -483,8 +484,8 @@ export default function App() {
     inChannelRef.current = false;
     sig?.setMode('listening');
 
-    // Uscire dal canale e' uscire dall'app: la finestra sparisce. Il
-    // processo pero' resta vivo, cosi' continui a essere raggiungibile e
+    // Uscire dal canale è uscire dall'app: la finestra sparisce. Il
+    // processo però resta vivo, così continui a essere raggiungibile e
     // ricevi la notifica quando l'altro entra. Riaprendo l'app si rientra
     // direttamente nel canale.
     AppWindow.minimize().catch(() => {});
@@ -493,8 +494,8 @@ export default function App() {
   /**
    * Rete di sicurezza contro il collegamento che non riparte.
    *
-   * Chi risponde non puo' offrire: se resta senza connessione e l'altro
-   * non se ne accorge - perche' dal suo lato sembra tutto a posto -
+   * Chi risponde non può offrire: se resta senza connessione e l'altro
+   * non se ne accorge - perché dal suo lato sembra tutto a posto -
    * aspetterebbe all'infinito. Ogni pochi secondi, chi si trova senza
    * collegamento mentre entrambi sono nel canale se ne occupa: chi offre
    * ricostruisce, chi risponde lo chiede.

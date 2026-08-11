@@ -11,15 +11,15 @@ type Props = {
   initial: DuoConfig;
   onSave: (cfg: DuoConfig) => void;
   onUnpair: () => void;
-  /** torna indietro senza salvare; assente se non c'e' dove tornare */
+  /** torna indietro senza salvare; assente se non c'è dove tornare */
   onClose?: () => void;
   /** riapre la schermata delle impostazioni di sistema */
   onOpenSetup: () => void;
 };
 
 /**
- * Impostazioni. In primo piano c'e' una cosa sola: dove sta il server.
- * Tutto il resto e' facoltativo e sta sotto "Altre impostazioni".
+ * Impostazioni. In primo piano c'è una cosa sola: dove sta il server.
+ * Tutto il resto è facoltativo e sta sotto "Altre impostazioni".
  */
 export default function SettingsScreen({
   initial, onSave, onUnpair, onClose, onOpenSetup,

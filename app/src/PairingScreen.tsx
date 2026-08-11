@@ -26,7 +26,7 @@ const TIMEOUT_MS = 90_000;
 /**
  * Attesa prima di poter ritentare dopo un fallimento.
  *
- * E' qui che sta la difesa contro chi prova codici a tappeto, non nella
+ * È qui che sta la difesa contro chi prova codici a tappeto, non nella
  * lentezza del calcolo: rende inutile insistere, senza far aspettare
  * nessuno quando le cose vanno bene.
  */
@@ -120,7 +120,7 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
         onPair: (msg: PairMessage) => {
           if (msg.kind === 'pubkey') {
             sendPubOnce(sig);
-            if (sharedRef.current) return; // gia' calcolata
+            if (sharedRef.current) return; // già calcolata
             try {
               peerNameRef.current = msg.name || '';
               const key = deriveSharedKey(

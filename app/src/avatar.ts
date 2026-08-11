@@ -4,14 +4,14 @@ import { decodeUTF8 } from 'tweetnacl-util';
 /**
  * Un'immagine per chi non ha un nome.
  *
- * Senza, restava un punto interrogativo, che sembra un errore piu' che
+ * Senza, restava un punto interrogativo, che sembra un errore più che
  * un segnaposto.
  *
- * NON e' casuale: nasce dall'identificativo della coppia e dal lato, quindi
+ * NON è casuale: nasce dall'identificativo della coppia e dal lato, quindi
  *  - resta sempre la stessa, e diventa riconoscibile;
  *  - i due telefoni ne hanno una diversa l'uno dall'altro;
- *  - e ognuno vede per l'altro esattamente cio' che l'altro vede per se',
- *    perche' entrambi partono dagli stessi dati.
+ *  - e ognuno vede per l'altro esattamente ciò che l'altro vede per sé,
+ *    perché entrambi partono dagli stessi dati.
  */
 
 /** Toni scelti per stare bene sul fondo scuro. */

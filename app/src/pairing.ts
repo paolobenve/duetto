@@ -6,7 +6,7 @@ import { decodeUTF8, encodeBase64, decodeBase64 } from 'tweetnacl-util';
  *
  * Chi crea la coppia riceve un CODICE NUMERICO di 8 cifre. L'altro lo
  * digita. Da quel momento i due sono accoppiati per sempre e il codice
- * non serve piu'.
+ * non serve più.
  *
  * Il codice NON viene mai inviato al server: al server arriva solo
  * `pairId`, un'impronta del codice, che serve a farvi incontrare nella
@@ -14,28 +14,28 @@ import { decodeUTF8, encodeBase64, decodeBase64 } from 'tweetnacl-util';
  *
  * La chiave non si ricava dal codice: i due telefoni fanno uno scambio
  * Diffie-Hellman (X25519) e mescolano il codice nel risultato. Quindi:
- *  - chi ascolta non puo' calcolare la chiave (non ha i segreti privati);
+ *  - chi ascolta non può calcolare la chiave (non ha i segreti privati);
  *  - chi volesse mettersi in mezzo dovrebbe conoscere il codice, e la
  *    verifica finale lo smaschererebbe;
- *  - finito l'accoppiamento la chiave e' a 256 bit e la debolezza del
- *    codice non conta piu' nulla.
+ *  - finito l'accoppiamento la chiave è a 256 bit e la debolezza del
+ *    codice non conta più nulla.
  *
  * COSTO DEL CALCOLO DI pairId
  * Otto cifre sono solo 100 milioni di combinazioni: chi vede pairId
  * potrebbe provarle tutte e risalire al codice. Rendere il calcolo lento
  * alza quel costo, ma lo alza anche per noi, e un'attesa di dieci secondi
- * a ogni accoppiamento non e' accettabile.
+ * a ogni accoppiamento non è accettabile.
  *
  * Il compromesso scelto: poche migliaia di giri, circa un terzo di
  * secondo sul telefono, che moltiplicano comunque per qualche migliaio il
  * costo di chi tenta. La difesa contro chi prova codici a tappeto sta
- * altrove, ed e' piu' efficace: il server limita il numero di tentativi
+ * altrove, ed è più efficace: il server limita il numero di tentativi
  * nel tempo, e l'app impone un'attesa prima di riprovare.
  *
  * Resta un limite dichiarato: un server ostile, che vede pairId, potrebbe
  * risalire al codice con abbastanza potenza di calcolo e inserirsi
- * DURANTE l'accoppiamento. Dopo, la chiave e' a 256 bit e non serve piu' a
- * nulla. Se questo dovesse preoccupare, la contromisura e' allungare il
+ * DURANTE l'accoppiamento. Dopo, la chiave è a 256 bit e non serve più a
+ * nulla. Se questo dovesse preoccupare, la contromisura è allungare il
  * codice, non rallentare il calcolo.
  */
 
@@ -51,7 +51,7 @@ export function generateCode(): string {
   let out = '';
   while (out.length < CODE_DIGITS) {
     for (const b of nacl.randomBytes(CODE_DIGITS)) {
-      // Scarta 250-255: userebbero le cifre 0-5 piu' spesso delle altre.
+      // Scarta 250-255: userebbero le cifre 0-5 più spesso delle altre.
       if (b >= 250) continue;
       out += String(b % 10);
       if (out.length === CODE_DIGITS) break;
@@ -69,7 +69,7 @@ export function isCodeComplete(raw: string): boolean {
   return normalizeCode(raw).length === CODE_DIGITS;
 }
 
-/** Come mostrarlo: "12345678" -> "1234 5678", piu' facile da dettare. */
+/** Come mostrarlo: "12345678" -> "1234 5678", più facile da dettare. */
 export function formatCode(raw: string): string {
   const c = normalizeCode(raw);
   return c.length > 4 ? `${c.slice(0, 4)} ${c.slice(4)}` : c;
@@ -88,7 +88,7 @@ const label = (s: string) => decodeUTF8(s);
 
 /**
  * Identificativo della coppia: l'unica cosa che il server vede.
- * Il calcolo e' reso un po' costoso di proposito (vedi sopra).
+ * Il calcolo è reso un po' costoso di proposito (vedi sopra).
  * Asincrono per non bloccare l'interfaccia mentre gira.
  */
 export async function pairIdFromCode(code: string): Promise<string> {
@@ -96,7 +96,7 @@ export async function pairIdFromCode(code: string): Promise<string> {
   let h = sha512(label('duotalk-pair-id|'), label(clean));
   for (let i = 0; i < KDF_ROUNDS; i++) {
     h = nacl.hash(h);
-    // Ogni tanto restituiamo il controllo al ciclo di eventi, cosi'
+    // Ogni tanto restituiamo il controllo al ciclo di eventi, così
     // l'indicatore di attesa continua ad animarsi.
     if (i % KDF_CHUNK === 0) await new Promise<void>((r) => setTimeout(() => r(), 0));
   }
@@ -117,7 +117,7 @@ export function newKeyPair(): PairKeys {
 
 /**
  * Chiave condivisa = KDF(segreto Diffie-Hellman, codice).
- * Qui non serve rallentare nulla: il segreto Diffie-Hellman e' gia'
+ * Qui non serve rallentare nulla: il segreto Diffie-Hellman è già
  * casuale a 256 bit, e senza di quello il codice non basta.
  */
 export function deriveSharedKey(
@@ -131,9 +131,9 @@ export function deriveSharedKey(
 }
 
 /**
- * Prova di possesso della chiave, diversa per i due lati cosi' nessuno
- * puo' rimandare indietro quella dell'altro. Se non combacia, il codice
- * digitato e' sbagliato (o qualcuno sta provando a intromettersi).
+ * Prova di possesso della chiave, diversa per i due lati così nessuno
+ * può rimandare indietro quella dell'altro. Se non combacia, il codice
+ * digitato è sbagliato (o qualcuno sta provando a intromettersi).
  */
 export function confirmationFor(key: Uint8Array, side: 'A' | 'B'): string {
   return encodeBase64(sha512(label(`duotalk-confirm|${side}|`), key).slice(0, 16));

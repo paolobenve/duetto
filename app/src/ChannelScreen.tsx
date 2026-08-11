@@ -16,7 +16,7 @@ const DIM_OPACITY = 0.4;
 
 /**
  * Sotto questa larghezza siamo nella finestrella Picture-in-Picture:
- * li' comandi e badge non ci starebbero, mostriamo solo il video.
+ * lì comandi e badge non ci starebbero, mostriamo solo il video.
  */
 const COMPACT_WIDTH = 340;
 
@@ -53,8 +53,8 @@ type Props = {
 };
 
 /**
- * La schermata del canale. Non c'e' nulla da "chiamare": sei dentro,
- * e vedi se c'e' anche l'altro. Se non c'e', puoi avvisarlo.
+ * La schermata del canale. Non c'è nulla da "chiamare": sei dentro,
+ * e vedi se c'è anche l'altro. Se non c'è, puoi avvisarlo.
  */
 export default function ChannelScreen(props: Props) {
   const {
@@ -64,7 +64,7 @@ export default function ChannelScreen(props: Props) {
     onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, onOpenSettings,
   } = props;
 
-  // In Picture-in-Picture la finestra e' minuscola: niente comandi.
+  // In Picture-in-Picture la finestra è minuscola: niente comandi.
   const { width: winWidth } = useWindowDimensions();
   const compact = winWidth < COMPACT_WIDTH;
 
@@ -74,17 +74,17 @@ export default function ChannelScreen(props: Props) {
   const linked = connectionState === 'connected';
 
   /**
-   * Interruzione in corso: l'altro c'e' ma il collegamento diretto no.
-   * Non e' un "non c'e' nessuno": e' un'attesa, e va detto invece di
+   * Interruzione in corso: l'altro c'è ma il collegamento diretto no.
+   * Non è un "non c'è nessuno": è un'attesa, e va detto invece di
    * lasciare uno schermo nero senza spiegazione.
    */
   const serverLost = status === 'offline';
 
   /**
-   * Non siamo collegati: caduto il server, oppure l'altro c'e' ma il
+   * Non siamo collegati: caduto il server, oppure l'altro c'è ma il
    * collegamento diretto no - compreso mentre si sta ristabilendo.
    *
-   * Includere il ristabilimento e' il punto: prima la fase "connecting"
+   * Includere il ristabilimento è il punto: prima la fase "connecting"
    * non contava come interruzione, e in quell'istante il posto grande
    * veniva dato al proprio video. Si vedeva il proprio a schermo intero
    * per un attimo e poi rimpicciolirsi, a ogni riconnessione.
@@ -93,13 +93,13 @@ export default function ChannelScreen(props: Props) {
 
   /**
    * Riserviamo il posto grande all'altro solo se ci aspettiamo davvero
-   * il suo video: se ha la camera spenta, il proprio a schermo intero e'
+   * il suo video: se ha la camera spenta, il proprio a schermo intero è
    * la cosa giusta da mostrare.
    */
   const interrupted = notConnected && peerState.video;
 
   // Senza questo, perdendo il server restava uno schermo nero muto: il
-  // video dell'altro e' ancora li' ma non ci arriva piu' nessun
+  // video dell'altro è ancora lì ma non ci arriva più nessun
   // fotogramma, e nulla lo spiegava.
   const notice = serverLost
     ? 'Connessione persa, mi sto ricollegando…'
@@ -108,8 +108,8 @@ export default function ChannelScreen(props: Props) {
           ? 'Collegamento perso, sto ricollegando…'
           : 'Collegamento interrotto, in attesa…')
       : undefined;
-  // remoteHasVideo arriva come prop: e' un evento esplicito della sessione,
-  // perche' le tracce entrano dentro lo stesso MediaStream e React non se
+  // remoteHasVideo arriva come prop: è un evento esplicito della sessione,
+  // perché le tracce entrano dentro lo stesso MediaStream e React non se
   // ne accorgerebbe guardando il riferimento.
   const localHasVideo =
     !!localStream && videoOn && localStream.getVideoTracks().length > 0;
@@ -207,18 +207,19 @@ export default function ChannelScreen(props: Props) {
         <CircleButton
           label="Gira"
           icon={'\u{1F504}'}
-          // Senza camera accesa non c'e' nulla da girare.
+          // Senza camera accesa non c'è nulla da girare.
           disabled={!videoOn}
           onPress={press(onSwitchCamera)}
         />
         <CircleButton
           label={knockPending ? 'Avvisato' : 'Avvisa'}
           icon={'\u{1F514}'}
-          // Acceso solo quando l'altro non c'e': li' e' la cosa da fare.
+          // Acceso solo quando l'altro non c'è: lì è la cosa da fare.
           highlight={!together && !knockPending}
-          // Resta premibile anche quando c'e': puo' essere nel canale ma
-          // distratto, e allora un richiamo e' esattamente cio' che serve.
-          disabled={knockPending}
+          // Sempre premibile: l'altro può essere nel canale ma distratto,
+          // e insistere è proprio ciò che si vuole fare quando il primo
+          // avviso non ha ottenuto risposta.
+          disabled={false}
           onPress={press(onKnock)}
         />
         <CircleButton
@@ -318,7 +319,7 @@ function PresenceCard(props: {
             ? 'Collegamento diretto non riuscito.\nSenza un server TURN certe reti lo impediscono.'
             : 'Sto stabilendo la connessione diretta…'}
       </Text>
-      {/* Lo stato grezzo aiuta a capire dove si e' fermato. */}
+      {/* Lo stato grezzo aiuta a capire dove si è fermato. */}
       {linked ? null : (
         <Text style={styles.cardTiny}>stato: {connectionState}</Text>
       )}
@@ -327,13 +328,13 @@ function PresenceCard(props: {
 }
 
 /**
- * La faccia dell'altro quando non c'e' il suo video.
+ * La faccia dell'altro quando non c'è il suo video.
  *
  * Chi non ha messo un nome prima vedeva un punto interrogativo, che sembra
  * un errore. Al suo posto un'immagine generata dalla coppia: sempre la
  * stessa, quindi diventa "lui" invece di essere un segnaposto.
  *
- * Il nome, se c'e', vince: l'iniziale dice piu' di un disegno.
+ * Il nome, se c'è, vince: l'iniziale dice più di un disegno.
  */
 function PeerFace({ name, avatar, live }: { name: string; avatar: Avatar; live: boolean }) {
   const initial = name.trim().charAt(0).toUpperCase();
@@ -375,7 +376,7 @@ function CircleButton(props: {
         style={[
           styles.circle,
           // Come su Discord: l'icona sta nuda sul pannello, e prende uno
-          // sfondo solo quando la funzione e' spenta o va evidenziata.
+          // sfondo solo quando la funzione è spenta o va evidenziata.
           props.danger
             ? styles.circleDanger
             : props.highlight

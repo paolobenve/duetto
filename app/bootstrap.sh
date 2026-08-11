@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # DuoTalk - genera la parte nativa Android (cartella android/) e installa le dipendenze.
 #
-# La logica dell'app (src/) e la configurazione JS sono gia' nel repo.
+# La logica dell'app (src/) e la configurazione JS sono già nel repo.
 # Qui usiamo la CLI ufficiale di React Native per creare lo "scheletro"
 # nativo (Gradle, MainActivity, ecc.) alla versione giusta, e poi lo
-# innestiamo nel progetto. Cosi' il repo resta leggero e riproducibile.
+# innestiamo nel progetto. Così il repo resta leggero e riproducibile.
 #
 # Uso:   cd app && ./bootstrap.sh
 # Richiede: Node 18+, un JDK 17+, e l'SDK Android (ANDROID_HOME).
@@ -16,7 +16,7 @@ APP_NAME="DuoTalk"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 
 if [ -d "$HERE/android" ]; then
-  echo "==> android/ esiste gia': salto la generazione nativa."
+  echo "==> android/ esiste già: salto la generazione nativa."
 else
   echo "==> Genero lo scheletro nativo React Native $RN_VERSION in una cartella temporanea..."
   TMP="$(mktemp -d)"
@@ -43,7 +43,7 @@ fi
 echo "==> Applico permessi, deep link e foreground service al manifest..."
 node "$HERE/scripts/patch-android-manifest.js"
 
-# Il modulo nativo duotalk-platform e' scritto per l'architettura classica,
+# Il modulo nativo duotalk-platform è scritto per l'architettura classica,
 # pienamente supportata in RN 0.76. Con la New Architecture servirebbe il
 # livello di interop e non tutte le dipendenze lo gradiscono.
 GRADLE_PROPS="$HERE/android/gradle.properties"

@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  *  - `server`: dove sta il signaling. Uguale sui due telefoni, si digita
  *    una volta sola.
  *  - `pair`: nasce dall'accoppiamento a codice e non si digita mai. Una
- *    volta stabilito resta per sempre: il codice non serve piu'.
+ *    volta stabilito resta per sempre: il codice non serve più.
  */
 
 export type PairInfo = {
@@ -19,7 +19,7 @@ export type PairInfo = {
   side: 'A' | 'B';
   /** come si chiama l'altro, per mostrarlo nelle notifiche */
   peerName: string;
-  /** quando e' stato fatto l'accoppiamento (ISO) */
+  /** quando è stato fatto l'accoppiamento (ISO) */
   pairedAt: string;
 };
 
@@ -30,12 +30,12 @@ export type DuoConfig = {
   accessToken: string;
   /** come mi vede l'altro */
   displayName: string;
-  /** null finche' non ci si e' accoppiati */
+  /** null finché non ci si è accoppiati */
   pair: PairInfo | null;
   turnUrl: string;
   turnUser: string;
   turnPass: string;
-  /** le impostazioni di sistema sono gia' state proposte una volta */
+  /** le impostazioni di sistema sono già state proposte una volta */
   setupShown: boolean;
 };
 
@@ -93,7 +93,7 @@ export function isServerConfigured(cfg: DuoConfig): boolean {
   return /^wss?:\/\/[^/]+\/.+/.test(url);
 }
 
-/** Vero quando c'e' gia' una coppia: si va dritti nel canale. */
+/** Vero quando c'è già una coppia: si va dritti nel canale. */
 export function isPaired(cfg: DuoConfig): boolean {
   return !!cfg.pair && !!cfg.pair.id && !!cfg.pair.key;
 }

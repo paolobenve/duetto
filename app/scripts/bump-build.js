@@ -3,9 +3,9 @@
  * Incrementa il numero di build e lo scrive in src/version.ts.
  *
  * Serve a sapere con certezza QUALE versione sta girando sul telefono:
- * con installazioni frequenti e manuali e' facile provare a lungo un APK
- * vecchio credendolo nuovo, e attribuire al codice problemi gia' risolti.
- * Il numero e' mostrato nell'app.
+ * con installazioni frequenti e manuali è facile provare a lungo un APK
+ * vecchio credendolo nuovo, e attribuire al codice problemi già risolti.
+ * Il numero è mostrato nell'app.
  */
 const fs = require('fs');
 const path = require('path');

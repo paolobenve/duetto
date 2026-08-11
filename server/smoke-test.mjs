@@ -116,16 +116,20 @@ try {
   const bNotify = await b.expect('notify');
   check(bNotify.reason === 'knock' && bNotify.name === 'Anna', 'B riceve l’avviso');
 
+  // Insistere è legittimo: se il primo avviso non ottiene risposta, il
+  // secondo deve passare, e arrivare davvero all'altro.
   a.send({ type: 'knock' });
   const knock2 = await a.expect('knock-result');
-  check(knock2.ok === false && knock2.error === 'too-soon', 'secondo avviso subito: bloccato');
+  check(knock2.ok === true, 'secondo avviso subito: accettato');
+  const bNotify2 = await b.expect('notify');
+  check(bNotify2.reason === 'knock', 'anche il secondo avviso arriva a B');
 
   // --- uscita -------------------------------------------------------------
   b.close();
   const left = await a.expect('peer-left');
   check(left.type === 'peer-left', 'A avvisata della disconnessione');
 
-  // --- avvisare quando l'altro e' offline ---------------------------------
+  // --- avvisare quando l'altro è offline ---------------------------------
   await wait(100);
   const c0 = client();
   await c0.open();

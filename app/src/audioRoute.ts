@@ -24,7 +24,7 @@ const STORAGE_KEY = 'duotalk.audioRoute.v1';
 
 export const ROUTE_LABEL: Record<AudioRoute, string> = {
   SPEAKER_PHONE: 'Vivavoce',
-  // "Auricolare" farebbe pensare alle cuffiette: qui e' l'altoparlantino
+  // "Auricolare" farebbe pensare alle cuffiette: qui è l'altoparlantino
   // che si accosta all'orecchio.
   EARPIECE: 'Telefono',
   WIRED_HEADSET: 'Cuffie',
@@ -43,7 +43,7 @@ const isRoute = (v: any): v is AudioRoute =>
 
 /**
  * Tiene traccia dell'uscita attiva e di quelle disponibili.
- * @param enabled attivo solo mentre si e' nel canale
+ * @param enabled attivo solo mentre si è nel canale
  */
 export function useAudioRoute(enabled: boolean) {
   // Prima che arrivi il primo evento assumiamo il minimo garantito.
@@ -108,7 +108,7 @@ export function useAudioRoute(enabled: boolean) {
             setCurrent(data.selectedAudioDevice);
           }
 
-          // Al primo evento ripristiniamo l'ultima uscita scelta, se e'
+          // Al primo evento ripristiniamo l'ultima uscita scelta, se è
           // ancora collegata. Altrimenti restiamo su quella di sistema:
           // non forziamo nulla di nostra iniziativa.
           if (!initialised.current && routes.length > 0) {
@@ -154,7 +154,7 @@ export function useAudioRoute(enabled: boolean) {
     route: current,
     /** solo quelle davvero collegate, nell'ordine di presentazione */
     available: ORDER.filter((r) => available.includes(r)),
-    /** con una sola uscita non c'e' nulla da scegliere */
+    /** con una sola uscita non c'è nulla da scegliere */
     canCycle: ORDER.filter((r) => available.includes(r)).length > 1,
     cycle,
     select,

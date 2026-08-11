@@ -6,7 +6,7 @@ import { SignalCrypto } from './crypto';
  * La stessa connessione serve a due fasi:
  *
  *  - ACCOPPIAMENTO: si scambiano chiavi pubbliche in chiaro (messaggi
- *    `pair`). Non c'e' nulla da nascondere: senza il codice, che al
+ *    `pair`). Non c'è nulla da nascondere: senza il codice, che al
  *    server non arriva mai, quelle chiavi non bastano a ricavare nulla.
  *
  *  - USO NORMALE: tutto il resto viaggia dentro `signal`, cifrato con la
@@ -20,8 +20,8 @@ export type SignalMessage =
   | { kind: 'desc'; type: 'offer' | 'answer'; sdp: string }
   | { kind: 'ice'; candidate: any }
   | { kind: 'state'; audio: boolean; video: boolean; aspect?: number }
-  // Chi risponde non puo' offrire: se resta senza collegamento e l'altro
-  // non se ne accorge, l'unica via d'uscita e' chiederglielo.
+  // Chi risponde non può offrire: se resta senza collegamento e l'altro
+  // non se ne accorge, l'unica via d'uscita è chiederglielo.
   | { kind: 'renegotiate' };
 
 export type PairMessage =
@@ -39,7 +39,7 @@ export type IceServer = {
 
 export type PresenceStatus =
   | 'connecting'
-  | 'alone'      // collegati, l'altro non e' nel canale
+  | 'alone'      // collegati, l'altro non è nel canale
   | 'together'   // ci siamo entrambi nel canale
   | 'offline';   // niente rete o server irraggiungibile
 
@@ -56,7 +56,7 @@ export type SignalingEvents = {
   onPeerJoined?: (name: string, mode: Mode) => void;
   onPeerLeft?: () => void;
   onPeerMode?: (mode: Mode, name: string) => void;
-  /** il server ci avvisa: l'altro e' entrato, oppure ha bussato */
+  /** il server ci avvisa: l'altro è entrato, oppure ha bussato */
   onNotify?: (reason: 'peer-active' | 'knock', name: string) => void;
   onSignal?: (msg: SignalMessage) => void;
   onPair?: (msg: PairMessage) => void;
@@ -75,8 +75,8 @@ export type SignalingEvents = {
 const log = (...args: any[]) => console.log('[duotalk-sig]', ...args);
 
 // Attesa fra un tentativo e l'altro. Tenuta breve di proposito: qui la
-// riconnessione non e' un dettaglio, e' la differenza fra essere
-// raggiungibili o no. Il costo di un tentativo a vuoto e' trascurabile.
+// riconnessione non è un dettaglio, è la differenza fra essere
+// raggiungibili o no. Il costo di un tentativo a vuoto è trascurabile.
 const RECONNECT_MIN_MS = 500;
 const RECONNECT_MAX_MS = 4000;
 
@@ -88,7 +88,7 @@ export type SignalingOptions = {
   displayName: string;
   /** chiave della coppia; assente durante l'accoppiamento */
   key?: Uint8Array | string | null;
-  /** lato della coppia: identifica il dispositivo, cosi' riagganciandosi
+  /** lato della coppia: identifica il dispositivo, così riagganciandosi
    *  riprende il proprio posto invece di essere respinto */
   side?: 'A' | 'B';
   mode?: Mode;
@@ -110,8 +110,8 @@ export class Signaling {
   /**
    * Riprova subito, senza aspettare il tentativo programmato.
    *
-   * Serve quando sappiamo che qualcosa e' cambiato - l'app torna in
-   * primo piano, la rete e' rientrata - e attendere sarebbe tempo perso.
+   * Serve quando sappiamo che qualcosa è cambiato - l'app torna in
+   * primo piano, la rete è rientrata - e attendere sarebbe tempo perso.
    */
   reconnectNow() {
     if (this.closedByUser) return;
@@ -166,7 +166,7 @@ export class Signaling {
       log('errore di rete:', e?.message ?? '(senza dettagli)');
     };
     ws.onclose = (e: any) => {
-      // Il codice dice CHI ha chiuso e perche': 1006 e' una caduta di
+      // Il codice dice CHI ha chiuso e perché: 1006 è una caduta di
       // rete, 1000/1001 una chiusura ordinata, 4xxx un rifiuto nostro.
       log('caduto dopo', Math.round((Date.now() - openedAt) / 1000), 's',
         '- codice', e?.code ?? '?', e?.reason ? `(${e.reason})` : '');
@@ -252,7 +252,7 @@ export class Signaling {
     this.rawSend({ type: 'pair', payload: msg });
   }
 
-  /** Entra o esce dal canale. E' questo a far scattare la notifica all'altro. */
+  /** Entra o esce dal canale. È questo a far scattare la notifica all'altro. */
   setMode(mode: Mode) {
     if (mode === this.mode) return;
     this.mode = mode;
@@ -277,8 +277,8 @@ export class Signaling {
       this.ws.send(JSON.stringify(obj));
       return;
     }
-    // Un messaggio scartato perche' il server non e' raggiungibile era
-    // finora invisibile: si vedeva solo l'effetto, cioe' una negoziazione
+    // Un messaggio scartato perché il server non è raggiungibile era
+    // finora invisibile: si vedeva solo l'effetto, cioè una negoziazione
     // che non arrivava mai a destinazione.
     const kind = (obj as any)?.type ?? '?';
     console.log('[duotalk-sig]', 'scartato (server irraggiungibile):', kind);
