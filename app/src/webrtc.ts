@@ -304,7 +304,10 @@ export class ChannelSession {
       if (msg.type === 'offer') {
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-        log('risposta inviata');
+        log('risposta inviata - direzioni:',
+          ((pc as any).getTransceivers?.() ?? [])
+            .map((t: any) => `${t?.receiver?.track?.kind ?? '?'}:${t?.direction}`)
+            .join(' '));
         this.signaling.sendSignal({
           kind: 'desc',
           type: 'answer',
@@ -346,8 +349,24 @@ export class ChannelSession {
       log('canale video non ancora individuabile');
       return;
     }
+
+    // IMPORTANTE: un canale creato applicando l'offerta dell'altro nasce in
+    // sola ricezione. Cosi' com'e' potremmo vedere il video altrui ma non
+    // inviare il nostro, e il difetto sarebbe asimmetrico - proprio quello
+    // che si vedeva. Lo portiamo a bidirezionale ORA, prima di preparare la
+    // risposta, cosi' viaggia in questa stessa negoziazione senza doverne
+    // aprire un'altra (cosa che a noi, che non offriamo, e' preclusa).
+    try {
+      if (video.direction !== 'sendrecv') {
+        log('canale video era', video.direction, '-> lo porto a sendrecv');
+        video.direction = 'sendrecv';
+      }
+    } catch (e) {
+      log('non riesco a cambiare direzione del canale video:', String(e));
+    }
+
     this.videoSender = video.sender;
-    log('canale video individuato dopo la negoziazione');
+    log('canale video individuato, direzione', video.direction);
 
     // Se nel frattempo la camera era gia' accesa, la traccia entra ora.
     const localVideo = this.localStream?.getVideoTracks()[0];
