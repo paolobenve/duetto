@@ -8,6 +8,7 @@ import type { PresenceStatus } from './signaling';
 import VideoStage from './VideoStage';
 import { AudioRoute, ROUTE_ICON, ROUTE_LABEL } from './audioRoute';
 import { VERSION_LABEL } from './version';
+import type { Avatar } from './avatar';
 
 /** Dopo quanto i pulsanti si attenuano, e quanto restano visibili. */
 const IDLE_MS = 4000;
@@ -22,6 +23,8 @@ const COMPACT_WIDTH = 340;
 type Props = {
   channel: string;
   peerName: string;
+  /** immagine dell'altro, quando non ha un nome */
+  peerAvatar: Avatar;
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
   status: PresenceStatus;
@@ -55,7 +58,7 @@ type Props = {
  */
 export default function ChannelScreen(props: Props) {
   const {
-    channel, peerName, localStream, remoteStream, status, connectionState,
+    channel, peerName, peerAvatar, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes,
     onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, onOpenSettings,
@@ -160,6 +163,7 @@ export default function ChannelScreen(props: Props) {
             linked={linked}
             connectionState={connectionState}
             peerName={peerName}
+            peerAvatar={peerAvatar}
             peerAudio={peerState.audio}
           />
         }
@@ -263,10 +267,10 @@ function PresenceCard(props: {
   linked: boolean;
   connectionState: string;
   peerName: string;
+  peerAvatar: Avatar;
   peerAudio: boolean;
 }) {
-  const { status, linked, connectionState, peerName, peerAudio } = props;
-  const initial = (peerName || '?').trim().charAt(0).toUpperCase();
+  const { status, linked, connectionState, peerName, peerAvatar, peerAudio } = props;
 
   if (status === 'connecting') {
     return (
@@ -290,12 +294,10 @@ function PresenceCard(props: {
   if (status === 'alone') {
     return (
       <View style={styles.card}>
-        <View style={[styles.avatar, styles.avatarEmpty]}>
-          <Text style={styles.avatarText}>{initial}</Text>
-        </View>
+        <PeerFace name={peerName} avatar={peerAvatar} live={false} />
         <Text style={styles.cardTitle}>Sei nel canale</Text>
         <Text style={styles.cardSub}>
-          {peerName ? `${peerName} non c'e' ancora.` : 'L’altro non c’e’ ancora.'}
+          {peerName ? `${peerName} non c’è ancora.` : 'L’altro non c’è ancora.'}
           {'\n'}Tocca <Text style={styles.bold}>Avvisa</Text> per farglielo sapere.
         </Text>
       </View>
@@ -304,10 +306,8 @@ function PresenceCard(props: {
 
   return (
     <View style={styles.card}>
-      <View style={[styles.avatar, styles.avatarLive]}>
-        <Text style={styles.avatarText}>{initial}</Text>
-      </View>
-      <Text style={styles.cardTitle}>{peerName || 'L’altro'} e’ nel canale</Text>
+      <PeerFace name={peerName} avatar={peerAvatar} live />
+      <Text style={styles.cardTitle}>{peerName || 'L’altro'} è nel canale</Text>
       <Text style={styles.cardSub}>
         {linked
           ? (peerAudio ? 'Audio collegato · video non attivo' : 'Ha il microfono muto')
@@ -319,6 +319,31 @@ function PresenceCard(props: {
       {linked ? null : (
         <Text style={styles.cardTiny}>stato: {connectionState}</Text>
       )}
+    </View>
+  );
+}
+
+/**
+ * La faccia dell'altro quando non c'e' il suo video.
+ *
+ * Chi non ha messo un nome prima vedeva un punto interrogativo, che sembra
+ * un errore. Al suo posto un'immagine generata dalla coppia: sempre la
+ * stessa, quindi diventa "lui" invece di essere un segnaposto.
+ *
+ * Il nome, se c'e', vince: l'iniziale dice piu' di un disegno.
+ */
+function PeerFace({ name, avatar, live }: { name: string; avatar: Avatar; live: boolean }) {
+  const initial = name.trim().charAt(0).toUpperCase();
+  return (
+    <View
+      style={[
+        styles.avatar,
+        { backgroundColor: avatar.color + '33', borderColor: avatar.color },
+        live && styles.avatarLive,
+      ]}>
+      {initial
+        ? <Text style={styles.avatarText}>{initial}</Text>
+        : <Text style={styles.avatarSymbol}>{avatar.symbol}</Text>}
     </View>
   );
 }
@@ -377,9 +402,10 @@ const styles = StyleSheet.create({
     width: 108, height: 108, borderRadius: 54,
     alignItems: 'center', justifyContent: 'center', marginBottom: 20, borderWidth: 3,
   },
-  avatarEmpty: { backgroundColor: '#1a1f29', borderColor: '#2a313d' },
-  avatarLive: { backgroundColor: '#14361f', borderColor: '#38d16a' },
+  /** il colore proprio resta: dentro il canale cambia solo l'anello */
+  avatarLive: { borderColor: '#38d16a' },
   avatarText: { color: '#e6ebf1', fontSize: 42, fontWeight: '700' },
+  avatarSymbol: { fontSize: 52 },
   avatarGhost: { fontSize: 54, marginBottom: 16 },
   cardTitle: { color: '#e6ebf1', fontSize: 21, fontWeight: '700', textAlign: 'center' },
   cardSub: { color: '#8892a0', fontSize: 15, textAlign: 'center', marginTop: 10, lineHeight: 22 },

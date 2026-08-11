@@ -18,6 +18,7 @@ import PairingScreen from './PairingScreen';
 import ChannelScreen from './ChannelScreen';
 import { useAudioRoute } from './audioRoute';
 import { stopListening } from './presence';
+import { avatarFor, peerAvatar } from './avatar';
 
 // Nessuna schermata intermedia: o si configura, o ci si accoppia, o si e'
 // nel canale. Aprire l'app - da icona o da notifica - significa entrarci.
@@ -122,6 +123,17 @@ export default function App() {
       : cfg?.pair?.peerName && cfg.pair.peerName !== 'Qualcuno'
         ? cfg.pair.peerName
         : '';
+
+  /**
+   * L'immagine da mostrare al posto del video dell'altro.
+   *
+   * Dipende solo dalla coppia, quindi non cambia mai; prima del primo
+   * accoppiamento non serve a nulla, ma un valore deve esserci.
+   */
+  const face = React.useMemo(
+    () => (cfg?.pair ? peerAvatar(cfg.pair.id, cfg.pair.side) : avatarFor('duotalk')),
+    [cfg?.pair],
+  );
 
   useEffect(() => { inChannelRef.current = inChannel; }, [inChannel]);
 
@@ -638,6 +650,7 @@ export default function App() {
       <ChannelScreen
         channel={shownName || 'DuoTalk'}
         peerName={shownName}
+        peerAvatar={face}
         localStream={localStream}
         remoteStream={remoteStream}
         status={status}

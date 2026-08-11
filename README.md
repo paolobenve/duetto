@@ -134,6 +134,13 @@ scelta viene **ricordata** per la volta successiva.
 - Durante un'interruzione compare un avviso e il riquadro resta al suo posto, vuoto: la
   disposizione non cambia mai.
 
+### Quando non c'è video
+
+Al posto dell'immagine compare un **volto generato dalla coppia**: un colore e un
+simbolo che restano sempre gli stessi, diversi sui due telefoni. Non è casuale a ogni
+apertura, così diventa riconoscibile come "lui". Se hai scritto un nome vince l'iniziale.
+L'anello diventa verde quando l'altro è nel canale.
+
 ### Tasto Indietro
 
 Non fa uscire dal canale: mette l'app nella **finestrella Picture-in-Picture**, che resta
