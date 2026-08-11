@@ -589,8 +589,12 @@ export class ChannelSession {
         if (r.type !== 'outbound-rtp' || r.kind !== 'video') return;
         const prev = this.lastOutbound;
         const dt = prev ? (r.timestamp - prev.ts) / 1000 : 0;
-        const kbps = prev && dt > 0
-          ? Math.round(((r.bytesSent - prev.bytes) * 8) / dt / 1000)
+        // Ricostruendo la connessione il contatore riparte da zero: la
+        // differenza diventa negativa, e stamparla sarebbe peggio che
+        // non stampare nulla.
+        const delta = prev ? r.bytesSent - prev.bytes : -1;
+        const kbps = prev && dt > 0 && delta >= 0
+          ? Math.round((delta * 8) / dt / 1000)
           : null;
         this.lastOutbound = { ts: r.timestamp, bytes: r.bytesSent };
         log('in uscita:',
