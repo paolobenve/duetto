@@ -130,6 +130,11 @@ mezzo.
   vengono applicati dopo, altrimenti andrebbero persi.
 - Un messaggio cifrato `state` comunica all'altro se hai mic/camera attivi e **con quali
   proporzioni** stai inquadrando.
+- Il **formato della camera è fissato**: proporzioni dichiarate in acquisizione e
+  `degradationPreference: maintain-resolution`. Il comportamento predefinito è l'opposto —
+  sotto banda scarsa WebRTC abbassa la risoluzione — e molti sensori cambiando formato
+  cambiano anche l'angolo di ripresa: dall'altra parte si vedeva l'inquadratura allargarsi
+  e restringersi da sola. Meglio perdere fotogrammi che cambiare cosa si inquadra.
 
 ### 5. Recupero dopo un'interruzione
 
@@ -138,11 +143,20 @@ mezzo.
 **La connessione al server** si riaggancia da sola, con attese fra 0,5 e 4 secondi.
 Tornando in primo piano si riprova subito, senza aspettare il tentativo programmato.
 
-**Il collegamento diretto** invece muore con la rete e va ricostruito. Il codice lo faceva
-solo se non ne esisteva già uno, e dopo un'interruzione ne restava uno defunto per sempre.
-Ora si ricostruisce quando lo stato è `failed` o `disconnected` — dando però 12 secondi a
-`disconnected` per rientrare da solo: ricostruire subito interrompeva proprio mentre la
-rete si stava riprendendo, e questo innescava altre riconnessioni a catena.
+**Il collegamento diretto** muore con la rete e va riparato, ma **con gradualità**. La
+prima versione demoliva 800 ms dopo il `failed`, e il log ha mostrato che era la causa
+della maggior parte delle interruzioni visibili: ICE si stava riprendendo da solo — nel
+log si vede passare da `failed` a `connected` senza alcun aiuto — e la demolizione
+arrivava nel mezzo.
+
+L'ordine ora è:
+
+1. **Aspettare**: 4 secondi da `failed`, 12 da `disconnected`. Su rete mobile il percorso
+   cambia di continuo e spesso rientra da sé in un secondo.
+2. **Riparazione leggera**: `restartIce()` rifà solo la ricerca del percorso, tenendo in
+   piedi connessione e tracce — audio e video non si interrompono affatto. Può farla chi
+   offre; l'altro la chiede con `renegotiate`.
+3. **Ricostruzione completa**, solo se dopo altri 8 secondi non è tornato.
 
 **Solo chi offre ricostruisce.** Chi risponde butta via la connessione morta e aspetta
 l'offerta, che fa nascere quella nuova al momento giusto. Ricostruendo entrambi, chi
@@ -155,6 +169,12 @@ risposta che non sarebbe mai arrivata.
 
 **Un'offerta che arriva prima della nostra connessione** non viene persa: la fa nascere
 sul momento.
+
+**Chi risponde può chiedere l'offerta.** Non potendo offrire, resterebbe in attesa
+all'infinito se l'altro non si accorgesse del guasto: ogni cinque secondi, chi si trova
+senza collegamento mentre entrambi sono nel canale manda `renegotiate`. È la rete di
+sicurezza di una scelta altrimenti corretta — offrire da una parte sola evita che le due
+offerte si scontrino.
 
 ### 6. Servizio nativo (`app/modules/duotalk-platform`)
 
@@ -169,6 +189,21 @@ Modulo Kotlin locale, agganciato dall'**autolinking** tramite
 | Notifiche di avviso | canale separato a importanza `HIGH` |
 | Riavvio | `START_STICKY`: se Android lo uccide per memoria, riparte |
 | Wake lock | `PARTIAL_WAKE_LOCK` con scadenza di sicurezza a 8 ore |
+
+**Presenza dopo il riavvio.** Un ricevitore su `BOOT_COMPLETED` avvia `PresenceService`,
+che eredita da `HeadlessJsTaskService`: fa partire il motore JavaScript **senza aprire
+l'interfaccia** ed esegue un compito che rimette in piedi la connessione di ascolto. Riusa
+tutta la logica già esistente, invece di riscrivere la rete in Kotlin.
+
+Non "apre l'app da sola": da Android 10 avviare un'activity dal secondo piano è vietato.
+Riparte la presenza, non la finestra. Il compito non si conclude mai di proposito, e si fa
+da parte quando l'app viene aperta: due connessioni dallo stesso dispositivo si
+scalzerebbero a vicenda.
+
+Il collo di bottiglia non è il codice ma il produttore: **senza "avvio automatico"
+abilitato, telefoni come Xiaomi non consegnano nemmeno l'evento di avvio**. Non è
+un'autorizzazione di Android e nessuna app può concederselo; l'app può solo aprire quella
+schermata, e non può nemmeno leggerne l'esito.
 
 Contiene anche il **Picture-in-Picture**: il tasto Indietro chiama
 `enterPictureInPictureMode` invece di uscire dal canale, con le proporzioni di ciò che sta
@@ -214,9 +249,9 @@ Il momento delicato è **solo l'accoppiamento**. Dopo, la chiave è a 256 bit e 
 
 ## Limiti noti e possibili estensioni
 
-- **Riavvio del telefono**: la connessione di ascolto vive nel JavaScript, quindi dopo un
-  riavvio bisogna aprire l'app una volta. Spostare il WebSocket dentro il servizio Kotlin,
-  con un ricevitore `BOOT_COMPLETED`, è il prossimo passo.
+- **Riavvio del telefono**: la presenza riparte da sola, ma servono qualche decina di
+  secondi perché il sistema dia spazio all'app: un avviso mandato subito dopo il riavvio
+  può ancora non trovarla.
 - **OEM aggressivi**: Xiaomi, Huawei, Samsung chiudono i servizi in background nonostante
   le regole di Android. Serve escludere l'app dall'ottimizzazione batteria; non c'è modo
   di ottenerlo da codice.
