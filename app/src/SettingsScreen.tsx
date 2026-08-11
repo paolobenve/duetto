@@ -16,11 +16,16 @@ type Props = {
   /** riapre la schermata delle impostazioni di sistema */
   onOpenSetup: () => void;
   /**
-   * VP9 in hardware su ENTRAMBI i telefoni. Se manca su uno dei due
-   * l'opzione non si mostra affatto: offrire una scelta che peggiora le
-   * cose è peggio che non offrirla.
+   * VP9 in hardware, sui due telefoni separatamente.
+   *
+   * L'opzione si mostra sempre, ma è selezionabile solo con entrambi:
+   * le preferenze di codec valgono per l'intera sessione, quindi
+   * sceglierlo perché lo sa fare uno solo costringerebbe l'altro a
+   * encodare via software. Mostrarla in grigio dicendo di chi è il
+   * limite è più utile che nasconderla.
    */
-  vp9Available?: boolean;
+  vp9Here?: boolean;
+  vp9Peer?: boolean;
 };
 
 /**
@@ -28,8 +33,17 @@ type Props = {
  * Tutto il resto è facoltativo e sta sotto "Altre impostazioni".
  */
 export default function SettingsScreen({
-  initial, onSave, onUnpair, onClose, onOpenSetup, vp9Available,
+  initial, onSave, onUnpair, onClose, onOpenSetup, vp9Here, vp9Peer,
 }: Props) {
+  const vp9Available = !!vp9Here && !!vp9Peer;
+  const vp9Motivo = vp9Available
+    ? 'Stessa immagine con circa un terzo di dati in meno.'
+    : !vp9Here && !vp9Peer
+      ? 'Nessuno dei due telefoni ha l’encoder VP9 in hardware.'
+      : !vp9Here
+        ? 'Questo telefono non ha l’encoder VP9 in hardware.'
+        : 'L’altro telefono non ha l’encoder VP9 in hardware. Serve su entrambi: ' +
+          'il codec è uno solo per tutta la sessione.';
   const [cfg, setCfg] = useState<DuoConfig>(initial);
   const [advanced, setAdvanced] = useState(false);
   const set = (k: keyof DuoConfig) => (v: string) => setCfg({ ...cfg, [k]: v });
@@ -131,23 +145,30 @@ export default function SettingsScreen({
           non ciò che la camera riprende.
         </Text>
 
-        {vp9Available ? (
-          <TouchableOpacity
-            style={[styles.choice, cfg.videoCodec === 'vp9' && styles.choicePicked]}
-            onPress={() => setCfg({
-              ...cfg,
-              videoCodec: cfg.videoCodec === 'vp9' ? 'auto' : 'vp9',
-            })}>
-            <View style={[styles.radio, cfg.videoCodec === 'vp9' && styles.radioPicked]} />
-            <View style={styles.choiceText}>
-              <Text style={styles.choiceLabel}>Codifica VP9</Text>
-              <Text style={styles.choiceNote}>
-                Stessa immagine con circa un terzo di dati in meno. Compare
-                perché entrambi i telefoni la gestiscono in hardware.
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ) : null}
+        <TouchableOpacity
+          disabled={!vp9Available}
+          style={[
+            styles.choice,
+            vp9Available && cfg.videoCodec === 'vp9' && styles.choicePicked,
+            !vp9Available && styles.choiceOff,
+          ]}
+          onPress={() => setCfg({
+            ...cfg,
+            videoCodec: cfg.videoCodec === 'vp9' ? 'auto' : 'vp9',
+          })}>
+          <View style={[
+            styles.radio,
+            vp9Available && cfg.videoCodec === 'vp9' && styles.radioPicked,
+          ]} />
+          <View style={styles.choiceText}>
+            <Text style={[styles.choiceLabel, !vp9Available && styles.textOff]}>
+              Codifica VP9
+            </Text>
+            <Text style={[styles.choiceNote, !vp9Available && styles.textOff]}>
+              {vp9Motivo}
+            </Text>
+          </View>
+        </TouchableOpacity>
 
         <TouchableOpacity style={styles.toggle} onPress={() => setAdvanced(!advanced)}>
           <Text style={styles.toggleText}>
@@ -277,6 +298,8 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#252c38',
   },
   choicePicked: { borderColor: '#2f7cf6', backgroundColor: '#16203050' },
+  choiceOff: { opacity: 0.45 },
+  textOff: { color: '#6b7480' },
   radio: {
     width: 20, height: 20, borderRadius: 10,
     borderWidth: 2, borderColor: '#3a4351',

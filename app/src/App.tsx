@@ -659,7 +659,8 @@ export default function App() {
           onUnpair={onUnpair}
           onClose={isPaired(cfg) ? () => setScreen('channel') : undefined}
           onOpenSetup={() => { setSetupFrom('impostazioni'); setScreen('setup'); }}
-          vp9Available={localVp9 && peerVp9}
+          vp9Here={localVp9}
+          vp9Peer={peerVp9}
         />
       </View>
     );
