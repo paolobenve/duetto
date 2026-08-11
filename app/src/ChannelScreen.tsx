@@ -112,6 +112,21 @@ export default function ChannelScreen(props: Props) {
   const notConnected = serverLost || (together && !linked);
 
   /**
+   * L'avviso di interruzione aspetta un attimo prima di comparire.
+   *
+   * Rimettendo il wifi il collegamento si ristabilisce in poche centinaia
+   * di millisecondi, e l'avviso faceva in tempo a lampeggiare: un allarme
+   * per qualcosa che si era già risolto da solo dà l'impressione di
+   * un'app fragile proprio mentre sta funzionando bene.
+   */
+  const [showNotice, setShowNotice] = useState(false);
+  useEffect(() => {
+    if (!notConnected) { setShowNotice(false); return; }
+    const t = setTimeout(() => setShowNotice(true), 1200);
+    return () => clearTimeout(t);
+  }, [notConnected]);
+
+  /**
    * Riserviamo il posto grande all'altro solo se ci aspettiamo davvero
    * il suo video: se ha la camera spenta, il proprio a schermo intero è
    * la cosa giusta da mostrare.
@@ -121,13 +136,13 @@ export default function ChannelScreen(props: Props) {
   // Senza questo, perdendo il server restava uno schermo nero muto: il
   // video dell'altro è ancora lì ma non ci arriva più nessun
   // fotogramma, e nulla lo spiegava.
-  const notice = serverLost
-    ? 'Connessione persa, mi sto ricollegando…'
-    : notConnected
-      ? (connectionState === 'failed'
+  const notice = !showNotice
+    ? undefined
+    : serverLost
+      ? 'Connessione persa, mi sto ricollegando…'
+      : (connectionState === 'failed'
           ? 'Collegamento perso, sto ricollegando…'
-          : 'Collegamento interrotto, in attesa…')
-      : undefined;
+          : 'Collegamento interrotto, in attesa…');
   // remoteHasVideo arriva come prop: è un evento esplicito della sessione,
   // perché le tracce entrano dentro lo stesso MediaStream e React non se
   // ne accorgerebbe guardando il riferimento.

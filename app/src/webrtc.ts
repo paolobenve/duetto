@@ -80,6 +80,9 @@ export class ChannelSession {
    * devono lasciare il video acceso, non spegnerlo per sempre.
    */
   private peerWatching = true;
+  /** ultimo campione per calcolare il bitrate reale fra due letture */
+  private lastOutbound: { ts: number; bytes: number } | null = null;
+  private statsTimer: ReturnType<typeof setInterval> | null = null;
   /** l'altro dichiara la camera accesa: lo dice il messaggio `state` */
   private peerVideoDeclared = false;
   /** questo telefono sa encodare VP9 in hardware */
@@ -568,6 +571,37 @@ export class ChannelSession {
     }
   }
 
+  /**
+   * Cosa sta davvero uscendo, e perché non di più.
+   *
+   * Il tetto di bitrate è un limite, non un obiettivo: quanto si consuma
+   * lo decidono la stima di banda, la complessità della scena e - con
+   * "balanced" - di quanto l'encoder ha scalato l'uscita. Senza leggerlo
+   * si finisce a ipotizzare; `qualityLimitationReason` lo dice in una
+   * parola: "bandwidth", "cpu", oppure "none" (cioè: tanto basta).
+   */
+  private async logOutboundVideo() {
+    const pc: any = this.pc;
+    if (!pc?.getStats || !this.videoSender) return;
+    try {
+      const stats = await pc.getStats();
+      stats.forEach((r: any) => {
+        if (r.type !== 'outbound-rtp' || r.kind !== 'video') return;
+        const prev = this.lastOutbound;
+        const dt = prev ? (r.timestamp - prev.ts) / 1000 : 0;
+        const kbps = prev && dt > 0
+          ? Math.round(((r.bytesSent - prev.bytes) * 8) / dt / 1000)
+          : null;
+        this.lastOutbound = { ts: r.timestamp, bytes: r.bytesSent };
+        log('in uscita:',
+          `${r.frameWidth ?? '?'}x${r.frameHeight ?? '?'}`,
+          `@${Math.round(r.framesPerSecond ?? 0)}fps`,
+          kbps !== null ? `- ${kbps} kbit/s` : '',
+          '- limite:', r.qualityLimitationReason ?? '?');
+      });
+    } catch { /* la diagnostica non deve mai disturbare */ }
+  }
+
   private async flushCandidates() {
     const pc = this.pc;
     if (!pc) return;
@@ -638,6 +672,11 @@ export class ChannelSession {
     // Se nel frattempo l'altro non sta guardando, la camera resta accesa
     // per l'anteprima ma dal canale non esce nulla.
     if (!this.peerWatching) await this.applyPeerWatching();
+
+    this.lastOutbound = null;
+    if (!this.statsTimer) {
+      this.statsTimer = setInterval(() => { this.logOutboundVideo(); }, 15000);
+    }
 
     this.events.onLocalStream?.(this.localStream);
     this.broadcastState();
@@ -804,6 +843,9 @@ export class ChannelSession {
       track.stop(); // libera la camera e spegne l'indicatore di Android
       log('camera spenta, traccia', track.id);
     }
+
+    if (this.statsTimer) { clearInterval(this.statsTimer); this.statsTimer = null; }
+    this.lastOutbound = null;
 
     this.events.onLocalStream?.(this.localStream);
     this.broadcastState();
