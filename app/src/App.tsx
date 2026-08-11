@@ -464,7 +464,14 @@ export default function App() {
 
     if (!sessionRef.current) {
       sessionRef.current = new ChannelSession(cfg, sig, {
-        onLocalStream: setLocalStream,
+        onLocalStream: (st) => {
+          setLocalStream(st);
+          // Le proporzioni si rileggono a ogni cambio della propria
+          // ripresa, non solo accendendo il video: cambiando profilo la
+          // camera si riapre dentro la sessione, senza passare di qui, e
+          // il riquadrino restava della forma vecchia.
+          setLocalAspect(sessionRef.current?.getLocalVideoAspect());
+        },
         onRemoteStream: setRemoteStream,
         onConnectionState: (st) => {
           setConnState(st);
