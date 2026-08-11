@@ -36,6 +36,42 @@ const MAX_MESSAGE_BYTES = 256 * 1024;
 const HEARTBEAT_MS = 30_000;
 const KNOCK_COOLDOWN_MS = 15_000;
 
+// Quanti ingressi al minuto per indirizzo. Non da' fastidio a nessuno
+// (le riconnessioni sono poche), ma rende impraticabile provare codici
+// di accoppiamento a tappeto: 100 milioni di combinazioni a questo ritmo
+// richiederebbero millenni.
+const JOIN_LIMIT = 30;
+const JOIN_WINDOW_MS = 60_000;
+
+/** @type {Map<string, number[]>} istanti dei tentativi recenti per IP */
+const joinAttempts = new Map();
+
+function clientIp(req) {
+  // Dietro il reverse proxy l'indirizzo vero sta nell'intestazione.
+  const fwd = req.headers['x-forwarded-for'];
+  if (typeof fwd === 'string' && fwd.length > 0) return fwd.split(',')[0].trim();
+  return req.socket?.remoteAddress || 'sconosciuto';
+}
+
+/** Vero se questo indirizzo ha gia' esaurito i tentativi consentiti. */
+function tooManyJoins(ip) {
+  const now = Date.now();
+  const recent = (joinAttempts.get(ip) || []).filter((t) => now - t < JOIN_WINDOW_MS);
+  recent.push(now);
+  joinAttempts.set(ip, recent);
+  return recent.length > JOIN_LIMIT;
+}
+
+// Ogni tanto ripuliamo, per non tenere in memoria indirizzi vecchi.
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, times] of joinAttempts) {
+    const recent = times.filter((t) => now - t < JOIN_WINDOW_MS);
+    if (recent.length === 0) joinAttempts.delete(ip);
+    else joinAttempts.set(ip, recent);
+  }
+}, JOIN_WINDOW_MS).unref?.();
+
 const MODES = ['listening', 'active'];
 
 /** @type {Map<string, Set<import('ws').WebSocket>>} presenze per pairId */
@@ -91,7 +127,8 @@ const httpServer = createServer((req, res) => {
 
 const wss = new WebSocketServer({ server: httpServer, maxPayload: MAX_MESSAGE_BYTES });
 
-wss.on('connection', (ws) => {
+wss.on('connection', (ws, req) => {
+  ws.ip = clientIp(req);
   ws.isAlive = true;
   ws.peerId = randomUUID();
   ws.roomId = null;
@@ -116,6 +153,11 @@ wss.on('connection', (ws) => {
     if (!ws.joined) {
       if (msg.type !== 'join') {
         send(ws, { type: 'error', error: 'expected-join' });
+        return;
+      }
+      if (tooManyJoins(ws.ip)) {
+        send(ws, { type: 'error', error: 'too-many-attempts' });
+        ws.close(4004, 'too-many-attempts');
         return;
       }
       if (ACCESS_TOKEN && !safeEqual(msg.token, ACCESS_TOKEN)) {

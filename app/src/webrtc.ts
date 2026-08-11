@@ -100,7 +100,7 @@ export class ChannelSession {
 
     this.polite = polite;
     const servers = iceServers(this.cfg);
-    log('collego il peer, polite =', polite, '- ICE server:',
+    log('collego il peer - offre l\'altro:', polite, '| ICE server:',
       servers.map((s2) => s2.urls).join(', '));
     const pc = new RTCPeerConnection({ iceServers: servers });
     this.pc = pc;
@@ -117,13 +117,22 @@ export class ChannelSession {
     // parte si finisce per disegnare quella morta (schermo nero). Con il
     // canale sempre aperto basta sostituire la traccia al suo interno:
     // niente rinegoziazione e niente tracce che si accumulano.
-    try {
-      const vt: any = (pc as any).addTransceiver('video', { direction: 'sendrecv' });
-      this.videoSender = vt?.sender ?? null;
-      log('canale video aperto in anticipo:', !!this.videoSender);
-    } catch (e) {
-      log('addTransceiver non disponibile, ripiego su addTrack:', String(e));
-      this.videoSender = null;
+    // Lo dichiara UNA SOLA delle due parti: quella che fa l'offerta.
+    // Dichiarandolo entrambi, la dichiarazione di chi risponde rischia di
+    // restare orfana - non entra nella negoziazione - e quel telefono non
+    // riesce piu' a inviare il proprio video pur ricevendo quello altrui.
+    // Chi risponde se lo prende dalla negoziazione (captureVideoSender).
+    if (!polite) {
+      try {
+        const vt: any = (pc as any).addTransceiver('video', { direction: 'sendrecv' });
+        this.videoSender = vt?.sender ?? null;
+        log('canale video dichiarato da noi:', !!this.videoSender);
+      } catch (e) {
+        log('addTransceiver non disponibile, ripiego su addTrack:', String(e));
+        this.videoSender = null;
+      }
+    } else {
+      log('canale video: lo dichiara l\'altro, lo prendo a negoziazione fatta');
     }
 
     // Se il video era gia' acceso, la traccia entra nel canale appena aperto.
@@ -290,6 +299,7 @@ export class ChannelSession {
         new RTCSessionDescription({ type: msg.type, sdp: msg.sdp }),
       );
       await this.flushCandidates();
+      await this.captureVideoSender();
 
       if (msg.type === 'offer') {
         const answer = await pc.createAnswer();
@@ -315,6 +325,38 @@ export class ChannelSession {
         await pc.addIceCandidate(new RTCIceCandidate(msg.candidate));
       } catch {
         // candidate duplicato o fuori ordine: ignorabile
+      }
+    }
+  }
+
+  /**
+   * Individua il canale video dopo la negoziazione.
+   *
+   * Serve a chi non lo ha dichiarato: il canale esiste perche' lo ha
+   * aperto l'altro, e da qui in poi possiamo usarlo anche noi per
+   * inviare, mettendoci semplicemente dentro la traccia.
+   */
+  private async captureVideoSender() {
+    if (this.videoSender || !this.pc) return;
+    const list: any[] = (this.pc as any).getTransceivers?.() ?? [];
+    const video = list.find(
+      (t) => t?.receiver?.track?.kind === 'video' || t?.sender?.track?.kind === 'video',
+    );
+    if (!video?.sender) {
+      log('canale video non ancora individuabile');
+      return;
+    }
+    this.videoSender = video.sender;
+    log('canale video individuato dopo la negoziazione');
+
+    // Se nel frattempo la camera era gia' accesa, la traccia entra ora.
+    const localVideo = this.localStream?.getVideoTracks()[0];
+    if (localVideo) {
+      try {
+        await this.videoSender.replaceTrack(localVideo);
+        log('traccia locale inserita nel canale appena individuato');
+      } catch (e) {
+        log('inserimento traccia fallito:', String(e));
       }
     }
   }

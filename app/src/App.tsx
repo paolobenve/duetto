@@ -161,8 +161,16 @@ export default function App() {
         {
           onStatus: setStatus,
 
-          onJoined: ({ polite, peerPresent: present, peerActive, peerName: n }) => {
-            politeRef.current = polite;
+          onJoined: ({ peerPresent: present, peerActive, peerName: n }) => {
+            // Il ruolo NON puo' dipendere da chi entra per primo: la
+            // connessione si riaggancia a ogni cambio di rete, e chi era
+            // "primo" puo' ritrovarsi secondo. Sono bastate due
+            // riconnessioni sfortunate perche' entrambi si credessero
+            // quello che deve offrire, e le offerte si scontrassero.
+            //
+            // Il lato dell'accoppiamento invece e' fissato per sempre e
+            // per costruzione e' diverso sui due telefoni.
+            politeRef.current = pair.side === 'A';
             peerActiveRef.current = peerActive;
             setPeerPresent(present);
             if (n) setPeerName(n);
@@ -344,14 +352,20 @@ export default function App() {
     9 / 16;
 
   useEffect(() => {
-    if (screen !== 'channel') return;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      // Dalle impostazioni il tasto Indietro riporta nel canale, invece
+      // di chiudere l'app lasciandoti senza via d'uscita.
+      if (screen === 'settings' && cfg && isPaired(cfg)) {
+        setScreen('channel');
+        return true;
+      }
+      if (screen !== 'channel') return false;
       if (!pipSupported.current) return false;
       Pip.enter(stageAspect).catch(() => {});
       return true;
     });
     return () => sub.remove();
-  }, [screen, stageAspect]);
+  }, [screen, stageAspect, cfg]);
 
   // Ruotando cambiano le proporzioni del proprio video: vanno ricomunicate.
   useEffect(() => {
@@ -430,7 +444,12 @@ export default function App() {
     return (
       <View style={styles.safe}>
         <StatusBar barStyle="light-content" />
-        <SettingsScreen initial={cfg} onSave={onSaveSettings} onUnpair={onUnpair} />
+        <SettingsScreen
+          initial={cfg}
+          onSave={onSaveSettings}
+          onUnpair={onUnpair}
+          onClose={isPaired(cfg) ? () => setScreen('channel') : undefined}
+        />
       </View>
     );
   }

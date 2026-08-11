@@ -23,11 +23,21 @@ type Step = 'choose' | 'preparing' | 'create' | 'join' | 'exchanging' | 'error';
 /** Se in un minuto e mezzo non succede nulla, meglio dirlo che restare a girare. */
 const TIMEOUT_MS = 90_000;
 
+/**
+ * Attesa prima di poter ritentare dopo un fallimento.
+ *
+ * E' qui che sta la difesa contro chi prova codici a tappeto, non nella
+ * lentezza del calcolo: rende inutile insistere, senza far aspettare
+ * nessuno quando le cose vanno bene.
+ */
+const RETRY_WAIT_S = 20;
+
 export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
   const [step, setStep] = useState<Step>('choose');
   const [code, setCode] = useState('');
   const [typed, setTyped] = useState('');
   const [message, setMessage] = useState('');
+  const [retryIn, setRetryIn] = useState(0);
 
   const signalingRef = useRef<Signaling | null>(null);
   const keysRef = useRef(newKeyPair());
@@ -54,7 +64,15 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
     cleanup();
     setMessage(text);
     setStep('error');
+    setRetryIn(RETRY_WAIT_S);
   }, [cleanup]);
+
+  // Conto alla rovescia prima di poter ritentare.
+  useEffect(() => {
+    if (retryIn <= 0) return;
+    const t = setTimeout(() => setRetryIn((n) => n - 1), 1000);
+    return () => clearTimeout(t);
+  }, [retryIn]);
 
   /** Connessione e scambio. Identico per chi crea e per chi si unisce. */
   const startExchange = useCallback(async (rawCode: string, side: 'A' | 'B') => {
@@ -188,7 +206,11 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
         <Text style={styles.icon}>{'\u{26A0}'}</Text>
         <Text style={styles.title}>Accoppiamento non riuscito</Text>
         <Text style={styles.body}>{message}</Text>
-        <Primary label="Riprova" onPress={reset} />
+        <Primary
+          label={retryIn > 0 ? `Riprova fra ${retryIn}\u00A0s` : 'Riprova'}
+          disabled={retryIn > 0}
+          onPress={reset}
+        />
       </Screen>
     );
   }

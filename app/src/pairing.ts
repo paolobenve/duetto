@@ -20,21 +20,31 @@ import { decodeUTF8, encodeBase64, decodeBase64 } from 'tweetnacl-util';
  *  - finito l'accoppiamento la chiave e' a 256 bit e la debolezza del
  *    codice non conta piu' nulla.
  *
- * PERCHE' pairId E' COSTOSO DA CALCOLARE
+ * COSTO DEL CALCOLO DI pairId
  * Otto cifre sono solo 100 milioni di combinazioni: chi vede pairId
- * potrebbe provarle tutte e risalire al codice. Per questo pairId non e'
- * un semplice hash ma il risultato di 200.000 hash concatenati: provare
- * tutti i codici costa allora 2*10^13 operazioni, fuori portata nei
- * secondi che dura un accoppiamento. Il costo per noi e' circa un
- * secondo, una volta sola nella vita della coppia.
+ * potrebbe provarle tutte e risalire al codice. Rendere il calcolo lento
+ * alza quel costo, ma lo alza anche per noi, e un'attesa di dieci secondi
+ * a ogni accoppiamento non e' accettabile.
+ *
+ * Il compromesso scelto: poche migliaia di giri, circa un terzo di
+ * secondo sul telefono, che moltiplicano comunque per qualche migliaio il
+ * costo di chi tenta. La difesa contro chi prova codici a tappeto sta
+ * altrove, ed e' piu' efficace: il server limita il numero di tentativi
+ * nel tempo, e l'app impone un'attesa prima di riprovare.
+ *
+ * Resta un limite dichiarato: un server ostile, che vede pairId, potrebbe
+ * risalire al codice con abbastanza potenza di calcolo e inserirsi
+ * DURANTE l'accoppiamento. Dopo, la chiave e' a 256 bit e non serve piu' a
+ * nulla. Se questo dovesse preoccupare, la contromisura e' allungare il
+ * codice, non rallentare il calcolo.
  */
 
 const CODE_DIGITS = 8;
 
-/** Quanto rendere costoso risalire al codice da pairId. */
-const KDF_ROUNDS = 200_000;
+/** Quanto rendere costoso risalire al codice da pairId (vedi sopra). */
+const KDF_ROUNDS = 6_000;
 /** Ogni quanti giri cedere il controllo, per non congelare l'interfaccia. */
-const KDF_CHUNK = 10_000;
+const KDF_CHUNK = 1_000;
 
 /** Genera un codice numerico, uniforme (niente modulo sbilanciato). */
 export function generateCode(): string {
@@ -78,8 +88,8 @@ const label = (s: string) => decodeUTF8(s);
 
 /**
  * Identificativo della coppia: l'unica cosa che il server vede.
- * Volutamente lento da calcolare (vedi sopra). Asincrono per non
- * bloccare l'interfaccia mentre gira.
+ * Il calcolo e' reso un po' costoso di proposito (vedi sopra).
+ * Asincrono per non bloccare l'interfaccia mentre gira.
  */
 export async function pairIdFromCode(code: string): Promise<string> {
   const clean = normalizeCode(code);

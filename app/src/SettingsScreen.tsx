@@ -11,13 +11,15 @@ type Props = {
   initial: DuoConfig;
   onSave: (cfg: DuoConfig) => void;
   onUnpair: () => void;
+  /** torna indietro senza salvare; assente se non c'e' dove tornare */
+  onClose?: () => void;
 };
 
 /**
  * Impostazioni. In primo piano c'e' una cosa sola: dove sta il server.
  * Tutto il resto e' facoltativo e sta sotto "Altre impostazioni".
  */
-export default function SettingsScreen({ initial, onSave, onUnpair }: Props) {
+export default function SettingsScreen({ initial, onSave, onUnpair, onClose }: Props) {
   const [cfg, setCfg] = useState<DuoConfig>(initial);
   const [advanced, setAdvanced] = useState(false);
   const set = (k: keyof DuoConfig) => (v: string) => setCfg({ ...cfg, [k]: v });
@@ -44,7 +46,14 @@ export default function SettingsScreen({ initial, onSave, onUnpair }: Props) {
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>DuoTalk</Text>
+        <View style={styles.header}>
+          {onClose ? (
+            <TouchableOpacity style={styles.back} onPress={onClose}>
+              <Text style={styles.backText}>{'\u2039'}</Text>
+            </TouchableOpacity>
+          ) : null}
+          <Text style={styles.title}>DuoTalk</Text>
+        </View>
         <Text style={styles.subtitle}>
           Un canale solo per voi due. Entri e resti: quando entra anche l’altro,
           vi collegate da soli.
@@ -190,6 +199,12 @@ function Field(props: {
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: '#0b0e14' },
   container: { padding: 20, paddingTop: 40, paddingBottom: 60 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  back: {
+    width: 40, height: 40, borderRadius: 20, marginLeft: -8,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: '#151a23',
+  },
+  backText: { color: '#c9d2de', fontSize: 26, lineHeight: 30, marginTop: -4 },
   title: { fontSize: 34, fontWeight: '800', color: '#fff' },
   subtitle: { color: '#8892a0', marginTop: 8, marginBottom: 28, lineHeight: 21 },
   section: { color: '#7cc4ff', fontWeight: '700', fontSize: 16, marginTop: 24 },
