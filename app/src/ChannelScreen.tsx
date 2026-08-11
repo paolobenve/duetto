@@ -143,8 +143,10 @@ export default function ChannelScreen(props: Props) {
         </View>
       </Animated.View>
 
-      {/* Controlli: sempre presenti, in basso */}
-      <Animated.View style={[styles.controls, { opacity }]}>
+      {/* Controlli: sempre presenti, in basso, dentro un pannello scuro */}
+      <Animated.View style={[styles.panel, { opacity }]}>
+        <View style={styles.handle} />
+        <View style={styles.controls}>
         <CircleButton
           label={videoOn ? 'Video' : 'Video off'}
           icon={videoOn ? '\u{1F4F9}' : '\u{1F4F5}'}
@@ -176,10 +178,11 @@ export default function ChannelScreen(props: Props) {
         />
         <CircleButton
           label="Esci"
-          icon={'\u{1F6AA}'}
+          icon={'\u{1F4F4}'}
           danger
           onPress={press(onLeave)}
         />
+        </View>
       </Animated.View>
         </>
       )}
@@ -305,13 +308,15 @@ function CircleButton(props: {
       <View
         style={[
           styles.circle,
+          // Come su Discord: l'icona sta nuda sul pannello, e prende uno
+          // sfondo solo quando la funzione e' spenta o va evidenziata.
           props.danger
             ? styles.circleDanger
             : props.highlight
               ? styles.circleHighlight
-              : props.active
-                ? styles.circleOn
-                : styles.circleOff,
+              : props.active === false
+                ? styles.circleOff
+                : null,
           props.disabled && styles.circleDisabled,
         ]}>
         <Text style={styles.circleIcon}>{props.icon}</Text>
@@ -365,8 +370,8 @@ const styles = StyleSheet.create({
   version: { color: 'rgba(230,235,241,0.45)', fontSize: 10 },
   miniBadge: {
     position: 'absolute', right: -2, bottom: -2,
-    backgroundColor: '#0b0e14', borderRadius: 9, paddingHorizontal: 3, paddingVertical: 1,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
+    backgroundColor: '#1e1f22', borderRadius: 9, paddingHorizontal: 3, paddingVertical: 1,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)',
   },
   miniBadgeText: { fontSize: 10 },
   sheetBack: {
@@ -393,26 +398,32 @@ const styles = StyleSheet.create({
     color: '#5a6472', fontSize: 12, paddingHorizontal: 14, paddingTop: 6, lineHeight: 17,
   },
 
+  panel: {
+    position: 'absolute', bottom: 22, left: 12, right: 12,
+    backgroundColor: 'rgba(30,31,34,0.94)',
+    borderRadius: 28,
+    paddingTop: 10, paddingBottom: 14, paddingHorizontal: 4,
+  },
+  // La linguetta in cima, come nei pannelli che si trascinano.
+  handle: {
+    width: 42, height: 4, borderRadius: 2, alignSelf: 'center',
+    backgroundColor: 'rgba(255,255,255,0.22)', marginBottom: 10,
+  },
   controls: {
-    // Sei pulsanti: su schermi stretti servono misure contenute.
-    position: 'absolute', bottom: 30, left: 2, right: 2,
-    flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'flex-end',
+    flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'flex-start',
   },
   ctrlItem: { alignItems: 'center', flex: 1 },
   circle: {
-    width: 50, height: 50, borderRadius: 25,
+    width: 48, height: 48, borderRadius: 16,
     alignItems: 'center', justifyContent: 'center',
-    // Un bordo chiaro li tiene leggibili anche sopra un video chiaro.
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)',
   },
-  circleOn: { backgroundColor: 'rgba(30,36,48,0.82)' },
-  circleOff: { backgroundColor: 'rgba(255,255,255,0.34)' },
+  // Spento: sfondo chiaro, come Discord segnala il microfono in muto.
+  circleOff: { backgroundColor: 'rgba(255,255,255,0.92)' },
   circleHighlight: { backgroundColor: '#2f7cf6' },
-  circleDanger: { backgroundColor: '#e5484d' },
-  circleDisabled: { opacity: 0.45 },
-  circleIcon: { fontSize: 21 },
+  circleDanger: { backgroundColor: '#da373c' },
+  circleDisabled: { opacity: 0.35 },
+  circleIcon: { fontSize: 22 },
   ctrlLabel: {
-    color: '#eef2f7', marginTop: 5, fontSize: 10, fontWeight: '600',
-    textShadowColor: 'rgba(0,0,0,0.9)', textShadowRadius: 4,
+    color: 'rgba(255,255,255,0.72)', marginTop: 6, fontSize: 10, fontWeight: '600',
   },
 });

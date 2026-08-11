@@ -19,7 +19,7 @@ import { DEFAULT_ASPECT } from './webrtc';
 
 const MARGIN = 14;
 const TOP_SAFE = 86;     // sotto la barra di stato dell'app
-const BOTTOM_SAFE = 128; // sopra i controlli
+const BOTTOM_SAFE = 140; // sopra il pannello dei controlli
 
 /** Larghezza del riquadrino, come frazione della larghezza schermo. */
 const START_FRACTION = 0.3;
