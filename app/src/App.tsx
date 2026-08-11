@@ -115,6 +115,8 @@ export default function App() {
    * nostro lato la connessione sembrasse appena creata e quindi sana.
    */
   const signalingWasDown = useRef(false);
+  /** il video dell'altro c'era già: serve a non ricrearne la vista invano */
+  const avevaVideoRemoto = useRef(false);
   /** si è già ritentata una strada migliore su questo collegamento */
   const relayRiprovato = useRef(false);
 
@@ -544,7 +546,18 @@ export default function App() {
         },
         onRemoteVideo: (present) => {
           setRemoteHasVideo(present);
-          if (present) setRemoteVideoKey((k) => k + 1);
+          // Solo quando il video RICOMPARE dopo essere mancato.
+          //
+          // Ricreare la vista serve a non riagganciarsi a una superficie
+          // morta, che resterebbe nera. Ma farlo a ogni conferma di
+          // "video presente" - e ne arriva una a ogni cambio di
+          // risoluzione, quando l'encoder scende o risale - distruggeva e
+          // ricostruiva l'immagine di continuo: un lampo che sembra un
+          // ricollegamento, e non lo è.
+          if (present && !avevaVideoRemoto.current) {
+            setRemoteVideoKey((k) => k + 1);
+          }
+          avevaVideoRemoto.current = present;
         },
       });
     }
