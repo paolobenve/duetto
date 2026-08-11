@@ -143,6 +143,12 @@ export default function App() {
 
   useEffect(() => { inChannelRef.current = inChannel; }, [inChannel]);
 
+  // Quale profilo l'interfaccia sta DAVVERO mostrando: distingue "non è
+  // arrivato" da "è arrivato ma non si vede".
+  useEffect(() => {
+    if (cfg) console.log('[duotalk-ui]', 'profilo mostrato:', cfg.videoQuality);
+  }, [cfg?.videoQuality]);
+
   // Sapere se siamo in primo piano decide se mostrare una notifica o no.
   useEffect(() => {
     const sub = AppState.addEventListener('change', (s) => {

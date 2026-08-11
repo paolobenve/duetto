@@ -149,7 +149,7 @@ export class ChannelSession {
     this.lastOutbound = null;
     this.lastInbound = null;
     if (!this.statsTimer) {
-      this.statsTimer = setInterval(() => { this.logOutboundVideo(); }, 5000);
+      this.statsTimer = setInterval(() => { this.logOutboundVideo(); }, 2000);
     }
 
     /**
@@ -664,7 +664,7 @@ export class ChannelSession {
 
       // Nel log basta una riga ogni tanto: sotto ai comandi c'è il resto.
       this.statsTicks += 1;
-      if (out.out && this.statsTicks % 3 === 0) {
+      if (out.out && this.statsTicks % 8 === 0) {
         log('in uscita:', `${out.out.w}x${out.out.h}`, `@${out.out.fps}fps`,
           out.out.kbps !== null ? `- ${out.out.kbps} kbit/s` : '',
           '- limite:', limite);
