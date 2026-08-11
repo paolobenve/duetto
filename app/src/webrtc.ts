@@ -388,6 +388,18 @@ export class ChannelSession {
   }
 
   /**
+   * Il collegamento diretto e' ancora buono?
+   *
+   * Dopo un'interruzione di rete la connessione resta li' ma e' morta
+   * ("failed" o "disconnected"): va ricostruita, non riusata.
+   */
+  isPeerHealthy(): boolean {
+    const st = this.pc?.connectionState;
+    if (!st) return false;
+    return st !== 'failed' && st !== 'closed' && st !== 'disconnected';
+  }
+
+  /**
    * C'e' una traccia video dall'altro, non ancora chiusa.
    *
    * Di proposito NON guardiamo "muted": la semantica varia fra versioni

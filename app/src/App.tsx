@@ -88,6 +88,8 @@ export default function App() {
   const enterChannelRef = useRef<(() => void) | null>(null);
   /** relay comunicato dal server, valido finche' dura la connessione */
   const serverTurnRef = useRef<any[]>([]);
+  /** attesa prima di ricostruire un collegamento caduto */
+  const rebuildTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const audio = useAudioRoute(inChannel);
 
@@ -187,7 +189,7 @@ export default function App() {
             setPeerPresent(true);
             setPeerName(n);
             peerActiveRef.current = mode === 'active';
-            if (mode === 'active' && inChannelRef.current) attachPeer();
+            if (mode === 'active' && inChannelRef.current) attachPeer(true);
           },
 
           onPeerLeft: () => {
@@ -276,11 +278,23 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cfg]);
 
-  /** Collega il WebRTC, quando siamo entrambi nel canale. */
-  const attachPeer = useCallback(async () => {
+  /**
+   * Assicura un collegamento diretto vivo, quando siamo entrambi nel canale.
+   *
+   * `force` serve quando l'altro si e' appena ricollegato: la sua
+   * connessione e' nuova per definizione, quindi la nostra e' comunque da
+   * rifare, anche se dal nostro lato sembrasse ancora buona.
+   *
+   * Senza questo, dopo un'interruzione di rete restava in piedi una
+   * connessione morta e non si vedeva piu' nulla finche' non si chiudeva
+   * l'app: il codice trovava una connessione gia' presente e non faceva
+   * nulla.
+   */
+  const attachPeer = useCallback(async (force = false) => {
     const sig = signalingRef.current;
     const s = sessionRef.current;
     if (!sig || !s) return;
+    if (force || !s.isPeerHealthy()) s.detachPeer();
     try {
       await s.attachPeer(politeRef.current);
       s.broadcastState();
@@ -296,7 +310,22 @@ export default function App() {
       sessionRef.current = new ChannelSession(cfg, sig, {
         onLocalStream: setLocalStream,
         onRemoteStream: setRemoteStream,
-        onConnectionState: setConnState,
+        onConnectionState: (st) => {
+          setConnState(st);
+          // Collegamento morto: si ricostruisce da soli, senza aspettare che
+          // l'utente chiuda e riapra l'app. Capita a ogni cambio di rete.
+          if (st === 'failed' || st === 'disconnected') {
+            if (rebuildTimer.current) clearTimeout(rebuildTimer.current);
+            // "disconnected" a volte rientra da solo: gli diamo qualche
+            // secondo prima di buttare via tutto.
+            rebuildTimer.current = setTimeout(() => {
+              if (inChannelRef.current && peerActiveRef.current) attachPeer(true);
+            }, st === 'failed' ? 500 : 4000);
+          } else if (st === 'connected' && rebuildTimer.current) {
+            clearTimeout(rebuildTimer.current);
+            rebuildTimer.current = null;
+          }
+        },
         onPeerState: setPeerState,
         onRemoteVideo: (present) => {
           setRemoteHasVideo(present);
