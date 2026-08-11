@@ -280,7 +280,12 @@ export default function ChannelScreen(props: Props) {
           onPress={press(onLeave)}
         />
         </View>
-        <StatsLine stats={videoStats} quality={qualityLabel} />
+        <StatsLine
+          stats={videoStats}
+          quality={qualityLabel}
+          mostraSu={localHasVideo}
+          mostraGiu={remoteHasVideo}
+        />
       </Animated.View>
         </>
       )}
@@ -396,7 +401,13 @@ function PresenceCard(props: {
  * mentre si riceve 640x352 spiega in un colpo d'occhio perché l'immagine
  * dell'altro è brutta - senza dover leggere un log.
  */
-function StatsLine({ stats, quality }: { stats: VideoStats; quality: string }) {
+function StatsLine({ stats, quality, mostraSu, mostraGiu }: {
+  stats: VideoStats;
+  quality: string;
+  /** camere davvero accese: le statistiche restano indietro di un campione */
+  mostraSu: boolean;
+  mostraGiu: boolean;
+}) {
   const fmt = (v?: { w: number; h: number; fps: number; kbps: number | null }) => {
     if (!v || !v.w || !v.h) return null;
     // In byte al secondo: è l'unità con cui si guarda il consumo di dati,
@@ -406,8 +417,11 @@ function StatsLine({ stats, quality }: { stats: VideoStats; quality: string }) {
       kBs >= 1000 ? `·${(kBs / 1000).toFixed(1)}MB/s` : `·${Math.round(kBs)}kB/s`;
     return `${v.w}×${v.h}·${v.fps}fps${banda}`;
   };
-  const su = fmt(stats.out);
-  const giu = fmt(stats.in);
+  // Spegnendo una camera il suo flusso RTP resta fra le statistiche con
+  // le ultime dimensioni viste: senza questo filtro la riga continuerebbe
+  // a dichiarare una risoluzione che non sta più passando.
+  const su = mostraSu ? fmt(stats.out) : null;
+  const giu = mostraGiu ? fmt(stats.in) : null;
   // Il profilo si mostra sempre, anche a video spento: è la scelta che
   // spiega i numeri accanto, e senza sembrerebbero venire dal nulla.
   return (
