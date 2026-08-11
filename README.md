@@ -130,7 +130,11 @@ scelta viene **ricordata** per la volta successiva.
 - Chi è a schermo intero **non viene mai tagliato**: eventuali bande nere sono il prezzo
   dell'immagine integra.
 - Il riquadrino ha **sempre le proporzioni della sua camera**, mai quadrato. È
-  trascinabile e ridimensionabile: maniglia d'angolo o due dita.
+  trascinabile e ridimensionabile: bottoncino d'angolo o due dita. Angoli vivi di
+  proposito — il video è una superficie nativa che nessun bordo arrotondato può ritagliare.
+- **Resta dove lo metti**, anche chiudendo l'app: si ricorda il bordo a cui l'hai
+  appoggiato e la distanza da quello, in percentuale. Così un riquadrino in basso a
+  sinistra ci resta anche quando il video cambia forma e le bande nere si spostano.
 - **Toccandolo i due si scambiano** di posto. La disposizione scelta **sopravvive alle
   interruzioni**: nulla si sposta quando la rete va e viene.
 - **Pizzico per ingrandire** fino a 5×, trascinamento per spostarti dentro
@@ -140,24 +144,37 @@ scelta viene **ricordata** per la volta successiva.
 
 ### Qualità del video
 
-Quattro profili — **Risparmio**, **Standard**, **Migliore**, **Massima** — che agiscono su
-risoluzione, fotogrammi al secondo e tetto di bitrate. Il codec non c'entra: cambia quanto
-bene si sfrutta un tetto, non quanto se ne consuma.
+Quattro profili, ognuno con la sua **risoluzione di ripresa** e il suo tetto di banda:
 
-| | Banda | Ripresa |
+| | Ripresa | Tetto |
 |---|---|---|
-| Risparmio | ~45 kB/s | 720p, metà definizione in uscita, 15 fps |
-| Standard | ~150 kB/s | 720p, 24 fps |
-| Migliore | ~310 kB/s | 720p, 30 fps |
-| Massima | ~500 kB/s | 1080p, 30 fps |
+| Risparmio | 640×360 | 300 kbit/s |
+| Standard | 960×540 | 1,2 Mbit/s |
+| Migliore | 1280×720 | 2,5 Mbit/s |
+| Massima | 1920×1080 | 4 Mbit/s |
 
 La scelta **vale per tutti e due i telefoni**: il profilo agisce sull'encoder di chi
 trasmette, quindi da solo cambierebbe solo quello che vede l'altro. Tenendoli allineati la
 scelta significa "come guardiamo"; se all'altro non va bene, la ricambia lui.
 
-Passando da o verso **1080p la camera si riapre** e si vede un lampo: cambiare il formato
-di ripresa a camera accesa non è possibile. Gli altri tre profili condividono il 720p e si
-cambiano al volo.
+Cambiando profilo **la camera si riapre**, e si vede un attimo di nero. È il prezzo di una
+scoperta fatta misurando: la via indolore sarebbe scalare l'uscita dell'encoder, e su alcuni
+telefoni funziona — su altri la richiesta viene registrata e poi disattesa, e quel telefono
+continua a mandare 1080p con il profilo "risparmio" attivo. La risoluzione di ripresa invece
+nessun encoder può ignorarla.
+
+Se il sensore non ha il formato chiesto ripiega sul più vicino, che può essere 4:3: le
+proporzioni cambiano fra un profilo e l'altro, e il riquadrino si adatta di conseguenza. Il
+log lo dice (`formato non 16:9`).
+
+Sotto ai pulsanti c'è **cosa sta passando davvero**, nelle due direzioni:
+
+```
+Risoluzione: massima   ↑1920×1080·30fps·460kB/s   ↓960×540·24fps·140kB/s
+```
+
+I tetti non sono obiettivi: se la scena costa poco e la rete regge, due profili diversi
+possono dare lo stesso risultato. Quella riga è l'unico modo di saperlo.
 
 **VP9** comprime circa un terzo meglio, ma compare selezionabile solo se **entrambi** i
 telefoni hanno l'encoder in hardware — l'app lo chiede al sistema all'avvio. In software
