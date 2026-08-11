@@ -1,8 +1,8 @@
 # DuoTalk
 
-Un mini "Discord" fatto su misura per **due sole persone**. Non è un'app per
-*chiamare*: è un **canale permanente**. Apri l'app e sei dentro; se c'è anche l'altro
-vi collegate da soli, altrimenti resti in ascolto — e vieni avvisato appena arriva.
+Un mini "Discord" fatto su misura per **due sole persone**. Non è un'app per *chiamare*:
+è un **canale permanente**. Apri l'app e sei dentro; se c'è anche l'altro vi collegate da
+soli, altrimenti resti raggiungibile e vieni avvisato appena arriva.
 
 Audio e video viaggiano **cifrati end-to-end direttamente tra i due telefoni**. Il tuo
 server serve solo a farvi trovare: **non può leggere nulla**.
@@ -12,6 +12,7 @@ server serve solo a farvi trovare: **non può leggere nulla**.
 1. Installi l'app
 2. Scrivi il nome del tuo server
 3. Su un telefono premi «Crea il codice», sull'altro digiti le otto cifre che appaiono
+4. Concedi due impostazioni di sistema, che l'app ti spiega e ti apre
 
 Fatto, per sempre. Nessun altro servizio da installare, nessuna password da inventare,
 nessun canale o passphrase da tenere uguali.
@@ -27,25 +28,26 @@ nessun canale o passphrase da tenere uguali.
 - **Sempre raggiungibile**: fuori dal canale l'app resta *in ascolto* — microfono chiuso,
   connessione aperta — e ti avvisa quando l'altro entra. La notifica se la mostra l'app
   stessa: nessun servizio di terzi, nessun Firebase.
+- **Anche dopo un riavvio del telefono**: la presenza riparte da sola, senza aprire l'app.
 - **Audio subito, video a richiesta**: entrando si apre il microfono; la camera si accende
   solo se la vuoi, e quando la spegni viene rilasciata davvero.
-- **Cifratura**: il media è cifrato da WebRTC (DTLS-SRTP). In più lo è anche il
-  **signaling** (SDP/ICE), con la chiave nata dall'accoppiamento: il server inoltra buste
-  opache e non può mettersi in mezzo.
+- **Si riprende da solo**: se la rete cade, al ritorno il collegamento si ricostruisce in
+  circa un secondo, senza toccare nulla.
 
 ## Struttura
 
 ```
 duotalk/
 ├── server/              # Signaling WebSocket
-│   ├── src/index.js     # presenza, stati listening/active, inoltro buste
-│   ├── smoke-test.mjs   # 21 controlli end-to-end
+│   ├── src/index.js     # presenza, stati, inoltro buste, relay TURN
+│   ├── smoke-test.mjs   # 29 controlli end-to-end
+│   ├── tools/           # stun-check.mjs: verifica il relay dall'esterno
 │   └── deploy/          # haproxy, apache, nginx, coturn, systemd
 ├── app/                 # App Android in React Native
 │   ├── src/             # accoppiamento, crypto, signaling, webrtc, UI
 │   ├── modules/duotalk-platform/   # modulo nativo Kotlin
 │   ├── bootstrap.sh     # genera la parte nativa Android
-│   └── scripts/
+│   └── scripts/         # sincronizzazione moduli, numero di build, manifest
 └── docs/                # architettura e guida al deploy
 ```
 
@@ -61,9 +63,8 @@ npm run test:smoke        # deve stampare TUTTO OK
 npm start
 ```
 
-Poi esponilo in HTTPS dietro il proxy che già hai — vedi
-[docs/DEPLOY.md](docs/DEPLOY.md), che copre HAProxy, Apache e nginx. L'app si collegherà
-a `wss://TUODOMINIO/duotalk/ws`.
+Poi esponilo in HTTPS dietro il proxy che già hai, e aggiungi `coturn` per quando i due
+telefoni sono su reti diverse — tutto in [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ### App Android
 
@@ -72,12 +73,17 @@ Prerequisiti: Node 18+, JDK 17, Android SDK (`ANDROID_HOME`).
 ```bash
 cd app
 ./bootstrap.sh          # crea android/, applica manifest e permessi, npm install
-npm run build:apk       # APK di release
-adb install -g -r android/app/build/outputs/apk/release/app-release.apk
+npm run build:apk       # APK di release, con numero di build incrementato
+adb install -r android/app/build/outputs/apk/release/app-release.apk
 ```
 
-Il flag `-g` di `adb` concede tutti i permessi all'installazione, evitando le richieste
-al primo avvio. Per il secondo telefono basta copiare lo stesso APK.
+Il numero di build compare **in alto a destra nell'app**. Con installazioni frequenti è
+facile provare a lungo un APK vecchio credendolo nuovo: se segnali un problema, dì anche
+quel numero.
+
+Su alcuni telefoni (Xiaomi, POCO) `adb install` è bloccato finché non abiliti
+*Opzioni sviluppatore → Installazione tramite USB*. In alternativa copia l'APK sul
+telefono e aprilo dal gestore file.
 
 ## L'accoppiamento
 
@@ -94,43 +100,65 @@ Cosa succede sotto:
    prova non torna e l'accoppiamento **fallisce dicendolo**, invece di lasciarvi con una
    connessione muta.
 
-Dettale il codice **a voce o di persona**, non per messaggio: chi lo intercetta mentre vi
-state accoppiando, e sa anche dov'è il vostro server, potrebbe prendere il posto
-dell'altro. Dopo l'accoppiamento non conta più nulla.
+Dettale il codice **a voce o di persona**, non per messaggio. Dopo l'accoppiamento non
+conta più nulla.
 
 ## L'interfaccia
 
-**In ascolto** — microfono chiuso, connessione aperta. Vedi se l'altro è raggiungibile,
-puoi avvisarlo, e c'è l'ingranaggio per le impostazioni.
-
-**Nel canale** — sei dentro. Sei pulsanti sempre presenti in basso, che dopo 4 secondi si
-attenuano al 40% per non coprire l'immagine e tornano pieni al primo tocco ovunque:
+Cinque pulsanti in un pannello scuro in basso, sempre presenti. Dopo 4 secondi si
+attenuano al 40% per non coprire l'immagine e tornano pieni al primo tocco ovunque;
+restano premibili anche da attenuati.
 
 | Pulsante | Cosa fa |
 |---|---|
 | **Video** | accende/spegne la camera |
-| **Audio** | mette in muto il microfono |
+| **Audio** | tocco: muto. **Pressione prolungata**: da dove esce l'audio |
 | **Gira** | frontale ↔ posteriore; spento se il video è off |
-| **Uscita audio** | cicla fra vivavoce, auricolare, cuffie, Bluetooth |
 | **Avvisa** | manda la notifica all'altro; spento se è già nel canale |
-| **Esci** | torna in ascolto |
+| **Esci** | lascia il canale e chiude la finestra, restando raggiungibile |
 
-L'uscita audio scelta viene **ricordata** e ripristinata al rientro, se quel dispositivo è
-ancora collegato. L'app non decide mai di testa sua.
+Le uscite audio possibili sono quattro e non di più: **vivavoce**, **telefono**
+(l'altoparlantino), **cuffie**, **Bluetooth**. Compaiono solo quelle collegate, e la
+scelta viene **ricordata** per la volta successiva.
 
 ### Video
 
-- Chi è a schermo intero **non viene mai tagliato** (`contain`): eventuali bande nere sono
-  il prezzo dell'immagine integra.
+- Chi è a schermo intero **non viene mai tagliato**: eventuali bande nere sono il prezzo
+  dell'immagine integra.
 - Il riquadrino ha **sempre le proporzioni della sua camera**, mai quadrato. È
-  trascinabile e ridimensionabile: maniglia nell'angolo o due dita.
-- **Toccandolo i due si scambiano** di posto.
-- Se uno solo ha il video acceso, quello va a schermo intero e il riquadrino non compare.
+  trascinabile e ridimensionabile: maniglia d'angolo o due dita.
+- **Toccandolo i due si scambiano** di posto. La disposizione scelta **sopravvive alle
+  interruzioni**: nulla si sposta quando la rete va e viene.
+- **Pizzico per ingrandire** fino a 5×, trascinamento per spostarti dentro
+  l'ingrandimento, doppio tocco per tornare a schermo pieno.
+- Durante un'interruzione compare un avviso e il riquadro resta al suo posto, vuoto: la
+  disposizione non cambia mai.
 
 ### Tasto Indietro
 
 Non fa uscire dal canale: mette l'app nella **finestrella Picture-in-Picture**, che resta
-sopra le altre app mentre continui a parlare. Dentro la finestrella restano solo i video.
+sopra le altre app mentre continui a parlare.
+
+## Restare raggiungibili
+
+Un *foreground service* tiene viva la connessione anche in background e a schermo spento,
+e mostra una **notifica fissa**: non è rimovibile, è Android che la impone in cambio del
+diritto di restare attivi.
+
+Dopo un **riavvio del telefono** la presenza riparte da sola: un ricevitore avvia il
+motore JavaScript senza aprire l'interfaccia. Servono qualche decina di secondi perché il
+sistema dia spazio all'app, quindi un avviso mandato subito dopo il riavvio può ancora
+non trovarla.
+
+⚠️ **Due impostazioni di sistema sono indispensabili**, e l'app le propone alla fine
+dell'accoppiamento (riapribili da *ingranaggio → Restare raggiungibili*):
+
+1. **Uso senza restrizioni di batteria**. Su Xiaomi, Huawei e Oppo questa è gestita dal
+   produttore e non da Android: la spunta nell'app può restare grigia anche dopo averla
+   impostata correttamente.
+2. **Avvio automatico**. Non è un'autorizzazione di Android ma una schermata proprietaria:
+   l'app può solo aprirtela, e non può sapere se l'hai attivata. **Senza, dopo un riavvio
+   il telefono non consegna nemmeno l'evento di avvio** e la presenza non riparte.
 
 ## Sicurezza
 
@@ -143,19 +171,26 @@ sopra le altre app mentre continui a parlare. Dentro la finestrella restano solo
 
 Modello di minaccia completo in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## Restare raggiungibili
+## Diagnosticare un problema
 
-Un *foreground service* tiene viva la connessione anche in background e a schermo spento,
-e mostra una **notifica fissa** ("In ascolto" / "Sei nel canale"): non è rimovibile, è
-Android che la impone in cambio del diritto di restare attivi.
+L'app registra tutto quello che serve. Con il telefono collegato:
 
-Su molti telefoni (Xiaomi, Huawei, Samsung, OnePlus…) serve comunque **escludere DuoTalk
-dall'ottimizzazione della batteria**: *Impostazioni → App → DuoTalk → Batteria → Senza
-restrizioni*.
+```bash
+adb logcat -s ReactNativeJS | grep duotalk
+```
 
-**Limite attuale**: dopo un riavvio del telefono bisogna aprire l'app una volta per
-rimetterla in ascolto. La connessione vive ancora nel JavaScript; spostarla nel servizio
-nativo con un ricevitore di avvio è il prossimo passo.
+Tre famiglie di righe: `duotalk-rtc` per il collegamento audio/video, `duotalk-sig` per la
+connessione al server (comprese le cadute, con codice e durata), `duotalk-presenza` per
+l'ascolto dopo il riavvio.
+
+Con due telefoni collegati serve indicare quale: `adb -s <seriale> logcat …`
+
+Se l'app dovesse chiudersi da sola, lo stack è minificato e va tradotto:
+
+```bash
+adb logcat -b crash -d | tail -40 > /tmp/stack.txt
+npx metro-symbolicate app/android/app/build/generated/sourcemaps/react/release/index.android.bundle.map < /tmp/stack.txt
+```
 
 ## Licenza
 

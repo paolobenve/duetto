@@ -46,6 +46,11 @@ WebSocket minimale in Node.js. Fa quattro cose:
   contenuto**, e i messaggi `pair` durante l'accoppiamento.
 - **Avvisi**: `notify` quando qualcuno entra nel canale o preme "Avvisa" (con un freno di
   15 secondi contro le pressioni ripetute).
+- **Relay**: le credenziali del TURN stanno nel `.env` del server, che le comunica ai
+  telefoni nel messaggio di ingresso. Sui dispositivi non si configura nulla, e cambiando
+  la password non si deve rimettere mano a ognuno.
+- **Freno agli ingressi**: 30 al minuto per indirizzo. Non dà fastidio a nessuno, e rende
+  impraticabile provare codici di accoppiamento a tappeto.
 
 La stanza si chiama `pairId`. Coppie diverse hanno `pairId` diversi e non si vedono fra
 loro: lo stesso server serve quante coppie vuoi.
@@ -126,7 +131,32 @@ mezzo.
 - Un messaggio cifrato `state` comunica all'altro se hai mic/camera attivi e **con quali
   proporzioni** stai inquadrando.
 
-### 5. Servizio nativo (`app/modules/duotalk-platform`)
+### 5. Recupero dopo un'interruzione
+
+È la parte che ha richiesto più correzioni, e ognuna è nata da un log.
+
+**La connessione al server** si riaggancia da sola, con attese fra 0,5 e 4 secondi.
+Tornando in primo piano si riprova subito, senza aspettare il tentativo programmato.
+
+**Il collegamento diretto** invece muore con la rete e va ricostruito. Il codice lo faceva
+solo se non ne esisteva già uno, e dopo un'interruzione ne restava uno defunto per sempre.
+Ora si ricostruisce quando lo stato è `failed` o `disconnected` — dando però 12 secondi a
+`disconnected` per rientrare da solo: ricostruire subito interrompeva proprio mentre la
+rete si stava riprendendo, e questo innescava altre riconnessioni a catena.
+
+**Solo chi offre ricostruisce.** Chi risponde butta via la connessione morta e aspetta
+l'offerta, che fa nascere quella nuova al momento giusto. Ricostruendo entrambi, chi
+riceve demoliva un istante dopo proprio la connessione che l'offerta in arrivo stava
+creando: si vedevano tre ricostruzioni in due secondi.
+
+**Non si negozia mentre il server è irraggiungibile.** Un'offerta mandata in quel momento
+viene scartata in silenzio e nessuno la rimanda: restava una connessione in attesa di una
+risposta che non sarebbe mai arrivata.
+
+**Un'offerta che arriva prima della nostra connessione** non viene persa: la fa nascere
+sul momento.
+
+### 6. Servizio nativo (`app/modules/duotalk-platform`)
 
 Modulo Kotlin locale, agganciato dall'**autolinking** tramite
 `"duotalk-platform": "file:modules/duotalk-platform"`: così non si tocca
@@ -149,7 +179,7 @@ Per accorgersi di essere in PiP **non serve intercettare il callback dell'Activi
 PiP la finestra si rimpicciolisce, quindi sotto i 340 dp di larghezza l'interfaccia passa
 in modalità compatta. Questo evita di dover modificare `MainActivity`.
 
-### 6. Layout video (`app/src/VideoStage.tsx`)
+### 7. Layout video (`app/src/VideoStage.tsx`)
 
 - Chi è a schermo intero usa `objectFit: contain`: **mai tagliato**.
 - Il riquadrino ha **le proporzioni della camera che mostra**. Ricavarle non è banale: la
@@ -161,7 +191,7 @@ in modalità compatta. Questo evita di dover modificare `MainActivity`.
   stesso `PanResponder` guardando `nativeEvent.touches.length`.
 - Tocco e trascinamento si distinguono con una soglia di 4 px.
 
-### 7. Uscita audio (`app/src/audioRoute.ts`)
+### 8. Uscita audio (`app/src/audioRoute.ts`)
 
 Quattro uscite possibili — vivavoce, auricolare, cuffie con filo, Bluetooth — e non ne
 esistono altre. L'elenco di quelle *disponibili* cambia da solo, quindi lo prendiamo
