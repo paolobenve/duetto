@@ -7,7 +7,7 @@ import {
   MediaStream,
 } from 'react-native-webrtc';
 import type { DuoConfig } from './config';
-import { iceServers } from './config';
+import { iceServers, VIDEO_PROFILES } from './config';
 import type { Signaling, SignalMessage } from './signaling';
 
 /**
@@ -426,7 +426,7 @@ export class ChannelSession {
     if (localVideo) {
       try {
         await this.videoSender.replaceTrack(localVideo);
-        await this.keepResolutionStable();
+        await this.applyVideoQuality();
         log('traccia locale inserita nel canale appena individuato');
       } catch (e) {
         log('inserimento traccia fallito:', String(e));
@@ -598,7 +598,7 @@ export class ChannelSession {
       // fotogrammi sulla traccia che già aveva.
       try {
         await this.videoSender.replaceTrack(track);
-        await this.keepResolutionStable();
+        await this.applyVideoQuality();
       } catch (e) {
         log('replaceTrack fallita:', String(e));
       }
@@ -625,20 +625,45 @@ export class ChannelSession {
    * allargarsi e restringersi da sola. Meglio perdere fotogrammi che
    * cambiare cosa si inquadra.
    */
-  private async keepResolutionStable() {
+  /**
+   * Applica il profilo video scelto.
+   *
+   * La banda di un video non dipende dal codec ma da tre numeri:
+   * risoluzione, fotogrammi al secondo e tetto di bitrate. Il codec
+   * cambia quanto bene sfrutta quel tetto, non quanto se ne consuma.
+   *
+   * `scaleResolutionDownBy` riduce ciò che l'encoder produce, non ciò che
+   * la camera acquisisce: l'inquadratura resta identica. Ridurre invece
+   * il formato di acquisizione farebbe cambiare l'angolo di ripresa su
+   * molti sensori, e dall'altra parte si vedrebbe l'immagine allargarsi
+   * e restringersi da sola.
+   */
+  private async applyVideoQuality() {
     const sender: any = this.videoSender;
     if (!sender?.getParameters) return;
+    const profile = VIDEO_PROFILES[this.cfg.videoQuality] ?? VIDEO_PROFILES.standard;
     try {
       const params = sender.getParameters();
-      params.degradationPreference = 'maintain-resolution';
-      if (Array.isArray(params.encodings) && params.encodings.length > 0) {
-        params.encodings[0].scaleResolutionDownBy = 1;
+      params.degradationPreference = profile.degradation;
+      if (!Array.isArray(params.encodings) || params.encodings.length === 0) {
+        params.encodings = [{}];
       }
+      params.encodings[0].scaleResolutionDownBy = profile.scale;
+      params.encodings[0].maxBitrate = profile.maxBitrate;
+      params.encodings[0].maxFramerate = profile.maxFramerate;
       await sender.setParameters(params);
-      log('risoluzione bloccata: sotto banda scarsa calano i fotogrammi');
+      log('qualità video:', this.cfg.videoQuality,
+        `- tetto ${Math.round(profile.maxBitrate / 1000)} kbit/s,`,
+        `${profile.maxFramerate} fps, scala 1/${profile.scale}`);
     } catch (e) {
-      log('non riesco a bloccare la risoluzione:', String(e));
+      log('non riesco ad applicare la qualità video:', String(e));
     }
+  }
+
+  /** Cambia profilo a video acceso, senza rinegoziare nulla. */
+  async setVideoQuality(q: DuoConfig['videoQuality']) {
+    this.cfg = { ...this.cfg, videoQuality: q };
+    await this.applyVideoQuality();
   }
 
   /**

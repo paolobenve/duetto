@@ -602,6 +602,9 @@ export default function App() {
   const onSaveSettings = useCallback(async (next: DuoConfig) => {
     await saveConfig(next);
     setCfg(next);
+    // La qualità va applicata alla sessione già in corso, altrimenti si
+    // vedrebbe cambiare solo alla prossima accensione della camera.
+    sessionRef.current?.setVideoQuality(next.videoQuality);
     setScreen(isPaired(next) ? 'channel' : 'pairing');
   }, []);
 

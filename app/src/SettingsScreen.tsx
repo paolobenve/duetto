@@ -3,8 +3,8 @@ import {
   View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity,
   KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
-import type { DuoConfig } from './config';
-import { isServerConfigured, isPaired, normalizeServerUrl } from './config';
+import type { DuoConfig, VideoQuality } from './config';
+import { isServerConfigured, isPaired, normalizeServerUrl, VIDEO_PROFILES } from './config';
 import { VERSION_LABEL } from './version';
 
 type Props = {
@@ -101,6 +101,29 @@ export default function SettingsScreen({
             </TouchableOpacity>
           </>
         ) : null}
+
+        <Text style={styles.subsection}>Qualità del video</Text>
+        <Text style={styles.sectionHint}>
+          La banda di un video dipende da risoluzione, fotogrammi al secondo e
+          tetto di bitrate — non dal codec. Meno di tutti e tre significa meno
+          dati e meno batteria, da entrambe le parti.
+        </Text>
+        {(Object.keys(VIDEO_PROFILES) as VideoQuality[]).map((q) => (
+          <TouchableOpacity
+            key={q}
+            style={[styles.choice, cfg.videoQuality === q && styles.choicePicked]}
+            onPress={() => setCfg({ ...cfg, videoQuality: q })}>
+            <View style={[styles.radio, cfg.videoQuality === q && styles.radioPicked]} />
+            <View style={styles.choiceText}>
+              <Text style={styles.choiceLabel}>{VIDEO_PROFILES[q].etichetta}</Text>
+              <Text style={styles.choiceNote}>{VIDEO_PROFILES[q].nota}</Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+        <Text style={styles.sectionHint}>
+          L’inquadratura non cambia mai: si riduce ciò che esce dall’encoder,
+          non ciò che la camera riprende.
+        </Text>
 
         <TouchableOpacity style={styles.toggle} onPress={() => setAdvanced(!advanced)}>
           <Text style={styles.toggleText}>
@@ -224,6 +247,20 @@ const styles = StyleSheet.create({
   subtitle: { color: '#8892a0', marginTop: 8, marginBottom: 28, lineHeight: 21 },
   section: { color: '#7cc4ff', fontWeight: '700', fontSize: 16, marginTop: 24 },
   subsection: { color: '#c9d2de', fontWeight: '700', fontSize: 15, marginTop: 18 },
+  choice: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#151a23', borderRadius: 12, padding: 14, marginTop: 8,
+    borderWidth: 1, borderColor: '#252c38',
+  },
+  choicePicked: { borderColor: '#2f7cf6', backgroundColor: '#16203050' },
+  radio: {
+    width: 20, height: 20, borderRadius: 10,
+    borderWidth: 2, borderColor: '#3a4351',
+  },
+  radioPicked: { borderColor: '#2f7cf6', borderWidth: 6 },
+  choiceText: { flex: 1 },
+  choiceLabel: { color: '#e6ebf1', fontSize: 16, fontWeight: '700' },
+  choiceNote: { color: '#7d8794', fontSize: 13, marginTop: 3 },
   sectionHint: { color: '#6b7686', fontSize: 13, marginTop: 4, marginBottom: 12, lineHeight: 19 },
   field: { marginBottom: 16 },
   label: { color: '#c9d2de', marginBottom: 6, fontWeight: '600' },

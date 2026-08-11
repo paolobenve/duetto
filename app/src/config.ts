@@ -23,6 +23,16 @@ export type PairInfo = {
   pairedAt: string;
 };
 
+/**
+ * Quanto spendere per il video.
+ *
+ * Non tocca MAI il formato di acquisizione della camera: cambiarlo fa
+ * cambiare anche l'angolo di ripresa su molti sensori, e dall'altra parte
+ * si vede l'inquadratura allargarsi e restringersi da sola. Si agisce
+ * solo su cosa esce dall'encoder.
+ */
+export type VideoQuality = 'risparmio' | 'standard' | 'migliore';
+
 export type DuoConfig = {
   /** wss://TUO_DOMINIO/duotalk/ws */
   serverUrl: string;
@@ -37,6 +47,8 @@ export type DuoConfig = {
   turnPass: string;
   /** le impostazioni di sistema sono già state proposte una volta */
   setupShown: boolean;
+  /** quanto spendere per il video: banda e batteria */
+  videoQuality: VideoQuality;
 };
 
 export const DEFAULT_CONFIG: DuoConfig = {
@@ -48,6 +60,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   turnUser: '',
   turnPass: '',
   setupShown: false,
+  videoQuality: 'standard',
 };
 
 const STORAGE_KEY = 'duotalk.config.v3';
@@ -97,6 +110,51 @@ export function isServerConfigured(cfg: DuoConfig): boolean {
 export function isPaired(cfg: DuoConfig): boolean {
   return !!cfg.pair && !!cfg.pair.id && !!cfg.pair.key;
 }
+
+/**
+ * I tre profili, in cifre.
+ *
+ * `scale` riduce ciò che l'encoder produce, non ciò che la camera
+ * acquisisce: l'inquadratura resta identica.
+ *
+ * `degradation` dice cosa sacrificare quando la banda non basta.
+ * "maintain-resolution" perde fotogrammi tenendo ferma l'immagine, ed è
+ * quello che si vuole guardando una persona; "balanced" lascia invece
+ * scendere anche la risoluzione, e in risparmio è il punto.
+ */
+export const VIDEO_PROFILES: Record<VideoQuality, {
+  maxBitrate: number;
+  maxFramerate: number;
+  scale: number;
+  degradation: string;
+  etichetta: string;
+  nota: string;
+}> = {
+  risparmio: {
+    maxBitrate: 350_000,
+    maxFramerate: 15,
+    scale: 2,
+    degradation: 'balanced',
+    etichetta: 'Risparmio',
+    nota: '~45 kB/s · metà definizione, 15 fotogrammi',
+  },
+  standard: {
+    maxBitrate: 1_200_000,
+    maxFramerate: 24,
+    scale: 1,
+    degradation: 'maintain-resolution',
+    etichetta: 'Standard',
+    nota: '~150 kB/s · definizione piena, 24 fotogrammi',
+  },
+  migliore: {
+    maxBitrate: 2_500_000,
+    maxFramerate: 30,
+    scale: 1,
+    degradation: 'maintain-resolution',
+    etichetta: 'Migliore',
+    nota: '~310 kB/s · definizione piena, 30 fotogrammi',
+  },
+};
 
 type RTCIceServer = { urls: string; username?: string; credential?: string };
 

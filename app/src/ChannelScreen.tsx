@@ -65,8 +65,28 @@ export default function ChannelScreen(props: Props) {
   } = props;
 
   // In Picture-in-Picture la finestra è minuscola: niente comandi.
-  const { width: winWidth } = useWindowDimensions();
+  const { width: winWidth, height: winHeight } = useWindowDimensions();
   const compact = winWidth < COMPACT_WIDTH;
+
+  /**
+   * Il rettangolo che il video occupa davvero.
+   *
+   * Il video sta "dentro" lo schermo senza essere tagliato, quindi lascia
+   * due bande nere. Appoggiando i comandi ai bordi dello SCHERMO finivano
+   * a metà sull'immagine e metà sul nero: appoggiandoli ai bordi del
+   * VIDEO stanno tutti dentro, come si intende una sovrapposizione.
+   *
+   * Senza nessun video il rettangolo è tutto lo schermo, ed è giusto:
+   * lì non c'è nessun bordo a cui allinearsi.
+   */
+  const [bigAspect, setBigAspect] = useState<number | null>(null);
+  const inset = React.useMemo(() => {
+    if (!bigAspect || winWidth <= 0 || winHeight <= 0) return { v: 0, h: 0 };
+    const screen = winWidth / winHeight;
+    return bigAspect > screen
+      ? { v: Math.round((winHeight - winWidth / bigAspect) / 2), h: 0 }
+      : { v: 0, h: Math.round((winWidth - winHeight * bigAspect) / 2) };
+  }, [bigAspect, winWidth, winHeight]);
 
   const [routeMenu, setRouteMenu] = useState(false);
 
@@ -157,6 +177,7 @@ export default function ChannelScreen(props: Props) {
         localAspect={localAspect}
         remoteAspect={remoteAspect}
         compact={compact}
+        onBigAspect={setBigAspect}
         placeholder={
           <PresenceCard
             status={status}
@@ -173,7 +194,8 @@ export default function ChannelScreen(props: Props) {
       {compact ? null : (
         <>
       {/* Barra in alto: canale + stato */}
-      <Animated.View style={[styles.topBar, { opacity }]}>
+      <Animated.View
+        style={[styles.topBar, { opacity, top: 14 + inset.v, left: 14 + inset.h, right: 14 + inset.h }]}>
         <TouchableOpacity style={styles.gear} onPress={press(onOpenSettings)}>
           <Text style={styles.gearText}>{'\u2699'}</Text>
         </TouchableOpacity>
@@ -186,7 +208,11 @@ export default function ChannelScreen(props: Props) {
       </Animated.View>
 
       {/* Controlli: sempre presenti, in basso, dentro un pannello scuro */}
-      <Animated.View style={[styles.panel, { opacity }]}>
+      <Animated.View
+        style={[
+          styles.panel,
+          { opacity, bottom: 22 + inset.v, left: 12 + inset.h, right: 12 + inset.h },
+        ]}>
         <View style={styles.handle} />
         <View style={styles.controls}>
         <CircleButton

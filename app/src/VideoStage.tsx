@@ -60,6 +60,14 @@ type Props = {
   compact?: boolean;
   /** mostrato quando non c'è nessun video */
   placeholder: React.ReactNode;
+  /**
+   * Proporzioni del video a schermo intero, `null` se non ce n'è nessuno.
+   *
+   * Serve a chi disegna i comandi sopra: con "contain" il video non
+   * riempie lo schermo, e una barra posizionata sui bordi dello schermo
+   * finisce a metà sull'immagine e metà sul nero.
+   */
+  onBigAspect?: (aspect: number | null) => void;
 };
 
 export default function VideoStage(props: Props) {
@@ -69,6 +77,7 @@ export default function VideoStage(props: Props) {
     awaitingRemote, notice,
   } = props;
   const { width, height } = useWindowDimensions();
+  const { onBigAspect } = props;
 
   // false = l'altro è grande (default), true = sono io ad essere grande
   const [selfBig, setSelfBig] = useState(false);
@@ -118,6 +127,13 @@ export default function VideoStage(props: Props) {
     bigStream = localStream;
     bigIsSelf = true;
   }
+
+  // Chi guarda da fuori ha bisogno di sapere quanto spazio occupa
+  // davvero il video grande, per non appoggiarci sopra i comandi a metà.
+  const bigAspect = bigStream
+    ? (bigIsSelf ? localAspect : remoteAspect) || DEFAULT_ASPECT
+    : null;
+  useEffect(() => { onBigAspect?.(bigAspect); }, [bigAspect, onBigAspect]);
 
   // Le proporzioni sono SEMPRE quelle della camera che il riquadrino mostra.
   const pipAspect =
