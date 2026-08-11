@@ -726,6 +726,9 @@ export default function App() {
           initial={cfg}
           onSave={onSaveSettings}
           onUnpair={onUnpair}
+          // Non si tocca la coppia attuale: la sostituisce solo il nuovo
+          // accoppiamento, se e quando riesce.
+          onRepair={() => setScreen('pairing')}
           onClose={isPaired(cfg) ? () => setScreen('channel') : undefined}
           onOpenSetup={() => { setSetupFrom('impostazioni'); setScreen('setup'); }}
           onQualityChange={(q) => applyQuality(q, true)}

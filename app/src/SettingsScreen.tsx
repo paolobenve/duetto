@@ -11,6 +11,12 @@ type Props = {
   initial: DuoConfig;
   onSave: (cfg: DuoConfig) => void;
   onUnpair: () => void;
+  /**
+   * Rifà l'accoppiamento restando accoppiati fino a che il nuovo non
+   * riesce: serve quando l'altro ha sciolto la coppia dalla sua parte e
+   * qui non c'è modo di saperlo.
+   */
+  onRepair: () => void;
   /** torna indietro senza salvare; assente se non c'è dove tornare */
   onClose?: () => void;
   /** riapre la schermata delle impostazioni di sistema */
@@ -41,7 +47,7 @@ type Props = {
  * Tutto il resto è facoltativo e sta sotto "Altre impostazioni".
  */
 export default function SettingsScreen({
-  initial, onSave, onUnpair, onClose, onOpenSetup, vp9Here, vp9Peer,
+  initial, onSave, onUnpair, onRepair, onClose, onOpenSetup, vp9Here, vp9Peer,
   onQualityChange,
 }: Props) {
   const vp9Available = !!vp9Here && !!vp9Peer;
@@ -65,8 +71,8 @@ export default function SettingsScreen({
     Alert.alert(
       'Sciogliere la coppia?',
       'Dovrete rifare l’accoppiamento con un codice nuovo.\n\n' +
-      'Ricordati di sciogliere la coppia anche sull’altro telefono, ' +
-      'altrimenti continuerà a cercarti.',
+      'Non serve sciogliere anche sull’altro telefono: da lì basta ' +
+      '«Accoppia di nuovo».',
       [
         { text: 'Annulla', style: 'cancel' },
         { text: 'Sciogli', style: 'destructive', onPress: onUnpair },
@@ -125,6 +131,15 @@ export default function SettingsScreen({
                   : '—'}
               </Text>
             </View>
+            <TouchableOpacity style={styles.secondary} onPress={onRepair}>
+              <Text style={styles.secondaryText}>Accoppia di nuovo</Text>
+            </TouchableOpacity>
+            <Text style={styles.sectionHint}>
+              Mostra un codice nuovo, o digita quello dell’altro. Finché non
+              riesce resti accoppiato come sei; quando riesce, la coppia
+              vecchia viene sostituita. Serve se l’altro ha sciolto dalla sua
+              parte: da qui non c’è modo di accorgersene.
+            </Text>
             <TouchableOpacity style={styles.danger} onPress={confirmUnpair}>
               <Text style={styles.dangerText}>Sciogli la coppia</Text>
             </TouchableOpacity>
@@ -312,6 +327,11 @@ const styles = StyleSheet.create({
   subtitle: { color: '#8892a0', marginTop: 8, marginBottom: 28, lineHeight: 21 },
   section: { color: '#7cc4ff', fontWeight: '700', fontSize: 16, marginTop: 24 },
   subsection: { color: '#c9d2de', fontWeight: '700', fontSize: 15, marginTop: 18 },
+  secondary: {
+    marginTop: 16, borderRadius: 12, paddingVertical: 14, alignItems: 'center',
+    borderWidth: 1, borderColor: '#2f7cf6',
+  },
+  secondaryText: { color: '#2f7cf6', fontSize: 16, fontWeight: '700' },
   choice: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: '#151a23', borderRadius: 12, padding: 14, marginTop: 8,
