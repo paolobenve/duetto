@@ -112,46 +112,6 @@ export class ChannelSession {
     const pc = new RTCPeerConnection({ iceServers: servers });
     this.pc = pc;
 
-    // Audio: c'e' sempre.
-    const audioTrack = this.localStream!.getAudioTracks()[0];
-    if (audioTrack) pc.addTrack(audioTrack, this.localStream as MediaStream);
-
-    // Video: il canale viene aperto SUBITO, anche senza traccia dentro.
-    //
-    // E' la scelta che rende affidabile l'accensione e lo spegnimento.
-    // Aggiungendo e togliendo la traccia ogni volta si rinegozia, si
-    // creano tracce nuove che si accavallano alle vecchie, e dall'altra
-    // parte si finisce per disegnare quella morta (schermo nero). Con il
-    // canale sempre aperto basta sostituire la traccia al suo interno:
-    // niente rinegoziazione e niente tracce che si accumulano.
-    // Lo dichiara UNA SOLA delle due parti: quella che fa l'offerta.
-    // Dichiarandolo entrambi, la dichiarazione di chi risponde rischia di
-    // restare orfana - non entra nella negoziazione - e quel telefono non
-    // riesce piu' a inviare il proprio video pur ricevendo quello altrui.
-    // Chi risponde se lo prende dalla negoziazione (captureVideoSender).
-    if (!polite) {
-      try {
-        const vt: any = (pc as any).addTransceiver('video', { direction: 'sendrecv' });
-        this.videoSender = vt?.sender ?? null;
-        log('canale video dichiarato da noi:', !!this.videoSender);
-      } catch (e) {
-        log('addTransceiver non disponibile, ripiego su addTrack:', String(e));
-        this.videoSender = null;
-      }
-    } else {
-      log('canale video: lo dichiara l\'altro, lo prendo a negoziazione fatta');
-    }
-
-    // Se il video era gia' acceso, la traccia entra nel canale appena aperto.
-    const existingVideo = this.localStream!.getVideoTracks()[0];
-    if (existingVideo) {
-      if (this.videoSender) {
-        try { await this.videoSender.replaceTrack(existingVideo); } catch { /* noop */ }
-      } else {
-        this.videoSender = pc.addTrack(existingVideo, this.localStream as MediaStream);
-      }
-    }
-
     this.remoteStream = new MediaStream();
 
     // @ts-ignore evento di react-native-webrtc
@@ -243,6 +203,59 @@ export class ChannelSession {
       }
       await this.negotiate();
     });
+
+    // --- Solo ORA le tracce -------------------------------------------
+    // I gestori vanno registrati PRIMA di toccare tracce e canali.
+    // Qui sotto c'e' un await (replaceTrack, quando la camera e' gia'
+    // accesa): durante quell'attesa scatta la richiesta di negoziazione,
+    // e se il gestore non fosse ancora registrato andrebbe persa. Era
+    // esattamente il caso del riaggancio a camera accesa: la connessione
+    // veniva ricostruita ma l'offerta non partiva mai.
+    // Audio: c'e' sempre.
+    const audioTrack = this.localStream!.getAudioTracks()[0];
+    if (audioTrack) pc.addTrack(audioTrack, this.localStream as MediaStream);
+
+    // Video: il canale viene aperto SUBITO, anche senza traccia dentro.
+    //
+    // E' la scelta che rende affidabile l'accensione e lo spegnimento.
+    // Aggiungendo e togliendo la traccia ogni volta si rinegozia, si
+    // creano tracce nuove che si accavallano alle vecchie, e dall'altra
+    // parte si finisce per disegnare quella morta (schermo nero). Con il
+    // canale sempre aperto basta sostituire la traccia al suo interno:
+    // niente rinegoziazione e niente tracce che si accumulano.
+    // Lo dichiara UNA SOLA delle due parti: quella che fa l'offerta.
+    // Dichiarandolo entrambi, la dichiarazione di chi risponde rischia di
+    // restare orfana - non entra nella negoziazione - e quel telefono non
+    // riesce piu' a inviare il proprio video pur ricevendo quello altrui.
+    // Chi risponde se lo prende dalla negoziazione (captureVideoSender).
+    if (!polite) {
+      try {
+        const vt: any = (pc as any).addTransceiver('video', { direction: 'sendrecv' });
+        this.videoSender = vt?.sender ?? null;
+        log('canale video dichiarato da noi:', !!this.videoSender);
+      } catch (e) {
+        log('addTransceiver non disponibile, ripiego su addTrack:', String(e));
+        this.videoSender = null;
+      }
+    } else {
+      log('canale video: lo dichiara l\'altro, lo prendo a negoziazione fatta');
+    }
+
+    // Se il video era gia' acceso, la traccia entra nel canale appena aperto.
+    const existingVideo = this.localStream!.getVideoTracks()[0];
+    if (existingVideo) {
+      if (this.videoSender) {
+        try { await this.videoSender.replaceTrack(existingVideo); } catch { /* noop */ }
+      } else {
+        this.videoSender = pc.addTrack(existingVideo, this.localStream as MediaStream);
+      }
+    }
+
+
+    // E la negoziazione la avviamo comunque noi, invece di sperare
+    // nell'evento: se e' gia' partita, il controllo dentro negotiate()
+    // la lascia proseguire senza sovrapporsi.
+    if (!polite) await this.negotiate();
   }
 
   private async negotiate() {
