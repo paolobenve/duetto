@@ -4,7 +4,9 @@ import {
   KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import type { DuoConfig, VideoQuality } from './config';
-import { isServerConfigured, isPaired, normalizeServerUrl, VIDEO_PROFILES } from './config';
+import {
+  isServerConfigured, isPaired, normalizeServerUrl, displayServer, VIDEO_PROFILES,
+} from './config';
 import { VERSION_LABEL } from './version';
 
 type Props = {
@@ -59,7 +61,11 @@ export default function SettingsScreen({
         ? 'Questo telefono non ha l’encoder VP9 in hardware.'
         : 'L’altro telefono non ha l’encoder VP9 in hardware. Serve su entrambi: ' +
           'il codec è uno solo per tutta la sessione.';
-  const [cfg, setCfg] = useState<DuoConfig>(initial);
+  // Nel campo si mostra il dominio, non l'indirizzo completo che sta in
+  // configurazione: è quello che si chiede, ed è quello che si rilegge.
+  const [cfg, setCfg] = useState<DuoConfig>(
+    () => ({ ...initial, serverUrl: displayServer(initial.serverUrl) }),
+  );
   const [advanced, setAdvanced] = useState(false);
   const set = (k: keyof DuoConfig) => (v: string) => setCfg({ ...cfg, [k]: v });
 

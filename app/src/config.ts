@@ -117,6 +117,20 @@ export function normalizeServerUrl(raw: string): string {
   return m[1] + path;
 }
 
+/**
+ * Come rimostrarlo nelle impostazioni.
+ *
+ * All'utente si chiede il dominio, ma si salva l'indirizzo completo:
+ * riaprendo le impostazioni si ritrovava "wss://tuoserver.org/duotalk/ws"
+ * in un campo che chiede "tuoserver.org". Se l'indirizzo è quello
+ * standard si mostra il solo dominio; se qualcuno ha scritto un percorso
+ * suo, resta intero, perché lì il dominio da solo non basterebbe.
+ */
+export function displayServer(url: string): string {
+  const m = (url || '').match(/^wss?:\/\/([^/]+)\/duotalk\/ws$/i);
+  return m ? m[1] : (url || '');
+}
+
 /** Il minimo per potersi collegare al server e accoppiarsi. */
 export function isServerConfigured(cfg: DuoConfig): boolean {
   const url = normalizeServerUrl(cfg.serverUrl);
