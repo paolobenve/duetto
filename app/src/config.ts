@@ -26,15 +26,17 @@ export type PairInfo = {
 /**
  * Quanto spendere per il video.
  *
- * La camera riprende SEMPRE a 1080p, qualunque profilo: i quattro si
- * ricavano scalando l'uscita. Così nessun cambio ha bisogno di riaprire
- * la camera - l'unico modo di cambiare formato, e quello che lasciava il
- * canale agganciato a una traccia che non produceva più - e scegliendo
- * "Massima" i 1080p ci sono subito, non al prossimo accendi-video.
+ * Ogni profilo ha la sua risoluzione di RIPRESA, e cambiarlo riapre la
+ * camera.
  *
- * Il prezzo è riprendere a 1080p anche in Risparmio: qualche milliampere
- * in più sul sensore, per un comportamento che si spiega in una riga
- * invece che con un'eccezione.
+ * La via indolore sarebbe scalare l'uscita dell'encoder
+ * (`scaleResolutionDownBy`), e su alcuni telefoni funziona. Su altri no:
+ * il MediaTek del POCO registra la scala richiesta - la rilettura dei
+ * parametri lo conferma - e poi produce comunque a piena risoluzione. È
+ * l'encoder, e dal lato del codice non c'è modo di convincerlo.
+ *
+ * La risoluzione di ripresa invece nessun encoder può ignorarla. Il
+ * prezzo è un attimo di nero al cambio, mentre la camera si riapre.
  *
  * Restano fuori dal cambio a caldo i fotogrammi e `degradationPreference`:
  * toccarli su un encoder acceso è ciò che lo faceva smettere di produrre.
@@ -134,40 +136,41 @@ export function isPaired(cfg: DuoConfig): boolean {
  * quello che si vuole guardando una persona; "balanced" lascia scendere
  * anche la risoluzione, e in risparmio è il punto.
  *
- * `scale` riduce ciò che esce dall'encoder, non ciò che il sensore
- * riprende: l'inquadratura resta identica in tutti e quattro.
+ * Le proporzioni restano 16:9 in tutti e quattro, così l'inquadratura non
+ * cambia passando dall'uno all'altro: cambia la definizione, non cosa
+ * entra nel quadro.
  */
 export const VIDEO_PROFILES: Record<VideoQuality, {
-  /** di quanto ridurre l'uscita rispetto a ciò che la camera riprende */
-  scale: number;
+  /** come riprende la camera: è l'unica leva che nessun encoder ignora */
+  capture: { width: number; height: number };
   maxBitrate: number;
   degradation: string;
   etichetta: string;
   nota: string;
 }> = {
   risparmio: {
-    scale: 3,
+    capture: { width: 640, height: 360 },
     maxBitrate: 300_000,
     degradation: 'balanced',
     etichetta: 'Risparmio',
     nota: '640×360 · tetto 300 kbit/s',
   },
   standard: {
-    scale: 2,
+    capture: { width: 960, height: 540 },
     maxBitrate: 1_200_000,
     degradation: 'maintain-resolution',
     etichetta: 'Standard',
     nota: '960×540 · tetto 1,2 Mbit/s',
   },
   migliore: {
-    scale: 1.5,
+    capture: { width: 1280, height: 720 },
     maxBitrate: 2_500_000,
     degradation: 'maintain-resolution',
     etichetta: 'Migliore',
     nota: '1280×720 · tetto 2,5 Mbit/s',
   },
   massima: {
-    scale: 1,
+    capture: { width: 1920, height: 1080 },
     maxBitrate: 4_000_000,
     // 'balanced' e non 'maintain-resolution': all'accensione la stima di
     // banda parte bassa, e obbligare l'encoder a produrre subito 1080p
@@ -181,8 +184,8 @@ export const VIDEO_PROFILES: Record<VideoQuality, {
   },
 };
 
-/** La camera riprende sempre così: i profili scalano solo l'uscita. */
-export const CAPTURE = { width: 1920, height: 1080, frameRate: 30 };
+/** Fotogrammi chiesti alla camera, uguali per tutti i profili. */
+export const CAPTURE_FPS = 30;
 
 type RTCIceServer = { urls: string; username?: string; credential?: string };
 

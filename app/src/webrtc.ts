@@ -8,7 +8,7 @@ import {
   MediaStream,
 } from 'react-native-webrtc';
 import type { DuoConfig } from './config';
-import { iceServers, VIDEO_PROFILES, CAPTURE } from './config';
+import { iceServers, VIDEO_PROFILES, CAPTURE_FPS } from './config';
 import type { Signaling, SignalMessage } from './signaling';
 
 /**
@@ -672,47 +672,6 @@ export class ChannelSession {
     } catch { /* la diagnostica non deve mai disturbare */ }
   }
 
-  /**
-   * Rete di sicurezza dopo un cambio di scala.
-   *
-   * Cambiare la scala a encoder acceso lo ha già fatto smettere di
-   * produrre una volta: l'immagine spariva all'altro mentre la nostra
-   * anteprima continuava, e l'unico rimedio era spegnere e riaccendere il
-   * video. Qui si controlla che i fotogrammi encodati stiano davvero
-   * salendo e, se non salgono, si torna alla scala piena da soli.
-   *
-   * Meglio un profilo che non fa quello che promette di un video che
-   * sparisce senza dire perché.
-   */
-  private async watchEncoderAlive(scale: number) {
-    if (scale === 1) return;
-    const framesNow = async (): Promise<number | null> => {
-      try {
-        const stats = await (this.pc as any)?.getStats();
-        let n: number | null = null;
-        stats?.forEach((r: any) => {
-          if (r.type === 'outbound-rtp' && r.kind === 'video') n = r.framesEncoded ?? null;
-        });
-        return n;
-      } catch { return null; }
-    };
-    const before = await framesNow();
-    if (before === null) return;
-    setTimeout(async () => {
-      const after = await framesNow();
-      if (after === null || after > before) return;
-      log('l\'encoder si è fermato dopo il cambio di scala: torno alla piena');
-      try {
-        const sender: any = this.liveVideoSender();
-        const params = sender.getParameters();
-        if (Array.isArray(params.encodings) && params.encodings.length > 0) {
-          params.encodings[0].scaleResolutionDownBy = 1;
-          await sender.setParameters(params);
-        }
-      } catch { /* noop */ }
-    }, 3000);
-  }
-
   private async flushCandidates() {
     const pc = this.pc;
     if (!pc) return;
@@ -737,16 +696,16 @@ export class ChannelSession {
   /** Accende la camera: mette la traccia nel canale già aperto. */
   async enableVideo(): Promise<boolean> {
     if (!this.localStream || this.localStream.getVideoTracks().length > 0) return true;
+    const profile = VIDEO_PROFILES[this.cfg.videoQuality] ?? VIDEO_PROFILES.standard;
     const cam = await mediaDevices.getUserMedia({
       video: {
         facingMode: 'user',
-        // Sempre lo stesso formato, per tutti i profili: i quattro si
-        // ricavano scalando l'uscita, così nessun cambio deve riaprire
-        // la camera - l'unico modo di cambiare formato, e quello che
-        // lasciava il canale agganciato a una traccia morta.
-        width: { ideal: CAPTURE.width },
-        height: { ideal: CAPTURE.height },
-        frameRate: { ideal: CAPTURE.frameRate },
+        // La risoluzione viene dal profilo: è l'unica leva che nessun
+        // encoder può ignorare. Scalare l'uscita sarebbe indolore, ma su
+        // alcuni telefoni la richiesta viene registrata e poi disattesa.
+        width: { ideal: profile.capture.width },
+        height: { ideal: profile.capture.height },
+        frameRate: { ideal: CAPTURE_FPS },
         // Proporzioni dichiarate esplicitamente: senza, il sensore può
         // scegliere un formato diverso (4:3 invece di 16:9) e con esso
         // cambia l'angolo di ripresa, quindi cosa resta dentro
@@ -766,11 +725,13 @@ export class ChannelSession {
       log('camera accesa, traccia', track.id);
     }
 
-    if (this.videoSender) {
+    const senderOn: any = this.liveVideoSender();
+    if (senderOn) {
       // Nessuna rinegoziazione: l'altro vede semplicemente ripartire i
       // fotogrammi sulla traccia che già aveva.
       try {
-        await this.videoSender.replaceTrack(track);
+        this.videoSender = senderOn;
+        await senderOn.replaceTrack(track);
         await this.applyVideoQuality();
       } catch (e) {
         log('replaceTrack fallita:', String(e));
@@ -853,15 +814,17 @@ export class ChannelSession {
         params.degradationPreference = profile.degradation;
         this.degradationSet = true;
       }
-      // I fotogrammi NON si toccano: maxFramerate resta fuori.
-      params.encodings[0].scaleResolutionDownBy = profile.scale;
+      // Né i fotogrammi né la scala: la risoluzione la decide la ripresa,
+      // e su questo lato resta il solo tetto di banda.
       params.encodings[0].maxBitrate = profile.maxBitrate;
       await sender.setParameters(params);
       if (sender !== this.videoSender) {
         log('parametri scritti sul sender vivo, non su quello ricordato');
         this.videoSender = sender;
       }
-      this.watchEncoderAlive(profile.scale);
+      // Rilettura: distingue "l'encoder ha rifiutato la scala" da
+      // "l'ha accettata e poi la ignora". Sono due guasti diversi e
+      // dall'esterno sembrano lo stesso.
       log('qualità video:', this.cfg.videoQuality,
         `- tetto ${Math.round(profile.maxBitrate / 1000)} kbit/s,`,
         profile.degradation);
@@ -881,9 +844,24 @@ export class ChannelSession {
    */
   async setVideoQuality(q: DuoConfig['videoQuality']) {
     if (this.cfg.videoQuality === q) return;
+    const prima = VIDEO_PROFILES[this.cfg.videoQuality] ?? VIDEO_PROFILES.standard;
+    const dopo = VIDEO_PROFILES[q] ?? VIDEO_PROFILES.standard;
     this.cfg = { ...this.cfg, videoQuality: q };
-    // Nessuna riapertura della camera: cambiano solo i parametri
-    // dell'encoder, e si applicano a ripresa in corso.
+
+    const cameraAccesa = !!this.localStream?.getVideoTracks()[0];
+    const formatoDiverso =
+      prima.capture.width !== dopo.capture.width ||
+      prima.capture.height !== dopo.capture.height;
+
+    if (cameraAccesa && formatoDiverso) {
+      log('nuova risoluzione di ripresa:',
+        `${prima.capture.width}x${prima.capture.height}`,
+        '->', `${dopo.capture.width}x${dopo.capture.height}`,
+        '- riapro la camera');
+      await this.disableVideo();
+      await this.enableVideo();
+      return;
+    }
     await this.applyVideoQuality();
     // Il campione riparte da qui: altrimenti la prima banda mostrata dopo
     // il cambio sarebbe una media a cavallo del cambio stesso.
@@ -963,7 +941,7 @@ export class ChannelSession {
 
   /** Allinea ciò che esce dal canale a `peerWatching`. */
   private async applyPeerWatching() {
-    const sender = this.videoSender;
+    const sender = this.liveVideoSender();
     if (!sender) return;
     const track = this.localStream?.getVideoTracks()[0] ?? null;
     try {
@@ -977,10 +955,11 @@ export class ChannelSession {
   async disableVideo(): Promise<boolean> {
     const track = this.localStream?.getVideoTracks()[0];
 
-    if (this.videoSender) {
+    const senderOff: any = this.liveVideoSender();
+    if (senderOff) {
       // Il canale resta aperto e pronto per la prossima accensione.
       try {
-        await this.videoSender.replaceTrack(null);
+        await senderOff.replaceTrack(null);
       } catch (e) {
         log('replaceTrack(null) fallita:', String(e));
       }
