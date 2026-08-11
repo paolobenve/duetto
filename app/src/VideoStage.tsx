@@ -74,10 +74,13 @@ export default function VideoStage(props: Props) {
   const [selfBig, setSelfBig] = useState(false);
   const bothHaveVideo = localHasVideo && remoteHasVideo;
 
-  // Con un solo video acceso lo scambio non ha senso: si torna al default.
+  // Con un solo video acceso lo scambio non ha senso e si torna al
+  // default - ma NON durante un'interruzione: li' il video dell'altro
+  // manca solo momentaneamente, e azzerare la disposizione scelta
+  // significherebbe ritrovarsela cambiata a ogni caduta di rete.
   useEffect(() => {
-    if (!bothHaveVideo && selfBig) setSelfBig(false);
-  }, [bothHaveVideo, selfBig]);
+    if (!bothHaveVideo && selfBig && !awaitingRemote) setSelfBig(false);
+  }, [bothHaveVideo, selfBig, awaitingRemote]);
 
   // --- Chi va dove --------------------------------------------------------
   let bigStream: MediaStream | null = null;
@@ -93,12 +96,19 @@ export default function VideoStage(props: Props) {
   } else if (remoteHasVideo) {
     bigStream = remoteStream;
   } else if (awaitingRemote && localHasVideo) {
-    // Interruzione in corso: il posto grande resta dell'altro (vuoto, con
-    // l'avviso sopra) e il nostro video resta nel riquadrino. Promuoverlo
-    // farebbe vedere il proprio video ingrandirsi e poi rimpicciolirsi
-    // appena l'altro torna.
-    pipStream = localStream;
-    pipIsSelf = true;
+    // Interruzione in corso: si mantiene la disposizione scelta, cosi'
+    // al ritorno nulla si sposta.
+    if (selfBig) {
+      // Avevi messo te stesso davanti: resti davanti.
+      bigStream = localStream;
+      bigIsSelf = true;
+    } else {
+      // Il posto grande resta dell'altro, vuoto con l'avviso sopra:
+      // promuovere il proprio farebbe vedere il proprio ingrandirsi e
+      // poi rimpicciolirsi appena l'altro torna.
+      pipStream = localStream;
+      pipIsSelf = true;
+    }
   } else if (localHasVideo) {
     bigStream = localStream;
     bigIsSelf = true;
