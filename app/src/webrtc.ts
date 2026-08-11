@@ -8,7 +8,7 @@ import {
   MediaStream,
 } from 'react-native-webrtc';
 import type { DuoConfig } from './config';
-import { iceServers, VIDEO_PROFILES } from './config';
+import { iceServers, VIDEO_PROFILES, CAPTURE } from './config';
 import type { Signaling, SignalMessage } from './signaling';
 
 /**
@@ -737,16 +737,16 @@ export class ChannelSession {
   /** Accende la camera: mette la traccia nel canale già aperto. */
   async enableVideo(): Promise<boolean> {
     if (!this.localStream || this.localStream.getVideoTracks().length > 0) return true;
-    const profile = VIDEO_PROFILES[this.cfg.videoQuality] ?? VIDEO_PROFILES.standard;
     const cam = await mediaDevices.getUserMedia({
       video: {
         facingMode: 'user',
-        // Il formato si fissa qui, all'accensione: cambiarlo dopo
-        // vorrebbe dire riaprire la camera, e la riapertura lascia il
-        // canale agganciato a una traccia che non produce più.
-        width: { ideal: profile.capture.width },
-        height: { ideal: profile.capture.height },
-        frameRate: { ideal: profile.capture.frameRate },
+        // Sempre lo stesso formato, per tutti i profili: i quattro si
+        // ricavano scalando l'uscita, così nessun cambio deve riaprire
+        // la camera - l'unico modo di cambiare formato, e quello che
+        // lasciava il canale agganciato a una traccia morta.
+        width: { ideal: CAPTURE.width },
+        height: { ideal: CAPTURE.height },
+        frameRate: { ideal: CAPTURE.frameRate },
         // Proporzioni dichiarate esplicitamente: senza, il sensore può
         // scegliere un formato diverso (4:3 invece di 16:9) e con esso
         // cambia l'angolo di ripresa, quindi cosa resta dentro

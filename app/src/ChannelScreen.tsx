@@ -403,18 +403,24 @@ function StatsLine({ stats, quality }: { stats: VideoStats; quality: string }) {
     // ed è anche più corta da leggere di sfuggita sotto ai pulsanti.
     const kBs = v.kbps === null ? null : v.kbps / 8;
     const banda = kBs === null ? '' :
-      kBs >= 1000 ? ` · ${(kBs / 1000).toFixed(1)} MB/s` : ` · ${Math.round(kBs)} kB/s`;
-    return `${v.w}×${v.h} · ${v.fps} fps${banda}`;
+      kBs >= 1000 ? `·${(kBs / 1000).toFixed(1)}MB/s` : `·${Math.round(kBs)}kB/s`;
+    return `${v.w}×${v.h}·${v.fps}fps${banda}`;
   };
   const su = fmt(stats.out);
   const giu = fmt(stats.in);
   // Il profilo si mostra sempre, anche a video spento: è la scelta che
   // spiega i numeri accanto, e senza sembrerebbero venire dal nulla.
   return (
-    <Text style={styles.stats} numberOfLines={1}>
+    <Text
+      style={styles.stats}
+      numberOfLines={1}
+      // Con due video accesi la riga può non starci: meglio rimpicciolirla
+      // che vederla tagliata a metà parola.
+      adjustsFontSizeToFit
+      minimumFontScale={0.6}>
       {`Risoluzione: ${quality.toLowerCase()}`}
-      {su ? `   \u2191 ${su}` : ''}
-      {giu ? `   \u2193 ${giu}` : ''}
+      {su ? `  \u2191${su}` : ''}
+      {giu ? `  \u2193${giu}` : ''}
     </Text>
   );
 }

@@ -26,14 +26,18 @@ export type PairInfo = {
 /**
  * Quanto spendere per il video.
  *
- * A ripresa in corso si cambia SOLO il tetto di bitrate. Non la scala,
- * non i fotogrammi: toccarli su un encoder già acceso lo fa smettere di
- * produrre - l'immagine spariva all'altro mentre l'anteprima locale
- * continuava, e il MediaCodec riportava zero buffer in uscita.
+ * La camera riprende SEMPRE a 1080p, qualunque profilo: i quattro si
+ * ricavano scalando l'uscita. Così nessun cambio ha bisogno di riaprire
+ * la camera - l'unico modo di cambiare formato, e quello che lasciava il
+ * canale agganciato a una traccia che non produceva più - e scegliendo
+ * "Massima" i 1080p ci sono subito, non al prossimo accendi-video.
  *
- * Il tetto basta da solo: sotto un tetto più basso l'encoder comprime di
- * più e, con `balanced`, cala anche la risoluzione. La differenza è che a
- * decidere come rientrarci è lui, che sa farlo senza riconfigurarsi.
+ * Il prezzo è riprendere a 1080p anche in Risparmio: qualche milliampere
+ * in più sul sensore, per un comportamento che si spiega in una riga
+ * invece che con un'eccezione.
+ *
+ * Restano fuori dal cambio a caldo i fotogrammi e `degradationPreference`:
+ * toccarli su un encoder acceso è ciò che lo faceva smettere di produrre.
  */
 export type VideoQuality = 'risparmio' | 'standard' | 'migliore' | 'massima';
 
@@ -130,42 +134,37 @@ export function isPaired(cfg: DuoConfig): boolean {
  * quello che si vuole guardando una persona; "balanced" lascia scendere
  * anche la risoluzione, e in risparmio è il punto.
  *
- * `capture` si applica alla PROSSIMA accensione del video: cambiarlo a
- * camera accesa significa riaprirla, e la riapertura lascia il canale
- * agganciato a una traccia che non produce più.
+ * `scale` riduce ciò che esce dall'encoder, non ciò che il sensore
+ * riprende: l'inquadratura resta identica in tutti e quattro.
  */
 export const VIDEO_PROFILES: Record<VideoQuality, {
   /** di quanto ridurre l'uscita rispetto a ciò che la camera riprende */
   scale: number;
   maxBitrate: number;
   degradation: string;
-  capture: { width: number; height: number; frameRate: number };
   etichetta: string;
   nota: string;
 }> = {
   risparmio: {
-    scale: 2,
+    scale: 3,
     maxBitrate: 300_000,
     degradation: 'balanced',
-    capture: { width: 1280, height: 720, frameRate: 24 },
     etichetta: 'Risparmio',
-    nota: 'metà definizione · tetto 300 kbit/s',
+    nota: '640×360 · tetto 300 kbit/s',
   },
   standard: {
-    scale: 1.5,
+    scale: 2,
     maxBitrate: 1_200_000,
     degradation: 'maintain-resolution',
-    capture: { width: 1280, height: 720, frameRate: 30 },
     etichetta: 'Standard',
-    nota: '480p · tetto 1,2 Mbit/s',
+    nota: '960×540 · tetto 1,2 Mbit/s',
   },
   migliore: {
-    scale: 1,
+    scale: 1.5,
     maxBitrate: 2_500_000,
     degradation: 'maintain-resolution',
-    capture: { width: 1280, height: 720, frameRate: 30 },
     etichetta: 'Migliore',
-    nota: '720p · tetto 2,5 Mbit/s',
+    nota: '1280×720 · tetto 2,5 Mbit/s',
   },
   massima: {
     scale: 1,
@@ -177,11 +176,13 @@ export const VIDEO_PROFILES: Record<VideoQuality, {
     // Scalare l'uscita non cambia l'inquadratura, solo la nitidezza,
     // finché la banda non sale.
     degradation: 'balanced',
-    capture: { width: 1920, height: 1080, frameRate: 30 },
     etichetta: 'Massima',
-    nota: '1080p dalla prossima accensione · tetto 4 Mbit/s',
+    nota: '1920×1080 · tetto 4 Mbit/s',
   },
 };
+
+/** La camera riprende sempre così: i profili scalano solo l'uscita. */
+export const CAPTURE = { width: 1920, height: 1080, frameRate: 30 };
 
 type RTCIceServer = { urls: string; username?: string; credential?: string };
 
