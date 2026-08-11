@@ -225,6 +225,19 @@ in modalità compatta. Questo evita di dover modificare `MainActivity`.
 - Trascinabile e ridimensionabile: maniglia d'angolo e pizzico a due dita, gestiti dallo
   stesso `PanResponder` guardando `nativeEvent.touches.length`.
 - Tocco e trascinamento si distinguono con una soglia di 4 px.
+- **Zoom** sul video grande: pizzico fino a 5×, trascinamento per spostarsi dentro
+  l'ingrandimento (vincolato ai bordi), doppio tocco per tornare a schermo pieno.
+- Con un solo video acceso il riquadrino non compare e lo scambio si azzera — ma **non
+  durante un'interruzione**: lì il video dell'altro manca solo momentaneamente, e azzerare
+  la disposizione significherebbe ritrovarsela cambiata a ogni caduta di rete.
+- Durante un'interruzione **nulla si sposta**: il posto grande resta riservato all'altro,
+  il riquadro resta al suo posto vuoto con l'etichetta "in attesa", e un avviso spiega
+  cosa sta succedendo. Prima il proprio video veniva promosso a schermo intero e poi
+  rimpicciolito al ritorno, a ogni singola caduta.
+
+Una cosa che **non è possibile**: trattenere l'ultimo fotogramma durante un'interruzione.
+Quando la traccia muore il renderer svuota la superficie, e conservare l'immagine
+richiederebbe catturarla a parte fotogramma per fotogramma.
 
 ### 8. Uscita audio (`app/src/audioRoute.ts`)
 
