@@ -9,7 +9,12 @@ const TOKEN = 'test-token';
 const URL = `ws://127.0.0.1:${PORT}`;
 
 const srv = spawn('node', ['src/index.js'], {
-  env: { ...process.env, PORT: String(PORT), HOST: '127.0.0.1', ACCESS_TOKEN: TOKEN },
+  env: {
+    ...process.env, PORT: String(PORT), HOST: '127.0.0.1', ACCESS_TOKEN: TOKEN,
+    // Il relay viene comunicato dal server ai telefoni: qui verifichiamo
+    // che arrivi davvero nel messaggio di ingresso.
+    TURN_URL: 'turn:esempio.org:3478', TURN_USER: 'duo', TURN_PASS: 'segreta',
+  },
   stdio: ['ignore', 'ignore', 'inherit'],
 });
 
@@ -62,6 +67,9 @@ try {
   const aJoined = await a.expect('joined');
   check(aJoined.polite === true, 'primo collegato: ruolo polite');
   check(aJoined.peerPresent === false, 'primo collegato: l’altro non c’e’');
+  check(aJoined.turn?.urls?.[0] === 'turn:esempio.org:3478',
+    'il server comunica il relay: non va configurato sui telefoni');
+  check(aJoined.turn?.credential === 'segreta', 'con le credenziali per usarlo');
 
   // --- B si collega, anche lui in ascolto -------------------------------
   const b = client();

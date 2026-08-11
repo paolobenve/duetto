@@ -86,6 +86,8 @@ export default function App() {
   const appStateRef = useRef(AppState.currentState);
   /** enterChannel serve dentro un effetto che nasce prima di lei */
   const enterChannelRef = useRef<(() => void) | null>(null);
+  /** relay comunicato dal server, valido finche' dura la connessione */
+  const serverTurnRef = useRef<any[]>([]);
 
   const audio = useAudioRoute(inChannel);
 
@@ -162,7 +164,10 @@ export default function App() {
         {
           onStatus: setStatus,
 
-          onJoined: ({ peerPresent: present, peerActive, peerName: n }) => {
+          onJoined: ({ peerPresent: present, peerActive, peerName: n, turn }) => {
+            // Il relay lo configura il server: sui telefoni non si digita nulla.
+            serverTurnRef.current = turn ? [turn] : [];
+            sessionRef.current?.setServerIceServers(serverTurnRef.current);
             // Il ruolo NON puo' dipendere da chi entra per primo: la
             // connessione si riaggancia a ogni cambio di rete, e chi era
             // "primo" puo' ritrovarsi secondo. Sono bastate due
@@ -299,6 +304,7 @@ export default function App() {
         },
       });
     }
+    sessionRef.current.setServerIceServers(serverTurnRef.current);
     try {
       await sessionRef.current.enterChannel();
       setAudioOn(sessionRef.current.isAudioEnabled());

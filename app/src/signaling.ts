@@ -27,6 +27,13 @@ export type PairMessage =
 
 export type Mode = 'listening' | 'active';
 
+/** Un server ICE (STUN o TURN) come lo descrive WebRTC. */
+export type IceServer = {
+  urls: string | string[];
+  username?: string;
+  credential?: string;
+};
+
 export type PresenceStatus =
   | 'connecting'
   | 'alone'      // collegati, l'altro non e' nel canale
@@ -40,6 +47,8 @@ export type SignalingEvents = {
     peerPresent: boolean;
     peerActive: boolean;
     peerName: string;
+    /** collegamento di riserva, configurato sul server */
+    turn: IceServer | null;
   }) => void;
   onPeerJoined?: (name: string, mode: Mode) => void;
   onPeerLeft?: () => void;
@@ -140,6 +149,7 @@ export class Signaling {
           peerPresent: !!msg.peerPresent,
           peerActive: !!msg.peerActive,
           peerName: msg.peerName || '',
+          turn: msg.turn ?? null,
         });
         break;
 

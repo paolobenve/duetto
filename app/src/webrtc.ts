@@ -77,6 +77,13 @@ export class ChannelSession {
   private ignoreOffer = false;
   /** candidate arrivati prima della remote description: li mettiamo in coda */
   private pendingCandidates: any[] = [];
+  /** relay comunicato dal server: evita di configurarlo su ogni telefono */
+  private extraIce: any[] = [];
+
+  /** Collegamento di riserva ricevuto dal server. */
+  setServerIceServers(list: any[]) {
+    this.extraIce = list ?? [];
+  }
 
   constructor(
     private cfg: DuoConfig,
@@ -99,7 +106,7 @@ export class ChannelSession {
     if (!this.localStream) await this.enterChannel();
 
     this.polite = polite;
-    const servers = iceServers(this.cfg);
+    const servers = [...iceServers(this.cfg), ...this.extraIce];
     log('collego il peer - offre l\'altro:', polite, '| ICE server:',
       servers.map((s2) => s2.urls).join(', '));
     const pc = new RTCPeerConnection({ iceServers: servers });

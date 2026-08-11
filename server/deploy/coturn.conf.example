@@ -1,44 +1,62 @@
-# DuoTalk - configurazione coturn (server TURN/STUN).
-# Serve solo come "fallback" quando i due telefoni non riescono a
-# connettersi direttamente (NAT simmetrici, reti mobili chiuse).
-# Anche quando il traffico passa dal TURN resta cifrato end-to-end
-# (DTLS-SRTP): il TURN vede solo pacchetti opachi che inoltra.
+# DuoTalk - configurazione coturn (collegamento di riserva).
 #
-# Installazione (Debian/Ubuntu):  sudo apt install coturn
-# Poi copia questo file in /etc/turnserver.conf e abilita il servizio.
+# Serve quando i due telefoni non riescono a vedersi direttamente: reti
+# diverse, NAT simmetrici, quasi sempre la rete mobile. Sulla stessa wifi
+# non entra mai in gioco.
+#
+# Anche passando dal relay il traffico resta cifrato end-to-end: coturn
+# inoltra pacchetti che non puo' leggere.
+#
+# Copia in /etc/turnserver.conf, sostituisci i TRE valori maiuscoli, poi:
+#   sudo sed -i 's/#TURNSERVER_ENABLED=1/TURNSERVER_ENABLED=1/' /etc/default/coturn
+#   sudo systemctl enable --now coturn
 
-# --- Rete ---
+# --- Rete ---------------------------------------------------------------
 listening-port=3478
 tls-listening-port=5349
-# IP pubblico del server (sostituisci):
-external-ip=TUO_IP_PUBBLICO
-# Se dietro NAT: external-ip=IP_PUBBLICO/IP_PRIVATO
 
-# --- Dominio / relay ---
+# IP PUBBLICO del server. Senza questo il relay annuncia l'indirizzo
+# interno e i telefoni non lo raggiungono: e' l'errore piu' comune.
+#   lo trovi con:  curl -4 ifconfig.me
+external-ip=TUO_IP_PUBBLICO
+
+# Intervallo delle porte di relay. Vanno aperte sul firewall, in UDP.
+min-port=49152
+max-port=65535
+
+# --- Identita' e credenziali --------------------------------------------
 realm=TUO_DOMINIO
 server-name=TUO_DOMINIO
 
-# --- Autenticazione a credenziali statiche ---
-# Semplice per 2 utenti. In alternativa usa "use-auth-secret" per token a tempo.
+# Credenziali fisse: per due persone bastano, e sono quelle che metterai
+# in TURN_USER / TURN_PASS nel .env del signaling.
+#   genera la password con:  openssl rand -base64 24
 lt-cred-mech
 user=duotalk:METTI_UNA_PASSWORD_LUNGA
 
-# --- TLS (consigliato: riusa i certificati del tuo dominio) ---
+# --- TLS ----------------------------------------------------------------
+# Riusa i certificati che hai gia'. Il servizio gira come utente turnserver,
+# che deve poterli leggere:
+#   sudo setfacl -R -m u:turnserver:rX /etc/letsencrypt/live /etc/letsencrypt/archive
 cert=/etc/letsencrypt/live/TUO_DOMINIO/fullchain.pem
 pkey=/etc/letsencrypt/live/TUO_DOMINIO/privkey.pem
 
-# --- Sicurezza / hardening ---
+# --- Sicurezza ----------------------------------------------------------
+# Senza queste righe il relay sarebbe utilizzabile da chiunque per
+# raggiungere la tua rete interna.
 no-cli
 no-multicast-peers
-# Limita l'uso improprio come relay generico:
 denied-peer-ip=0.0.0.0-0.255.255.255
 denied-peer-ip=10.0.0.0-10.255.255.255
+denied-peer-ip=127.0.0.0-127.255.255.255
 denied-peer-ip=169.254.0.0-169.254.255.255
+denied-peer-ip=172.16.0.0-172.31.255.255
 denied-peer-ip=192.168.0.0-192.168.255.255
-allowed-peer-ip=
-# Intervallo porte relay (apri sul firewall UDP):
-min-port=49152
-max-port=65535
+
+# Limiti, per non lasciare il relay a disposizione di chiunque scopra le
+# credenziali: due telefoni non ne usano piu' di qualche decina.
+user-quota=12
+total-quota=100
 
 # Log
 log-file=/var/log/turnserver.log

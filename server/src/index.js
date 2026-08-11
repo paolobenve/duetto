@@ -31,6 +31,23 @@ import { randomUUID, timingSafeEqual } from 'node:crypto';
 const PORT = parseInt(process.env.PORT || '8787', 10);
 const HOST = process.env.HOST || '127.0.0.1'; // dietro reverse proxy: solo loopback
 const ACCESS_TOKEN = process.env.ACCESS_TOKEN || ''; // se vuoto, nessun controllo
+
+// Collegamento di riserva (TURN). Configurato QUI e non sui telefoni:
+// cosi' resta una cosa sola da mantenere, e cambiando password non si
+// deve rimettere mano a ogni dispositivo.
+const TURN_URL = process.env.TURN_URL || '';
+const TURN_USER = process.env.TURN_USER || '';
+const TURN_PASS = process.env.TURN_PASS || '';
+
+/** Da mandare ai client perche' sappiano come raggiungere il relay. */
+function turnConfig() {
+  if (!TURN_URL || !TURN_PASS) return null;
+  return {
+    urls: TURN_URL.split(',').map((u) => u.trim()).filter(Boolean),
+    username: TURN_USER,
+    credential: TURN_PASS,
+  };
+}
 const MAX_PER_ROOM = 2;
 const MAX_MESSAGE_BYTES = 256 * 1024;
 const HEARTBEAT_MS = 30_000;
@@ -123,7 +140,7 @@ const httpServer = createServer((req, res) => {
   // o che lo riscrive (Apache, nginx). Cosi' funziona in entrambi i casi.
   if (req.url === '/healthz' || req.url.endsWith('/healthz')) {
     res.writeHead(200, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ ok: true, rooms: rooms.size }));
+    res.end(JSON.stringify({ ok: true, rooms: rooms.size, turn: !!turnConfig() }));
     return;
   }
   res.writeHead(426, { 'content-type': 'text/plain' });
@@ -223,6 +240,7 @@ wss.on('connection', (ws, req) => {
       send(ws, {
         type: 'joined',
         peerId: ws.peerId,
+        turn: turnConfig(),
         polite: others.length === 0,
         peerPresent: !!other,
         peerActive: other ? other.mode === 'active' : false,
@@ -322,6 +340,7 @@ wss.on('close', () => clearInterval(heartbeat));
 httpServer.listen(PORT, HOST, () => {
   console.log(`[duotalk] signaling in ascolto su ws://${HOST}:${PORT}`);
   console.log(`[duotalk] access token: ${ACCESS_TOKEN ? 'attivo' : 'DISATTIVATO (imposta ACCESS_TOKEN)'}`);
+  console.log(`[duotalk] TURN di riserva: ${turnConfig() ? TURN_URL : 'non configurato (le reti diverse non si collegheranno)'}`);
 });
 
 for (const sig of ['SIGINT', 'SIGTERM']) {
