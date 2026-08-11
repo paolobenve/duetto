@@ -3,6 +3,7 @@ import {
   View, StyleSheet, Animated, PanResponder, useWindowDimensions, Text,
 } from 'react-native';
 import { RTCView, MediaStream } from 'react-native-webrtc';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DEFAULT_ASPECT } from './webrtc';
 
 /**
@@ -25,9 +26,47 @@ import { DEFAULT_ASPECT } from './webrtc';
  * posizione scelta - tornando indietro il riquadrino risaltava in alto a
  * destra, dove nasce. Una preferenza espressa trascinando è comunque una
  * preferenza: va rispettata finché l'app è viva.
+ *
+ * Si ricorda il BORDO a cui è appoggiato e la distanza da quello, non
+ * le coordinate: quello che si sceglie è "in basso a sinistra, staccato
+ * un dito", non "a 340 pixel dall'angolo dello schermo". Cambiando le
+ * proporzioni del video le bande nere si spostano, e con esse i suoi
+ * bordi: un riquadrino appoggiato in basso a sinistra deve restare lì,
+ * non scivolare verso il centro.
  */
-let posizioneScelta: { x: number; y: number } | null = null;
-let larghezzaScelta: number | null = null;
+type Ancoraggio = {
+  /** a quale bordo del video è appoggiato, e a che distanza */
+  ax: 'sinistra' | 'destra';
+  ay: 'alto' | 'basso';
+  ox: number;
+  oy: number;
+  /** larghezza scelta, in frazione della larghezza dello schermo */
+  fw: number;
+};
+
+let posizioneScelta: Ancoraggio | null = null;
+const CHIAVE_PIP = 'duotalk.pip.v1';
+
+/** Scrittura pigra: trascinando si salverebbe a ogni fotogramma. */
+let salvaTimer: ReturnType<typeof setTimeout> | null = null;
+function salvaPosizione() {
+  if (salvaTimer) clearTimeout(salvaTimer);
+  salvaTimer = setTimeout(() => {
+    if (posizioneScelta) {
+      AsyncStorage.setItem(CHIAVE_PIP, JSON.stringify(posizioneScelta)).catch(() => {});
+    }
+  }, 600);
+}
+
+/** Rilettura all'avvio: la posizione è una preferenza, non uno stato. */
+export async function caricaPosizionePip(): Promise<void> {
+  try {
+    const raw = await AsyncStorage.getItem(CHIAVE_PIP);
+    if (!raw) return;
+    const v = JSON.parse(raw);
+    if (typeof v?.ox === 'number' && typeof v?.oy === 'number') posizioneScelta = v;
+  } catch { /* una posizione persa non è un guasto */ }
+}
 
 const MARGIN = 14;
 const TOP_SAFE = 116;    // sotto ingranaggio e badge, senza sfiorarli
@@ -162,9 +201,14 @@ export default function VideoStage(props: Props) {
 
   // --- Dimensione ---------------------------------------------------------
   const [pipWidth, setPipWidth] = useState(
-    () => larghezzaScelta ?? Math.round(width * START_FRACTION),
+    () => Math.round(width * (posizioneScelta?.fw ?? START_FRACTION)),
   );
-  useEffect(() => { larghezzaScelta = pipWidth; }, [pipWidth]);
+  useEffect(() => {
+    if (posizioneScelta) {
+      posizioneScelta = { ...posizioneScelta, fw: pipWidth / width };
+      salvaPosizione();
+    }
+  }, [pipWidth, width]);
   const pipHeight = Math.max(1, Math.round(pipWidth / pipAspect));
 
   // Serve dentro i PanResponder, che non vedono lo stato aggiornato.
@@ -179,35 +223,89 @@ export default function VideoStage(props: Props) {
   );
 
   // --- Posizione ----------------------------------------------------------
-  const posIniziale = useRef(posizioneScelta ?? {
-    x: width - Math.round(width * START_FRACTION) - MARGIN,
-    y: TOP_SAFE,
-  }).current;
-  const pan = useRef(new Animated.ValueXY(posIniziale)).current;
-  // Da dove parte davvero, non da (0,0): il primo riallineamento leggeva
-  // questo valore e avrebbe portato il riquadrino in alto a sinistra.
-  const posRef = useRef({ ...posIniziale });
-  const dragged = useRef(false);
 
-  useEffect(() => {
-    const id = pan.addListener((v) => {
-      posRef.current = v;
-      posizioneScelta = v;
-    });
-    return () => pan.removeListener(id);
-  }, [pan]);
-
-  const clampIntoScreen = useCallback((animate = true) => {
+  /**
+   * Lo spazio in cui il riquadrino può stare: i bordi del VIDEO, non
+   * dello schermo, meno le zone occupate dai comandi.
+   */
+  const spazio = useCallback(() => {
     const { w, h } = sizeRef.current;
     const minX = MARGIN + insetH;
     // I comandi seguono il bordo del video: la zona di rispetto anche,
     // altrimenti il riquadrino finisce sotto l'ingranaggio.
     const minY = TOP_SAFE + insetV;
+    return {
+      minX,
+      minY,
+      maxX: Math.max(minX, width - w - MARGIN - insetH),
+      maxY: Math.max(minY, height - h - BOTTOM_SAFE - insetV),
+    };
+  }, [width, height, insetV, insetH]);
+
+  const posIniziale = useRef<{ x: number; y: number } | null>(null);
+  if (posIniziale.current === null) {
+    const w = Math.round(width * (posizioneScelta?.fw ?? START_FRACTION));
+    const minX = MARGIN + insetH;
+    const minY = TOP_SAFE + insetV;
     const maxX = Math.max(minX, width - w - MARGIN - insetH);
-    const maxY = Math.max(minY, height - h - BOTTOM_SAFE - insetV);
-    const x = Math.min(Math.max(posRef.current.x, minX), maxX);
-    const y = Math.min(Math.max(posRef.current.y, minY), maxY);
-    if (x === posRef.current.x && y === posRef.current.y) return;
+    const maxY = Math.max(minY, height - Math.round(w / DEFAULT_ASPECT) - BOTTOM_SAFE - insetV);
+    const a = posizioneScelta;
+    posIniziale.current = a
+      ? {
+          x: a.ax === 'sinistra' ? minX + a.ox : maxX - a.ox,
+          y: a.ay === 'alto' ? minY + a.oy : maxY - a.oy,
+        }
+      : { x: maxX, y: minY };  // in alto a destra
+  }
+  const pan = useRef(new Animated.ValueXY(posIniziale.current)).current;
+  // Da dove parte davvero, non da (0,0): il primo riallineamento leggeva
+  // questo valore e avrebbe portato il riquadrino in alto a sinistra.
+  const posRef = useRef({ ...posIniziale.current });
+  const dragged = useRef(false);
+
+  /**
+   * Registra a quale bordo è appoggiato e a che distanza.
+   *
+   * Si sceglie sempre il bordo PIÙ VICINO: chi mette il riquadrino in
+   * basso a sinistra sta esprimendo "in basso a sinistra", e lì deve
+   * restare anche quando il quadro cambia forma.
+   */
+  const ricorda = useCallback(() => {
+    const { minX, minY, maxX, maxY } = spazio();
+    const daSinistra = posRef.current.x - minX;
+    const daDestra = maxX - posRef.current.x;
+    const daAlto = posRef.current.y - minY;
+    const daBasso = maxY - posRef.current.y;
+    posizioneScelta = {
+      ax: daSinistra <= daDestra ? 'sinistra' : 'destra',
+      ay: daAlto <= daBasso ? 'alto' : 'basso',
+      ox: Math.max(0, Math.round(Math.min(daSinistra, daDestra))),
+      oy: Math.max(0, Math.round(Math.min(daAlto, daBasso))),
+      fw: sizeRef.current.w / width,
+    };
+    salvaPosizione();
+  }, [spazio, width]);
+
+  useEffect(() => {
+    const id = pan.addListener((v) => { posRef.current = v; });
+    return () => pan.removeListener(id);
+  }, [pan]);
+
+  /**
+   * Rimette il riquadrino dove l'utente l'ha scelto, ricalcolandolo sui
+   * bordi attuali del video. Cambiando le proporzioni le bande nere si
+   * spostano: restando fermo in pixel, il riquadrino uscirebbe dal video
+   * o si staccherebbe dal bordo a cui era appoggiato.
+   */
+  const riposiziona = useCallback((animate = true) => {
+    const { minX, minY, maxX, maxY } = spazio();
+    const a = posizioneScelta;
+    const x = !a ? maxX : a.ax === 'sinistra'
+      ? Math.min(maxX, minX + a.ox) : Math.max(minX, maxX - a.ox);
+    const y = !a ? minY : a.ay === 'alto'
+      ? Math.min(maxY, minY + a.oy) : Math.max(minY, maxY - a.oy);
+    if (Math.abs(x - posRef.current.x) < 0.5 && Math.abs(y - posRef.current.y) < 0.5) return;
+    posRef.current = { x, y };
     if (animate) {
       Animated.spring(pan, {
         toValue: { x, y }, useNativeDriver: false, friction: 8,
@@ -215,11 +313,31 @@ export default function VideoStage(props: Props) {
     } else {
       pan.setValue({ x, y });
     }
-  }, [pan, width, height, insetV, insetH]);
+  }, [pan, spazio]);
 
-  // Se ruoti il telefono, o il riquadrino cresce, va riportato dentro.
-  useEffect(() => { clampIntoScreen(); },
-    [width, height, pipWidth, pipHeight, insetV, insetH, clampIntoScreen]);
+  const clampIntoScreen = useCallback((animate = true) => {
+    const { minX, minY, maxX, maxY } = spazio();
+    const x = Math.min(Math.max(posRef.current.x, minX), maxX);
+    const y = Math.min(Math.max(posRef.current.y, minY), maxY);
+    if (x === posRef.current.x && y === posRef.current.y) { ricorda(); return; }
+    // La posizione finale si registra subito: aspettando la fine
+    // dell'animazione si ricorderebbe quella di partenza.
+    posRef.current = { x, y };
+    ricorda();
+    if (animate) {
+      Animated.spring(pan, {
+        toValue: { x, y }, useNativeDriver: false, friction: 8,
+      }).start();
+    } else {
+      pan.setValue({ x, y });
+    }
+  }, [pan, spazio, ricorda]);
+
+  // Cambiando schermo, proporzioni o dimensione del riquadrino, si torna
+  // alla posizione SCELTA ricalcolata sui bordi nuovi - non si riporta
+  // dentro quella vecchia, che era espressa in pixel di un altro quadro.
+  useEffect(() => { riposiziona(); },
+    [width, height, pipWidth, pipHeight, insetV, insetH, riposiziona]);
 
   // --- Trascinamento (e pizzico a due dita per ridimensionare) ------------
   const pinchStart = useRef<{ dist: number; w: number } | null>(null);
@@ -264,6 +382,7 @@ export default function VideoStage(props: Props) {
           pan.flattenOffset();
           pinchStart.current = null;
           if (dragged.current) {
+            // clampIntoScreen registra da sé la posizione finale.
             clampIntoScreen();
           } else {
             // Tocco secco: scambia grande e piccolo.

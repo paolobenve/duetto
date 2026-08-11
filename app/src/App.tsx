@@ -17,6 +17,7 @@ import SettingsScreen from './SettingsScreen';
 import SetupScreen from './SetupScreen';
 import PairingScreen from './PairingScreen';
 import ChannelScreen from './ChannelScreen';
+import { caricaPosizionePip } from './VideoStage';
 import { useAudioRoute } from './audioRoute';
 import { stopListening } from './presence';
 import { avatarFor, peerAvatar } from './avatar';
@@ -197,6 +198,9 @@ export default function App() {
   // --- avvio ---------------------------------------------------------------
   useEffect(() => {
     (async () => {
+      // Prima della configurazione: se arrivasse dopo, il riquadrino
+      // comparirebbe al suo posto di nascita e poi salterebbe.
+      await caricaPosizionePip();
       const c = await loadConfig();
       setCfg(c);
       if (!isServerConfigured(c)) setScreen('settings');
