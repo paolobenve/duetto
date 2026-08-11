@@ -240,7 +240,17 @@ export default function App() {
             }
           },
 
-          onSignal: (msg) => { sessionRef.current?.onSignal(msg); },
+          onSignal: async (msg) => {
+            const sess = sessionRef.current;
+            if (!sess) return;
+            // Se l'altro ha ricostruito prima di noi, la sua offerta
+            // arriva quando ancora non abbiamo nulla per riceverla e
+            // verrebbe scartata: prima ci prepariamo, poi la trattiamo.
+            if (!sess.hasPeer() && inChannelRef.current && peerActiveRef.current) {
+              try { await sess.attachPeer(politeRef.current); } catch { /* noop */ }
+            }
+            sess.onSignal(msg);
+          },
 
           onKnockResult: (ok, error) => {
             if (ok) {
@@ -338,7 +348,10 @@ export default function App() {
               // ritorno, che fara' ripartire la negoziazione da solo.
               if (signalingWasDown.current) return;
               if (inChannelRef.current && peerActiveRef.current) attachPeer(true);
-            }, st === 'failed' ? 500 : 4000);
+            // "disconnected" rientra spesso da solo entro una decina di
+            // secondi: ricostruire subito causerebbe un'interruzione
+            // inutile, e a catena altre riconnessioni.
+            }, st === 'failed' ? 800 : 12000);
           } else if (st === 'connected' && rebuildTimer.current) {
             clearTimeout(rebuildTimer.current);
             rebuildTimer.current = null;

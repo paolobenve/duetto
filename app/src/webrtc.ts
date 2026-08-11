@@ -400,6 +400,11 @@ export class ChannelSession {
     }
   }
 
+  /** Esiste una connessione con l'altro, buona o meno che sia. */
+  hasPeer(): boolean {
+    return !!this.pc;
+  }
+
   /**
    * Il collegamento diretto e' ancora buono?
    *

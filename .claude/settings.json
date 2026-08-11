@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(adb devices*)",
+      "Bash(adb logcat*)",
+      "Bash(adb install*)",
+      "Bash(adb push*)",
+      "Bash(adb shell getprop*)",
+      "Bash(adb shell pm path*)",
+      "Bash(adb shell dumpsys*)",
+      "Bash(adb shell pidof*)",
+      "Bash(adb -s *)",
+      "Bash(npm run build:apk)",
+      "Bash(npm run sync)",
+      "Bash(npm run bump)",
+      "Bash(npm run test:smoke)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git add*)",
+      "Bash(git commit*)"
+    ],
+    "ask": [
+      "Bash(rsync*)",
+      "Bash(git push*)",
+      "Bash(git reset*)",
+      "Bash(git checkout*)",
+      "Bash(rm *)",
+      "Bash(sudo *)"
+    ]
+  }
+}

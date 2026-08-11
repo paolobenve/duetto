@@ -69,6 +69,19 @@ export default function ChannelScreen(props: Props) {
 
   const together = status === 'together';
   const linked = connectionState === 'connected';
+
+  /**
+   * Interruzione in corso: l'altro c'e' ma il collegamento diretto no.
+   * Non e' un "non c'e' nessuno": e' un'attesa, e va detto invece di
+   * lasciare uno schermo nero senza spiegazione.
+   */
+  const interrupted = together && !linked &&
+    (connectionState === 'disconnected' || connectionState === 'failed');
+  const notice = interrupted
+    ? (connectionState === 'failed'
+        ? 'Connessione persa, sto ricollegando…'
+        : 'Connessione persa, in attesa…')
+    : undefined;
   // remoteHasVideo arriva come prop: e' un evento esplicito della sessione,
   // perche' le tracce entrano dentro lo stesso MediaStream e React non se
   // ne accorgerebbe guardando il riferimento.
@@ -113,6 +126,8 @@ export default function ChannelScreen(props: Props) {
         localHasVideo={localHasVideo}
         remoteHasVideo={remoteHasVideo}
         remoteVideoKey={remoteVideoKey}
+        awaitingRemote={interrupted}
+        notice={notice}
         localAspect={localAspect}
         remoteAspect={remoteAspect}
         compact={compact}

@@ -46,6 +46,16 @@ type Props = {
   remoteAspect?: number;
   /** cambia a ogni ripartenza del video remoto: ricrea il visualizzatore */
   remoteVideoKey?: number;
+  /**
+   * Il video dell'altro e' atteso ma momentaneamente assente.
+   *
+   * Serve a NON promuovere il proprio video a schermo intero durante
+   * un'interruzione: il posto grande resta dell'altro, cosi' al ritorno
+   * non si vede prima il proprio ingrandirsi e poi rimpicciolirsi.
+   */
+  awaitingRemote?: boolean;
+  /** avviso da sovrapporre al video, es. durante un'interruzione */
+  notice?: string;
   /** in Picture-in-Picture: solo il video grande, senza riquadrino */
   compact?: boolean;
   /** mostrato quando non c'e' nessun video */
@@ -56,6 +66,7 @@ export default function VideoStage(props: Props) {
   const {
     localStream, remoteStream, localHasVideo, remoteHasVideo,
     localAspect, remoteAspect, remoteVideoKey, compact, placeholder,
+    awaitingRemote, notice,
   } = props;
   const { width, height } = useWindowDimensions();
 
@@ -81,6 +92,13 @@ export default function VideoStage(props: Props) {
     pipStream = selfBig ? remoteStream : localStream;
   } else if (remoteHasVideo) {
     bigStream = remoteStream;
+  } else if (awaitingRemote && localHasVideo) {
+    // Interruzione in corso: il posto grande resta dell'altro (vuoto, con
+    // l'avviso sopra) e il nostro video resta nel riquadrino. Promuoverlo
+    // farebbe vedere il proprio video ingrandirsi e poi rimpicciolirsi
+    // appena l'altro torna.
+    pipStream = localStream;
+    pipIsSelf = true;
   } else if (localHasVideo) {
     bigStream = localStream;
     bigIsSelf = true;
@@ -347,6 +365,12 @@ export default function VideoStage(props: Props) {
         <View style={[styles.big, styles.placeholder]}>{placeholder}</View>
       )}
 
+      {notice ? (
+        <View style={styles.notice} pointerEvents="none">
+          <Text style={styles.noticeText}>{notice}</Text>
+        </View>
+      ) : null}
+
       {pipStream && !compact ? (
         <Animated.View
           {...dragResponder.panHandlers}
@@ -395,6 +419,15 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
   },
   pipVideo: { flex: 1 },
+  notice: {
+    position: 'absolute', left: 0, right: 0, top: '46%',
+    alignItems: 'center', paddingHorizontal: 24,
+  },
+  noticeText: {
+    color: '#e6ebf1', fontSize: 15, textAlign: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 20,
+    paddingVertical: 10, paddingHorizontal: 18, overflow: 'hidden',
+  },
   pipTag: {
     position: 'absolute', left: 0, right: 0, top: 0,
     backgroundColor: 'rgba(0,0,0,0.45)', paddingVertical: 2, alignItems: 'center',
