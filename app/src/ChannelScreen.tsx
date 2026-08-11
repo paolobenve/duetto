@@ -397,11 +397,11 @@ function PresenceCard(props: {
  * dell'altro è brutta - senza dover leggere un log.
  */
 function StatsLine({ stats, quality }: { stats: VideoStats; quality: string }) {
-  const fmt = (v?: { w: number; h: number; kbps: number | null }) => {
+  const fmt = (v?: { w: number; h: number; fps: number; kbps: number | null }) => {
     if (!v || !v.w || !v.h) return null;
     const banda = v.kbps === null ? '' :
       v.kbps >= 1000 ? ` · ${(v.kbps / 1000).toFixed(1)} Mbit/s` : ` · ${v.kbps} kbit/s`;
-    return `${v.w}×${v.h}${banda}`;
+    return `${v.w}×${v.h} · ${v.fps} fps${banda}`;
   };
   const su = fmt(stats.out);
   const giu = fmt(stats.in);
@@ -409,7 +409,7 @@ function StatsLine({ stats, quality }: { stats: VideoStats; quality: string }) {
   // spiega i numeri accanto, e senza sembrerebbero venire dal nulla.
   return (
     <Text style={styles.stats} numberOfLines={1}>
-      {quality}
+      {`Risoluzione: ${quality.toLowerCase()}`}
       {su ? `   \u2191 ${su}` : ''}
       {giu ? `   \u2193 ${giu}` : ''}
     </Text>

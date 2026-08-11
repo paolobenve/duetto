@@ -48,8 +48,8 @@ export type ChannelEvents = {
 };
 
 export type VideoStats = {
-  out?: { w: number; h: number; kbps: number | null };
-  in?: { w: number; h: number; kbps: number | null };
+  out?: { w: number; h: number; fps: number; kbps: number | null };
+  in?: { w: number; h: number; fps: number; kbps: number | null };
 };
 
 /** Proporzioni di ripiego: anteprima verticale 9:16, il caso più comune. */
@@ -143,6 +143,14 @@ export class ChannelSession {
     this.pc = pc;
 
     this.remoteStream = new MediaStream();
+
+    // Le misure seguono la connessione, non la nostra camera: anche con
+    // il solo video dell'altro acceso c'è qualcosa da mostrare.
+    this.lastOutbound = null;
+    this.lastInbound = null;
+    if (!this.statsTimer) {
+      this.statsTimer = setInterval(() => { this.logOutboundVideo(); }, 5000);
+    }
 
     /**
      * Vero solo finché questa è LA connessione in uso.
@@ -616,6 +624,8 @@ export class ChannelSession {
       const stats = await pc.getStats();
       const out: VideoStats = {};
       let limite = '?';
+      // Ciò che non compare fra le statistiche non c'è: lasciare il
+      // valore precedente mostrerebbe una risoluzione che non esiste più.
       let fpsOut = 0;
 
       /** Ricostruendo la connessione i contatori ripartono da zero: la
@@ -634,15 +644,16 @@ export class ChannelSession {
           out.out = {
             w: r.frameWidth ?? 0,
             h: r.frameHeight ?? 0,
+            fps: Math.round(r.framesPerSecond ?? 0),
             kbps: rate(this.lastOutbound, r.timestamp, r.bytesSent),
           };
           this.lastOutbound = { ts: r.timestamp, bytes: r.bytesSent };
           limite = r.qualityLimitationReason ?? '?';
-          fpsOut = Math.round(r.framesPerSecond ?? 0);
         } else if (r.type === 'inbound-rtp') {
           out.in = {
             w: r.frameWidth ?? 0,
             h: r.frameHeight ?? 0,
+            fps: Math.round(r.framesPerSecond ?? 0),
             kbps: rate(this.lastInbound, r.timestamp, r.bytesReceived),
           };
           this.lastInbound = { ts: r.timestamp, bytes: r.bytesReceived };
@@ -654,7 +665,7 @@ export class ChannelSession {
       // Nel log basta una riga ogni tanto: sotto ai comandi c'è il resto.
       this.statsTicks += 1;
       if (out.out && this.statsTicks % 3 === 0) {
-        log('in uscita:', `${out.out.w}x${out.out.h}`, `@${fpsOut}fps`,
+        log('in uscita:', `${out.out.w}x${out.out.h}`, `@${out.out.fps}fps`,
           out.out.kbps !== null ? `- ${out.out.kbps} kbit/s` : '',
           '- limite:', limite);
       }
@@ -774,9 +785,6 @@ export class ChannelSession {
     if (!this.peerWatching) await this.applyPeerWatching();
 
     this.lastOutbound = null;
-    if (!this.statsTimer) {
-      this.statsTimer = setInterval(() => { this.logOutboundVideo(); }, 5000);
-    }
 
     this.events.onLocalStream?.(this.localStream);
     this.broadcastState();
@@ -955,10 +963,7 @@ export class ChannelSession {
       log('camera spenta, traccia', track.id);
     }
 
-    if (this.statsTimer) { clearInterval(this.statsTimer); this.statsTimer = null; }
     this.lastOutbound = null;
-    this.lastInbound = null;
-    this.events.onVideoStats?.({});
 
     this.events.onLocalStream?.(this.localStream);
     this.broadcastState();
@@ -1023,6 +1028,10 @@ export class ChannelSession {
 
   /** Chiude la connessione con l'altro ma resta nel canale. */
   detachPeer() {
+    if (this.statsTimer) { clearInterval(this.statsTimer); this.statsTimer = null; }
+    this.lastOutbound = null;
+    this.lastInbound = null;
+    this.events.onVideoStats?.({});
     this.remoteStream?.getTracks().forEach((t) => t.stop());
     this.remoteStream = null;
     this.videoSender = null;
