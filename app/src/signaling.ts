@@ -19,7 +19,10 @@ import { SignalCrypto } from './crypto';
 export type SignalMessage =
   | { kind: 'desc'; type: 'offer' | 'answer'; sdp: string }
   | { kind: 'ice'; candidate: any }
-  | { kind: 'state'; audio: boolean; video: boolean; aspect?: number };
+  | { kind: 'state'; audio: boolean; video: boolean; aspect?: number }
+  // Chi risponde non puo' offrire: se resta senza collegamento e l'altro
+  // non se ne accorge, l'unica via d'uscita e' chiederglielo.
+  | { kind: 'renegotiate' };
 
 export type PairMessage =
   | { kind: 'pubkey'; pub: string; name: string }

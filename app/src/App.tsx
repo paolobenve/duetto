@@ -258,6 +258,12 @@ export default function App() {
           onSignal: async (msg) => {
             const sess = sessionRef.current;
             if (!sess) return;
+            // L'altro e' rimasto senza collegamento e ci chiede di
+            // rifare l'offerta: tocca a noi, che siamo quelli che offrono.
+            if (msg.kind === 'renegotiate') {
+              if (!politeRef.current && inChannelRef.current) attachPeer(true);
+              return;
+            }
             // Se l'altro ha ricostruito prima di noi, la sua offerta
             // arriva quando ancora non abbiamo nulla per riceverla e
             // verrebbe scartata: prima ci prepariamo, poi la trattiamo.
@@ -434,6 +440,30 @@ export default function App() {
     // direttamente nel canale.
     AppWindow.minimize().catch(() => {});
   }, []);
+
+  /**
+   * Rete di sicurezza contro il collegamento che non riparte.
+   *
+   * Chi risponde non puo' offrire: se resta senza connessione e l'altro
+   * non se ne accorge - perche' dal suo lato sembra tutto a posto -
+   * aspetterebbe all'infinito. Ogni pochi secondi, chi si trova senza
+   * collegamento mentre entrambi sono nel canale se ne occupa: chi offre
+   * ricostruisce, chi risponde lo chiede.
+   */
+  useEffect(() => {
+    if (screen !== 'channel') return;
+    const timer = setInterval(() => {
+      const sess = sessionRef.current;
+      const sig = signalingRef.current;
+      if (!sess || !sig?.connected) return;
+      if (!inChannelRef.current || !peerActiveRef.current) return;
+      if (sess.isPeerHealthy()) return;
+
+      if (politeRef.current) sig.sendSignal({ kind: 'renegotiate' });
+      else attachPeer(true);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [screen, attachPeer]);
 
   // --- tasto Indietro: Picture-in-Picture ----------------------------------
   const pipSupported = useRef(false);

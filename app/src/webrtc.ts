@@ -294,6 +294,8 @@ export class ChannelSession {
       return;
     }
 
+    if (msg.kind === 'renegotiate') return; // gestito da chi conosce il ruolo
+
     const pc = this.pc;
     if (!pc) return;
 

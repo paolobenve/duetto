@@ -377,7 +377,12 @@ export default function VideoStage(props: Props) {
           />
         </Animated.View>
       ) : (
-        <View style={[styles.big, styles.placeholder]}>{placeholder}</View>
+        <View style={[styles.big, styles.placeholder]}>
+          {/* Con un avviso in sovrimpressione il riepilogo sotto sarebbe
+              solo rumore: due messaggi sovrapposti che dicono la stessa
+              cosa. Ne resta uno. */}
+          {notice ? null : placeholder}
+        </View>
       )}
 
       {notice ? (
