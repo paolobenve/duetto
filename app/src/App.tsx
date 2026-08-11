@@ -161,7 +161,12 @@ export default function App() {
    * dire che di meglio non c'è, e insistere costerebbe interruzioni.
    */
   useEffect(() => {
-    if (connState !== 'connected') { relayRiprovato.current = false; return; }
+    // Il contrassegno NON si azzera qui. Azzerandolo a ogni uscita da
+    // "connected" si innescava un ciclo: il tentativo interrompe la
+    // connessione, l'interruzione riabilita il tentativo, e da fuori si
+    // vedeva "collegamento interrotto" ogni dieci secondi per sempre.
+    // Si riprova solo dopo un vero cambio di rete - vedi `onJoined`.
+    if (connState !== 'connected') return;
     if (videoStats.percorso !== 'relay' || relayRiprovato.current) return;
     const t = setTimeout(() => {
       if (!inChannelRef.current || !peerActiveRef.current) return;
@@ -309,6 +314,10 @@ export default function App() {
             // nel frattempo è andata persa: si riparte da zero.
             const afterOutage = signalingWasDown.current;
             signalingWasDown.current = false;
+            // Solo un vero cambio di rete rende sensato ricercare una
+            // strada diretta: è l'unico momento in cui può esserne
+            // comparsa una che prima non c'era.
+            if (afterOutage) relayRiprovato.current = false;
             // Il ruolo NON può dipendere da chi entra per primo: la
             // connessione si riaggancia a ogni cambio di rete, e chi era
             // "primo" può ritrovarsi secondo. Sono bastate due
