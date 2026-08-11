@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated,
-  useWindowDimensions,
+  useWindowDimensions, Modal, Pressable,
 } from 'react-native';
 import { MediaStream } from 'react-native-webrtc';
 import type { PresenceStatus } from './signaling';
@@ -38,13 +38,15 @@ type Props = {
   remoteAspect?: number;
   knockPending: boolean;
   audioRoute: AudioRoute;
-  canCycleRoute: boolean;
+  /** uscite audio davvero collegate in questo momento */
+  audioRoutes: AudioRoute[];
   onToggleAudio: () => void;
   onToggleVideo: () => void;
   onSwitchCamera: () => void;
-  onCycleRoute: () => void;
+  onSelectRoute: (r: AudioRoute) => void;
   onKnock: () => void;
   onLeave: () => void;
+  onOpenSettings: () => void;
 };
 
 /**
@@ -55,13 +57,15 @@ export default function ChannelScreen(props: Props) {
   const {
     channel, peerName, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
-    knockPending, audioRoute, canCycleRoute,
-    onToggleAudio, onToggleVideo, onSwitchCamera, onCycleRoute, onKnock, onLeave,
+    knockPending, audioRoute, audioRoutes,
+    onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, onOpenSettings,
   } = props;
 
   // In Picture-in-Picture la finestra e' minuscola: niente comandi.
   const { width: winWidth } = useWindowDimensions();
   const compact = winWidth < COMPACT_WIDTH;
+
+  const [routeMenu, setRouteMenu] = useState(false);
 
   const together = status === 'together';
   const linked = connectionState === 'connected';
@@ -127,18 +131,16 @@ export default function ChannelScreen(props: Props) {
       {compact ? null : (
         <>
       {/* Barra in alto: canale + stato */}
-      <Animated.View style={[styles.topBar, { opacity }]} pointerEvents="none">
-        <View style={styles.badge}>
+      <Animated.View style={[styles.topBar, { opacity }]}>
+        <TouchableOpacity style={styles.gear} onPress={press(onOpenSettings)}>
+          <Text style={styles.gearText}>{'\u2699'}</Text>
+        </TouchableOpacity>
+        <View style={styles.spacer} pointerEvents="none" />
+        <View style={styles.badge} pointerEvents="none">
           <View style={[styles.dot, together ? styles.dotGreen : styles.dotGrey]} />
-          <Text style={styles.badgeText}>{channel}</Text>
+          <Text style={styles.badgeText}>DuoTalk</Text>
+          <Text style={styles.version}>  {VERSION_LABEL}</Text>
         </View>
-        {together && linked ? (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{'\u{1F512}'} cifrato E2E</Text>
-          </View>
-        ) : null}
-        <View style={styles.spacer} />
-        <Text style={styles.version}>{VERSION_LABEL}</Text>
       </Animated.View>
 
       {/* Controlli: sempre presenti, in basso */}
@@ -150,10 +152,13 @@ export default function ChannelScreen(props: Props) {
           onPress={press(onToggleVideo)}
         />
         <CircleButton
+          // Tocco: muto/non muto. Pressione prolungata: da dove esce l'audio.
           label={audioOn ? 'Audio' : 'Muto'}
           icon={audioOn ? '\u{1F3A4}' : '\u{1F507}'}
           active={audioOn}
           onPress={press(onToggleAudio)}
+          onLongPress={press(() => setRouteMenu(true))}
+          badge={ROUTE_ICON[audioRoute]}
         />
         <CircleButton
           label="Gira"
@@ -161,14 +166,6 @@ export default function ChannelScreen(props: Props) {
           // Senza camera accesa non c'e' nulla da girare.
           disabled={!videoOn}
           onPress={press(onSwitchCamera)}
-        />
-        <CircleButton
-          // L'etichetta dice sempre dove sta uscendo l'audio adesso.
-          label={ROUTE_LABEL[audioRoute]}
-          icon={ROUTE_ICON[audioRoute]}
-          active
-          disabled={!canCycleRoute}
-          onPress={press(onCycleRoute)}
         />
         <CircleButton
           label={knockPending ? 'Avvisato' : 'Avvisa'}
@@ -186,6 +183,36 @@ export default function ChannelScreen(props: Props) {
       </Animated.View>
         </>
       )}
+
+      {/* Uscita audio: si apre tenendo premuto il pulsante Audio. */}
+      <Modal
+        visible={routeMenu}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setRouteMenu(false)}>
+        <Pressable style={styles.sheetBack} onPress={() => setRouteMenu(false)}>
+          <View style={styles.sheet}>
+            <Text style={styles.sheetTitle}>Uscita audio</Text>
+            {audioRoutes.map((r) => (
+              <TouchableOpacity
+                key={r}
+                style={styles.sheetRow}
+                onPress={() => { onSelectRoute(r); setRouteMenu(false); }}>
+                <Text style={styles.sheetIcon}>{ROUTE_ICON[r]}</Text>
+                <Text style={[styles.sheetLabel, r === audioRoute && styles.sheetLabelOn]}>
+                  {ROUTE_LABEL[r]}
+                </Text>
+                {r === audioRoute ? <Text style={styles.sheetCheck}>{'\u2713'}</Text> : null}
+              </TouchableOpacity>
+            ))}
+            {audioRoutes.length < 2 ? (
+              <Text style={styles.sheetHint}>
+                Collega cuffie o un dispositivo Bluetooth per avere altre scelte.
+              </Text>
+            ) : null}
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -259,6 +286,9 @@ function CircleButton(props: {
   label: string;
   icon: string;
   onPress: () => void;
+  onLongPress?: () => void;
+  /** piccolo simbolo d'angolo: usato per l'uscita audio attiva */
+  badge?: string;
   active?: boolean;
   highlight?: boolean;
   danger?: boolean;
@@ -268,6 +298,8 @@ function CircleButton(props: {
     <TouchableOpacity
       style={styles.ctrlItem}
       onPress={props.onPress}
+      onLongPress={props.onLongPress}
+      delayLongPress={350}
       disabled={props.disabled}
       activeOpacity={0.6}>
       <View
@@ -283,6 +315,11 @@ function CircleButton(props: {
           props.disabled && styles.circleDisabled,
         ]}>
         <Text style={styles.circleIcon}>{props.icon}</Text>
+        {props.badge ? (
+          <View style={styles.miniBadge}>
+            <Text style={styles.miniBadgeText}>{props.badge}</Text>
+          </View>
+        ) : null}
       </View>
       <Text style={styles.ctrlLabel}>{props.label}</Text>
     </TouchableOpacity>
@@ -319,7 +356,42 @@ const styles = StyleSheet.create({
   dotGrey: { backgroundColor: '#6b7686' },
   badgeText: { color: '#e6ebf1', fontSize: 13, fontWeight: '600' },
   spacer: { flex: 1 },
-  version: { color: 'rgba(255,255,255,0.45)', fontSize: 10 },
+  gear: {
+    width: 36, height: 36, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  gearText: { color: '#e6ebf1', fontSize: 17 },
+  version: { color: 'rgba(230,235,241,0.45)', fontSize: 10 },
+  miniBadge: {
+    position: 'absolute', right: -2, bottom: -2,
+    backgroundColor: '#0b0e14', borderRadius: 9, paddingHorizontal: 3, paddingVertical: 1,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
+  },
+  miniBadgeText: { fontSize: 10 },
+  sheetBack: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'flex-end', padding: 16,
+  },
+  sheet: {
+    backgroundColor: '#151a23', borderRadius: 16, padding: 8, paddingBottom: 16,
+    borderWidth: 1, borderColor: '#252c38',
+  },
+  sheetTitle: {
+    color: '#8892a0', fontSize: 13, fontWeight: '700',
+    paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8,
+  },
+  sheetRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    paddingHorizontal: 14, paddingVertical: 15, borderRadius: 12,
+  },
+  sheetIcon: { fontSize: 20 },
+  sheetLabel: { color: '#c9d2de', fontSize: 17, flex: 1 },
+  sheetLabelOn: { color: '#7cc4ff', fontWeight: '700' },
+  sheetCheck: { color: '#7cc4ff', fontSize: 18, fontWeight: '700' },
+  sheetHint: {
+    color: '#5a6472', fontSize: 12, paddingHorizontal: 14, paddingTop: 6, lineHeight: 17,
+  },
 
   controls: {
     // Sei pulsanti: su schermi stretti servono misure contenute.

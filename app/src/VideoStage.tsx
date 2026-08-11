@@ -28,6 +28,13 @@ const MAX_FRACTION = 0.62;
 
 const HANDLE = 34; // area di presa per ridimensionare
 
+/** Quanto si puo' ingrandire il video grande col pizzico. */
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 5;
+/** Ingrandimento del doppio tocco. */
+const TAP_ZOOM = 2.5;
+const DOUBLE_TAP_MS = 300;
+
 type Props = {
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
@@ -205,17 +212,137 @@ export default function VideoStage(props: Props) {
     [clampWidth, clampIntoScreen],
   );
 
+  // --- Zoom sul video grande ----------------------------------------------
+  // Pizzico per ingrandire, trascinamento per spostarsi dentro
+  // l'ingrandimento, doppio tocco per tornare a schermo pieno.
+  const zoom = useRef(new Animated.Value(1)).current;
+  const zoomRef = useRef(1);
+  const shift = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const shiftRef = useRef({ x: 0, y: 0 });
+  const zoomStart = useRef(1);
+  const pinchBase = useRef(0);
+  const shiftStart = useRef({ x: 0, y: 0 });
+  const lastTap = useRef(0);
+  const movedInGesture = useRef(false);
+
+  useEffect(() => {
+    const z = zoom.addListener((v) => { zoomRef.current = v.value; });
+    const p2 = shift.addListener((v) => { shiftRef.current = v; });
+    return () => { zoom.removeListener(z); shift.removeListener(p2); };
+  }, [zoom, shift]);
+
+  const resetZoom = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(zoom, { toValue: 1, duration: 180, useNativeDriver: true }),
+      Animated.timing(shift, { toValue: { x: 0, y: 0 }, duration: 180, useNativeDriver: true }),
+    ]).start();
+  }, [zoom, shift]);
+
+  // Cambiando chi sta a schermo grande, l'ingrandimento non ha piu' senso.
+  useEffect(() => { resetZoom(); }, [bigIsSelf, remoteVideoKey, resetZoom]);
+
+  /** Non lasciare che l'immagine ingrandita esca dai bordi. */
+  const clampShift = useCallback(() => {
+    const z = zoomRef.current;
+    const maxX = Math.max(0, (width * (z - 1)) / 2);
+    const maxY = Math.max(0, (height * (z - 1)) / 2);
+    const x = Math.min(Math.max(shiftRef.current.x, -maxX), maxX);
+    const y = Math.min(Math.max(shiftRef.current.y, -maxY), maxY);
+    if (x !== shiftRef.current.x || y !== shiftRef.current.y) {
+      Animated.spring(shift, {
+        toValue: { x, y }, useNativeDriver: true, friction: 8,
+      }).start();
+    }
+  }, [shift, width, height]);
+
+  const zoomResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: (e, g) =>
+          (e.nativeEvent.touches?.length ?? 0) >= 2 ||
+          (zoomRef.current > 1.01 && (Math.abs(g.dx) > 3 || Math.abs(g.dy) > 3)),
+        onPanResponderGrant: () => {
+          movedInGesture.current = false;
+          zoomStart.current = zoomRef.current;
+          shiftStart.current = { ...shiftRef.current };
+          pinchBase.current = 0;
+        },
+        onPanResponderMove: (e, g) => {
+          const touches = e.nativeEvent.touches ?? [];
+          if (touches.length >= 2) {
+            movedInGesture.current = true;
+            const [a, b] = touches;
+            const dist = Math.hypot(a.pageX - b.pageX, a.pageY - b.pageY);
+            if (!pinchBase.current) {
+              pinchBase.current = dist;
+              zoomStart.current = zoomRef.current;
+              return;
+            }
+            const next = Math.min(
+              Math.max((dist / pinchBase.current) * zoomStart.current, MIN_ZOOM),
+              MAX_ZOOM,
+            );
+            zoom.setValue(next);
+            return;
+          }
+          if (zoomRef.current > 1.01) {
+            if (Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4) movedInGesture.current = true;
+            shift.setValue({
+              x: shiftStart.current.x + g.dx,
+              y: shiftStart.current.y + g.dy,
+            });
+          }
+        },
+        onPanResponderRelease: () => {
+          if (!movedInGesture.current) {
+            // Doppio tocco: ingrandisce, o torna a schermo pieno.
+            const now = Date.now();
+            if (now - lastTap.current < DOUBLE_TAP_MS) {
+              lastTap.current = 0;
+              if (zoomRef.current > 1.01) resetZoom();
+              else {
+                Animated.timing(zoom, {
+                  toValue: TAP_ZOOM, duration: 180, useNativeDriver: true,
+                }).start();
+              }
+              return;
+            }
+            lastTap.current = now;
+            return;
+          }
+          if (zoomRef.current <= 1.01) resetZoom();
+          else clampShift();
+        },
+        onPanResponderTerminate: () => clampShift(),
+      }),
+    [zoom, shift, resetZoom, clampShift],
+  );
+
   return (
     <View style={styles.root}>
       {bigStream ? (
-        <RTCView
-          key={bigIsSelf ? 'big-self' : `big-remote-${remoteVideoKey ?? 0}`}
-          streamURL={bigStream.toURL()}
-          style={styles.big}
-          objectFit="contain"
-          mirror={bigIsSelf}
-          zOrder={0}
-        />
+        <Animated.View
+          {...zoomResponder.panHandlers}
+          style={[
+            styles.big,
+            {
+              transform: [
+                { translateX: shift.x },
+                { translateY: shift.y },
+                { scale: zoom },
+              ],
+            },
+          ]}>
+          <RTCView
+            key={bigIsSelf ? 'big-self' : `big-remote-${remoteVideoKey ?? 0}`}
+            streamURL={bigStream.toURL()}
+            style={styles.bigVideo}
+            objectFit="contain"
+            mirror={bigIsSelf}
+            zOrder={0}
+          />
+        </Animated.View>
       ) : (
         <View style={[styles.big, styles.placeholder]}>{placeholder}</View>
       )}
@@ -256,6 +383,7 @@ export default function VideoStage(props: Props) {
 const styles = StyleSheet.create({
   root: { ...StyleSheet.absoluteFillObject },
   big: { ...StyleSheet.absoluteFillObject, backgroundColor: '#000' },
+  bigVideo: { flex: 1 },
   placeholder: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#0b0e14' },
   pip: {
     position: 'absolute', top: 0, left: 0,

@@ -14,11 +14,12 @@ import { Signaling, PresenceStatus, Mode } from './signaling';
 import { ChannelSession } from './webrtc';
 import SettingsScreen from './SettingsScreen';
 import PairingScreen from './PairingScreen';
-import ListeningScreen from './ListeningScreen';
 import ChannelScreen from './ChannelScreen';
 import { useAudioRoute } from './audioRoute';
 
-type Screen = 'loading' | 'settings' | 'pairing' | 'listening' | 'channel';
+// Nessuna schermata intermedia: o si configura, o ci si accoppia, o si e'
+// nel canale. Aprire l'app - da icona o da notifica - significa entrarci.
+type Screen = 'loading' | 'settings' | 'pairing' | 'channel';
 
 /**
  * Chiede TUTTI i permessi in un colpo solo, al primo avvio.
@@ -83,6 +84,8 @@ export default function App() {
   const cameraGranted = useRef(false);
   const inChannelRef = useRef(false);
   const appStateRef = useRef(AppState.currentState);
+  /** enterChannel serve dentro un effetto che nasce prima di lei */
+  const enterChannelRef = useRef<(() => void) | null>(null);
 
   const audio = useAudioRoute(inChannel);
 
@@ -99,8 +102,16 @@ export default function App() {
   // Sapere se siamo in primo piano decide se mostrare una notifica o no.
   useEffect(() => {
     const sub = AppState.addEventListener('change', (s) => {
+      const wasActive = appStateRef.current === 'active';
       appStateRef.current = s;
-      if (s === 'active') Foreground.clearNotification().catch(() => {});
+      if (s !== 'active') return;
+
+      Foreground.clearNotification().catch(() => {});
+      // Tornare in primo piano - da icona o toccando la notifica - vuol
+      // dire voler stare nel canale: si rientra senza chiedere nulla.
+      if (!wasActive && !inChannelRef.current && signalingRef.current) {
+        enterChannelRef.current?.();
+      }
     });
     return () => sub.remove();
   }, []);
@@ -295,6 +306,8 @@ export default function App() {
     if (peerActiveRef.current) attachPeer();
   }, [cfg, attachPeer]);
 
+  useEffect(() => { enterChannelRef.current = enterChannel; }, [enterChannel]);
+
   const leaveChannel = useCallback(() => {
     const sig = signalingRef.current;
     sessionRef.current?.leaveChannel();
@@ -311,7 +324,6 @@ export default function App() {
     setInChannel(false);
     inChannelRef.current = false;
     sig?.setMode('listening');
-    setScreen('listening');
 
     // Uscire dal canale e' uscire dall'app: la finestra sparisce. Il
     // processo pero' resta vivo, cosi' continui a essere raggiungibile e
@@ -384,7 +396,7 @@ export default function App() {
   const onSaveSettings = useCallback(async (next: DuoConfig) => {
     await saveConfig(next);
     setCfg(next);
-    setScreen(isPaired(next) ? 'listening' : 'pairing');
+    setScreen(isPaired(next) ? 'channel' : 'pairing');
   }, []);
 
   const onPaired = useCallback(async (pair: PairInfo) => {
@@ -393,7 +405,7 @@ export default function App() {
     await saveConfig(next);
     setCfg(next);
     setPeerName(pair.peerName);
-    setScreen('listening');
+    setScreen('channel');
   }, [cfg]);
 
   const onUnpair = useCallback(async () => {
@@ -436,23 +448,6 @@ export default function App() {
     );
   }
 
-  if (screen === 'listening') {
-    return (
-      <View style={styles.safe}>
-        <StatusBar barStyle="light-content" />
-        <ListeningScreen
-          peerName={shownName}
-          status={status}
-          peerPresent={peerPresent}
-          knockPending={knockPending}
-          onEnter={enterChannel}
-          onKnock={() => signalingRef.current?.knock()}
-          onSettings={() => setScreen('settings')}
-        />
-      </View>
-    );
-  }
-
   return (
     <View style={styles.safe}>
       <StatusBar barStyle="light-content" />
@@ -472,13 +467,14 @@ export default function App() {
         remoteAspect={peerState.aspect}
         knockPending={knockPending}
         audioRoute={audio.route}
-        canCycleRoute={audio.canCycle}
+        audioRoutes={audio.available}
         onToggleAudio={() => setAudioOn(sessionRef.current?.toggleAudio() ?? false)}
         onToggleVideo={onToggleVideo}
         onSwitchCamera={() => sessionRef.current?.switchCamera()}
-        onCycleRoute={audio.cycle}
+        onSelectRoute={audio.select}
         onKnock={() => signalingRef.current?.knock()}
         onLeave={leaveChannel}
+        onOpenSettings={() => setScreen('settings')}
       />
     </View>
   );

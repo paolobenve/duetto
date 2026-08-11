@@ -214,16 +214,30 @@ export class ChannelSession {
 
     // @ts-ignore
     pc.addEventListener('negotiationneeded', async () => {
+      // Offre SEMPRE e SOLO una delle due parti.
+      //
+      // Aprire il canale video scatena questo evento su entrambi i
+      // telefoni: se offrissero tutti e due, le offerte si scontrerebbero
+      // e la risoluzione dipenderebbe dal rollback, che in
+      // react-native-webrtc non e' affidabile. Era la causa del
+      // "a volte funziona, a volte no".
+      if (this.polite) {
+        log('rinegoziazione richiesta, ma tocca all\'altro: lascio fare');
+        return;
+      }
       await this.negotiate();
     });
-
-    // Chi non e' polite apre le danze; l'altro risponde.
-    if (!polite) await this.negotiate();
   }
 
   private async negotiate() {
     const pc = this.pc;
     if (!pc) return;
+    // Una negoziazione alla volta: due offerte in parallelo si
+    // annullerebbero a vicenda.
+    if (this.makingOffer || pc.signalingState !== 'stable') {
+      log('negoziazione gia\' in corso o stato non stabile:', pc.signalingState);
+      return;
+    }
     try {
       this.makingOffer = true;
       const offer = await pc.createOffer({});

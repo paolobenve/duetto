@@ -134,6 +134,26 @@ export default function SettingsScreen({ initial, onSave, onUnpair }: Props) {
           </Text>
         </TouchableOpacity>
 
+        <Text style={styles.section}>Sicurezza</Text>
+        <View style={styles.infoBox}>
+          <Text style={styles.infoLine}>
+            {'\u{1F512}'}  Audio e video viaggiano <Text style={styles.infoStrong}>cifrati
+            end-to-end</Text> direttamente fra i due telefoni.
+          </Text>
+          <Text style={styles.infoLine}>
+            {'\u{1F512}'}  Anche lo scambio iniziale è cifrato: il server inoltra buste
+            che non può aprire, quindi non può inserirsi nella conversazione.
+          </Text>
+          <Text style={styles.infoLine}>
+            {'\u{1F511}'}  La chiave è a 256 bit e nasce dall'accoppiamento. Non è una
+            password: non è indovinabile per tentativi.
+          </Text>
+          <Text style={styles.infoLine}>
+            {'\u{1F441}'}  Il server sa <Text style={styles.infoStrong}>quando</Text> siete
+            collegati, non <Text style={styles.infoStrong}>cosa</Text> vi dite.
+          </Text>
+        </View>
+
         <Text style={styles.version}>{VERSION_LABEL}</Text>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -201,4 +221,10 @@ const styles = StyleSheet.create({
   buttonDisabled: { backgroundColor: '#333c4a' },
   buttonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
   version: { color: '#3a4353', fontSize: 12, textAlign: 'center', marginTop: 24 },
+  infoBox: {
+    backgroundColor: '#151a23', borderRadius: 12, padding: 16, marginTop: 10,
+    borderWidth: 1, borderColor: '#252c38', gap: 12,
+  },
+  infoLine: { color: '#8892a0', fontSize: 13.5, lineHeight: 20 },
+  infoStrong: { color: '#c9d2de', fontWeight: '700' },
 });

@@ -4,7 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import InCallManager from 'react-native-incall-manager';
 
 /**
- * Uscita audio: vivavoce, auricolare, cuffie con filo, Bluetooth.
+ * Uscita audio: vivavoce, altoparlantino del telefono, cuffie con filo,
+ * Bluetooth.
  * Non ne esistono altre su un telefono.
  *
  * L'elenco di quelle DISPONIBILI cambia da solo: il Bluetooth compare
@@ -23,7 +24,9 @@ const STORAGE_KEY = 'duotalk.audioRoute.v1';
 
 export const ROUTE_LABEL: Record<AudioRoute, string> = {
   SPEAKER_PHONE: 'Vivavoce',
-  EARPIECE: 'Auricolare',
+  // "Auricolare" farebbe pensare alle cuffiette: qui e' l'altoparlantino
+  // che si accosta all'orecchio.
+  EARPIECE: 'Telefono',
   WIRED_HEADSET: 'Cuffie',
   BLUETOOTH: 'Bluetooth',
 };
@@ -138,11 +141,22 @@ export function useAudioRoute(enabled: boolean) {
     AsyncStorage.setItem(STORAGE_KEY, next).catch(() => { /* noop */ });
   }, [available, current, applyRoute]);
 
+  /** Sceglie un'uscita precisa, e la ricorda. */
+  const select = useCallback((route: AudioRoute) => {
+    if (route === current) return;
+    setCurrent(route);
+    preferred.current = route;
+    applyRoute(route);
+    AsyncStorage.setItem(STORAGE_KEY, route).catch(() => { /* noop */ });
+  }, [current, applyRoute]);
+
   return {
     route: current,
-    available,
-    /** con una sola uscita non c'e' nulla da ciclare */
+    /** solo quelle davvero collegate, nell'ordine di presentazione */
+    available: ORDER.filter((r) => available.includes(r)),
+    /** con una sola uscita non c'e' nulla da scegliere */
     canCycle: ORDER.filter((r) => available.includes(r)).length > 1,
     cycle,
+    select,
   };
 }
