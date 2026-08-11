@@ -222,11 +222,39 @@ export default function VideoStage(props: Props) {
   const sizeRef = useRef({ w: pipWidth, h: pipHeight });
   useEffect(() => { sizeRef.current = { w: pipWidth, h: pipHeight }; }, [pipWidth, pipHeight]);
 
+  const aspectRef = useRef(pipAspect);
+  useEffect(() => { aspectRef.current = pipAspect; }, [pipAspect]);
+
+  /**
+   * Cambia larghezza aggiornando SUBITO la dimensione di riferimento.
+   *
+   * Passando solo per lo stato, `sizeRef` si allineava un fotogramma
+   * dopo: ridimensionando in fretta, i limiti venivano calcolati sulla
+   * dimensione precedente - più piccola - e il riquadrino poteva
+   * finire oltre il bordo.
+   */
+  const applicaLarghezza = useCallback((w: number) => {
+    const h = Math.max(1, Math.round(w / (aspectRef.current || DEFAULT_ASPECT)));
+    sizeRef.current = { w, h };
+    setPipWidth(w);
+  }, []);
+
+  /**
+   * Quanto può essere larga: oltre ai limiti di gusto, non deve mai
+   * uscire dallo spazio fra le barre - e a decidere l'ingombro in
+   * altezza sono le proporzioni, non la larghezza.
+   */
   const clampWidth = useCallback(
-    (w: number) => Math.round(
-      Math.min(Math.max(w, width * MIN_FRACTION), width * MAX_FRACTION),
-    ),
-    [width],
+    (w: number) => {
+      const a = aspectRef.current || DEFAULT_ASPECT;
+      const maxPerLarghezza = width - 2 * MARGIN - 2 * insetH;
+      const maxPerAltezza = (height - TOP_SAFE - BOTTOM_SAFE - 2 * insetV) * a;
+      const tetto = Math.min(width * MAX_FRACTION, maxPerLarghezza, maxPerAltezza);
+      return Math.round(
+        Math.min(Math.max(w, width * MIN_FRACTION), Math.max(width * MIN_FRACTION, tetto)),
+      );
+    },
+    [width, height, insetV, insetH],
   );
 
   // --- Posizione ----------------------------------------------------------
@@ -390,7 +418,7 @@ export default function VideoStage(props: Props) {
               pinchStart.current = { dist, w: sizeRef.current.w };
             } else if (pinchStart.current.dist > 0) {
               const ratio = dist / pinchStart.current.dist;
-              setPipWidth(clampWidth(pinchStart.current.w * ratio));
+              applicaLarghezza(clampWidth(pinchStart.current.w * ratio));
             }
             return;
           }
@@ -416,7 +444,7 @@ export default function VideoStage(props: Props) {
           clampIntoScreen();
         },
       }),
-    [pan, clampIntoScreen, clampWidth],
+    [pan, clampIntoScreen, clampWidth, applicaLarghezza],
   );
 
   // --- Maniglia d'angolo per ridimensionare con un dito -------------------
@@ -428,12 +456,12 @@ export default function VideoStage(props: Props) {
         onMoveShouldSetPanResponder: () => true,
         onPanResponderGrant: () => { resizeStart.current = sizeRef.current.w; },
         onPanResponderMove: (_e, g) => {
-          setPipWidth(clampWidth(resizeStart.current + g.dx));
+          applicaLarghezza(clampWidth(resizeStart.current + g.dx));
         },
         onPanResponderRelease: () => clampIntoScreen(),
         onPanResponderTerminate: () => clampIntoScreen(),
       }),
-    [clampWidth, clampIntoScreen],
+    [clampWidth, clampIntoScreen, applicaLarghezza],
   );
 
   // --- Zoom sul video grande ----------------------------------------------
