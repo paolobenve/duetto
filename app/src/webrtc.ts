@@ -713,8 +713,39 @@ export class ChannelSession {
         aspectRatio: { ideal: 16 / 9 },
       },
     } as any);
-    const track = cam.getVideoTracks()[0];
+    let track = cam.getVideoTracks()[0];
     if (!track) return false;
+
+    /**
+     * Il formato chiesto può non esistere sul sensore.
+     *
+     * `aspectRatio` è un desiderio, non un obbligo: chiedendo 640x360 a
+     * un telefono che non ce l'ha, quello ripiega su 640x480 - 4:3 - e
+     * l'inquadratura cambia passando da un profilo all'altro. Se succede
+     * si riapre a 1280x720, che in 16:9 c'è ovunque, e si accetta di
+     * riprendere più grande del necessario: meglio qualche pixel in più
+     * che un quadro che si allarga e si stringe cambiando profilo.
+     */
+    const proporzioni = (t: any) => {
+      const st = t?.getSettings?.() ?? {};
+      return st.width && st.height ? st.width / st.height : 16 / 9;
+    };
+    if (Math.abs(proporzioni(track) - 16 / 9) > 0.05) {
+      const st: any = (track as any).getSettings?.() ?? {};
+      log('formato non 16:9:', `${st.width}x${st.height}`, '- riapro a 1280x720');
+      try { track.stop(); } catch { /* noop */ }
+      const cam2 = await mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'user',
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: CAPTURE_FPS },
+          aspectRatio: { ideal: 16 / 9 },
+        },
+      } as any);
+      const t2 = cam2.getVideoTracks()[0];
+      if (t2) track = t2;
+    }
 
     this.localStream.addTrack(track);          // anteprima locale
     try {
