@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
-import { Foreground, Pip, AppWindow, Visibility } from 'duotalk-platform';
+import { Foreground, Pip, AppWindow, Visibility, Codecs } from 'duotalk-platform';
 import {
   DuoConfig, PairInfo, loadConfig, saveConfig,
   isServerConfigured, isPaired,
@@ -72,6 +72,9 @@ export default function App() {
   const [peerState, setPeerState] = useState<{
     audio: boolean; video: boolean; aspect?: number;
   }>({ audio: true, video: false });
+  /** VP9 in hardware: nostro e dell'altro. L'opzione si mostra solo con entrambi. */
+  const [localVp9, setLocalVp9] = useState(false);
+  const [peerVp9, setPeerVp9] = useState(false);
   const [knockPending, setKnockPending] = useState(false);
   /** traccia video dell'altro effettivamente in arrivo (non solo annunciata) */
   const [remoteHasVideo, setRemoteHasVideo] = useState(false);
@@ -155,6 +158,14 @@ export default function App() {
       }
     });
     return () => sub.remove();
+  }, []);
+
+  // Cosa sa fare questo telefono: si chiede una volta sola all'avvio.
+  useEffect(() => {
+    Codecs.hasHardwareVp9Encoder().then((v: boolean) => {
+      setLocalVp9(!!v);
+      sessionRef.current?.setLocalVp9(!!v);
+    }).catch(() => {});
   }, []);
 
   /**
@@ -453,7 +464,10 @@ export default function App() {
             }, 8000);
           }, st === 'failed' ? 4000 : 12000);
         },
-        onPeerState: setPeerState,
+        onPeerState: (st) => {
+          setPeerState(st);
+          setPeerVp9(st.hwVp9 === true);
+        },
         onRemoteVideo: (present) => {
           setRemoteHasVideo(present);
           if (present) setRemoteVideoKey((k) => k + 1);
@@ -645,6 +659,7 @@ export default function App() {
           onUnpair={onUnpair}
           onClose={isPaired(cfg) ? () => setScreen('channel') : undefined}
           onOpenSetup={() => { setSetupFrom('impostazioni'); setScreen('setup'); }}
+          vp9Available={localVp9 && peerVp9}
         />
       </View>
     );

@@ -15,6 +15,12 @@ type Props = {
   onClose?: () => void;
   /** riapre la schermata delle impostazioni di sistema */
   onOpenSetup: () => void;
+  /**
+   * VP9 in hardware su ENTRAMBI i telefoni. Se manca su uno dei due
+   * l'opzione non si mostra affatto: offrire una scelta che peggiora le
+   * cose è peggio che non offrirla.
+   */
+  vp9Available?: boolean;
 };
 
 /**
@@ -22,7 +28,7 @@ type Props = {
  * Tutto il resto è facoltativo e sta sotto "Altre impostazioni".
  */
 export default function SettingsScreen({
-  initial, onSave, onUnpair, onClose, onOpenSetup,
+  initial, onSave, onUnpair, onClose, onOpenSetup, vp9Available,
 }: Props) {
   const [cfg, setCfg] = useState<DuoConfig>(initial);
   const [advanced, setAdvanced] = useState(false);
@@ -124,6 +130,24 @@ export default function SettingsScreen({
           L’inquadratura non cambia mai: si riduce ciò che esce dall’encoder,
           non ciò che la camera riprende.
         </Text>
+
+        {vp9Available ? (
+          <TouchableOpacity
+            style={[styles.choice, cfg.videoCodec === 'vp9' && styles.choicePicked]}
+            onPress={() => setCfg({
+              ...cfg,
+              videoCodec: cfg.videoCodec === 'vp9' ? 'auto' : 'vp9',
+            })}>
+            <View style={[styles.radio, cfg.videoCodec === 'vp9' && styles.radioPicked]} />
+            <View style={styles.choiceText}>
+              <Text style={styles.choiceLabel}>Codifica VP9</Text>
+              <Text style={styles.choiceNote}>
+                Stessa immagine con circa un terzo di dati in meno. Compare
+                perché entrambi i telefoni la gestiscono in hardware.
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ) : null}
 
         <TouchableOpacity style={styles.toggle} onPress={() => setAdvanced(!advanced)}>
           <Text style={styles.toggleText}>

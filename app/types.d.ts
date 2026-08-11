@@ -34,6 +34,11 @@ declare module 'duotalk-platform' {
     minimize(): Promise<boolean>;
   };
 
+  /** Cosa sa fare la parte video di questo telefono. */
+  export const Codecs: {
+    hasHardwareVp9Encoder(): Promise<boolean>;
+  };
+
   /**
    * Se l'app sta davvero mostrando qualcosa. Diverso da AppState: in
    * Picture-in-Picture l'activity è in pausa ma la finestrella si vede.

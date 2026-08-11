@@ -31,7 +31,7 @@ export type PairInfo = {
  * si vede l'inquadratura allargarsi e restringersi da sola. Si agisce
  * solo su cosa esce dall'encoder.
  */
-export type VideoQuality = 'risparmio' | 'standard' | 'migliore';
+export type VideoQuality = 'risparmio' | 'standard' | 'migliore' | 'massima';
 
 export type DuoConfig = {
   /** wss://TUO_DOMINIO/duotalk/ws */
@@ -49,6 +49,12 @@ export type DuoConfig = {
   setupShown: boolean;
   /** quanto spendere per il video: banda e batteria */
   videoQuality: VideoQuality;
+  /**
+   * `vp9` solo se entrambi i telefoni lo encodano in hardware; altrimenti
+   * l'impostazione resta scritta ma non ha effetto, e nell'interfaccia
+   * l'opzione non compare nemmeno.
+   */
+  videoCodec: 'auto' | 'vp9';
 };
 
 export const DEFAULT_CONFIG: DuoConfig = {
@@ -61,6 +67,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   turnPass: '',
   setupShown: false,
   videoQuality: 'standard',
+  videoCodec: 'auto',
 };
 
 const STORAGE_KEY = 'duotalk.config.v3';
@@ -127,6 +134,8 @@ export const VIDEO_PROFILES: Record<VideoQuality, {
   maxFramerate: number;
   scale: number;
   degradation: string;
+  /** formato chiesto alla camera: cambiarlo fa ripartire la ripresa */
+  capture: { width: number; height: number };
   etichetta: string;
   nota: string;
 }> = {
@@ -135,6 +144,7 @@ export const VIDEO_PROFILES: Record<VideoQuality, {
     maxFramerate: 15,
     scale: 2,
     degradation: 'balanced',
+    capture: { width: 1280, height: 720 },
     etichetta: 'Risparmio',
     nota: '~45 kB/s · metà definizione, 15 fotogrammi',
   },
@@ -143,6 +153,7 @@ export const VIDEO_PROFILES: Record<VideoQuality, {
     maxFramerate: 24,
     scale: 1,
     degradation: 'maintain-resolution',
+    capture: { width: 1280, height: 720 },
     etichetta: 'Standard',
     nota: '~150 kB/s · definizione piena, 24 fotogrammi',
   },
@@ -151,8 +162,18 @@ export const VIDEO_PROFILES: Record<VideoQuality, {
     maxFramerate: 30,
     scale: 1,
     degradation: 'maintain-resolution',
+    capture: { width: 1280, height: 720 },
     etichetta: 'Migliore',
-    nota: '~310 kB/s · definizione piena, 30 fotogrammi',
+    nota: '~310 kB/s · 720p, 30 fotogrammi',
+  },
+  massima: {
+    maxBitrate: 4_000_000,
+    maxFramerate: 30,
+    scale: 1,
+    degradation: 'maintain-resolution',
+    capture: { width: 1920, height: 1080 },
+    etichetta: 'Massima',
+    nota: '~500 kB/s · 1080p, 30 fotogrammi',
   },
 };
 

@@ -4,6 +4,7 @@ const isAndroid = Platform.OS === 'android';
 const NativeForeground = NativeModules.DuoTalkForeground;
 const NativePip = NativeModules.DuoTalkPip;
 const NativeVisibility = NativeModules.DuoTalkVisibility;
+const NativeCodecs = NativeModules.DuoTalkCodecs;
 
 /**
  * Chiama un metodo nativo solo se esiste davvero.
@@ -122,6 +123,17 @@ export const Pip = isAndroid && NativePip
 export const AppWindow = isAndroid && NativePip
   ? { minimize: () => call(NativePip, 'minimize') }
   : { minimize: unavailable };
+
+/**
+ * Cosa sa fare la parte video di questo telefono.
+ *
+ * VP9 comprime meglio di VP8, ma solo se lo encoda l'hardware: in
+ * software costa più batteria di quanta banda faccia risparmiare. Va
+ * quindi chiesto al telefono, non dedotto dal modello.
+ */
+export const Codecs = isAndroid && NativeCodecs
+  ? { hasHardwareVp9Encoder: () => call(NativeCodecs, 'hasHardwareVp9Encoder') }
+  : { hasHardwareVp9Encoder: unavailable };
 
 /**
  * Se l'app sta davvero mostrando qualcosa sullo schermo.

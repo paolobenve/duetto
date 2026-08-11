@@ -1,6 +1,7 @@
 import { Dimensions } from 'react-native';
 import {
   RTCPeerConnection,
+  RTCRtpReceiver,
   RTCSessionDescription,
   RTCIceCandidate,
   mediaDevices,
@@ -33,7 +34,7 @@ export type ChannelEvents = {
   onRemoteStream?: (s: MediaStream | null) => void;
   onConnectionState?: (state: string) => void;
   /** stato di mic/camera dell'altra persona, con le proporzioni del suo video */
-  onPeerState?: (st: { audio: boolean; video: boolean; aspect?: number }) => void;
+  onPeerState?: (st: { audio: boolean; video: boolean; aspect?: number; hwVp9?: boolean }) => void;
   /**
    * Se stiamo ricevendo una traccia video.
    *
@@ -79,6 +80,10 @@ export class ChannelSession {
    * devono lasciare il video acceso, non spegnerlo per sempre.
    */
   private peerWatching = true;
+  /** questo telefono sa encodare VP9 in hardware */
+  private localVp9 = false;
+  /** lo sa fare anche l'altro: VP9 ha senso solo se entrambi */
+  private peerVp9 = false;
 
   private polite = false;
   private makingOffer = false;
@@ -261,6 +266,7 @@ export class ChannelSession {
     if (!polite) {
       try {
         const vt: any = (pc as any).addTransceiver('video', { direction: 'sendrecv' });
+        this.preferVp9(vt);
         this.videoSender = vt?.sender ?? null;
         log('canale video dichiarato da noi:', !!this.videoSender);
       } catch (e) {
@@ -316,10 +322,12 @@ export class ChannelSession {
 
   async onSignal(msg: SignalMessage) {
     if (msg.kind === 'state') {
+      this.peerVp9 = msg.hwVp9 === true;
       this.events.onPeerState?.({
         audio: msg.audio,
         video: msg.video,
         aspect: msg.aspect,
+        hwVp9: this.peerVp9,
       });
       this.setPeerWatching(msg.watching !== false);
       return;
@@ -568,12 +576,13 @@ export class ChannelSession {
   /** Accende la camera: mette la traccia nel canale già aperto. */
   async enableVideo(): Promise<boolean> {
     if (!this.localStream || this.localStream.getVideoTracks().length > 0) return true;
+    const profile = VIDEO_PROFILES[this.cfg.videoQuality] ?? VIDEO_PROFILES.standard;
     const cam = await mediaDevices.getUserMedia({
       video: {
         facingMode: 'user',
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-        frameRate: { ideal: 30 },
+        width: { ideal: profile.capture.width },
+        height: { ideal: profile.capture.height },
+        frameRate: { ideal: profile.maxFramerate },
         // Proporzioni dichiarate esplicitamente: senza, il sensore può
         // scegliere un formato diverso (4:3 invece di 16:9) e con esso
         // cambia l'angolo di ripresa, quindi cosa resta dentro
@@ -660,10 +669,77 @@ export class ChannelSession {
     }
   }
 
-  /** Cambia profilo a video acceso, senza rinegoziare nulla. */
+  /**
+   * Cambia profilo.
+   *
+   * Bitrate e fotogrammi si cambiano al volo. Il formato di acquisizione
+   * no: va chiesto alla camera all'accensione, quindi se cambia e la
+   * camera è accesa bisogna riaprirla. Si vede un lampo, ma è l'unico
+   * modo: `applyConstraints` su react-native-webrtc non riformatta la
+   * ripresa in corso.
+   */
   async setVideoQuality(q: DuoConfig['videoQuality']) {
+    const before = VIDEO_PROFILES[this.cfg.videoQuality] ?? VIDEO_PROFILES.standard;
+    const after = VIDEO_PROFILES[q] ?? VIDEO_PROFILES.standard;
     this.cfg = { ...this.cfg, videoQuality: q };
+
+    const cameraOn = !!this.localStream?.getVideoTracks()[0];
+    const formatChanged =
+      before.capture.width !== after.capture.width ||
+      before.capture.height !== after.capture.height;
+
+    if (cameraOn && formatChanged) {
+      log('cambio formato di ripresa: riapro la camera',
+        `${before.capture.width}x${before.capture.height}`,
+        '->', `${after.capture.width}x${after.capture.height}`);
+      await this.disableVideo();
+      await this.enableVideo();
+      return;
+    }
     await this.applyVideoQuality();
+  }
+
+  /** Cosa sa fare questo telefono: lo scopre il modulo nativo. */
+  setLocalVp9(supported: boolean) {
+    if (this.localVp9 === supported) return;
+    this.localVp9 = supported;
+    this.broadcastState();
+  }
+
+  /**
+   * VP9 conviene solo se ENTRAMBI lo encodano in hardware.
+   *
+   * Le preferenze di codec valgono per tutta la sessione, non per una
+   * direzione sola: preferendo VP9 perché lo so fare io, costringerei
+   * l'altro a encodarlo via software - più calore e più batteria di
+   * quanta banda si risparmi.
+   */
+  vp9Usable(): boolean {
+    return this.localVp9 && this.peerVp9;
+  }
+
+  /**
+   * Mette VP9 davanti nella lista dei codec, se si può e si vuole.
+   *
+   * Va fatto sul transceiver PRIMA di negoziare: dopo, cambiare codec
+   * richiederebbe una rinegoziazione completa.
+   */
+  private preferVp9(transceiver: any) {
+    if (this.cfg.videoCodec !== 'vp9' || !this.vp9Usable()) return;
+    try {
+      const caps = (RTCRtpReceiver as any)?.getCapabilities?.('video');
+      if (!caps?.codecs || typeof transceiver?.setCodecPreferences !== 'function') {
+        log('preferenze codec non disponibili su questa versione: resto su VP8');
+        return;
+      }
+      const vp9 = caps.codecs.filter((c: any) => /vp9/i.test(c.mimeType));
+      const resto = caps.codecs.filter((c: any) => !/vp9/i.test(c.mimeType));
+      if (vp9.length === 0) { log('nessun VP9 fra i codec disponibili'); return; }
+      transceiver.setCodecPreferences([...vp9, ...resto]);
+      log('codec preferito: VP9 (hardware su entrambi i telefoni)');
+    } catch (e) {
+      log('non riesco a preferire VP9:', String(e));
+    }
   }
 
   /**
@@ -771,6 +847,7 @@ export class ChannelSession {
       video: this.isVideoEnabled(),
       aspect: this.getLocalVideoAspect(),
       watching: this.localWatching,
+      hwVp9: this.localVp9,
     });
   }
 

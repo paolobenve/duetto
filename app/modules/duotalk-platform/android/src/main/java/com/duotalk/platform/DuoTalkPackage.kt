@@ -20,6 +20,7 @@ class DuoTalkPackage : ReactPackage {
         ForegroundModule(reactContext),
         PipModule(reactContext),
         VisibilityModule(reactContext),
+        CodecsModule(reactContext),
     )
 
     override fun createViewManagers(
