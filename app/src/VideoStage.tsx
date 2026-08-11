@@ -622,19 +622,18 @@ const styles = StyleSheet.create({
   placeholder: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#0b0e14' },
   pip: {
     position: 'absolute', top: 0, left: 0,
-    borderRadius: 14,
-    backgroundColor: '#000',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
     /**
-     * Il video RIENTRA nella cornice invece di essere ritagliato da lei.
+     * Angoli vivi, di proposito.
      *
      * RTCView è una SurfaceView: disegna in un livello grafico proprio e
      * nessun genitore può ritagliarla - né `overflow: hidden` né
-     * `borderRadius` la toccano, e i suoi angoli quadrati sbordavano
-     * dalla cornice arrotondata. Lasciandole un margine, gli angoli del
-     * video cadono dentro il nero e la forma tondeggiante resta pulita.
+     * `borderRadius` la toccano. Con la cornice arrotondata i suoi angoli
+     * quadrati sbordavano, e l'unico rimedio era rimpicciolire il video
+     * dentro un margine. Meglio un rettangolo netto che un arrotondamento
+     * che il video non può rispettare.
      */
-    padding: 5,
+    backgroundColor: '#000',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
     shadowColor: '#000', shadowOpacity: 0.5, shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
   },
