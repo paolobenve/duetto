@@ -233,7 +233,13 @@ export class Signaling {
   private rawSend(obj: unknown) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(obj));
+      return;
     }
+    // Un messaggio scartato perche' il server non e' raggiungibile era
+    // finora invisibile: si vedeva solo l'effetto, cioe' una negoziazione
+    // che non arrivava mai a destinazione.
+    const kind = (obj as any)?.type ?? '?';
+    console.log('[duotalk-sig]', 'scartato (server irraggiungibile):', kind);
   }
 
   private scheduleReconnect() {

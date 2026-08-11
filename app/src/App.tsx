@@ -90,6 +90,14 @@ export default function App() {
   const serverTurnRef = useRef<any[]>([]);
   /** attesa prima di ricostruire un collegamento caduto */
   const rebuildTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /**
+   * La connessione al server e' caduta da quando eravamo collegati.
+   *
+   * Serve perche' un'offerta mandata mentre il server e' irraggiungibile
+   * viene scartata in silenzio: al ritorno va rifatta, anche se dal
+   * nostro lato la connessione sembrasse appena creata e quindi sana.
+   */
+  const signalingWasDown = useRef(false);
 
   const audio = useAudioRoute(inChannel);
 
@@ -164,12 +172,19 @@ export default function App() {
           mode: 'listening',
         },
         {
-          onStatus: setStatus,
+          onStatus: (st) => {
+            setStatus(st);
+            if (st === 'offline') signalingWasDown.current = true;
+          },
 
           onJoined: ({ peerPresent: present, peerActive, peerName: n, turn }) => {
             // Il relay lo configura il server: sui telefoni non si digita nulla.
             serverTurnRef.current = turn ? [turn] : [];
             sessionRef.current?.setServerIceServers(serverTurnRef.current);
+            // Se eravamo rimasti senza server, qualunque offerta partita
+            // nel frattempo e' andata persa: si riparte da zero.
+            const afterOutage = signalingWasDown.current;
+            signalingWasDown.current = false;
             // Il ruolo NON puo' dipendere da chi entra per primo: la
             // connessione si riaggancia a ogni cambio di rete, e chi era
             // "primo" puo' ritrovarsi secondo. Sono bastate due
@@ -182,7 +197,7 @@ export default function App() {
             peerActiveRef.current = peerActive;
             setPeerPresent(present);
             if (n) setPeerName(n);
-            if (peerActive && inChannelRef.current) attachPeer();
+            if (peerActive && inChannelRef.current) attachPeer(afterOutage);
           },
 
           onPeerJoined: (n, mode) => {
@@ -319,6 +334,9 @@ export default function App() {
             // "disconnected" a volte rientra da solo: gli diamo qualche
             // secondo prima di buttare via tutto.
             rebuildTimer.current = setTimeout(() => {
+              // Senza server l'offerta verrebbe scartata: si aspetta il
+              // ritorno, che fara' ripartire la negoziazione da solo.
+              if (signalingWasDown.current) return;
               if (inChannelRef.current && peerActiveRef.current) attachPeer(true);
             }, st === 'failed' ? 500 : 4000);
           } else if (st === 'connected' && rebuildTimer.current) {
