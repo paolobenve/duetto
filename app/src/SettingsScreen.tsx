@@ -13,13 +13,17 @@ type Props = {
   onUnpair: () => void;
   /** torna indietro senza salvare; assente se non c'e' dove tornare */
   onClose?: () => void;
+  /** riapre la schermata delle impostazioni di sistema */
+  onOpenSetup: () => void;
 };
 
 /**
  * Impostazioni. In primo piano c'e' una cosa sola: dove sta il server.
  * Tutto il resto e' facoltativo e sta sotto "Altre impostazioni".
  */
-export default function SettingsScreen({ initial, onSave, onUnpair, onClose }: Props) {
+export default function SettingsScreen({
+  initial, onSave, onUnpair, onClose, onOpenSetup,
+}: Props) {
   const [cfg, setCfg] = useState<DuoConfig>(initial);
   const [advanced, setAdvanced] = useState(false);
   const set = (k: keyof DuoConfig) => (v: string) => setCfg({ ...cfg, [k]: v });
@@ -143,6 +147,17 @@ export default function SettingsScreen({ initial, onSave, onUnpair, onClose }: P
           </Text>
         </TouchableOpacity>
 
+        <Text style={styles.section}>Restare raggiungibili</Text>
+        <Text style={styles.sectionHint}>
+          Due impostazioni di sistema, senza le quali il telefono chiude DuoTalk
+          e smetti di ricevere gli avvisi. Si perdono reinstallando l’app o
+          cambiando telefono.
+        </Text>
+        <TouchableOpacity style={styles.rowButton} onPress={onOpenSetup}>
+          <Text style={styles.rowButtonText}>Rivedi le impostazioni di sistema</Text>
+          <Text style={styles.rowButtonArrow}>{'\u203A'}</Text>
+        </TouchableOpacity>
+
         <Text style={styles.section}>Sicurezza</Text>
         <View style={styles.infoBox}>
           <Text style={styles.infoLine}>
@@ -224,6 +239,13 @@ const styles = StyleSheet.create({
   },
   pairName: { color: '#e6ebf1', fontSize: 17, fontWeight: '700' },
   pairMeta: { color: '#6b7686', fontSize: 13, marginTop: 4 },
+  rowButton: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#151a23', borderRadius: 12, paddingVertical: 15,
+    paddingHorizontal: 16, borderWidth: 1, borderColor: '#252c38',
+  },
+  rowButtonText: { color: '#e6ebf1', fontSize: 16, fontWeight: '600' },
+  rowButtonArrow: { color: '#6b7686', fontSize: 22, lineHeight: 24 },
   danger: { marginTop: 10, paddingVertical: 12, alignItems: 'center' },
   dangerText: { color: '#e5484d', fontSize: 15, fontWeight: '600' },
   toggle: { marginTop: 20, paddingVertical: 10 },

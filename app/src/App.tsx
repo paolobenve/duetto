@@ -56,6 +56,8 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>('loading');
   const [cfg, setCfg] = useState<DuoConfig | null>(null);
   const [inChannel, setInChannel] = useState(false);
+  /** dove tornare chiudendo la schermata delle impostazioni di sistema */
+  const [setupFrom, setSetupFrom] = useState<'avvio' | 'impostazioni'>('avvio');
 
   const [status, setStatus] = useState<PresenceStatus>('connecting');
   const [peerPresent, setPeerPresent] = useState(false);
@@ -542,6 +544,7 @@ export default function App() {
           onSave={onSaveSettings}
           onUnpair={onUnpair}
           onClose={isPaired(cfg) ? () => setScreen('channel') : undefined}
+          onOpenSetup={() => { setSetupFrom('impostazioni'); setScreen('setup'); }}
         />
       </View>
     );
@@ -553,10 +556,12 @@ export default function App() {
         <StatusBar barStyle="light-content" />
         <SetupScreen
           onDone={async () => {
-            const next = { ...cfg, setupShown: true };
-            await saveConfig(next);
-            setCfg(next);
-            setScreen('channel');
+            if (!cfg.setupShown) {
+              const next = { ...cfg, setupShown: true };
+              await saveConfig(next);
+              setCfg(next);
+            }
+            setScreen(setupFrom === 'impostazioni' ? 'settings' : 'channel');
           }}
         />
       </View>
