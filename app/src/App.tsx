@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
-import { Foreground, Pip, AppWindow } from 'duotalk-platform';
+import { Foreground, Pip, AppWindow, Visibility } from 'duotalk-platform';
 import {
   DuoConfig, PairInfo, loadConfig, saveConfig,
   isServerConfigured, isPaired,
@@ -155,6 +155,23 @@ export default function App() {
       }
     });
     return () => sub.remove();
+  }, []);
+
+  /**
+   * Diciamo all'altro quando smettiamo di guardare, così spegne la sua
+   * trasmissione: un video verso uno schermo spento costa ~300 kB/s a chi
+   * lo manda, che su rete cellulare si paga.
+   *
+   * Non usiamo AppState: su Android segnala la pausa dell'activity, e in
+   * Picture-in-Picture l'activity è in pausa pur essendo visibile.
+   */
+  useEffect(() => {
+    Visibility.get().then((v: boolean) => {
+      sessionRef.current?.setLocalWatching(!!v);
+    }).catch(() => {});
+    return Visibility.subscribe((visible: boolean) => {
+      sessionRef.current?.setLocalWatching(visible);
+    });
   }, []);
 
   // --- avvio ---------------------------------------------------------------

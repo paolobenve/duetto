@@ -19,6 +19,7 @@ class DuoTalkPackage : ReactPackage {
     ): List<NativeModule> = listOf(
         ForegroundModule(reactContext),
         PipModule(reactContext),
+        VisibilityModule(reactContext),
     )
 
     override fun createViewManagers(

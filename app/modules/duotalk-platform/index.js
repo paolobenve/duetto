@@ -1,8 +1,9 @@
-import { NativeModules, Platform } from 'react-native';
+import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
 
 const isAndroid = Platform.OS === 'android';
 const NativeForeground = NativeModules.DuoTalkForeground;
 const NativePip = NativeModules.DuoTalkPip;
+const NativeVisibility = NativeModules.DuoTalkVisibility;
 
 /**
  * Chiama un metodo nativo solo se esiste davvero.
@@ -121,3 +122,29 @@ export const Pip = isAndroid && NativePip
 export const AppWindow = isAndroid && NativePip
   ? { minimize: () => call(NativePip, 'minimize') }
   : { minimize: unavailable };
+
+/**
+ * Se l'app sta davvero mostrando qualcosa sullo schermo.
+ *
+ * Diverso da AppState di React Native, che su Android segnala la pausa
+ * dell'activity: in Picture-in-Picture l'activity è in pausa ma la
+ * finestrella è ben visibile. Qui contano onStart/onStop, che in PiP non
+ * scattano.
+ */
+export const Visibility = isAndroid && NativeVisibility
+  ? {
+      /** Vero se l'app è visibile in questo momento. */
+      get: () => call(NativeVisibility, 'isVisible'),
+
+      /**
+       * Chiama `cb(visibile)` a ogni cambiamento. Restituisce la funzione
+       * per smettere.
+       */
+      subscribe(cb) {
+        call(NativeVisibility, 'start');
+        const emitter = new NativeEventEmitter(NativeVisibility);
+        const sub = emitter.addListener('duotalk-visibility', (v) => cb(!!v));
+        return () => sub.remove();
+      },
+    }
+  : { get: unavailable, subscribe: () => () => {} };

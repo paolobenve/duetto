@@ -33,4 +33,14 @@ declare module 'duotalk-platform' {
   export const AppWindow: {
     minimize(): Promise<boolean>;
   };
+
+  /**
+   * Se l'app sta davvero mostrando qualcosa. Diverso da AppState: in
+   * Picture-in-Picture l'activity è in pausa ma la finestrella si vede.
+   */
+  export const Visibility: {
+    get(): Promise<boolean>;
+    /** Restituisce la funzione per smettere di ascoltare. */
+    subscribe(cb: (visible: boolean) => void): () => void;
+  };
 }

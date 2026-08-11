@@ -71,6 +71,14 @@ export class ChannelSession {
   private localStream: MediaStream | null = null;
   private remoteStream: MediaStream | null = null;
   private videoSender: any = null;
+  /** noi stiamo guardando lo schermo: lo diciamo all'altro */
+  private localWatching = true;
+  /**
+   * L'altro sta guardando. Si parte da `true` e si scende solo su
+   * comunicazione esplicita: una build vecchia, o un messaggio perso,
+   * devono lasciare il video acceso, non spegnerlo per sempre.
+   */
+  private peerWatching = true;
 
   private polite = false;
   private makingOffer = false;
@@ -114,22 +122,40 @@ export class ChannelSession {
 
     this.remoteStream = new MediaStream();
 
+    /**
+     * Vero solo finché questa è LA connessione in uso.
+     *
+     * Ricostruendo il collegamento nascono più RTCPeerConnection nel giro
+     * di pochi secondi, e quelle vecchie continuano a emettere eventi per
+     * un po'. Le loro closure leggono `this.remoteStream`, che intanto è
+     * stato sostituito: senza questo controllo una connessione già morta
+     * infila la propria traccia nello stream nuovo, che si ritrova due
+     * video vivi e ne disegna quello sbagliato - lo schermo nero visto
+     * dopo un cambio di rete. Vale anche per gli stati: un 'failed' in
+     * ritardo da una connessione superata farebbe ripartire la riparazione
+     * di una connessione sana.
+     */
+    const isCurrent = () => this.pc === pc;
+
     // @ts-ignore evento di react-native-webrtc
     pc.addEventListener('track', (event: any) => {
       const stream = this.remoteStream;
       if (!stream) return;
       const incoming: any = event.track;
+      if (!isCurrent()) {
+        log('traccia da una connessione superata: ignorata', incoming?.kind);
+        return;
+      }
       log('traccia in arrivo:', incoming?.kind, 'id', incoming?.id);
 
       if (incoming) {
-        // Via le tracce dello stesso tipo ormai chiuse. Se restassero, il
-        // renderer continuerebbe a disegnare la prima della lista - cioè
-        // quella morta - e si vedrebbe uno schermo nero invece del video.
+        // Una sola traccia per tipo: è quello che il protocollo prevede.
+        // Se ne restasse una vecchia, il renderer disegnerebbe la prima
+        // della lista - cioè quella morta - e si vedrebbe nero.
         stream.getTracks()
-          .filter((x: any) =>
-            x.kind === incoming.kind && x.id !== incoming.id && x.readyState === 'ended')
+          .filter((x: any) => x.kind === incoming.kind && x.id !== incoming.id)
           .forEach((x: any) => {
-            log('tolgo traccia esaurita:', x.kind, x.id);
+            log('tolgo traccia superata:', x.kind, x.id, x.readyState);
             try { stream.removeTrack(x); } catch { /* noop */ }
           });
         if (!stream.getTracks().find((x: any) => x.id === incoming.id)) {
@@ -158,6 +184,7 @@ export class ChannelSession {
 
     // @ts-ignore
     pc.addEventListener('icecandidate', (event: any) => {
+      if (!isCurrent()) return;
       if (event.candidate) {
         log('candidato locale', candidateType(event.candidate.candidate));
         this.signaling.sendSignal({ kind: 'ice', candidate: event.candidate });
@@ -174,6 +201,7 @@ export class ChannelSession {
 
     // @ts-ignore
     pc.addEventListener('iceconnectionstatechange', () => {
+      if (!isCurrent()) return;
       log('ICE:', pc.iceConnectionState);
     });
 
@@ -184,8 +212,10 @@ export class ChannelSession {
 
     // @ts-ignore
     pc.addEventListener('connectionstatechange', () => {
+      if (!isCurrent()) return;
       log('connessione:', pc.connectionState);
       this.events.onConnectionState?.(pc.connectionState);
+      if (pc.connectionState === 'connected') this.logSelectedPath(pc);
     });
 
     // @ts-ignore
@@ -291,6 +321,7 @@ export class ChannelSession {
         video: msg.video,
         aspect: msg.aspect,
       });
+      this.setPeerWatching(msg.watching !== false);
       return;
     }
 
@@ -474,6 +505,45 @@ export class ChannelSession {
     this.events.onRemoteVideo?.(present);
   }
 
+  /**
+   * Per dove sta davvero passando l'audio/video, una volta collegati.
+   *
+   * I candidati raccolti non lo dicono: si raccolgono sempre tutti, e
+   * poi ne vince uno. La differenza conta, perché i percorsi hanno
+   * fragilità diverse - host è la rete locale, srflx attraversa due NAT,
+   * relay passa dal nostro coturn - e senza questo dato non si può
+   * dire se una caduta dipenda dal percorso o da altro.
+   */
+  private async logSelectedPath(pc: any) {
+    try {
+      const stats = await pc.getStats();
+      let pair: any = null;
+      const candidates = new Map<string, any>();
+      stats.forEach((r: any) => {
+        if (r.type === 'local-candidate' || r.type === 'remote-candidate') {
+          candidates.set(r.id, r);
+        }
+        // "selected" su alcune implementazioni, "nominated+succeeded" su altre
+        if (r.type === 'candidate-pair' && (r.selected || r.nominated) && r.state === 'succeeded') {
+          pair = r;
+        }
+      });
+      if (!pair) { log('percorso: non ancora determinato'); return; }
+      const local = candidates.get(pair.localCandidateId);
+      const remote = candidates.get(pair.remoteCandidateId);
+      const kind = local?.candidateType === 'relay' || remote?.candidateType === 'relay'
+        ? 'RELAY (passa dal server)'
+        : local?.candidateType === 'host' && remote?.candidateType === 'host'
+          ? 'LOCALE (stessa rete)'
+          : 'DIRETTO attraverso NAT';
+      log('percorso:', kind,
+        '-', `${local?.candidateType ?? '?'}/${local?.protocol ?? '?'}`,
+        '->', `${remote?.candidateType ?? '?'}/${remote?.protocol ?? '?'}`);
+    } catch (e: any) {
+      log('percorso non leggibile:', e?.message ?? e);
+    }
+  }
+
   private async flushCandidates() {
     const pc = this.pc;
     if (!pc) return;
@@ -537,6 +607,10 @@ export class ChannelSession {
       this.videoSender = this.pc.addTrack(track, this.localStream);
     }
 
+    // Se nel frattempo l'altro non sta guardando, la camera resta accesa
+    // per l'anteprima ma dal canale non esce nulla.
+    if (!this.peerWatching) await this.applyPeerWatching();
+
     this.events.onLocalStream?.(this.localStream);
     this.broadcastState();
     return true;
@@ -564,6 +638,44 @@ export class ChannelSession {
       log('risoluzione bloccata: sotto banda scarsa calano i fotogrammi');
     } catch (e) {
       log('non riesco a bloccare la risoluzione:', String(e));
+    }
+  }
+
+  /**
+   * Diciamo all'altro se stiamo guardando, così può smettere di spedirci
+   * video che nessuno vede.
+   */
+  setLocalWatching(watching: boolean) {
+    if (this.localWatching === watching) return;
+    this.localWatching = watching;
+    log(watching ? 'torniamo a guardare' : 'non guardiamo più');
+    this.broadcastState();
+  }
+
+  /**
+   * L'altro non guarda: smettiamo di trasmettere il video.
+   *
+   * La camera resta accesa e l'anteprima locale continua a funzionare -
+   * si stacca solo la traccia dal canale, come già si fa per spegnere il
+   * video. Il canale resta aperto, quindi riprendere non costa una
+   * rinegoziazione.
+   */
+  private setPeerWatching(watching: boolean) {
+    if (this.peerWatching === watching) return;
+    this.peerWatching = watching;
+    log(watching ? "l'altro guarda di nuovo" : "l'altro non guarda: sospendo il video");
+    this.applyPeerWatching();
+  }
+
+  /** Allinea ciò che esce dal canale a `peerWatching`. */
+  private async applyPeerWatching() {
+    const sender = this.videoSender;
+    if (!sender) return;
+    const track = this.localStream?.getVideoTracks()[0] ?? null;
+    try {
+      await sender.replaceTrack(this.peerWatching ? track : null);
+    } catch (e) {
+      log('non riesco a cambiare la trasmissione del video:', String(e));
     }
   }
 
@@ -633,6 +745,7 @@ export class ChannelSession {
       audio: this.isAudioEnabled(),
       video: this.isVideoEnabled(),
       aspect: this.getLocalVideoAspect(),
+      watching: this.localWatching,
     });
   }
 
