@@ -50,6 +50,8 @@ export type ChannelEvents = {
 export type VideoStats = {
   out?: { w: number; h: number; fps: number; kbps: number | null };
   in?: { w: number; h: number; fps: number; kbps: number | null };
+  /** da dove sta passando il traffico, ricalcolato a ogni campione */
+  percorso?: 'locale' | 'diretto' | 'relay';
 };
 
 /** Proporzioni di ripiego: anteprima verticale 9:16, il caso più comune. */
@@ -637,6 +639,35 @@ export class ChannelSession {
       const stats = await pc.getStats();
       const out: VideoStats = {};
       let limite = '?';
+
+      /**
+       * Il percorso si rilegge a ogni campione, non solo al collegamento.
+       *
+       * ICE può cambiare strada in corsa - passando dal wifi alla rete
+       * mobile la diretta cade e subentra il relay - e un'indicazione
+       * ferma al momento della connessione direbbe il falso proprio
+       * quando serve sapere la verità.
+       */
+      const candidati = new Map<string, any>();
+      let coppia: any = null;
+      stats.forEach((r: any) => {
+        if (r.type === 'local-candidate' || r.type === 'remote-candidate') {
+          candidati.set(r.id, r);
+        }
+        if (r.type === 'candidate-pair' && (r.selected || r.nominated)
+            && r.state === 'succeeded') {
+          coppia = r;
+        }
+      });
+      if (coppia) {
+        const l = candidati.get(coppia.localCandidateId);
+        const rr = candidati.get(coppia.remoteCandidateId);
+        out.percorso =
+          l?.candidateType === 'relay' || rr?.candidateType === 'relay' ? 'relay'
+            : l?.candidateType === 'host' && rr?.candidateType === 'host' ? 'locale'
+              : 'diretto';
+      }
+
       // Ciò che non compare fra le statistiche non c'è: lasciare il
       // valore precedente mostrerebbe una risoluzione che non esiste più.
       let fpsOut = 0;

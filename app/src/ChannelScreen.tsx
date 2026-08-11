@@ -423,18 +423,41 @@ function StatsLine({ stats, quality, mostraSu, mostraGiu }: {
   const giu = mostraGiu ? fmt(stats.in) : null;
   // Il profilo si mostra sempre, anche a video spento: è la scelta che
   // spiega i numeri accanto, e senza sembrerebbero venire dal nulla.
+  /**
+   * Da dove passa il traffico.
+   *
+   * Con i due telefoni su reti diverse è il dato che spiega tutto il
+   * resto: se la banda è asimmetrica o l'immagine è brutta, "relay" dice
+   * subito che è la strada e non il telefono. Leggerlo dal log a casa
+   * dell'altra persona non è praticabile.
+   */
+  const strada = stats.percorso === 'locale'
+    ? 'diretto, stessa rete'
+    : stats.percorso === 'diretto'
+      ? 'diretto tra i telefoni'
+      : stats.percorso === 'relay'
+        ? 'passa dal server'
+        : null;
+
   return (
-    <Text
-      style={styles.stats}
-      numberOfLines={1}
-      // Con due video accesi la riga può non starci: meglio rimpicciolirla
-      // che vederla tagliata a metà parola.
-      adjustsFontSizeToFit
-      minimumFontScale={0.6}>
-      {`Risoluzione: ${quality.toLowerCase()}`}
-      {su ? `  \u2191${su}` : ''}
-      {giu ? `  \u2193${giu}` : ''}
-    </Text>
+    <>
+      <Text
+        style={styles.stats}
+        numberOfLines={1}
+        // Con due video accesi la riga può non starci: meglio
+        // rimpicciolirla che vederla tagliata a metà parola.
+        adjustsFontSizeToFit
+        minimumFontScale={0.6}>
+        {`Risoluzione: ${quality.toLowerCase()}`}
+        {su ? `  \u2191${su}` : ''}
+        {giu ? `  \u2193${giu}` : ''}
+      </Text>
+      {strada ? (
+        <Text style={styles.stats} numberOfLines={1}>
+          {`Collegamento: ${strada}`}
+        </Text>
+      ) : null}
+    </>
   );
 }
 
@@ -514,7 +537,7 @@ const styles = StyleSheet.create({
   avatarSymbol: { fontSize: 52 },
   stats: {
     color: '#7d8794', fontSize: 10.5, textAlign: 'center',
-    marginTop: 6, marginBottom: 2, letterSpacing: 0.2,
+    marginTop: 5, letterSpacing: 0.2,
   },
   avatarGhost: { fontSize: 54, marginBottom: 16 },
   cardTitle: { color: '#e6ebf1', fontSize: 21, fontWeight: '700', textAlign: 'center' },
