@@ -9,6 +9,7 @@ import VideoStage from './VideoStage';
 import { AudioRoute, ROUTE_ICON, ROUTE_LABEL } from './audioRoute';
 import { VERSION_LABEL } from './version';
 import type { Avatar } from './avatar';
+import type { VideoStats } from './webrtc';
 
 /** Dopo quanto i pulsanti si attenuano, e quanto restano visibili. */
 const IDLE_MS = 4000;
@@ -25,6 +26,10 @@ type Props = {
   peerName: string;
   /** immagine dell'altro, quando non ha un nome */
   peerAvatar: Avatar;
+  /** risoluzione e banda effettive, in uscita e in entrata */
+  videoStats: VideoStats;
+  /** profilo scelto: senza, non si capisce da cosa dipendano quei numeri */
+  qualityLabel: string;
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
   status: PresenceStatus;
@@ -58,7 +63,7 @@ type Props = {
  */
 export default function ChannelScreen(props: Props) {
   const {
-    channel, peerName, peerAvatar, localStream, remoteStream, status, connectionState,
+    channel, peerName, peerAvatar, videoStats, qualityLabel, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes,
     onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, onOpenSettings,
@@ -275,6 +280,7 @@ export default function ChannelScreen(props: Props) {
           onPress={press(onLeave)}
         />
         </View>
+        <StatsLine stats={videoStats} quality={qualityLabel} />
       </Animated.View>
         </>
       )}
@@ -382,6 +388,34 @@ function PresenceCard(props: {
  *
  * Il nome, se c'è, vince: l'iniziale dice più di un disegno.
  */
+/**
+ * Risoluzione e banda davvero in gioco, sotto ai comandi.
+ *
+ * Il profilo scelto è un tetto, non una promessa: quanto passa davvero
+ * dipende dalla rete e dalla scena, e sapere che si sta mandando 1080p
+ * mentre si riceve 640x352 spiega in un colpo d'occhio perché l'immagine
+ * dell'altro è brutta - senza dover leggere un log.
+ */
+function StatsLine({ stats, quality }: { stats: VideoStats; quality: string }) {
+  const fmt = (v?: { w: number; h: number; kbps: number | null }) => {
+    if (!v || !v.w || !v.h) return null;
+    const banda = v.kbps === null ? '' :
+      v.kbps >= 1000 ? ` · ${(v.kbps / 1000).toFixed(1)} Mbit/s` : ` · ${v.kbps} kbit/s`;
+    return `${v.w}×${v.h}${banda}`;
+  };
+  const su = fmt(stats.out);
+  const giu = fmt(stats.in);
+  // Il profilo si mostra sempre, anche a video spento: è la scelta che
+  // spiega i numeri accanto, e senza sembrerebbero venire dal nulla.
+  return (
+    <Text style={styles.stats} numberOfLines={1}>
+      {quality}
+      {su ? `   \u2191 ${su}` : ''}
+      {giu ? `   \u2193 ${giu}` : ''}
+    </Text>
+  );
+}
+
 function PeerFace({ name, avatar, live }: { name: string; avatar: Avatar; live: boolean }) {
   const initial = name.trim().charAt(0).toUpperCase();
   return (
@@ -456,6 +490,10 @@ const styles = StyleSheet.create({
   avatarLive: { borderColor: '#38d16a' },
   avatarText: { color: '#e6ebf1', fontSize: 42, fontWeight: '700' },
   avatarSymbol: { fontSize: 52 },
+  stats: {
+    color: '#7d8794', fontSize: 10.5, textAlign: 'center',
+    marginTop: 6, marginBottom: 2, letterSpacing: 0.2,
+  },
   avatarGhost: { fontSize: 54, marginBottom: 16 },
   cardTitle: { color: '#e6ebf1', fontSize: 21, fontWeight: '700', textAlign: 'center' },
   cardSub: { color: '#8892a0', fontSize: 15, textAlign: 'center', marginTop: 10, lineHeight: 22 },

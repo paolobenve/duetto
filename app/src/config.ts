@@ -135,6 +135,8 @@ export function isPaired(cfg: DuoConfig): boolean {
  * agganciato a una traccia che non produce più.
  */
 export const VIDEO_PROFILES: Record<VideoQuality, {
+  /** di quanto ridurre l'uscita rispetto a ciò che la camera riprende */
+  scale: number;
   maxBitrate: number;
   degradation: string;
   capture: { width: number; height: number; frameRate: number };
@@ -142,27 +144,31 @@ export const VIDEO_PROFILES: Record<VideoQuality, {
   nota: string;
 }> = {
   risparmio: {
+    scale: 2,
     maxBitrate: 300_000,
     degradation: 'balanced',
     capture: { width: 1280, height: 720, frameRate: 24 },
     etichetta: 'Risparmio',
-    nota: '~38 kB/s · cala la definizione se la rete stringe',
+    nota: 'metà definizione · tetto 300 kbit/s',
   },
   standard: {
+    scale: 1.5,
     maxBitrate: 1_200_000,
     degradation: 'maintain-resolution',
     capture: { width: 1280, height: 720, frameRate: 30 },
     etichetta: 'Standard',
-    nota: '~150 kB/s · 720p',
+    nota: '480p · tetto 1,2 Mbit/s',
   },
   migliore: {
+    scale: 1,
     maxBitrate: 2_500_000,
     degradation: 'maintain-resolution',
     capture: { width: 1280, height: 720, frameRate: 30 },
     etichetta: 'Migliore',
-    nota: '~310 kB/s · 720p',
+    nota: '720p · tetto 2,5 Mbit/s',
   },
   massima: {
+    scale: 1,
     maxBitrate: 4_000_000,
     // 'balanced' e non 'maintain-resolution': all'accensione la stima di
     // banda parte bassa, e obbligare l'encoder a produrre subito 1080p
@@ -173,7 +179,7 @@ export const VIDEO_PROFILES: Record<VideoQuality, {
     degradation: 'balanced',
     capture: { width: 1920, height: 1080, frameRate: 30 },
     etichetta: 'Massima',
-    nota: '~500 kB/s · 1080p, dalla prossima accensione del video',
+    nota: '1080p dalla prossima accensione · tetto 4 Mbit/s',
   },
 };
 

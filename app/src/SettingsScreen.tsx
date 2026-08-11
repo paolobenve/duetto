@@ -159,9 +159,10 @@ export default function SettingsScreen({
           </TouchableOpacity>
         ))}
         <Text style={styles.sectionHint}>
-          L’inquadratura non cambia mai, e il passaggio è immediato: la camera
-          riprende sempre allo stesso modo, cambia solo quanto l’encoder
-          riduce e comprime.
+          Sono tetti, non obiettivi: se la scena costa poco e la rete regge,
+          due profili diversi possono dare lo stesso risultato. Sotto ai
+          pulsanti c’è la risoluzione e la banda che stanno passando davvero,
+          in entrambe le direzioni.
         </Text>
 
         <TouchableOpacity

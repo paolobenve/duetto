@@ -8,10 +8,11 @@ import InCallManager from 'react-native-incall-manager';
 import { Foreground, Pip, AppWindow, Visibility, Codecs } from 'duotalk-platform';
 import {
   DuoConfig, PairInfo, loadConfig, saveConfig,
-  isServerConfigured, isPaired,
+  isServerConfigured, isPaired, VIDEO_PROFILES,
 } from './config';
 import { Signaling, PresenceStatus, Mode } from './signaling';
 import { ChannelSession } from './webrtc';
+import type { VideoStats } from './webrtc';
 import SettingsScreen from './SettingsScreen';
 import SetupScreen from './SetupScreen';
 import PairingScreen from './PairingScreen';
@@ -75,6 +76,8 @@ export default function App() {
   /** VP9 in hardware: nostro e dell'altro. L'opzione si mostra solo con entrambi. */
   const [localVp9, setLocalVp9] = useState(false);
   const [peerVp9, setPeerVp9] = useState(false);
+  /** risoluzione e banda effettive, mostrate sotto ai comandi */
+  const [videoStats, setVideoStats] = useState<VideoStats>({});
   const [knockPending, setKnockPending] = useState(false);
   /** traccia video dell'altro effettivamente in arrivo (non solo annunciata) */
   const [remoteHasVideo, setRemoteHasVideo] = useState(false);
@@ -490,6 +493,7 @@ export default function App() {
             }, 8000);
           }, st === 'failed' ? 4000 : 12000);
         },
+        onVideoStats: setVideoStats,
         onPeerState: (st) => {
           setPeerState(st);
           setPeerVp9(st.hwVp9 === true);
@@ -753,6 +757,8 @@ export default function App() {
         channel={shownName || 'DuoTalk'}
         peerName={shownName}
         peerAvatar={face}
+        videoStats={videoStats}
+        qualityLabel={(VIDEO_PROFILES[cfg.videoQuality] ?? VIDEO_PROFILES.standard).etichetta}
         localStream={localStream}
         remoteStream={remoteStream}
         status={status}

@@ -43,6 +43,13 @@ export type ChannelEvents = {
    * cambierebbe il riferimento e React non ridisegnerebbe nulla.
    */
   onRemoteVideo?: (present: boolean) => void;
+  /** cosa sta davvero uscendo ed entrando, per mostrarlo sotto ai comandi */
+  onVideoStats?: (st: VideoStats) => void;
+};
+
+export type VideoStats = {
+  out?: { w: number; h: number; kbps: number | null };
+  in?: { w: number; h: number; kbps: number | null };
 };
 
 /** Proporzioni di ripiego: anteprima verticale 9:16, il caso più comune. */
@@ -80,8 +87,13 @@ export class ChannelSession {
    * devono lasciare il video acceso, non spegnerlo per sempre.
    */
   private peerWatching = true;
-  /** ultimo campione per calcolare il bitrate reale fra due letture */
+  /** `degradationPreference` si scrive una volta sola, mai a caldo */
+  private degradationSet = false;
+  /** ultimi campioni per calcolare il bitrate reale fra due letture */
   private lastOutbound: { ts: number; bytes: number } | null = null;
+  private lastInbound: { ts: number; bytes: number } | null = null;
+  /** una riga nel log ogni tanto, ma il pannello si aggiorna spesso */
+  private statsTicks = 0;
   private statsTimer: ReturnType<typeof setInterval> | null = null;
   /** l'altro dichiara la camera accesa: lo dice il messaggio `state` */
   private peerVideoDeclared = false;
@@ -196,7 +208,10 @@ export class ChannelSession {
     pc.addEventListener('icecandidate', (event: any) => {
       if (!isCurrent()) return;
       if (event.candidate) {
-        log('candidato locale', candidateType(event.candidate.candidate));
+        // L'indirizzo serve: se è un nome ".local" (mDNS) l'altro non lo
+        // risolve e la strada diretta non nasce nemmeno.
+        log('candidato locale', candidateType(event.candidate.candidate),
+          (event.candidate.candidate || '').split(' ')[4] ?? '?');
         this.signaling.sendSignal({ kind: 'ice', candidate: event.candidate });
       } else {
         log('raccolta candidati locali conclusa');
@@ -556,6 +571,20 @@ export class ChannelSession {
         }
       });
       if (!pair) { log('percorso: non ancora determinato'); return; }
+
+      // Tutte le strade tentate, non solo quella vinta: se il traffico
+      // passa dal relay pur essendo i due telefoni sulla stessa rete, la
+      // risposta sta in quale coppia locale è fallita, o non è mai nata.
+      const descrivi = (c: any) =>
+        c ? `${c.candidateType}/${c.address ?? c.ip ?? '?'}` : '?';
+      stats.forEach((r: any) => {
+        if (r.type !== 'candidate-pair') return;
+        log('  strada:',
+          descrivi(candidates.get(r.localCandidateId)),
+          '->', descrivi(candidates.get(r.remoteCandidateId)),
+          '-', r.state,
+          r.nominated ? '(scelta)' : '');
+      });
       const local = candidates.get(pair.localCandidateId);
       const remote = candidates.get(pair.remoteCandidateId);
       const kind = local?.candidateType === 'relay' || remote?.candidateType === 'relay'
@@ -582,28 +611,95 @@ export class ChannelSession {
    */
   private async logOutboundVideo() {
     const pc: any = this.pc;
-    if (!pc?.getStats || !this.videoSender) return;
+    if (!pc?.getStats) return;
     try {
       const stats = await pc.getStats();
-      stats.forEach((r: any) => {
-        if (r.type !== 'outbound-rtp' || r.kind !== 'video') return;
-        const prev = this.lastOutbound;
-        const dt = prev ? (r.timestamp - prev.ts) / 1000 : 0;
-        // Ricostruendo la connessione il contatore riparte da zero: la
-        // differenza diventa negativa, e stamparla sarebbe peggio che
-        // non stampare nulla.
-        const delta = prev ? r.bytesSent - prev.bytes : -1;
-        const kbps = prev && dt > 0 && delta >= 0
+      const out: VideoStats = {};
+      let limite = '?';
+      let fpsOut = 0;
+
+      /** Ricostruendo la connessione i contatori ripartono da zero: la
+       *  differenza diventa negativa, e mostrarla è peggio che tacere. */
+      const rate = (prev: { ts: number; bytes: number } | null, ts: number, bytes: number) => {
+        const dt = prev ? (ts - prev.ts) / 1000 : 0;
+        const delta = prev ? bytes - prev.bytes : -1;
+        return prev && dt > 0 && delta >= 0
           ? Math.round((delta * 8) / dt / 1000)
           : null;
-        this.lastOutbound = { ts: r.timestamp, bytes: r.bytesSent };
-        log('in uscita:',
-          `${r.frameWidth ?? '?'}x${r.frameHeight ?? '?'}`,
-          `@${Math.round(r.framesPerSecond ?? 0)}fps`,
-          kbps !== null ? `- ${kbps} kbit/s` : '',
-          '- limite:', r.qualityLimitationReason ?? '?');
+      };
+
+      stats.forEach((r: any) => {
+        if (r.kind !== 'video') return;
+        if (r.type === 'outbound-rtp') {
+          out.out = {
+            w: r.frameWidth ?? 0,
+            h: r.frameHeight ?? 0,
+            kbps: rate(this.lastOutbound, r.timestamp, r.bytesSent),
+          };
+          this.lastOutbound = { ts: r.timestamp, bytes: r.bytesSent };
+          limite = r.qualityLimitationReason ?? '?';
+          fpsOut = Math.round(r.framesPerSecond ?? 0);
+        } else if (r.type === 'inbound-rtp') {
+          out.in = {
+            w: r.frameWidth ?? 0,
+            h: r.frameHeight ?? 0,
+            kbps: rate(this.lastInbound, r.timestamp, r.bytesReceived),
+          };
+          this.lastInbound = { ts: r.timestamp, bytes: r.bytesReceived };
+        }
       });
+
+      this.events.onVideoStats?.(out);
+
+      // Nel log basta una riga ogni tanto: sotto ai comandi c'è il resto.
+      this.statsTicks += 1;
+      if (out.out && this.statsTicks % 3 === 0) {
+        log('in uscita:', `${out.out.w}x${out.out.h}`, `@${fpsOut}fps`,
+          out.out.kbps !== null ? `- ${out.out.kbps} kbit/s` : '',
+          '- limite:', limite);
+      }
     } catch { /* la diagnostica non deve mai disturbare */ }
+  }
+
+  /**
+   * Rete di sicurezza dopo un cambio di scala.
+   *
+   * Cambiare la scala a encoder acceso lo ha già fatto smettere di
+   * produrre una volta: l'immagine spariva all'altro mentre la nostra
+   * anteprima continuava, e l'unico rimedio era spegnere e riaccendere il
+   * video. Qui si controlla che i fotogrammi encodati stiano davvero
+   * salendo e, se non salgono, si torna alla scala piena da soli.
+   *
+   * Meglio un profilo che non fa quello che promette di un video che
+   * sparisce senza dire perché.
+   */
+  private async watchEncoderAlive(scale: number) {
+    if (scale === 1) return;
+    const framesNow = async (): Promise<number | null> => {
+      try {
+        const stats = await (this.pc as any)?.getStats();
+        let n: number | null = null;
+        stats?.forEach((r: any) => {
+          if (r.type === 'outbound-rtp' && r.kind === 'video') n = r.framesEncoded ?? null;
+        });
+        return n;
+      } catch { return null; }
+    };
+    const before = await framesNow();
+    if (before === null) return;
+    setTimeout(async () => {
+      const after = await framesNow();
+      if (after === null || after > before) return;
+      log('l\'encoder si è fermato dopo il cambio di scala: torno alla piena');
+      try {
+        const sender: any = this.videoSender;
+        const params = sender.getParameters();
+        if (Array.isArray(params.encodings) && params.encodings.length > 0) {
+          params.encodings[0].scaleResolutionDownBy = 1;
+          await sender.setParameters(params);
+        }
+      } catch { /* noop */ }
+    }, 3000);
   }
 
   private async flushCandidates() {
@@ -679,7 +775,7 @@ export class ChannelSession {
 
     this.lastOutbound = null;
     if (!this.statsTimer) {
-      this.statsTimer = setInterval(() => { this.logOutboundVideo(); }, 15000);
+      this.statsTimer = setInterval(() => { this.logOutboundVideo(); }, 5000);
     }
 
     this.events.onLocalStream?.(this.localStream);
@@ -713,16 +809,22 @@ export class ChannelSession {
     const profile = VIDEO_PROFILES[this.cfg.videoQuality] ?? VIDEO_PROFILES.standard;
     try {
       const params = sender.getParameters();
-      params.degradationPreference = profile.degradation;
       if (!Array.isArray(params.encodings) || params.encodings.length === 0) {
         params.encodings = [{}];
       }
-      // SOLO il tetto. Scala e fotogrammi, cambiati a encoder acceso, lo
-      // fanno smettere di produrre: sotto un tetto più basso ci pensa
-      // l'encoder a rientrare, che è l'unico che sa farlo senza
-      // riconfigurarsi.
+      // `degradationPreference` si fissa UNA VOLTA, alla prima
+      // applicazione: cambiarlo a encoder acceso è fra le cose che
+      // sospetto lo facciano smettere di produrre, e non serve
+      // cambiarlo per cambiare profilo.
+      if (!this.degradationSet) {
+        params.degradationPreference = profile.degradation;
+        this.degradationSet = true;
+      }
+      // I fotogrammi NON si toccano: maxFramerate resta fuori.
+      params.encodings[0].scaleResolutionDownBy = profile.scale;
       params.encodings[0].maxBitrate = profile.maxBitrate;
       await sender.setParameters(params);
+      this.watchEncoderAlive(profile.scale);
       log('qualità video:', this.cfg.videoQuality,
         `- tetto ${Math.round(profile.maxBitrate / 1000)} kbit/s,`,
         profile.degradation);
@@ -746,6 +848,11 @@ export class ChannelSession {
     // Nessuna riapertura della camera: cambiano solo i parametri
     // dell'encoder, e si applicano a ripresa in corso.
     await this.applyVideoQuality();
+    // Il campione riparte da qui: altrimenti la prima banda mostrata dopo
+    // il cambio sarebbe una media a cavallo del cambio stesso.
+    this.lastOutbound = null;
+    this.lastInbound = null;
+    this.logOutboundVideo();
   }
 
   /** Cosa sa fare questo telefono: lo scopre il modulo nativo. */
@@ -850,6 +957,8 @@ export class ChannelSession {
 
     if (this.statsTimer) { clearInterval(this.statsTimer); this.statsTimer = null; }
     this.lastOutbound = null;
+    this.lastInbound = null;
+    this.events.onVideoStats?.({});
 
     this.events.onLocalStream?.(this.localStream);
     this.broadcastState();
