@@ -330,6 +330,14 @@ export default function App() {
               if (!politeRef.current && inChannelRef.current) attachPeer(true);
               return;
             }
+            // L'altro ha cambiato la qualità: vale per tutti e due, così
+            // non ci si ritrova con due impostazioni diverse senza sapere
+            // quale delle due si sta vedendo. Non si rimanda indietro:
+            // sarebbe un rimpallo senza fine.
+            if (msg.kind === 'quality') {
+              applyQuality(msg.value as DuoConfig['videoQuality'], false);
+              return;
+            }
             // Se l'altro ha ricostruito prima di noi, la sua offerta
             // arriva quando ancora non abbiamo nulla per riceverla e
             // verrebbe scartata: prima ci prepariamo, poi la trattiamo.
@@ -613,12 +621,36 @@ export default function App() {
   }, []);
 
   // --- salvataggi ----------------------------------------------------------
+  /**
+   * Cambia la qualità video su ENTRAMBI i telefoni.
+   *
+   * Il profilo agisce sull'encoder di chi trasmette, quindi da solo
+   * cambierebbe solo cosa vede l'altro. Tenendoli allineati la scelta
+   * significa "come guardiamo", che è quello che uno intende; se non va
+   * bene, l'altro la ricambia e torna allineata di nuovo.
+   */
+  const applyQuality = useCallback(
+    (q: DuoConfig['videoQuality'], tell: boolean) => {
+      setCfg((prev) => {
+        if (!prev || prev.videoQuality === q) return prev;
+        const next = { ...prev, videoQuality: q };
+        saveConfig(next).catch(() => {});
+        return next;
+      });
+      sessionRef.current?.setVideoQuality(q);
+      if (tell) signalingRef.current?.sendSignal({ kind: 'quality', value: q });
+    },
+    [],
+  );
+
   const onSaveSettings = useCallback(async (next: DuoConfig) => {
     await saveConfig(next);
     setCfg(next);
     // La qualità va applicata alla sessione già in corso, altrimenti si
-    // vedrebbe cambiare solo alla prossima accensione della camera.
+    // vedrebbe cambiare solo alla prossima accensione della camera - e
+    // va detta all'altro, perché vale per tutti e due.
     sessionRef.current?.setVideoQuality(next.videoQuality);
+    signalingRef.current?.sendSignal({ kind: 'quality', value: next.videoQuality });
     setScreen(isPaired(next) ? 'channel' : 'pairing');
   }, []);
 

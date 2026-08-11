@@ -679,6 +679,7 @@ export class ChannelSession {
    * ripresa in corso.
    */
   async setVideoQuality(q: DuoConfig['videoQuality']) {
+    if (this.cfg.videoQuality === q) return;
     const before = VIDEO_PROFILES[this.cfg.videoQuality] ?? VIDEO_PROFILES.standard;
     const after = VIDEO_PROFILES[q] ?? VIDEO_PROFILES.standard;
     this.cfg = { ...this.cfg, videoQuality: q };

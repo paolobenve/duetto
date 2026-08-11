@@ -124,9 +124,15 @@ export default function SettingsScreen({
 
         <Text style={styles.subsection}>Qualità del video</Text>
         <Text style={styles.sectionHint}>
-          La banda di un video dipende da risoluzione, fotogrammi al secondo e
-          tetto di bitrate — non dal codec. Meno di tutti e tre significa meno
-          dati e meno batteria, da entrambe le parti.
+          Vale per tutti e due i telefoni: cambiandola qui cambia anche
+          all’altro, così non vi ritrovate con due impostazioni diverse senza
+          sapere quale delle due state guardando. Se non gli va bene, la
+          ricambia lui.
+        </Text>
+        <Text style={styles.sectionHint}>
+          La banda dipende da risoluzione, fotogrammi al secondo e tetto di
+          bitrate — non dal codec. Meno di tutti e tre significa meno dati e
+          meno batteria, da entrambe le parti.
         </Text>
         {(Object.keys(VIDEO_PROFILES) as VideoQuality[]).map((q) => (
           <TouchableOpacity

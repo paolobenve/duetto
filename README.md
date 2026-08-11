@@ -138,6 +138,33 @@ scelta viene **ricordata** per la volta successiva.
 - Durante un'interruzione compare un avviso e il riquadro resta al suo posto, vuoto: la
   disposizione non cambia mai.
 
+### Qualità del video
+
+Quattro profili — **Risparmio**, **Standard**, **Migliore**, **Massima** — che agiscono su
+risoluzione, fotogrammi al secondo e tetto di bitrate. Il codec non c'entra: cambia quanto
+bene si sfrutta un tetto, non quanto se ne consuma.
+
+| | Banda | Ripresa |
+|---|---|---|
+| Risparmio | ~45 kB/s | 720p, metà definizione in uscita, 15 fps |
+| Standard | ~150 kB/s | 720p, 24 fps |
+| Migliore | ~310 kB/s | 720p, 30 fps |
+| Massima | ~500 kB/s | 1080p, 30 fps |
+
+La scelta **vale per tutti e due i telefoni**: il profilo agisce sull'encoder di chi
+trasmette, quindi da solo cambierebbe solo quello che vede l'altro. Tenendoli allineati la
+scelta significa "come guardiamo"; se all'altro non va bene, la ricambia lui.
+
+Passando da o verso **1080p la camera si riapre** e si vede un lampo: cambiare il formato
+di ripresa a camera accesa non è possibile. Gli altri tre profili condividono il 720p e si
+cambiano al volo.
+
+**VP9** comprime circa un terzo meglio, ma compare selezionabile solo se **entrambi** i
+telefoni hanno l'encoder in hardware — l'app lo chiede al sistema all'avvio. In software
+costerebbe più batteria di quanta banda faccia risparmiare, e le preferenze di codec
+valgono per l'intera sessione: sceglierlo perché lo sa fare uno solo costringerebbe l'altro
+a encodare via software.
+
 ### Quando non c'è video
 
 Al posto dell'immagine compare un **volto generato dalla coppia**: un colore e un

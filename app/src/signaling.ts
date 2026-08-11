@@ -25,7 +25,10 @@ export type SignalMessage =
   | { kind: 'state'; audio: boolean; video: boolean; aspect?: number; watching?: boolean; hwVp9?: boolean }
   // Chi risponde non può offrire: se resta senza collegamento e l'altro
   // non se ne accorge, l'unica via d'uscita è chiederglielo.
-  | { kind: 'renegotiate' };
+  | { kind: 'renegotiate' }
+  // La qualità video vale per tutti e due: cambiarla da un telefono la
+  // cambia anche sull'altro. Chi la riceve non la rimanda indietro.
+  | { kind: 'quality'; value: string };
 
 export type PairMessage =
   | { kind: 'pubkey'; pub: string; name: string }
