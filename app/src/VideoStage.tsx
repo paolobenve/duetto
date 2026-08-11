@@ -390,6 +390,7 @@ export default function VideoStage(props: Props) {
 
   // --- Trascinamento (e pizzico a due dita per ridimensionare) ------------
   const pinchStart = useRef<{ dist: number; w: number } | null>(null);
+  const inizioTrascinamento = useRef({ x: 0, y: 0 });
 
   const twoFingerDistance = (touches: any[]) => {
     const [a, b] = touches;
@@ -405,7 +406,13 @@ export default function VideoStage(props: Props) {
         onPanResponderGrant: () => {
           dragged.current = false;
           pinchStart.current = null;
-          pan.extractOffset();
+          // Niente `extractOffset`: la posizione resta in coordinate
+          // assolute per tutta la durata del gesto. Con l'offset attivo
+          // la ricollocazione automatica - che scrive coordinate assolute
+          // - si SOMMAVA all'offset invece di sostituirlo, e durante un
+          // pizzico il riquadrino schizzava fuori dallo schermo per poi
+          // rientrare al rilascio.
+          inizioTrascinamento.current = { ...posRef.current };
         },
         onPanResponderMove: (e, g) => {
           const touches = e.nativeEvent.touches ?? [];
@@ -425,10 +432,12 @@ export default function VideoStage(props: Props) {
 
           pinchStart.current = null;
           if (Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4) dragged.current = true;
-          pan.setValue({ x: g.dx, y: g.dy });
+          pan.setValue({
+            x: inizioTrascinamento.current.x + g.dx,
+            y: inizioTrascinamento.current.y + g.dy,
+          });
         },
         onPanResponderRelease: () => {
-          pan.flattenOffset();
           pinchStart.current = null;
           if (dragged.current) {
             // clampIntoScreen registra da sé la posizione finale.
@@ -439,7 +448,6 @@ export default function VideoStage(props: Props) {
           }
         },
         onPanResponderTerminate: () => {
-          pan.flattenOffset();
           pinchStart.current = null;
           clampIntoScreen();
         },
@@ -640,9 +648,25 @@ export default function VideoStage(props: Props) {
               {pipStream ? (pipIsSelf ? 'Tu' : 'Lui/Lei') : 'in attesa'}
             </Text>
           </View>
-          <View {...resizeResponder.panHandlers} style={styles.handle}>
-            <View style={styles.handleGrip} />
-          </View>
+        </Animated.View>
+      ) : null}
+
+      {/* La maniglia è SORELLA del riquadrino, non figlia: Android non
+          consegna i tocchi a un figlio che sta oltre i bordi del genitore,
+          e dentro sarebbe coperta dalla superficie del video. */}
+      {(pipStream || pipEmpty) && !compact ? (
+        <Animated.View
+          {...resizeResponder.panHandlers}
+          style={[
+            styles.handle,
+            {
+              transform: [
+                { translateX: Animated.add(pan.x, pipWidth - HANDLE / 2) },
+                { translateY: Animated.add(pan.y, pipHeight - HANDLE / 2) },
+              ],
+            },
+          ]}>
+          <View style={styles.handleGrip} />
         </Animated.View>
       ) : null}
     </View>
@@ -687,15 +711,24 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.45)', paddingVertical: 2, alignItems: 'center',
   },
   pipTagText: { color: '#e6ebf1', fontSize: 10, fontWeight: '600' },
+  /**
+   * La maniglia sta FUORI dall'angolo, non sopra il video.
+   *
+   * Il video del riquadrino usa `zOrder={1}`, cioè viene disegnato sopra
+   * le viste normali - serve, altrimenti finirebbe dietro al video
+   * grande, che è anch'esso una superficie nativa. Ma così copriva la
+   * maniglia: c'era ed era premibile, solo invisibile, e si finiva per
+   * trascinare il riquadrino invece di ridimensionarlo.
+   */
   handle: {
-    position: 'absolute', right: 0, bottom: 0,
+    position: 'absolute', top: 0, left: 0,
     width: HANDLE, height: HANDLE,
-    alignItems: 'flex-end', justifyContent: 'flex-end', padding: 5,
+    alignItems: 'center', justifyContent: 'center',
   },
+  /** Un bottoncino, non un angolo: fuori dal riquadro serve che si veda. */
   handleGrip: {
-    width: 14, height: 14,
-    borderRightWidth: 2.5, borderBottomWidth: 2.5,
-    borderColor: 'rgba(255,255,255,0.85)',
-    borderBottomRightRadius: 3,
+    width: 20, height: 20, borderRadius: 10,
+    backgroundColor: 'rgba(20,22,28,0.92)',
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.75)',
   },
 });
