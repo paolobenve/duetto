@@ -1,5 +1,7 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  View, Text, StyleSheet, TouchableOpacity, ScrollView, AppState,
+} from 'react-native';
 import { Foreground } from 'duotalk-platform';
 
 type Props = {
@@ -21,15 +23,31 @@ export default function SetupScreen({ onDone }: Props) {
   const [batteryOk, setBatteryOk] = useState(false);
   const [hasAutoStart, setHasAutoStart] = useState(false);
   const [autoStartOpened, setAutoStartOpened] = useState(false);
+  /** la richiesta diretta e' stata tentata ma non ha cambiato nulla */
+  const [batteryRefused, setBatteryRefused] = useState(false);
+  const tried = useRef(false);
 
   const refresh = useCallback(async () => {
     try {
-      setBatteryOk(await Foreground.isBatteryUnrestricted());
+      const ok = await Foreground.isBatteryUnrestricted();
+      setBatteryOk(ok);
+      // Se avevamo gia' provato e nulla e' cambiato, la richiesta
+      // diretta non e' praticabile su questo telefono: si passa alla
+      // strada manuale invece di riproporre una finestra che sparisce.
+      if (tried.current && !ok) setBatteryRefused(true);
       setHasAutoStart(await Foreground.hasAutoStartScreen());
     } catch { /* noop */ }
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  // Al ritorno da una schermata di sistema, ricontrolliamo.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st === 'active') refresh();
+    });
+    return () => sub.remove();
+  }, [refresh]);
 
   return (
     <ScrollView style={styles.flex} contentContainerStyle={styles.container}>
@@ -43,13 +61,23 @@ export default function SetupScreen({ onDone }: Props) {
       <Step
         n="1"
         title="Uso senza restrizioni"
-        text="Permette a DuoTalk di restare attiva anche a schermo spento."
+        text={
+          batteryRefused
+            ? 'Il tuo telefono non permette di chiederlo direttamente. Apri la scheda ' +
+              'dell’app e cerca «Batteria» o «Risparmio energetico»: scegli ' +
+              '«Nessuna restrizione».'
+            : 'Permette a DuoTalk di restare attiva anche a schermo spento.'
+        }
         done={batteryOk}
-        action="Consenti"
+        action={batteryRefused ? 'Apri la scheda dell’app' : 'Consenti'}
         onPress={async () => {
+          if (batteryRefused) {
+            await Foreground.openAppSettings();
+            return;
+          }
+          tried.current = true;
           await Foreground.requestBatteryUnrestricted();
-          // La finestra e' di sistema: al ritorno ricontrolliamo.
-          setTimeout(refresh, 1200);
+          setTimeout(refresh, 1500);
         }}
       />
 
@@ -70,6 +98,12 @@ export default function SetupScreen({ onDone }: Props) {
           }}
         />
       ) : null}
+
+      <Text style={styles.hint}>
+        Su alcuni telefoni (Xiaomi, Huawei, Oppo) il risparmio energetico è
+        gestito dal produttore e non da Android: la spunta qui sopra può
+        restare grigia anche dopo averlo impostato. Se l’hai fatto, prosegui.
+      </Text>
 
       <Text style={styles.hint}>
         {hasAutoStart
