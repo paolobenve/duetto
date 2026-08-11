@@ -17,6 +17,18 @@ import { DEFAULT_ASPECT } from './webrtc';
  *    e il riquadrino non compare proprio.
  */
 
+/**
+ * Dove l'utente ha messo il riquadrino, e quanto grande.
+ *
+ * Fuori dal componente di proposito: entrando nelle impostazioni la
+ * schermata del canale viene smontata, e con lei andava persa la
+ * posizione scelta - tornando indietro il riquadrino risaltava in alto a
+ * destra, dove nasce. Una preferenza espressa trascinando è comunque una
+ * preferenza: va rispettata finché l'app è viva.
+ */
+let posizioneScelta: { x: number; y: number } | null = null;
+let larghezzaScelta: number | null = null;
+
 const MARGIN = 14;
 const TOP_SAFE = 116;    // sotto ingranaggio e badge, senza sfiorarli
 const BOTTOM_SAFE = 140; // sopra il pannello dei controlli
@@ -149,7 +161,10 @@ export default function VideoStage(props: Props) {
     (pipIsSelf ? localAspect : remoteAspect) || DEFAULT_ASPECT;
 
   // --- Dimensione ---------------------------------------------------------
-  const [pipWidth, setPipWidth] = useState(() => Math.round(width * START_FRACTION));
+  const [pipWidth, setPipWidth] = useState(
+    () => larghezzaScelta ?? Math.round(width * START_FRACTION),
+  );
+  useEffect(() => { larghezzaScelta = pipWidth; }, [pipWidth]);
   const pipHeight = Math.max(1, Math.round(pipWidth / pipAspect));
 
   // Serve dentro i PanResponder, che non vedono lo stato aggiornato.
@@ -164,15 +179,21 @@ export default function VideoStage(props: Props) {
   );
 
   // --- Posizione ----------------------------------------------------------
-  const pan = useRef(new Animated.ValueXY({
+  const posIniziale = useRef(posizioneScelta ?? {
     x: width - Math.round(width * START_FRACTION) - MARGIN,
     y: TOP_SAFE,
-  })).current;
-  const posRef = useRef({ x: 0, y: 0 });
+  }).current;
+  const pan = useRef(new Animated.ValueXY(posIniziale)).current;
+  // Da dove parte davvero, non da (0,0): il primo riallineamento leggeva
+  // questo valore e avrebbe portato il riquadrino in alto a sinistra.
+  const posRef = useRef({ ...posIniziale });
   const dragged = useRef(false);
 
   useEffect(() => {
-    const id = pan.addListener((v) => { posRef.current = v; });
+    const id = pan.addListener((v) => {
+      posRef.current = v;
+      posizioneScelta = v;
+    });
     return () => pan.removeListener(id);
   }, [pan]);
 
