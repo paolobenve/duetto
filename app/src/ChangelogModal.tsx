@@ -20,8 +20,15 @@ export default function ChangelogModal({ visible, onClose }: {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
-        {/* Il tocco sul foglio non lo chiude: si scorre senza paura. */}
-        <Pressable style={styles.sheet} onPress={() => {}}>
+        {/* Una vista, non un secondo Pressable: quello si candidava a
+            gestire il tocco e ogni tanto vinceva lui invece dello
+            scorrimento - da cui una lista che scorreva a volte sì e a
+            volte no. `onStartShouldSetResponder` viene interrogato dopo
+            i figli, quindi ferma il tocco diretto sul foglio senza
+            togliere niente alla lista. */}
+        <View
+          style={styles.sheet}
+          onStartShouldSetResponder={() => true}>
           <Text style={styles.title}>Novità</Text>
           <Text style={styles.sub}>{VERSION_FULL}</Text>
 
@@ -42,7 +49,7 @@ export default function ChangelogModal({ visible, onClose }: {
           <TouchableOpacity style={styles.button} onPress={onClose}>
             <Text style={styles.buttonText}>Chiudi</Text>
           </TouchableOpacity>
-        </Pressable>
+        </View>
       </Pressable>
     </Modal>
   );

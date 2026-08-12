@@ -102,12 +102,25 @@ export default function ChannelScreen(props: Props) {
    * lì non c'è nessun bordo a cui allinearsi.
    */
   const [bigAspect, setBigAspect] = useState<number | null>(null);
+  /**
+   * L'ultimo rientro conosciuto, tenuto anche senza video.
+   *
+   * Spegnendo l'ultima camera il rettangolo del video sparisce e il
+   * rientro andrebbe a zero: i comandi scivolavano in fondo allo schermo
+   * e il riquadrino cambiava zona, per un cambiamento che dal punto di
+   * vista di chi guarda non c'è stato. Restano dove sono, in attesa che
+   * l'immagine torni.
+   */
+  const ultimoInset = useRef({ v: 0, h: 0 });
   const inset = React.useMemo(() => {
-    if (!bigAspect || winWidth <= 0 || winHeight <= 0) return { v: 0, h: 0 };
+    if (winWidth <= 0 || winHeight <= 0) return ultimoInset.current;
+    if (!bigAspect) return ultimoInset.current;
     const screen = winWidth / winHeight;
-    return bigAspect > screen
+    const v = bigAspect > screen
       ? { v: Math.round((winHeight - winWidth / bigAspect) / 2), h: 0 }
       : { v: 0, h: Math.round((winWidth - winHeight * bigAspect) / 2) };
+    ultimoInset.current = v;
+    return v;
   }, [bigAspect, winWidth, winHeight]);
 
   const [routeMenu, setRouteMenu] = useState(false);

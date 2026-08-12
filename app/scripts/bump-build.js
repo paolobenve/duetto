@@ -13,18 +13,17 @@ const path = require('path');
 const appDir = path.join(__dirname, '..');
 
 /**
- * La versione che si mostra a chi usa l'app.
+ * La versione mostrata nell'app.
  *
- * Sta in version.json e si alza a mano, quando un insieme di cambiamenti
- * vale la pena di essere annunciato: è una decisione, non un contatore.
- * Ogni alzata va accompagnata da una voce in CHANGELOG.md.
- *
- * Il numero di build invece avanza da solo a ogni compilazione, e serve
- * a sapere con certezza quale APK sta girando su un telefono.
+ * `major` e `minor` stanno in version.json e si alzano a mano, quando un
+ * insieme di cambiamenti cambia davvero cosa l'app è. L'ultimo numero
+ * avanza invece a ogni compilazione: così ogni APK ha un nome proprio, e
+ * chiedere "che versione hai" basta a sapere esattamente cosa sta
+ * girando - senza doversi ricordare anche un numero di build a parte.
  */
-const VERSION = JSON.parse(
+const { major, minor } = JSON.parse(
   fs.readFileSync(path.join(appDir, 'version.json'), 'utf8'),
-).version;
+);
 const counterFile = path.join(appDir, 'build-number.json');
 const outFile = path.join(appDir, 'src', 'version.ts');
 
@@ -36,6 +35,8 @@ try {
 }
 n += 1;
 fs.writeFileSync(counterFile, JSON.stringify({ build: n }, null, 2) + '\n');
+
+const VERSION = `${major}.${minor}.${n}`;
 
 const now = new Date();
 const stamp = `${String(now.getDate()).padStart(2, '0')}/` +
@@ -50,7 +51,7 @@ export const BUILT_AT = '${stamp}';
 /** Quello che si vede nell'app. */
 export const VERSION_LABEL = '${VERSION}';
 /** Per le impostazioni: serve a distinguere due APK della stessa versione. */
-export const VERSION_FULL = '${VERSION} · build ${n} · ${stamp}';
+export const VERSION_FULL = '${VERSION} · ${stamp}';
 `);
 
-console.log(`${VERSION} (build ${n}, ${stamp})`);
+console.log(`${VERSION} (${stamp})`);
