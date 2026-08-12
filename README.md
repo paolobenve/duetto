@@ -252,6 +252,15 @@ adb logcat -b crash -d | tail -40 > /tmp/stack.txt
 npx metro-symbolicate app/android/app/build/generated/sourcemaps/react/release/index.android.bundle.map < /tmp/stack.txt
 ```
 
+## Cronologia
+
+Cosa cambia a ogni versione, dal punto di vista di chi la usa:
+[CHANGELOG.md](CHANGELOG.md).
+
+La versione si alza a mano in `app/version.json`, quando un insieme di cambiamenti vale la
+pena di essere annunciato: è una decisione, non un contatore. Il numero di build avanza
+invece da solo a ogni compilazione.
+
 ## Licenza
 
 Uso personale.

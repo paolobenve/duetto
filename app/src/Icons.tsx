@@ -24,16 +24,18 @@ type Props = {
 
 const STROKE = 2.1;
 
-function Barra({ size, color }: { size: number; color: string }) {
+function Barra({ color }: { size: number; color: string }) {
   return (
     <>
-      {/* Doppio tratto: quello scuro stacca la barra dal disegno sotto. */}
+      {/* Il distacco dal disegno sotto è appena accennato: con un alone
+          spesso la barra pesava più dell'icona, e si leggeva la sbarra
+          invece di ciò che era sbarrato. */}
       <Line
-        x1={4} y1={20} x2={20} y2={4}
-        stroke="#12141a" strokeWidth={STROKE + 2.6} strokeLinecap="round"
+        x1={4.5} y1={19.5} x2={19.5} y2={4.5}
+        stroke="#12141a" strokeWidth={STROKE + 1.4} strokeLinecap="round"
       />
       <Line
-        x1={4} y1={20} x2={20} y2={4}
+        x1={4.5} y1={19.5} x2={19.5} y2={4.5}
         stroke={color} strokeWidth={STROKE} strokeLinecap="round"
       />
     </>
@@ -131,16 +133,23 @@ export function IconaEsci(p: Props) {
   );
 }
 
-/** Ingranaggio: otto denti, riconoscibile anche a 20 pixel. */
+/**
+ * Impostazioni: tre cursori, non un ingranaggio.
+ *
+ * L'ingranaggio a raggi, in piccolo, si leggeva come un sole: i denti
+ * partono dal centro e sembrano raggi luminosi. I cursori dicono la
+ * stessa cosa - qualcosa da regolare - e non somigliano a nient'altro.
+ */
 export function IconaImpostazioni(p: Props) {
   const c = p.color ?? '#fff';
   return (
     <Base {...p}>
-      <Circle cx={12} cy={12} r={3.1} stroke={c} strokeWidth={STROKE} />
-      <Path
-        d="M12 2.6v2.6M12 18.8v2.6M4.4 12H1.8M22.2 12h-2.6M6.6 6.6L4.8 4.8M19.2 19.2l-1.8-1.8M17.4 6.6l1.8-1.8M4.8 19.2l1.8-1.8"
-        stroke={c} strokeWidth={STROKE} strokeLinecap="round"
-      />
+      <Line x1={3} y1={7} x2={21} y2={7} stroke={c} strokeWidth={STROKE} strokeLinecap="round" />
+      <Line x1={3} y1={12} x2={21} y2={12} stroke={c} strokeWidth={STROKE} strokeLinecap="round" />
+      <Line x1={3} y1={17} x2={21} y2={17} stroke={c} strokeWidth={STROKE} strokeLinecap="round" />
+      <Circle cx={8.5} cy={7} r={2.4} fill="#0b0e14" stroke={c} strokeWidth={STROKE} />
+      <Circle cx={15.5} cy={12} r={2.4} fill="#0b0e14" stroke={c} strokeWidth={STROKE} />
+      <Circle cx={9.5} cy={17} r={2.4} fill="#0b0e14" stroke={c} strokeWidth={STROKE} />
     </Base>
   );
 }

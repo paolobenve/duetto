@@ -10,16 +10,21 @@
 const fs = require('fs');
 const path = require('path');
 
+const appDir = path.join(__dirname, '..');
+
 /**
  * La versione che si mostra a chi usa l'app.
  *
- * Il numero di build resta, ma sta in secondo piano: serve a noi per
- * sapere con certezza quale APK sta girando su un telefono, e compare
- * solo nelle impostazioni.
+ * Sta in version.json e si alza a mano, quando un insieme di cambiamenti
+ * vale la pena di essere annunciato: è una decisione, non un contatore.
+ * Ogni alzata va accompagnata da una voce in CHANGELOG.md.
+ *
+ * Il numero di build invece avanza da solo a ogni compilazione, e serve
+ * a sapere con certezza quale APK sta girando su un telefono.
  */
-const VERSION = '1.0.0';
-
-const appDir = path.join(__dirname, '..');
+const VERSION = JSON.parse(
+  fs.readFileSync(path.join(appDir, 'version.json'), 'utf8'),
+).version;
 const counterFile = path.join(appDir, 'build-number.json');
 const outFile = path.join(appDir, 'src', 'version.ts');
 
