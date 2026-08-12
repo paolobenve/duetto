@@ -30,6 +30,8 @@ type Props = {
   videoStats: VideoStats;
   /** profilo scelto: senza, non si capisce da cosa dipendano quei numeri */
   qualityLabel: string;
+  /** le due righe tecniche sotto ai pulsanti, spente per impostazione */
+  showStats: boolean;
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
   status: PresenceStatus;
@@ -63,7 +65,7 @@ type Props = {
  */
 export default function ChannelScreen(props: Props) {
   const {
-    channel, peerName, peerAvatar, videoStats, qualityLabel, localStream, remoteStream, status, connectionState,
+    channel, peerName, peerAvatar, videoStats, qualityLabel, showStats, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes,
     onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, onOpenSettings,
@@ -114,7 +116,20 @@ export default function ChannelScreen(props: Props) {
    * veniva dato al proprio video. Si vedeva il proprio a schermo intero
    * per un attimo e poi rimpicciolirsi, a ogni riconnessione.
    */
-  const notConnected = serverLost || (together && !linked);
+  /**
+   * Interruzione VERA, non una rinegoziazione.
+   *
+   * Rinegoziare - cambio di risoluzione, ricerca di una strada diretta,
+   * cambio di cella - porta la connessione in "connecting" per qualche
+   * secondo senza che nulla si sia rotto: i fotogrammi riprendono da
+   * soli. Contare quello stato come interruzione mostrava "collegamento
+   * interrotto" proprio mentre il collegamento stava lavorando.
+   *
+   * Sono interruzioni solo "failed" e "disconnected", che è ciò che ICE
+   * dice quando i pacchetti non arrivano davvero.
+   */
+  const rotto = connectionState === 'failed' || connectionState === 'disconnected';
+  const notConnected = serverLost || (together && rotto);
 
   /**
    * Un'interruzione si dichiara solo se dura.
@@ -206,6 +221,7 @@ export default function ChannelScreen(props: Props) {
         onBigAspect={setBigAspect}
         insetV={compact ? 0 : inset.v}
         insetH={compact ? 0 : inset.h}
+        insetBasso={!compact && showStats ? 36 : 0}
         placeholder={
           <PresenceCard
             status={status}
@@ -285,12 +301,19 @@ export default function ChannelScreen(props: Props) {
           onPress={press(onLeave)}
         />
         </View>
-        <StatsLine
-          stats={videoStats}
-          quality={qualityLabel}
-          mostraSu={localHasVideo}
-          mostraGiu={remoteHasVideo}
-        />
+        {showStats ? (
+          // Altezza fissa: comparendo la seconda riga solo quando il
+          // percorso è noto, il pannello cresceva sotto le dita e i
+          // pulsanti si spostavano.
+          <View style={styles.statsBox}>
+            <StatsLine
+              stats={videoStats}
+              quality={qualityLabel}
+              mostraSu={localHasVideo}
+              mostraGiu={remoteHasVideo}
+            />
+          </View>
+        ) : null}
       </Animated.View>
         </>
       )}
@@ -541,9 +564,10 @@ const styles = StyleSheet.create({
   avatarLive: { borderColor: '#38d16a' },
   avatarText: { color: '#e6ebf1', fontSize: 42, fontWeight: '700' },
   avatarSymbol: { fontSize: 52 },
+  statsBox: { height: 36, justifyContent: 'center' },
   stats: {
     color: '#7d8794', fontSize: 10.5, textAlign: 'center',
-    marginTop: 5, letterSpacing: 0.2,
+    letterSpacing: 0.2, lineHeight: 16,
   },
   avatarGhost: { fontSize: 54, marginBottom: 16 },
   cardTitle: { color: '#e6ebf1', fontSize: 21, fontWeight: '700', textAlign: 'center' },

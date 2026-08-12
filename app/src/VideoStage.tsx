@@ -77,10 +77,10 @@ export async function caricaPosizionePip(): Promise<void> {
 
 const MARGIN = 14;
 const TOP_SAFE = 58;     // appena sotto ingranaggio e badge (14 + 36 + 8)
-// Sopra il pannello dei comandi: 22 di distacco dal fondo + ~134 di
-// pannello (bordi, pulsanti, etichette e le due righe di diagnostica)
-// + aria.
-const BOTTOM_SAFE = 164;
+// Sopra il pannello dei comandi: 22 di distacco dal fondo + ~96 di
+// pannello (bordi, pulsanti, etichette) + aria. Le righe di diagnostica,
+// quando attive, si aggiungono tramite `insetBasso`.
+const BOTTOM_SAFE = 128;
 
 /** Larghezza del riquadrino, come frazione della larghezza schermo. */
 const START_FRACTION = 0.3;
@@ -138,6 +138,8 @@ type Props = {
    */
   insetV?: number;
   insetH?: number;
+  /** spazio in più occupato in basso, es. le righe di diagnostica */
+  insetBasso?: number;
 };
 
 export default function VideoStage(props: Props) {
@@ -147,7 +149,7 @@ export default function VideoStage(props: Props) {
     awaitingRemote, notice,
   } = props;
   const { width, height } = useWindowDimensions();
-  const { onBigAspect, insetV = 0, insetH = 0 } = props;
+  const { onBigAspect, insetV = 0, insetH = 0, insetBasso = 0 } = props;
 
   // false = l'altro è grande (default), true = sono io ad essere grande
   const [selfBig, setSelfBig] = useState(false);
@@ -251,7 +253,7 @@ export default function VideoStage(props: Props) {
     (w: number) => {
       const a = aspectRef.current || DEFAULT_ASPECT;
       const maxPerLarghezza = width - 2 * MARGIN - 2 * insetH;
-      const maxPerAltezza = (height - TOP_SAFE - BOTTOM_SAFE - 2 * insetV) * a;
+      const maxPerAltezza = (height - TOP_SAFE - BOTTOM_SAFE - insetBasso - 2 * insetV) * a;
       const tetto = Math.min(width * MAX_FRACTION, maxPerLarghezza, maxPerAltezza);
       return Math.round(
         Math.min(Math.max(w, width * MIN_FRACTION), Math.max(width * MIN_FRACTION, tetto)),
@@ -276,9 +278,9 @@ export default function VideoStage(props: Props) {
       minX,
       minY,
       maxX: Math.max(minX, width - w - MARGIN - insetH),
-      maxY: Math.max(minY, height - h - BOTTOM_SAFE - insetV),
+      maxY: Math.max(minY, height - h - BOTTOM_SAFE - insetBasso - insetV),
     };
-  }, [width, height, insetV, insetH]);
+  }, [width, height, insetV, insetH, insetBasso]);
 
   const posIniziale = useRef<{ x: number; y: number } | null>(null);
   if (posIniziale.current === null) {
@@ -286,7 +288,7 @@ export default function VideoStage(props: Props) {
     const minX = MARGIN + insetH;
     const minY = TOP_SAFE + insetV;
     const maxX = Math.max(minX, width - w - MARGIN - insetH);
-    const maxY = Math.max(minY, height - Math.round(w / DEFAULT_ASPECT) - BOTTOM_SAFE - insetV);
+    const maxY = Math.max(minY, height - Math.round(w / DEFAULT_ASPECT) - BOTTOM_SAFE - insetBasso - insetV);
     const a = posizioneScelta;
     posIniziale.current = a
       ? {

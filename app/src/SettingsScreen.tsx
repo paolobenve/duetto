@@ -67,6 +67,8 @@ export default function SettingsScreen({
     () => ({ ...initial, serverUrl: displayServer(initial.serverUrl) }),
   );
   const [advanced, setAdvanced] = useState(false);
+  /** il campo del server compare solo su richiesta, se già accoppiati */
+  const [cambiaServer, setCambiaServer] = useState(false);
   const set = (k: keyof DuoConfig) => (v: string) => setCfg({ ...cfg, [k]: v });
 
   const ready = isServerConfigured(cfg);
@@ -104,6 +106,18 @@ export default function SettingsScreen({
           vi collegate da soli.
         </Text>
 
+        {paired && !cambiaServer ? (
+          // Accoppiati, il server non si tocca quasi mai: mostrarlo come
+          // campo modificabile invita a un errore che scollegherebbe
+          // tutto. Si vede il valore, e si cambia se lo si chiede.
+          <View style={styles.field}>
+            <Text style={styles.label}>Server</Text>
+            <Text style={styles.readonly}>{displayServer(initial.serverUrl)}</Text>
+            <TouchableOpacity onPress={() => setCambiaServer(true)}>
+              <Text style={styles.linkInline}>Cambia server</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
         <View style={styles.field}>
           <Text style={styles.label}>Server</Text>
           <TextInput
@@ -122,10 +136,12 @@ export default function SettingsScreen({
               : 'Basta il nome: al resto dell’indirizzo penso io.'}
           </Text>
         </View>
+        )}
 
         {/* Il passo avanti sta qui, non in fondo: appena sotto a ciò che si
             è appena scritto. Sotto ci sono impostazioni che si applicano da
             sole o che riguardano una coppia già fatta. */}
+        {!paired || cambiaServer ? (
         <TouchableOpacity
           style={[styles.button, !ready && styles.buttonDisabled]}
           disabled={!ready}
@@ -134,6 +150,7 @@ export default function SettingsScreen({
             {paired ? 'Salva' : 'Avanti'}
           </Text>
         </TouchableOpacity>
+        ) : null}
 
         {paired ? (
           <>
@@ -219,6 +236,19 @@ export default function SettingsScreen({
             </Text>
             <Text style={[styles.choiceNote, !vp9Available && styles.textOff]}>
               {vp9Motivo}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.choice, cfg.mostraDiagnostica && styles.choicePicked]}
+          onPress={() => setCfg({ ...cfg, mostraDiagnostica: !cfg.mostraDiagnostica })}>
+          <View style={[styles.radio, cfg.mostraDiagnostica && styles.radioPicked]} />
+          <View style={styles.choiceText}>
+            <Text style={styles.choiceLabel}>Mostra i dettagli tecnici</Text>
+            <Text style={styles.choiceNote}>
+              Sotto ai pulsanti: risoluzione, fotogrammi, banda e da dove passa
+              il collegamento. Servono a capire perché una chiamata va male.
             </Text>
           </View>
         </TouchableOpacity>
@@ -361,6 +391,8 @@ const styles = StyleSheet.create({
   sectionHint: { color: '#6b7686', fontSize: 13, marginTop: 4, marginBottom: 12, lineHeight: 19 },
   field: { marginBottom: 16 },
   label: { color: '#c9d2de', marginBottom: 6, fontWeight: '600' },
+  readonly: { color: '#e6ebf1', fontSize: 16, paddingVertical: 4 },
+  linkInline: { color: '#2f7cf6', fontSize: 14, fontWeight: '600', marginTop: 8 },
   input: {
     backgroundColor: '#151a23', color: '#fff', borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 13, fontSize: 16,

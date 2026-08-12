@@ -60,6 +60,13 @@ export type DuoConfig = {
   /** quanto spendere per il video: banda e batteria */
   videoQuality: VideoQuality;
   /**
+   * Le due righe di diagnostica sotto ai pulsanti.
+   *
+   * Spente: servono a capire perché una chiamata va male, non a
+   * guardarsi in faccia. Chi ne ha bisogno sa dove trovarle.
+   */
+  mostraDiagnostica: boolean;
+  /**
    * `vp9` solo se entrambi i telefoni lo encodano in hardware; altrimenti
    * l'impostazione resta scritta ma non ha effetto, e nell'interfaccia
    * l'opzione non compare nemmeno.
@@ -81,6 +88,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   // avrebbe lasciato in definizione ridotta chi non apre mai le
   // impostazioni, anche avendo una rete ottima.
   videoQuality: 'migliore',
+  mostraDiagnostica: false,
   videoCodec: 'auto',
 };
 

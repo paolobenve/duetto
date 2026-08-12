@@ -828,6 +828,7 @@ export default function App() {
         peerAvatar={face}
         videoStats={videoStats}
         qualityLabel={(VIDEO_PROFILES[cfg.videoQuality] ?? VIDEO_PROFILES.standard).etichetta}
+        showStats={cfg.mostraDiagnostica}
         localStream={localStream}
         remoteStream={remoteStream}
         status={status}
