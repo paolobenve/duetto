@@ -113,6 +113,44 @@ export function IconaGira(p: Props) {
   );
 }
 
+/**
+ * Camera frontale: una persona sola.
+ *
+ * L'icona dice quale camera è ACCESA, non cosa farà il pulsante: una
+ * freccia circolare diceva solo "si gira", e per sapere da che parte si
+ * era bisognava guardare l'immagine.
+ */
+export function IconaFrontale(p: Props) {
+  const c = p.color ?? '#fff';
+  return (
+    <Base {...p}>
+      <Circle cx={12} cy={8} r={3.6} stroke={c} strokeWidth={STROKE} />
+      <Path
+        d="M4.8 19.5a7.2 7.2 0 0114.4 0"
+        stroke={c} strokeWidth={STROKE} strokeLinecap="round"
+      />
+    </Base>
+  );
+}
+
+/** Camera posteriore: più persone, cioè quello che si inquadra girandola. */
+export function IconaPosteriore(p: Props) {
+  const c = p.color ?? '#fff';
+  return (
+    <Base {...p}>
+      <Circle cx={9} cy={8.6} r={3.1} stroke={c} strokeWidth={STROKE} />
+      <Path
+        d="M2.8 19.4a6.2 6.2 0 0112.4 0"
+        stroke={c} strokeWidth={STROKE} strokeLinecap="round"
+      />
+      <Path
+        d="M16.4 6.1a3 3 0 010 5.6M17.6 19.4a6.2 6.2 0 00-2.3-4.8"
+        stroke={c} strokeWidth={STROKE} strokeLinecap="round"
+      />
+    </Base>
+  );
+}
+
 /** Campanello: la sagoma più riconoscibile fra tutte, anche in piccolo. */
 export function IconaAvvisa(p: Props) {
   const c = p.color ?? '#fff';

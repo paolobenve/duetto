@@ -71,6 +71,8 @@ export default function App() {
   const [audioOn, setAudioOn] = useState(true);
   const [videoOn, setVideoOn] = useState(false);
   const [localAspect, setLocalAspect] = useState<number | undefined>(undefined);
+  /** la camera si accende sempre frontale: da lì in poi lo si segue */
+  const [cameraFrontale, setCameraFrontale] = useState(true);
   const [peerState, setPeerState] = useState<{
     audio: boolean; video: boolean; aspect?: number;
   }>({ audio: true, video: false });
@@ -702,6 +704,9 @@ export default function App() {
     try {
       setVideoOn(await s.enableVideo());
       setLocalAspect(s.getLocalVideoAspect());
+      // enableVideo chiede sempre `facingMode: 'user'`: riaccendendo si
+      // riparte dalla frontale, qualunque fosse quella di prima.
+      setCameraFrontale(true);
     } catch (e: any) {
       Foreground.setCameraActive(false).catch(() => {});
       Alert.alert('Errore camera', String(e?.message ?? e));
@@ -836,6 +841,7 @@ export default function App() {
         qualityLabel={(VIDEO_PROFILES[cfg.videoQuality] ?? VIDEO_PROFILES.standard).etichetta}
         showStats={cfg.mostraDiagnostica}
         hideControls={cfg.nascondiComandi}
+        cameraFrontale={cameraFrontale}
         localStream={localStream}
         remoteStream={remoteStream}
         status={status}
@@ -852,7 +858,10 @@ export default function App() {
         audioRoutes={audio.available}
         onToggleAudio={() => setAudioOn(sessionRef.current?.toggleAudio() ?? false)}
         onToggleVideo={onToggleVideo}
-        onSwitchCamera={() => sessionRef.current?.switchCamera()}
+        onSwitchCamera={() => {
+          sessionRef.current?.switchCamera();
+          setCameraFrontale((v) => !v);
+        }}
         onSelectRoute={audio.select}
         onKnock={() => signalingRef.current?.knock()}
         onLeave={leaveChannel}

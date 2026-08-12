@@ -12,8 +12,8 @@ import ChangelogModal from './ChangelogModal';
 import type { Avatar } from './avatar';
 import type { VideoStats } from './webrtc';
 import {
-  IconaVideo, IconaMicrofono, IconaGira, IconaAvvisa, IconaEsci,
-  IconaImpostazioni,
+  IconaVideo, IconaMicrofono, IconaAvvisa, IconaEsci,
+  IconaImpostazioni, IconaFrontale, IconaPosteriore,
 } from './Icons';
 
 /** Dopo quanto i pulsanti si attenuano, e quanto restano visibili. */
@@ -47,6 +47,8 @@ type Props = {
   showStats: boolean;
   /** i comandi spariscono del tutto invece di attenuarsi */
   hideControls: boolean;
+  /** quale camera sta riprendendo: lo dice l'icona di "Gira" */
+  cameraFrontale: boolean;
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
   status: PresenceStatus;
@@ -80,7 +82,7 @@ type Props = {
  */
 export default function ChannelScreen(props: Props) {
   const {
-    channel, peerName, peerAvatar, videoStats, qualityLabel, showStats, hideControls, localStream, remoteStream, status, connectionState,
+    channel, peerName, peerAvatar, videoStats, qualityLabel, showStats, hideControls, cameraFrontale, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes,
     onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, onOpenSettings,
@@ -365,7 +367,10 @@ export default function ChannelScreen(props: Props) {
         />
         <CircleButton
           label="Gira"
-          icon={<IconaGira />}
+          // L'icona dice quale camera è accesa: una persona sola per la
+          // frontale, più persone per quella dietro, che è ciò che di
+          // solito ci si trova a inquadrare.
+          icon={cameraFrontale ? <IconaFrontale /> : <IconaPosteriore />}
           // Senza camera accesa non c'è nulla da girare.
           disabled={!videoOn}
           onPress={press(onSwitchCamera)}
