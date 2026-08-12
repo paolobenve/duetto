@@ -19,6 +19,7 @@
     "react-native": "0.76.5",
     "react-native-get-random-values": "^1.11.0",
     "react-native-incall-manager": "^4.2.0",
+    "react-native-svg": "^15.15.5",
     "react-native-webrtc": "^124.0.5",
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.1"

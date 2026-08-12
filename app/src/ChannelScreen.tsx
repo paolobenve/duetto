@@ -10,6 +10,10 @@ import { AudioRoute, ROUTE_ICON, ROUTE_LABEL } from './audioRoute';
 import { VERSION_LABEL } from './version';
 import type { Avatar } from './avatar';
 import type { VideoStats } from './webrtc';
+import {
+  IconaVideo, IconaMicrofono, IconaGira, IconaAvvisa, IconaEsci,
+  IconaImpostazioni,
+} from './Icons';
 
 /** Dopo quanto i pulsanti si attenuano, e quanto restano visibili. */
 const IDLE_MS = 9000;
@@ -274,7 +278,7 @@ export default function ChannelScreen(props: Props) {
       <Animated.View
         style={[styles.topBar, { opacity, top: 14 + inset.v, left: 14 + inset.h, right: 14 + inset.h }]}>
         <TouchableOpacity style={styles.gear} onPress={press(onOpenSettings)}>
-          <Text style={styles.gearText}>{'\u2699'}</Text>
+          <IconaImpostazioni size={21} color="#e6ebf1" />
         </TouchableOpacity>
         <View style={styles.spacer} pointerEvents="none" />
         <View style={styles.badge} pointerEvents="none">
@@ -292,15 +296,15 @@ export default function ChannelScreen(props: Props) {
         ]}>
         <View style={styles.controls}>
         <CircleButton
-          label={videoOn ? 'Video' : 'Video off'}
-          icon={videoOn ? '\u{1F4F9}' : '\u{1F4F5}'}
+          label="Video"
+          icon={<IconaVideo off={!videoOn} />}
           active={videoOn}
           onPress={press(onToggleVideo)}
         />
         <CircleButton
           // Tocco: muto/non muto. Pressione prolungata: da dove esce l'audio.
           label={audioOn ? 'Audio' : 'Muto'}
-          icon={audioOn ? '\u{1F3A4}' : '\u{1F507}'}
+          icon={<IconaMicrofono off={!audioOn} />}
           active={audioOn}
           onPress={press(onToggleAudio)}
           onLongPress={press(() => setRouteMenu(true))}
@@ -308,14 +312,14 @@ export default function ChannelScreen(props: Props) {
         />
         <CircleButton
           label="Gira"
-          icon={'\u{1F504}'}
+          icon={<IconaGira />}
           // Senza camera accesa non c'è nulla da girare.
           disabled={!videoOn}
           onPress={press(onSwitchCamera)}
         />
         <CircleButton
           label={knockPending ? 'Avvisato' : 'Avvisa'}
-          icon={'\u{1F514}'}
+          icon={<IconaAvvisa />}
           // Acceso solo quando l'altro non c'è: lì è la cosa da fare.
           highlight={!together && !knockPending}
           // Sempre premibile: l'altro può essere nel canale ma distratto,
@@ -326,7 +330,7 @@ export default function ChannelScreen(props: Props) {
         />
         <CircleButton
           label="Esci"
-          icon={'\u{1F4F4}'}
+          icon={<IconaEsci />}
           danger
           onPress={press(onLeave)}
         />
@@ -538,7 +542,7 @@ function PeerFace({ name, avatar, live }: { name: string; avatar: Avatar; live: 
 
 function CircleButton(props: {
   label: string;
-  icon: string;
+  icon: React.ReactNode;
   onPress: () => void;
   onLongPress?: () => void;
   /** piccolo simbolo d'angolo: usato per l'uscita audio attiva */
@@ -570,7 +574,7 @@ function CircleButton(props: {
                 : null,
           props.disabled && styles.circleDisabled,
         ]}>
-        <Text style={styles.circleIcon}>{props.icon}</Text>
+        {props.icon}
         {props.badge ? (
           <View style={styles.miniBadge}>
             <Text style={styles.miniBadgeText}>{props.badge}</Text>

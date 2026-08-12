@@ -645,10 +645,15 @@ export default function VideoStage(props: Props) {
         </Animated.View>
       ) : (
         <View style={[styles.big, styles.placeholder]} onTouchStart={onSfondo}>
-          {/* Con un avviso in sovrimpressione il riepilogo sotto sarebbe
-              solo rumore: due messaggi sovrapposti che dicono la stessa
-              cosa. Ne resta uno. */}
-          {notice ? null : placeholder}
+          {/* Durante un'interruzione: nero, non il riepilogo.
+              Il video dell'altro sta per tornare, e rimettere la
+              schermata "l'altro è nel canale" a ogni cambio di rete la
+              trasforma in un lampeggio. Il nero non dice nulla, ed è
+              esattamente ciò che serve: non è successo nulla che valga la
+              pena raccontare.
+              Con un avviso in sovrimpressione vale lo stesso: due
+              messaggi sovrapposti direbbero la stessa cosa. */}
+          {notice || awaitingRemote ? null : placeholder}
         </View>
       )}
 
