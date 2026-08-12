@@ -842,6 +842,8 @@ export default function App() {
         showStats={cfg.mostraDiagnostica}
         hideControls={cfg.nascondiComandi}
         cameraFrontale={cameraFrontale}
+        quality={cfg.videoQuality}
+        onSelectQuality={(q) => applyQuality(q, true)}
         localStream={localStream}
         remoteStream={remoteStream}
         status={status}

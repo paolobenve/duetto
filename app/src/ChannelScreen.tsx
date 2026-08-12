@@ -10,6 +10,8 @@ import { AudioRoute, ROUTE_LABEL } from './audioRoute';
 import { VERSION_LABEL } from './version';
 import ChangelogModal from './ChangelogModal';
 import type { Avatar } from './avatar';
+import { VIDEO_PROFILES } from './config';
+import type { VideoQuality } from './config';
 import type { VideoStats } from './webrtc';
 import {
   IconaVideo, IconaMicrofono, IconaAvvisa, IconaEsci,
@@ -58,6 +60,9 @@ type Props = {
   hideControls: boolean;
   /** quale camera sta riprendendo: lo dice l'icona di "Gira" */
   cameraFrontale: boolean;
+  /** profilo in uso e come cambiarlo: si apre tenendo premuto "Video" */
+  quality: VideoQuality;
+  onSelectQuality: (q: VideoQuality) => void;
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
   status: PresenceStatus;
@@ -91,7 +96,7 @@ type Props = {
  */
 export default function ChannelScreen(props: Props) {
   const {
-    channel, peerName, peerAvatar, videoStats, qualityLabel, showStats, hideControls, cameraFrontale, localStream, remoteStream, status, connectionState,
+    channel, peerName, peerAvatar, videoStats, qualityLabel, showStats, hideControls, cameraFrontale, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes,
     onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, onOpenSettings,
@@ -136,6 +141,7 @@ export default function ChannelScreen(props: Props) {
 
   const [routeMenu, setRouteMenu] = useState(false);
   const [novita, setNovita] = useState(false);
+  const [menuQualita, setMenuQualita] = useState(false);
   /** chi occupa lo schermo quando c'è un video solo: 'tu', 'altro', o niente */
   const [soloGrande, setSoloGrande] = useState<'tu' | 'altro' | null>(null);
 
@@ -383,6 +389,11 @@ export default function ChannelScreen(props: Props) {
           icon={<IconaVideo off={!videoOn} {...(videoOn ? SU_CHIARO : {})} />}
           active={videoOn}
           onPress={press(onToggleVideo)}
+          // Come per l'audio: il tocco accende e spegne, la pressione
+          // prolungata apre le scelte. La qualità si giudica guardando,
+          // e andarla a cercare nelle impostazioni fa perdere di vista
+          // proprio ciò che si sta valutando.
+          onLongPress={press(() => setMenuQualita(true))}
         />
         <CircleButton
           // Tocco: muto/non muto. Pressione prolungata: da dove esce l'audio.
@@ -440,6 +451,37 @@ export default function ChannelScreen(props: Props) {
 
       {/* Uscita audio: si apre tenendo premuto il pulsante Audio. */}
       <ChangelogModal visible={novita} onClose={() => setNovita(false)} />
+
+      {/* Risoluzione: si apre tenendo premuto il pulsante Video. */}
+      <Modal
+        visible={menuQualita}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMenuQualita(false)}>
+        <Pressable style={styles.sheetBack} onPress={() => setMenuQualita(false)}>
+          <View style={styles.sheet}>
+            <Text style={styles.sheetTitle}>Risoluzione</Text>
+            {(Object.keys(VIDEO_PROFILES) as VideoQuality[]).map((q) => (
+              <TouchableOpacity
+                key={q}
+                style={styles.sheetRow}
+                onPress={() => { onSelectQuality(q); setMenuQualita(false); }}>
+                <View style={styles.sheetText}>
+                  <Text style={[styles.sheetLabel, q === quality && styles.sheetLabelOn]}>
+                    {VIDEO_PROFILES[q].etichetta}
+                  </Text>
+                  <Text style={styles.sheetNota}>{VIDEO_PROFILES[q].nota}</Text>
+                </View>
+                {q === quality ? <Text style={styles.sheetCheck}>{'\u2713'}</Text> : null}
+              </TouchableOpacity>
+            ))}
+            <Text style={styles.sheetHint}>
+              Vale per tutti e due i telefoni: cambiandola qui cambia anche
+              all’altro.
+            </Text>
+          </View>
+        </Pressable>
+      </Modal>
 
       <Modal
         visible={routeMenu}
@@ -746,6 +788,8 @@ const styles = StyleSheet.create({
   },
   sheetIcon: { fontSize: 20 },
   sheetLabel: { color: '#c9d2de', fontSize: 17, flex: 1 },
+  sheetText: { flex: 1 },
+  sheetNota: { color: '#6b7686', fontSize: 12.5, marginTop: 2 },
   sheetLabelOn: { color: '#7cc4ff', fontWeight: '700' },
   sheetCheck: { color: '#7cc4ff', fontSize: 18, fontWeight: '700' },
   sheetHint: {

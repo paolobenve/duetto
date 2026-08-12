@@ -8,6 +8,12 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.0.8
+
+**Tenendo premuto «Video»** si scelgono le quattro risoluzioni, come già si fa con «Audio»
+per l'uscita del suono. La qualità si giudica guardando, e andarla a cercare nelle
+impostazioni fa perdere di vista proprio ciò che si sta valutando.
+
 ## 1.0.5
 
 **«Tu» / «Non tu» sempre in alto a sinistra**, anche con due video: toccando il riquadrino i
