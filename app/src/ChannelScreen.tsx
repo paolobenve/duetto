@@ -19,8 +19,16 @@ import {
   IconaVivavoce, IconaTelefono, IconaCuffie, IconaBluetooth,
 } from './Icons';
 
-/** Dopo quanto i pulsanti si attenuano, e quanto restano visibili. */
-const IDLE_MS = 9000;
+/**
+ * Come si spengono i pulsanti: subito, ma piano.
+ *
+ * Prima restavano fermi qualche secondo e poi calavano di colpo: un
+ * salto che attira l'occhio proprio mentre si vuole guardare altro. Un
+ * calo continuo di dieci secondi non ha un istante in cui succede
+ * qualcosa, e quando ci si accorge che sono sbiaditi lo sono già da un
+ * pezzo.
+ */
+const FADE_MS = 10000;
 const DIM_OPACITY = 0.4;
 
 /**
@@ -238,12 +246,13 @@ export default function ChannelScreen(props: Props) {
   /** true quando i comandi sono in evidenza: un tocco li fa sparire */
   const pieni = useRef(true);
 
-  const attenua = useCallback(() => {
+  /** Il calo: parte subito e dura dieci secondi. */
+  const attenua = useCallback((durata = FADE_MS) => {
     if (idleTimer.current) clearTimeout(idleTimer.current);
     pieni.current = false;
     Animated.timing(opacity, {
       // Invisibili, ma sempre premibili: un tocco ovunque li richiama.
-      toValue: hideControls ? 0 : DIM_OPACITY, duration: 450, useNativeDriver: true,
+      toValue: hideControls ? 0 : DIM_OPACITY, duration: durata, useNativeDriver: true,
     }).start();
   }, [opacity, hideControls]);
 
@@ -259,11 +268,14 @@ export default function ChannelScreen(props: Props) {
 
   const wake = useCallback(() => {
     pieni.current = true;
+    if (idleTimer.current) clearTimeout(idleTimer.current);
     Animated.timing(opacity, {
       toValue: 1, duration: 120, useNativeDriver: true,
-    }).start();
-    if (idleTimer.current) clearTimeout(idleTimer.current);
-    if (daVedere) idleTimer.current = setTimeout(attenua, IDLE_MS);
+    }).start(({ finished }) => {
+      // Il calo riparte appena finito di tornare pieni: nessuna attesa
+      // ferma, e quindi nessun istante in cui "scattano" via.
+      if (finished && daVedere) attenua();
+    });
   }, [opacity, attenua, daVedere]);
 
   /**
@@ -285,7 +297,9 @@ export default function ChannelScreen(props: Props) {
   });
 
   const tocco = useCallback(() => {
-    if (pieni.current) attenua(); else wake();
+    // Chiedere di toglierli è diverso dal lasciarli calare: qui si vuole
+    // vedere l'immagine adesso.
+    if (pieni.current) attenua(400); else wake();
   }, [attenua, wake]);
 
   // `wake` cambia quando cambia `daVedere`: spegnendo l'ultima camera i

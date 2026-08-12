@@ -1,4 +1,5 @@
 import { Dimensions } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   RTCPeerConnection,
   RTCRtpReceiver,
@@ -69,6 +70,29 @@ export const DEFAULT_ASPECT = 9 / 16;
  *   adb logcat -s ReactNativeJS | grep duotalk
  */
 const log = (...args: any[]) => console.log('[duotalk-rtc]', ...args);
+
+/**
+ * Questo telefono rispetta `scaleResolutionDownBy`?
+ *
+ * Scendere di risoluzione scalando l'uscita è istantaneo e non spegne la
+ * camera: niente schermo nero. Ma non tutti gli encoder obbediscono - il
+ * MediaTek registra la richiesta e produce comunque a piena risoluzione,
+ * misurato - e su quelli l'unica strada resta riaprire la ripresa.
+ *
+ * Non si può sapere in anticipo, quindi l'app lo impara: prova a
+ * scalare, guarda cosa esce davvero, e se ne ricorda per sempre.
+ * `null` = non ancora provato.
+ */
+let scalaOnorata: boolean | null = null;
+const CHIAVE_SCALA = 'duotalk.scala.v1';
+
+export async function caricaSaperiScala(): Promise<void> {
+  try {
+    const v = await AsyncStorage.getItem(CHIAVE_SCALA);
+    if (v === 'si') scalaOnorata = true;
+    else if (v === 'no') scalaOnorata = false;
+  } catch { /* si riproverà a impararlo */ }
+}
 
 /** host / srflx / prflx / relay: dice che strada sta tentando ICE. */
 function candidateType(candidate: string): string {
@@ -729,6 +753,41 @@ export class ChannelSession {
     } catch { /* la diagnostica non deve mai disturbare */ }
   }
 
+  /**
+   * Ha funzionato la scalatura, o questo telefono la ignora?
+   *
+   * Si guarda cosa esce davvero un paio di secondi dopo. Se la
+   * risoluzione non è scesa, l'encoder ha accettato la richiesta senza
+   * onorarla: lo si annota una volta per tutte e si riapre la camera,
+   * che è l'unica strada che nessun encoder può disattendere.
+   */
+  private verificaScala(attesa: number) {
+    setTimeout(async () => {
+      try {
+        const stats = await (this.pc as any)?.getStats();
+        let larghezza = 0;
+        stats?.forEach((r: any) => {
+          if (r.type === 'outbound-rtp' && r.kind === 'video') larghezza = r.frameWidth ?? 0;
+        });
+        if (!larghezza) return;
+
+        const riuscita = Math.abs(larghezza - attesa) <= 48;
+        if (scalaOnorata !== riuscita) {
+          scalaOnorata = riuscita;
+          AsyncStorage.setItem(CHIAVE_SCALA, riuscita ? 'si' : 'no').catch(() => {});
+        }
+        if (riuscita) { log('la scalatura funziona su questo telefono'); return; }
+
+        log('questo telefono ignora la scala: riapro la camera, e d\'ora in poi lo faccio subito');
+        await this.applyVideoQuality(1);
+        if (this.localStream?.getVideoTracks()[0]) {
+          await this.disableVideo();
+          await this.enableVideo();
+        }
+      } catch { /* la diagnostica non deve mai disturbare */ }
+    }, 2500);
+  }
+
   private async flushCandidates() {
     const pc = this.pc;
     if (!pc) return;
@@ -872,7 +931,7 @@ export class ChannelSession {
     return this.videoSender;
   }
 
-  private async applyVideoQuality() {
+  private async applyVideoQuality(scala = 1) {
     const sender: any = this.liveVideoSender();
     if (!sender?.getParameters) return;
     const profile = VIDEO_PROFILES[this.cfg.videoQuality] ?? VIDEO_PROFILES.standard;
@@ -889,8 +948,10 @@ export class ChannelSession {
         params.degradationPreference = profile.degradation;
         this.degradationSet = true;
       }
-      // Né i fotogrammi né la scala: la risoluzione la decide la ripresa,
-      // e su questo lato resta il solo tetto di banda.
+      // I fotogrammi non si toccano mai. La scala vale 1 quando la
+      // risoluzione la decide la ripresa, e cambia solo quando si sta
+      // scendendo senza riaprire la camera.
+      params.encodings[0].scaleResolutionDownBy = scala;
       params.encodings[0].maxBitrate = profile.maxBitrate;
       await sender.setParameters(params);
       if (sender !== this.videoSender) {
@@ -919,25 +980,37 @@ export class ChannelSession {
    */
   async setVideoQuality(q: DuoConfig['videoQuality']) {
     if (this.cfg.videoQuality === q) return;
-    const prima = VIDEO_PROFILES[this.cfg.videoQuality] ?? VIDEO_PROFILES.standard;
     const dopo = VIDEO_PROFILES[q] ?? VIDEO_PROFILES.standard;
     this.cfg = { ...this.cfg, videoQuality: q };
 
-    const cameraAccesa = !!this.localStream?.getVideoTracks()[0];
-    const formatoDiverso =
-      prima.capture.width !== dopo.capture.width ||
-      prima.capture.height !== dopo.capture.height;
+    const traccia: any = this.localStream?.getVideoTracks()[0];
+    if (!traccia) { await this.applyVideoQuality(); return; }
 
-    if (cameraAccesa && formatoDiverso) {
-      log('nuova risoluzione di ripresa:',
-        `${prima.capture.width}x${prima.capture.height}`,
-        '->', `${dopo.capture.width}x${dopo.capture.height}`,
-        '- riapro la camera');
-      await this.disableVideo();
-      await this.enableVideo();
+    const st = traccia.getSettings?.() ?? {};
+    const larghezzaRipresa = st.width ?? 0;
+    const formatoDiverso = larghezzaRipresa !== dopo.capture.width;
+    if (!formatoDiverso) { await this.applyVideoQuality(); return; }
+
+    /**
+     * Scendendo si prova a scalare: nessuna riapertura, nessun nero.
+     *
+     * Solo scendendo, perché da una ripresa piccola non si ricava una
+     * grande; e solo finché non si scopre che questo telefono ignora la
+     * scala, nel qual caso si riapre subito come prima.
+     */
+    if (scalaOnorata !== false && dopo.capture.width < larghezzaRipresa) {
+      const fattore = larghezzaRipresa / dopo.capture.width;
+      log('scendo scalando l\'uscita:', `1/${fattore.toFixed(2)}`,
+        scalaOnorata === null ? '(primo tentativo su questo telefono)' : '');
+      await this.applyVideoQuality(fattore);
+      this.verificaScala(dopo.capture.width);
       return;
     }
-    await this.applyVideoQuality();
+
+    log('nuova risoluzione di ripresa:',
+      `${larghezzaRipresa} -> ${dopo.capture.width}`, '- riapro la camera');
+    await this.disableVideo();
+    await this.enableVideo();
     // Il campione riparte da qui: altrimenti la prima banda mostrata dopo
     // il cambio sarebbe una media a cavallo del cambio stesso.
     this.lastOutbound = null;

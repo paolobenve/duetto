@@ -8,6 +8,17 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.0.14
+
+**I comandi si spengono piano**, con un calo continuo di dieci secondi che parte subito.
+Prima restavano fermi qualche secondo e poi calavano di colpo: un salto che attira l'occhio
+proprio mentre si vuole guardare altro.
+
+**Scendere di risoluzione non spegne più la camera**, dove il telefono lo consente: l'app
+prova a ridurre solo ciò che esce dall'encoder, verifica se ha funzionato e se lo ricorda.
+Sui telefoni che ignorano quella richiesta la camera si riapre come prima, ma lo fa subito
+già dal secondo cambio.
+
 ## 1.0.11
 
 **Correzione urgente**: accendendo il video l'app si chiudeva. La rete di sicurezza che
