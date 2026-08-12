@@ -75,6 +75,18 @@ export const Foreground = isAndroid && NativeForeground
       requestBatteryUnrestricted: () =>
         call(NativeForeground, 'requestBatteryUnrestricted'),
 
+      /**
+       * Quando l'app è ripartita da sola dopo un riavvio (ms), 0 se mai.
+       *
+       * L'autorizzazione all'avvio automatico non è leggibile da nessuna
+       * app: si può però sapere se ha funzionato, che è la cosa che
+       * interessa davvero.
+       */
+      lastAutoStart: () => call(NativeForeground, 'lastAutoStart'),
+
+      /** Da quanto è acceso il telefono, per datare l'ultimo riavvio. */
+      uptimeMs: () => call(NativeForeground, 'uptimeMs'),
+
       /** Vero se questo telefono ha una schermata di avvio automatico. */
       hasAutoStartScreen: () => call(NativeForeground, 'hasAutoStartScreen'),
 
@@ -93,6 +105,8 @@ export const Foreground = isAndroid && NativeForeground
       clearNotification: unavailable,
       isBatteryUnrestricted: unavailable,
       requestBatteryUnrestricted: unavailable,
+      lastAutoStart: unavailable,
+      uptimeMs: unavailable,
       hasAutoStartScreen: unavailable,
       openAutoStartSettings: unavailable,
       openAppSettings: unavailable,

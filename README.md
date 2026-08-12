@@ -212,7 +212,9 @@ dell'accoppiamento (riapribili da *ingranaggio → Restare raggiungibili*):
    produttore e non da Android: la spunta nell'app può restare grigia anche dopo averla
    impostata correttamente.
 2. **Avvio automatico**. Non è un'autorizzazione di Android ma una schermata proprietaria:
-   l'app può solo aprirtela, e non può sapere se l'hai attivata. **Senza, dopo un riavvio
+   l'app può solo aprirtela, e non può leggerne lo stato. Può però accorgersi se ha
+   funzionato: si annota quando riparte da sola dopo un riavvio, e solo allora dà quel punto
+   per risolto. **Senza, dopo un riavvio
    il telefono non consegna nemmeno l'evento di avvio** e la presenza non riparte.
 
 ## Sicurezza

@@ -22,6 +22,19 @@ class BootReceiver : BroadcastReceiver() {
             action != "android.intent.action.QUICKBOOT_POWERON"
         ) return
 
+        /**
+         * Si annota che l'evento è arrivato.
+         *
+         * Quell'autorizzazione non è leggibile - è una schermata del
+         * produttore, nessuna app può interrogarla - ma l'unica cosa che
+         * conta davvero è se dopo un riavvio l'app riparte. Se questo
+         * evento arriva, è la prova sul campo che è a posto; se non
+         * arriva mai, l'utente lo scopre da sé.
+         */
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putLong(ULTIMO_AVVIO, System.currentTimeMillis())
+            .apply()
+
         if (!PresenceService.canStart()) return
         try {
             ContextCompat.startForegroundService(
@@ -34,5 +47,10 @@ class BootReceiver : BroadcastReceiver() {
             // aprira' l'app e la presenza ripartira' da lì.
             Log.w("DuoTalk", "impossibile riavviare la presenza: ${e.message}")
         }
+    }
+
+    companion object {
+        const val PREFS = "duotalk_avvio"
+        const val ULTIMO_AVVIO = "ultimo_avvio_automatico"
     }
 }

@@ -8,6 +8,14 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.0.28
+
+**L'avvio automatico ora dice la verità.** La spunta si accendeva solo perché avevi aperto
+la schermata di sistema, anche senza toccare niente: dichiarava «a posto» senza saperlo.
+Quell'autorizzazione nessuna app può leggerla — è una schermata del produttore — ma si può
+sapere se ha funzionato: l'app si annota quando riparte da sola dopo un riavvio, e la spunta
+si accende solo allora. Finché non riavvii il telefono resta aperta, ed è onesto.
+
 ## 1.0.27
 
 **Tolti anche i campi del relay** dalle impostazioni avanzate: indirizzo e credenziali li

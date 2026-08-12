@@ -75,6 +75,26 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
         promise.resolve(StartupHelper.requestIgnoreBatteryOptimizations(ctx, currentActivity))
     }
 
+    /**
+     * Quando l'app è ripartita da sola per l'ultima volta, in
+     * millisecondi; 0 se non è mai successo.
+     *
+     * È l'unico modo di sapere se l'avvio automatico è concesso:
+     * l'autorizzazione in sé non è leggibile da nessuna app, ma il suo
+     * effetto sì.
+     */
+    @ReactMethod
+    fun lastAutoStart(promise: Promise) {
+        val p = ctx.getSharedPreferences(BootReceiver.PREFS, android.content.Context.MODE_PRIVATE)
+        promise.resolve(p.getLong(BootReceiver.ULTIMO_AVVIO, 0L).toDouble())
+    }
+
+    /** Da quanto è acceso il telefono: serve a datare l'ultimo riavvio. */
+    @ReactMethod
+    fun uptimeMs(promise: Promise) {
+        promise.resolve(android.os.SystemClock.elapsedRealtime().toDouble())
+    }
+
     @ReactMethod
     fun hasAutoStartScreen(promise: Promise) {
         promise.resolve(StartupHelper.hasAutoStartScreen(ctx))

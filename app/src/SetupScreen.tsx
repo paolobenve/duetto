@@ -23,6 +23,18 @@ export default function SetupScreen({ onDone }: Props) {
   const [batteryOk, setBatteryOk] = useState(false);
   const [hasAutoStart, setHasAutoStart] = useState(false);
   const [autoStartOpened, setAutoStartOpened] = useState(false);
+  /**
+   * Se l'app è ripartita da sola dopo l'ULTIMO riavvio del telefono.
+   *
+   * L'autorizzazione all'avvio automatico non è leggibile da nessuna app
+   * - è una schermata del produttore - e prima la spunta si accendeva
+   * solo perché avevi aperto quella schermata, anche senza toccare
+   * niente. Diceva "a posto" senza saperlo.
+   *
+   * Questo invece è il fatto: al riavvio il sistema ci ha svegliati
+   * oppure no.
+   */
+  const [avviatoDaSolo, setAvviatoDaSolo] = useState<boolean | null>(null);
   /** la richiesta diretta è stata tentata ma non ha cambiato nulla */
   const [batteryRefused, setBatteryRefused] = useState(false);
   const tried = useRef(false);
@@ -36,6 +48,13 @@ export default function SetupScreen({ onDone }: Props) {
       // strada manuale invece di riproporre una finestra che sparisce.
       if (tried.current && !ok) setBatteryRefused(true);
       setHasAutoStart(await Foreground.hasAutoStartScreen());
+
+      // Confronto con l'accensione del telefono: un avvio automatico di
+      // tre riavvii fa non dice niente su come è configurato adesso.
+      const ultimo = await Foreground.lastAutoStart();
+      const acceso = await Foreground.uptimeMs();
+      const accensione = Date.now() - acceso;
+      setAvviatoDaSolo(ultimo > 0 ? ultimo >= accensione - 60_000 : false);
     } catch { /* noop */ }
   }, []);
 
@@ -86,10 +105,15 @@ export default function SetupScreen({ onDone }: Props) {
           n="2"
           title="Avvio automatico"
           text={
-            'Il tuo telefono blocca le app dopo un riavvio finché non le autorizzi. ' +
-            'Si apre la schermata di sistema: cerca DuoTalk e attivalo.'
+            avviatoDaSolo
+              ? 'Funziona: dopo l’ultimo riavvio del telefono DuoTalk è ripartita da ' +
+                'sola, senza che tu la aprissi.'
+              : 'Il tuo telefono blocca le app dopo un riavvio finché non le autorizzi. ' +
+                'Si apre la schermata di sistema: cerca DuoTalk e attivalo.\n\n' +
+                'Se l’hai già fatto, si saprà al prossimo riavvio: è l’unico modo di ' +
+                'verificarlo, perché quell’autorizzazione nessuna app può leggerla.'
           }
-          done={autoStartOpened}
+          done={!!avviatoDaSolo}
           action={autoStartOpened ? 'Riapri' : 'Apri impostazioni'}
           onPress={async () => {
             const ok = await Foreground.openAutoStartSettings();
@@ -106,9 +130,12 @@ export default function SetupScreen({ onDone }: Props) {
       </Text>
 
       <Text style={styles.hint}>
-        {hasAutoStart
-          ? 'L’avvio automatico non è verificabile dall’app: è una schermata del produttore, e nessuna app può leggerne lo stato.'
-          : 'Il tuo telefono non ha una schermata di avvio automatico: il primo punto basta.'}
+        {!hasAutoStart
+          ? 'Il tuo telefono non ha una schermata di avvio automatico: il primo punto basta.'
+          : avviatoDaSolo
+            ? 'La spunta qui sopra non è un’ipotesi: è successo davvero, dopo l’ultimo riavvio.'
+            : 'Lo stato di quell’autorizzazione nessuna app può leggerlo. Quello che si può ' +
+              'sapere è se ha funzionato, e lo si scopre al primo riavvio del telefono.'}
       </Text>
 
       <TouchableOpacity style={styles.button} onPress={onDone}>

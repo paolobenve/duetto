@@ -7,6 +7,15 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.0.28",
+    "paragrafi": [
+      {
+        "forte": "L'avvio automatico ora dice la verità.",
+        "testo": "La spunta si accendeva solo perché avevi aperto la schermata di sistema, anche senza toccare niente: dichiarava «a posto» senza saperlo. Quell'autorizzazione nessuna app può leggerla — è una schermata del produttore — ma si può sapere se ha funzionato: l'app si annota quando riparte da sola dopo un riavvio, e la spunta si accende solo allora. Finché non riavvii il telefono resta aperta, ed è onesto."
+      }
+    ]
+  },
+  {
     "versione": "1.0.27",
     "paragrafi": [
       {

@@ -18,6 +18,8 @@ declare module 'duotalk-platform' {
     clearNotification(): Promise<boolean>;
     isBatteryUnrestricted(): Promise<boolean>;
     requestBatteryUnrestricted(): Promise<boolean>;
+    lastAutoStart(): Promise<number>;
+    uptimeMs(): Promise<number>;
     hasAutoStartScreen(): Promise<boolean>;
     openAutoStartSettings(): Promise<boolean>;
     openAppSettings(): Promise<boolean>;
