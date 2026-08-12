@@ -1,5 +1,4 @@
 import { Dimensions } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   RTCPeerConnection,
   RTCRtpReceiver,
@@ -70,41 +69,6 @@ export const DEFAULT_ASPECT = 9 / 16;
  *   adb logcat -s ReactNativeJS | grep duotalk
  */
 const log = (...args: any[]) => console.log('[duotalk-rtc]', ...args);
-
-/**
- * Questo telefono rispetta `scaleResolutionDownBy`?
- *
- * Scendere di risoluzione scalando l'uscita è istantaneo e non spegne la
- * camera: niente schermo nero. Ma non tutti gli encoder obbediscono - il
- * MediaTek registra la richiesta e produce comunque a piena risoluzione,
- * misurato - e su quelli l'unica strada resta riaprire la ripresa.
- *
- * Non si può sapere in anticipo, quindi l'app lo impara: prova a
- * scalare, guarda cosa esce davvero, e se ne ricorda per sempre.
- * `null` = non ancora provato.
- */
-let scalaOnorata: boolean | null = null;
-const CHIAVE_SCALA = 'duotalk.scala.v1';
-
-export async function caricaSaperiScala(): Promise<void> {
-  try {
-    const v = await AsyncStorage.getItem(CHIAVE_SCALA);
-    if (v === 'si') scalaOnorata = true;
-    else if (v === 'no') scalaOnorata = false;
-    // Senza questa riga, un giudizio sbagliato resterebbe invisibile per
-    // sempre: il meccanismo smetterebbe di provare e nessuno saprebbe
-    // perché.
-    log('scalatura su questo telefono:',
-      scalaOnorata === null ? 'non ancora provata' : scalaOnorata ? 'rispettata' : 'ignorata');
-  } catch { /* si riproverà a impararlo */ }
-}
-
-/** Per rifare la prova da capo, se il giudizio fosse stato sbagliato. */
-export async function dimenticaSaperiScala(): Promise<void> {
-  scalaOnorata = null;
-  try { await AsyncStorage.removeItem(CHIAVE_SCALA); } catch { /* noop */ }
-  log('scalatura: giudizio dimenticato, si riproverà');
-}
 
 /** host / srflx / prflx / relay: dice che strada sta tentando ICE. */
 function candidateType(candidate: string): string {
@@ -765,43 +729,6 @@ export class ChannelSession {
     } catch { /* la diagnostica non deve mai disturbare */ }
   }
 
-  /**
-   * Ha funzionato la scalatura, o questo telefono la ignora?
-   *
-   * Si guarda cosa esce davvero un paio di secondi dopo. Se la
-   * risoluzione non è scesa, l'encoder ha accettato la richiesta senza
-   * onorarla: lo si annota una volta per tutte e si riapre la camera,
-   * che è l'unica strada che nessun encoder può disattendere.
-   */
-  private verificaScala(attesa: number) {
-    setTimeout(async () => {
-      try {
-        const stats = await (this.pc as any)?.getStats();
-        let larghezza = 0;
-        stats?.forEach((r: any) => {
-          if (r.type === 'outbound-rtp' && r.kind === 'video') larghezza = r.frameWidth ?? 0;
-        });
-        if (!larghezza) return;
-
-        const riuscita = Math.abs(larghezza - attesa) <= 48;
-        log('verifica scalatura: chiesto', attesa, 'ottenuto', larghezza,
-          '->', riuscita ? 'rispettata' : 'ignorata');
-        if (scalaOnorata !== riuscita) {
-          scalaOnorata = riuscita;
-          AsyncStorage.setItem(CHIAVE_SCALA, riuscita ? 'si' : 'no').catch(() => {});
-        }
-        if (riuscita) { log('la scalatura funziona su questo telefono'); return; }
-
-        log('questo telefono ignora la scala: riapro la camera, e d\'ora in poi lo faccio subito');
-        await this.applyVideoQuality(1);
-        if (this.localStream?.getVideoTracks()[0]) {
-          await this.disableVideo();
-          await this.enableVideo();
-        }
-      } catch { /* la diagnostica non deve mai disturbare */ }
-    }, 2500);
-  }
-
   private async flushCandidates() {
     const pc = this.pc;
     if (!pc) return;
@@ -945,7 +872,7 @@ export class ChannelSession {
     return this.videoSender;
   }
 
-  private async applyVideoQuality(scala = 1) {
+  private async applyVideoQuality() {
     const sender: any = this.liveVideoSender();
     if (!sender?.getParameters) return;
     const profile = VIDEO_PROFILES[this.cfg.videoQuality] ?? VIDEO_PROFILES.standard;
@@ -962,10 +889,9 @@ export class ChannelSession {
         params.degradationPreference = profile.degradation;
         this.degradationSet = true;
       }
-      // I fotogrammi non si toccano mai. La scala vale 1 quando la
-      // risoluzione la decide la ripresa, e cambia solo quando si sta
-      // scendendo senza riaprire la camera.
-      params.encodings[0].scaleResolutionDownBy = scala;
+      // Né i fotogrammi né la scala: la risoluzione la decide la
+      // ripresa, e su questo lato resta il solo tetto di banda.
+      params.encodings[0].scaleResolutionDownBy = 1;
       params.encodings[0].maxBitrate = profile.maxBitrate;
       await sender.setParameters(params);
       if (sender !== this.videoSender) {
@@ -1002,25 +928,22 @@ export class ChannelSession {
 
     const st = traccia.getSettings?.() ?? {};
     const larghezzaRipresa = st.width ?? 0;
-    const formatoDiverso = larghezzaRipresa !== dopo.capture.width;
-    if (!formatoDiverso) { await this.applyVideoQuality(); return; }
-
-    /**
-     * Scendendo si prova a scalare: nessuna riapertura, nessun nero.
-     *
-     * Solo scendendo, perché da una ripresa piccola non si ricava una
-     * grande; e solo finché non si scopre che questo telefono ignora la
-     * scala, nel qual caso si riapre subito come prima.
-     */
-    if (scalaOnorata !== false && dopo.capture.width < larghezzaRipresa) {
-      const fattore = larghezzaRipresa / dopo.capture.width;
-      log('scendo scalando l\'uscita:', `1/${fattore.toFixed(2)}`,
-        scalaOnorata === null ? '(primo tentativo su questo telefono)' : '');
-      await this.applyVideoQuality(fattore);
-      this.verificaScala(dopo.capture.width);
+    if (larghezzaRipresa === dopo.capture.width) {
+      await this.applyVideoQuality();
       return;
     }
 
+    /**
+     * Cambiare risoluzione significa riaprire la camera, e mezzo secondo
+     * di nero.
+     *
+     * Ridurre solo ciò che esce dall'encoder sarebbe indolore, ed era
+     * stato tentato: ma non tutti gli encoder onorano la richiesta, e
+     * distinguere quelli che lo fanno richiede una misura che si è
+     * rivelata inaffidabile - dava per sordo anche un telefono che
+     * ubbidiva. Un meccanismo che non si attiva mai e non lo dice è
+     * peggio del mezzo secondo di nero che voleva evitare.
+     */
     log('nuova risoluzione di ripresa:',
       `${larghezzaRipresa} -> ${dopo.capture.width}`, '- riapro la camera');
     await this.disableVideo();

@@ -7,15 +7,20 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.0.16",
+    "paragrafi": [
+      {
+        "forte": "Cambiare risoluzione riapre la camera",
+        "testo": ", con mezzo secondo di nero, su tutti i telefoni allo stesso modo. Il tentativo di evitarlo scendendo — ridurre solo ciò che esce dall'encoder — non funziona ovunque, e riconoscere i telefoni che lo onorano richiedeva una misura che si è rivelata inaffidabile: dava per sordo anche un telefono che ubbidiva. Un meccanismo che non si attiva mai e non lo dice è peggio del difetto che voleva evitare."
+      }
+    ]
+  },
+  {
     "versione": "1.0.14",
     "paragrafi": [
       {
         "forte": "I comandi si spengono piano",
         "testo": ", con un calo continuo di dieci secondi che parte subito. Prima restavano fermi qualche secondo e poi calavano di colpo: un salto che attira l'occhio proprio mentre si vuole guardare altro."
-      },
-      {
-        "forte": "Scendere di risoluzione non spegne più la camera",
-        "testo": ", dove il telefono lo consente: l'app prova a ridurre solo ciò che esce dall'encoder, verifica se ha funzionato e se lo ricorda. Sui telefoni che ignorano quella richiesta la camera si riapre come prima, ma lo fa subito già dal secondo cambio."
       }
     ]
   },

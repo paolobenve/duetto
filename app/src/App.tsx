@@ -11,7 +11,7 @@ import {
   isServerConfigured, isPaired, VIDEO_PROFILES,
 } from './config';
 import { Signaling, PresenceStatus, Mode } from './signaling';
-import { ChannelSession, caricaSaperiScala } from './webrtc';
+import { ChannelSession } from './webrtc';
 import type { VideoStats } from './webrtc';
 import SettingsScreen from './SettingsScreen';
 import SetupScreen from './SetupScreen';
@@ -237,7 +237,6 @@ export default function App() {
       // Prima della configurazione: se arrivasse dopo, il riquadrino
       // comparirebbe al suo posto di nascita e poi salterebbe.
       await caricaPosizionePip();
-      await caricaSaperiScala();
       const c = await loadConfig();
       setCfg(c);
       if (!isServerConfigured(c)) setScreen('settings');
