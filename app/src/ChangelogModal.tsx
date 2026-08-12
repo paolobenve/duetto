@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  View, Text, StyleSheet, Modal, Pressable, ScrollView, TouchableOpacity,
+  View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity,
   useWindowDimensions,
 } from 'react-native';
 import { CHANGELOG } from './changelog';
@@ -32,16 +32,14 @@ export default function ChangelogModal({ visible, onClose }: {
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        {/* Una vista, non un secondo Pressable: quello si candidava a
-            gestire il tocco e ogni tanto vinceva lui invece dello
-            scorrimento - da cui una lista che scorreva a volte sì e a
-            volte no. `onStartShouldSetResponder` viene interrogato dopo
-            i figli, quindi ferma il tocco diretto sul foglio senza
-            togliere niente alla lista. */}
-        <View
-          style={styles.sheet}
-          onStartShouldSetResponder={() => true}>
+      {/* Nessuno, qui dentro, si contende il gesto con la lista.
+          Chiudere toccando lo sfondo costringeva il foglio a candidarsi
+          a gestire il tocco per non chiudersi da solo, e quel candidato
+          ogni tanto vinceva: la lista non scorreva, e cedeva solo dopo
+          qualche secondo di insistenza. Si chiude col pulsante e col
+          tasto Indietro, che bastano. */}
+      <View style={styles.backdrop}>
+        <View style={styles.sheet}>
           <Text style={styles.title}>Novità</Text>
           <Text style={styles.sub}>{VERSION_FULL}</Text>
 
@@ -66,7 +64,7 @@ export default function ChangelogModal({ visible, onClose }: {
             <Text style={styles.buttonText}>Chiudi</Text>
           </TouchableOpacity>
         </View>
-      </Pressable>
+      </View>
     </Modal>
   );
 }
@@ -82,7 +80,7 @@ const styles = StyleSheet.create({
   },
   title: { color: '#fff', fontSize: 22, fontWeight: '800' },
   sub: { color: '#6b7686', fontSize: 12.5, marginTop: 4, marginBottom: 12 },
-  scrollBody: { paddingBottom: 6 },
+  scrollBody: { paddingBottom: 4 },
   blocco: { marginBottom: 20 },
   versione: {
     color: '#2f7cf6', fontSize: 15, fontWeight: '800', marginBottom: 8,
@@ -90,7 +88,7 @@ const styles = StyleSheet.create({
   paragrafo: { color: '#a9b3c0', fontSize: 14, lineHeight: 21, marginBottom: 10 },
   forte: { color: '#e6ebf1', fontWeight: '700' },
   button: {
-    marginTop: 6, borderRadius: 12, paddingVertical: 13, alignItems: 'center',
+    marginTop: 18, borderRadius: 12, paddingVertical: 13, alignItems: 'center',
     backgroundColor: '#2f7cf6',
   },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '700' },

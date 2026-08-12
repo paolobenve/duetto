@@ -7,6 +7,19 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.0.5",
+    "paragrafi": [
+      {
+        "forte": "«Tu» / «Non tu» sempre in alto a sinistra",
+        "testo": ", anche con due video: toccando il riquadrino i due si scambiano, ed è facile perdere il conto di chi si sta guardando. Non si attenua mai insieme agli altri comandi."
+      },
+      {
+        "forte": "Audio e video accesi sono pastiglie bianche",
+        "testo": ", spenti restano scuri: a doversi vedere di più è ciò che sta funzionando."
+      }
+    ]
+  },
+  {
     "versione": "1.0.3",
     "paragrafi": [
       {
