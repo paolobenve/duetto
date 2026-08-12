@@ -26,6 +26,14 @@ const DIM_OPACITY = 0.4;
  */
 const COMPACT_WIDTH = 340;
 
+/**
+ * Icona su pulsante spento: fondo chiaro, quindi disegno scuro.
+ *
+ * Il colore di fondo serve anche alla barra dello sbarramento, che si
+ * stacca dal disegno con un filo dello stesso colore su cui poggia.
+ */
+const SPENTO = { color: '#1e1f22', sfondo: 'rgb(243,243,243)' } as const;
+
 type Props = {
   channel: string;
   peerName: string;
@@ -326,14 +334,17 @@ export default function ChannelScreen(props: Props) {
         <View style={styles.controls}>
         <CircleButton
           label="Video"
-          icon={<IconaVideo off={!videoOn} />}
+          // Spento il pulsante diventa bianco, come su Discord: allora
+          // l'icona e la sua barra vanno in scuro, altrimenti sparirebbero
+          // nel fondo chiaro.
+          icon={<IconaVideo off={!videoOn} {...(videoOn ? {} : SPENTO)} />}
           active={videoOn}
           onPress={press(onToggleVideo)}
         />
         <CircleButton
           // Tocco: muto/non muto. Pressione prolungata: da dove esce l'audio.
           label={audioOn ? 'Audio' : 'Muto'}
-          icon={<IconaMicrofono off={!audioOn} />}
+          icon={<IconaMicrofono off={!audioOn} {...(audioOn ? {} : SPENTO)} />}
           active={audioOn}
           onPress={press(onToggleAudio)}
           onLongPress={press(() => setRouteMenu(true))}
@@ -359,7 +370,7 @@ export default function ChannelScreen(props: Props) {
         />
         <CircleButton
           label="Esci"
-          icon={<IconaEsci />}
+          icon={<IconaEsci sfondo="#da373c" />}
           danger
           onPress={press(onLeave)}
         />

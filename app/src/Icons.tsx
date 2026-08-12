@@ -20,19 +20,28 @@ type Props = {
   color?: string;
   /** barra diagonale: la funzione c'è ma è spenta */
   off?: boolean;
+  /**
+   * Il colore su cui l'icona è appoggiata.
+   *
+   * Serve alla barra: per staccarsi dal disegno sotto deve avere attorno
+   * un filo del colore di FONDO. Sbagliarlo si vede subito - con un alone
+   * scuro su un pulsante chiaro la barra diventa la cosa più visibile e
+   * l'icona sparisce.
+   */
+  sfondo?: string;
 };
 
 const STROKE = 2.1;
 
-function Barra({ color }: { size: number; color: string }) {
+function Barra({ color, sfondo }: { color: string; sfondo: string }) {
   return (
     <>
-      {/* Il distacco dal disegno sotto è appena accennato: con un alone
-          spesso la barra pesava più dell'icona, e si leggeva la sbarra
-          invece di ciò che era sbarrato. */}
+      {/* Un filo del colore di fondo stacca la barra dal disegno sotto:
+          appena accennato, perché con un alone spesso la barra pesa più
+          dell'icona e si legge la sbarra invece di ciò che è sbarrato. */}
       <Line
         x1={4.5} y1={19.5} x2={19.5} y2={4.5}
-        stroke="#12141a" strokeWidth={STROKE + 1.4} strokeLinecap="round"
+        stroke={sfondo} strokeWidth={STROKE + 1.6} strokeLinecap="round"
       />
       <Line
         x1={4.5} y1={19.5} x2={19.5} y2={4.5}
@@ -42,13 +51,13 @@ function Barra({ color }: { size: number; color: string }) {
   );
 }
 
-function Base({ size = 26, color = '#fff', off, children }: Props & {
+function Base({ size = 26, color = '#fff', sfondo = '#12141a', off, children }: Props & {
   children: React.ReactNode;
 }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       {children}
-      {off ? <Barra size={size} color={color} /> : null}
+      {off ? <Barra color={color} sfondo={sfondo} /> : null}
     </Svg>
   );
 }
@@ -147,9 +156,9 @@ export function IconaImpostazioni(p: Props) {
       <Line x1={3} y1={7} x2={21} y2={7} stroke={c} strokeWidth={STROKE} strokeLinecap="round" />
       <Line x1={3} y1={12} x2={21} y2={12} stroke={c} strokeWidth={STROKE} strokeLinecap="round" />
       <Line x1={3} y1={17} x2={21} y2={17} stroke={c} strokeWidth={STROKE} strokeLinecap="round" />
-      <Circle cx={8.5} cy={7} r={2.4} fill="#0b0e14" stroke={c} strokeWidth={STROKE} />
-      <Circle cx={15.5} cy={12} r={2.4} fill="#0b0e14" stroke={c} strokeWidth={STROKE} />
-      <Circle cx={9.5} cy={17} r={2.4} fill="#0b0e14" stroke={c} strokeWidth={STROKE} />
+      <Circle cx={8.5} cy={7} r={2.4} fill={p.sfondo ?? "#12141a"} stroke={c} strokeWidth={STROKE} />
+      <Circle cx={15.5} cy={12} r={2.4} fill={p.sfondo ?? "#12141a"} stroke={c} strokeWidth={STROKE} />
+      <Circle cx={9.5} cy={17} r={2.4} fill={p.sfondo ?? "#12141a"} stroke={c} strokeWidth={STROKE} />
     </Base>
   );
 }
