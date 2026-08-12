@@ -8,6 +8,15 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.0.17
+
+**Il microfono viene rilasciato quando lo spegni**: prima restava occupato — l'indicatore di
+registrazione di Android restava acceso e nessun'altra app poteva usarlo finché eri nel
+canale. Ora spegnerlo lo libera davvero, e riaccenderlo lo riprende.
+
+**L'etichetta sul riquadrino** è una pastiglia come quella del video grande, non più una
+fascia grigia da bordo a bordo che copriva una fetta di immagine.
+
 ## 1.0.16
 
 **Cambiare risoluzione riapre la camera**, con mezzo secondo di nero, su tutti i telefoni

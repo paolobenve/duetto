@@ -796,11 +796,19 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 20,
     paddingVertical: 10, paddingHorizontal: 18, overflow: 'hidden',
   },
+  /**
+   * Una pastiglia, non una fascia.
+   *
+   * La striscia grigia da bordo a bordo copriva una fetta di immagine e
+   * non somigliava all'etichetta del video grande, che è la stessa cosa
+   * detta nello stesso momento.
+   */
   pipTag: {
-    position: 'absolute', left: 0, right: 0, top: 0,
-    backgroundColor: 'rgba(0,0,0,0.45)', paddingVertical: 2, alignItems: 'center',
+    position: 'absolute', top: 5, left: 5,
+    backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 10,
+    paddingHorizontal: 7, paddingVertical: 3,
   },
-  pipTagText: { color: '#e6ebf1', fontSize: 10, fontWeight: '600' },
+  pipTagText: { color: '#e6ebf1', fontSize: 10, fontWeight: '700' },
   /**
    * La maniglia sta FUORI dall'angolo, non sopra il video.
    *

@@ -7,6 +7,19 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.0.17",
+    "paragrafi": [
+      {
+        "forte": "Il microfono viene rilasciato quando lo spegni",
+        "testo": ": prima restava occupato — l'indicatore di registrazione di Android restava acceso e nessun'altra app poteva usarlo finché eri nel canale. Ora spegnerlo lo libera davvero, e riaccenderlo lo riprende."
+      },
+      {
+        "forte": "L'etichetta sul riquadrino",
+        "testo": "è una pastiglia come quella del video grande, non più una fascia grigia da bordo a bordo che copriva una fetta di immagine."
+      }
+    ]
+  },
+  {
     "versione": "1.0.16",
     "paragrafi": [
       {

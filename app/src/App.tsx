@@ -891,7 +891,11 @@ export default function App() {
         knockPending={knockPending}
         audioRoute={audio.route}
         audioRoutes={audio.available}
-        onToggleAudio={() => setAudioOn(sessionRef.current?.toggleAudio() ?? false)}
+        onToggleAudio={async () => {
+          const s = sessionRef.current;
+          if (!s) return;
+          setAudioOn(await s.toggleAudio());
+        }}
         onToggleVideo={onToggleVideo}
         onSwitchCamera={() => {
           sessionRef.current?.switchCamera();
