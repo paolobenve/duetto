@@ -28,12 +28,12 @@ const DIM_OPACITY = 0.4;
 const COMPACT_WIDTH = 340;
 
 /**
- * Icona su pulsante spento: fondo chiaro, quindi disegno scuro.
+ * Icona su pastiglia chiara: disegno scuro.
  *
  * Il colore di fondo serve anche alla barra dello sbarramento, che si
  * stacca dal disegno con un filo dello stesso colore su cui poggia.
  */
-const SPENTO = { color: '#1e1f22', sfondo: 'rgb(243,243,243)' } as const;
+const SU_CHIARO = { color: '#1e1f22', sfondo: 'rgb(243,243,243)' } as const;
 
 /** Il disegno di ogni uscita audio, per la pastiglia e per il menu. */
 const ICONA_USCITA: Record<AudioRoute, (p: { size?: number; color?: string }) => JSX.Element> = {
@@ -324,8 +324,9 @@ export default function ChannelScreen(props: Props) {
       {/* Anche la barra in alto sta dentro il video: fuori, sulla banda
           nera, sembra staccata dall'immagine a cui appartiene. Il
           riquadrino le lascia il posto scendendo, non lei salendo. */}
-      {/* "Tu/Non tu" non si attenua mai: dice CHI si sta guardando, e
-          quella domanda resta anche quando i comandi sono di troppo. */}
+      {/* "Tu/Non tu" non si attenua mai e non sparisce mai: dice CHI si
+          sta guardando a schermo intero, e con un tocco sul riquadrino i
+          due si scambiano - è facile perdere il conto. */}
       {soloGrande ? (
         <View
           style={[styles.chiBadge, { top: 14 + inset.v, left: 14 + inset.h }]}
@@ -360,17 +361,17 @@ export default function ChannelScreen(props: Props) {
         <View style={styles.controls}>
         <CircleButton
           label="Video"
-          // Spento il pulsante diventa bianco, come su Discord: allora
-          // l'icona e la sua barra vanno in scuro, altrimenti sparirebbero
-          // nel fondo chiaro.
-          icon={<IconaVideo off={!videoOn} {...(videoOn ? {} : SPENTO)} />}
+          // Acceso il pulsante è una pastiglia bianca, e allora il
+          // disegno va in scuro: è ciò che sta funzionando a doversi
+          // vedere di più, non ciò che è spento.
+          icon={<IconaVideo off={!videoOn} {...(videoOn ? SU_CHIARO : {})} />}
           active={videoOn}
           onPress={press(onToggleVideo)}
         />
         <CircleButton
           // Tocco: muto/non muto. Pressione prolungata: da dove esce l'audio.
           label={audioOn ? 'Audio' : 'Muto'}
-          icon={<IconaMicrofono off={!audioOn} {...(audioOn ? {} : SPENTO)} />}
+          icon={<IconaMicrofono off={!audioOn} {...(audioOn ? SU_CHIARO : {})} />}
           active={audioOn}
           onPress={press(onToggleAudio)}
           onLongPress={press(() => setRouteMenu(true))}
@@ -640,8 +641,8 @@ function CircleButton(props: {
             ? styles.circleDanger
             : props.highlight
               ? styles.circleHighlight
-              : props.active === false
-                ? styles.circleOff
+              : props.active === true
+                ? styles.circleOn
                 : null,
           props.disabled && styles.circleDisabled,
         ]}>
@@ -752,7 +753,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   // Spento: sfondo chiaro, come Discord segnala il microfono in muto.
-  circleOff: { backgroundColor: 'rgba(255,255,255,0.92)' },
+  circleOn: { backgroundColor: 'rgba(255,255,255,0.92)' },
   circleHighlight: { backgroundColor: '#2f7cf6' },
   circleDanger: { backgroundColor: '#da373c' },
   circleDisabled: { opacity: 0.35 },

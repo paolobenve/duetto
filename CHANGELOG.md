@@ -8,6 +8,15 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.0.5
+
+**«Tu» / «Non tu» sempre in alto a sinistra**, anche con due video: toccando il riquadrino i
+due si scambiano, ed è facile perdere il conto di chi si sta guardando. Non si attenua mai
+insieme agli altri comandi.
+
+**Audio e video accesi sono pastiglie bianche**, spenti restano scuri: a doversi vedere di
+più è ciò che sta funzionando.
+
 ## 1.0.3
 
 **Icone leggibili.** I comandi non usano più le emoji, che hanno colori propri e una forma

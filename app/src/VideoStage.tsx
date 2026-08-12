@@ -149,11 +149,12 @@ type Props = {
    */
   onSfondo?: () => void;
   /**
-   * Chi occupa lo schermo, quando c'è un video solo.
+   * Chi occupa lo schermo grande.
    *
-   * Senza riquadrino manca il termine di paragone, e non si capisce se
-   * si sta guardando sé stessi o l'altro: l'etichetta la mette chi
-   * disegna la barra in alto, per averla sulla stessa riga del nome.
+   * L'etichetta la disegna chi fa la barra in alto, per tenerla sulla
+   * riga del nome. Vale sempre, anche col riquadrino presente: scambiando
+   * i due video con un tocco è facile perdere il conto di chi si sta
+   * guardando, e il riquadrino da solo non lo dice.
    */
   onSoloGrande?: (chi: 'tu' | 'altro' | null) => void;
 };
@@ -223,7 +224,7 @@ export default function VideoStage(props: Props) {
     : null;
   useEffect(() => { onBigAspect?.(bigAspect); }, [bigAspect, onBigAspect]);
 
-  const soloGrande = bigStream && !pipStream && !pipEmpty
+  const soloGrande = bigStream
     ? (bigIsSelf ? 'tu' : 'altro') as 'tu' | 'altro'
     : null;
   useEffect(() => { onSoloGrande?.(soloGrande); }, [soloGrande, onSoloGrande]);
