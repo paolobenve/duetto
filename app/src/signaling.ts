@@ -31,7 +31,7 @@ export type SignalMessage =
   | { kind: 'quality'; value: string }
   // Le opzioni audio valgono per la conversazione, non per un telefono:
   // la voce più ricca ha senso se la alzano tutti e due.
-  | { kind: 'audio'; migliore: boolean; hifi: boolean };
+  | { kind: 'audio'; migliore: boolean };
 
 export type PairMessage =
   | { kind: 'pubkey'; pub: string; name: string }

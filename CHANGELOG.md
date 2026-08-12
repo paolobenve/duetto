@@ -8,6 +8,14 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.0.24
+
+**Tolta l'alta fedeltà**: non faceva niente. In react-native-webrtc soppressione del rumore
+e livellamento si configurano una volta per tutta l'app, non sulla singola presa audio, e i
+vincoli passati al microfono su Android vengono ignorati. L'interruttore riapriva davvero il
+microfono, ma con gli stessi identici parametri. Resta **Voce più ricca**, che si misura e
+si sente.
+
 ## 1.0.23
 
 **Spegnendo «voce più ricca» l'audio torna davvero giù.** Prima si toglieva il tetto invece
@@ -33,17 +41,11 @@ il titolo «Audio», dove sembravano riguardare il suono.
 
 ## 1.0.20
 
-**Due opzioni per l'audio**, spente di default, nelle impostazioni.
+**Un'opzione per l'audio**, spenta di default, nelle impostazioni.
 
 **Voce più ricca** raddoppia il tetto dell'audio, da circa 32 a 64 kbit/s: su Opus la
 differenza si sente, la voce smette di suonare telefonica. Costa 4 kB/s in più per
 direzione, niente rispetto al video.
-
-**Alta fedeltà** toglie soppressione del rumore e livellamento automatico: passa tutto,
-musica compresa, invece di buttare via ciò che non è la voce di chi sta vicino al telefono.
-La cancellazione dell'eco resta accesa in ogni caso — senza, in vivavoce ti sentiresti di
-ritorno e la conversazione diventerebbe impossibile. Cambiandola il microfono si riapre, con
-un istante di silenzio.
 
 ## 1.0.19
 

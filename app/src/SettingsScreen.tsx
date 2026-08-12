@@ -267,25 +267,6 @@ export default function SettingsScreen({
           </View>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.choice, cfg.altaFedelta && styles.choicePicked]}
-          onPress={() => {
-            const v = !cfg.altaFedelta;
-            setCfg({ ...cfg, altaFedelta: v });
-            onLive?.({ altaFedelta: v });
-          }}>
-          <View style={[styles.radio, cfg.altaFedelta && styles.radioPicked]} />
-          <View style={styles.choiceText}>
-            <Text style={styles.choiceLabel}>Alta fedeltà</Text>
-            <Text style={styles.choiceNote}>
-              Toglie soppressione del rumore e livellamento: passa tutto,
-              musica compresa, invece di buttare via ciò che non è la voce di
-              chi sta vicino. La cancellazione dell’eco resta, altrimenti in
-              vivavoce ti sentiresti di ritorno.
-            </Text>
-          </View>
-        </TouchableOpacity>
-
         <Text style={styles.subsection}>Schermata</Text>
         <TouchableOpacity
           style={[styles.choice, cfg.mostraDiagnostica && styles.choicePicked]}

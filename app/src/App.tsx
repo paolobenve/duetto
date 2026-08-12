@@ -413,7 +413,7 @@ export default function App() {
             // Come la risoluzione: vale per tutti e due, e chi la riceve
             // non la rimanda indietro.
             if (msg.kind === 'audio') {
-              applyAudio(msg.migliore, msg.hifi, false);
+              applyAudio(msg.migliore, false);
               return;
             }
             // Se l'altro ha ricostruito prima di noi, la sua offerta
@@ -782,18 +782,15 @@ export default function App() {
    * due direzioni, e chi l'ha alzata non sente nessuna differenza:
    * l'audio che ascolta lo manda l'altro.
    */
-  const applyAudio = useCallback((migliore: boolean, hifi: boolean, tell: boolean) => {
+  const applyAudio = useCallback((migliore: boolean, tell: boolean) => {
     setCfg((prev) => {
-      if (!prev) return prev;
-      if (prev.audioMigliore === migliore && prev.altaFedelta === hifi) return prev;
-      const next = { ...prev, audioMigliore: migliore, altaFedelta: hifi };
+      if (!prev || prev.audioMigliore === migliore) return prev;
+      const next = { ...prev, audioMigliore: migliore };
       saveConfig(next).catch(() => {});
       return next;
     });
-    sessionRef.current?.setAudioOptions(migliore, hifi);
-    if (tell) {
-      signalingRef.current?.sendSignal({ kind: 'audio', migliore, hifi });
-    }
+    sessionRef.current?.setAudioOptions(migliore);
+    if (tell) signalingRef.current?.sendSignal({ kind: 'audio', migliore });
   }, []);
 
   const onSaveSettings = useCallback(async (next: DuoConfig) => {
@@ -852,9 +849,7 @@ export default function App() {
             saveConfig(next).catch(() => {});
             // Le opzioni audio vanno anche applicate: il tetto a caldo,
             // le elaborazioni riaprendo il microfono.
-            if ('audioMigliore' in patch || 'altaFedelta' in patch) {
-              applyAudio(next.audioMigliore, next.altaFedelta, true);
-            }
+            if ('audioMigliore' in patch) applyAudio(next.audioMigliore, true);
             return next;
           })}
           vp9Here={localVp9}

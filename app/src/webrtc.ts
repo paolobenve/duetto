@@ -131,27 +131,8 @@ export class ChannelSession {
   /** Apre il microfono. Da chiamare appena si entra nel canale. */
   async enterChannel() {
     if (this.localStream) return;
-    this.localStream = await mediaDevices.getUserMedia({
-      audio: this.vincoliMicrofono(), video: false,
-    } as any);
+    this.localStream = await mediaDevices.getUserMedia({ audio: true, video: false });
     this.events.onLocalStream?.(this.localStream);
-  }
-
-  /**
-   * Cosa chiedere al microfono.
-   *
-   * L'eco si cancella sempre: senza, in vivavoce si sente la propria
-   * voce di ritorno. Le altre due elaborazioni - soppressione del rumore
-   * e livellamento - buttano via ciò che non è voce vicina, quindi in
-   * alta fedeltà si spengono.
-   */
-  private vincoliMicrofono(): any {
-    const hifi = !!this.cfg.altaFedelta;
-    return {
-      echoCancellation: true,
-      noiseSuppression: !hifi,
-      autoGainControl: !hifi,
-    };
   }
 
   /** Il sender audio della connessione viva. */
@@ -180,46 +161,24 @@ export class ChannelSession {
       }
       params.encodings[0].maxBitrate = this.cfg.audioMigliore ? 64000 : 32000;
       await sender.setParameters(params);
-      log('audio:', this.cfg.audioMigliore ? 'tetto 64 kbit/s' : 'tetto 32 kbit/s',
-        '- elaborazioni:', this.cfg.altaFedelta ? 'solo eco' : 'complete');
+      log('audio:', this.cfg.audioMigliore ? 'tetto 64 kbit/s' : 'tetto 32 kbit/s');
     } catch (e) {
       log('non riesco ad applicare la qualità audio:', String(e));
     }
   }
 
   /**
-   * Cambia le opzioni audio.
+   * Cambia il tetto dell'audio.
    *
-   * Il tetto si applica a caldo. Le elaborazioni no: si scelgono
-   * aprendo il microfono, quindi cambiarle vuol dire riaprirlo - un
-   * istante di silenzio, non un nero come per la camera.
+   * Le elaborazioni - soppressione del rumore, livellamento - non sono
+   * qui perché non si possono cambiare da qui: in react-native-webrtc si
+   * configurano alla creazione della fabbrica di connessioni, una volta
+   * per tutta l'app, e i vincoli passati a getUserMedia su Android
+   * vengono ignorati. L'opzione che riapriva il microfono con gli stessi
+   * identici parametri è stata tolta invece di restare a fingere.
    */
-  async setAudioOptions(migliore: boolean, hifi: boolean) {
-    const cambiaElaborazioni = !!this.cfg.altaFedelta !== hifi;
-    this.cfg = { ...this.cfg, audioMigliore: migliore, altaFedelta: hifi };
-
-    if (cambiaElaborazioni && this.localStream?.getAudioTracks()[0]) {
-      const vecchia = this.localStream.getAudioTracks()[0];
-      // Si legge PRIMA di fermarla: fermare una traccia la spegne anche,
-      // e riportando quel valore sulla nuova la si faceva nascere muta -
-      // il microfono si riapriva senza errori e l'altro non sentiva più.
-      const eraAcceso = vecchia.enabled;
-      try {
-        const mic = await mediaDevices.getUserMedia({ audio: this.vincoliMicrofono() } as any);
-        const nuova = mic.getAudioTracks()[0];
-        if (nuova) {
-          nuova.enabled = eraAcceso;
-          const sender = this.liveAudioSender();
-          try { await sender?.replaceTrack(nuova); } catch { /* noop */ }
-          this.localStream.removeTrack(vecchia);
-          vecchia.stop();
-          this.localStream.addTrack(nuova);
-          log('microfono riaperto con le nuove elaborazioni - acceso:', eraAcceso);
-        }
-      } catch (e) {
-        log('non riesco a riaprire il microfono:', String(e));
-      }
-    }
+  async setAudioOptions(migliore: boolean) {
+    this.cfg = { ...this.cfg, audioMigliore: migliore };
     await this.applyAudioQuality();
   }
 
