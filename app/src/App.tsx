@@ -410,6 +410,12 @@ export default function App() {
               applyQuality(msg.value as DuoConfig['videoQuality'], false);
               return;
             }
+            // Come la risoluzione: vale per tutti e due, e chi la riceve
+            // non la rimanda indietro.
+            if (msg.kind === 'audio') {
+              applyAudio(msg.migliore, msg.hifi, false);
+              return;
+            }
             // Se l'altro ha ricostruito prima di noi, la sua offerta
             // arriva quando ancora non abbiamo nulla per riceverla e
             // verrebbe scartata: prima ci prepariamo, poi la trattiamo.
@@ -769,6 +775,27 @@ export default function App() {
     [],
   );
 
+  /**
+   * Le opzioni audio, su tutti e due i telefoni.
+   *
+   * "Voce più ricca" alzata da una parte sola migliora solo una delle
+   * due direzioni, e chi l'ha alzata non sente nessuna differenza:
+   * l'audio che ascolta lo manda l'altro.
+   */
+  const applyAudio = useCallback((migliore: boolean, hifi: boolean, tell: boolean) => {
+    setCfg((prev) => {
+      if (!prev) return prev;
+      if (prev.audioMigliore === migliore && prev.altaFedelta === hifi) return prev;
+      const next = { ...prev, audioMigliore: migliore, altaFedelta: hifi };
+      saveConfig(next).catch(() => {});
+      return next;
+    });
+    sessionRef.current?.setAudioOptions(migliore, hifi);
+    if (tell) {
+      signalingRef.current?.sendSignal({ kind: 'audio', migliore, hifi });
+    }
+  }, []);
+
   const onSaveSettings = useCallback(async (next: DuoConfig) => {
     await saveConfig(next);
     setCfg(next);
@@ -826,7 +853,7 @@ export default function App() {
             // Le opzioni audio vanno anche applicate: il tetto a caldo,
             // le elaborazioni riaprendo il microfono.
             if ('audioMigliore' in patch || 'altaFedelta' in patch) {
-              sessionRef.current?.setAudioOptions(next.audioMigliore, next.altaFedelta);
+              applyAudio(next.audioMigliore, next.altaFedelta, true);
             }
             return next;
           })}

@@ -28,7 +28,10 @@ export type SignalMessage =
   | { kind: 'renegotiate' }
   // La qualità video vale per tutti e due: cambiarla da un telefono la
   // cambia anche sull'altro. Chi la riceve non la rimanda indietro.
-  | { kind: 'quality'; value: string };
+  | { kind: 'quality'; value: string }
+  // Le opzioni audio valgono per la conversazione, non per un telefono:
+  // la voce più ricca ha senso se la alzano tutti e due.
+  | { kind: 'audio'; migliore: boolean; hifi: boolean };
 
 export type PairMessage =
   | { kind: 'pubkey'; pub: string; name: string }

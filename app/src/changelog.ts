@@ -7,6 +7,15 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.0.22",
+    "paragrafi": [
+      {
+        "forte": "Le opzioni audio valgono per tutti e due i telefoni",
+        "testo": ", come già la risoluzione. Cambiandole da uno cambiano anche all'altro — ed è necessario: la voce che senti la manda lui, quindi alzarla solo dalla tua parte non ti fa sentire nessuna differenza."
+      }
+    ]
+  },
+  {
     "versione": "1.0.21",
     "paragrafi": [
       {

@@ -261,6 +261,8 @@ export default function SettingsScreen({
             <Text style={styles.choiceNote}>
               Raddoppia il tetto dell’audio, da circa 32 a 64 kbit/s: la voce
               smette di suonare telefonica. Costa 4 kB/s in più per direzione.
+              Vale per tutti e due i telefoni: quello che senti lo manda
+              l’altro.
             </Text>
           </View>
         </TouchableOpacity>

@@ -8,6 +8,12 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.0.22
+
+**Le opzioni audio valgono per tutti e due i telefoni**, come già la risoluzione.
+Cambiandole da uno cambiano anche all'altro — ed è necessario: la voce che senti la manda
+lui, quindi alzarla solo dalla tua parte non ti fa sentire nessuna differenza.
+
 ## 1.0.21
 
 **Correzione**: attivando l'alta fedeltà il microfono si riapriva muto e l'altro smetteva di
