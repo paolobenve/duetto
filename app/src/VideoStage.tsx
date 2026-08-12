@@ -148,6 +148,14 @@ type Props = {
    * un significato suo - scambia grande e piccolo.
    */
   onSfondo?: () => void;
+  /**
+   * Chi occupa lo schermo, quando c'è un video solo.
+   *
+   * Senza riquadrino manca il termine di paragone, e non si capisce se
+   * si sta guardando sé stessi o l'altro: l'etichetta la mette chi
+   * disegna la barra in alto, per averla sulla stessa riga del nome.
+   */
+  onSoloGrande?: (chi: 'tu' | 'altro' | null) => void;
 };
 
 export default function VideoStage(props: Props) {
@@ -157,7 +165,7 @@ export default function VideoStage(props: Props) {
     awaitingRemote, notice,
   } = props;
   const { width, height } = useWindowDimensions();
-  const { onBigAspect, insetV = 0, insetH = 0, insetBasso = 0, onSfondo } = props;
+  const { onBigAspect, insetV = 0, insetH = 0, insetBasso = 0, onSfondo, onSoloGrande } = props;
 
   // false = l'altro è grande (default), true = sono io ad essere grande
   const [selfBig, setSelfBig] = useState(false);
@@ -214,6 +222,11 @@ export default function VideoStage(props: Props) {
     ? (bigIsSelf ? localAspect : remoteAspect) || DEFAULT_ASPECT
     : null;
   useEffect(() => { onBigAspect?.(bigAspect); }, [bigAspect, onBigAspect]);
+
+  const soloGrande = bigStream && !pipStream && !pipEmpty
+    ? (bigIsSelf ? 'tu' : 'altro') as 'tu' | 'altro'
+    : null;
+  useEffect(() => { onSoloGrande?.(soloGrande); }, [soloGrande, onSoloGrande]);
 
   // Le proporzioni sono SEMPRE quelle della camera che il riquadrino mostra.
   const pipAspect =

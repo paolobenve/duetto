@@ -8,6 +8,7 @@ import type { PresenceStatus } from './signaling';
 import VideoStage from './VideoStage';
 import { AudioRoute, ROUTE_ICON, ROUTE_LABEL } from './audioRoute';
 import { VERSION_LABEL } from './version';
+import ChangelogModal from './ChangelogModal';
 import type { Avatar } from './avatar';
 import type { VideoStats } from './webrtc';
 import {
@@ -102,6 +103,9 @@ export default function ChannelScreen(props: Props) {
   }, [bigAspect, winWidth, winHeight]);
 
   const [routeMenu, setRouteMenu] = useState(false);
+  const [novita, setNovita] = useState(false);
+  /** chi occupa lo schermo quando c'è un video solo: 'tu', 'altro', o niente */
+  const [soloGrande, setSoloGrande] = useState<'tu' | 'altro' | null>(null);
 
   const together = status === 'together';
   const linked = connectionState === 'connected';
@@ -205,14 +209,24 @@ export default function ChannelScreen(props: Props) {
     }).start();
   }, [opacity, hideControls]);
 
+  /**
+   * C'è qualcosa da guardare sotto ai comandi.
+   *
+   * Senza nessun video i comandi non coprono niente, e attenuarli
+   * lascerebbe uno schermo scuro con sopra dei pulsanti sbiaditi: si
+   * nascondono per lasciar vedere un'immagine, e se l'immagine non c'è
+   * non c'è ragione.
+   */
+  const daVedere = localHasVideo || remoteHasVideo;
+
   const wake = useCallback(() => {
     pieni.current = true;
     Animated.timing(opacity, {
       toValue: 1, duration: 120, useNativeDriver: true,
     }).start();
     if (idleTimer.current) clearTimeout(idleTimer.current);
-    idleTimer.current = setTimeout(attenua, IDLE_MS);
-  }, [opacity, attenua]);
+    if (daVedere) idleTimer.current = setTimeout(attenua, IDLE_MS);
+  }, [opacity, attenua, daVedere]);
 
   /**
    * Un tocco sull'immagine: se i comandi si vedono, li toglie di mezzo.
@@ -224,6 +238,8 @@ export default function ChannelScreen(props: Props) {
     if (pieni.current) attenua(); else wake();
   }, [attenua, wake]);
 
+  // `wake` cambia quando cambia `daVedere`: spegnendo l'ultima camera i
+  // comandi tornano pieni e ci restano.
   useEffect(() => {
     wake();
     return () => { if (idleTimer.current) clearTimeout(idleTimer.current); };
@@ -256,6 +272,7 @@ export default function ChannelScreen(props: Props) {
         insetH={compact ? 0 : inset.h}
         insetBasso={!compact && showStats ? 36 : 0}
         onSfondo={tocco}
+        onSoloGrande={setSoloGrande}
         placeholder={
           <PresenceCard
             status={status}
@@ -280,12 +297,24 @@ export default function ChannelScreen(props: Props) {
         <TouchableOpacity style={styles.gear} onPress={press(onOpenSettings)}>
           <IconaImpostazioni size={21} color="#e6ebf1" />
         </TouchableOpacity>
+        {/* Senza riquadrino manca il termine di paragone: con la camera
+            frontale, inquadrando una stanza vuota, non si capisce se si
+            sta guardando sé stessi o l'altro. */}
+        {soloGrande ? (
+          <View style={styles.chiBadge} pointerEvents="none">
+            <Text style={styles.chiText}>{soloGrande === 'tu' ? 'Tu' : 'Non tu'}</Text>
+          </View>
+        ) : null}
         <View style={styles.spacer} pointerEvents="none" />
-        <View style={styles.badge} pointerEvents="none">
+        <TouchableOpacity
+          style={styles.badge}
+          // Il nome dichiara già la versione: è lì che uno va a cercare
+          // perché qualcosa è cambiato.
+          onPress={press(() => setNovita(true))}>
           <View style={[styles.dot, together ? styles.dotGreen : styles.dotGrey]} />
           <Text style={styles.badgeText}>DuoTalk</Text>
           <Text style={styles.version}>  {VERSION_LABEL}</Text>
-        </View>
+        </TouchableOpacity>
       </Animated.View>
 
       {/* Controlli: sempre presenti, in basso, dentro un pannello scuro */}
@@ -353,6 +382,8 @@ export default function ChannelScreen(props: Props) {
       )}
 
       {/* Uscita audio: si apre tenendo premuto il pulsante Audio. */}
+      <ChangelogModal visible={novita} onClose={() => setNovita(false)} />
+
       <Modal
         visible={routeMenu}
         transparent
@@ -613,6 +644,11 @@ const styles = StyleSheet.create({
     position: 'absolute', top: 14, left: 14, right: 14,
     flexDirection: 'row', alignItems: 'center', gap: 8,
   },
+  chiBadge: {
+    backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 14,
+    paddingHorizontal: 10, paddingVertical: 5, marginLeft: 8,
+  },
+  chiText: { color: '#e6ebf1', fontSize: 12.5, fontWeight: '700' },
   badge: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 18,
