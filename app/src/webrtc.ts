@@ -91,7 +91,19 @@ export async function caricaSaperiScala(): Promise<void> {
     const v = await AsyncStorage.getItem(CHIAVE_SCALA);
     if (v === 'si') scalaOnorata = true;
     else if (v === 'no') scalaOnorata = false;
+    // Senza questa riga, un giudizio sbagliato resterebbe invisibile per
+    // sempre: il meccanismo smetterebbe di provare e nessuno saprebbe
+    // perché.
+    log('scalatura su questo telefono:',
+      scalaOnorata === null ? 'non ancora provata' : scalaOnorata ? 'rispettata' : 'ignorata');
   } catch { /* si riproverà a impararlo */ }
+}
+
+/** Per rifare la prova da capo, se il giudizio fosse stato sbagliato. */
+export async function dimenticaSaperiScala(): Promise<void> {
+  scalaOnorata = null;
+  try { await AsyncStorage.removeItem(CHIAVE_SCALA); } catch { /* noop */ }
+  log('scalatura: giudizio dimenticato, si riproverà');
 }
 
 /** host / srflx / prflx / relay: dice che strada sta tentando ICE. */
@@ -772,6 +784,8 @@ export class ChannelSession {
         if (!larghezza) return;
 
         const riuscita = Math.abs(larghezza - attesa) <= 48;
+        log('verifica scalatura: chiesto', attesa, 'ottenuto', larghezza,
+          '->', riuscita ? 'rispettata' : 'ignorata');
         if (scalaOnorata !== riuscita) {
           scalaOnorata = riuscita;
           AsyncStorage.setItem(CHIAVE_SCALA, riuscita ? 'si' : 'no').catch(() => {});
