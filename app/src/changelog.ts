@@ -7,6 +7,23 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.0.20",
+    "paragrafi": [
+      {
+        "forte": "Due opzioni per l'audio",
+        "testo": ", spente di default, nelle impostazioni."
+      },
+      {
+        "forte": "Voce più ricca",
+        "testo": "raddoppia il tetto dell'audio, da circa 32 a 64 kbit/s: su Opus la differenza si sente, la voce smette di suonare telefonica. Costa 4 kB/s in più per direzione, niente rispetto al video."
+      },
+      {
+        "forte": "Alta fedeltà",
+        "testo": "toglie soppressione del rumore e livellamento automatico: passa tutto, musica compresa, invece di buttare via ciò che non è la voce di chi sta vicino al telefono. La cancellazione dell'eco resta accesa in ogni caso — senza, in vivavoce ti sentiresti di ritorno e la conversazione diventerebbe impossibile. Cambiandola il microfono si riapre, con un istante di silenzio."
+      }
+    ]
+  },
+  {
     "versione": "1.0.19",
     "paragrafi": [
       {

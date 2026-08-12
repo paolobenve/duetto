@@ -823,6 +823,11 @@ export default function App() {
             if (!prev) return prev;
             const next = { ...prev, ...patch };
             saveConfig(next).catch(() => {});
+            // Le opzioni audio vanno anche applicate: il tetto a caldo,
+            // le elaborazioni riaprendo il microfono.
+            if ('audioMigliore' in patch || 'altaFedelta' in patch) {
+              sessionRef.current?.setAudioOptions(next.audioMigliore, next.altaFedelta);
+            }
             return next;
           })}
           vp9Here={localVp9}

@@ -8,6 +8,20 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.0.20
+
+**Due opzioni per l'audio**, spente di default, nelle impostazioni.
+
+**Voce più ricca** raddoppia il tetto dell'audio, da circa 32 a 64 kbit/s: su Opus la
+differenza si sente, la voce smette di suonare telefonica. Costa 4 kB/s in più per
+direzione, niente rispetto al video.
+
+**Alta fedeltà** toglie soppressione del rumore e livellamento automatico: passa tutto,
+musica compresa, invece di buttare via ciò che non è la voce di chi sta vicino al telefono.
+La cancellazione dell'eco resta accesa in ogni caso — senza, in vivavoce ti sentiresti di
+ritorno e la conversazione diventerebbe impossibile. Cambiandola il microfono si riapre, con
+un istante di silenzio.
+
 ## 1.0.19
 
 **Il microfono torna a restare preso** finché sei nel canale, muto compreso. Rilasciarlo

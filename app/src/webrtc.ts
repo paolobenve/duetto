@@ -128,8 +128,93 @@ export class ChannelSession {
   /** Apre il microfono. Da chiamare appena si entra nel canale. */
   async enterChannel() {
     if (this.localStream) return;
-    this.localStream = await mediaDevices.getUserMedia({ audio: true, video: false });
+    this.localStream = await mediaDevices.getUserMedia({
+      audio: this.vincoliMicrofono(), video: false,
+    } as any);
     this.events.onLocalStream?.(this.localStream);
+  }
+
+  /**
+   * Cosa chiedere al microfono.
+   *
+   * L'eco si cancella sempre: senza, in vivavoce si sente la propria
+   * voce di ritorno. Le altre due elaborazioni - soppressione del rumore
+   * e livellamento - buttano via ciò che non è voce vicina, quindi in
+   * alta fedeltà si spengono.
+   */
+  private vincoliMicrofono(): any {
+    const hifi = !!this.cfg.altaFedelta;
+    return {
+      echoCancellation: true,
+      noiseSuppression: !hifi,
+      autoGainControl: !hifi,
+    };
+  }
+
+  /** Il sender audio della connessione viva. */
+  private liveAudioSender(): any {
+    const pc: any = this.pc;
+    try {
+      return pc?.getSenders?.()?.find((x: any) => x.track?.kind === 'audio') ?? null;
+    } catch { return null; }
+  }
+
+  /**
+   * Il tetto dell'audio: predefinito, oppure alzato a 64 kbit/s.
+   *
+   * Togliere il tetto quando l'opzione si spegne non basta a riportare
+   * Opus al comportamento di prima nella stessa sessione, ma il valore
+   * predefinito lo ritrova comunque da solo: qui si toglie il limite e
+   * si lascia decidere all'algoritmo di congestione.
+   */
+  private async applyAudioQuality() {
+    const sender: any = this.liveAudioSender();
+    if (!sender?.getParameters) return;
+    try {
+      const params = sender.getParameters();
+      if (!Array.isArray(params.encodings) || params.encodings.length === 0) {
+        params.encodings = [{}];
+      }
+      if (this.cfg.audioMigliore) params.encodings[0].maxBitrate = 64000;
+      else delete params.encodings[0].maxBitrate;
+      await sender.setParameters(params);
+      log('audio:', this.cfg.audioMigliore ? 'tetto 64 kbit/s' : 'tetto predefinito',
+        '- elaborazioni:', this.cfg.altaFedelta ? 'solo eco' : 'complete');
+    } catch (e) {
+      log('non riesco ad applicare la qualità audio:', String(e));
+    }
+  }
+
+  /**
+   * Cambia le opzioni audio.
+   *
+   * Il tetto si applica a caldo. Le elaborazioni no: si scelgono
+   * aprendo il microfono, quindi cambiarle vuol dire riaprirlo - un
+   * istante di silenzio, non un nero come per la camera.
+   */
+  async setAudioOptions(migliore: boolean, hifi: boolean) {
+    const cambiaElaborazioni = !!this.cfg.altaFedelta !== hifi;
+    this.cfg = { ...this.cfg, audioMigliore: migliore, altaFedelta: hifi };
+
+    if (cambiaElaborazioni && this.localStream?.getAudioTracks()[0]) {
+      const vecchia = this.localStream.getAudioTracks()[0];
+      try {
+        const mic = await mediaDevices.getUserMedia({ audio: this.vincoliMicrofono() } as any);
+        const nuova = mic.getAudioTracks()[0];
+        if (nuova) {
+          const sender = this.liveAudioSender();
+          try { await sender?.replaceTrack(nuova); } catch { /* noop */ }
+          this.localStream.removeTrack(vecchia);
+          vecchia.stop();
+          this.localStream.addTrack(nuova);
+          nuova.enabled = vecchia.enabled;
+          log('microfono riaperto con le nuove elaborazioni');
+        }
+      } catch (e) {
+        log('non riesco a riaprire il microfono:', String(e));
+      }
+    }
+    await this.applyAudioQuality();
   }
 
   /** Crea la connessione con l'altro. Chiamata quando entrambi siamo presenti. */
@@ -304,7 +389,12 @@ export class ChannelSession {
     // veniva ricostruita ma l'offerta non partiva mai.
     // Audio: c'è sempre.
     const audioTrack = this.localStream!.getAudioTracks()[0];
-    if (audioTrack) pc.addTrack(audioTrack, this.localStream as MediaStream);
+    if (audioTrack) {
+      pc.addTrack(audioTrack, this.localStream as MediaStream);
+      // Il tetto va rimesso a ogni connessione nuova: i parametri
+      // vivono sul sender, che nasce insieme a lei.
+      setTimeout(() => this.applyAudioQuality(), 0);
+    }
 
     // Video: il canale viene aperto SUBITO, anche senza traccia dentro.
     //

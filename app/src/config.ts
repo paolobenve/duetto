@@ -65,6 +65,23 @@ export type DuoConfig = {
    * Spente: servono a capire perché una chiamata va male, non a
    * guardarsi in faccia. Chi ne ha bisogno sa dove trovarle.
    */
+  /**
+   * Alza il tetto dell'audio da ~32 a 64 kbit/s.
+   *
+   * Su Opus la differenza si sente: la voce smette di suonare
+   * "telefonica". Costa 4 kB/s in più per direzione, niente rispetto al
+   * video. Spento di default perché il predefinito basta per parlare.
+   */
+  audioMigliore: boolean;
+  /**
+   * Toglie soppressione del rumore e livellamento automatico.
+   *
+   * Passa tutto, musica compresa, invece di buttare via ciò che non è la
+   * voce di chi sta vicino al telefono. La cancellazione dell'eco resta
+   * accesa: senza, in vivavoce si sente la propria voce di ritorno e la
+   * conversazione diventa impossibile.
+   */
+  altaFedelta: boolean;
   mostraDiagnostica: boolean;
   /**
    * I comandi spariscono del tutto invece di attenuarsi.
@@ -95,6 +112,8 @@ export const DEFAULT_CONFIG: DuoConfig = {
   // avrebbe lasciato in definizione ridotta chi non apre mai le
   // impostazioni, anche avendo una rete ottima.
   videoQuality: 'migliore',
+  audioMigliore: false,
+  altaFedelta: false,
   mostraDiagnostica: false,
   nascondiComandi: false,
   videoCodec: 'auto',
