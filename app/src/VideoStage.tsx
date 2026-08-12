@@ -510,6 +510,8 @@ export default function VideoStage(props: Props) {
   const shiftStart = useRef({ x: 0, y: 0 });
   const lastTap = useRef(0);
   const movedInGesture = useRef(false);
+  /** attesa che distingue un tocco singolo dal primo di un doppio */
+  const attesaTocco = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const z = zoom.addListener((v) => { zoomRef.current = v.value; });
@@ -586,6 +588,10 @@ export default function VideoStage(props: Props) {
             const now = Date.now();
             if (now - lastTap.current < DOUBLE_TAP_MS) {
               lastTap.current = 0;
+              if (attesaTocco.current) {
+                clearTimeout(attesaTocco.current);
+                attesaTocco.current = null;
+              }
               if (zoomRef.current > 1.01) resetZoom();
               else {
                 Animated.timing(zoom, {
@@ -595,6 +601,14 @@ export default function VideoStage(props: Props) {
               return;
             }
             lastTap.current = now;
+            // Tocco singolo: mostra o nasconde i comandi, ma solo dopo
+            // aver escluso che sia il primo di un doppio tocco - che
+            // significa ingrandire, ed è un'altra cosa.
+            if (attesaTocco.current) clearTimeout(attesaTocco.current);
+            attesaTocco.current = setTimeout(() => {
+              attesaTocco.current = null;
+              onSfondo?.();
+            }, DOUBLE_TAP_MS);
             return;
           }
           if (zoomRef.current <= 1.01) resetZoom();
@@ -602,7 +616,7 @@ export default function VideoStage(props: Props) {
         },
         onPanResponderTerminate: () => clampShift(),
       }),
-    [zoom, shift, resetZoom, clampShift],
+    [zoom, shift, resetZoom, clampShift, onSfondo],
   );
 
   return (
@@ -610,7 +624,6 @@ export default function VideoStage(props: Props) {
       {bigStream ? (
         <Animated.View
           {...zoomResponder.panHandlers}
-          onTouchStart={onSfondo}
           style={[
             styles.big,
             {
