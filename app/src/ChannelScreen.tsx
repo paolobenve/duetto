@@ -6,7 +6,7 @@ import {
 import { MediaStream } from 'react-native-webrtc';
 import type { PresenceStatus } from './signaling';
 import VideoStage from './VideoStage';
-import { AudioRoute, ROUTE_ICON, ROUTE_LABEL } from './audioRoute';
+import { AudioRoute, ROUTE_LABEL } from './audioRoute';
 import { VERSION_LABEL } from './version';
 import ChangelogModal from './ChangelogModal';
 import type { Avatar } from './avatar';
@@ -14,6 +14,7 @@ import type { VideoStats } from './webrtc';
 import {
   IconaVideo, IconaMicrofono, IconaAvvisa, IconaEsci,
   IconaImpostazioni, IconaFrontale, IconaPosteriore,
+  IconaVivavoce, IconaTelefono, IconaCuffie, IconaBluetooth,
 } from './Icons';
 
 /** Dopo quanto i pulsanti si attenuano, e quanto restano visibili. */
@@ -33,6 +34,14 @@ const COMPACT_WIDTH = 340;
  * stacca dal disegno con un filo dello stesso colore su cui poggia.
  */
 const SPENTO = { color: '#1e1f22', sfondo: 'rgb(243,243,243)' } as const;
+
+/** Il disegno di ogni uscita audio, per la pastiglia e per il menu. */
+const ICONA_USCITA: Record<AudioRoute, (p: { size?: number; color?: string }) => JSX.Element> = {
+  SPEAKER_PHONE: IconaVivavoce,
+  EARPIECE: IconaTelefono,
+  WIRED_HEADSET: IconaCuffie,
+  BLUETOOTH: IconaBluetooth,
+};
 
 type Props = {
   channel: string;
@@ -315,19 +324,18 @@ export default function ChannelScreen(props: Props) {
       {/* Anche la barra in alto sta dentro il video: fuori, sulla banda
           nera, sembra staccata dall'immagine a cui appartiene. Il
           riquadrino le lascia il posto scendendo, non lei salendo. */}
+      {/* "Tu/Non tu" non si attenua mai: dice CHI si sta guardando, e
+          quella domanda resta anche quando i comandi sono di troppo. */}
+      {soloGrande ? (
+        <View
+          style={[styles.chiBadge, { top: 14 + inset.v, left: 14 + inset.h }]}
+          pointerEvents="none">
+          <Text style={styles.chiText}>{soloGrande === 'tu' ? 'Tu' : 'Non tu'}</Text>
+        </View>
+      ) : null}
+
       <Animated.View
         style={[styles.topBar, { opacity, top: 14 + inset.v, left: 14 + inset.h, right: 14 + inset.h }]}>
-        <TouchableOpacity style={styles.gear} onPress={press(onOpenSettings)}>
-          <IconaImpostazioni size={21} color="#e6ebf1" />
-        </TouchableOpacity>
-        {/* Senza riquadrino manca il termine di paragone: con la camera
-            frontale, inquadrando una stanza vuota, non si capisce se si
-            sta guardando sé stessi o l'altro. */}
-        {soloGrande ? (
-          <View style={styles.chiBadge} pointerEvents="none">
-            <Text style={styles.chiText}>{soloGrande === 'tu' ? 'Tu' : 'Non tu'}</Text>
-          </View>
-        ) : null}
         <View style={styles.spacer} pointerEvents="none" />
         <TouchableOpacity
           style={styles.badge}
@@ -337,6 +345,9 @@ export default function ChannelScreen(props: Props) {
           <View style={[styles.dot, together ? styles.dotGreen : styles.dotGrey]} />
           <Text style={styles.badgeText}>DuoTalk</Text>
           <Text style={styles.version}>  {VERSION_LABEL}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.gear} onPress={press(onOpenSettings)}>
+          <IconaImpostazioni size={21} color="#e6ebf1" />
         </TouchableOpacity>
       </Animated.View>
 
@@ -363,7 +374,7 @@ export default function ChannelScreen(props: Props) {
           active={audioOn}
           onPress={press(onToggleAudio)}
           onLongPress={press(() => setRouteMenu(true))}
-          badge={ROUTE_ICON[audioRoute]}
+          badge={ICONA_USCITA[audioRoute]}
         />
         <CircleButton
           label="Gira"
@@ -426,7 +437,7 @@ export default function ChannelScreen(props: Props) {
                 key={r}
                 style={styles.sheetRow}
                 onPress={() => { onSelectRoute(r); setRouteMenu(false); }}>
-                <Text style={styles.sheetIcon}>{ROUTE_ICON[r]}</Text>
+                {React.createElement(ICONA_USCITA[r], { size: 22, color: '#e6ebf1' })}
                 <Text style={[styles.sheetLabel, r === audioRoute && styles.sheetLabelOn]}>
                   {ROUTE_LABEL[r]}
                 </Text>
@@ -606,7 +617,7 @@ function CircleButton(props: {
   onPress: () => void;
   onLongPress?: () => void;
   /** piccolo simbolo d'angolo: usato per l'uscita audio attiva */
-  badge?: string;
+  badge?: (p: { size?: number; color?: string }) => JSX.Element;
   active?: boolean;
   highlight?: boolean;
   danger?: boolean;
@@ -637,7 +648,7 @@ function CircleButton(props: {
         {props.icon}
         {props.badge ? (
           <View style={styles.miniBadge}>
-            <Text style={styles.miniBadgeText}>{props.badge}</Text>
+            <props.badge size={13} color="#e6ebf1" />
           </View>
         ) : null}
       </View>
@@ -674,8 +685,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 8,
   },
   chiBadge: {
+    position: 'absolute',
     backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 14,
-    paddingHorizontal: 10, paddingVertical: 5, marginLeft: 8,
+    paddingHorizontal: 10, paddingVertical: 5,
   },
   chiText: { color: '#e6ebf1', fontSize: 12.5, fontWeight: '700' },
   badge: {
@@ -695,11 +707,10 @@ const styles = StyleSheet.create({
   gearText: { color: '#e6ebf1', fontSize: 17 },
   version: { color: 'rgba(230,235,241,0.45)', fontSize: 10 },
   miniBadge: {
-    position: 'absolute', right: -2, bottom: -2,
-    backgroundColor: '#1e1f22', borderRadius: 9, paddingHorizontal: 3, paddingVertical: 1,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)',
+    position: 'absolute', right: -4, bottom: -4,
+    backgroundColor: '#1e1f22', borderRadius: 10, padding: 2,
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.45)',
   },
-  miniBadgeText: { fontSize: 10 },
   sheetBack: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.55)',
     justifyContent: 'flex-end', padding: 16,

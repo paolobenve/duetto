@@ -3,11 +3,12 @@
 Cosa cambia **per chi usa l'app**, versione per versione. I dettagli tecnici stanno nei
 messaggi dei commit; qui c'è solo ciò che si nota usandola.
 
-La versione si alza a mano, in `app/version.json`, quando un insieme di cambiamenti vale la
-pena di essere annunciato. Il numero di build accanto — visibile in fondo alle impostazioni
-— avanza invece a ogni compilazione e serve a distinguere due APK della stessa versione.
+I primi due numeri si alzano a mano, in `app/version.json`, quando cambia davvero cosa
+l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio, e chiedere
+«che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
+cui si nota qualcosa.
 
-## 1.0.1
+## 1.0.3
 
 **Icone leggibili.** I comandi non usano più le emoji, che hanno colori propri e una forma
 decisa dal produttore del telefono: videocamera e microfono, in piccolo, si distinguevano
@@ -24,10 +25,22 @@ intero e tornare indietro un istante dopo.
 
 **Un tocco sull'immagine** nasconde i comandi, invece di limitarsi a richiamarli.
 
+**Il pulsante «Gira» dice quale camera è accesa**: una persona sola per la frontale, più
+persone per quella dietro. Prima la freccia circolare diceva solo cosa avrebbe fatto il
+pulsante, e per sapere da che parte si era bisognava guardare l'immagine.
+
+**Con un solo video a schermo intero** compare «Tu» o «Non tu»: senza riquadrino manca il
+termine di paragone, e inquadrando una stanza vuota non si capisce chi si sta guardando.
+
+**Toccando il nome dell'app** si leggono le note di questa versione e delle precedenti.
+
 **Nelle impostazioni**: la qualità si applica al tocco senza «Salva», il server si vede ma
 si modifica solo chiedendolo, e si possono nascondere del tutto i comandi invece di
 attenuarli. Le due righe tecniche sotto ai pulsanti — risoluzione, banda, percorso — sono
 ora facoltative e spente di default.
+
+**Ogni compilazione ha il suo numero di versione**: l'ultimo numero avanza da sé, così
+chiedere «che versione hai» basta a sapere esattamente cosa sta girando.
 
 ## 1.0.0
 

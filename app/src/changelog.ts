@@ -7,7 +7,7 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
-    "versione": "1.0.1",
+    "versione": "1.0.3",
     "paragrafi": [
       {
         "forte": "Icone leggibili.",
@@ -26,8 +26,24 @@ export const CHANGELOG: NotaVersione[] = [
         "testo": "nasconde i comandi, invece di limitarsi a richiamarli."
       },
       {
+        "forte": "Il pulsante «Gira» dice quale camera è accesa",
+        "testo": ": una persona sola per la frontale, più persone per quella dietro. Prima la freccia circolare diceva solo cosa avrebbe fatto il pulsante, e per sapere da che parte si era bisognava guardare l'immagine."
+      },
+      {
+        "forte": "Con un solo video a schermo intero",
+        "testo": "compare «Tu» o «Non tu»: senza riquadrino manca il termine di paragone, e inquadrando una stanza vuota non si capisce chi si sta guardando."
+      },
+      {
+        "forte": "Toccando il nome dell'app",
+        "testo": "si leggono le note di questa versione e delle precedenti."
+      },
+      {
         "forte": "Nelle impostazioni",
         "testo": ": la qualità si applica al tocco senza «Salva», il server si vede ma si modifica solo chiedendolo, e si possono nascondere del tutto i comandi invece di attenuarli. Le due righe tecniche sotto ai pulsanti — risoluzione, banda, percorso — sono ora facoltative e spente di default."
+      },
+      {
+        "forte": "Ogni compilazione ha il suo numero di versione",
+        "testo": ": l'ultimo numero avanza da sé, così chiedere «che versione hai» basta a sapere esattamente cosa sta girando."
       }
     ]
   },

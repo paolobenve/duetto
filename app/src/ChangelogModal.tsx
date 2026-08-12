@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   View, Text, StyleSheet, Modal, Pressable, ScrollView, TouchableOpacity,
+  useWindowDimensions,
 } from 'react-native';
 import { CHANGELOG } from './changelog';
 import { VERSION_FULL } from './version';
@@ -17,6 +18,18 @@ export default function ChangelogModal({ visible, onClose }: {
   visible: boolean;
   onClose: () => void;
 }) {
+  /**
+   * Il foglio si misura in pixel, non in percentuale.
+   *
+   * Con `maxHeight: '85%'` la percentuale si riferisce al genitore, che
+   * dentro un Modal non ha sempre l'altezza che ci si aspetta: il foglio
+   * cresceva oltre lo schermo e la lista, non avendo un limite, non
+   * scorreva. Con un'altezza in pixel il limite c'è sempre, e da lì lo
+   * scorrimento è una conseguenza.
+   */
+  const { height } = useWindowDimensions();
+  const altezzaLista = Math.max(160, Math.round(height * 0.62));
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
@@ -32,7 +45,10 @@ export default function ChangelogModal({ visible, onClose }: {
           <Text style={styles.title}>Novità</Text>
           <Text style={styles.sub}>{VERSION_FULL}</Text>
 
-          <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollBody}>
+          <ScrollView
+            style={{ height: altezzaLista }}
+            contentContainerStyle={styles.scrollBody}
+            nestedScrollEnabled>
             {CHANGELOG.map((v) => (
               <View key={v.versione} style={styles.blocco}>
                 <Text style={styles.versione}>{v.versione}</Text>
@@ -62,14 +78,10 @@ const styles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: '#151a23', borderRadius: 18, padding: 20,
-    borderWidth: 1, borderColor: '#252c38', maxHeight: '85%',
+    borderWidth: 1, borderColor: '#252c38',
   },
   title: { color: '#fff', fontSize: 22, fontWeight: '800' },
   sub: { color: '#6b7686', fontSize: 12.5, marginTop: 4, marginBottom: 12 },
-  // `flexShrink` e non `flexGrow`: senza, la lista prende l'altezza del
-  // suo contenuto, sfora il foglio e non scorre - non avendo un limite
-  // da cui scorrere.
-  scroll: { flexShrink: 1 },
   scrollBody: { paddingBottom: 6 },
   blocco: { marginBottom: 20 },
   versione: {

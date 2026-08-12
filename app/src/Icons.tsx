@@ -151,6 +151,57 @@ export function IconaPosteriore(p: Props) {
   );
 }
 
+/**
+ * Le quattro uscite audio, in piccolo.
+ *
+ * Erano emoji su una pastiglia scura: a dieci pixel diventavano una
+ * macchia grigia illeggibile. Disegnate a tratto bianco si distinguono
+ * anche in un angolo di pulsante.
+ */
+export function IconaVivavoce(p: Props) {
+  const c = p.color ?? '#fff';
+  return (
+    <Base {...p}>
+      <Path d="M4 9h3.5L13 4.5v15L7.5 15H4z" stroke={c} strokeWidth={STROKE} strokeLinejoin="round" />
+      <Path d="M16.5 9.2a4 4 0 010 5.6M19.2 6.2a8 8 0 010 11.6"
+        stroke={c} strokeWidth={STROKE} strokeLinecap="round" />
+    </Base>
+  );
+}
+
+export function IconaTelefono(p: Props) {
+  const c = p.color ?? '#fff';
+  return (
+    <Base {...p}>
+      <Rect x={6.5} y={2.5} width={11} height={19} rx={2.6} stroke={c} strokeWidth={STROKE} />
+      <Line x1={10} y1={5.6} x2={14} y2={5.6} stroke={c} strokeWidth={STROKE} strokeLinecap="round" />
+    </Base>
+  );
+}
+
+export function IconaCuffie(p: Props) {
+  const c = p.color ?? '#fff';
+  return (
+    <Base {...p}>
+      <Path d="M4 15v-2.5a8 8 0 0116 0V15" stroke={c} strokeWidth={STROKE} strokeLinecap="round" />
+      <Rect x={2.6} y={14} width={4.4} height={7} rx={2.2} stroke={c} strokeWidth={STROKE} />
+      <Rect x={17} y={14} width={4.4} height={7} rx={2.2} stroke={c} strokeWidth={STROKE} />
+    </Base>
+  );
+}
+
+export function IconaBluetooth(p: Props) {
+  const c = p.color ?? '#fff';
+  return (
+    <Base {...p}>
+      <Path
+        d="M8 7l8 10-4 3.5V3.5L16 7 8 17"
+        stroke={c} strokeWidth={STROKE} strokeLinecap="round" strokeLinejoin="round"
+      />
+    </Base>
+  );
+}
+
 /** Campanello: la sagoma più riconoscibile fra tutte, anche in piccolo. */
 export function IconaAvvisa(p: Props) {
   const c = p.color ?? '#fff';
