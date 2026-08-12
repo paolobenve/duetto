@@ -281,7 +281,7 @@ export default function VideoStage(props: Props) {
         Math.min(Math.max(w, width * MIN_FRACTION), Math.max(width * MIN_FRACTION, tetto)),
       );
     },
-    [width, height, insetV, insetH],
+    [width, height, insetV, insetH, insetBasso],
   );
 
   // --- Posizione ----------------------------------------------------------
@@ -354,10 +354,33 @@ export default function VideoStage(props: Props) {
     salvaPosizione();
   }, [spazio, width]);
 
+  /**
+   * Rete di sicurezza: la posizione non può stare fuori, comunque ci sia
+   * arrivata.
+   *
+   * Finora il riquadrino veniva rimesso dentro solo alla fine di un
+   * gesto o al cambio di forma del quadro. Ogni strada che lo spostava
+   * senza passare di lì - e ne sono spuntate tre in una notte, ogni volta
+   * per un motivo diverso - lo lasciava fuori. Qui si controlla il valore
+   * stesso, che è l'unico punto da cui passano tutti.
+   *
+   * Durante un gesto no: lì comanda il dito, e si rimette dentro al
+   * rilascio.
+   */
   useEffect(() => {
-    const id = pan.addListener((v) => { posRef.current = v; });
+    const id = pan.addListener((v) => {
+      posRef.current = v;
+      if (gestoInCorso.current) return;
+      const { minX, minY, maxX, maxY } = spazio();
+      const x = Math.min(Math.max(v.x, minX), maxX);
+      const y = Math.min(Math.max(v.y, minY), maxY);
+      if (Math.abs(x - v.x) > 1 || Math.abs(y - v.y) > 1) {
+        posRef.current = { x, y };
+        pan.setValue({ x, y });
+      }
+    });
     return () => pan.removeListener(id);
-  }, [pan]);
+  }, [pan, spazio]);
 
   /**
    * Rimette il riquadrino dove l'utente l'ha scelto, ricalcolandolo sui

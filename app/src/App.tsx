@@ -332,7 +332,9 @@ export default function App() {
             peerActiveRef.current = peerActive;
             setPeerPresent(present);
             if (n) setPeerName(n);
-            if (peerActive && inChannelRef.current) attachPeer(afterOutage);
+            if (peerActive && inChannelRef.current) {
+              if (afterOutage) riprendiDopoCaduta(); else attachPeer();
+            }
           },
 
           onPeerJoined: (n, mode) => {
@@ -500,6 +502,37 @@ export default function App() {
       s.broadcastState();
     } catch { /* noop */ }
   }, []);
+
+  /**
+   * Ritorno della rete: si riaccende ICE, non si ricostruisce tutto.
+   *
+   * Ricostruire distrugge la traccia dell'altro, e con lei la superficie
+   * che la disegnava: da qui lo schermo nero a ogni cambio di rete.
+   * Riaccendendo ICE invece decodificatore e superficie restano in piedi
+   * e l'immagine resta ferma sull'ultimo fotogramma finché i pacchetti
+   * non riprendono - che è quello che si vede fare alle altre app.
+   *
+   * La ricostruzione resta come rete di sicurezza: se dopo sei secondi
+   * non siamo collegati, si demolisce e si rifà. Era la via principale
+   * perché un'offerta mandata mentre il server era irraggiungibile va
+   * persa; ma qui il server è appena tornato, e l'offerta parte adesso.
+   */
+  const riprendiDopoCaduta = useCallback(() => {
+    const s = sessionRef.current;
+    if (!s || !s.hasPeer()) { attachPeer(true); return; }
+
+    console.log('[duotalk-rtc]', 'rete tornata: riaccendo ICE senza ricostruire');
+    if (politeRef.current) signalingRef.current?.sendSignal({ kind: 'renegotiate' });
+    else s.restartIce();
+
+    clearRecovery();
+    hardTimer.current = setTimeout(() => {
+      if (connStateRef.current === 'connected') return;
+      if (!inChannelRef.current || !peerActiveRef.current) return;
+      console.log('[duotalk-rtc]', 'la riaccensione non è bastata: ricostruisco');
+      attachPeer(true);
+    }, 6000);
+  }, [attachPeer, clearRecovery]);
 
   // --- entrare e uscire dal canale ----------------------------------------
   const enterChannel = useCallback(async () => {

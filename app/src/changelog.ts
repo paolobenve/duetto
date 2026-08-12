@@ -7,6 +7,15 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.0.8",
+    "paragrafi": [
+      {
+        "forte": "Tenendo premuto «Video»",
+        "testo": "si scelgono le quattro risoluzioni, come già si fa con «Audio» per l'uscita del suono. La qualità si giudica guardando, e andarla a cercare nelle impostazioni fa perdere di vista proprio ciò che si sta valutando."
+      }
+    ]
+  },
+  {
     "versione": "1.0.5",
     "paragrafi": [
       {
