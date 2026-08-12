@@ -188,7 +188,7 @@ export class ChannelSession {
     if (!this.localStream) await this.enterChannel();
 
     this.polite = polite;
-    const servers = [...iceServers(this.cfg), ...this.extraIce];
+    const servers = [...iceServers(), ...this.extraIce];
     log('collego il peer - offre l\'altro:', polite, '| ICE server:',
       servers.map((s2) => s2.urls).join(', '));
     const pc = new RTCPeerConnection({ iceServers: servers });

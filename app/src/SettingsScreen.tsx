@@ -321,14 +321,6 @@ export default function SettingsScreen({
               placeholder="Paolo"
               hint="Se lo metti, compare nelle notifiche dell’altro."
             />
-            <Text style={styles.subsection}>Collegamento di riserva (TURN)</Text>
-            <Text style={styles.sectionHint}>
-              Serve solo se le vostre reti impediscono il collegamento diretto.
-            </Text>
-            <Field label="TURN url" value={cfg.turnUrl} onChange={set('turnUrl')}
-              placeholder="turn:iltuoserver.org:3478" autoCapitalize="none" />
-            <Field label="TURN utente" value={cfg.turnUser} onChange={set('turnUser')} autoCapitalize="none" />
-            <Field label="TURN password" value={cfg.turnPass} onChange={set('turnPass')} secure />
           </View>
         ) : null}
 

@@ -7,6 +7,15 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.0.27",
+    "paragrafi": [
+      {
+        "forte": "Tolti anche i campi del relay",
+        "testo": "dalle impostazioni avanzate: indirizzo e credenziali li manda il server nel messaggio di ingresso, quindi digitarli sul telefono non serviva più. Ne resta una sola da mantenere, sul server, e cambiando la password non si tocca nessun telefono."
+      }
+    ]
+  },
+  {
     "versione": "1.0.26",
     "paragrafi": [
       {

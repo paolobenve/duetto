@@ -50,9 +50,6 @@ export type DuoConfig = {
   displayName: string;
   /** null finché non ci si è accoppiati */
   pair: PairInfo | null;
-  turnUrl: string;
-  turnUser: string;
-  turnPass: string;
   /** le impostazioni di sistema sono già state proposte una volta */
   setupShown: boolean;
   /** quanto spendere per il video: banda e batteria */
@@ -91,9 +88,6 @@ export const DEFAULT_CONFIG: DuoConfig = {
   serverUrl: '',
   displayName: '',
   pair: null,
-  turnUrl: '',
-  turnUser: '',
-  turnPass: '',
   setupShown: false,
   // Si parte dal profilo alto: è un tetto, non una pretesa, e con
   // "balanced" una rete scarsa lo fa scendere da sé. Partire basso
@@ -233,15 +227,15 @@ export const CAPTURE_FPS = 30;
 
 type RTCIceServer = { urls: string; username?: string; credential?: string };
 
-/** Lista di ICE server: STUN pubblico + TURN di riserva se configurato. */
-export function iceServers(cfg: DuoConfig): RTCIceServer[] {
-  const servers: RTCIceServer[] = [{ urls: 'stun:stun.l.google.com:19302' }];
-  if (cfg.turnUrl.trim() && cfg.turnPass.trim()) {
-    servers.push({
-      urls: cfg.turnUrl.trim(),
-      username: cfg.turnUser.trim(),
-      credential: cfg.turnPass.trim(),
-    });
-  }
-  return servers;
+/**
+ * Da dove si parte per trovare la strada verso l'altro.
+ *
+ * Qui c'è solo lo STUN pubblico, che serve a scoprire il proprio
+ * indirizzo visto da fuori. Il relay - che entra in gioco quando la
+ * strada diretta non si apre - lo comunica il server nel messaggio di
+ * ingresso, insieme alle credenziali: così resta una cosa sola da
+ * mantenere, e cambiando la password non si deve toccare nessun telefono.
+ */
+export function iceServers(): RTCIceServer[] {
+  return [{ urls: 'stun:stun.l.google.com:19302' }];
 }

@@ -262,7 +262,6 @@ export default function App() {
   const connKey = cfg
     ? [
         cfg.serverUrl, cfg.displayName,
-        cfg.turnUrl, cfg.turnUser, cfg.turnPass,
         cfg.pair?.id, cfg.pair?.side, cfg.pair?.key,
       ].join('|')
     : '';

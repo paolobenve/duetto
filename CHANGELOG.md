@@ -8,6 +8,13 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.0.27
+
+**Tolti anche i campi del relay** dalle impostazioni avanzate: indirizzo e credenziali li
+manda il server nel messaggio di ingresso, quindi digitarli sul telefono non serviva più. Ne
+resta una sola da mantenere, sul server, e cambiando la password non si tocca nessun
+telefono.
+
 ## 1.0.26
 
 **Tolto l'access token.** Era un campo nelle impostazioni avanzate e un controllo sul
