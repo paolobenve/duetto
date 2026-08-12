@@ -8,6 +8,14 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.0.19
+
+**Il microfono torna a restare preso** finché sei nel canale, muto compreso. Rilasciarlo
+quando lo spegni sembrava giusto — lo lasciava usare alle altre app — ma riprendendolo il
+sistema non restituisce la precedenza, e la dettatura della tastiera se lo prendeva anche a
+microfono acceso. Su Android l'esclusiva non si può imporre: una presa continua è l'unica
+cosa che le somiglia.
+
 ## 1.0.18
 
 **Riprendendo il microfono, DuoTalk se lo riprende davvero.** Rilasciandolo si lasciava

@@ -81,7 +81,6 @@ export class ChannelSession {
   private localStream: MediaStream | null = null;
   private remoteStream: MediaStream | null = null;
   private videoSender: any = null;
-  private audioSender: any = null;
   /** noi stiamo guardando lo schermo: lo diciamo all'altro */
   private localWatching = true;
   /**
@@ -303,25 +302,9 @@ export class ChannelSession {
     // e se il gestore non fosse ancora registrato andrebbe persa. Era
     // esattamente il caso del riaggancio a camera accesa: la connessione
     // veniva ricostruita ma l'offerta non partiva mai.
-    /**
-     * Audio: il canale si apre sempre, anche senza traccia dentro.
-     *
-     * Stessa scelta fatta per il video, e per lo stesso motivo: spegnere
-     * il microfono ora lo RILASCIA - altrimenti resta occupato e nessuna
-     * altra app può usarlo - e riaccenderlo deve poter rimettere una
-     * traccia nuova nel canale senza rinegoziare.
-     */
+    // Audio: c'è sempre.
     const audioTrack = this.localStream!.getAudioTracks()[0];
-    if (audioTrack) {
-      this.audioSender = pc.addTrack(audioTrack, this.localStream as MediaStream);
-    } else {
-      try {
-        const at: any = (pc as any).addTransceiver('audio', { direction: 'sendrecv' });
-        this.audioSender = at?.sender ?? null;
-      } catch {
-        this.audioSender = null;
-      }
-    }
+    if (audioTrack) pc.addTrack(audioTrack, this.localStream as MediaStream);
 
     // Video: il canale viene aperto SUBITO, anche senza traccia dentro.
     //
@@ -760,57 +743,21 @@ export class ChannelSession {
 
   /** Accende/spegne il microfono. Ritorna il nuovo stato. */
   /**
-   * Muto: il microfono viene RILASCIATO, non solo silenziato.
+   * Muto: si silenzia la traccia, senza rilasciare il microfono.
    *
-   * Lasciando la traccia viva con `enabled = false` il microfono resta
-   * occupato: Android continua a mostrare l'indicatore di registrazione
-   * e nessun'altra app può usarlo finché DuoTalk è nel canale. Fermare
-   * davvero la traccia lo libera; riaccendendo se ne apre una nuova e la
-   * si rimette nel canale, che resta aperto apposta.
+   * Rilasciarlo davvero era stato provato - lo lascia usare alle altre
+   * app, e spegne l'indicatore di registrazione - ma riprendendolo il
+   * sistema non ci restituisce la precedenza: da lì in poi anche la
+   * dettatura della tastiera se lo prendeva, a microfono acceso. Su
+   * Android l'esclusiva non si può imporre, e una presa continua è
+   * l'unica cosa che le somiglia.
    */
-  async toggleAudio(): Promise<boolean> {
-    const sender = this.liveAudioSender();
+  toggleAudio(): boolean {
     const track = this.localStream?.getAudioTracks()[0];
-
-    if (track) {
-      try { await sender?.replaceTrack(null); } catch { /* noop */ }
-      try { this.localStream?.removeTrack(track); } catch { /* noop */ }
-      track.stop();
-      log('microfono rilasciato: le altre app possono usarlo');
-      this.events.onLocalStream?.(this.localStream);
-      this.broadcastState();
-      return false;
-    }
-
-    try {
-      const mic = await mediaDevices.getUserMedia({ audio: true });
-      const nuova = mic.getAudioTracks()[0];
-      if (!nuova) return false;
-      this.localStream?.addTrack(nuova);
-      try { await sender?.replaceTrack(nuova); } catch { /* noop */ }
-      log('microfono ripreso');
-      this.events.onLocalStream?.(this.localStream);
-      this.broadcastState();
-      return true;
-    } catch (e) {
-      log('non riesco a riprendere il microfono:', String(e));
-      return false;
-    }
-  }
-
-  /** Il sender audio della connessione viva, non quello ricordato. */
-  private liveAudioSender(): any {
-    const pc: any = this.pc;
-    if (!pc) return this.audioSender;
-    try {
-      const conTraccia = pc.getSenders?.()
-        ?.find((x: any) => x.track?.kind === 'audio');
-      if (conTraccia) return conTraccia;
-      const ta = pc.getTransceivers?.()
-        ?.find((t: any) => t.receiver?.track?.kind === 'audio');
-      if (ta?.sender) return ta.sender;
-    } catch { /* si ripiega su quello ricordato */ }
-    return this.audioSender;
+    if (!track) return false;
+    track.enabled = !track.enabled;
+    this.broadcastState();
+    return track.enabled;
   }
 
   /** Accende la camera: mette la traccia nel canale già aperto. */
@@ -1174,9 +1121,7 @@ export class ChannelSession {
   }
 
   isAudioEnabled(): boolean {
-    // Acceso significa "la traccia esiste": spegnendo la si ferma e la si
-    // toglie, per rilasciare il microfono.
-    return !!this.localStream?.getAudioTracks()[0];
+    return this.localStream?.getAudioTracks()[0]?.enabled ?? false;
   }
 
   isVideoEnabled(): boolean {

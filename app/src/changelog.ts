@@ -7,6 +7,15 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.0.19",
+    "paragrafi": [
+      {
+        "forte": "Il microfono torna a restare preso",
+        "testo": "finché sei nel canale, muto compreso. Rilasciarlo quando lo spegni sembrava giusto — lo lasciava usare alle altre app — ma riprendendolo il sistema non restituisce la precedenza, e la dettatura della tastiera se lo prendeva anche a microfono acceso. Su Android l'esclusiva non si può imporre: una presa continua è l'unica cosa che le somiglia."
+      }
+    ]
+  },
+  {
     "versione": "1.0.18",
     "paragrafi": [
       {

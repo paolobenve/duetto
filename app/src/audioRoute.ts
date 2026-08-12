@@ -150,19 +150,8 @@ export function useAudioRoute(enabled: boolean) {
     AsyncStorage.setItem(STORAGE_KEY, route).catch(() => { /* noop */ });
   }, [current, applyRoute]);
 
-  /**
-   * Riapplica l'uscita corrente senza cambiarla.
-   *
-   * Serve dopo aver ripreso il microfono: ridichiarando la conversazione
-   * il sistema rimette l'uscita predefinita, e quella scelta va imposta
-   * di nuovo. `select` non basta, perché ignora una scelta uguale a
-   * quella già attiva.
-   */
-  const riapplica = useCallback(() => { applyRoute(current); }, [applyRoute, current]);
-
   return {
     route: current,
-    riapplica,
     /** solo quelle davvero collegate, nell'ordine di presentazione */
     available: ORDER.filter((r) => available.includes(r)),
     /** con una sola uscita non c'è nulla da scegliere */
