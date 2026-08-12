@@ -42,6 +42,14 @@ type Props = {
    * uscire dalle impostazioni per accorgersi di come è venuta.
    */
   onQualityChange?: (q: VideoQuality) => void;
+  /**
+   * Anche questo si applica al tocco.
+   *
+   * Da accoppiati non c'è nessun "Salva" - il server non si tocca - e
+   * un interruttore che ha bisogno di una conferma inesistente non si
+   * accende mai.
+   */
+  onShowStatsChange?: (v: boolean) => void;
 };
 
 /**
@@ -50,7 +58,7 @@ type Props = {
  */
 export default function SettingsScreen({
   initial, onSave, onUnpair, onRepair, onClose, onOpenSetup, vp9Here, vp9Peer,
-  onQualityChange,
+  onQualityChange, onShowStatsChange,
 }: Props) {
   const vp9Available = !!vp9Here && !!vp9Peer;
   const vp9Motivo = vp9Available
@@ -242,7 +250,11 @@ export default function SettingsScreen({
 
         <TouchableOpacity
           style={[styles.choice, cfg.mostraDiagnostica && styles.choicePicked]}
-          onPress={() => setCfg({ ...cfg, mostraDiagnostica: !cfg.mostraDiagnostica })}>
+          onPress={() => {
+            const v = !cfg.mostraDiagnostica;
+            setCfg({ ...cfg, mostraDiagnostica: v });
+            onShowStatsChange?.(v);
+          }}>
           <View style={[styles.radio, cfg.mostraDiagnostica && styles.radioPicked]} />
           <View style={styles.choiceText}>
             <Text style={styles.choiceLabel}>Mostra i dettagli tecnici</Text>

@@ -781,6 +781,12 @@ export default function App() {
           onClose={isPaired(cfg) ? () => setScreen('channel') : undefined}
           onOpenSetup={() => { setSetupFrom('impostazioni'); setScreen('setup'); }}
           onQualityChange={(q) => applyQuality(q, true)}
+          onShowStatsChange={(v) => setCfg((prev) => {
+            if (!prev) return prev;
+            const next = { ...prev, mostraDiagnostica: v };
+            saveConfig(next).catch(() => {});
+            return next;
+          })}
           vp9Here={localVp9}
           vp9Peer={peerVp9}
         />
