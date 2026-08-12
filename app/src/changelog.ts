@@ -7,6 +7,15 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.0.25",
+    "paragrafi": [
+      {
+        "forte": "L'app pesa la metà e si installa molto più in fretta.",
+        "testo": "L'APK conteneva le librerie per quattro architetture: due vere e due che servono solo agli emulatori da PC — 46 MB su 88 che il telefono doveva comunque verificare e scompattare, ed erano i trenta secondi di «app in preparazione». Ora ci sono solo quelle dei telefoni."
+      }
+    ]
+  },
+  {
     "versione": "1.0.24",
     "paragrafi": [
       {

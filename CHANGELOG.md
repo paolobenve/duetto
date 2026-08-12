@@ -8,6 +8,13 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.0.25
+
+**L'app pesa la metà e si installa molto più in fretta.** L'APK conteneva le librerie per
+quattro architetture: due vere e due che servono solo agli emulatori da PC — 46 MB su 88 che
+il telefono doveva comunque verificare e scompattare, ed erano i trenta secondi di «app in
+preparazione». Ora ci sono solo quelle dei telefoni.
+
 ## 1.0.24
 
 **Tolta l'alta fedeltà**: non faceva niente. In react-native-webrtc soppressione del rumore

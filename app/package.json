@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "sync": "node scripts/sync-local-modules.js",
-    "android": "npm run sync && npm run bump && react-native run-android",
+    "patch": "node scripts/patch-android-manifest.js && node scripts/patch-android-gradle.js",
+    "android": "npm run sync && npm run patch && npm run bump && react-native run-android",
     "start": "react-native start",
-    "build:apk": "npm run sync && npm run bump && cd android && ./gradlew assembleRelease",
+    "build:apk": "npm run sync && npm run patch && npm run bump && cd android && ./gradlew assembleRelease",
     "lint": "eslint .",
     "tsc": "tsc --noEmit",
     "postinstall": "node scripts/sync-local-modules.js",
