@@ -266,6 +266,18 @@ export default function ChannelScreen(props: Props) {
    * Aspettare i nove secondi dell'attenuazione automatica, quando si
    * vuole guardare l'immagine e basta, è una piccola prigionia.
    */
+  /**
+   * L'etichetta segue l'attenuazione degli altri, ma non oltre.
+   *
+   * Con "Nascondi i comandi" gli altri vanno a zero; questa no, perché
+   * l'unica informazione che non si ricava guardando lo schermo è
+   * proprio chi si sta guardando.
+   */
+  const opacitaEtichetta = opacity.interpolate({
+    inputRange: [0, 1],
+    outputRange: [DIM_OPACITY, 1],
+  });
+
   const tocco = useCallback(() => {
     if (pieni.current) attenua(); else wake();
   }, [attenua, wake]);
@@ -324,15 +336,19 @@ export default function ChannelScreen(props: Props) {
       {/* Anche la barra in alto sta dentro il video: fuori, sulla banda
           nera, sembra staccata dall'immagine a cui appartiene. Il
           riquadrino le lascia il posto scendendo, non lei salendo. */}
-      {/* "Tu/Non tu" non si attenua mai e non sparisce mai: dice CHI si
-          sta guardando a schermo intero, e con un tocco sul riquadrino i
-          due si scambiano - è facile perdere il conto. */}
+      {/* "Tu/Non tu" si attenua con gli altri comandi ma non sparisce
+          mai: dice CHI si sta guardando a schermo intero, e con un tocco
+          sul riquadrino i due si scambiano - è facile perdere il conto.
+          Anche al minimo resta leggibile, che è quanto basta. */}
       {soloGrande ? (
-        <View
-          style={[styles.chiBadge, { top: 14 + inset.v, left: 14 + inset.h }]}
+        <Animated.View
+          style={[
+            styles.chiBadge,
+            { top: 14 + inset.v, left: 14 + inset.h, opacity: opacitaEtichetta },
+          ]}
           pointerEvents="none">
           <Text style={styles.chiText}>{soloGrande === 'tu' ? 'Tu' : 'Non tu'}</Text>
-        </View>
+        </Animated.View>
       ) : null}
 
       <Animated.View
