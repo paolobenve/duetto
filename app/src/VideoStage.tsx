@@ -140,6 +140,14 @@ type Props = {
   insetH?: number;
   /** spazio in più occupato in basso, es. le righe di diagnostica */
   insetBasso?: number;
+  /**
+   * Tocco sull'immagine grande, riquadrino escluso.
+   *
+   * Serve a chi disegna i comandi sopra: un tocco sullo sfondo li mostra
+   * o li nasconde. Il riquadrino ne resta fuori perché lì il tocco ha già
+   * un significato suo - scambia grande e piccolo.
+   */
+  onSfondo?: () => void;
 };
 
 export default function VideoStage(props: Props) {
@@ -149,7 +157,7 @@ export default function VideoStage(props: Props) {
     awaitingRemote, notice,
   } = props;
   const { width, height } = useWindowDimensions();
-  const { onBigAspect, insetV = 0, insetH = 0, insetBasso = 0 } = props;
+  const { onBigAspect, insetV = 0, insetH = 0, insetBasso = 0, onSfondo } = props;
 
   // false = l'altro è grande (default), true = sono io ad essere grande
   const [selfBig, setSelfBig] = useState(false);
@@ -602,6 +610,7 @@ export default function VideoStage(props: Props) {
       {bigStream ? (
         <Animated.View
           {...zoomResponder.panHandlers}
+          onTouchStart={onSfondo}
           style={[
             styles.big,
             {
@@ -622,7 +631,7 @@ export default function VideoStage(props: Props) {
           />
         </Animated.View>
       ) : (
-        <View style={[styles.big, styles.placeholder]}>
+        <View style={[styles.big, styles.placeholder]} onTouchStart={onSfondo}>
           {/* Con un avviso in sovrimpressione il riepilogo sotto sarebbe
               solo rumore: due messaggi sovrapposti che dicono la stessa
               cosa. Ne resta uno. */}

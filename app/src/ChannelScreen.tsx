@@ -182,18 +182,36 @@ export default function ChannelScreen(props: Props) {
   const opacity = useRef(new Animated.Value(1)).current;
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /** true quando i comandi sono in evidenza: un tocco li fa sparire */
+  const pieni = useRef(true);
+
+  const attenua = useCallback(() => {
+    if (idleTimer.current) clearTimeout(idleTimer.current);
+    pieni.current = false;
+    Animated.timing(opacity, {
+      // Invisibili, ma sempre premibili: un tocco ovunque li richiama.
+      toValue: hideControls ? 0 : DIM_OPACITY, duration: 450, useNativeDriver: true,
+    }).start();
+  }, [opacity, hideControls]);
+
   const wake = useCallback(() => {
+    pieni.current = true;
     Animated.timing(opacity, {
       toValue: 1, duration: 120, useNativeDriver: true,
     }).start();
     if (idleTimer.current) clearTimeout(idleTimer.current);
-    idleTimer.current = setTimeout(() => {
-      Animated.timing(opacity, {
-        // Invisibili, ma sempre premibili: un tocco ovunque li richiama.
-        toValue: hideControls ? 0 : DIM_OPACITY, duration: 700, useNativeDriver: true,
-      }).start();
-    }, IDLE_MS);
-  }, [opacity, hideControls]);
+    idleTimer.current = setTimeout(attenua, IDLE_MS);
+  }, [opacity, attenua]);
+
+  /**
+   * Un tocco sull'immagine: se i comandi si vedono, li toglie di mezzo.
+   *
+   * Aspettare i nove secondi dell'attenuazione automatica, quando si
+   * vuole guardare l'immagine e basta, è una piccola prigionia.
+   */
+  const tocco = useCallback(() => {
+    if (pieni.current) attenua(); else wake();
+  }, [attenua, wake]);
 
   useEffect(() => {
     wake();
@@ -207,9 +225,10 @@ export default function ChannelScreen(props: Props) {
   );
 
   return (
-    // onTouchStart non ruba il gesto ai figli: il riquadrino resta
-    // trascinabile, ma un tocco ovunque risveglia i pulsanti.
-    <View style={styles.root} onTouchStart={wake}>
+    // Il tocco si raccoglie dentro VideoStage, sulla sola immagine
+    // grande: sul riquadrino significa già scambiare i due video, e sui
+    // comandi significa premerli.
+    <View style={styles.root}>
       <VideoStage
         localStream={localStream}
         remoteStream={remoteStream}
@@ -225,6 +244,7 @@ export default function ChannelScreen(props: Props) {
         insetV={compact ? 0 : inset.v}
         insetH={compact ? 0 : inset.h}
         insetBasso={!compact && showStats ? 36 : 0}
+        onSfondo={tocco}
         placeholder={
           <PresenceCard
             status={status}
