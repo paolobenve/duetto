@@ -32,6 +32,8 @@ type Props = {
   qualityLabel: string;
   /** le due righe tecniche sotto ai pulsanti, spente per impostazione */
   showStats: boolean;
+  /** i comandi spariscono del tutto invece di attenuarsi */
+  hideControls: boolean;
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
   status: PresenceStatus;
@@ -65,7 +67,7 @@ type Props = {
  */
 export default function ChannelScreen(props: Props) {
   const {
-    channel, peerName, peerAvatar, videoStats, qualityLabel, showStats, localStream, remoteStream, status, connectionState,
+    channel, peerName, peerAvatar, videoStats, qualityLabel, showStats, hideControls, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes,
     onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, onOpenSettings,
@@ -187,10 +189,11 @@ export default function ChannelScreen(props: Props) {
     if (idleTimer.current) clearTimeout(idleTimer.current);
     idleTimer.current = setTimeout(() => {
       Animated.timing(opacity, {
-        toValue: DIM_OPACITY, duration: 700, useNativeDriver: true,
+        // Invisibili, ma sempre premibili: un tocco ovunque li richiama.
+        toValue: hideControls ? 0 : DIM_OPACITY, duration: 700, useNativeDriver: true,
       }).start();
     }, IDLE_MS);
-  }, [opacity]);
+  }, [opacity, hideControls]);
 
   useEffect(() => {
     wake();
@@ -258,7 +261,7 @@ export default function ChannelScreen(props: Props) {
       <Animated.View
         style={[
           styles.panel,
-          { opacity, bottom: 22 + inset.v, left: 12 + inset.h, right: 12 + inset.h },
+          { opacity, bottom: 8 + inset.v, left: 12 + inset.h, right: 12 + inset.h },
         ]}>
         <View style={styles.controls}>
         <CircleButton
@@ -626,7 +629,7 @@ const styles = StyleSheet.create({
   },
 
   panel: {
-    position: 'absolute', bottom: 22, left: 12, right: 12,
+    position: 'absolute', bottom: 8, left: 12, right: 12,
     backgroundColor: 'rgba(30,31,34,0.94)',
     borderRadius: 28,
     paddingTop: 14, paddingBottom: 14, paddingHorizontal: 4,

@@ -43,13 +43,12 @@ type Props = {
    */
   onQualityChange?: (q: VideoQuality) => void;
   /**
-   * Anche questo si applica al tocco.
+   * Impostazioni che si applicano al tocco e si scrivono subito.
    *
-   * Da accoppiati non c'è nessun "Salva" - il server non si tocca - e
-   * un interruttore che ha bisogno di una conferma inesistente non si
-   * accende mai.
+   * Da accoppiati non c'è nessun "Salva" - il server non si tocca - e un
+   * interruttore che aspetta una conferma inesistente non si accende mai.
    */
-  onShowStatsChange?: (v: boolean) => void;
+  onLive?: (patch: Partial<DuoConfig>) => void;
 };
 
 /**
@@ -58,7 +57,7 @@ type Props = {
  */
 export default function SettingsScreen({
   initial, onSave, onUnpair, onRepair, onClose, onOpenSetup, vp9Here, vp9Peer,
-  onQualityChange, onShowStatsChange,
+  onQualityChange, onLive,
 }: Props) {
   const vp9Available = !!vp9Here && !!vp9Peer;
   const vp9Motivo = vp9Available
@@ -253,7 +252,7 @@ export default function SettingsScreen({
           onPress={() => {
             const v = !cfg.mostraDiagnostica;
             setCfg({ ...cfg, mostraDiagnostica: v });
-            onShowStatsChange?.(v);
+            onLive?.({ mostraDiagnostica: v });
           }}>
           <View style={[styles.radio, cfg.mostraDiagnostica && styles.radioPicked]} />
           <View style={styles.choiceText}>
@@ -261,6 +260,24 @@ export default function SettingsScreen({
             <Text style={styles.choiceNote}>
               Sotto ai pulsanti: risoluzione, fotogrammi, banda e da dove passa
               il collegamento. Servono a capire perché una chiamata va male.
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.choice, cfg.nascondiComandi && styles.choicePicked]}
+          onPress={() => {
+            const v = !cfg.nascondiComandi;
+            setCfg({ ...cfg, nascondiComandi: v });
+            onLive?.({ nascondiComandi: v });
+          }}>
+          <View style={[styles.radio, cfg.nascondiComandi && styles.radioPicked]} />
+          <View style={styles.choiceText}>
+            <Text style={styles.choiceLabel}>Nascondi i comandi</Text>
+            <Text style={styles.choiceNote}>
+              Invece di attenuarsi spariscono del tutto, per lasciare
+              l’immagine pulita. Restano premibili: un tocco ovunque li
+              richiama.
             </Text>
           </View>
         </TouchableOpacity>

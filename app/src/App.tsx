@@ -781,9 +781,9 @@ export default function App() {
           onClose={isPaired(cfg) ? () => setScreen('channel') : undefined}
           onOpenSetup={() => { setSetupFrom('impostazioni'); setScreen('setup'); }}
           onQualityChange={(q) => applyQuality(q, true)}
-          onShowStatsChange={(v) => setCfg((prev) => {
+          onLive={(patch) => setCfg((prev) => {
             if (!prev) return prev;
-            const next = { ...prev, mostraDiagnostica: v };
+            const next = { ...prev, ...patch };
             saveConfig(next).catch(() => {});
             return next;
           })}
@@ -835,6 +835,7 @@ export default function App() {
         videoStats={videoStats}
         qualityLabel={(VIDEO_PROFILES[cfg.videoQuality] ?? VIDEO_PROFILES.standard).etichetta}
         showStats={cfg.mostraDiagnostica}
+        hideControls={cfg.nascondiComandi}
         localStream={localStream}
         remoteStream={remoteStream}
         status={status}

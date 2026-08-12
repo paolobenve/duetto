@@ -77,10 +77,10 @@ export async function caricaPosizionePip(): Promise<void> {
 
 const MARGIN = 14;
 const TOP_SAFE = 58;     // appena sotto ingranaggio e badge (14 + 36 + 8)
-// Sopra il pannello dei comandi: 22 di distacco dal fondo + ~96 di
+// Sopra il pannello dei comandi: 8 di distacco dal fondo + ~96 di
 // pannello (bordi, pulsanti, etichette) + aria. Le righe di diagnostica,
 // quando attive, si aggiungono tramite `insetBasso`.
-const BOTTOM_SAFE = 128;
+const BOTTOM_SAFE = 114;
 
 /** Larghezza del riquadrino, come frazione della larghezza schermo. */
 const START_FRACTION = 0.3;

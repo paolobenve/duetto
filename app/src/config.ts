@@ -67,6 +67,13 @@ export type DuoConfig = {
    */
   mostraDiagnostica: boolean;
   /**
+   * I comandi spariscono del tutto invece di attenuarsi.
+   *
+   * Restano premibili anche invisibili, e un tocco ovunque li richiama:
+   * chi guarda un video a lungo preferisce l'immagine pulita.
+   */
+  nascondiComandi: boolean;
+  /**
    * `vp9` solo se entrambi i telefoni lo encodano in hardware; altrimenti
    * l'impostazione resta scritta ma non ha effetto, e nell'interfaccia
    * l'opzione non compare nemmeno.
@@ -89,6 +96,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   // impostazioni, anche avendo una rete ottima.
   videoQuality: 'migliore',
   mostraDiagnostica: false,
+  nascondiComandi: false,
   videoCodec: 'auto',
 };
 
