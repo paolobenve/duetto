@@ -46,8 +46,6 @@ export type VideoQuality = 'risparmio' | 'standard' | 'migliore' | 'massima';
 export type DuoConfig = {
   /** wss://TUO_DOMINIO/duotalk/ws */
   serverUrl: string;
-  /** token anti-abuso, uguale a ACCESS_TOKEN del server */
-  accessToken: string;
   /** come mi vede l'altro */
   displayName: string;
   /** null finché non ci si è accoppiati */
@@ -91,7 +89,6 @@ export type DuoConfig = {
 
 export const DEFAULT_CONFIG: DuoConfig = {
   serverUrl: '',
-  accessToken: '',
   displayName: '',
   pair: null,
   turnUrl: '',

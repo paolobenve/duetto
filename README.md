@@ -57,7 +57,7 @@ duotalk/
 
 ```bash
 cd server
-cp .env.example .env      # va bene com'è: il token è facoltativo
+cp .env.example .env      # va bene com'è
 npm install
 npm run test:smoke        # deve stampare TUTTO OK
 npm start

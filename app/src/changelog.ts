@@ -7,6 +7,15 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.0.26",
+    "paragrafi": [
+      {
+        "forte": "Tolto l'access token.",
+        "testo": "Era un campo nelle impostazioni avanzate e un controllo sul server, pensato contro gli abusi; sul server era già disattivo da tempo, e la protezione vera è altrove — l'identificativo della coppia nasce da un codice di otto cifre e nulla di ciò che passa dal server è leggibile. Una impostazione in meno da capire."
+      }
+    ]
+  },
+  {
     "versione": "1.0.25",
     "paragrafi": [
       {

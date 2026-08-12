@@ -22,7 +22,7 @@ Di nuovo sul **server**:
 
 ```bash
 cd /opt/duotalk/server
-cp .env.example .env      # va bene com'è: il token è facoltativo
+cp .env.example .env      # va bene com'è
 npm install --omit=dev
 npm run test:smoke        # deve stampare TUTTO OK
 ```
@@ -193,7 +193,6 @@ Perché la presenza regga davvero:
 | `Upgrade Required` da healthz | il proxy inoltra un percorso che il server non riconosce | aggiorna il server: accetta qualsiasi prefisso |
 | healthz risponde ma l'app non si collega | le regole del WebSocket non vengono raggiunte | controlla l'**ordine** delle regole nel proxy |
 | La presenza cade ogni ~50 secondi | `timeout tunnel` non impostato | mettilo a 3600s |
-| "Access token non valido" | token sul server ma non nell'app | svuotalo nel `.env`, o mettilo anche nell'app |
 | "Nessuna risposta dall'altro telefono" | codice diverso, o l'altro non è collegato | rifate l'accoppiamento con un codice nuovo |
 | "Il codice non coincide" | cifre digitate male | è la verifica che funziona: rigenerate il codice |
 | Si collegano ma niente audio | la rete blocca il P2P | configura coturn |

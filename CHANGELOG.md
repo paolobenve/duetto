@@ -8,6 +8,13 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.0.26
+
+**Tolto l'access token.** Era un campo nelle impostazioni avanzate e un controllo sul
+server, pensato contro gli abusi; sul server era già disattivo da tempo, e la protezione
+vera è altrove — l'identificativo della coppia nasce da un codice di otto cifre e nulla di
+ciò che passa dal server è leggibile. Una impostazione in meno da capire.
+
 ## 1.0.25
 
 **L'app pesa la metà e si installa molto più in fretta.** L'APK conteneva le librerie per

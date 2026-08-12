@@ -321,13 +321,6 @@ export default function SettingsScreen({
               placeholder="Paolo"
               hint="Se lo metti, compare nelle notifiche dell’altro."
             />
-            <Field
-              label="Access token"
-              value={cfg.accessToken}
-              onChange={set('accessToken')}
-              secure
-              hint="Solo se sul server hai impostato ACCESS_TOKEN."
-            />
             <Text style={styles.subsection}>Collegamento di riserva (TURN)</Text>
             <Text style={styles.sectionHint}>
               Serve solo se le vostre reti impediscono il collegamento diretto.

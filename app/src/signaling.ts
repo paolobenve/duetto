@@ -91,7 +91,6 @@ const RECONNECT_MAX_MS = 4000;
 
 export type SignalingOptions = {
   serverUrl: string;
-  accessToken: string;
   /** stanza = impronta del codice di accoppiamento */
   room: string;
   displayName: string;
@@ -163,7 +162,6 @@ export class Signaling {
       this.rawSend({
         type: 'join',
         room: this.opts.room,
-        token: this.opts.accessToken,
         name: this.opts.displayName || 'Qualcuno',
         mode: this.mode,
         side: this.opts.side,

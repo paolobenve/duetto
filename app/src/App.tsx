@@ -261,7 +261,7 @@ export default function App() {
    */
   const connKey = cfg
     ? [
-        cfg.serverUrl, cfg.accessToken, cfg.displayName,
+        cfg.serverUrl, cfg.displayName,
         cfg.turnUrl, cfg.turnUser, cfg.turnPass,
         cfg.pair?.id, cfg.pair?.side, cfg.pair?.key,
       ].join('|')
@@ -295,7 +295,6 @@ export default function App() {
       const sig = new Signaling(
         {
           serverUrl: cfg.serverUrl.trim(),
-          accessToken: cfg.accessToken,
           room: pair.id,
           displayName: cfg.displayName || 'Qualcuno',
           key: pair.key,
@@ -438,8 +437,7 @@ export default function App() {
           },
 
           onError: (code) => {
-            if (code === 'bad-token') Alert.alert('Token errato', 'Access token non valido.');
-            else if (code === 'room-full' || code === 'replaced') {
+            if (code === 'room-full' || code === 'replaced') {
               // Quasi sempre transitorio: la connessione precedente non è
               // ancora stata dichiarata morta, o il telefono si è riagganciato
               // altrove. Il riaggancio automatico ci pensa da solo: un avviso

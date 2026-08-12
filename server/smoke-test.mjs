@@ -5,12 +5,11 @@ import { spawn } from 'node:child_process';
 import { WebSocket } from 'ws';
 
 const PORT = 8799;
-const TOKEN = 'test-token';
 const URL = `ws://127.0.0.1:${PORT}`;
 
 const srv = spawn('node', ['src/index.js'], {
   env: {
-    ...process.env, PORT: String(PORT), HOST: '127.0.0.1', ACCESS_TOKEN: TOKEN,
+    ...process.env, PORT: String(PORT), HOST: '127.0.0.1',
     // Il relay viene comunicato dal server ai telefoni: qui verifichiamo
     // che arrivi davvero nel messaggio di ingresso.
     TURN_URL: 'turn:esempio.org:3478', TURN_USER: 'duo', TURN_PASS: 'segreta',
@@ -63,7 +62,7 @@ try {
   // --- A si collega solo in ascolto ------------------------------------
   const a = client();
   await a.open();
-  a.send({ type: 'join', room: 'coppia1', token: TOKEN, name: 'Anna', mode: 'listening', side: 'A' });
+  a.send({ type: 'join', room: 'coppia1', name: 'Anna', mode: 'listening', side: 'A' });
   const aJoined = await a.expect('joined');
   check(aJoined.polite === true, 'primo collegato: ruolo polite');
   check(aJoined.peerPresent === false, 'primo collegato: l’altro non c’e’');
@@ -74,7 +73,7 @@ try {
   // --- B si collega, anche lui in ascolto -------------------------------
   const b = client();
   await b.open();
-  b.send({ type: 'join', room: 'coppia1', token: TOKEN, name: 'Bruno', mode: 'listening', side: 'B' });
+  b.send({ type: 'join', room: 'coppia1', name: 'Bruno', mode: 'listening', side: 'B' });
   const bJoined = await b.expect('joined');
   check(bJoined.polite === false, 'secondo collegato: ruolo impolite (ruoli distinti)');
   check(bJoined.peerPresent === true, 'secondo collegato: vede l’altro');
@@ -133,7 +132,7 @@ try {
   await wait(100);
   const c0 = client();
   await c0.open();
-  c0.send({ type: 'join', room: 'sola', token: TOKEN, name: 'Carla', mode: 'active' });
+  c0.send({ type: 'join', room: 'sola', name: 'Carla', mode: 'active' });
   await c0.expect('joined');
   c0.send({ type: 'knock' });
   const k3 = await c0.expect('knock-result');
@@ -147,17 +146,17 @@ try {
   await wait(100);
   const r1 = client();
   await r1.open();
-  r1.send({ type: 'join', room: 'riaggancio', token: TOKEN, name: 'Anna', side: 'A' });
+  r1.send({ type: 'join', room: 'riaggancio', name: 'Anna', side: 'A' });
   await r1.expect('joined');
   const r2 = client();
   await r2.open();
-  r2.send({ type: 'join', room: 'riaggancio', token: TOKEN, name: 'Bruno', side: 'B' });
+  r2.send({ type: 'join', room: 'riaggancio', name: 'Bruno', side: 'B' });
   await r2.expect('joined');
 
   // Anna riappare senza che la vecchia connessione sia stata dichiarata morta
   const r1bis = client();
   await r1bis.open();
-  r1bis.send({ type: 'join', room: 'riaggancio', token: TOKEN, name: 'Anna', side: 'A' });
+  r1bis.send({ type: 'join', room: 'riaggancio', name: 'Anna', side: 'A' });
   const again = await r1bis.expect('joined');
   check(again.type === 'joined', 'riagganciandosi si riprende il proprio posto');
   check(again.peerPresent === true, 'e ritrova l’altro ancora presente');
@@ -168,7 +167,7 @@ try {
   // Un terzo dispositivo vero resta comunque fuori
   const r3 = client();
   await r3.open();
-  r3.send({ type: 'join', room: 'riaggancio', token: TOKEN, name: 'Cip', side: null });
+  r3.send({ type: 'join', room: 'riaggancio', name: 'Cip', side: null });
   const r3res = await r3.expect('error');
   check(r3res.error === 'room-full', 'un terzo dispositivo vero resta fuori');
   r1bis.close(); r2.close(); r3.close();
@@ -176,29 +175,22 @@ try {
   // --- terzo dispositivo --------------------------------------------------
   const d = client();
   await d.open();
-  d.send({ type: 'join', room: 'coppia1', token: TOKEN, name: 'X', mode: 'listening' });
+  d.send({ type: 'join', room: 'coppia1', name: 'X', mode: 'listening' });
   await d.expect('joined');
   const e = client();
   await e.open();
-  e.send({ type: 'join', room: 'coppia1', token: TOKEN, name: 'Y', mode: 'listening' });
+  e.send({ type: 'join', room: 'coppia1', name: 'Y', mode: 'listening' });
   const eRes = await e.expect('error');
   check(eRes.error === 'room-full', 'il terzo dispositivo viene rifiutato');
 
   // --- coppie indipendenti -------------------------------------------------
   const f = client();
   await f.open();
-  f.send({ type: 'join', room: 'coppia2', token: TOKEN, name: 'Z', mode: 'listening' });
+  f.send({ type: 'join', room: 'coppia2', name: 'Z', mode: 'listening' });
   const fRes = await f.expect('joined');
   check(fRes.peerPresent === false, 'un’altra coppia non vede la prima');
 
-  // --- token errato --------------------------------------------------------
-  const g = client();
-  await g.open();
-  g.send({ type: 'join', room: 'coppia3', token: 'sbagliato', name: 'W' });
-  const gRes = await g.expect('error');
-  check(gRes.error === 'bad-token', 'token errato rifiutato');
-
-  a.close(); c0.close(); d.close(); e.close(); f.close(); g.close();
+  a.close(); c0.close(); d.close(); e.close(); f.close();
 } catch (err) {
   console.error('Errore nel test:', err.message);
   failures++;

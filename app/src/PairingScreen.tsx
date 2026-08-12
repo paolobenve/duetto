@@ -106,7 +106,6 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
     const sig = new Signaling(
       {
         serverUrl: cfg.serverUrl.trim(),
-        accessToken: cfg.accessToken,
         room: pairId,
         displayName: cfg.displayName || '',
         key: null,
@@ -160,9 +159,7 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
         },
 
         onError: (err) => {
-          if (err === 'bad-token') {
-            fail('Access token non valido: controllalo in «Altre impostazioni».');
-          } else if (err === 'room-full') {
+          if (err === 'room-full') {
             fail('Quel codice è già usato da due dispositivi.\n\nGeneratene uno nuovo.');
           }
         },

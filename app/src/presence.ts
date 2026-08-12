@@ -36,7 +36,6 @@ export async function startListening(): Promise<boolean> {
   sig = new Signaling(
     {
       serverUrl: cfg.serverUrl.trim(),
-      accessToken: cfg.accessToken,
       room: pair.id,
       displayName: cfg.displayName || 'Qualcuno',
       key: pair.key,

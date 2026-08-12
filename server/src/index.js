@@ -26,11 +26,10 @@
 
 import { createServer } from 'node:http';
 import { WebSocketServer } from 'ws';
-import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 
 const PORT = parseInt(process.env.PORT || '8787', 10);
 const HOST = process.env.HOST || '127.0.0.1'; // dietro reverse proxy: solo loopback
-const ACCESS_TOKEN = process.env.ACCESS_TOKEN || ''; // se vuoto, nessun controllo
 
 // Collegamento di riserva (TURN). Configurato QUI e non sui telefoni:
 // così resta una cosa sola da mantenere, e cambiando password non si
@@ -92,13 +91,6 @@ const MODES = ['listening', 'active'];
 
 /** @type {Map<string, Set<import('ws').WebSocket>>} presenze per pairId */
 const rooms = new Map();
-
-function safeEqual(a, b) {
-  const ba = Buffer.from(String(a));
-  const bb = Buffer.from(String(b));
-  if (ba.length !== bb.length) return false;
-  return timingSafeEqual(ba, bb);
-}
 
 function send(ws, obj) {
   if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(obj));
@@ -180,11 +172,6 @@ wss.on('connection', (ws, req) => {
       if (tooManyJoins(ws.ip)) {
         send(ws, { type: 'error', error: 'too-many-attempts' });
         ws.close(4004, 'too-many-attempts');
-        return;
-      }
-      if (ACCESS_TOKEN && !safeEqual(msg.token, ACCESS_TOKEN)) {
-        send(ws, { type: 'error', error: 'bad-token' });
-        ws.close(4001, 'bad-token');
         return;
       }
       const roomId = typeof msg.room === 'string' ? msg.room.trim() : '';
@@ -334,7 +321,6 @@ wss.on('close', () => clearInterval(heartbeat));
 
 httpServer.listen(PORT, HOST, () => {
   console.log(`[duotalk] signaling in ascolto su ws://${HOST}:${PORT}`);
-  console.log(`[duotalk] access token: ${ACCESS_TOKEN ? 'attivo' : 'DISATTIVATO (imposta ACCESS_TOKEN)'}`);
   console.log(`[duotalk] TURN di riserva: ${turnConfig() ? TURN_URL : 'non configurato (le reti diverse non si collegheranno)'}`);
 });
 
