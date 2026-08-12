@@ -8,11 +8,42 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.0.11
+
+**Correzione urgente**: accendendo il video l'app si chiudeva. La rete di sicurezza che
+tiene il riquadrino dentro i bordi scriveva la posizione dentro l'ascoltatore della
+posizione stessa, che la faceva riscattare all'infinito.
+
+## 1.0.10
+
+**Il riquadrino non può più uscire dai bordi**, comunque ci sia arrivato: prima veniva
+rimesso dentro solo alla fine di un gesto, e ogni strada che lo spostava senza passare di lì
+lo lasciava fuori.
+
+## 1.0.9
+
+**Al ritorno della rete l'immagine resta ferma** sull'ultimo fotogramma invece di diventare
+nera: il collegamento si riaccende senza smontare il video. È lo stesso motivo per cui le
+altre app di videochiamata non mostrano il nero — non salvano nulla, semplicemente non
+distruggono niente.
+
 ## 1.0.8
 
 **Tenendo premuto «Video»** si scelgono le quattro risoluzioni, come già si fa con «Audio»
 per l'uscita del suono. La qualità si giudica guardando, e andarla a cercare nelle
 impostazioni fa perdere di vista proprio ciò che si sta valutando.
+
+## 1.0.7
+
+**«Tu» / «Non tu» si attenua** insieme agli altri comandi, invece di restare acceso sopra
+l'immagine. Non sparisce mai del tutto: chi si sta guardando è l'unica cosa che non si
+ricava osservando lo schermo.
+
+## 1.0.6
+
+**Le note di rilascio scorrono** e stanno dentro lo schermo. Non si chiudono più toccando
+lo sfondo — era proprio quella comodità a contendere il gesto allo scorrimento, che infatti
+funzionava solo a tratti.
 
 ## 1.0.5
 

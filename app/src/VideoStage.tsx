@@ -367,16 +367,24 @@ export default function VideoStage(props: Props) {
    * Durante un gesto no: lì comanda il dito, e si rimette dentro al
    * rilascio.
    */
+  /** vero mentre siamo noi a scrivere la posizione, non il dito */
+  const stiamoSistemando = useRef(false);
+
   useEffect(() => {
     const id = pan.addListener((v) => {
       posRef.current = v;
-      if (gestoInCorso.current) return;
+      if (gestoInCorso.current || stiamoSistemando.current) return;
       const { minX, minY, maxX, maxY } = spazio();
       const x = Math.min(Math.max(v.x, minX), maxX);
       const y = Math.min(Math.max(v.y, minY), maxY);
       if (Math.abs(x - v.x) > 1 || Math.abs(y - v.y) > 1) {
+        // Scrivere qui dentro fa riscattare questo stesso ascoltatore:
+        // senza il fermo, ogni correzione ne chiama un'altra e la pila
+        // delle chiamate si esaurisce - l'app cadeva accendendo il video.
+        stiamoSistemando.current = true;
         posRef.current = { x, y };
         pan.setValue({ x, y });
+        stiamoSistemando.current = false;
       }
     });
     return () => pan.removeListener(id);
