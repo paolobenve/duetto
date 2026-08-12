@@ -7,6 +7,15 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.0.23",
+    "paragrafi": [
+      {
+        "forte": "Spegnendo «voce più ricca» l'audio torna davvero giù.",
+        "testo": "Prima si toglieva il tetto invece di riportarlo al valore normale, e togliere un limite non fa scendere nessuno: restava a 64 kbit/s come se l'opzione non avesse ritorno."
+      }
+    ]
+  },
+  {
     "versione": "1.0.22",
     "paragrafi": [
       {

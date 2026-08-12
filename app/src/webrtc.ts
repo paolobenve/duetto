@@ -163,12 +163,12 @@ export class ChannelSession {
   }
 
   /**
-   * Il tetto dell'audio: predefinito, oppure alzato a 64 kbit/s.
+   * Il tetto dell'audio: 32 kbit/s, oppure 64 con "voce più ricca".
    *
-   * Togliere il tetto quando l'opzione si spegne non basta a riportare
-   * Opus al comportamento di prima nella stessa sessione, ma il valore
-   * predefinito lo ritrova comunque da solo: qui si toglie il limite e
-   * si lascia decidere all'algoritmo di congestione.
+   * Spegnendo l'opzione si SCRIVE il valore basso invece di togliere il
+   * limite: togliere un tetto non fa scendere nessuno, e Opus restava
+   * dov'era arrivato - l'opzione sembrava senza ritorno. Trentadue è il
+   * valore attorno a cui la voce viaggia per impostazione predefinita.
    */
   private async applyAudioQuality() {
     const sender: any = this.liveAudioSender();
@@ -178,10 +178,9 @@ export class ChannelSession {
       if (!Array.isArray(params.encodings) || params.encodings.length === 0) {
         params.encodings = [{}];
       }
-      if (this.cfg.audioMigliore) params.encodings[0].maxBitrate = 64000;
-      else delete params.encodings[0].maxBitrate;
+      params.encodings[0].maxBitrate = this.cfg.audioMigliore ? 64000 : 32000;
       await sender.setParameters(params);
-      log('audio:', this.cfg.audioMigliore ? 'tetto 64 kbit/s' : 'tetto predefinito',
+      log('audio:', this.cfg.audioMigliore ? 'tetto 64 kbit/s' : 'tetto 32 kbit/s',
         '- elaborazioni:', this.cfg.altaFedelta ? 'solo eco' : 'complete');
     } catch (e) {
       log('non riesco ad applicare la qualità audio:', String(e));

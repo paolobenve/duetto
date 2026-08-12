@@ -8,6 +8,12 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.0.23
+
+**Spegnendo «voce più ricca» l'audio torna davvero giù.** Prima si toglieva il tetto invece
+di riportarlo al valore normale, e togliere un limite non fa scendere nessuno: restava a 64
+kbit/s come se l'opzione non avesse ritorno.
+
 ## 1.0.22
 
 **Le opzioni audio valgono per tutti e due i telefoni**, come già la risoluzione.
