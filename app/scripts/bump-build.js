@@ -10,6 +10,15 @@
 const fs = require('fs');
 const path = require('path');
 
+/**
+ * La versione che si mostra a chi usa l'app.
+ *
+ * Il numero di build resta, ma sta in secondo piano: serve a noi per
+ * sapere con certezza quale APK sta girando su un telefono, e compare
+ * solo nelle impostazioni.
+ */
+const VERSION = '1.0.0';
+
 const appDir = path.join(__dirname, '..');
 const counterFile = path.join(appDir, 'build-number.json');
 const outFile = path.join(appDir, 'src', 'version.ts');
@@ -30,9 +39,13 @@ const stamp = `${String(now.getDate()).padStart(2, '0')}/` +
 
 fs.writeFileSync(outFile,
 `// Generato da scripts/bump-build.js a ogni compilazione: non modificare a mano.
+export const VERSION = '${VERSION}';
 export const BUILD = ${n};
 export const BUILT_AT = '${stamp}';
-export const VERSION_LABEL = 'build ${n} · ${stamp}';
+/** Quello che si vede nell'app. */
+export const VERSION_LABEL = '${VERSION}';
+/** Per le impostazioni: serve a distinguere due APK della stessa versione. */
+export const VERSION_FULL = '${VERSION} · build ${n} · ${stamp}';
 `);
 
-console.log(`build ${n} (${stamp})`);
+console.log(`${VERSION} (build ${n}, ${stamp})`);

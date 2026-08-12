@@ -77,9 +77,9 @@ npm run build:apk       # APK di release, con numero di build incrementato
 adb install -r android/app/build/outputs/apk/release/app-release.apk
 ```
 
-Il numero di build compare **in alto a destra nell'app**. Con installazioni frequenti è
-facile provare a lungo un APK vecchio credendolo nuovo: se segnali un problema, dì anche
-quel numero.
+La versione compare **in alto a destra nell'app**; il numero di build, che cambia a ogni
+compilazione, sta nelle impostazioni in fondo. Con installazioni frequenti è facile provare
+a lungo un APK vecchio credendolo nuovo: se segnali un problema, dì anche quel numero.
 
 Su alcuni telefoni (Xiaomi, POCO) `adb install` è bloccato finché non abiliti
 *Opzioni sviluppatore → Installazione tramite USB*. In alternativa copia l'APK sul

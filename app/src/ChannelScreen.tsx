@@ -155,11 +155,18 @@ export default function ChannelScreen(props: Props) {
   }, [notConnected]);
 
   /**
-   * Riserviamo il posto grande all'altro solo se ci aspettiamo davvero
-   * il suo video: se ha la camera spenta, il proprio a schermo intero è
-   * la cosa giusta da mostrare.
+   * Il posto grande resta dell'altro finché lui dichiara di trasmettere.
+   *
+   * Questo NON aspetta i tre secondi dell'avviso: l'attesa vale per il
+   * messaggio, che è un allarme, non per la disposizione. Ritardandola
+   * anche qui restava una finestra in cui il proprio video saliva a
+   * schermo intero per poi tornare indietro all'arrivo dell'altro - il
+   * ballo che si voleva evitare, spostato di tre secondi.
+   *
+   * Se invece la camera dell'altro è spenta, il proprio a schermo intero
+   * è la cosa giusta: lì non stiamo aspettando nulla.
    */
-  const interrupted = showNotice && peerState.video;
+  const interrupted = peerState.video && !remoteHasVideo;
 
   // Senza questo, perdendo il server restava uno schermo nero muto: il
   // video dell'altro è ancora lì ma non ci arriva più nessun

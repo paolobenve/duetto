@@ -7,7 +7,7 @@ import type { DuoConfig, VideoQuality } from './config';
 import {
   isServerConfigured, isPaired, normalizeServerUrl, displayServer, VIDEO_PROFILES,
 } from './config';
-import { VERSION_LABEL } from './version';
+import { VERSION_FULL } from './version';
 
 type Props = {
   initial: DuoConfig;
@@ -350,7 +350,7 @@ export default function SettingsScreen({
           </Text>
         </View>
 
-        <Text style={styles.version}>{VERSION_LABEL}</Text>
+        <Text style={styles.version}>{VERSION_FULL}</Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );
