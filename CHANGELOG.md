@@ -8,6 +8,13 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.0.18
+
+**Riprendendo il microfono, DuoTalk se lo riprende davvero.** Rilasciandolo si lasciava
+cadere anche il regime audio della conversazione, che è ciò che tiene il microfono per noi:
+riaccendendolo restava disponibile ad altre app — la tastiera se lo prendeva. Ora il regime
+viene ridichiarato, insieme all'uscita audio scelta.
+
 ## 1.0.17
 
 **Il microfono viene rilasciato quando lo spegni**: prima restava occupato — l'indicatore di

@@ -894,7 +894,22 @@ export default function App() {
         onToggleAudio={async () => {
           const s = sessionRef.current;
           if (!s) return;
-          setAudioOn(await s.toggleAudio());
+          const acceso = await s.toggleAudio();
+          setAudioOn(acceso);
+          /**
+           * Riprendendo il microfono si ridichiara la conversazione.
+           *
+           * Rilasciandolo si lascia cadere anche il regime audio "in
+           * comunicazione", che è ciò che tiene il microfono per noi:
+           * riaprire la traccia non lo ristabilisce, e restava
+           * disponibile ad altre app - la tastiera se lo prendeva.
+           * Ridichiararlo rimette anche l'uscita audio scelta, che quel
+           * regime governa.
+           */
+          if (acceso) {
+            try { InCallManager.start({ media: 'audio' }); } catch { /* noop */ }
+            audio.riapplica();
+          }
         }}
         onToggleVideo={onToggleVideo}
         onSwitchCamera={() => {

@@ -7,6 +7,15 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.0.18",
+    "paragrafi": [
+      {
+        "forte": "Riprendendo il microfono, DuoTalk se lo riprende davvero.",
+        "testo": "Rilasciandolo si lasciava cadere anche il regime audio della conversazione, che è ciò che tiene il microfono per noi: riaccendendolo restava disponibile ad altre app — la tastiera se lo prendeva. Ora il regime viene ridichiarato, insieme all'uscita audio scelta."
+      }
+    ]
+  },
+  {
     "versione": "1.0.17",
     "paragrafi": [
       {
