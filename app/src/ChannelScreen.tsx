@@ -659,9 +659,12 @@ function StatsLine({ stats, quality, mostraSu, mostraGiu }: {
         {su ? `  \u2191${su}` : ''}
         {giu ? `  \u2193${giu}` : ''}
       </Text>
-      {strada ? (
+      {strada || stats.audioKbps != null ? (
         <Text style={styles.stats} numberOfLines={1}>
-          {`Collegamento: ${strada}`}
+          {strada ? `Collegamento: ${strada}` : ''}
+          {stats.audioKbps != null
+            ? `${strada ? '   ' : ''}audio ${stats.audioKbps} kbit/s`
+            : ''}
         </Text>
       ) : null}
     </>

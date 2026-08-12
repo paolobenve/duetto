@@ -284,6 +284,7 @@ export default function SettingsScreen({
           </View>
         </TouchableOpacity>
 
+        <Text style={styles.subsection}>Schermata</Text>
         <TouchableOpacity
           style={[styles.choice, cfg.mostraDiagnostica && styles.choicePicked]}
           onPress={() => {

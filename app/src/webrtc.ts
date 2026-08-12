@@ -50,6 +50,8 @@ export type ChannelEvents = {
 export type VideoStats = {
   out?: { w: number; h: number; fps: number; kbps: number | null };
   in?: { w: number; h: number; fps: number; kbps: number | null };
+  /** quanto sta uscendo di audio: l'unico modo di verificare il tetto */
+  audioKbps?: number | null;
   /** da dove sta passando il traffico, ricalcolato a ogni campione */
   percorso?: 'locale' | 'diretto' | 'relay';
 };
@@ -94,6 +96,7 @@ export class ChannelSession {
   /** ultimi campioni per calcolare il bitrate reale fra due letture */
   private lastOutbound: { ts: number; bytes: number } | null = null;
   private lastInbound: { ts: number; bytes: number } | null = null;
+  private lastAudioOut: { ts: number; bytes: number } | null = null;
   /** una riga nel log ogni tanto, ma il pannello si aggiorna spesso */
   private statsTicks = 0;
   private statsTimer: ReturnType<typeof setInterval> | null = null;
@@ -198,17 +201,21 @@ export class ChannelSession {
 
     if (cambiaElaborazioni && this.localStream?.getAudioTracks()[0]) {
       const vecchia = this.localStream.getAudioTracks()[0];
+      // Si legge PRIMA di fermarla: fermare una traccia la spegne anche,
+      // e riportando quel valore sulla nuova la si faceva nascere muta -
+      // il microfono si riapriva senza errori e l'altro non sentiva più.
+      const eraAcceso = vecchia.enabled;
       try {
         const mic = await mediaDevices.getUserMedia({ audio: this.vincoliMicrofono() } as any);
         const nuova = mic.getAudioTracks()[0];
         if (nuova) {
+          nuova.enabled = eraAcceso;
           const sender = this.liveAudioSender();
           try { await sender?.replaceTrack(nuova); } catch { /* noop */ }
           this.localStream.removeTrack(vecchia);
           vecchia.stop();
           this.localStream.addTrack(nuova);
-          nuova.enabled = vecchia.enabled;
-          log('microfono riaperto con le nuove elaborazioni');
+          log('microfono riaperto con le nuove elaborazioni - acceso:', eraAcceso);
         }
       } catch (e) {
         log('non riesco a riaprire il microfono:', String(e));
@@ -786,6 +793,11 @@ export class ChannelSession {
       };
 
       stats.forEach((r: any) => {
+        if (r.kind === 'audio' && r.type === 'outbound-rtp') {
+          out.audioKbps = rate(this.lastAudioOut, r.timestamp, r.bytesSent);
+          this.lastAudioOut = { ts: r.timestamp, bytes: r.bytesSent };
+          return;
+        }
         if (r.kind !== 'video') return;
         if (r.type === 'outbound-rtp') {
           out.out = {

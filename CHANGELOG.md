@@ -8,6 +8,17 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.0.21
+
+**Correzione**: attivando l'alta fedeltà il microfono si riapriva muto e l'altro smetteva di
+sentirti. Si leggeva se era acceso dopo averlo fermato, e fermarlo lo spegne.
+
+**La riga tecnica mostra anche l'audio in uscita**, così «voce più ricca» si può verificare
+invece di crederci: da spenta sta intorno ai 30 kbit/s, da accesa sale.
+
+**Le impostazioni sono divise per sezione**: le opzioni della schermata non stanno più sotto
+il titolo «Audio», dove sembravano riguardare il suono.
+
 ## 1.0.20
 
 **Due opzioni per l'audio**, spente di default, nelle impostazioni.

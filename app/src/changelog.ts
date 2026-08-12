@@ -7,6 +7,23 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.0.21",
+    "paragrafi": [
+      {
+        "forte": "Correzione",
+        "testo": ": attivando l'alta fedeltà il microfono si riapriva muto e l'altro smetteva di sentirti. Si leggeva se era acceso dopo averlo fermato, e fermarlo lo spegne."
+      },
+      {
+        "forte": "La riga tecnica mostra anche l'audio in uscita",
+        "testo": ", così «voce più ricca» si può verificare invece di crederci: da spenta sta intorno ai 30 kbit/s, da accesa sale."
+      },
+      {
+        "forte": "Le impostazioni sono divise per sezione",
+        "testo": ": le opzioni della schermata non stanno più sotto il titolo «Audio», dove sembravano riguardare il suono."
+      }
+    ]
+  },
+  {
     "versione": "1.0.20",
     "paragrafi": [
       {
