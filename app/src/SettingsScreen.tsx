@@ -106,7 +106,7 @@ export default function SettingsScreen({
               <Text style={styles.backText}>{'\u2039'}</Text>
             </TouchableOpacity>
           ) : null}
-          <Text style={styles.title}>DuoTalk</Text>
+          <Text style={styles.title}>Duetto</Text>
         </View>
         <Text style={styles.subtitle}>
           Un canale solo per voi due. Entri e resti: quando entra anche l’altro,
@@ -327,7 +327,7 @@ export default function SettingsScreen({
 
         <Text style={styles.section}>Restare raggiungibili</Text>
         <Text style={styles.sectionHint}>
-          Due impostazioni di sistema, senza le quali il telefono chiude DuoTalk
+          Due impostazioni di sistema, senza le quali il telefono chiude Duetto
           e smetti di ricevere gli avvisi. Si perdono reinstallando l’app o
           cambiando telefono.
         </Text>

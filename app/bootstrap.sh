@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# DuoTalk - genera la parte nativa Android (cartella android/) e installa le dipendenze.
+# Duetto - genera la parte nativa Android (cartella android/) e installa le dipendenze.
 #
 # La logica dell'app (src/) e la configurazione JS sono già nel repo.
 # Qui usiamo la CLI ufficiale di React Native per creare lo "scheletro"
@@ -12,7 +12,7 @@
 set -euo pipefail
 
 RN_VERSION="0.76.5"
-APP_NAME="DuoTalk"
+APP_NAME="Duetto"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 
 if [ -d "$HERE/android" ]; then
@@ -43,7 +43,7 @@ fi
 echo "==> Applico permessi, deep link e foreground service al manifest..."
 node "$HERE/scripts/patch-android-manifest.js"
 
-# Il modulo nativo duotalk-platform è scritto per l'architettura classica,
+# Il modulo nativo duetto-platform è scritto per l'architettura classica,
 # pienamente supportata in RN 0.76. Con la New Architecture servirebbe il
 # livello di interop e non tutte le dipendenze lo gradiscono.
 GRADLE_PROPS="$HERE/android/gradle.properties"

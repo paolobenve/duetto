@@ -1,4 +1,4 @@
-# Architettura di DuoTalk
+# Architettura di Duetto
 
 ## Modello: canale, non chiamata
 
@@ -194,10 +194,10 @@ senza collegamento mentre entrambi sono nel canale manda `renegotiate`. È la re
 sicurezza di una scelta altrimenti corretta — offrire da una parte sola evita che le due
 offerte si scontrino.
 
-### 6. Servizio nativo (`app/modules/duotalk-platform`)
+### 6. Servizio nativo (`app/modules/duetto-platform`)
 
 Modulo Kotlin locale, agganciato dall'**autolinking** tramite
-`"duotalk-platform": "file:modules/duotalk-platform"`: così non si tocca
+`"duetto-platform": "file:modules/duetto-platform"`: così non si tocca
 `MainApplication`, che `bootstrap.sh` rigenera e sovrascriverebbe.
 
 | Aspetto | Scelta |

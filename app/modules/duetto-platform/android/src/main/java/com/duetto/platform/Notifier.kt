@@ -1,4 +1,4 @@
-package com.duotalk.platform
+package com.duetto.platform
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -19,9 +19,9 @@ import androidx.core.app.NotificationManagerCompat
  */
 object Notifier {
 
-    private const val ALERT_CHANNEL_ID = "duotalk_alerts"
+    private const val ALERT_CHANNEL_ID = "duetto_alerts"
     private const val ALERT_NOTIFICATION_ID = 4712
-    private const val PRESENCE_CHANNEL_ID = "duotalk_presence"
+    private const val PRESENCE_CHANNEL_ID = "duetto_presence"
     private const val PRESENCE_NOTIFICATION_ID = 4711
 
     private fun ensureChannel(ctx: Context) {
@@ -107,7 +107,7 @@ object Notifier {
         }
 
         val notification = NotificationCompat.Builder(service, PRESENCE_CHANNEL_ID)
-            .setContentTitle("DuoTalk")
+            .setContentTitle("Duetto")
             .setContentText("In ascolto")
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setContentIntent(pending)

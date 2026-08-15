@@ -1,5 +1,5 @@
 import { AppState } from 'react-native';
-import { Foreground } from 'duotalk-platform';
+import { Foreground } from 'duetto-platform';
 import { loadConfig, isPaired, isServerConfigured } from './config';
 import { Signaling } from './signaling';
 
@@ -18,7 +18,7 @@ import { Signaling } from './signaling';
 
 let sig: Signaling | null = null;
 
-const log = (...args: any[]) => console.log('[duotalk-presenza]', ...args);
+const log = (...args: any[]) => console.log('[duetto-presenza]', ...args);
 
 /** Attiva l'ascolto, se c'è una coppia configurata. */
 export async function startListening(): Promise<boolean> {
@@ -49,7 +49,7 @@ export async function startListening(): Promise<boolean> {
           ? (named ? `${name} ti aspetta nel canale` : 'Ti aspettano nel canale')
           : (named ? `${name} è nel canale` : 'C’è qualcuno nel canale');
         log('avviso:', text);
-        Foreground.notify('DuoTalk', text).catch(() => { /* noop */ });
+        Foreground.notify('Duetto', text).catch(() => { /* noop */ });
       },
     },
   );

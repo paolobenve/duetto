@@ -1,4 +1,4 @@
-package com.duotalk.platform
+package com.duetto.platform
 
 import android.content.Intent
 import androidx.core.content.ContextCompat
@@ -11,7 +11,7 @@ import com.facebook.react.bridge.ReactMethod
 class ForegroundModule(private val ctx: ReactApplicationContext) :
     ReactContextBaseJavaModule(ctx) {
 
-    override fun getName() = "DuoTalkForeground"
+    override fun getName() = "DuettoForeground"
 
     private fun sendToService(
         promise: Promise,

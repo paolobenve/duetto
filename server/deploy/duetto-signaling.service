@@ -1,19 +1,19 @@
-# systemd unit per il signaling DuoTalk.
-# Copia in /etc/systemd/system/duotalk-signaling.service, poi:
+# systemd unit per il signaling Duetto.
+# Copia in /etc/systemd/system/duetto-signaling.service, poi:
 #   sudo systemctl daemon-reload
-#   sudo systemctl enable --now duotalk-signaling
+#   sudo systemctl enable --now duetto-signaling
 #
 # Adatta User, WorkingDirectory e il percorso di node.
 
 [Unit]
-Description=DuoTalk signaling server (WebSocket)
+Description=Duetto signaling server (WebSocket)
 After=network.target
 
 [Service]
 Type=simple
 User=www-data
-WorkingDirectory=/opt/duotalk/server
-EnvironmentFile=/opt/duotalk/server/.env
+WorkingDirectory=/opt/duetto/server
+EnvironmentFile=/opt/duetto/server/.env
 ExecStart=/usr/bin/node src/index.js
 Restart=on-failure
 RestartSec=3

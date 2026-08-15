@@ -1,10 +1,10 @@
 import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
 
 const isAndroid = Platform.OS === 'android';
-const NativeForeground = NativeModules.DuoTalkForeground;
-const NativePip = NativeModules.DuoTalkPip;
-const NativeVisibility = NativeModules.DuoTalkVisibility;
-const NativeCodecs = NativeModules.DuoTalkCodecs;
+const NativeForeground = NativeModules.DuettoForeground;
+const NativePip = NativeModules.DuettoPip;
+const NativeVisibility = NativeModules.DuettoVisibility;
+const NativeCodecs = NativeModules.DuettoCodecs;
 
 /**
  * Chiama un metodo nativo solo se esiste davvero.
@@ -18,7 +18,7 @@ const NativeCodecs = NativeModules.DuoTalkCodecs;
 function call(mod, name, ...args) {
   const fn = mod && mod[name];
   if (typeof fn !== 'function') {
-    if (__DEV__) console.warn(`[duotalk-platform] metodo nativo assente: ${name}`);
+    if (__DEV__) console.warn(`[duetto-platform] metodo nativo assente: ${name}`);
     return Promise.resolve(false);
   }
   try {
@@ -169,7 +169,7 @@ export const Visibility = isAndroid && NativeVisibility
       subscribe(cb) {
         call(NativeVisibility, 'start');
         const emitter = new NativeEventEmitter(NativeVisibility);
-        const sub = emitter.addListener('duotalk-visibility', (v) => cb(!!v));
+        const sub = emitter.addListener('duetto-visibility', (v) => cb(!!v));
         return () => sub.remove();
       },
     }

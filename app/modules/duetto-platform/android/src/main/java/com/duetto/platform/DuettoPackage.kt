@@ -1,4 +1,4 @@
-package com.duotalk.platform
+package com.duetto.platform
 
 import android.view.View
 import com.facebook.react.ReactPackage
@@ -9,10 +9,10 @@ import com.facebook.react.uimanager.ViewManager
 
 /**
  * Registrato automaticamente dall'autolinking di React Native, grazie alla
- * dipendenza "file:modules/duotalk-platform" in package.json: non serve
+ * dipendenza "file:modules/duetto-platform" in package.json: non serve
  * toccare MainApplication.
  */
-class DuoTalkPackage : ReactPackage {
+class DuettoPackage : ReactPackage {
 
     override fun createNativeModules(
         reactContext: ReactApplicationContext,

@@ -68,9 +68,9 @@ export const DEFAULT_ASPECT = 9 / 16;
  * srflx = visto da fuori tramite STUN, relay = passa dal TURN), e a che
  * punto si blocca lo stato di ICE. Si legge con:
  *
- *   adb logcat -s ReactNativeJS | grep duotalk
+ *   adb logcat -s ReactNativeJS | grep duetto
  */
-const log = (...args: any[]) => console.log('[duotalk-rtc]', ...args);
+const log = (...args: any[]) => console.log('[duetto-rtc]', ...args);
 
 /** host / srflx / prflx / relay: dice che strada sta tentando ICE. */
 function candidateType(candidate: string): string {

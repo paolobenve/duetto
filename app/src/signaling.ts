@@ -79,9 +79,9 @@ export type SignalingEvents = {
  * Le cadute avvengono qui, e finora non lasciavano traccia: si vedeva
  * solo l'effetto sul video. Si legge con:
  *
- *   adb logcat -s ReactNativeJS | grep duotalk-sig
+ *   adb logcat -s ReactNativeJS | grep duetto-sig
  */
-const log = (...args: any[]) => console.log('[duotalk-sig]', ...args);
+const log = (...args: any[]) => console.log('[duetto-sig]', ...args);
 
 // Attesa fra un tentativo e l'altro. Tenuta breve di proposito: qui la
 // riconnessione non è un dettaglio, è la differenza fra essere
@@ -288,7 +288,7 @@ export class Signaling {
     // finora invisibile: si vedeva solo l'effetto, cioè una negoziazione
     // che non arrivava mai a destinazione.
     const kind = (obj as any)?.type ?? '?';
-    console.log('[duotalk-sig]', 'scartato (server irraggiungibile):', kind);
+    console.log('[duetto-sig]', 'scartato (server irraggiungibile):', kind);
   }
 
   private scheduleReconnect() {

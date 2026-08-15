@@ -1,4 +1,4 @@
-package com.duotalk.platform
+package com.duetto.platform
 
 import android.content.Intent
 import android.os.Build
@@ -29,7 +29,7 @@ class PresenceService : HeadlessJsTaskService() {
 
     override fun getTaskConfig(intent: Intent?): HeadlessJsTaskConfig? {
         return HeadlessJsTaskConfig(
-            "duotalk-presence",
+            "duetto-presence",
             Arguments.createMap(),
             // 0 = nessun limite di tempo: il compito deve restare vivo.
             0,

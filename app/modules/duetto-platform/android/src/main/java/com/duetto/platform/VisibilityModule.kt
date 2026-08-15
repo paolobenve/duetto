@@ -1,4 +1,4 @@
-package com.duotalk.platform
+package com.duetto.platform
 
 import android.app.Activity
 import android.app.Application
@@ -28,7 +28,7 @@ import com.facebook.react.modules.core.DeviceEventManagerModule
 class VisibilityModule(private val ctx: ReactApplicationContext) :
     ReactContextBaseJavaModule(ctx) {
 
-    override fun getName() = "DuoTalkVisibility"
+    override fun getName() = "DuettoVisibility"
 
     /** Quante activity dell'app sono attualmente visibili. */
     private var started = 0
@@ -95,6 +95,6 @@ class VisibilityModule(private val ctx: ReactApplicationContext) :
     @ReactMethod fun removeListeners(count: Int) {}
 
     companion object {
-        const val EVENT = "duotalk-visibility"
+        const val EVENT = "duetto-visibility"
     }
 }

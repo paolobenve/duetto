@@ -44,7 +44,7 @@ export type PairInfo = {
 export type VideoQuality = 'risparmio' | 'standard' | 'migliore' | 'massima';
 
 export type DuoConfig = {
-  /** wss://TUO_DOMINIO/duotalk/ws */
+  /** wss://TUO_DOMINIO/duetto/ws */
   serverUrl: string;
   /** come mi vede l'altro */
   displayName: string;
@@ -100,7 +100,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   videoCodec: 'auto',
 };
 
-const STORAGE_KEY = 'duotalk.config.v3';
+const STORAGE_KEY = 'duetto.config.v3';
 
 export async function loadConfig(): Promise<DuoConfig> {
   try {
@@ -122,8 +122,8 @@ export async function saveConfig(cfg: DuoConfig): Promise<void> {
  * All'utente chiediamo solo "cathopedia.org": il resto lo mettiamo noi,
  * accettando comunque un indirizzo completo se qualcuno lo scrive.
  *
- *   cathopedia.org                  -> wss://cathopedia.org/duotalk/ws
- *   https://cathopedia.org          -> wss://cathopedia.org/duotalk/ws
+ *   cathopedia.org                  -> wss://cathopedia.org/duetto/ws
+ *   https://cathopedia.org          -> wss://cathopedia.org/duetto/ws
  *   wss://cathopedia.org/altro/ws   -> lasciato com'e'
  */
 export function normalizeServerUrl(raw: string): string {
@@ -133,7 +133,7 @@ export function normalizeServerUrl(raw: string): string {
   if (!/^wss?:\/\//i.test(s)) s = `wss://${s}`;
   const m = s.match(/^(wss?:\/\/[^/]+)(\/.*)?$/i);
   if (!m) return s;
-  const path = m[2] && m[2] !== '/' ? m[2] : '/duotalk/ws';
+  const path = m[2] && m[2] !== '/' ? m[2] : '/duetto/ws';
   return m[1] + path;
 }
 
@@ -141,13 +141,13 @@ export function normalizeServerUrl(raw: string): string {
  * Come rimostrarlo nelle impostazioni.
  *
  * All'utente si chiede il dominio, ma si salva l'indirizzo completo:
- * riaprendo le impostazioni si ritrovava "wss://tuoserver.org/duotalk/ws"
+ * riaprendo le impostazioni si ritrovava "wss://tuoserver.org/duetto/ws"
  * in un campo che chiede "tuoserver.org". Se l'indirizzo è quello
  * standard si mostra il solo dominio; se qualcuno ha scritto un percorso
  * suo, resta intero, perché lì il dominio da solo non basterebbe.
  */
 export function displayServer(url: string): string {
-  const m = (url || '').match(/^wss?:\/\/([^/]+)\/duotalk\/ws$/i);
+  const m = (url || '').match(/^wss?:\/\/([^/]+)\/duetto\/ws$/i);
   return m ? m[1] : (url || '');
 }
 

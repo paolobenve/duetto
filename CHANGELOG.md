@@ -8,6 +8,15 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.1.29
+
+**L'app si chiama Duetto.** Cambia il nome dappertutto: l'icona, la notifica fissa, gli
+avvisi, l'indirizzo del server. Per Android però non è la stessa app con un nome nuovo, è
+un'app diversa: la vecchia DuoTalk resta installata finché non la togli a mano, e Duetto
+parte vuota. Vanno rifatti l'abbinamento — dettandosi di nuovo il codice a voce o di
+persona — e le impostazioni, comprese quelle di sistema (batteria senza limiti, avvio
+automatico), perché Android le tiene legate all'app e non le trasferisce.
+
 ## 1.0.28
 
 **L'avvio automatico ora dice la verità.** La spunta si accendeva solo perché avevi aperto
@@ -86,7 +95,7 @@ cosa che le somiglia.
 
 ## 1.0.18
 
-**Riprendendo il microfono, DuoTalk se lo riprende davvero.** Rilasciandolo si lasciava
+**Riprendendo il microfono, Duetto se lo riprende davvero.** Rilasciandolo si lasciava
 cadere anche il regime audio della conversazione, che è ciò che tiene il microfono per noi:
 riaccendendolo restava disponibile ad altre app — la tastiera se lo prendeva. Ora il regime
 viene ridichiarato, insieme all'uscita audio scelta.

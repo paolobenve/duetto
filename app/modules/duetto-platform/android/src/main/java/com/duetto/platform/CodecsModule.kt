@@ -1,4 +1,4 @@
-package com.duotalk.platform
+package com.duetto.platform
 
 import android.media.MediaCodecInfo
 import android.media.MediaCodecList
@@ -19,7 +19,7 @@ import com.facebook.react.bridge.ReactMethod
  */
 class CodecsModule(ctx: ReactApplicationContext) : ReactContextBaseJavaModule(ctx) {
 
-    override fun getName() = "DuoTalkCodecs"
+    override fun getName() = "DuettoCodecs"
 
     @ReactMethod
     fun hasHardwareVp9Encoder(promise: Promise) {

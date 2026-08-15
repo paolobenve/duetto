@@ -1,4 +1,4 @@
-# DuoTalk - configurazione coturn (collegamento di riserva).
+# Duetto - configurazione coturn (collegamento di riserva).
 #
 # Serve quando i due telefoni non riescono a vedersi direttamente: reti
 # diverse, NAT simmetrici, quasi sempre la rete mobile. Sulla stessa wifi
@@ -48,9 +48,9 @@ server-name=TUO_DOMINIO
 # che in file di configurazione e righe di comando creano grattacapi.
 #
 # Se la perdi, e' comunque scritta qui sotto:
-#   sudo grep -oP '^user=duotalk:\K.*' /etc/turnserver.conf
+#   sudo grep -oP '^user=duetto:\K.*' /etc/turnserver.conf
 lt-cred-mech
-user=duotalk:METTI_UNA_PASSWORD_LUNGA
+user=duetto:METTI_UNA_PASSWORD_LUNGA
 
 # --- TLS ----------------------------------------------------------------
 # Riusa i certificati che hai gia'. Il servizio gira come utente turnserver,

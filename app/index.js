@@ -12,4 +12,4 @@ AppRegistry.registerComponent(appName, () => App);
 
 // Compito senza interfaccia: lo avvia il servizio nativo dopo il riavvio
 // del telefono, per rimettere in piedi la presenza senza aprire l'app.
-AppRegistry.registerHeadlessTask('duotalk-presence', () => presenceTask);
+AppRegistry.registerHeadlessTask('duetto-presence', () => presenceTask);

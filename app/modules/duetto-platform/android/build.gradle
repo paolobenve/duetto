@@ -6,7 +6,7 @@ def safeExtGet(prop, fallback) {
 }
 
 android {
-    namespace "com.duotalk.platform"
+    namespace "com.duetto.platform"
     compileSdk safeExtGet('compileSdkVersion', 35)
 
     defaultConfig {

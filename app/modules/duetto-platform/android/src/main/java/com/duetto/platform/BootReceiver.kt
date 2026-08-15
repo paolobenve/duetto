@@ -1,4 +1,4 @@
-package com.duotalk.platform
+package com.duetto.platform
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -41,16 +41,16 @@ class BootReceiver : BroadcastReceiver() {
                 context,
                 Intent(context, PresenceService::class.java),
             )
-            Log.i("DuoTalk", "presenza riavviata dopo il boot")
+            Log.i("Duetto", "presenza riavviata dopo il boot")
         } catch (e: Exception) {
             // Se il sistema lo vieta non c'è molto da fare: l'utente
             // aprira' l'app e la presenza ripartira' da lì.
-            Log.w("DuoTalk", "impossibile riavviare la presenza: ${e.message}")
+            Log.w("Duetto", "impossibile riavviare la presenza: ${e.message}")
         }
     }
 
     companion object {
-        const val PREFS = "duotalk_avvio"
+        const val PREFS = "duetto_avvio"
         const val ULTIMO_AVVIO = "ultimo_avvio_automatico"
     }
 }

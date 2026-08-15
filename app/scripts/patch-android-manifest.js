@@ -2,8 +2,8 @@
 /**
  * Adatta l'AndroidManifest.xml generato da React Native:
  *  - permessi (rete, microfono, camera, audio)
- *  - intent filter per il deep link "duotalk://channel", così toccando
- *    la notifica ntfy si apre direttamente DuoTalk
+ *  - intent filter per il deep link "duetto://channel", così toccando
+ *    la notifica ntfy si apre direttamente Duetto
  *
  * Idempotente: si può rilanciare senza duplicare nulla.
  */
@@ -31,7 +31,7 @@ const permissions = [
   'android.permission.MODIFY_AUDIO_SETTINGS',
   'android.permission.BLUETOOTH_CONNECT', // auricolari BT
   // Restare nel canale in background / a schermo spento.
-  // Il servizio è dichiarato dal modulo duotalk-platform e i suoi
+  // Il servizio è dichiarato dal modulo duetto-platform e i suoi
   // permessi arrivano dal merge dei manifest; li ripetiamo qui perché
   // siano visibili leggendo il manifest dell'app.
   'android.permission.FOREGROUND_SERVICE',
@@ -122,7 +122,7 @@ if (!activityMatch) {
 
   // Deep link, inserito dentro LA MainActivity (dopo il suo primo
   // intent-filter), non dopo il primo intent-filter del documento.
-  if (!xml.includes('android:scheme="duotalk"')) {
+  if (!xml.includes('android:scheme="duetto"')) {
     const activityAt = xml.search(activityRe);
     const closeTag = '</intent-filter>';
     const filterEnd = xml.indexOf(closeTag, activityAt);
@@ -135,7 +135,7 @@ if (!activityMatch) {
             <action android:name="android.intent.action.VIEW" />
             <category android:name="android.intent.category.DEFAULT" />
             <category android:name="android.intent.category.BROWSABLE" />
-            <data android:scheme="duotalk" android:host="channel" />
+            <data android:scheme="duetto" android:host="channel" />
         </intent-filter>`;
       xml = xml.slice(0, at) + deepLink + xml.slice(at);
       changes++;

@@ -9,13 +9,13 @@ Cerca in quest'ordine, e **fermati quando hai abbastanza** per rispondere:
 
 1. **Messaggi dei commit** — è la fonte migliore, perché ogni commit spiega
    perché una cosa è stata fatta:
-   `git -C /home/paolo/git/duotalk log --grep="$ARGUMENTS" -i --oneline`
+   `git -C /home/paolo/git/duetto log --grep="$ARGUMENTS" -i --oneline`
 
 2. **Storia del codice** — chi ha introdotto o tolto quella stringa:
-   `git -C /home/paolo/git/duotalk log -S "$ARGUMENTS" -i --oneline`
+   `git -C /home/paolo/git/duetto log -S "$ARGUMENTS" -i --oneline`
 
 3. **Codice e documentazione attuali** — i commenti sono in italiano:
-   `grep -rn -i "$ARGUMENTS" /home/paolo/git/duotalk/app/src /home/paolo/git/duotalk/server/src /home/paolo/git/duotalk/docs /home/paolo/git/duotalk/README.md /home/paolo/git/duotalk/CHANGELOG.md`
+   `grep -rn -i "$ARGUMENTS" /home/paolo/git/duetto/app/src /home/paolo/git/duetto/server/src /home/paolo/git/duetto/docs /home/paolo/git/duetto/README.md /home/paolo/git/duetto/CHANGELOG.md`
 
 4. **Conversazioni passate**, solo se le prime tre non bastano: sono file
    JSON grossi, quindi estrai il contesto attorno alla parola invece di

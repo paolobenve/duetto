@@ -380,7 +380,7 @@ export default function ChannelScreen(props: Props) {
           // perché qualcosa è cambiato.
           onPress={press(() => setNovita(true))}>
           <View style={[styles.dot, together ? styles.dotGreen : styles.dotGrey]} />
-          <Text style={styles.badgeText}>DuoTalk</Text>
+          <Text style={styles.badgeText}>Duetto</Text>
           <Text style={styles.version}>  {VERSION_LABEL}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.gear} onPress={press(onOpenSettings)}>

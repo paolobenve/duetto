@@ -1,4 +1,4 @@
-package com.duotalk.platform
+package com.duetto.platform
 
 import android.app.PictureInPictureParams
 import android.content.pm.PackageManager
@@ -20,7 +20,7 @@ import com.facebook.react.bridge.ReactMethod
 class PipModule(private val ctx: ReactApplicationContext) :
     ReactContextBaseJavaModule(ctx) {
 
-    override fun getName() = "DuoTalkPip"
+    override fun getName() = "DuettoPip"
 
     companion object {
         // Limiti imposti da Android: fuori da questi la richiesta fallisce.

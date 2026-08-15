@@ -1,4 +1,4 @@
-# DuoTalk
+# Duetto
 
 Un mini "Discord" fatto su misura per **due sole persone**. Non è un'app per *chiamare*:
 è un **canale permanente**. Apri l'app e sei dentro; se c'è anche l'altro vi collegate da
@@ -37,7 +37,7 @@ nessun canale o passphrase da tenere uguali.
 ## Struttura
 
 ```
-duotalk/
+duetto/
 ├── server/              # Signaling WebSocket
 │   ├── src/index.js     # presenza, stati, inoltro buste, relay TURN
 │   ├── smoke-test.mjs   # 29 controlli end-to-end
@@ -45,7 +45,7 @@ duotalk/
 │   └── deploy/          # haproxy, apache, nginx, coturn, systemd
 ├── app/                 # App Android in React Native
 │   ├── src/             # accoppiamento, crypto, signaling, webrtc, UI
-│   ├── modules/duotalk-platform/   # modulo nativo Kotlin
+│   ├── modules/duetto-platform/   # modulo nativo Kotlin
 │   ├── bootstrap.sh     # genera la parte nativa Android
 │   └── scripts/         # sincronizzazione moduli, numero di build, manifest
 └── docs/                # architettura e guida al deploy
@@ -233,11 +233,11 @@ Modello di minaccia completo in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 L'app registra tutto quello che serve. Con il telefono collegato:
 
 ```bash
-adb logcat -s ReactNativeJS | grep duotalk
+adb logcat -s ReactNativeJS | grep duetto
 ```
 
-Tre famiglie di righe: `duotalk-rtc` per il collegamento audio/video, `duotalk-sig` per la
-connessione al server (comprese le cadute, con codice e durata), `duotalk-presenza` per
+Tre famiglie di righe: `duetto-rtc` per il collegamento audio/video, `duetto-sig` per la
+connessione al server (comprese le cadute, con codice e durata), `duetto-presenza` per
 l'ascolto dopo il riavvio.
 
 La riga più utile quando qualcosa cade è `percorso:`, che dice da dove sta passando il

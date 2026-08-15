@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, AppState,
 } from 'react-native';
-import { Foreground } from 'duotalk-platform';
+import { Foreground } from 'duetto-platform';
 
 type Props = {
   onDone: () => void;
@@ -73,7 +73,7 @@ export default function SetupScreen({ onDone }: Props) {
       <Text style={styles.big}>{'\u{1F50B}'}</Text>
       <Text style={styles.title}>Due cose, e poi non ci pensi più</Text>
       <Text style={styles.body}>
-        Senza queste, il telefono chiude DuoTalk quando gli pare e smetti di
+        Senza queste, il telefono chiude Duetto quando gli pare e smetti di
         ricevere gli avvisi. Sembra un difetto dell’app, ma è il sistema.
       </Text>
 
@@ -85,7 +85,7 @@ export default function SetupScreen({ onDone }: Props) {
             ? 'Il tuo telefono non permette di chiederlo direttamente. Apri la scheda ' +
               'dell’app e cerca «Batteria» o «Risparmio energetico»: scegli ' +
               '«Nessuna restrizione».'
-            : 'Permette a DuoTalk di restare attiva anche a schermo spento.'
+            : 'Permette a Duetto di restare attiva anche a schermo spento.'
         }
         done={batteryOk}
         action={batteryRefused ? 'Apri la scheda dell’app' : 'Consenti'}
@@ -106,10 +106,10 @@ export default function SetupScreen({ onDone }: Props) {
           title="Avvio automatico"
           text={
             avviatoDaSolo
-              ? 'Funziona: dopo l’ultimo riavvio del telefono DuoTalk è ripartita da ' +
+              ? 'Funziona: dopo l’ultimo riavvio del telefono Duetto è ripartita da ' +
                 'sola, senza che tu la aprissi.'
               : 'Il tuo telefono blocca le app dopo un riavvio finché non le autorizzi. ' +
-                'Si apre la schermata di sistema: cerca DuoTalk e attivalo.\n\n' +
+                'Si apre la schermata di sistema: cerca Duetto e attivalo.\n\n' +
                 'Se l’hai già fatto, si saprà al prossimo riavvio: è l’unico modo di ' +
                 'verificarlo, perché quell’autorizzazione nessuna app può leggerla.'
           }

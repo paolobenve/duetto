@@ -1,11 +1,11 @@
-# DuoTalk - snippet nginx per esporre il signaling WebSocket con TLS.
+# Duetto - snippet nginx per esporre il signaling WebSocket con TLS.
 # Mettilo dentro un server{} gia' servito in HTTPS sul tuo dominio.
 #
-#   L'app si collegera' a:  wss://TUO_DOMINIO/duotalk/ws
+#   L'app si collegera' a:  wss://TUO_DOMINIO/duetto/ws
 #
 # Il signaling gira in locale su 127.0.0.1:8787 (vedi .env).
 
-location /duotalk/ws {
+location /duetto/ws {
     proxy_pass http://127.0.0.1:8787;
     proxy_http_version 1.1;
 
@@ -23,7 +23,7 @@ location /duotalk/ws {
     proxy_send_timeout 3600s;
 }
 
-location = /duotalk/healthz {
+location = /duetto/healthz {
     proxy_pass http://127.0.0.1:8787/healthz;
     proxy_set_header Host $host;
 }

@@ -20,7 +20,7 @@ export type AudioRoute = 'SPEAKER_PHONE' | 'EARPIECE' | 'WIRED_HEADSET' | 'BLUET
 /** Ordine con cui il pulsante cicla. */
 const ORDER: AudioRoute[] = ['SPEAKER_PHONE', 'EARPIECE', 'WIRED_HEADSET', 'BLUETOOTH'];
 
-const STORAGE_KEY = 'duotalk.audioRoute.v1';
+const STORAGE_KEY = 'duetto.audioRoute.v1';
 
 export const ROUTE_LABEL: Record<AudioRoute, string> = {
   SPEAKER_PHONE: 'Vivavoce',

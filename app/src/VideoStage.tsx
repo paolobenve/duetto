@@ -52,7 +52,7 @@ type Ancoraggio = {
 };
 
 let posizioneScelta: Ancoraggio | null = null;
-const CHIAVE_PIP = 'duotalk.pip.v2';
+const CHIAVE_PIP = 'duetto.pip.v2';
 
 /** Scrittura pigra: trascinando si salverebbe a ogni fotogramma. */
 let salvaTimer: ReturnType<typeof setTimeout> | null = null;

@@ -1,5 +1,5 @@
 {
-  "name": "DuoTalk",
+  "name": "Duetto",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.1.0",
-    "duotalk-platform": "file:modules/duotalk-platform",
+    "duetto-platform": "file:modules/duetto-platform",
     "react": "18.3.1",
     "react-native": "0.76.5",
     "react-native-get-random-values": "^1.11.0",

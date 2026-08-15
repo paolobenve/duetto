@@ -1,8 +1,8 @@
 {
-  "name": "duotalk-signaling",
+  "name": "duetto-signaling",
   "version": "0.1.0",
   "private": true,
-  "description": "Signaling server per DuoTalk: fa incontrare i due soli peer e inoltra messaggi cifrati (che il server non puo' leggere).",
+  "description": "Signaling server per Duetto: fa incontrare i due soli peer e inoltra messaggi cifrati (che il server non puo' leggere).",
   "type": "module",
   "main": "src/index.js",
   "scripts": {

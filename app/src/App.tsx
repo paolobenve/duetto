@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
-import { Foreground, Pip, AppWindow, Visibility, Codecs } from 'duotalk-platform';
+import { Foreground, Pip, AppWindow, Visibility, Codecs } from 'duetto-platform';
 import {
   DuoConfig, PairInfo, loadConfig, saveConfig,
   isServerConfigured, isPaired, VIDEO_PROFILES,
@@ -144,7 +144,7 @@ export default function App() {
    * accoppiamento non serve a nulla, ma un valore deve esserci.
    */
   const face = React.useMemo(
-    () => (cfg?.pair ? peerAvatar(cfg.pair.id, cfg.pair.side) : avatarFor('duotalk')),
+    () => (cfg?.pair ? peerAvatar(cfg.pair.id, cfg.pair.side) : avatarFor('duetto')),
     [cfg?.pair],
   );
 
@@ -173,7 +173,7 @@ export default function App() {
     const t = setTimeout(() => {
       if (!inChannelRef.current || !peerActiveRef.current) return;
       relayRiprovato.current = true;
-      console.log('[duotalk-rtc]', 'passiamo dal relay: provo a cercare una strada diretta');
+      console.log('[duetto-rtc]', 'passiamo dal relay: provo a cercare una strada diretta');
       if (politeRef.current) signalingRef.current?.sendSignal({ kind: 'renegotiate' });
       else sessionRef.current?.restartIce();
     }, 8000);
@@ -183,7 +183,7 @@ export default function App() {
   // Quale profilo l'interfaccia sta DAVVERO mostrando: distingue "non è
   // arrivato" da "è arrivato ma non si vede".
   useEffect(() => {
-    if (cfg) console.log('[duotalk-ui]', 'profilo mostrato:', cfg.videoQuality);
+    if (cfg) console.log('[duetto-ui]', 'profilo mostrato:', cfg.videoQuality);
   }, [cfg?.videoQuality]);
 
   // Sapere se siamo in primo piano decide se mostrare una notifica o no.
@@ -372,7 +372,7 @@ export default function App() {
               // chi bussa lo fa proprio perché l'altro non risponde, e il
               // telefono può essere acceso sul tavolo senza nessuno davanti.
               Foreground.notify(
-                'DuoTalk',
+                'Duetto',
                 named ? `${n} ti sta chiamando` : 'Ti stanno chiamando',
               ).catch(() => {});
               // Una vibrazione mancata è un richiamo meno evidente, non
@@ -385,7 +385,7 @@ export default function App() {
             // notificarlo sarebbe solo rumore.
             if (appStateRef.current !== 'active') {
               Foreground.notify(
-                'DuoTalk',
+                'Duetto',
                 named ? `${n} è nel canale` : 'C’è qualcuno nel canale',
               ).catch(() => {});
             }
@@ -524,7 +524,7 @@ export default function App() {
     const s = sessionRef.current;
     if (!s || !s.hasPeer()) { attachPeer(true); return; }
 
-    console.log('[duotalk-rtc]', 'rete tornata: riaccendo ICE senza ricostruire');
+    console.log('[duetto-rtc]', 'rete tornata: riaccendo ICE senza ricostruire');
     if (politeRef.current) signalingRef.current?.sendSignal({ kind: 'renegotiate' });
     else s.restartIce();
 
@@ -532,7 +532,7 @@ export default function App() {
     hardTimer.current = setTimeout(() => {
       if (connStateRef.current === 'connected') return;
       if (!inChannelRef.current || !peerActiveRef.current) return;
-      console.log('[duotalk-rtc]', 'la riaccensione non è bastata: ricostruisco');
+      console.log('[duetto-rtc]', 'la riaccensione non è bastata: ricostruisco');
       attachPeer(true);
     }, 6000);
   }, [attachPeer, clearRecovery]);
@@ -891,7 +891,7 @@ export default function App() {
     <View style={styles.safe}>
       <StatusBar barStyle="light-content" />
       <ChannelScreen
-        channel={shownName || 'DuoTalk'}
+        channel={shownName || 'Duetto'}
         peerName={shownName}
         peerAvatar={face}
         videoStats={videoStats}

@@ -1,6 +1,6 @@
-# DuoTalk - HAProxy davanti al signaling.
+# Duetto - HAProxy davanti al signaling.
 #
-# Se la 443 e' gestita da HAProxy, conviene mandargli /duotalk/ DIRETTAMENTE
+# Se la 443 e' gestita da HAProxy, conviene mandargli /duetto/ DIRETTAMENTE
 # al signaling su 127.0.0.1:8787, senza passare dal resto della catena
 # (tipicamente Varnish e poi il web server).
 #
@@ -9,15 +9,15 @@
 #    sulle richieste con Upgrade;
 #  - mettere una cache davanti a un canale di signaling non ha senso.
 #
-# L'app si collegherà a:  wss://TUO_DOMINIO/duotalk/ws
+# L'app si collegherà a:  wss://TUO_DOMINIO/duetto/ws
 
 
 # ---------------------------------------------------------------------
 # 1) Nel frontend che ascolta sulla 443, insieme agli altri acl
 # ---------------------------------------------------------------------
 
-    acl duotalk_path path_beg /duotalk/
-    use_backend duotalk_backend if duotalk_path
+    acl duetto_path path_beg /duetto/
+    use_backend duetto_backend if duetto_path
 
 # Le use_backend si valutano nell'ordine di scrittura e comunque prima
 # del default_backend: se hai altre use_backend generiche, questa deve
@@ -28,7 +28,7 @@
 # 2) Backend nuovo, in fondo al file
 # ---------------------------------------------------------------------
 
-backend duotalk_backend
+backend duetto_backend
     mode http
 
     # Scavalca "option http-server-close" ereditata da defaults: chiude la
@@ -45,4 +45,4 @@ backend duotalk_backend
     timeout tunnel 3600s
     timeout server 3600s
 
-    server duotalk 127.0.0.1:8787 check
+    server duetto 127.0.0.1:8787 check

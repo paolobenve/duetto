@@ -93,7 +93,7 @@ const label = (s: string) => decodeUTF8(s);
  */
 export async function pairIdFromCode(code: string): Promise<string> {
   const clean = normalizeCode(code);
-  let h = sha512(label('duotalk-pair-id|'), label(clean));
+  let h = sha512(label('duetto-pair-id|'), label(clean));
   for (let i = 0; i < KDF_ROUNDS; i++) {
     h = nacl.hash(h);
     // Ogni tanto restituiamo il controllo al ciclo di eventi, così
@@ -126,7 +126,7 @@ export function deriveSharedKey(
   code: string,
 ): Uint8Array {
   const dh = nacl.scalarMult(mySecret, theirPublic);
-  return sha512(label('duotalk-key|'), dh, label('|'), label(normalizeCode(code)))
+  return sha512(label('duetto-key|'), dh, label('|'), label(normalizeCode(code)))
     .slice(0, nacl.secretbox.keyLength);
 }
 
@@ -136,7 +136,7 @@ export function deriveSharedKey(
  * digitato è sbagliato (o qualcuno sta provando a intromettersi).
  */
 export function confirmationFor(key: Uint8Array, side: 'A' | 'B'): string {
-  return encodeBase64(sha512(label(`duotalk-confirm|${side}|`), key).slice(0, 16));
+  return encodeBase64(sha512(label(`duetto-confirm|${side}|`), key).slice(0, 16));
 }
 
 export const keyToBase64 = (k: Uint8Array) => encodeBase64(k);

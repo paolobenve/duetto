@@ -7,7 +7,7 @@ declare module 'tweetnacl-util' {
   export function decodeBase64(s: string): Uint8Array;
 }
 
-declare module 'duotalk-platform' {
+declare module 'duetto-platform' {
   /** Foreground service Android: tiene viva la presenza nel canale. */
   export const Foreground: {
     start(text?: string, withCamera?: boolean): Promise<boolean>;

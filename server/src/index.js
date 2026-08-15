@@ -1,4 +1,4 @@
-// DuoTalk - Signaling server
+// Duetto - Signaling server
 // -------------------------------------------------------------
 // Modello "canale": non ci sono chiamate da fare o ricevere. Esiste un
 // canale permanente per una coppia; chi entra ci resta e aspetta l'altro.
@@ -320,13 +320,13 @@ const heartbeat = setInterval(() => {
 wss.on('close', () => clearInterval(heartbeat));
 
 httpServer.listen(PORT, HOST, () => {
-  console.log(`[duotalk] signaling in ascolto su ws://${HOST}:${PORT}`);
-  console.log(`[duotalk] TURN di riserva: ${turnConfig() ? TURN_URL : 'non configurato (le reti diverse non si collegheranno)'}`);
+  console.log(`[duetto] signaling in ascolto su ws://${HOST}:${PORT}`);
+  console.log(`[duetto] TURN di riserva: ${turnConfig() ? TURN_URL : 'non configurato (le reti diverse non si collegheranno)'}`);
 });
 
 for (const sig of ['SIGINT', 'SIGTERM']) {
   process.on(sig, () => {
-    console.log(`\n[duotalk] ${sig}, chiusura...`);
+    console.log(`\n[duetto] ${sig}, chiusura...`);
     for (const ws of wss.clients) ws.close(1001, 'server-shutdown');
     httpServer.close(() => process.exit(0));
   });

@@ -31,7 +31,7 @@ const SYMBOLS = [
 export type Avatar = { color: string; symbol: string };
 
 export function avatarFor(seed: string): Avatar {
-  const h = nacl.hash(decodeUTF8(`duotalk-avatar|${seed}`));
+  const h = nacl.hash(decodeUTF8(`duetto-avatar|${seed}`));
   return {
     color: COLORS[h[0] % COLORS.length],
     symbol: SYMBOLS[h[1] % SYMBOLS.length],

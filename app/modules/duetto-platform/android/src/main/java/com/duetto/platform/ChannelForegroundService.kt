@@ -1,4 +1,4 @@
-package com.duotalk.platform
+package com.duetto.platform
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -30,7 +30,7 @@ class ChannelForegroundService : Service() {
     private var cameraActive: Boolean = false
 
     companion object {
-        const val CHANNEL_ID = "duotalk_presence"
+        const val CHANNEL_ID = "duetto_presence"
         const val NOTIFICATION_ID = 4711
         const val EXTRA_TEXT = "text"
         const val EXTRA_CAMERA = "camera"
@@ -82,7 +82,7 @@ class ChannelForegroundService : Service() {
             // LOW: niente suono, la notifica è solo informativa
             NotificationManager.IMPORTANCE_LOW,
         ).apply {
-            description = "Mostra che sei collegato al canale DuoTalk"
+            description = "Mostra che sei collegato al canale Duetto"
             setShowBadge(false)
             enableVibration(false)
         }
@@ -101,7 +101,7 @@ class ChannelForegroundService : Service() {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("DuoTalk")
+            .setContentTitle("Duetto")
             .setContentText(currentText)
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setContentIntent(pending)
@@ -131,7 +131,7 @@ class ChannelForegroundService : Service() {
     private fun acquireWakeLock() {
         if (wakeLock?.isHeld == true) return
         val pm = getSystemService(POWER_SERVICE) as? PowerManager ?: return
-        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "DuoTalk::presenza").apply {
+        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Duetto::presenza").apply {
             setReferenceCounted(false)
             acquire(WAKELOCK_TIMEOUT_MS)
         }
