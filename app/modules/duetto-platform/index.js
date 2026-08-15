@@ -5,6 +5,7 @@ const NativeForeground = NativeModules.DuettoForeground;
 const NativePip = NativeModules.DuettoPip;
 const NativeVisibility = NativeModules.DuettoVisibility;
 const NativeCodecs = NativeModules.DuettoCodecs;
+const NativeAudio = NativeModules.DuettoAudio;
 
 /**
  * Chiama un metodo nativo solo se esiste davvero.
@@ -148,6 +149,23 @@ export const AppWindow = isAndroid && NativePip
 export const Codecs = isAndroid && NativeCodecs
   ? { hasHardwareVp9Encoder: () => call(NativeCodecs, 'hasHardwareVp9Encoder') }
   : { hasHardwareVp9Encoder: unavailable };
+
+/**
+ * I tasti del volume.
+ *
+ * Il suono della conversazione esce dal volume "chiamata", ma i tasti
+ * laterali regolano quello che il sistema crede sia il flusso attivo: per
+ * un'app comune il multimedia. Su certi telefoni - Motorola Edge 50
+ * Fusion fra questi - premerli non ha quindi alcun effetto sulla voce
+ * dell'altro, che resta al volume che ha.
+ */
+export const Audio = isAndroid && NativeAudio
+  ? {
+      /** `true` entrando nel canale, `false` uscendone. */
+      useCallVolumeKeys: (active) =>
+        call(NativeAudio, 'useCallVolumeKeys', !!active),
+    }
+  : { useCallVolumeKeys: unavailable };
 
 /**
  * Se l'app sta davvero mostrando qualcosa sullo schermo.

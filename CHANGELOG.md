@@ -8,6 +8,14 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.1.30
+
+**I tasti del volume ora regolano la voce dell'altro.** Su certi telefoni — il Motorola
+Edge 50 Fusion fra questi — premerli non cambiava nulla: il suono della conversazione esce
+dal volume "chiamata", mentre i tasti agivano su quello multimedia, e chi ascoltava se lo
+teneva com'era, spesso altissimo. Su altri telefoni funzionava già, perché Android tirava a
+indovinare bene; ora glielo diciamo, invece di sperare.
+
 ## 1.1.29
 
 **L'app si chiama Duetto.** Cambia il nome dappertutto: l'icona, la notifica fissa, gli

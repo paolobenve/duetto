@@ -41,6 +41,11 @@ declare module 'duetto-platform' {
     hasHardwareVp9Encoder(): Promise<boolean>;
   };
 
+  /** Manda i tasti del volume sul flusso della conversazione. */
+  export const Audio: {
+    useCallVolumeKeys(active: boolean): Promise<boolean>;
+  };
+
   /**
    * Se l'app sta davvero mostrando qualcosa. Diverso da AppState: in
    * Picture-in-Picture l'activity è in pausa ma la finestrella si vede.

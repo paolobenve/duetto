@@ -21,6 +21,7 @@ class DuettoPackage : ReactPackage {
         PipModule(reactContext),
         VisibilityModule(reactContext),
         CodecsModule(reactContext),
+        AudioModule(reactContext),
     )
 
     override fun createViewManagers(

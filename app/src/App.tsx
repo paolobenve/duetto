@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
-import { Foreground, Pip, AppWindow, Visibility, Codecs } from 'duetto-platform';
+import { Foreground, Pip, AppWindow, Visibility, Codecs, Audio } from 'duetto-platform';
 import {
   DuoConfig, PairInfo, loadConfig, saveConfig,
   isServerConfigured, isPaired, VIDEO_PROFILES,
@@ -469,6 +469,7 @@ export default function App() {
       signalingRef.current = null;
       Foreground.stop().catch(() => {});
       try { InCallManager.stop(); } catch { /* noop */ }
+      Audio.useCallVolumeKeys(false).catch(() => {});
     };
     // attachPeer è stabile: usa solo ref. `cfg` si legge dalla chiusura
     // ma non è una dipendenza: solo connKey deve far rifare tutto.
@@ -621,6 +622,10 @@ export default function App() {
       InCallManager.start({ media: 'audio' });
     } catch { /* noop */ }
 
+    // I tasti del volume vanno detti a mano: senza, su certi telefoni
+    // regolano il multimedia e non hanno effetto sulla voce dell'altro.
+    Audio.useCallVolumeKeys(true).catch(() => {});
+
     Foreground.setText('Sei nel canale').catch(() => {});
     setInChannel(true);
     inChannelRef.current = true;
@@ -637,6 +642,7 @@ export default function App() {
     sessionRef.current?.leaveChannel();
     sessionRef.current = null;
     try { InCallManager.stop(); } catch { /* noop */ }
+    Audio.useCallVolumeKeys(false).catch(() => {});
     Foreground.setCameraActive(false).catch(() => {});
     Foreground.setText('In ascolto').catch(() => {});
     setLocalStream(null);

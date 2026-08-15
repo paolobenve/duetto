@@ -7,6 +7,15 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.1.30",
+    "paragrafi": [
+      {
+        "forte": "I tasti del volume ora regolano la voce dell'altro.",
+        "testo": "Su certi telefoni — il Motorola Edge 50 Fusion fra questi — premerli non cambiava nulla: il suono della conversazione esce dal volume \"chiamata\", mentre i tasti agivano su quello multimedia, e chi ascoltava se lo teneva com'era, spesso altissimo. Su altri telefoni funzionava già, perché Android tirava a indovinare bene; ora glielo diciamo, invece di sperare."
+      }
+    ]
+  },
+  {
     "versione": "1.1.29",
     "paragrafi": [
       {
