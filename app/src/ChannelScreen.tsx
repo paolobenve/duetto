@@ -424,8 +424,10 @@ export default function ChannelScreen(props: Props) {
           // frontale, più persone per quella dietro, che è ciò che di
           // solito ci si trova a inquadrare.
           icon={cameraFrontale ? <IconaFrontale /> : <IconaPosteriore />}
-          // Senza camera accesa non c'è nulla da girare.
-          disabled={!videoOn}
+          // Premibile anche a video spento: lì non gira niente, sceglie
+          // con quale camera si accenderà. Serve a inquadrare qualcosa
+          // senza mostrare prima, per un istante, la propria faccia.
+          disabled={false}
           onPress={press(onSwitchCamera)}
         />
         <CircleButton

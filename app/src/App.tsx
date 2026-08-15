@@ -746,9 +746,9 @@ export default function App() {
     try {
       setVideoOn(await s.enableVideo());
       setLocalAspect(s.getLocalVideoAspect());
-      // enableVideo chiede sempre `facingMode: 'user'`: riaccendendo si
-      // riparte dalla frontale, qualunque fosse quella di prima.
-      setCameraFrontale(true);
+      // La camera si apre su quella scelta, che può essere stata cambiata
+      // a video spento: qui si allinea solo l'icona.
+      setCameraFrontale(s.isCameraFrontale());
     } catch (e: any) {
       Foreground.setCameraActive(false).catch(() => {});
       Alert.alert('Errore camera', String(e?.message ?? e));
@@ -924,8 +924,11 @@ export default function App() {
         onToggleAudio={() => setAudioOn(sessionRef.current?.toggleAudio() ?? false)}
         onToggleVideo={onToggleVideo}
         onSwitchCamera={() => {
-          sessionRef.current?.switchCamera();
-          setCameraFrontale((v) => !v);
+          const s = sessionRef.current;
+          if (!s) return;
+          // La verità sta nella sessione, anche a video spento: è lei che
+          // ricorda con quale camera si aprirà.
+          setCameraFrontale(s.switchCamera());
         }}
         onSelectRoute={audio.select}
         onKnock={() => signalingRef.current?.knock()}

@@ -8,6 +8,14 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.1.31
+
+**"Gira" si può premere anche a video spento.** Non gira niente lì per lì: sceglie con
+quale camera si accenderà, e l'icona lo mostra. Così si inquadra qualcosa senza far vedere
+prima, per un istante, la propria faccia. Nello stesso giro sparisce un fastidio: cambiando
+risoluzione mentre si riprendeva con la camera posteriore, la ripresa tornava sulla
+frontale da sé.
+
 ## 1.1.30
 
 **I tasti del volume ora regolano la voce dell'altro.** Su certi telefoni — il Motorola

@@ -102,6 +102,13 @@ export class ChannelSession {
   private statsTimer: ReturnType<typeof setInterval> | null = null;
   /** l'altro dichiara la camera accesa: lo dice il messaggio `state` */
   private peerVideoDeclared = false;
+
+  /**
+   * Quale camera si usa. Vale anche a video spento, così si può
+   * sceglierla prima di accendere, e sopravvive a una riapertura della
+   * camera (cambio di risoluzione).
+   */
+  private cameraFrontale = true;
   /** questo telefono sa encodare VP9 in hardware */
   private localVp9 = false;
   /** lo sa fare anche l'altro: VP9 ha senso solo se entrambi */
@@ -826,7 +833,10 @@ export class ChannelSession {
     const profile = VIDEO_PROFILES[this.cfg.videoQuality] ?? VIDEO_PROFILES.standard;
     const cam = await mediaDevices.getUserMedia({
       video: {
-        facingMode: 'user',
+        // La camera scelta, non sempre la frontale: cambiando risoluzione
+        // si riapre la camera, e ripartire da 'user' riportava la ripresa
+        // sulla propria faccia senza che nessuno l'avesse chiesto.
+        facingMode: this.cameraFrontale ? 'user' : 'environment',
         // La risoluzione viene dal profilo: è l'unica leva che nessun
         // encoder può ignorare. Scalare l'uscita sarebbe indolore, ma su
         // alcuni telefoni la richiesta viene registrata e poi disattesa.
@@ -1133,10 +1143,26 @@ export class ChannelSession {
     return false;
   }
 
-  /** Passa da camera frontale a posteriore. */
-  switchCamera() {
+  /**
+   * Passa da camera frontale a posteriore.
+   *
+   * Funziona anche a video spento: in quel caso non c'è nulla da girare
+   * ora, ma la scelta resta e vale per quando lo si accende. È il modo di
+   * inquadrare qualcosa senza mostrare prima, per un istante, la propria
+   * faccia.
+   *
+   * @returns true se d'ora in poi si riprende con la frontale
+   */
+  switchCamera(): boolean {
+    this.cameraFrontale = !this.cameraFrontale;
     const track = this.localStream?.getVideoTracks()[0] as any;
     if (track && typeof track._switchCamera === 'function') track._switchCamera();
+    return this.cameraFrontale;
+  }
+
+  /** Con quale camera si riprende (o si riprenderà). */
+  isCameraFrontale(): boolean {
+    return this.cameraFrontale;
   }
 
   /**
