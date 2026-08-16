@@ -95,15 +95,22 @@ object Avvisi {
      * l'altro nelle impostazioni di Android, tutti chiamati "Avvisi dal
      * canale", senza che si capisca quale sia quello vivo.
      */
-    fun canale(ctx: Context): String {
+    fun canale(ctx: Context, ripulisci: Boolean = false): String {
         val id = idCanale(ctx)
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return id
 
         val manager = ctx.getSystemService(NotificationManager::class.java) ?: return id
 
-        for (vecchio in manager.notificationChannels) {
-            if (vecchio.id.startsWith(PREFISSO_CANALE) && vecchio.id != id) {
-                manager.deleteNotificationChannel(vecchio.id)
+        // La pulizia la fa solo chi cambia le impostazioni. Farla a ogni
+        // notifica significava cancellare e ricreare canali nel momento
+        // in cui bisogna soltanto mostrare un avviso: se le preferenze
+        // lette li' fossero per qualunque motivo diverse da quelle scelte,
+        // la notifica stessa butterebbe via il canale giusto.
+        if (ripulisci) {
+            for (vecchio in manager.notificationChannels) {
+                if (vecchio.id.startsWith(PREFISSO_CANALE) && vecchio.id != id) {
+                    manager.deleteNotificationChannel(vecchio.id)
+                }
             }
         }
         if (manager.getNotificationChannel(id) != null) return id

@@ -83,7 +83,9 @@ class AvvisiModule(private val ctx: ReactApplicationContext) :
     fun configura(vibra: String, suono: String, uri: String, promise: Promise) {
         try {
             Avvisi.salva(ctx, vibra, suono, uri)
-            promise.resolve(Avvisi.canale(ctx))
+            // Qui sì: è il momento in cui le preferenze cambiano davvero,
+            // e i canali che non corrispondono più vanno tolti di mezzo.
+            promise.resolve(Avvisi.canale(ctx, ripulisci = true))
         } catch (e: Exception) {
             promise.reject("avvisi_errore", e)
         }
