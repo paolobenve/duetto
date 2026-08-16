@@ -7,6 +7,15 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.1.37",
+    "paragrafi": [
+      {
+        "forte": "Il video dell'altro compariva a fatica, e a volte solo riavviando l'app.",
+        "testo": "Colpa di una modifica di due versioni fa: da quando il microfono si apre solo all'arrivo dell'altro, fra il controllo «la connessione c'è già?» e la sua creazione passava mezzo secondo, e in quel mezzo secondo ne nascevano due. La seconda vinceva, la prima restava viva a ricevere un video che nessuno guardava più. Ora chi arriva mentre la connessione si sta creando aspetta quella, invece di farne un'altra."
+      }
+    ]
+  },
+  {
     "versione": "1.1.35",
     "paragrafi": [
       {
