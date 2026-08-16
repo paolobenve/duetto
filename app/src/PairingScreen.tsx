@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator,
   ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { DuoConfig, PairInfo } from './config';
+import { DuoConfig, PairInfo, displayServer } from './config';
 import { Signaling, PairMessage } from './signaling';
 import {
   generateCode, normalizeCode, formatCode, isCodeComplete,
@@ -292,7 +292,7 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
       </Text>
       <Primary label="Crea il codice" onPress={startCreate} />
       <Primary label="Ho un codice" outline onPress={() => setStep('join')} />
-      <Secondary label="Cambia server" onPress={onBack} />
+      <Secondary label="Cambia server" value={displayServer(cfg.serverUrl)} onPress={onBack} />
       <Text style={styles.version}>{VERSION_LABEL}</Text>
     </Screen>
   );
@@ -328,10 +328,16 @@ function Primary(props: { label: string; onPress: () => void; disabled?: boolean
   );
 }
 
-function Secondary(props: { label: string; onPress: () => void }) {
+function Secondary(props: { label: string; value?: string; onPress: () => void }) {
   return (
     <TouchableOpacity style={styles.link} onPress={props.onPress}>
-      <Text style={styles.linkText}>{props.label}</Text>
+      <Text style={styles.linkText}>
+        {props.label}
+        {/* Il server in uso accanto al comando che lo cambia: è la sola
+            cosa che si vorrebbe sapere prima di toccarlo, e prima
+            bisognava entrare per scoprire dove si era puntati. */}
+        {props.value ? <Text style={styles.linkValue}>{`  ${props.value}`}</Text> : null}
+      </Text>
     </TouchableOpacity>
   );
 }
@@ -373,5 +379,7 @@ const styles = StyleSheet.create({
   buttonOutlineText: { color: '#7cc4ff' },
   link: { marginTop: 22, padding: 10 },
   linkText: { color: '#6b7686', fontSize: 15 },
+  // Più spento del comando: è un'informazione, non una cosa da premere.
+  linkValue: { color: '#4a5462', fontSize: 15 },
   version: { color: '#3a4353', fontSize: 12, marginTop: 20 },
 });
