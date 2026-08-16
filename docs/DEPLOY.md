@@ -200,7 +200,16 @@ Nel proxy, accanto alle regole di `/duotalk/ws` metti le stesse per `/duetto/ws`
 curl -s https://TUO_DOMINIO/duetto/healthz     # {"ok":true,...}
 ```
 
-Poi la cartella e il servizio. Il `.env` sta dentro `/opt/duotalk/server` e va conservato:
+Poi la cartella e il servizio. Fa tutto `server/deploy/migra-da-duotalk.sh`, che conserva
+proprietario, gruppo e unit esistente — cambia i nomi e basta — e se il servizio nuovo non
+risponde rimette le cose com'erano:
+
+```bash
+scp server/deploy/migra-da-duotalk.sh utente@TUO_SERVER:/tmp/
+ssh -t utente@TUO_SERVER 'sudo bash /tmp/migra-da-duotalk.sh'
+```
+
+A mano, per capire cosa fa: il `.env` sta dentro `/opt/duotalk/server` e va conservato,
 per questo si sposta invece di ricreare.
 
 ```bash
