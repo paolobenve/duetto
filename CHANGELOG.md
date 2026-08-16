@@ -8,6 +8,15 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.1.35
+
+**L'app tiene un diario dei consumi.** Una riga ogni cinque minuti — livello della batteria,
+schermo acceso o spento, rete, e cosa stava facendo Duetto — per capire quanto costa
+davvero tenerla in ascolto, invece di discuterne. Ogni telefono manda il proprio diario
+all'altro una volta all'ora, dentro la stessa busta cifrata di tutto il resto: così
+collegandone uno solo a un computer si leggono tutti e due. Nel diario non c'è nulla di
+personale: numeri della batteria e stato dell'app, nessun contenuto di quello che vi dite.
+
 ## 1.1.33
 
 **Il promemoria «Sei nel canale, tocca Avvisa per farglielo sapere» si vede anche con la

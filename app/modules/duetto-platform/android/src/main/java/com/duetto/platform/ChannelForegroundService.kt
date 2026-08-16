@@ -45,11 +45,17 @@ class ChannelForegroundService : Service() {
      */
     private val orologio = Handler(Looper.getMainLooper())
     private var diarioAvviato = false
-    private val scriviDiario = object : Runnable {
-        override fun run() {
-            Diario.campiona(applicationContext)
-            orologio.postDelayed(this, INTERVALLO_DIARIO_MS)
-        }
+
+    /**
+     * Non si riprogramma da sé: ci pensa Diario a ogni riga scritta, da
+     * qualunque parte venga. Facendolo anche qui, una riga fuori tempo
+     * ne lascerebbe due in coda e il diario si infittirebbe da solo.
+     */
+    private val scriviDiario = Runnable { Diario.campiona(applicationContext) }
+
+    private fun riprogrammaDiario() {
+        orologio.removeCallbacks(scriviDiario)
+        orologio.postDelayed(scriviDiario, INTERVALLO_DIARIO_MS)
     }
 
     companion object {
@@ -122,8 +128,9 @@ class ChannelForegroundService : Service() {
         // chiamata, e il diario si riempirebbe di righe gemelle.
         if (!diarioAvviato) {
             diarioAvviato = true
+            Diario.quandoScrive { riprogrammaDiario() }
+            // La riga d'avvio riprogramma già l'attesa da sé.
             Diario.campiona(applicationContext, "avvio")
-            orologio.postDelayed(scriviDiario, INTERVALLO_DIARIO_MS)
         }
 
         // Se Android ci uccide per memoria, ci fa ripartire.
@@ -132,6 +139,10 @@ class ChannelForegroundService : Service() {
 
     override fun onDestroy() {
         try { unregisterReceiver(cavo) } catch (_: Exception) { /* mai registrato */ }
+        // Prima si stacca la riprogrammazione, poi si scrive l'ultima
+        // riga: se no quella rimetterebbe in coda un'attesa che non ha
+        // più nessuno ad aspettarla.
+        Diario.quandoScrive(null)
         orologio.removeCallbacks(scriviDiario)
         diarioAvviato = false
         Diario.campiona(applicationContext, "uscita")

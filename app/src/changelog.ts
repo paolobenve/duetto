@@ -7,11 +7,20 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.1.35",
+    "paragrafi": [
+      {
+        "forte": "L'app tiene un diario dei consumi.",
+        "testo": "Una riga ogni cinque minuti — livello della batteria, schermo acceso o spento, rete, e cosa stava facendo Duetto — per capire quanto costa davvero tenerla in ascolto, invece di discuterne. Ogni telefono manda il proprio diario all'altro una volta all'ora, dentro la stessa busta cifrata di tutto il resto: così collegandone uno solo a un computer si leggono tutti e due. Nel diario non c'è nulla di personale: numeri della batteria e stato dell'app, nessun contenuto di quello che vi dite."
+      }
+    ]
+  },
+  {
     "versione": "1.1.33",
     "paragrafi": [
       {
-        "forte": "«Sei nel canale, tocca Avvisa» si vede anche con la camera accesa.",
-        "testo": "Prima quel promemoria stava solo al posto del video: accendendo la propria camera spariva, e restava la propria immagine senza niente che spiegasse perché non succedeva nulla. Ora compare in sovrimpressione, senza la faccia dell'altro — sopra l'immagine peserebbe, e chi guarda sa già chi sta aspettando — e si attenua insieme ai comandi, perché è un promemoria e non un allarme."
+        "forte": "Il promemoria «Sei nel canale, tocca Avvisa per farglielo sapere» si vede anche con la camera accesa.",
+        "testo": "Prima stava solo al posto del video: accendendo la propria camera spariva, e restava la propria immagine senza niente che spiegasse perché non succedeva nulla. Ora compare in sovrimpressione, senza la faccia dell'altro — sopra l'immagine peserebbe, e chi guarda sa già chi sta aspettando — e si attenua insieme ai comandi, perché è un promemoria e non un allarme."
       }
     ]
   },

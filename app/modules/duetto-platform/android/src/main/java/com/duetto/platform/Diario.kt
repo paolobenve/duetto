@@ -63,6 +63,25 @@ object Diario {
         stato = nuovo
     }
 
+    /**
+     * Chi tiene il tempo fra una riga e l'altra.
+     *
+     * Le righe non arrivano solo dall'attesa periodica: un cambio di
+     * stato o il cavo della carica ne fanno scrivere una subito. Se
+     * l'attesa proseguisse per conto suo, la riga dopo potrebbe cadere
+     * pochi secondi più tardi, e una finestra di pochi secondi sul
+     * contatore della batteria non misura niente: dice solo rumore.
+     *
+     * Perciò ogni riga scritta - da qualunque parte venga - fa ripartire
+     * l'attesa da capo. Chi la tiene è il servizio, l'unico che vive
+     * abbastanza a lungo da poterlo fare.
+     */
+    @Volatile private var riprogramma: (() -> Unit)? = null
+
+    fun quandoScrive(f: (() -> Unit)?) {
+        riprogramma = f
+    }
+
     private fun cartella(ctx: Context): File? {
         val base = ctx.getExternalFilesDir(null) ?: ctx.filesDir
         val dir = File(base, CARTELLA)
@@ -160,6 +179,10 @@ object Diario {
             ultimoCpuMs = cpuMs
             ultimiRx = rx
             ultimiTx = tx
+
+            // La prossima riga periodica riparte da adesso, non da quando
+            // era stata programmata.
+            riprogramma?.invoke()
         } catch (e: Exception) {
             Log.w(TAG, "diario: non sono riuscito a scrivere: ${e.message}")
         }
