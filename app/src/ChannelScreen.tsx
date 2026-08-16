@@ -457,8 +457,16 @@ export default function ChannelScreen(props: Props) {
           // è il segno che l'avviso è partito. La sola scritta cambiava
           // troppo poco per accorgersene.
           icon={appenaBussato || knockPending ? <IconaAvvisato /> : <IconaAvvisa />}
-          // Acceso solo quando l'altro non c'è: lì è la cosa da fare.
-          highlight={!together && !knockPending}
+          /**
+           * Acceso quando l'altro non c'è: lì avvisare è la cosa da fare.
+           *
+           * Alla pressione si spegne per un attimo e poi si riaccende: il
+           * lampo è il segno che il tocco è stato raccolto. Prima restava
+           * spento per i due secondi di `knockPending`, e bussando di
+           * nuovo dentro quei due secondi non si riaccendeva affatto -
+           * sembrava un pulsante che si era guastato premendolo.
+           */
+          highlight={!together && !appenaBussato}
           // Sempre premibile: l'altro può essere nel canale ma distratto,
           // e insistere è proprio ciò che si vuole fare quando il primo
           // avviso non ha ottenuto risposta.

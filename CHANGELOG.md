@@ -11,9 +11,11 @@ cui si nota qualcosa.
 ## 1.1.32
 
 **"Avvisa" risponde al dito.** Premendolo la campanella si mette a suonare — inclinata, con
-le onde ai lati — invece di restare ferma: prima cambiava solo la scritta sotto, e non ci si
-accorgeva che la pressione fosse stata raccolta. Il segno parte subito al tocco, senza
-aspettare la conferma del server, che può tardare proprio quando la rete va piano.
+le onde ai lati — e il pulsante perde l'azzurro per un attimo, per poi riaccendersi: prima
+cambiava solo la scritta sotto, l'azzurro restava spento due secondi buoni, e bussando di
+nuovo in quell'intervallo non tornava affatto — sembrava un pulsante guastatosi in mano. Il
+segno parte al tocco, senza aspettare la conferma del server, che può tardare proprio
+quando la rete va piano.
 
 **Quando l'altro esce, il tuo video torna subito a schermo intero.** Restava piccolo, in
 attesa di un video che non sarebbe più arrivato: uscendo, il suo stato — microfono e camera
