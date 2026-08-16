@@ -247,10 +247,30 @@ try {
   // lasciarlo davanti a un "avvisato" rivolto a nessuno.
   h2.muori();
   h1.send({ type: 'knock' });
-  const congedato = await h1.expect('peer-left').then(() => true, () => false);
-  check(congedato, 'chi non risponde più viene congedato, e l’altro lo sa');
+  const congedato = await h1.expect('peer-left').then((m) => m, () => null);
+  check(!!congedato, 'chi non risponde più viene congedato, e l’altro lo sa');
+  // Il motivo distingue la caduta dall'uscita: chi cade probabilmente
+  // torna, e all'altro conviene tenergli il posto ancora un po'.
+  check(congedato?.reason === 'caduta', 'una connessione morta è annunciata come caduta');
 
   h1.close(); h2.close();
+
+  // --- uscita voluta --------------------------------------------------------
+  const v1 = client();
+  await v1.open();
+  v1.send({ type: 'join', room: 'saluti', name: 'V1', side: 'A', mode: 'listening' });
+  await v1.expect('joined');
+  const v2 = client();
+  await v2.open();
+  v2.send({ type: 'join', room: 'saluti', name: 'V2', side: 'B', mode: 'listening' });
+  await v2.expect('joined');
+  await v1.expect('peer-joined');
+
+  v2.send({ type: 'bye' });
+  const salutato = await v1.expect('peer-left');
+  check(salutato.reason === 'bye', 'chi saluta è annunciato come uscito, non come caduto');
+
+  v1.close(); v2.close();
 
   a.close(); c0.close(); d.close(); e.close(); f.close();
 } catch (err) {

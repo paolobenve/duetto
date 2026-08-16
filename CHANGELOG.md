@@ -15,6 +15,13 @@ le onde ai lati — invece di restare ferma: prima cambiava solo la scritta sott
 accorgeva che la pressione fosse stata raccolta. Il segno parte subito al tocco, senza
 aspettare la conferma del server, che può tardare proprio quando la rete va piano.
 
+**Quando l'altro esce, il tuo video torna subito a schermo intero.** Restava piccolo, in
+attesa di un video che non sarebbe più arrivato: uscendo, il suo stato — microfono e camera
+accesi — rimaneva scritto da qualche parte come se fosse ancora lì. Ora si distingue chi se
+n'è andato da chi è caduto: a chi cade il posto resta per sei secondi, che è il tempo di un
+cambio di rete, così non si vede il proprio video salire a schermo intero e tornare indietro
+per niente. Lo dice il server, che sa se il telefono ha salutato o è sparito.
+
 **Nella schermata dell'accoppiamento, accanto a «Cambia server» c'è scritto qual è.** Era
 l'unica cosa che si voleva sapere prima di toccare quella riga, e bisognava entrarci per
 scoprirlo.

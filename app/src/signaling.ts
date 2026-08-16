@@ -63,7 +63,8 @@ export type SignalingEvents = {
     turn: IceServer | null;
   }) => void;
   onPeerJoined?: (name: string, mode: Mode) => void;
-  onPeerLeft?: () => void;
+  /** @param motivo 'bye' se è uscito lui, 'caduta' se è sparita la rete */
+  onPeerLeft?: (motivo: 'bye' | 'caduta') => void;
   onPeerMode?: (mode: Mode, name: string) => void;
   /** il server ci avvisa: l'altro è entrato, oppure ha bussato */
   onNotify?: (reason: 'peer-active' | 'knock', name: string) => void;
@@ -209,7 +210,11 @@ export class Signaling {
 
       case 'peer-left':
         this.events.onStatus?.('alone');
-        this.events.onPeerLeft?.();
+        // "bye" = se n'è andato; "caduta" = gli è caduta la connessione,
+        // e con ogni probabilità torna. I server vecchi non lo dicono:
+        // senza motivo si tratta come una caduta, che è il caso in cui
+        // sbagliare costa meno.
+        this.events.onPeerLeft?.(msg.reason === 'bye' ? 'bye' : 'caduta');
         break;
 
       case 'peer-mode':

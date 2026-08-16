@@ -148,7 +148,12 @@ function leaveRoom(ws) {
   // si riaggancia, l'altro non deve vedere nessuna uscita: il posto è già
   // occupato di nuovo, e annunciarla farebbe cadere il collegamento buono.
   if (!ws.replaced) {
-    for (const peer of set) send(peer, { type: 'peer-left', peerId: ws.peerId });
+    // Il motivo cambia cosa deve fare l'altro: chi ha salutato se n'e'
+    // andato davvero, e la sua immagine puo' sparire subito; chi e'
+    // caduto probabilmente sta cambiando rete e torna fra pochi secondi,
+    // e smontargli il posto addosso vuol dire rimontarlo un attimo dopo.
+    const reason = ws.salutato ? 'bye' : 'caduta';
+    for (const peer of set) send(peer, { type: 'peer-left', peerId: ws.peerId, reason });
   }
   if (set.size === 0) rooms.delete(roomId);
   ws.roomId = null;
@@ -188,6 +193,7 @@ wss.on('connection', (ws, req) => {
   ws.mode = 'listening';
   ws.side = null;      // 'A' o 'B': identifica il dispositivo
   ws.replaced = false; // rimpiazzato dallo stesso dispositivo
+  ws.salutato = false; // ha detto "bye": uscita voluta, non caduta
   ws.name = 'Qualcuno';
 
   ws.on('pong', () => {
@@ -352,6 +358,7 @@ wss.on('connection', (ws, req) => {
     }
 
     if (msg.type === 'bye') {
+      ws.salutato = true;
       leaveRoom(ws);
       return;
     }

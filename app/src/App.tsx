@@ -27,6 +27,17 @@ import { avatarFor, peerAvatar } from './avatar';
 type Screen = 'loading' | 'settings' | 'pairing' | 'setup' | 'channel';
 
 /**
+ * Quanto si tiene il posto all'altro quando gli cade la rete.
+ *
+ * Sparire e ricomparire in pochi secondi è il caso normale di un cambio
+ * di rete: smontargli il posto addosso vuol dire rimontarlo un attimo
+ * dopo, e chi guarda vede il proprio video salire a schermo intero e
+ * tornare indietro per niente. Se invece è uscito lui, non si aspetta
+ * nulla: quello lo dice il server, che distingue il saluto dalla caduta.
+ */
+const ATTESA_RITORNO_MS = 6000;
+
+/**
  * Chiede TUTTI i permessi in un colpo solo, al primo avvio.
  *
  * Nota: da Android 6 microfono, camera e notifiche sono "runtime
@@ -338,15 +349,19 @@ export default function App() {
           onPeerJoined: (n, mode) => {
             setPeerPresent(true);
             setPeerName(n);
+            // È tornato: l'attesa che stava per dimenticarlo si annulla.
+            fermaAttesa();
             peerActiveRef.current = mode === 'active';
             if (mode === 'active' && inChannelRef.current) attachPeer(true);
           },
 
-          onPeerLeft: () => {
+          onPeerLeft: (motivo) => {
             setPeerPresent(false);
             peerActiveRef.current = false;
             sessionRef.current?.detachPeer();
-            setPeerState({ audio: true, video: false });
+            // Se ha salutato è uscito davvero; se è caduto gli si tiene il
+            // posto qualche secondo, che è il tempo di un cambio di rete.
+            scordaAltro(motivo === 'bye');
             setConnState('new');
           },
 
@@ -354,9 +369,12 @@ export default function App() {
             if (n) setPeerName(n);
             peerActiveRef.current = mode === 'active';
             if (mode === 'active') {
+              fermaAttesa();
               if (inChannelRef.current) attachPeer();
             } else {
               sessionRef.current?.detachPeer();
+              // Uscita voluta: ha premuto "Esci" ed è tornato in ascolto.
+              scordaAltro(true);
               setConnState('new');
             }
           },
@@ -488,6 +506,36 @@ export default function App() {
    * l'app: il codice trovava una connessione già presente e non faceva
    * nulla.
    */
+  const timerAssenza = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const fermaAttesa = useCallback(() => {
+    if (timerAssenza.current) {
+      clearTimeout(timerAssenza.current);
+      timerAssenza.current = null;
+    }
+  }, []);
+
+  /**
+   * L'altro non c'è più: microfono e camera suoi non sono più di nessuno.
+   *
+   * Finché quello stato resta acceso, il posto grande continua ad
+   * aspettare un video che non arriverà: è quello che teneva il proprio
+   * video piccolo dopo che l'altro era uscito.
+   *
+   * @param subito vero se se n'è andato lui, falso se è caduta la rete
+   */
+  const scordaAltro = useCallback((subito: boolean) => {
+    fermaAttesa();
+    const spegni = () => setPeerState({ audio: true, video: false });
+    if (subito) { spegni(); return; }
+    timerAssenza.current = setTimeout(() => {
+      timerAssenza.current = null;
+      spegni();
+    }, ATTESA_RITORNO_MS);
+  }, [fermaAttesa]);
+
+  useEffect(() => fermaAttesa, [fermaAttesa]);
+
   const attachPeer = useCallback(async (force = false) => {
     const sig = signalingRef.current;
     const s = sessionRef.current;
@@ -599,6 +647,10 @@ export default function App() {
         },
         onVideoStats: setVideoStats,
         onPeerState: (st) => {
+          // Se ci manda il suo stato è tornato, qualunque cosa dicesse il
+          // conto alla rovescia: senza fermarlo, poco dopo spegnerebbe uno
+          // stato appena arrivato.
+          fermaAttesa();
           setPeerState(st);
           setPeerVp9(st.hwVp9 === true);
         },
@@ -640,7 +692,7 @@ export default function App() {
     sig.setMode('active');
 
     if (peerActiveRef.current) attachPeer();
-  }, [cfg, attachPeer]);
+  }, [cfg, attachPeer, fermaAttesa]);
 
   useEffect(() => { enterChannelRef.current = enterChannel; }, [enterChannel]);
 
