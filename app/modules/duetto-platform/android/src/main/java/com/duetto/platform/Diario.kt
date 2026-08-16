@@ -7,6 +7,7 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.TrafficStats
 import android.os.BatteryManager
+import android.os.Build
 import android.os.PowerManager
 import android.os.Process
 import android.util.Log
@@ -52,6 +53,21 @@ object Diario {
     /** Lo stato che JS ci comunica: ascolto, canale, video. */
     @Volatile private var stato: String = "avvio"
 
+    /**
+     * Quanto dello scorso intervallo è passato a schermo acceso.
+     *
+     * E' la cosa più importante da sapere per interpretare il resto: lo
+     * schermo consuma più di tutto, e cinque minuti con lo schermo acceso
+     * costano da soli molto più di quanto Duetto possa costare in un'ora.
+     * Senza questo numero si finirebbe per attribuire all'app il consumo
+     * di chi stava guardando il telefono.
+     *
+     * Non basta guardare com'è lo schermo nell'istante del campione: in
+     * cinque minuti può essersi acceso e spento. Qui si accumula.
+     */
+    private var msSchermoAcceso = 0L
+    private var schermoAccesoDa = 0L
+
     /** Contatori dell'ultima riga, per scrivere le differenze. */
     private var ultimoCpuMs = 0L
     private var ultimiRx = 0L
@@ -80,6 +96,18 @@ object Diario {
 
     fun quandoScrive(f: (() -> Unit)?) {
         riprogramma = f
+    }
+
+    /** Da chiamare quando lo schermo si accende o si spegne. */
+    @Synchronized
+    fun schermoCambiato(acceso: Boolean) {
+        val ora = System.currentTimeMillis()
+        if (acceso) {
+            if (schermoAccesoDa == 0L) schermoAccesoDa = ora
+        } else if (schermoAccesoDa != 0L) {
+            msSchermoAcceso += ora - schermoAccesoDa
+            schermoAccesoDa = 0L
+        }
     }
 
     private fun cartella(ctx: Context): File? {
@@ -126,6 +154,47 @@ object Diario {
     }
 
     /**
+     * Il telefono era in letargo, o in risparmio energetico.
+     *
+     * Sono i due stati in cui Android taglia il lavoro in background di
+     * tutti: un intervallo passato in letargo non e' confrontabile con
+     * uno passato sveglio, e senza saperlo si finirebbe per attribuire
+     * all'app una differenza che e' del sistema.
+     */
+    private fun letargo(ctx: Context): String {
+        val pm = ctx.getSystemService(Context.POWER_SERVICE) as? PowerManager ?: return "?"
+        val idle = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) pm.isDeviceIdleMode else false
+        val risparmio = pm.isPowerSaveMode
+        return when {
+            idle && risparmio -> "letargo+risparmio"
+            idle -> "letargo"
+            risparmio -> "risparmio"
+            else -> "no"
+        }
+    }
+
+    /**
+     * Chiude il conto dello schermo e lo restituisce in secondi.
+     *
+     * Va chiamata mentre si scrive la riga: quello che si e' accumulato
+     * appartiene all'intervallo che finisce adesso, e il prossimo riparte
+     * da zero.
+     */
+    private fun secondiSchermo(ctx: Context): Long {
+        val ora = System.currentTimeMillis()
+        // Se lo schermo e' acceso ora, il pezzo in corso conta per questo
+        // intervallo e il prossimo riparte da adesso.
+        if (schermoAcceso(ctx)) {
+            if (schermoAccesoDa == 0L) schermoAccesoDa = ora
+            msSchermoAcceso += ora - schermoAccesoDa
+            schermoAccesoDa = ora
+        }
+        val secondi = msSchermoAcceso / 1000
+        msSchermoAcceso = 0
+        return secondi
+    }
+
+    /**
      * Scrive una riga.
      *
      * I contatori nostri (CPU, byte) sono totali da quando il processo e'
@@ -165,6 +234,11 @@ object Diario {
                 append(" corrente=").append(corrente / 1000).append("mA")
                 append(" incarica=").append(if (sottoCarica(ctx)) "si" else "no")
                 append(" schermo=").append(if (schermoAcceso(ctx)) "on" else "off")
+                // Quanto dell'intervallo appena chiuso e' stato a schermo
+                // acceso: e' la chiave per capire se il consumo e' nostro
+                // o di chi stava usando il telefono.
+                append(" schermoOn=").append(secondiSchermo(ctx)).append('s')
+                append(" sistema=").append(letargo(ctx))
                 append(" rete=").append(rete(ctx))
                 if (minuti >= 0) append(" min=").append(String.format(Locale.US, "%.1f", minuti))
                 if (dCpu >= 0) append(" cpu=+").append(dCpu / 1000).append('s')

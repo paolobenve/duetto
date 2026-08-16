@@ -90,12 +90,17 @@ class ChannelForegroundService : Service() {
      */
     private val cavo = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            val motivo = when (intent?.action) {
-                Intent.ACTION_POWER_CONNECTED -> "carica-attaccata"
-                Intent.ACTION_POWER_DISCONNECTED -> "carica-staccata"
-                else -> return
+            when (intent?.action) {
+                Intent.ACTION_POWER_CONNECTED ->
+                    Diario.campiona(applicationContext, "carica-attaccata")
+                Intent.ACTION_POWER_DISCONNECTED ->
+                    Diario.campiona(applicationContext, "carica-staccata")
+                // Lo schermo non fa scrivere una riga: si accende e si
+                // spegne troppo spesso, e ogni riga costa. Si tiene solo
+                // il conto dei secondi, che finisce nella riga dopo.
+                Intent.ACTION_SCREEN_ON -> Diario.schermoCambiato(true)
+                Intent.ACTION_SCREEN_OFF -> Diario.schermoCambiato(false)
             }
-            Diario.campiona(applicationContext, motivo)
         }
     }
 
@@ -105,6 +110,8 @@ class ChannelForegroundService : Service() {
         val filtro = IntentFilter().apply {
             addAction(Intent.ACTION_POWER_CONNECTED)
             addAction(Intent.ACTION_POWER_DISCONNECTED)
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_SCREEN_OFF)
         }
         // Registrato a runtime e non nel manifest: da Android 8 questi
         // annunci non arrivano più ai ricevitori dichiarati nel manifest.
