@@ -7,6 +7,7 @@ const NativeVisibility = NativeModules.DuettoVisibility;
 const NativeCodecs = NativeModules.DuettoCodecs;
 const NativeAudio = NativeModules.DuettoAudio;
 const NativeAvvisi = NativeModules.DuettoAvvisi;
+const NativeDiario = NativeModules.DuettoDiario;
 
 /**
  * Chiama un metodo nativo solo se esiste davvero.
@@ -150,6 +151,38 @@ export const AppWindow = isAndroid && NativePip
 export const Codecs = isAndroid && NativeCodecs
   ? { hasHardwareVp9Encoder: () => call(NativeCodecs, 'hasHardwareVp9Encoder') }
   : { hasHardwareVp9Encoder: unavailable };
+
+/**
+ * Il diario dei consumi.
+ *
+ * Le righe le scrive il servizio in primo piano, che è vivo anche quando
+ * JavaScript non lo è. Da qui si dice soltanto in che stato siamo, si
+ * legge quello che c'è da mandare all'altro telefono, e si mette da parte
+ * quello che l'altro manda a noi.
+ *
+ * Attenzione a cosa NON contiene: quanto consumano le altre app. Nessuna
+ * app può saperlo - quel conto lo tiene Android e lo mostra solo nella
+ * sua schermata "Batteria" o via `adb shell dumpsys batterystats`.
+ */
+export const Diario = isAndroid && NativeDiario
+  ? {
+      /** "ascolto" | "canale" | "canale+video": finisce in ogni riga. */
+      stato: (s) => call(NativeDiario, 'stato', String(s)),
+      /** Una riga adesso, per segnare un momento che conta. */
+      segna: (motivo) => call(NativeDiario, 'segna', String(motivo)),
+      righe: () => call(NativeDiario, 'righe'),
+      leggi: (daRiga) => call(NativeDiario, 'leggi', Number(daRiga) || 0),
+      aggiungiAltro: (testo) => call(NativeDiario, 'aggiungiAltro', String(testo)),
+      percorso: () => call(NativeDiario, 'percorso'),
+    }
+  : {
+      stato: unavailable,
+      segna: unavailable,
+      righe: () => Promise.resolve(0),
+      leggi: () => Promise.resolve(''),
+      aggiungiAltro: unavailable,
+      percorso: () => Promise.resolve(''),
+    };
 
 /**
  * Come deve farsi sentire l'avviso dell'altro.

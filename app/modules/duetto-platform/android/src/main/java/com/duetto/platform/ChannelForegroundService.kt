@@ -8,7 +8,9 @@ import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 
@@ -29,6 +31,24 @@ class ChannelForegroundService : Service() {
     private var currentText: String = "Sei nel canale"
     private var cameraActive: Boolean = false
 
+    /**
+     * Il diario dei consumi si scrive da qui.
+     *
+     * E' il servizio a essere vivo per tutto il tempo che interessa
+     * misurare - anche a schermo spento e con l'app in secondo piano -
+     * mentre il lato JavaScript puo' essere fermo. Con il wake lock che
+     * teniamo, questa attesa scatta puntuale; se un domani il wake lock
+     * andra' via, servira' una sveglia di sistema al suo posto.
+     */
+    private val orologio = Handler(Looper.getMainLooper())
+    private var diarioAvviato = false
+    private val scriviDiario = object : Runnable {
+        override fun run() {
+            Diario.campiona(applicationContext)
+            orologio.postDelayed(this, INTERVALLO_DIARIO_MS)
+        }
+    }
+
     companion object {
         const val CHANNEL_ID = "duetto_presence"
         const val NOTIFICATION_ID = 4711
@@ -38,6 +58,16 @@ class ChannelForegroundService : Service() {
         // Rete di sicurezza: se qualcosa va storto e non fermiamo il
         // servizio, il wake lock non resta appeso per sempre.
         private const val WAKELOCK_TIMEOUT_MS = 8L * 60L * 60L * 1000L
+
+        /**
+         * Ogni quanto si scrive una riga di diario.
+         *
+         * Cinque minuti sono abbastanza fitti da vedere la differenza fra
+         * un'ora in conversazione e una di attesa, e abbastanza radi da
+         * non essere loro stessi un consumo: la riga costa una lettura di
+         * contatori e una scrittura di un centinaio di byte.
+         */
+        private const val INTERVALLO_DIARIO_MS = 5L * 60L * 1000L
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -54,11 +84,24 @@ class ChannelForegroundService : Service() {
         }
         goForeground()
         acquireWakeLock()
+
+        // onStartCommand arriva a ogni cambio di testo della notifica:
+        // senza questa guardia si accumulerebbe un campionatore per ogni
+        // chiamata, e il diario si riempirebbe di righe gemelle.
+        if (!diarioAvviato) {
+            diarioAvviato = true
+            Diario.campiona(applicationContext, "avvio")
+            orologio.postDelayed(scriviDiario, INTERVALLO_DIARIO_MS)
+        }
+
         // Se Android ci uccide per memoria, ci fa ripartire.
         return START_STICKY
     }
 
     override fun onDestroy() {
+        orologio.removeCallbacks(scriviDiario)
+        diarioAvviato = false
+        Diario.campiona(applicationContext, "uscita")
         releaseWakeLock()
         super.onDestroy()
     }

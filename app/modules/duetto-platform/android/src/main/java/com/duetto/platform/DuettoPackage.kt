@@ -23,6 +23,7 @@ class DuettoPackage : ReactPackage {
         CodecsModule(reactContext),
         AudioModule(reactContext),
         AvvisiModule(reactContext),
+        DiarioModule(reactContext),
     )
 
     override fun createViewManagers(

@@ -31,7 +31,12 @@ export type SignalMessage =
   | { kind: 'quality'; value: string }
   // Le opzioni audio valgono per la conversazione, non per un telefono:
   // la voce più ricca ha senso se la alzano tutti e due.
-  | { kind: 'audio'; migliore: boolean };
+  | { kind: 'audio'; migliore: boolean }
+  // Il diario dei consumi, che ogni telefono manda all'altro ogni tanto:
+  // così, collegandone uno solo a un computer, si leggono tutti e due.
+  // L'altro telefono sta in mano a un'altra persona e a un cavo non ci
+  // arriva mai.
+  | { kind: 'diario'; testo: string };
 
 export type PairMessage =
   | { kind: 'pubkey'; pub: string; name: string }

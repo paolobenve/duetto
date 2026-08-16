@@ -41,6 +41,16 @@ declare module 'duetto-platform' {
     hasHardwareVp9Encoder(): Promise<boolean>;
   };
 
+  /** Diario dei consumi: righe scritte dal servizio, lette da qui. */
+  export const Diario: {
+    stato(s: string): Promise<boolean>;
+    segna(motivo: string): Promise<boolean>;
+    righe(): Promise<number>;
+    leggi(daRiga: number): Promise<string>;
+    aggiungiAltro(testo: string): Promise<boolean>;
+    percorso(): Promise<string>;
+  };
+
   /** Vibrazione e suono dell'avviso. */
   export const Avvisi: {
     configura(

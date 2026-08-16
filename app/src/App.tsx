@@ -3,9 +3,12 @@ import {
   StatusBar, Platform, PermissionsAndroid, Alert, View, AppState,
   ActivityIndicator, StyleSheet, BackHandler, Dimensions,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
-import { Foreground, Pip, AppWindow, Visibility, Codecs, Audio, Avvisi } from 'duetto-platform';
+import {
+  Foreground, Pip, AppWindow, Visibility, Codecs, Audio, Avvisi, Diario,
+} from 'duetto-platform';
 import {
   DuoConfig, PairInfo, loadConfig, saveConfig,
   isServerConfigured, isPaired, VIDEO_PROFILES,
@@ -36,6 +39,18 @@ type Screen = 'loading' | 'settings' | 'pairing' | 'setup' | 'channel';
  * nulla: quello lo dice il server, che distingue il saluto dalla caduta.
  */
 const ATTESA_RITORNO_MS = 6000;
+
+/**
+ * Ogni quanto il proprio diario dei consumi va all'altro telefono.
+ *
+ * Un'ora: le righe si scrivono ogni cinque minuti, quindi ne partono una
+ * dozzina alla volta - un paio di migliaia di byte, niente rispetto a
+ * qualunque altra cosa passi di lì.
+ */
+const SCAMBIO_DIARIO_MS = 60 * 60 * 1000;
+
+/** Quante righe di diario sono già state mandate all'altro. */
+const CHIAVE_DIARIO_INVIATE = 'duetto.diario.inviate';
 
 /**
  * Chiede TUTTI i permessi in un colpo solo, al primo avvio.
@@ -160,6 +175,56 @@ export default function App() {
   );
 
   useEffect(() => { inChannelRef.current = inChannel; }, [inChannel]);
+
+  /**
+   * Il diario segue lo stato: senza, le righe direbbero quanto è sceso
+   * il telefono senza dire cosa stava facendo l'app, che è l'unica cosa
+   * che rende quei numeri confrontabili fra loro.
+   */
+  useEffect(() => {
+    const stato = !inChannel ? 'ascolto' : videoOn ? 'canale+video' : 'canale';
+    Diario.stato(stato).catch(() => {});
+    // Una riga al cambio di stato: segna il confine fra due periodi, e
+    // senza confini non si può misurare né l'uno né l'altro.
+    Diario.segna(stato).catch(() => {});
+  }, [inChannel, videoOn]);
+
+  /**
+   * Ogni tanto il proprio diario va all'altro telefono.
+   *
+   * Serve a poterli leggere tutti e due collegandone uno solo: l'altro
+   * telefono, in mano a un'altra persona, a un cavo non ci arriva mai.
+   * Si mandano solo le righe nuove; se il file è stato ruotato e adesso
+   * ne ha meno di quante ne avevamo mandate, si riparte da capo.
+   */
+  useEffect(() => {
+    if (!peerPresent) return;
+    let vivo = true;
+
+    const manda = async () => {
+      const sig = signalingRef.current;
+      if (!vivo || !sig?.connected) return;
+      try {
+        const righe = await Diario.righe();
+        const grezzo = await AsyncStorage.getItem(CHIAVE_DIARIO_INVIATE);
+        let inviate = Number(grezzo) || 0;
+        if (inviate > righe) inviate = 0;
+        if (righe <= inviate) return;
+
+        const testo = await Diario.leggi(inviate);
+        if (!testo) return;
+        sig.sendSignal({ kind: 'diario', testo });
+        await AsyncStorage.setItem(CHIAVE_DIARIO_INVIATE, String(righe));
+      } catch {
+        /* il diario non vale un errore in faccia a nessuno */
+      }
+    };
+
+    // Il primo giro poco dopo essersi trovati, poi a ogni ora.
+    const primo = setTimeout(manda, 60_000);
+    const timer = setInterval(manda, SCAMBIO_DIARIO_MS);
+    return () => { vivo = false; clearTimeout(primo); clearInterval(timer); };
+  }, [peerPresent]);
 
   /**
    * Se stiamo passando dal relay, si tenta una volta la strada diretta.
@@ -435,6 +500,14 @@ export default function App() {
             // non la rimanda indietro.
             if (msg.kind === 'audio') {
               applyAudio(msg.migliore, false);
+              return;
+            }
+            // Il diario dei consumi dell'altro telefono, che finisce in
+            // un file accanto al nostro: così collegando UN solo telefono
+            // si leggono tutti e due. Passa dalla busta cifrata come il
+            // resto: il server lo inoltra senza poterlo leggere.
+            if (msg.kind === 'diario') {
+              Diario.aggiungiAltro(String(msg.testo ?? '')).catch(() => {});
               return;
             }
             // Se l'altro ha ricostruito prima di noi, la sua offerta
