@@ -14,7 +14,7 @@ import { VIDEO_PROFILES } from './config';
 import type { VideoQuality } from './config';
 import type { VideoStats } from './webrtc';
 import {
-  IconaVideo, IconaMicrofono, IconaAvvisa, IconaEsci,
+  IconaVideo, IconaMicrofono, IconaAvvisa, IconaAvvisato, IconaEsci,
   IconaImpostazioni, IconaFrontale, IconaPosteriore,
   IconaVivavoce, IconaTelefono, IconaCuffie, IconaBluetooth,
 } from './Icons';
@@ -315,6 +315,27 @@ export default function ChannelScreen(props: Props) {
     [wake],
   );
 
+  /**
+   * Campanella che suona subito alla pressione di "Avvisa".
+   *
+   * `knockPending` arriva dal server, e con la rete lenta può tardare:
+   * il dito resterebbe senza risposta proprio nel momento in cui la si
+   * aspetta. Questo è solo il ritorno al tocco; la conferma vera resta
+   * quella del server, che tiene poi la campanella accesa per i suoi due
+   * secondi.
+   */
+  const [appenaBussato, setAppenaBussato] = useState(false);
+  const timerBussata = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (timerBussata.current) clearTimeout(timerBussata.current);
+  }, []);
+  const bussa = useCallback(() => {
+    setAppenaBussato(true);
+    if (timerBussata.current) clearTimeout(timerBussata.current);
+    timerBussata.current = setTimeout(() => setAppenaBussato(false), 700);
+    onKnock();
+  }, [onKnock]);
+
   return (
     // Il tocco si raccoglie dentro VideoStage, sulla sola immagine
     // grande: sul riquadrino significa già scambiare i due video, e sui
@@ -432,14 +453,17 @@ export default function ChannelScreen(props: Props) {
         />
         <CircleButton
           label={knockPending ? 'Avvisato' : 'Avvisa'}
-          icon={<IconaAvvisa />}
+          // Per i due secondi che seguono la pressione la campanella suona:
+          // è il segno che l'avviso è partito. La sola scritta cambiava
+          // troppo poco per accorgersene.
+          icon={appenaBussato || knockPending ? <IconaAvvisato /> : <IconaAvvisa />}
           // Acceso solo quando l'altro non c'è: lì è la cosa da fare.
           highlight={!together && !knockPending}
           // Sempre premibile: l'altro può essere nel canale ma distratto,
           // e insistere è proprio ciò che si vuole fare quando il primo
           // avviso non ha ottenuto risposta.
           disabled={false}
-          onPress={press(onKnock)}
+          onPress={press(bussa)}
         />
         <CircleButton
           label="Esci"

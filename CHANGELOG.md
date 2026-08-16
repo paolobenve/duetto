@@ -8,6 +8,17 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.1.32
+
+**"Avvisa" risponde al dito.** Premendolo la campanella si mette a suonare — inclinata, con
+le onde ai lati — invece di restare ferma: prima cambiava solo la scritta sotto, e non ci si
+accorgeva che la pressione fosse stata raccolta. Il segno parte subito al tocco, senza
+aspettare la conferma del server, che può tardare proprio quando la rete va piano.
+
+**Nella schermata dell'accoppiamento, accanto a «Cambia server» c'è scritto qual è.** Era
+l'unica cosa che si voleva sapere prima di toccare quella riga, e bisognava entrarci per
+scoprirlo.
+
 ## 1.1.31
 
 **Aspettare costa molto meno.** Entrando nel canale il microfono non si apre più subito:

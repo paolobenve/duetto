@@ -1,5 +1,5 @@
 import React from 'react';
-import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
+import Svg, { Path, Circle, Line, Rect, G } from 'react-native-svg';
 
 /**
  * Le icone dei comandi, disegnate invece che prese dalle emoji.
@@ -212,6 +212,33 @@ export function IconaAvvisa(p: Props) {
         stroke={c} strokeWidth={STROKE} strokeLinejoin="round"
       />
       <Path d="M9.8 20a2.4 2.4 0 004.4 0" stroke={c} strokeWidth={STROKE} strokeLinecap="round" />
+    </Base>
+  );
+}
+
+/**
+ * La stessa campanella mentre suona: inclinata, con le onde ai lati.
+ *
+ * Si mostra per l'istante che segue la pressione, al posto di quella
+ * ferma. Il pulsante "Avvisa" si può premere sempre, anche quando l'altro
+ * è già nel canale, e senza un segno non si capiva se la pressione fosse
+ * stata raccolta: cambiando la sola scritta si notava poco, perché si
+ * sta guardando il dito, non l'etichetta.
+ */
+export function IconaAvvisato(p: Props) {
+  const c = p.color ?? '#fff';
+  return (
+    <Base {...p}>
+      <G rotation={14} origin="12, 12">
+        <Path
+          d="M6 10a6 6 0 1112 0c0 3.2.8 4.9 1.6 5.9.4.5 0 1.3-.7 1.3H5.1c-.7 0-1.1-.8-.7-1.3C5.2 14.9 6 13.2 6 10z"
+          stroke={c} strokeWidth={STROKE} strokeLinejoin="round"
+        />
+        <Path d="M9.8 20a2.4 2.4 0 004.4 0" stroke={c} strokeWidth={STROKE} strokeLinecap="round" />
+      </G>
+      {/* Le onde: corte, staccate dalla campana, una per lato. */}
+      <Path d="M2.6 7.2c.5-1.4 1.4-2.6 2.6-3.4" stroke={c} strokeWidth={STROKE} strokeLinecap="round" />
+      <Path d="M21.4 7.2c-.5-1.4-1.4-2.6-2.6-3.4" stroke={c} strokeWidth={STROKE} strokeLinecap="round" />
     </Base>
   );
 }
