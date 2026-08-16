@@ -8,6 +8,15 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.1.37
+
+**Il video dell'altro compariva a fatica, e a volte solo riavviando l'app.** Colpa di una
+modifica di due versioni fa: da quando il microfono si apre solo all'arrivo dell'altro,
+fra il controllo «la connessione c'è già?» e la sua creazione passava mezzo secondo, e in
+quel mezzo secondo ne nascevano due. La seconda vinceva, la prima restava viva a ricevere
+un video che nessuno guardava più. Ora chi arriva mentre la connessione si sta creando
+aspetta quella, invece di farne un'altra.
+
 ## 1.1.35
 
 **L'app tiene un diario dei consumi.** Una riga ogni cinque minuti — livello della batteria,

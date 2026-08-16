@@ -116,6 +116,16 @@ export class ChannelSession {
    * non c'è ancora, ma la scelta sì.
    */
   private audioDesired = true;
+
+  /** Creazione della connessione in corso: chi arriva dopo aspetta questa. */
+  private inCreazione: Promise<void> | null = null;
+
+  /**
+   * Avanza a ogni smontaggio. Una creazione cominciata prima e finita
+   * dopo è roba vecchia: senza questo numero rimetterebbe in piedi la
+   * connessione che qualcuno aveva appena deciso di buttare.
+   */
+  private generazione = 0;
   /** questo telefono sa encodare VP9 in hardware */
   private localVp9 = false;
   /** lo sa fare anche l'altro: VP9 ha senso solo se entrambi */
@@ -213,10 +223,39 @@ export class ChannelSession {
     await this.applyAudioQuality();
   }
 
-  /** Crea la connessione con l'altro. Chiamata quando entrambi siamo presenti. */
-  async attachPeer(polite: boolean) {
-    if (this.pc) return;
+  /**
+   * Crea la connessione con l'altro. Chiamata quando entrambi siamo presenti.
+   *
+   * ATTENZIONE alla finestra fra la guardia e `this.pc = pc`: in mezzo
+   * c'è un `await` (l'apertura del microfono), e chiamate ravvicinate ne
+   * creavano DUE. Ne arrivano facilmente: una dal cambio di stato
+   * dell'altro, e una per ogni messaggio di segnalazione che trova la
+   * connessione non ancora pronta. La seconda vinceva, la prima restava
+   * viva a ricevere pacchetti che nessuno guardava più - e il video non
+   * compariva finché non si chiudeva e riapriva l'app.
+   *
+   * Finché il microfono si apriva entrando nel canale quell'attesa non
+   * c'era, e la guardia bastava: è il microfono tardivo ad aver aperto la
+   * finestra.
+   */
+  attachPeer(polite: boolean): Promise<void> {
+    if (this.pc) return Promise.resolve();
+    // Chi arriva mentre la creazione è già in corso aspetta QUELLA, non
+    // ne comincia un'altra. Vedi il commento qui sopra: è tutta la
+    // differenza fra una connessione e due.
+    if (!this.inCreazione) {
+      const mia = this.generazione;
+      this.inCreazione = this.creaPeer(polite, mia)
+        .finally(() => { this.inCreazione = null; });
+    }
+    return this.inCreazione;
+  }
+
+  private async creaPeer(polite: boolean, mia: number) {
     await this.ensureMic();
+    // Nel frattempo può averla creata qualcun altro, o qualcuno può aver
+    // smontato tutto: in entrambi i casi questa creazione è superata.
+    if (this.pc || mia !== this.generazione) return;
 
     this.polite = polite;
     const servers = [...iceServers(), ...this.extraIce];
@@ -1260,6 +1299,9 @@ export class ChannelSession {
 
   /** Chiude la connessione con l'altro ma resta nel canale. */
   detachPeer() {
+    // Da qui in poi ogni creazione cominciata prima è roba vecchia.
+    this.generazione += 1;
+    this.inCreazione = null;
     if (this.statsTimer) { clearInterval(this.statsTimer); this.statsTimer = null; }
     this.lastOutbound = null;
     this.lastInbound = null;
