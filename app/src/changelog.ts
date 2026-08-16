@@ -7,6 +7,15 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.1.33",
+    "paragrafi": [
+      {
+        "forte": "«Sei nel canale, tocca Avvisa» si vede anche con la camera accesa.",
+        "testo": "Prima quel promemoria stava solo al posto del video: accendendo la propria camera spariva, e restava la propria immagine senza niente che spiegasse perché non succedeva nulla. Ora compare in sovrimpressione, senza la faccia dell'altro — sopra l'immagine peserebbe, e chi guarda sa già chi sta aspettando — e si attenua insieme ai comandi, perché è un promemoria e non un allarme."
+      }
+    ]
+  },
+  {
     "versione": "1.1.32",
     "paragrafi": [
       {
