@@ -8,6 +8,15 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.1.33
+
+**«Sei nel canale, tocca Avvisa» si vede anche con la camera accesa.** Prima quel promemoria
+stava solo al posto del video: accendendo la propria camera spariva, e restava la propria
+immagine senza niente che spiegasse perché non succedeva nulla. Ora compare in
+sovrimpressione, senza la faccia dell'altro — sopra l'immagine peserebbe, e chi guarda sa
+già chi sta aspettando — e si attenua insieme ai comandi, perché è un promemoria e non un
+allarme.
+
 ## 1.1.32
 
 **Si sceglie come deve farsi sentire l'avviso.** Nelle impostazioni, sotto «Quando l'altro

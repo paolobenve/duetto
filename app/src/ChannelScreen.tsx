@@ -381,6 +381,28 @@ export default function ChannelScreen(props: Props) {
         }
       />
 
+      {/*
+        Il promemoria dell'attesa anche sopra il video.
+        Senza video lo dice il riepilogo al centro dello schermo; con la
+        camera accesa quel riepilogo non c'è più, e restava solo la
+        propria immagine, senza niente che spiegasse perché non succede
+        nulla. Qui non ci va la faccia dell'altro: sopra l'immagine
+        peserebbe, e chi guarda sa già chi aspetta.
+        Si attenua insieme ai comandi: è un promemoria, non un allarme, e
+        chi resta a lungo in attesa vuole vedere l'immagine, non la
+        scritta.
+      */}
+      {!compact && daVedere && status === 'alone' && !notice ? (
+        <Animated.View style={[styles.attesaSopra, { opacity }]} pointerEvents="none">
+          <Text style={styles.attesaTesto}>
+            Sei nel canale.{'\n'}
+            {peerName ? `${peerName} non c’è ancora` : 'L’altro non c’è ancora'}
+            {': tocca '}
+            <Text style={styles.bold}>Avvisa</Text>.
+          </Text>
+        </Animated.View>
+      ) : null}
+
       {/* In PiP finisce qui: la finestrella mostra solo il video. */}
       {compact ? null : (
         <>
@@ -803,6 +825,17 @@ const styles = StyleSheet.create({
   cardTitle: { color: '#e6ebf1', fontSize: 21, fontWeight: '700', textAlign: 'center' },
   cardSub: { color: '#8892a0', fontSize: 15, textAlign: 'center', marginTop: 10, lineHeight: 22 },
   bold: { color: '#c9d2de', fontWeight: '700' },
+  // Come l'avviso di VideoStage: una pastiglia al centro, non una fascia,
+  // così sotto resta visibile il più possibile dell'immagine.
+  attesaSopra: {
+    position: 'absolute', left: 0, right: 0, top: '42%',
+    alignItems: 'center', paddingHorizontal: 24,
+  },
+  attesaTesto: {
+    color: '#e6ebf1', fontSize: 15, textAlign: 'center', lineHeight: 21,
+    backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 20,
+    paddingVertical: 10, paddingHorizontal: 18, overflow: 'hidden',
+  },
   cardTiny: { color: '#4a5462', fontSize: 12, marginTop: 10 },
 
   topBar: {
