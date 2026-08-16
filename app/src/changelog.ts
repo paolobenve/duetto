@@ -7,6 +7,31 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.1.32",
+    "paragrafi": [
+      {
+        "forte": "Si sceglie come deve farsi sentire l'avviso.",
+        "testo": "Nelle impostazioni, sotto «Quando l'altro ti avvisa»: vibrazione — come decide il telefono, sempre, mai — e suono — quello di notifica, nessuno, oppure uno scelto fra quelli del telefono. Un suono diverso dagli altri fa capire chi è senza guardare. Vale per gli avvisi che arrivi tu: quello che sente l'altro lo decide lui."
+      },
+      {
+        "forte": "\"Avvisa\" risponde al dito.",
+        "testo": "Premendolo la campanella si mette a suonare — inclinata, con le onde ai lati — e il pulsante perde l'azzurro per un attimo, per poi riaccendersi: prima cambiava solo la scritta sotto, l'azzurro restava spento due secondi buoni, e bussando di nuovo in quell'intervallo non tornava affatto — sembrava un pulsante guastatosi in mano. Il segno parte al tocco, senza aspettare la conferma del server, che può tardare proprio quando la rete va piano."
+      },
+      {
+        "forte": "Quando l'altro esce, il tuo video torna subito a schermo intero.",
+        "testo": "Restava piccolo, in attesa di un video che non sarebbe più arrivato: uscendo, il suo stato — microfono e camera accesi — rimaneva scritto da qualche parte come se fosse ancora lì. Ora si distingue chi se n'è andato da chi è caduto: a chi cade il posto resta per sei secondi, che è il tempo di un cambio di rete, così non si vede il proprio video salire a schermo intero e tornare indietro per niente. Lo dice il server, che sa se il telefono ha salutato o è sparito."
+      },
+      {
+        "forte": "\"Gira\" si accende quando riprende la camera frontale.",
+        "testo": "Pastiglia bianca con la frontale, spenta con quella dietro: la sola differenza fra le due sagome — una persona o più — si coglie leggendola, mentre il pieno o il vuoto si vede da lontano."
+      },
+      {
+        "forte": "Nella schermata dell'accoppiamento, accanto a «Cambia server» c'è scritto qual è.",
+        "testo": "Era l'unica cosa che si voleva sapere prima di toccare quella riga, e bisognava entrarci per scoprirlo."
+      }
+    ]
+  },
+  {
     "versione": "1.1.31",
     "paragrafi": [
       {
