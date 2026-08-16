@@ -398,7 +398,8 @@ export default function ChannelScreen(props: Props) {
             Sei nel canale.{'\n'}
             {peerName ? `${peerName} non c’è ancora` : 'L’altro non c’è ancora'}
             {': tocca '}
-            <Text style={styles.bold}>Avvisa</Text>.
+            <Text style={styles.bold}>Avvisa</Text>
+            {' per farglielo sapere.'}
           </Text>
         </Animated.View>
       ) : null}
