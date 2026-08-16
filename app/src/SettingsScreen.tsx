@@ -8,6 +8,47 @@ import {
   isServerConfigured, isPaired, normalizeServerUrl, displayServer, VIDEO_PROFILES,
 } from './config';
 import { VERSION_FULL } from './version';
+import { Avvisi } from 'duetto-platform';
+
+/**
+ * Le scelte per la vibrazione dell'avviso.
+ *
+ * "Predefinito" non è pigrizia: Android sa cose che l'app non sa - se sei
+ * in silenzioso, in "non disturbare", con le cuffie - e lasciandogli la
+ * decisione l'avviso si comporta come tutte le altre notifiche del
+ * telefono. Le altre due la forzano, in un senso o nell'altro.
+ */
+const VIBRAZIONI: {
+  valore: DuoConfig['avvisoVibra']; etichetta: string; nota: string;
+}[] = [
+  {
+    valore: 'predefinito',
+    etichetta: 'Come decide il telefono',
+    nota: 'Segue le regole di Android: silenzioso, non disturbare, e quello che hai impostato per le notifiche.',
+  },
+  {
+    valore: 'sempre',
+    etichetta: 'Sempre',
+    nota: 'Due colpi staccati, diversi da una notifica qualunque.',
+  },
+  { valore: 'mai', etichetta: 'Mai', nota: 'Solo la notifica, muta e ferma.' },
+];
+
+const SUONI: {
+  valore: DuoConfig['avvisoSuono']; etichetta: string; nota: string;
+}[] = [
+  {
+    valore: 'predefinito',
+    etichetta: 'Suono di notifica del telefono',
+    nota: 'Quello che senti per i messaggi.',
+  },
+  { valore: 'nessuno', etichetta: 'Nessuno', nota: 'Silenzioso.' },
+  {
+    valore: 'scelto',
+    etichetta: 'Scegli un suono…',
+    nota: 'Fra quelli del telefono. Un suono diverso dagli altri fa capire chi è senza guardare.',
+  },
+];
 
 type Props = {
   initial: DuoConfig;
@@ -266,6 +307,65 @@ export default function SettingsScreen({
             </Text>
           </View>
         </TouchableOpacity>
+
+        <Text style={styles.subsection}>Quando l’altro ti avvisa</Text>
+        <Text style={styles.sectionHint}>
+          Vale per gli avvisi che arrivano a te. Quello che senti l’altro
+          quando sei tu a bussare lo decide lui, sul suo telefono.
+        </Text>
+
+        <Text style={styles.sectionHint}>Vibrazione</Text>
+        {VIBRAZIONI.map((v) => (
+          <TouchableOpacity
+            key={v.valore}
+            style={[styles.choice, cfg.avvisoVibra === v.valore && styles.choicePicked]}
+            onPress={() => {
+              setCfg({ ...cfg, avvisoVibra: v.valore });
+              onLive?.({ avvisoVibra: v.valore });
+            }}>
+            <View style={[styles.radio, cfg.avvisoVibra === v.valore && styles.radioPicked]} />
+            <View style={styles.choiceText}>
+              <Text style={styles.choiceLabel}>{v.etichetta}</Text>
+              <Text style={styles.choiceNote}>{v.nota}</Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+
+        <Text style={styles.sectionHint}>Suono</Text>
+        {SUONI.map((s) => (
+          <TouchableOpacity
+            key={s.valore}
+            style={[styles.choice, cfg.avvisoSuono === s.valore && styles.choicePicked]}
+            onPress={async () => {
+              if (s.valore !== 'scelto') {
+                setCfg({ ...cfg, avvisoSuono: s.valore });
+                onLive?.({ avvisoSuono: s.valore });
+                return;
+              }
+              // La scelta la fa una schermata di sistema: se si annulla,
+              // non si cambia nulla - nemmeno la voce selezionata, che
+              // altrimenti direbbe "scelto" senza che si sia scelto.
+              const scelto = await Avvisi.scegliSuono(cfg.avvisoSuonoUri).catch(() => null);
+              if (!scelto) return;
+              const patch = {
+                avvisoSuono: 'scelto' as const,
+                avvisoSuonoUri: scelto.uri,
+                avvisoSuonoNome: scelto.nome,
+              };
+              setCfg({ ...cfg, ...patch });
+              onLive?.(patch);
+            }}>
+            <View style={[styles.radio, cfg.avvisoSuono === s.valore && styles.radioPicked]} />
+            <View style={styles.choiceText}>
+              <Text style={styles.choiceLabel}>
+                {s.valore === 'scelto' && cfg.avvisoSuonoNome
+                  ? cfg.avvisoSuonoNome
+                  : s.etichetta}
+              </Text>
+              <Text style={styles.choiceNote}>{s.nota}</Text>
+            </View>
+          </TouchableOpacity>
+        ))}
 
         <Text style={styles.subsection}>Schermata</Text>
         <TouchableOpacity

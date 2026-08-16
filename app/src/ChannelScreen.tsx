@@ -243,13 +243,24 @@ export default function ChannelScreen(props: Props) {
   const opacity = useRef(new Animated.Value(1)).current;
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  /** true quando i comandi sono in evidenza: un tocco li fa sparire */
-  const pieni = useRef(true);
+  /**
+   * Quando il calo in corso arriverà in fondo.
+   *
+   * Serve a interpretare il tocco sull'immagine: finché i comandi stanno
+   * ancora calando si vedono, e chi tocca li vuole via; una volta in
+   * fondo non si vedono più, e chi tocca li vuole indietro.
+   *
+   * Un semplice "sono pieni sì/no" non bastava: diventava "no" appena
+   * partito il calo, cioè dopo un decimo di secondo, e da lì in avanti il
+   * tocco li richiamava invece di toglierli - che è il difetto che si
+   * vedeva, comandi che non se ne andavano più.
+   */
+  const finCalo = useRef(0);
 
   /** Il calo: parte subito e dura dieci secondi. */
   const attenua = useCallback((durata = FADE_MS) => {
     if (idleTimer.current) clearTimeout(idleTimer.current);
-    pieni.current = false;
+    finCalo.current = Date.now() + durata;
     Animated.timing(opacity, {
       // Invisibili, ma sempre premibili: un tocco ovunque li richiama.
       toValue: hideControls ? 0 : DIM_OPACITY, duration: durata, useNativeDriver: true,
@@ -267,7 +278,7 @@ export default function ChannelScreen(props: Props) {
   const daVedere = localHasVideo || remoteHasVideo;
 
   const wake = useCallback(() => {
-    pieni.current = true;
+    finCalo.current = 0;
     if (idleTimer.current) clearTimeout(idleTimer.current);
     Animated.timing(opacity, {
       toValue: 1, duration: 120, useNativeDriver: true,
@@ -299,7 +310,7 @@ export default function ChannelScreen(props: Props) {
   const tocco = useCallback(() => {
     // Chiedere di toglierli è diverso dal lasciarli calare: qui si vuole
     // vedere l'immagine adesso.
-    if (pieni.current) attenua(400); else wake();
+    if (Date.now() < finCalo.current) attenua(400); else wake();
   }, [attenua, wake]);
 
   // `wake` cambia quando cambia `daVedere`: spegnendo l'ultima camera i

@@ -10,6 +10,12 @@ cui si nota qualcosa.
 
 ## 1.1.32
 
+**Si sceglie come deve farsi sentire l'avviso.** Nelle impostazioni, sotto «Quando l'altro
+ti avvisa»: vibrazione — come decide il telefono, sempre, mai — e suono — quello di
+notifica, nessuno, oppure uno scelto fra quelli del telefono. Un suono diverso dagli altri
+fa capire chi è senza guardare. Vale per gli avvisi che arrivi tu: quello che sente l'altro
+lo decide lui.
+
 **"Avvisa" risponde al dito.** Premendolo la campanella si mette a suonare — inclinata, con
 le onde ai lati — e il pulsante perde l'azzurro per un attimo, per poi riaccendersi: prima
 cambiava solo la scritta sotto, l'azzurro restava spento due secondi buoni, e bussando di

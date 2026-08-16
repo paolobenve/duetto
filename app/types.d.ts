@@ -41,6 +41,16 @@ declare module 'duetto-platform' {
     hasHardwareVp9Encoder(): Promise<boolean>;
   };
 
+  /** Vibrazione e suono dell'avviso. */
+  export const Avvisi: {
+    configura(
+      vibra: 'predefinito' | 'sempre' | 'mai',
+      suono: 'predefinito' | 'nessuno' | 'scelto',
+      uri?: string,
+    ): Promise<boolean | string>;
+    scegliSuono(uriCorrente?: string): Promise<{ uri: string; nome: string } | null>;
+  };
+
   /** Manda i tasti del volume sul flusso della conversazione. */
   export const Audio: {
     useCallVolumeKeys(active: boolean): Promise<boolean>;

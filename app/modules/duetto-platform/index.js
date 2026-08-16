@@ -6,6 +6,7 @@ const NativePip = NativeModules.DuettoPip;
 const NativeVisibility = NativeModules.DuettoVisibility;
 const NativeCodecs = NativeModules.DuettoCodecs;
 const NativeAudio = NativeModules.DuettoAudio;
+const NativeAvvisi = NativeModules.DuettoAvvisi;
 
 /**
  * Chiama un metodo nativo solo se esiste davvero.
@@ -149,6 +150,33 @@ export const AppWindow = isAndroid && NativePip
 export const Codecs = isAndroid && NativeCodecs
   ? { hasHardwareVp9Encoder: () => call(NativeCodecs, 'hasHardwareVp9Encoder') }
   : { hasHardwareVp9Encoder: unavailable };
+
+/**
+ * Come deve farsi sentire l'avviso dell'altro.
+ *
+ * Da Android 8 suono e vibrazione si fissano alla nascita del canale di
+ * notifica e non si possono più cambiare: `configura` ne crea uno nuovo
+ * e butta il vecchio. Va chiamata all'avvio, non solo quando si cambia
+ * idea, perché il canale può non esistere ancora.
+ */
+export const Avvisi = isAndroid && NativeAvvisi
+  ? {
+      /**
+       * @param vibra 'predefinito' | 'sempre' | 'mai'
+       * @param suono 'predefinito' | 'nessuno' | 'scelto'
+       * @param uri   indirizzo del suono, solo con 'scelto'
+       */
+      configura: (vibra, suono, uri = '') =>
+        call(NativeAvvisi, 'configura', String(vibra), String(suono), String(uri)),
+
+      /**
+       * Apre la scelta dei suoni di sistema.
+       * Restituisce `{uri, nome}`, o null se si annulla.
+       */
+      scegliSuono: (uriCorrente = '') =>
+        call(NativeAvvisi, 'scegliSuono', String(uriCorrente)),
+    }
+  : { configura: unavailable, scegliSuono: () => Promise.resolve(null) };
 
 /**
  * I tasti del volume.

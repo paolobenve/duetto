@@ -82,6 +82,22 @@ export type DuoConfig = {
    * l'opzione non compare nemmeno.
    */
   videoCodec: 'auto' | 'vp9';
+
+  /**
+   * Come deve farsi sentire l'avviso dell'altro.
+   *
+   * "Predefinito" lascia decidere ad Android, che sa già cosa fai in
+   * questo momento - modalità silenziosa, non disturbare, auricolari.
+   * Le altre due scelte lo forzano: chi tiene il telefono in tasca vuole
+   * la vibrazione anche in silenzioso, chi lo tiene sul tavolo di notte
+   * non vuole niente.
+   */
+  avvisoVibra: 'predefinito' | 'sempre' | 'mai';
+  avvisoSuono: 'predefinito' | 'nessuno' | 'scelto';
+  /** Suono scelto fra quelli del telefono: indirizzo di sistema. */
+  avvisoSuonoUri: string;
+  /** Il suo nome, per poterlo mostrare senza doverlo richiedere. */
+  avvisoSuonoNome: string;
 };
 
 export const DEFAULT_CONFIG: DuoConfig = {
@@ -98,6 +114,10 @@ export const DEFAULT_CONFIG: DuoConfig = {
   mostraDiagnostica: false,
   nascondiComandi: false,
   videoCodec: 'auto',
+  avvisoVibra: 'predefinito',
+  avvisoSuono: 'predefinito',
+  avvisoSuonoUri: '',
+  avvisoSuonoNome: '',
 };
 
 const STORAGE_KEY = 'duetto.config.v3';

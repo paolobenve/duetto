@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   StatusBar, Platform, PermissionsAndroid, Alert, View, AppState,
-  ActivityIndicator, StyleSheet, BackHandler, Dimensions, Vibration,
+  ActivityIndicator, StyleSheet, BackHandler, Dimensions,
 } from 'react-native';
 import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
-import { Foreground, Pip, AppWindow, Visibility, Codecs, Audio } from 'duetto-platform';
+import { Foreground, Pip, AppWindow, Visibility, Codecs, Audio, Avvisi } from 'duetto-platform';
 import {
   DuoConfig, PairInfo, loadConfig, saveConfig,
   isServerConfigured, isPaired, VIDEO_PROFILES,
@@ -250,6 +250,10 @@ export default function App() {
       await caricaPosizionePip();
       const c = await loadConfig();
       setCfg(c);
+      // Il canale di notifica va preparato prima che serva: nasce con
+      // suono e vibrazione dentro, e crearlo al primo avviso vorrebbe
+      // dire farlo mentre lo si sta già usando.
+      Avvisi.configura(c.avvisoVibra, c.avvisoSuono, c.avvisoSuonoUri).catch(() => {});
       if (!isServerConfigured(c)) setScreen('settings');
       else if (!isPaired(c)) setScreen('pairing');
       // Le impostazioni di sistema si propongono una volta sola, appena
@@ -393,9 +397,10 @@ export default function App() {
                 'Duetto',
                 named ? `${n} ti sta chiamando` : 'Ti stanno chiamando',
               ).catch(() => {});
-              // Una vibrazione mancata è un richiamo meno evidente, non
-              // un motivo per far cadere l'app addosso a chi la riceve.
-              try { Vibration.vibrate([0, 400, 200, 400]); } catch { /* noop */ }
+              // La vibrazione non si fa più da qui: sta nel canale della
+              // notifica, insieme al suono, perché è lì che si possono
+              // regolare - e perché vibrando anche di nostro, con la
+              // vibrazione del canale accesa, si sentirebbe due volte.
               return;
             }
 
@@ -912,6 +917,12 @@ export default function App() {
             // Le opzioni audio vanno anche applicate: il tetto a caldo,
             // le elaborazioni riaprendo il microfono.
             if ('audioMigliore' in patch) applyAudio(next.audioMigliore, true);
+            // Suono e vibrazione dell'avviso stanno nel canale di
+            // notifica, che va rifatto da capo a ogni cambiamento.
+            if ('avvisoVibra' in patch || 'avvisoSuono' in patch || 'avvisoSuonoUri' in patch) {
+              Avvisi.configura(next.avvisoVibra, next.avvisoSuono, next.avvisoSuonoUri)
+                .catch(() => {});
+            }
             return next;
           })}
           vp9Here={localVp9}

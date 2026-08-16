@@ -19,30 +19,14 @@ import androidx.core.app.NotificationManagerCompat
  */
 object Notifier {
 
-    private const val ALERT_CHANNEL_ID = "duetto_alerts"
     private const val ALERT_NOTIFICATION_ID = 4712
     private const val PRESENCE_CHANNEL_ID = "duetto_presence"
     private const val PRESENCE_NOTIFICATION_ID = 4711
 
-    private fun ensureChannel(ctx: Context) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-        val manager = ctx.getSystemService(NotificationManager::class.java) ?: return
-        if (manager.getNotificationChannel(ALERT_CHANNEL_ID) != null) return
-
-        val channel = NotificationChannel(
-            ALERT_CHANNEL_ID,
-            "Avvisi dal canale",
-            NotificationManager.IMPORTANCE_HIGH,
-        ).apply {
-            description = "Quando l'altra persona entra nel canale o ti chiama"
-            enableVibration(true)
-            setShowBadge(true)
-        }
-        manager.createNotificationChannel(channel)
-    }
-
     fun show(ctx: Context, title: String, text: String) {
-        ensureChannel(ctx)
+        // Suono e vibrazione stanno nel canale, che dipende dalle
+        // preferenze: vedi Avvisi.
+        val canale = Avvisi.canale(ctx)
 
         val launch = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)?.apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -54,7 +38,7 @@ object Notifier {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
 
-        val notification = NotificationCompat.Builder(ctx, ALERT_CHANNEL_ID)
+        val builder = NotificationCompat.Builder(ctx, canale)
             .setContentTitle(title)
             .setContentText(text)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
@@ -62,7 +46,16 @@ object Notifier {
             .setAutoCancel(true)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .build()
+
+        // Prima di Android 8 i canali non esistono e queste due cose si
+        // dicono qui. Da Android 8 in su vengono ignorate: comanda il
+        // canale, e ripeterle non fa danno.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            builder.setSound(Avvisi.suonoScelto(ctx))
+            Avvisi.ritmoScelto(ctx)?.let { builder.setVibrate(it) }
+        }
+
+        val notification = builder.build()
 
         try {
             // Se il permesso notifiche è negato lancia SecurityException:
