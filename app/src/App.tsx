@@ -504,7 +504,17 @@ export default function App() {
     try {
       await s.attachPeer(politeRef.current);
       s.broadcastState();
-    } catch { /* noop */ }
+    } catch (e: any) {
+      // Qui dentro ora si apre anche il microfono, che può essere negato
+      // (permesso revocato mentre l'app era aperta). Prima era un errore
+      // impossibile e si poteva ignorare: ora se si tace, l'altro entra e
+      // non si collega niente, senza che nulla lo spieghi.
+      console.log('[duetto-rtc]', 'attachPeer fallita:', String(e?.message ?? e));
+      // Solo se è mancato il microfono. Le altre cadute di attachPeer
+      // capitano durante le riconnessioni e si risolvono da sole: un
+      // avviso a ogni tentativo sarebbe rumore, e coprirebbe questo.
+      if (!s.hasMic()) Alert.alert('Errore microfono', String(e?.message ?? e));
+    }
   }, []);
 
   /**
@@ -610,13 +620,10 @@ export default function App() {
       });
     }
     sessionRef.current.setServerIceServers(serverTurnRef.current);
-    try {
-      await sessionRef.current.enterChannel();
-      setAudioOn(sessionRef.current.isAudioEnabled());
-    } catch (e: any) {
-      Alert.alert('Errore microfono', String(e?.message ?? e));
-      return;
-    }
+    // Il microfono non si apre qui: lo apre la sessione quando l'altro
+    // arriva davvero. Chi entra per primo può aspettare a lungo, e in
+    // quell'attesa non c'è nulla da trasmettere.
+    setAudioOn(sessionRef.current.isAudioEnabled());
 
     try {
       InCallManager.start({ media: 'audio' });

@@ -294,7 +294,13 @@ Il momento delicato è **solo l'accoppiamento**. Dopo, la chiave è a 256 bit e 
   le regole di Android. Serve escludere l'app dall'ottimizzazione batteria; non c'è modo
   di ottenerlo da codice.
 - **Consumo**: wake lock e connessione sempre aperta costano batteria. È il prezzo della
-  presenza continua.
+  presenza continua, e si paga soprattutto nell'attesa. Due cose sono già state tolte di
+  mezzo: il colpetto del server, che era ogni 30 secondi anche di notte — 120 risvegli
+  della radio l'ora per non fare nulla — e ora è raro finché si sta solo in ascolto; e il
+  microfono, che si apre quando l'altro arriva e non entrando nel canale. Resta il wake
+  lock continuo: rilasciarlo nell'attesa è possibile, ma richiede una sveglia nativa di
+  riserva, perché con la CPU sospesa i timer JavaScript si fermano e nessuno rifarebbe il
+  socket caduto.
 - **Codice di sicurezza visivo**: si potrebbe mostrare un SAS derivato dalla chiave, da
   confrontare a voce, per chi volesse una conferma in più dopo l'accoppiamento.
 - **Chat testuale**: un `RTCDataChannel` sulla connessione esistente sarebbe già cifrato.

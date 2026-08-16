@@ -7,12 +7,23 @@ import { WebSocket } from 'ws';
 const PORT = 8799;
 const URL = `ws://127.0.0.1:${PORT}`;
 
+// Il battito vero è di 30 secondi e 4 minuti: qui si rimpicciolisce tutto,
+// altrimenti verificarlo richiederebbe di stare a guardare per un quarto
+// d'ora. I rapporti fra i tempi restano gli stessi.
+const BATTITO_ATTIVO_MS = 400;
+const BATTITO_ASCOLTO_MS = 4000;
+const ATTESA_RISPOSTA_MS = 600;
+
 const srv = spawn('node', ['src/index.js'], {
   env: {
     ...process.env, PORT: String(PORT), HOST: '127.0.0.1',
     // Il relay viene comunicato dal server ai telefoni: qui verifichiamo
     // che arrivi davvero nel messaggio di ingresso.
     TURN_URL: 'turn:esempio.org:3478', TURN_USER: 'duo', TURN_PASS: 'segreta',
+    BATTITO_ATTIVO_MS: String(BATTITO_ATTIVO_MS),
+    BATTITO_ASCOLTO_MS: String(BATTITO_ASCOLTO_MS),
+    BATTITO_TICK_MS: '50',
+    ATTESA_RISPOSTA_MS: String(ATTESA_RISPOSTA_MS),
   },
   stdio: ['ignore', 'ignore', 'inherit'],
 });
@@ -30,9 +41,20 @@ function client() {
     if (i !== -1) waiters.splice(i, 1)[0].resolve(msg);
     else queue.push(msg);
   });
+  // Il battito non è un messaggio: sono i frame ping del protocollo, che
+  // la libreria non fa vedere fra i messaggi. Qui si contano.
+  let pings = 0;
+  ws.on('ping', () => { pings++; });
   return {
     open: () => new Promise((r) => ws.once('open', r)),
     send: (o) => ws.send(JSON.stringify(o)),
+    pings: () => pings,
+    /** Smette di leggere: da qui in poi non risponde più ai ping. */
+    muori: () => ws.pause(),
+    chiusa: (ms) => new Promise((r) => {
+      const t = setTimeout(() => r(false), ms);
+      ws.once('close', () => { clearTimeout(t); r(true); });
+    }),
     expect(type) {
       const i = queue.findIndex((m) => m.type === type);
       if (i !== -1) return Promise.resolve(queue.splice(i, 1)[0]);
@@ -189,6 +211,46 @@ try {
   f.send({ type: 'join', room: 'coppia2', name: 'Z', mode: 'listening' });
   const fRes = await f.expect('joined');
   check(fRes.peerPresent === false, 'un’altra coppia non vede la prima');
+
+  // --- battito: fitto solo dove serve --------------------------------------
+  // Il colpetto periodico costa al telefono, non al server: ogni pacchetto
+  // gli sveglia la radio. Deve essere raro mentre si sta solo in ascolto,
+  // fitto nel canale, e immediato quando la presenza dell'altro sta per
+  // essere data per buona.
+  const h1 = client();
+  await h1.open();
+  h1.send({ type: 'join', room: 'battito', name: 'H1', side: 'A', mode: 'listening' });
+  await h1.expect('joined');
+
+  const ascoltoPrima = h1.pings();
+  await wait(BATTITO_ATTIVO_MS * 3);
+  check(h1.pings() === ascoltoPrima, 'in ascolto non arrivano colpetti');
+
+  h1.send({ type: 'mode', mode: 'active' });
+  await wait(BATTITO_ATTIVO_MS * 3);
+  check(h1.pings() >= 2, 'nel canale il battito si infittisce');
+
+  const h2 = client();
+  await h2.open();
+  h2.send({ type: 'join', room: 'battito', name: 'H2', side: 'B', mode: 'listening' });
+  await h2.expect('joined');
+  await h1.expect('peer-joined');
+  await wait(100);
+
+  const bussataPrima = h2.pings();
+  h1.send({ type: 'knock' });
+  await h1.expect('knock-result');
+  await wait(150);
+  check(h2.pings() > bussataPrima, 'bussando, l’altro viene interrogato subito');
+
+  // E se non risponde più, la sua uscita arriva a chi ha bussato invece di
+  // lasciarlo davanti a un "avvisato" rivolto a nessuno.
+  h2.muori();
+  h1.send({ type: 'knock' });
+  const congedato = await h1.expect('peer-left').then(() => true, () => false);
+  check(congedato, 'chi non risponde più viene congedato, e l’altro lo sa');
+
+  h1.close(); h2.close();
 
   a.close(); c0.close(); d.close(); e.close(); f.close();
 } catch (err) {

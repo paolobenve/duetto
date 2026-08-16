@@ -109,6 +109,13 @@ export class ChannelSession {
    * camera (cambio di risoluzione).
    */
   private cameraFrontale = true;
+
+  /**
+   * Microfono acceso o muto, come lo vuole chi usa l'app. Vale anche
+   * prima che il microfono venga aperto: aspettando l'altro la traccia
+   * non c'è ancora, ma la scelta sì.
+   */
+  private audioDesired = true;
   /** questo telefono sa encodare VP9 in hardware */
   private localVp9 = false;
   /** lo sa fare anche l'altro: VP9 ha senso solo se entrambi */
@@ -135,11 +142,28 @@ export class ChannelSession {
 
   // --- Ingresso nel canale -------------------------------------------------
 
-  /** Apre il microfono. Da chiamare appena si entra nel canale. */
-  async enterChannel() {
+  /**
+   * Apre il microfono, se non è già aperto.
+   *
+   * Non si apre entrando nel canale ma quando serve davvero, cioè
+   * quando dall'altra parte c'è qualcuno con cui parlare. Chi entra per
+   * primo può aspettare a lungo, e in quell'attesa il percorso audio del
+   * telefono resterebbe acceso a registrare per nessuno: corrente
+   * consumata, e l'indicatore di ascolto di Android acceso senza che
+   * nessuno stia ascoltando.
+   *
+   * La chiamano attachPeer (l'altro è arrivato) e enableVideo.
+   */
+  private async ensureMic(): Promise<void> {
     if (this.localStream) return;
-    this.localStream = await mediaDevices.getUserMedia({ audio: true, video: false });
-    this.events.onLocalStream?.(this.localStream);
+    const stream = await mediaDevices.getUserMedia({ audio: true, video: false });
+    // Il microfono può nascere già muto: si può premere "Muto" mentre si
+    // aspetta, e quella scelta deve valere anche per la traccia che
+    // ancora non esisteva.
+    const track = stream.getAudioTracks()[0];
+    if (track) track.enabled = this.audioDesired;
+    this.localStream = stream;
+    this.events.onLocalStream?.(stream);
   }
 
   /** Il sender audio della connessione viva. */
@@ -192,7 +216,7 @@ export class ChannelSession {
   /** Crea la connessione con l'altro. Chiamata quando entrambi siamo presenti. */
   async attachPeer(polite: boolean) {
     if (this.pc) return;
-    if (!this.localStream) await this.enterChannel();
+    await this.ensureMic();
 
     this.polite = polite;
     const servers = [...iceServers(), ...this.extraIce];
@@ -820,16 +844,24 @@ export class ChannelSession {
    * l'unica cosa che le somiglia.
    */
   toggleAudio(): boolean {
+    // Si ragiona sulla volontà, non sulla traccia: aspettando l'altro il
+    // microfono non è ancora aperto, ma il pulsante deve funzionare lo
+    // stesso e la scelta valere per quando lo sarà.
+    this.audioDesired = !this.audioDesired;
     const track = this.localStream?.getAudioTracks()[0];
-    if (!track) return false;
-    track.enabled = !track.enabled;
+    if (track) track.enabled = this.audioDesired;
     this.broadcastState();
-    return track.enabled;
+    return this.audioDesired;
   }
 
   /** Accende la camera: mette la traccia nel canale già aperto. */
   async enableVideo(): Promise<boolean> {
-    if (!this.localStream || this.localStream.getVideoTracks().length > 0) return true;
+    // Il flusso locale deve esistere: la traccia video si aggiunge lì.
+    // Accendere la camera aspettando l'altro apre quindi anche il
+    // microfono - la camera costa comunque molto di più, e tenere i due
+    // separati complicherebbe il resto senza guadagno.
+    await this.ensureMic();
+    if (this.localStream!.getVideoTracks().length > 0) return true;
     const profile = VIDEO_PROFILES[this.cfg.videoQuality] ?? VIDEO_PROFILES.standard;
     const cam = await mediaDevices.getUserMedia({
       video: {
@@ -871,7 +903,10 @@ export class ChannelSession {
       }
     } catch { /* noop */ }
 
-    this.localStream.addTrack(track);          // anteprima locale
+    // Preso una volta sola: dopo un `await` il compilatore non può più
+    // sapere che il campo sia ancora pieno, e ha ragione.
+    const locale = this.localStream!;
+    locale.addTrack(track);                    // anteprima locale
     try {
       const st: any = (track as any).getSettings?.() ?? {};
       log('camera accesa:', `${st.width ?? '?'}x${st.height ?? '?'}`,
@@ -893,7 +928,7 @@ export class ChannelSession {
       }
     } else if (this.pc) {
       // Ripiego, se il canale video non era stato aperto in anticipo.
-      this.videoSender = this.pc.addTrack(track, this.localStream);
+      this.videoSender = this.pc.addTrack(track, locale);
     }
 
     // Se nel frattempo l'altro non sta guardando, la camera resta accesa
@@ -1206,8 +1241,16 @@ export class ChannelSession {
     });
   }
 
+  /** Se il microfono è stato aperto. Falso mentre si aspetta l'altro. */
+  hasMic(): boolean {
+    return !!this.localStream;
+  }
+
   isAudioEnabled(): boolean {
-    return this.localStream?.getAudioTracks()[0]?.enabled ?? false;
+    // Prima che il microfono venga aperto vale l'intenzione: per l'altro
+    // "acceso" significa che sarai sentito, non che l'apparecchio è già
+    // in funzione.
+    return this.audioDesired;
   }
 
   isVideoEnabled(): boolean {

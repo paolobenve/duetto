@@ -49,7 +49,43 @@ function turnConfig() {
 }
 const MAX_PER_ROOM = 2;
 const MAX_MESSAGE_BYTES = 256 * 1024;
-const HEARTBEAT_MS = 30_000;
+/**
+ * Ogni quanto il server manda un colpetto a ciascun telefono.
+ *
+ * Serve a due cose insieme: accorgersi delle connessioni morte, e tenere
+ * viva la mappatura NAT dell'operatore, senza la quale il telefono smette
+ * di essere raggiungibile pur credendosi collegato.
+ *
+ * Il conto però lo paga il telefono, non il server: ogni pacchetto tira
+ * fuori la radio dal riposo e ce la tiene per qualche secondo. A 30
+ * secondi fissi erano 120 risvegli l'ora, tutta la notte, per non fare
+ * nulla - la voce di consumo piu' grossa dell'attesa.
+ *
+ * Quindi fitto solo dove la prontezza conta davvero, cioe' con qualcuno
+ * nel canale; rado quando si sta soltanto in ascolto. Quattro minuti
+ * stanno larghi dentro i tempi di scadenza del NAT mobile, che nella
+ * pratica vanno dalla decina di minuti in su.
+ *
+ * I tempi si possono cambiare dal `.env`: servono corti per la prova
+ * automatica, e sul campo permettono di tarare l'attesa - se misurando
+ * il consumo si scopre che quattro minuti si possono allungare - senza
+ * rimettere mano al codice.
+ */
+const ms = (v, def) => (Number(v) > 0 ? Number(v) : def);
+const BATTITO_ATTIVO_MS = ms(process.env.BATTITO_ATTIVO_MS, 30_000);
+const BATTITO_ASCOLTO_MS = ms(process.env.BATTITO_ASCOLTO_MS, 240_000);
+
+/** Ogni quanto si guarda chi e' scaduto. Costa nulla: i socket sono due. */
+const BATTITO_TICK_MS = ms(process.env.BATTITO_TICK_MS, 5_000);
+
+/**
+ * Quanto si aspetta la risposta prima di dare la connessione per morta.
+ *
+ * Deve stare largo sul risveglio di un telefono che dormiva - radio da
+ * riagganciare compresa - e stretto abbastanza da non lasciare a lungo
+ * l'altro davanti a una presenza che non c'e' piu'.
+ */
+const ATTESA_RISPOSTA_MS = ms(process.env.ATTESA_RISPOSTA_MS, 20_000);
 
 // Quanti ingressi al minuto per indirizzo. Non dà fastidio a nessuno
 // (le riconnessioni sono poche), ma rende impraticabile provare codici
@@ -142,7 +178,10 @@ const wss = new WebSocketServer({ server: httpServer, maxPayload: MAX_MESSAGE_BY
 
 wss.on('connection', (ws, req) => {
   ws.ip = clientIp(req);
-  ws.isAlive = true;
+  /** Ultima volta che si e' avuta prova che c'e': ora, appena arrivato. */
+  ws.lastSeen = Date.now();
+  /** Quando gli e' stato mandato un colpetto senza ancora risposta. */
+  ws.pingSentAt = null;
   ws.peerId = randomUUID();
   ws.roomId = null;
   ws.joined = false;
@@ -151,9 +190,15 @@ wss.on('connection', (ws, req) => {
   ws.replaced = false; // rimpiazzato dallo stesso dispositivo
   ws.name = 'Qualcuno';
 
-  ws.on('pong', () => { ws.isAlive = true; });
+  ws.on('pong', () => {
+    ws.pingSentAt = null;
+    ws.lastSeen = Date.now();
+  });
 
   ws.on('message', (data, isBinary) => {
+    // Un messaggio e' gia' prova che c'e', e ha appena rinfrescato la
+    // mappatura NAT: rimandiamo in avanti il prossimo colpetto.
+    ws.lastSeen = Date.now();
     if (isBinary) return;
     let msg;
     try {
@@ -239,6 +284,9 @@ wss.on('connection', (ws, req) => {
           name: ws.name,
           mode: ws.mode,
         });
+        // Appena detto a chi entra che l'altro c'e': conviene assicurarsi
+        // che sia vero, invece di aspettare il prossimo giro del battito.
+        verificaPresenza(peer);
         // Se entra già nel canale mentre l'altro è solo in ascolto,
         // è il momento di farglielo sapere.
         if (ws.mode === 'active' && peer.mode === 'listening') {
@@ -256,6 +304,7 @@ wss.on('connection', (ws, req) => {
       ws.mode = next;
       for (const peer of peersOf(ws.roomId, ws)) {
         send(peer, { type: 'peer-mode', mode: next, name: ws.name });
+        if (next === 'active') verificaPresenza(peer);
         // Notifica solo la transizione che conta: qualcuno È ENTRATO
         // nel canale mentre l'altro stava soltanto in ascolto.
         if (before === 'listening' && next === 'active' && peer.mode === 'listening') {
@@ -293,6 +342,10 @@ wss.on('connection', (ws, req) => {
       }
       for (const peer of others) {
         send(peer, { type: 'notify', reason: 'knock', name: ws.name });
+        // Bussare e' il momento in cui conta di piu' sapere se c'e'
+        // davvero: se non risponde, entro pochi secondi la sua uscita
+        // arriva a chi ha bussato, invece di restare "avvisato" a vuoto.
+        verificaPresenza(peer);
       }
       send(ws, { type: 'knock-result', ok: true });
       return;
@@ -308,14 +361,45 @@ wss.on('connection', (ws, req) => {
   ws.on('error', () => leaveRoom(ws));
 });
 
+/** Ogni quanto va interrogato questo telefono. */
+function intervalloBattito(ws) {
+  // Chi non ha ancora fatto join sta occupando un posto senza dire chi
+  // e': si controlla in fretta, come chi e' nel canale.
+  if (!ws.joined || ws.mode === 'active') return BATTITO_ATTIVO_MS;
+  return BATTITO_ASCOLTO_MS;
+}
+
+/**
+ * Interroga subito questo telefono, fuori dal giro normale.
+ *
+ * Si usa nei momenti in cui la presenza dell'altro sta per essere data
+ * per buona - qualcuno bussa, entra, o si affaccia nel canale - perche'
+ * con il battito rado una connessione morta potrebbe restare in piedi
+ * per minuti, e l'altro vedrebbe presente chi non c'e' piu'.
+ *
+ * Non risolve la richiesta in corso, che parte comunque: fa in modo che
+ * entro pochi secondi la verita' venga a galla da sola, con il
+ * `peer-left` che segue la chiusura.
+ */
+function verificaPresenza(ws) {
+  if (!ws || ws.pingSentAt) return;   // gia' in attesa di risposta
+  ws.pingSentAt = Date.now();
+  try { ws.ping(); } catch { /* noop */ }
+}
+
 // Ping/pong per chiudere connessioni morte (telefoni che perdono rete)
 const heartbeat = setInterval(() => {
+  const now = Date.now();
   for (const ws of wss.clients) {
-    if (ws.isAlive === false) { ws.terminate(); continue; }
-    ws.isAlive = false;
-    try { ws.ping(); } catch { /* noop */ }
+    if (ws.pingSentAt) {
+      // Interrogato e ancora muto: oltre l'attesa lo si da' per morto.
+      if (now - ws.pingSentAt > ATTESA_RISPOSTA_MS) ws.terminate();
+      continue;
+    }
+    if (now - (ws.lastSeen ?? 0) < intervalloBattito(ws)) continue;
+    verificaPresenza(ws);
   }
-}, HEARTBEAT_MS);
+}, BATTITO_TICK_MS);
 
 wss.on('close', () => clearInterval(heartbeat));
 

@@ -10,6 +10,16 @@ cui si nota qualcosa.
 
 ## 1.1.31
 
+**Aspettare costa molto meno.** Entrando nel canale il microfono non si apre più subito:
+si apre quando dall'altra parte arriva davvero qualcuno. Chi entra per primo può aspettare
+a lungo, e in quell'attesa il telefono registrava per nessuno — con l'indicatore di
+ascolto acceso, per giunta. Insieme a questa, una modifica sul server: il colpetto che
+tiene viva la connessione era ogni 30 secondi anche di notte, cioè 120 risvegli della
+radio ogni ora per non fare niente, e ora si dirada finché si sta soltanto in ascolto. Si
+infittisce da solo quando si entra nel canale, e quando qualcuno bussa l'altro viene
+interrogato all'istante: se non c'è più, lo si scopre subito invece di restare davanti a
+un "avvisato" rivolto a nessuno.
+
 **"Gira" si può premere anche a video spento.** Non gira niente lì per lì: sceglie con
 quale camera si accenderà, e l'icona lo mostra. Così si inquadra qualcosa senza far vedere
 prima, per un istante, la propria faccia. Nello stesso giro sparisce un fastidio: cambiando
