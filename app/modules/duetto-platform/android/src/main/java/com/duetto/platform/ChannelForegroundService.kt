@@ -5,7 +5,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Handler
@@ -72,9 +75,38 @@ class ChannelForegroundService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    /**
+     * Attaccare e staccare il cavo sono i confini più importanti del
+     * diario: in carica la batteria sale, e qualunque conto sul consumo
+     * fatto a cavallo di quel momento è privo di senso. Segnandoli con
+     * una riga, chi legge può buttare via i periodi in carica interi
+     * invece di trovarsi differenze positive in mezzo ai numeri.
+     */
+    private val cavo = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val motivo = when (intent?.action) {
+                Intent.ACTION_POWER_CONNECTED -> "carica-attaccata"
+                Intent.ACTION_POWER_DISCONNECTED -> "carica-staccata"
+                else -> return
+            }
+            Diario.campiona(applicationContext, motivo)
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        val filtro = IntentFilter().apply {
+            addAction(Intent.ACTION_POWER_CONNECTED)
+            addAction(Intent.ACTION_POWER_DISCONNECTED)
+        }
+        // Registrato a runtime e non nel manifest: da Android 8 questi
+        // annunci non arrivano più ai ricevitori dichiarati nel manifest.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(cavo, filtro, RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(cavo, filtro)
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -99,6 +131,7 @@ class ChannelForegroundService : Service() {
     }
 
     override fun onDestroy() {
+        try { unregisterReceiver(cavo) } catch (_: Exception) { /* mai registrato */ }
         orologio.removeCallbacks(scriviDiario)
         diarioAvviato = false
         Diario.campiona(applicationContext, "uscita")
