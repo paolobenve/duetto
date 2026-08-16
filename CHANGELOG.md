@@ -24,6 +24,10 @@ n'è andato da chi è caduto: a chi cade il posto resta per sei secondi, che è 
 cambio di rete, così non si vede il proprio video salire a schermo intero e tornare indietro
 per niente. Lo dice il server, che sa se il telefono ha salutato o è sparito.
 
+**"Gira" si accende quando riprende la camera frontale.** Pastiglia bianca con la frontale,
+spenta con quella dietro: la sola differenza fra le due sagome — una persona o più — si
+coglie leggendola, mentre il pieno o il vuoto si vede da lontano.
+
 **Nella schermata dell'accoppiamento, accanto a «Cambia server» c'è scritto qual è.** Era
 l'unica cosa che si voleva sapere prima di toccare quella riga, e bisognava entrarci per
 scoprirlo.

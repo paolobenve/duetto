@@ -444,7 +444,11 @@ export default function ChannelScreen(props: Props) {
           // L'icona dice quale camera è accesa: una persona sola per la
           // frontale, più persone per quella dietro, che è ciò che di
           // solito ci si trova a inquadrare.
-          icon={cameraFrontale ? <IconaFrontale /> : <IconaPosteriore />}
+          // Pastiglia bianca con la frontale, spenta con la posteriore:
+          // la sola differenza fra le due sagome - una persona o più -
+          // si coglie leggendola, mentre il pieno o il vuoto si vede.
+          icon={cameraFrontale ? <IconaFrontale {...SU_CHIARO} /> : <IconaPosteriore />}
+          active={cameraFrontale}
           // Premibile anche a video spento: lì non gira niente, sceglie
           // con quale camera si accenderà. Serve a inquadrare qualcosa
           // senza mostrare prima, per un istante, la propria faccia.
