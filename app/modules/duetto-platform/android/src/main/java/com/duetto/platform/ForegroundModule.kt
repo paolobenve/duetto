@@ -110,6 +110,17 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
         promise.resolve(StartupHelper.openAppSettings(ctx, currentActivity))
     }
 
+    /** Notizia da leggere con comodo: non suona e non vibra. */
+    @ReactMethod
+    fun nota(title: String, text: String, promise: Promise) {
+        try {
+            Notifier.mostraNota(ctx, title, text)
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("notify_error", e)
+        }
+    }
+
     /** Avviso da mostrare quando l'app non è in primo piano. */
     @ReactMethod
     fun notify(title: String, text: String, promise: Promise) {

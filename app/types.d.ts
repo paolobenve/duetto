@@ -15,6 +15,8 @@ declare module 'duetto-platform' {
     setText(text: string): Promise<boolean>;
     stop(): Promise<boolean>;
     notify(title: string, text: string): Promise<boolean>;
+    /** notizia silenziosa: non suona e non vibra */
+    nota(title: string, text: string): Promise<boolean>;
     clearNotification(): Promise<boolean>;
     isBatteryUnrestricted(): Promise<boolean>;
     requestBatteryUnrestricted(): Promise<boolean>;
@@ -49,6 +51,10 @@ declare module 'duetto-platform' {
     leggi(daRiga: number): Promise<string>;
     aggiungiAltro(testo: string): Promise<boolean>;
     percorso(): Promise<string>;
+    /** com'è morta l'app l'ultima volta; null se il telefono non lo sa */
+    ultimaMorte(): Promise<{
+      quando: number; causa: string; era: string; descrizione: string;
+    } | null>;
   };
 
   /** Vibrazione e suono dell'avviso. */

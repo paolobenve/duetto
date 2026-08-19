@@ -8,7 +8,7 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
-## 1.1.46
+## 1.1.50
 
 **Tenendo premuto «Esci» si sceglie come uscire.** Il tocco fa quello di sempre — chiudi il
 canale ma resti raggiungibile, e il suo avviso ti arriva. La pressione lunga aggiunge
@@ -20,6 +20,38 @@ la verità. Dura finché non riapri l'app: riaprirla è già dire «ci sono».
 aggiungere un collegamento non aveva nessun modo di cambiare idea: il tasto Indietro
 chiudeva l'app, e l'unica via era «Cambia server», che promette tutt'altro. Ora c'è
 «Annulla», e il tasto Indietro riporta alle impostazioni.
+
+**Se l'app di uno dei due muore, l'altro lo viene a sapere.** Nessuno può avvisare mentre
+muore — un processo ucciso dal sistema non riceve nessun preavviso — ma riaccendendosi il
+telefono si ricorda com'è andata, e allora lo dice: «Anna è sparita alle 23:04: il telefono
+era senza memoria. Adesso è tornata». Arriva come notizia silenziosa, non come avviso: non
+suona e non vibra. E se l'assenza è durata più di un minuto senza essere una morte, il
+ritorno viene annunciato lo stesso, qualche secondo dopo — giusto il tempo di lasciar
+passare avanti il racconto, quando c'è.
+
+**I comandi che si fanno da parte adesso hanno tre modi.** «Poco sfumati» è quello di sempre
+(40%, restano leggibili), «molto sfumati» li riduce a un'ombra (15%), «nascosti» li toglie
+del tutto. In tutti e tre restano premibili e un tocco ovunque li richiama: cambia solo
+quanta immagine lasciano vedere. Chi aveva acceso «Nascondi i comandi» si ritrova su
+«nascosti», senza riscegliere niente.
+
+**Con il video acceso la voce si fa ricca da sé.** L'audio migliore costa 4 kB/s per
+direzione: accanto a mezzo megabit di video non si notano, e rinunciare alla voce buona per
+risparmiarli è un cattivo affare. Ora, quando il video supera i 320 kbit/s, il tetto
+dell'audio si alza da solo; torna all'impostazione quando il video scende sotto i 160 o si
+spegne. L'impostazione non viene toccata, e se l'hai accesa tu resta accesa comunque.
+
+**Il diario passa all'altro telefono ogni cinque minuti** invece che ogni ora: un diario che
+arriva subito racconta cos'è appena successo dall'altra parte, uno che arriva con un'ora di
+ritardo racconta una storia vecchia.
+
+**Quando l'app sparisce, adesso resta scritto perché.** Android sa sempre come è morto un
+processo — memoria finita, errore, blocco, arresto forzato, o una decisione del gestore
+batteria del produttore — ma non lo dice a nessuno finché non glielo si chiede. Ora Duetto
+glielo chiede a ogni avvio e mette la risposta nel diario, con quanta memoria occupava e
+quanto contava agli occhi del sistema in quel momento. E siccome il diario i due telefoni se
+lo scambiano, si scopre anche perché è sparita sul telefono dell'altro, senza cavi e senza
+doverglielo chiedere.
 
 **Se il sistema uccide l'app, la presenza torna da sé.** Quando Android chiude Duetto per
 fare posto ad altro, il servizio ripartiva mostrando la notifica ma senza connessione: una
@@ -68,9 +100,8 @@ finché non apri l'app.
 **Nel riquadro «Non tu» ora si vede come ti sta ascoltando l'altro.** Accanto alla scritta
 c'è il segno della sua uscita audio — vivavoce, orecchio, cuffie, bluetooth — e se ha il
 microfono spento il segno è sbarrato. Sono le due cose che durante una conversazione ci si
-chiede a voce di continuo, «mi senti?», «sei in vivavoce?», e che il telefono sa già. Il
-segno c'è anche quando l'altro non accende la camera: non avendo un riquadrino suo su cui
-appoggiarsi, prende una pastiglia tutta sua accanto a quella del tuo video.
+chiede a voce di continuo, «mi senti?», «sei in vivavoce?», e che il telefono sa già. Quando
+non c'è nessun video, il segno sta nel riepilogo al centro, sopra la riga dell'audio.
 
 **Il pulsante «Avvisa» resta acceso anche quando siete tutti e due nel canale.** Prima si
 spegneva, con l'idea che lì non ci fosse più nulla da avvisare; ma il pulsante lì è

@@ -29,7 +29,28 @@ import {
  * pezzo.
  */
 const FADE_MS = 10000;
-const DIM_OPACITY = 0.4;
+
+/**
+ * Quanto restano visibili i comandi quando il calo è finito.
+ *
+ * Quaranta per cento è quello di sempre: si leggono, ma non pesano.
+ * Quindici li riduce a un'ombra, per chi guarda l'immagine e non vuole
+ * niente sopra ma nemmeno un buio in cui cercare i pulsanti a memoria.
+ * Zero li toglie del tutto.
+ */
+const OPACITA_COMANDI: Record<'poco' | 'molto' | 'nascondi', number> = {
+  poco: 0.4,
+  molto: 0.15,
+  nascondi: 0,
+};
+
+/**
+ * L'etichetta "Tu"/"Non tu" non scende sotto questa soglia.
+ *
+ * Chi si sta guardando è l'unica cosa che dallo schermo non si ricava,
+ * quindi resta leggibile anche quando tutto il resto se n'è andato.
+ */
+const DIM_ETICHETTA = 0.4;
 
 /**
  * Sotto questa larghezza siamo nella finestrella Picture-in-Picture:
@@ -84,7 +105,8 @@ type Props = {
   /** le due righe tecniche sotto ai pulsanti, spente per impostazione */
   showStats: boolean;
   /** i comandi spariscono del tutto invece di attenuarsi */
-  hideControls: boolean;
+  /** quanto si fanno da parte i comandi: 'poco' | 'molto' | 'nascondi' */
+  comandi: 'poco' | 'molto' | 'nascondi';
   /** quale camera sta riprendendo: lo dice l'icona di "Gira" */
   cameraFrontale: boolean;
   /** profilo in uso e come cambiarlo: si apre tenendo premuto "Video" */
@@ -131,7 +153,7 @@ type Props = {
  */
 export default function ChannelScreen(props: Props) {
   const {
-    collegamento, peerName, peerAvatar, peerPresent, videoStats, qualityLabel, showStats, hideControls, cameraFrontale, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
+    collegamento, peerName, peerAvatar, peerPresent, videoStats, qualityLabel, showStats, comandi, cameraFrontale, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes,
     onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, onOpenSettings,
@@ -292,9 +314,11 @@ export default function ChannelScreen(props: Props) {
     finCalo.current = Date.now() + durata;
     Animated.timing(opacity, {
       // Invisibili, ma sempre premibili: un tocco ovunque li richiama.
-      toValue: hideControls ? 0 : DIM_OPACITY, duration: durata, useNativeDriver: true,
+      toValue: OPACITA_COMANDI[comandi] ?? OPACITA_COMANDI.poco,
+      duration: durata,
+      useNativeDriver: true,
     }).start();
-  }, [opacity, hideControls]);
+  }, [opacity, comandi]);
 
   /**
    * C'è qualcosa da guardare sotto ai comandi.
@@ -333,7 +357,7 @@ export default function ChannelScreen(props: Props) {
    */
   const opacitaEtichetta = opacity.interpolate({
     inputRange: [0, 1],
-    outputRange: [DIM_OPACITY, 1],
+    outputRange: [DIM_ETICHETTA, 1],
   });
 
   const tocco = useCallback(() => {
@@ -485,18 +509,12 @@ export default function ChannelScreen(props: Props) {
             <Text style={styles.chiText}>{soloGrande === 'tu' ? 'Tu' : 'Non tu'}</Text>
             {soloGrande === 'altro' ? segnoAltro : null}
           </View>
-          {/* Se l'altro non accende la camera non c'è nessun riquadrino
-              suo su cui appoggiare il segno, e come ti sta ascoltando
-              sparirebbe proprio quando è l'unica cosa che si può sapere
-              di lui. Allora la pastiglia se la prende da sola, accanto
-              alla tua. Non durante un'interruzione: lì il riquadrino
-              vuoto c'è ancora, e il segno è già suo. */}
-          {soloGrande === 'tu' && together && !remoteHasVideo && !interrupted ? (
-            <View style={styles.chiBadge}>
-              <Text style={styles.chiText}>Non tu</Text>
-              {segnoAltro}
-            </View>
-          ) : null}
+          {/* Niente pastiglia "Non tu" quando di suo non c'è nessuna
+              immagine: queste etichette dicono CHI si sta guardando, e
+              una che nomina un video inesistente sembra un secondo video
+              che non arriva. Come ti sta ascoltando lo dice il riepilogo
+              al centro, quando nessuno dei due ha il video, e il suo
+              riquadrino quando ce l'ha. */}
         </Animated.View>
       ) : null}
 

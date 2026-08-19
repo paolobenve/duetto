@@ -112,7 +112,15 @@ export type DuoConfig = {
    * Restano premibili anche invisibili, e un tocco ovunque li richiama:
    * chi guarda un video a lungo preferisce l'immagine pulita.
    */
-  nascondiComandi: boolean;
+  /**
+   * Quanto si fanno da parte i comandi mentre si guarda un video.
+   *
+   * "poco" li lascia leggibili (40%), "molto" li riduce a un'ombra
+   * (15%), "nascondi" li toglie del tutto. In tutti e tre i casi
+   * restano premibili, e un tocco ovunque li richiama: quello che
+   * cambia è solo quanta immagine lasciano vedere.
+   */
+  comandi: 'poco' | 'molto' | 'nascondi';
   /**
    * `vp9` solo se entrambi i telefoni lo encodano in hardware; altrimenti
    * l'impostazione resta scritta ma non ha effetto, e nell'interfaccia
@@ -150,7 +158,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   videoQuality: 'migliore',
   audioMigliore: false,
   mostraDiagnostica: false,
-  nascondiComandi: false,
+  comandi: 'poco',
   videoCodec: 'auto',
   avvisoVibra: 'predefinito',
   avvisoSuono: 'predefinito',
@@ -164,7 +172,7 @@ export async function loadConfig(): Promise<DuoConfig> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_CONFIG;
-    return normalizzaCoppie({ ...DEFAULT_CONFIG, ...JSON.parse(raw) });
+    return normalizzaComandi(normalizzaCoppie({ ...DEFAULT_CONFIG, ...JSON.parse(raw) }));
   } catch {
     return DEFAULT_CONFIG;
   }
@@ -178,6 +186,21 @@ export async function loadConfig(): Promise<DuoConfig> {
  * dell'archivio, senza doversi riaccoppiare: la coppia è la stessa, è
  * solo scritta in un posto in più.
  */
+/**
+ * Da "nascondi sì/no" alle tre sfumature.
+ *
+ * Chi aveva l'interruttore acceso voleva i comandi via, e li ritrova
+ * via; chi lo aveva spento ritrova il 40% di prima. Nessuno deve
+ * riscegliere qualcosa che aveva già scelto.
+ */
+function normalizzaComandi(cfg: DuoConfig): DuoConfig {
+  const vecchio = (cfg as unknown as { nascondiComandi?: boolean }).nascondiComandi;
+  if (cfg.comandi === 'poco' && typeof vecchio === 'boolean' && vecchio) {
+    return { ...cfg, comandi: 'nascondi' };
+  }
+  return cfg;
+}
+
 function normalizzaCoppie(cfg: DuoConfig): DuoConfig {
   const lista = Array.isArray(cfg.pairs) ? cfg.pairs.filter((p) => p && p.id && p.key) : [];
   const attiva = cfg.pair && cfg.pair.id && cfg.pair.key ? cfg.pair : null;

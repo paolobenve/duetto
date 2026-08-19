@@ -1,5 +1,7 @@
 package com.duetto.platform
 
+import android.app.ActivityManager
+import android.app.ApplicationExitInfo
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -44,6 +46,9 @@ object Diario {
     private const val CARTELLA = "diario"
     private const val MIO = "mio.log"
     private const val ALTRO = "altro.log"
+
+    /** L'ultima morte gia' scritta nel diario: le altre sono vecchie. */
+    private const val ULTIMA_MORTE = "ultima_morte_registrata"
 
     /** Oltre questa taglia il file viene ruotato: uno indietro e basta. */
     private const val TAGLIA_MAX = 512L * 1024L
@@ -260,6 +265,118 @@ object Diario {
         } catch (e: Exception) {
             Log.w(TAG, "diario: non sono riuscito a scrivere: ${e.message}")
         }
+    }
+
+    /**
+     * Perche' il processo e' morto, l'ultima volta.
+     *
+     * E' la domanda a cui nessun registro sapeva rispondere: l'app "non
+     * c'e' piu'" e non si sa se l'ha chiusa il padrone del telefono, se
+     * e' finita la memoria, se e' andata in errore o se e' stato il
+     * gestore della batteria del produttore. Android la risposta ce
+     * l'ha - `getHistoricalProcessExitReasons`, da Android 11 - e non la
+     * dice a nessuno finche' non gliela si chiede.
+     *
+     * Si chiede all'avvio, quando le morti da raccontare sono quelle di
+     * prima, e finisce nel diario: che vuol dire che finisce anche
+     * sull'ALTRO telefono, che il diario se lo scambia. Un'app che
+     * sparisce dal telefono di un'altra persona, senza un cavo e senza
+     * poterle chiedere niente, altrimenti resta un mistero.
+     *
+     * `descrizione` e' il campo piu' prezioso: e' li' che i produttori
+     * scrivono cose come "stop com.duetto due to ...", ed e' l'unico
+     * modo di distinguere una morte per memoria da una decisione del
+     * gestore della batteria, che ad Android risulta "altro".
+     */
+    fun registraUscite(ctx: Context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
+        try {
+            val am = ctx.getSystemService(ActivityManager::class.java) ?: return
+            val uscite = am.getHistoricalProcessExitReasons(ctx.packageName, 0, 10)
+            if (uscite.isEmpty()) return
+
+            val prefs = ctx.getSharedPreferences(BootReceiver.PREFS, Context.MODE_PRIVATE)
+            val gia = prefs.getLong(ULTIMA_MORTE, 0L)
+            // Dalla piu' vecchia alla piu' recente, cosi' nel diario
+            // restano in ordine di tempo come tutto il resto.
+            val nuove = uscite.filter { it.timestamp > gia }.sortedBy { it.timestamp }
+            if (nuove.isEmpty()) return
+
+            val file = fileMio(ctx) ?: return
+            ruotaSeGrosso(file)
+            for (u in nuove) {
+                val riga = buildString {
+                    append(formato.format(Date(u.timestamp)))
+                    append(" motivo=morte")
+                    append(" causa=").append(causa(u.reason))
+                    append(" era=").append(importanza(u.importance))
+                    if (u.status != 0) append(" stato=").append(u.status)
+                    if (u.pss > 0) append(" pss=").append(u.pss).append("kB")
+                    if (u.rss > 0) append(" rss=").append(u.rss).append("kB")
+                    u.description?.let { append(" descrizione=\"").append(it).append('"') }
+                    append('\n')
+                }
+                file.appendText(riga)
+            }
+            prefs.edit().putLong(ULTIMA_MORTE, nuove.last().timestamp).apply()
+        } catch (e: Exception) {
+            Log.w(TAG, "diario: non sono riuscito a leggere le uscite: ${e.message}")
+        }
+    }
+
+    /**
+     * L'ultima morte del processo, per raccontarla all'altro telefono.
+     *
+     * Il diario la scrive per chi lo leggera' un giorno; questa serve
+     * subito, per dirlo a chi stava aspettando dall'altra parte e ha
+     * visto sparire una persona senza sapere perche'.
+     */
+    fun ultimaMorte(ctx: Context): ApplicationExitInfo? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
+        return try {
+            ctx.getSystemService(ActivityManager::class.java)
+                ?.getHistoricalProcessExitReasons(ctx.packageName, 0, 1)
+                ?.firstOrNull()
+        } catch (e: Exception) {
+            Log.w(TAG, "diario: non riesco a leggere l'ultima uscita: ${e.message}")
+            null
+        }
+    }
+
+    internal fun causa(reason: Int): String = when (reason) {
+        ApplicationExitInfo.REASON_EXIT_SELF -> "uscita-nostra"
+        ApplicationExitInfo.REASON_SIGNALED -> "segnale"
+        ApplicationExitInfo.REASON_LOW_MEMORY -> "memoria-finita"
+        ApplicationExitInfo.REASON_CRASH -> "errore"
+        ApplicationExitInfo.REASON_CRASH_NATIVE -> "errore-nativo"
+        ApplicationExitInfo.REASON_ANR -> "bloccata"
+        ApplicationExitInfo.REASON_INITIALIZATION_FAILURE -> "avvio-fallito"
+        ApplicationExitInfo.REASON_PERMISSION_CHANGE -> "permessi-cambiati"
+        ApplicationExitInfo.REASON_EXCESSIVE_RESOURCE_USAGE -> "troppe-risorse"
+        ApplicationExitInfo.REASON_USER_REQUESTED -> "chiusa-dall-utente"
+        ApplicationExitInfo.REASON_USER_STOPPED -> "arresto-forzato"
+        ApplicationExitInfo.REASON_DEPENDENCY_DIED -> "dipendenza-morta"
+        ApplicationExitInfo.REASON_OTHER -> "altro"
+        else -> "sconosciuta($reason)"
+    }
+
+    /**
+     * Quanto contava il processo agli occhi di Android quando e' morto.
+     *
+     * Distingue il caso che qui interessa da tutti gli altri: un
+     * processo ucciso mentre teneva un servizio in primo piano e' un
+     * telefono che ha voluto liberarsene comunque; uno ucciso da
+     * "cached" e' semplicemente un'app che non serviva piu' a nessuno,
+     * e vuol dire che il servizio non c'era gia' piu'.
+     */
+    internal fun importanza(v: Int): String = when {
+        v <= 100 -> "primo-piano"
+        v <= 125 -> "servizio-in-primo-piano"
+        v <= 200 -> "visibile"
+        v <= 230 -> "percepibile"
+        v <= 300 -> "servizio"
+        v <= 350 -> "in-cache-pesante"
+        else -> "in-cache"
     }
 
     /**

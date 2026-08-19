@@ -76,6 +76,26 @@ export const DEFAULT_ASPECT = 9 / 16;
  */
 const log = (...args: any[]) => console.log('[duetto-rtc]', ...args);
 
+/**
+ * I due tetti della voce, e quando il video li decide da sé.
+ *
+ * Trentadue kbit/s è il valore attorno a cui Opus manda la voce per
+ * impostazione predefinita; sessantaquattro è "voce più ricca", e la
+ * differenza si sente. Il di più costa 32 kbit/s.
+ *
+ * Le soglie sono quel di più moltiplicato: sopra dieci volte tanto di
+ * video - trecentoventi kbit/s - i 32 in più sono il tre per cento del
+ * traffico, e tenerli fuori per risparmiare non ha senso. Si torna
+ * all'impostazione dell'utente sotto cinque volte tanto, dove il
+ * risparmio ricomincia a contare; in mezzo non si cambia nulla, così un
+ * video che ondeggia attorno alla soglia non fa rimbalzare il tetto.
+ */
+const AUDIO_BASE = 32000;
+const AUDIO_RICCO = 64000;
+const AUDIO_EXTRA_KBPS = (AUDIO_RICCO - AUDIO_BASE) / 1000;
+const VIDEO_TANTO = AUDIO_EXTRA_KBPS * 10;
+const VIDEO_POCO = AUDIO_EXTRA_KBPS * 5;
+
 /** host / srflx / prflx / relay: dice che strada sta tentando ICE. */
 function candidateType(candidate: string): string {
   const m = /(?:^| )typ ([a-z]+)/.exec(candidate || '');
@@ -103,6 +123,22 @@ export class ChannelSession {
   private lastAudioOut: { ts: number; bytes: number } | null = null;
   /** una riga nel log ogni tanto, ma il pannello si aggiorna spesso */
   private statsTicks = 0;
+
+  /**
+   * Il video in corso sposta molti più dati della voce.
+   *
+   * Quando è così, il tetto basso dell'audio non fa risparmiare niente
+   * di apprezzabile - trentadue kbit/s in più accanto a mezzo megabit di
+   * video sono rumore di fondo - e in cambio la voce suona peggio, che è
+   * la cosa per cui si è aperto il canale. Allora si alza da sé, senza
+   * toccare l'impostazione: quella resta com'è, e torna a comandare
+   * appena il video si spegne o si riduce a un filo.
+   *
+   * Con isteresi larga: un video che oscilla attorno alla soglia
+   * cambierebbe il tetto avanti e indietro, e ogni cambio è una
+   * rinegoziazione dei parametri dell'encoder.
+   */
+  private videoAbbondante = false;
   private statsTimer: ReturnType<typeof setInterval> | null = null;
   /** l'altro dichiara la camera accesa: lo dice il messaggio `state` */
   private peerVideoDeclared = false;
@@ -211,9 +247,11 @@ export class ChannelSession {
       if (!Array.isArray(params.encodings) || params.encodings.length === 0) {
         params.encodings = [{}];
       }
-      params.encodings[0].maxBitrate = this.cfg.audioMigliore ? 64000 : 32000;
+      const ricco = this.audioRicco();
+      params.encodings[0].maxBitrate = ricco ? AUDIO_RICCO : AUDIO_BASE;
       await sender.setParameters(params);
-      log('audio:', this.cfg.audioMigliore ? 'tetto 64 kbit/s' : 'tetto 32 kbit/s');
+      log('audio:', ricco ? 'tetto 64 kbit/s' : 'tetto 32 kbit/s',
+        !this.cfg.audioMigliore && ricco ? '(per via del video)' : '');
     } catch (e) {
       log('non riesco ad applicare la qualità audio:', String(e));
     }
@@ -229,6 +267,17 @@ export class ChannelSession {
    * vengono ignorati. L'opzione che riapriva il microfono con gli stessi
    * identici parametri è stata tolta invece di restare a fingere.
    */
+  /**
+   * Se in questo momento la voce va mandata ricca.
+   *
+   * L'impostazione dell'utente vince sempre verso l'alto: chi l'ha
+   * accesa la vuole anche a video spento. Il video può solo aggiungere,
+   * mai togliere.
+   */
+  private audioRicco(): boolean {
+    return this.cfg.audioMigliore || this.videoAbbondante;
+  }
+
   async setAudioOptions(migliore: boolean) {
     this.cfg = { ...this.cfg, audioMigliore: migliore };
     await this.applyAudioQuality();
@@ -860,6 +909,7 @@ export class ChannelSession {
       });
 
       this.events.onVideoStats?.(out);
+      this.pesaIlVideo((out.out?.kbps ?? 0) + (out.in?.kbps ?? 0));
 
       // Nel log basta una riga ogni tanto: sotto ai comandi c'è il resto.
       this.statsTicks += 1;
@@ -869,6 +919,20 @@ export class ChannelSession {
           '- limite:', limite);
       }
     } catch { /* la diagnostica non deve mai disturbare */ }
+  }
+
+  /**
+   * Guarda quanto video sta passando e decide il tetto della voce.
+   *
+   * Si contano tutte e due le direzioni: il video è la cosa grossa che
+   * sta attraversando questa connessione, e se c'è, i pochi kbit in più
+   * della voce non si notano da nessuna parte.
+   */
+  private pesaIlVideo(videoKbps: number) {
+    const prima = this.videoAbbondante;
+    if (!this.videoAbbondante && videoKbps >= VIDEO_TANTO) this.videoAbbondante = true;
+    else if (this.videoAbbondante && videoKbps < VIDEO_POCO) this.videoAbbondante = false;
+    if (this.videoAbbondante !== prima) this.applyAudioQuality();
   }
 
   private async flushCandidates() {
@@ -1325,6 +1389,9 @@ export class ChannelSession {
     if (this.statsTimer) { clearInterval(this.statsTimer); this.statsTimer = null; }
     this.lastOutbound = null;
     this.lastInbound = null;
+    // Senza connessione non c'è nessun video che paghi la voce ricca: la
+    // prossima ricomincia dall'impostazione dell'utente.
+    this.videoAbbondante = false;
     this.events.onVideoStats?.({});
     this.remoteStream?.getTracks().forEach((t) => t.stop());
     this.remoteStream = null;

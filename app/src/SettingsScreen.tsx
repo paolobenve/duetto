@@ -52,6 +52,33 @@ const SUONI: {
   },
 ];
 
+/**
+ * Quanto si fanno da parte i comandi.
+ *
+ * Le percentuali non sono un dettaglio da tecnici: sono esattamente la
+ * cosa che si sta scegliendo, e chi legge "molto sfumato" senza un
+ * numero non sa se sarà un'ombra o un ricordo.
+ */
+const COMANDI: {
+  valore: DuoConfig['comandi']; etichetta: string; nota: string;
+}[] = [
+  {
+    valore: 'poco',
+    etichetta: 'Poco sfumati',
+    nota: 'Restano leggibili, al 40%. È il modo di sempre.',
+  },
+  {
+    valore: 'molto',
+    etichetta: 'Molto sfumati',
+    nota: 'Un’ombra, al 15%: si intuisce dove sono senza che coprano niente.',
+  },
+  {
+    valore: 'nascondi',
+    etichetta: 'Nascosti',
+    nota: 'Spariscono del tutto, immagine pulita.',
+  },
+];
+
 type Props = {
   initial: DuoConfig;
   onSave: (cfg: DuoConfig) => void;
@@ -380,7 +407,11 @@ export default function SettingsScreen({
               Raddoppia il tetto dell’audio, da circa 32 a 64 kbit/s: la voce
               smette di suonare telefonica. Costa 4 kB/s in più per direzione.
               Vale per tutti e due i telefoni: quello che senti lo manda
-              l’altro.
+              l’altro.{'\n'}
+              Con il video acceso si alza da sé, spenta o accesa che sia: di
+              fianco a mezzo megabit di video quei 4 kB/s non si notano, e
+              rinunciare alla voce buona per risparmiarli sarebbe un cattivo
+              affare. Torna a contare quando il video si spegne.
             </Text>
           </View>
         </TouchableOpacity>
@@ -462,23 +493,27 @@ export default function SettingsScreen({
           </View>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.choice, cfg.nascondiComandi && styles.choicePicked]}
-          onPress={() => {
-            const v = !cfg.nascondiComandi;
-            setCfg({ ...cfg, nascondiComandi: v });
-            onLive?.({ nascondiComandi: v });
-          }}>
-          <View style={[styles.radio, cfg.nascondiComandi && styles.radioPicked]} />
-          <View style={styles.choiceText}>
-            <Text style={styles.choiceLabel}>Nascondi i comandi</Text>
-            <Text style={styles.choiceNote}>
-              Invece di attenuarsi spariscono del tutto, per lasciare
-              l’immagine pulita. Restano premibili: un tocco ovunque li
-              richiama.
-            </Text>
-          </View>
-        </TouchableOpacity>
+        <Text style={styles.subsection}>I comandi mentre guardi</Text>
+        <Text style={styles.sectionHint}>
+          Dopo qualche secondo si fanno da parte per lasciare l’immagine.
+          Comunque scelti restano premibili, e un tocco ovunque li richiama:
+          cambia solo quanta immagine lasciano vedere.
+        </Text>
+        {COMANDI.map((c) => (
+          <TouchableOpacity
+            key={c.valore}
+            style={[styles.choice, cfg.comandi === c.valore && styles.choicePicked]}
+            onPress={() => {
+              setCfg({ ...cfg, comandi: c.valore });
+              onLive?.({ comandi: c.valore });
+            }}>
+            <View style={[styles.radio, cfg.comandi === c.valore && styles.radioPicked]} />
+            <View style={styles.choiceText}>
+              <Text style={styles.choiceLabel}>{c.etichetta}</Text>
+              <Text style={styles.choiceNote}>{c.nota}</Text>
+            </View>
+          </TouchableOpacity>
+        ))}
 
         <TouchableOpacity style={styles.toggle} onPress={() => setAdvanced(!advanced)}>
           <Text style={styles.toggleText}>

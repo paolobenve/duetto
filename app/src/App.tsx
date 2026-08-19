@@ -45,14 +45,52 @@ const ATTESA_RITORNO_MS = 6000;
 /**
  * Ogni quanto il proprio diario dei consumi va all'altro telefono.
  *
- * Un'ora: le righe si scrivono ogni cinque minuti, quindi ne partono una
- * dozzina alla volta - un paio di migliaia di byte, niente rispetto a
- * qualunque altra cosa passi di lì.
+ * Cinque minuti, cioè il passo con cui le righe si scrivono: ne parte
+ * una alla volta, un paio di centinaia di byte. Costava poco anche a
+ * ogni ora, ma un diario che arriva subito serve a capire cos'è appena
+ * successo dall'altra parte - un'app sparita, per esempio - mentre uno
+ * che arriva con un'ora di ritardo racconta una storia già vecchia. E
+ * parte solo mentre si è collegati, cioè quando la rete è già in uso.
  */
-const SCAMBIO_DIARIO_MS = 60 * 60 * 1000;
+const SCAMBIO_DIARIO_MS = 5 * 60 * 1000;
 
 /** Quante righe di diario sono già state mandate all'altro. */
 const CHIAVE_DIARIO_INVIATE = 'duetto.diario.inviate';
+
+/** L'ultima morte già raccontata all'altro telefono: non si ripete. */
+const CHIAVE_MORTE_RACCONTATA = 'duetto.morte.raccontata';
+
+/**
+ * Come dire a voce alta la causa di una morte.
+ *
+ * I nomi tecnici li scrive il diario; qui serve una frase che spieghi a
+ * chi ha visto sparire una persona cos'è successo dall'altra parte.
+ */
+function frasePerMorte(causa: string): string {
+  switch (causa) {
+    case 'memoria-finita': return 'il telefono era senza memoria';
+    case 'errore':
+    case 'errore-nativo': return 'l’app è andata in errore';
+    case 'bloccata': return 'l’app si era bloccata';
+    case 'arresto-forzato': return 'l’app è stata fermata a mano';
+    case 'chiusa-dall-utente': return 'l’app è stata chiusa';
+    case 'troppe-risorse': return 'il telefono l’ha chiusa per consumi';
+    case 'permessi-cambiati': return 'sono cambiati i permessi';
+    case 'congelata':
+    case 'segnale':
+    case 'altro': return 'il telefono l’ha chiusa';
+    default: return 'non si sa perché';
+  }
+}
+
+/** "alle 23:04" se è di oggi, con la data se è più vecchia. */
+function quandoScritto(ms: number): string {
+  const d = new Date(ms);
+  const ora = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  const oggi = new Date();
+  const stessoGiorno = d.toDateString() === oggi.toDateString();
+  return stessoGiorno ? `alle ${ora}` : `il ${d.toLocaleDateString()} alle ${ora}`;
+}
 
 /**
  * Ogni quanto si torna a chiedere se l'altro c'è, mentre lo si aspetta.
@@ -218,6 +256,13 @@ export default function App() {
         : '';
 
   /**
+   * Il nome serve anche dentro i gestori della connessione, che nascono
+   * una volta sola e non vedrebbero mai un nome arrivato dopo.
+   */
+  const shownNameRef = useRef(shownName);
+  useEffect(() => { shownNameRef.current = shownName; }, [shownName]);
+
+  /**
    * Il nome di questo collegamento, se gliene ho dato uno.
    *
    * Si mostra dov'è utile sapere in quale collegamento si sta: sulla
@@ -321,6 +366,86 @@ export default function App() {
     // senza confini non si può misurare né l'uno né l'altro.
     Diario.segna(stato).catch(() => {});
   }, [inChannel, videoOn]);
+
+  /**
+   * "Sono morta, ed ecco perché."
+   *
+   * Nessuno può avvisare mentre muore: un processo ucciso dal sistema
+   * non riceve nessun preavviso. Ma riaccendendosi il telefono si
+   * ricorda com'è andata, e allora lo si dice all'altro - che intanto
+   * ha visto sparire una persona e non aveva modo di sapere se fosse un
+   * tunnel, un telefono spento o un'app morta.
+   *
+   * Si racconta una volta sola: la stessa morte raccontata a ogni
+   * riconnessione diventerebbe un ritornello.
+   */
+  const morteDaRaccontare = useRef<{ quando: number; causa: string } | null>(null);
+
+  /**
+   * Da quando l'altro non c'è più, e il ritorno da annunciare.
+   *
+   * Sparire e tornare vanno raccontati tutti e due, ma non a ogni
+   * singhiozzo di rete: un'assenza di pochi secondi è un cambio di
+   * cella, e dirla sarebbe rumore. Sopra il minuto invece è successo
+   * qualcosa, e chi aspettava merita di sapere che è finita.
+   *
+   * Il ritorno si annuncia con qualche secondo di ritardo, perché se
+   * quell'assenza era una morte arriva anche il racconto del perché, e
+   * quello dice già tutto: due notizie per lo stesso fatto sono una di
+   * troppo.
+   */
+  const assenteDa = useRef(0);
+  const ritornoInArrivo = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ASSENZA_DA_DIRE_MS = 60_000;
+  const ATTESA_RACCONTO_MS = 6_000;
+
+  const scordaRitorno = useCallback(() => {
+    if (ritornoInArrivo.current) {
+      clearTimeout(ritornoInArrivo.current);
+      ritornoInArrivo.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!peerPresent) {
+      if (assenteDa.current === 0) assenteDa.current = Date.now();
+      scordaRitorno();
+      return;
+    }
+    const via = assenteDa.current;
+    assenteDa.current = 0;
+    if (!via || Date.now() - via < ASSENZA_DA_DIRE_MS) return;
+    scordaRitorno();
+    ritornoInArrivo.current = setTimeout(() => {
+      ritornoInArrivo.current = null;
+      const chi = shownNameRef.current || 'L’altro';
+      Foreground.nota('Duetto', `${chi} è di nuovo raggiungibile.`).catch(() => {});
+    }, ATTESA_RACCONTO_MS);
+  }, [peerPresent, scordaRitorno]);
+
+  const leggiLaPropriaMorte = useCallback(async () => {
+    try {
+      const m = await Diario.ultimaMorte();
+      if (!m || !m.quando) return;
+      // Un aggiornamento dell'app non è una morte: è il modo normale in
+      // cui un'app viene sostituita, e annunciarlo sarebbe un allarme
+      // per una cosa voluta.
+      if (/installPackage|PackageUpdate/i.test(m.descrizione || '')) return;
+      const grezzo = await AsyncStorage.getItem(CHIAVE_MORTE_RACCONTATA);
+      if (Number(grezzo) >= m.quando) return;
+      morteDaRaccontare.current = { quando: m.quando, causa: m.causa };
+    } catch { /* se il telefono non lo sa, non lo sa */ }
+  }, []);
+
+  useEffect(() => {
+    if (!peerPresent) return;
+    const da = morteDaRaccontare.current;
+    const sig = signalingRef.current;
+    if (!da || !sig?.connected) return;
+    sig.sendSignal({ kind: 'morte', quando: da.quando, causa: da.causa });
+    morteDaRaccontare.current = null;
+    AsyncStorage.setItem(CHIAVE_MORTE_RACCONTATA, String(da.quando)).catch(() => {});
+  }, [peerPresent, status]);
 
   /**
    * Ogni tanto il proprio diario va all'altro telefono.
@@ -456,6 +581,7 @@ export default function App() {
       await caricaPosizionePip();
       const c = await loadConfig();
       setCfg(c);
+      leggiLaPropriaMorte();
       // Il canale di notifica va preparato prima che serva: nasce con
       // suono e vibrazione dentro, e crearlo al primo avviso vorrebbe
       // dire farlo mentre lo si sta già usando.
@@ -687,6 +813,20 @@ export default function App() {
             // un file accanto al nostro: così collegando UN solo telefono
             // si leggono tutti e due. Passa dalla busta cifrata come il
             // resto: il server lo inoltra senza poterlo leggere.
+            // L'altro è morto e ora è tornato: dirlo, senza far suonare
+            // niente. È una notizia, non una chiamata.
+            if (msg.kind === 'morte') {
+              // Questo racconto contiene già il ritorno: l'annuncio
+              // generico non serve più.
+              scordaRitorno();
+              const chi = shownNameRef.current || 'L’altro';
+              const testo = `${chi} è sparito ${quandoScritto(Number(msg.quando))}: `
+                + `${frasePerMorte(String(msg.causa))}. Adesso è tornato.`;
+              Foreground.nota('Duetto', testo).catch(() => {});
+              Diario.segna(`morte-altrui:${msg.causa}`).catch(() => {});
+              return;
+            }
+
             if (msg.kind === 'diario') {
               Diario.aggiungiAltro(String(msg.testo ?? '')).catch(() => {});
               return;
@@ -1300,7 +1440,7 @@ export default function App() {
         videoStats={videoStats}
         qualityLabel={(VIDEO_PROFILES[cfg.videoQuality] ?? VIDEO_PROFILES.standard).etichetta}
         showStats={cfg.mostraDiagnostica}
-        hideControls={cfg.nascondiComandi}
+        comandi={cfg.comandi}
         cameraFrontale={cameraFrontale}
         quality={cfg.videoQuality}
         onSelectQuality={(q) => applyQuality(q, true)}

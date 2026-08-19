@@ -24,6 +24,10 @@ class PresenceService : HeadlessJsTaskService() {
         // Senza passare in primo piano Android chiuderebbe il servizio in
         // pochi secondi, e la presenza durerebbe quanto un fiammifero.
         Notifier.startForegroundPresence(this)
+        // Se siamo qui dopo che il sistema ci ha uccisi, il perche' e'
+        // scritto da qualche parte: si prende adesso, prima che le morti
+        // piu' vecchie escano dalla lista che Android tiene.
+        Diario.registraUscite(applicationContext)
         return super.onStartCommand(intent, flags, startId)
     }
 

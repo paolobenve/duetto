@@ -167,6 +167,9 @@ class ChannelForegroundService : Service() {
         if (!diarioAvviato) {
             diarioAvviato = true
             Diario.quandoScrive { riprogrammaDiario() }
+            // Come e' finita l'ultima volta: se il processo di prima e'
+            // morto, qui si scopre perche'.
+            Diario.registraUscite(applicationContext)
             // La riga d'avvio riprogramma già l'attesa da sé.
             Diario.campiona(applicationContext, "avvio")
         }

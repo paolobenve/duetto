@@ -68,6 +68,10 @@ export const Foreground = isAndroid && NativeForeground
       notify: (title, text) =>
         call(NativeForeground, 'notify', String(title), String(text)),
 
+      /** Notizia da leggere con comodo: non suona e non vibra. */
+      nota: (title, text) =>
+        call(NativeForeground, 'nota', String(title), String(text)),
+
       /** Toglie l'avviso, quando si rientra nell'app. */
       clearNotification: () => call(NativeForeground, 'clearNotification'),
 
@@ -105,6 +109,7 @@ export const Foreground = isAndroid && NativeForeground
       setText: unavailable,
       stop: unavailable,
       notify: unavailable,
+      nota: unavailable,
       clearNotification: unavailable,
       isBatteryUnrestricted: unavailable,
       requestBatteryUnrestricted: unavailable,
@@ -174,6 +179,8 @@ export const Diario = isAndroid && NativeDiario
       leggi: (daRiga) => call(NativeDiario, 'leggi', Number(daRiga) || 0),
       aggiungiAltro: (testo) => call(NativeDiario, 'aggiungiAltro', String(testo)),
       percorso: () => call(NativeDiario, 'percorso'),
+      /** Com'è morta l'app l'ultima volta; null se il telefono non lo sa. */
+      ultimaMorte: () => call(NativeDiario, 'ultimaMorte'),
     }
   : {
       stato: unavailable,
@@ -182,6 +189,7 @@ export const Diario = isAndroid && NativeDiario
       leggi: () => Promise.resolve(''),
       aggiungiAltro: unavailable,
       percorso: () => Promise.resolve(''),
+      ultimaMorte: () => Promise.resolve(null),
     };
 
 /**

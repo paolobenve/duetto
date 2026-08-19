@@ -22,6 +22,44 @@ object Notifier {
     private const val ALERT_NOTIFICATION_ID = 4712
     private const val PRESENCE_CHANNEL_ID = "duetto_presence"
     private const val PRESENCE_NOTIFICATION_ID = 4711
+    private const val NOTA_NOTIFICATION_ID = 4713
+
+    /**
+     * Una notifica che non fa rumore.
+     *
+     * Serve per le cose da sapere, non per quelle a cui rispondere:
+     * "l'app dell'altro e' morta e ora e' tornata" e' una notizia, e
+     * usare per quella il canale degli avvisi - che suona e vibra come
+     * ha chiesto l'utente - vorrebbe dire far scattare in piedi qualcuno
+     * per un'informazione. Va sul canale della presenza, che e' muto per
+     * costruzione, e sta in un posto suo per non scacciare l'avviso vero
+     * se arrivano insieme.
+     */
+    fun mostraNota(ctx: Context, title: String, text: String) {
+        val launch = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)?.apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        val pending = PendingIntent.getActivity(
+            ctx,
+            2,
+            launch,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val notification = NotificationCompat.Builder(ctx, PRESENCE_CHANNEL_ID)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentIntent(pending)
+            .setAutoCancel(true)
+            .setSilent(true)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .build()
+        try {
+            NotificationManagerCompat.from(ctx).notify(NOTA_NOTIFICATION_ID, notification)
+        } catch (_: SecurityException) {
+        }
+    }
 
     fun show(ctx: Context, title: String, text: String) {
         // Il canale dipende dalle preferenze: vedi Avvisi. Da lì viene

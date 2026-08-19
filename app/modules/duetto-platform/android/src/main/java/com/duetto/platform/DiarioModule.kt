@@ -1,5 +1,6 @@
 package com.duetto.platform
 
+import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
@@ -49,6 +50,27 @@ class DiarioModule(private val ctx: ReactApplicationContext) :
     fun aggiungiAltro(testo: String, promise: Promise) {
         Diario.aggiungiAltro(ctx, testo)
         promise.resolve(true)
+    }
+
+    /**
+     * Com'e' morta l'app l'ultima volta, se il telefono se lo ricorda.
+     *
+     * Torna `null` prima di Android 11, dove questa memoria non esiste,
+     * e su un telefono che non e' mai morto.
+     */
+    @ReactMethod
+    fun ultimaMorte(promise: Promise) {
+        val u = Diario.ultimaMorte(ctx)
+        if (u == null) {
+            promise.resolve(null)
+            return
+        }
+        val m = Arguments.createMap()
+        m.putDouble("quando", u.timestamp.toDouble())
+        m.putString("causa", Diario.causa(u.reason))
+        m.putString("era", Diario.importanza(u.importance))
+        m.putString("descrizione", u.description ?: "")
+        promise.resolve(m)
     }
 
     /** Dove stanno i file, da dire a chi li andra' a leggere. */

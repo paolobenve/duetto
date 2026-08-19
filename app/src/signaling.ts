@@ -40,7 +40,11 @@ export type SignalMessage =
   // così, collegandone uno solo a un computer, si leggono tutti e due.
   // L'altro telefono sta in mano a un'altra persona e a un cavo non ci
   // arriva mai.
-  | { kind: 'diario'; testo: string };
+  | { kind: 'diario'; testo: string }
+  // "Sono morta e sono tornata": chi ha visto sparire l'altro senza un
+  // perche' merita di saperlo, e il telefono che e' morto il perche' lo
+  // scopre riaccendendosi. Nessuno puo' mandarlo mentre muore.
+  | { kind: 'morte'; quando: number; causa: string };
 
 export type PairMessage =
   | { kind: 'pubkey'; pub: string; name: string }
