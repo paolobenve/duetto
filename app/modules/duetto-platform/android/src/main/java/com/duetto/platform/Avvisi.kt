@@ -4,9 +4,15 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.media.AudioAttributes
+import android.media.AudioManager
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
+import android.os.VibrationAttributes
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
+import android.util.Log
 
 /**
  * Come deve farsi sentire l'avviso: vibrazione e suono.
@@ -67,10 +73,101 @@ object Avvisi {
         else -> RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
     }
 
-    /** Il ritmo da usare, null se non si deve vibrare. */
+    /**
+     * Il ritmo per i telefoni prima di Android 8, dove la vibrazione si
+     * mette sulla notifica. Con "sempre" resta null perche' a vibrare ci
+     * pensa avvisaOra(), su tutte le versioni.
+     */
     fun ritmoScelto(ctx: Context): LongArray? = when (vibra(ctx)) {
-        "mai" -> null
-        else -> RITMO
+        "predefinito" -> RITMO
+        else -> null
+    }
+
+    /**
+     * Fa vibrare e, se serve, suonare - senza passare dalla notifica.
+     *
+     * PERCHE' NON BASTA IL CANALE
+     * Due cose il canale non le puo' fare, e sono proprio quelle che
+     * servono a un avviso:
+     *
+     *  - VIBRAZIONE: se nelle impostazioni di sistema la vibrazione delle
+     *    notifiche e' spenta, Android la sopprime e il canale non la puo'
+     *    scavalcare. Chi tiene il telefono senza vibrazione per tutto il
+     *    resto ma la vuole per questo avviso, col solo canale non
+     *    l'avrebbe mai. Vibrare di nostro invece funziona.
+     *
+     *  - SUONO DURANTE LA CONVERSAZIONE: mentre si e' nel canale il
+     *    telefono e' in modalita' conversazione e il sistema silenzia le
+     *    notifiche, esattamente come durante una telefonata. Ma "Avvisa"
+     *    si preme soprattutto allora - l'altro c'e' ma non risponde - e
+     *    un avviso muto non avvisa nessuno. Si suona quindi sul flusso
+     *    della conversazione, che e' la strada che usano i telefoni per
+     *    l'avviso di chiamata in attesa.
+     */
+    fun avvisaOra(ctx: Context) {
+        vibraOra(ctx)
+        suonaSeInConversazione(ctx)
+    }
+
+    private fun vibraOra(ctx: Context) {
+        // "predefinito" vuol dire lasciar decidere al sistema, e li' il
+        // canale fa gia' il suo; "mai" vuol dire mai.
+        if (vibra(ctx) != "sempre") return
+        try {
+            val vibratore = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                (ctx.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)
+                    ?.defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                ctx.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+            } ?: return
+
+            val effetto = VibrationEffect.createWaveform(RITMO, -1)
+            // Dichiarata come "richiesta di comunicazione" - qualcuno ti
+            // sta cercando - e non come notifica qualunque: e' cio' che
+            // e', ed e' il modo di non finire fra le vibrazioni che il
+            // sistema silenzia insieme alle altre notifiche.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                vibratore.vibrate(
+                    effetto,
+                    VibrationAttributes.createForUsage(
+                        VibrationAttributes.USAGE_COMMUNICATION_REQUEST,
+                    ),
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                vibratore.vibrate(
+                    effetto,
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_NOTIFICATION_COMMUNICATION_REQUEST)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build(),
+                )
+            }
+        } catch (e: Exception) {
+            Log.w("Duetto", "avviso: non riesco a far vibrare: ${e.message}")
+        }
+    }
+
+    private fun suonaSeInConversazione(ctx: Context) {
+        if (suono(ctx) == "nessuno") return
+        val am = ctx.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+        // Fuori dalla conversazione ci pensa la notifica, e suonare due
+        // volte sarebbe peggio che non suonare.
+        if (am.mode != AudioManager.MODE_IN_COMMUNICATION) return
+        try {
+            val uri = suonoScelto(ctx) ?: return
+            val suoneria = RingtoneManager.getRingtone(ctx, uri) ?: return
+            suoneria.setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION_SIGNALLING)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build(),
+            )
+            suoneria.play()
+        } catch (e: Exception) {
+            Log.w("Duetto", "avviso: non riesco a suonare in conversazione: ${e.message}")
+        }
     }
 
     /**
@@ -128,8 +225,12 @@ object Avvisi {
             // sapendo cose che noi non sappiamo (silenzioso, non
             // disturbare, cuffie collegate).
             when (vibra(ctx)) {
-                "sempre" -> { enableVibration(true); vibrationPattern = RITMO }
-                "mai" -> enableVibration(false)
+                // Con "sempre" la vibrazione la facciamo noi in
+                // avvisaOra(), perche' quella del canale la puo'
+                // sopprimere un'impostazione di sistema. Qui va spenta,
+                // se no chi ha la vibrazione di sistema accesa la
+                // sentirebbe due volte.
+                "sempre", "mai" -> enableVibration(false)
             }
 
             when (suono(ctx)) {

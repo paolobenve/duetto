@@ -8,6 +8,19 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.1.38
+
+**La vibrazione dell'avviso ora funziona anche se il telefono non vibra per le altre
+notifiche.** Era il caso che conta di più: chi tiene il telefono muto e fermo per tutto il
+resto, e vuole sentire solo questo. La vibrazione stava nel canale di notifica, e da lì
+un'impostazione di sistema la può spegnere; ora la fa l'app, dichiarandola per quello che
+è — qualcuno che ti sta cercando, non una notifica qualunque.
+
+**E l'avviso si sente anche mentre siete già collegati.** Prima restava muto proprio nel
+momento in cui serve di più — l'altro c'è ma non risponde — perché durante una
+conversazione il telefono silenzia le notifiche, come fa quando sei al telefono. Ora il
+suono passa dalla via della conversazione, quella dell'avviso di chiamata in attesa.
+
 ## 1.1.37
 
 **Il video dell'altro compariva a fatica, e a volte solo riavviando l'app.** Colpa di una

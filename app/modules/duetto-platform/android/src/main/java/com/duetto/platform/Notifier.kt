@@ -24,8 +24,9 @@ object Notifier {
     private const val PRESENCE_NOTIFICATION_ID = 4711
 
     fun show(ctx: Context, title: String, text: String) {
-        // Suono e vibrazione stanno nel canale, che dipende dalle
-        // preferenze: vedi Avvisi.
+        // Il canale dipende dalle preferenze: vedi Avvisi. Da lì viene
+        // il suono nel caso normale; vibrazione e suono in conversazione
+        // li fa Avvisi.avvisaOra qui sotto, perché il canale non può.
         val canale = Avvisi.canale(ctx)
 
         val launch = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)?.apply {
@@ -63,6 +64,12 @@ object Notifier {
             NotificationManagerCompat.from(ctx).notify(ALERT_NOTIFICATION_ID, notification)
         } catch (_: SecurityException) {
         }
+
+        // Vibrazione e suono che la notifica da sola non può garantire:
+        // vedi Avvisi.avvisaOra. Va dopo, non prima: se la notifica non
+        // si può mostrare, un avviso che suona e basta è comunque meglio
+        // di niente, ma l'ordine naturale resta quello.
+        Avvisi.avvisaOra(ctx)
     }
 
     /**
