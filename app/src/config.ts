@@ -21,6 +21,20 @@ export type PairInfo = {
   peerName: string;
   /** quando è stato fatto l'accoppiamento (ISO) */
   pairedAt: string;
+  /**
+   * Il server su cui questo accoppiamento è nato.
+   *
+   * Una coppia vive dentro un server: la stanza sta lì, e cercarla
+   * altrove è cercarla dove non c'è. Finché il server è uno solo non
+   * cambia nulla; con più collegamenti su server diversi, passare
+   * dall'uno all'altro porta con sé anche il suo indirizzo, che
+   * altrimenti resterebbe quello di prima e il collegamento non
+   * ripartirebbe mai, senza che si capisca perché.
+   *
+   * Assente nelle configurazioni scritte prima: allora vale quello
+   * dell'app, che era l'unico che ci fosse.
+   */
+  serverUrl?: string;
 };
 
 /**
@@ -48,8 +62,21 @@ export type DuoConfig = {
   serverUrl: string;
   /** come mi vede l'altro */
   displayName: string;
-  /** null finché non ci si è accoppiati */
+  /** il collegamento in uso; null finché non ci si è accoppiati */
   pair: PairInfo | null;
+  /**
+   * Tutti i collegamenti che questo telefono conosce, quello in uso per
+   * primo.
+   *
+   * Un accoppiamento costa: bisogna essere in due, con i telefoni in
+   * mano, e dettarsi un codice a voce. Buttarlo via per parlare con
+   * qualcun altro, e rifarlo da capo per tornare indietro, è un prezzo
+   * che non c'è motivo di pagare: le chiavi occupano trenta byte e
+   * restano valide finché l'altro non scioglie dalla sua parte.
+   *
+   * Normalmente si riprende il primo della lista, che è l'ultimo usato.
+   */
+  pairs: PairInfo[];
   /** le impostazioni di sistema sono già state proposte una volta */
   setupShown: boolean;
   /** quanto spendere per il video: banda e batteria */
@@ -104,6 +131,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   serverUrl: '',
   displayName: '',
   pair: null,
+  pairs: [],
   setupShown: false,
   // Si parte dal profilo alto: è un tetto, non una pretesa, e con
   // "balanced" una rete scarsa lo fa scendere da sé. Partire basso
@@ -126,10 +154,121 @@ export async function loadConfig(): Promise<DuoConfig> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_CONFIG;
-    return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
+    return normalizzaCoppie({ ...DEFAULT_CONFIG, ...JSON.parse(raw) });
   } catch {
     return DEFAULT_CONFIG;
   }
+}
+
+/**
+ * L'elenco dei collegamenti, anche per chi arriva da prima che ce ne
+ * fosse uno.
+ *
+ * Chi aveva già una coppia se la ritrova come primo - e unico - elemento
+ * dell'archivio, senza doversi riaccoppiare: la coppia è la stessa, è
+ * solo scritta in un posto in più.
+ */
+function normalizzaCoppie(cfg: DuoConfig): DuoConfig {
+  const lista = Array.isArray(cfg.pairs) ? cfg.pairs.filter((p) => p && p.id && p.key) : [];
+  const attiva = cfg.pair && cfg.pair.id && cfg.pair.key ? cfg.pair : null;
+  if (!attiva) return { ...cfg, pairs: lista };
+  // In testa ci sta sempre quella in uso, e una sola volta: è da lì che
+  // l'interfaccia legge "l'ultimo usato".
+  const altre = lista.filter((p) => p.id !== attiva.id);
+  return { ...cfg, pair: attiva, pairs: [attiva, ...altre] };
+}
+
+/**
+ * Aggiunge un accoppiamento appena fatto e lo mette in uso.
+ *
+ * Se rifà un collegamento con la stessa stanza - può succedere solo
+ * ripetendo lo stesso codice - sostituisce il vecchio invece di
+ * affiancarlo.
+ */
+export function registraCoppia(cfg: DuoConfig, pair: PairInfo): DuoConfig {
+  const nuova: PairInfo = { serverUrl: cfg.serverUrl, ...pair };
+  return {
+    ...cfg,
+    pair: nuova,
+    pairs: [nuova, ...cfg.pairs.filter((p) => p.id !== nuova.id)],
+  };
+}
+
+/**
+ * Passa a un collegamento già configurato.
+ *
+ * Porta con sé il server su cui quella coppia era nata: è lì che sta la
+ * sua stanza.
+ */
+export function passaACoppia(cfg: DuoConfig, id: string): DuoConfig {
+  const scelta = cfg.pairs.find((p) => p.id === id);
+  if (!scelta || scelta.id === cfg.pair?.id) return cfg;
+  return {
+    ...cfg,
+    serverUrl: scelta.serverUrl || cfg.serverUrl,
+    pair: scelta,
+    pairs: [scelta, ...cfg.pairs.filter((p) => p.id !== id)],
+  };
+}
+
+/**
+ * Dimentica un collegamento.
+ *
+ * Sciogliendo quello in uso si passa al più recente fra quelli rimasti:
+ * chiedere un accoppiamento nuovo a chi ne ha altri pronti sarebbe
+ * chiedere di rifare una cosa già fatta.
+ */
+export function dimenticaCoppia(cfg: DuoConfig, id: string): DuoConfig {
+  const restano = cfg.pairs.filter((p) => p.id !== id);
+  if (cfg.pair?.id !== id) return { ...cfg, pairs: restano };
+  const prossima = restano[0] ?? null;
+  return {
+    ...cfg,
+    serverUrl: prossima?.serverUrl || cfg.serverUrl,
+    pair: prossima,
+    pairs: restano,
+  };
+}
+
+/**
+ * Segna come si chiama davvero l'altro.
+ *
+ * Al momento dell'accoppiamento il nome può mancare o essere quello
+ * generico: quello vero arriva a ogni ingresso nel canale. Con più
+ * collegamenti in elenco, il nome è l'unica cosa che li distingue -
+ * l'impronta della stanza non dice niente a nessuno - quindi vale la
+ * pena tenerlo aggiornato.
+ *
+ * Torna `null` se non c'è niente da cambiare: così chi chiama non
+ * riscrive la configurazione per nulla.
+ */
+export function ricordaNomeCoppia(cfg: DuoConfig, id: string, nome: string): DuoConfig | null {
+  if (!nome || nome === 'Qualcuno') return null;
+  const bersaglio = cfg.pairs.find((p) => p.id === id);
+  if (!bersaglio || bersaglio.peerName === nome) return null;
+  const pairs = cfg.pairs.map((p) => (p.id === id ? { ...p, peerName: nome } : p));
+  return {
+    ...cfg,
+    pair: cfg.pair?.id === id ? { ...cfg.pair, peerName: nome } : cfg.pair,
+    pairs,
+  };
+}
+
+/**
+ * Il server appena scritto vale anche per la coppia in uso.
+ *
+ * Senza questo, cambiare server nelle impostazioni lo cambierebbe solo
+ * per l'app: al primo passaggio a un altro collegamento e ritorno, la
+ * coppia si riporterebbe dietro il vecchio indirizzo.
+ */
+export function allineaServerCoppia(cfg: DuoConfig): DuoConfig {
+  if (!cfg.pair || cfg.pair.serverUrl === cfg.serverUrl) return cfg;
+  const pair = { ...cfg.pair, serverUrl: cfg.serverUrl };
+  return {
+    ...cfg,
+    pair,
+    pairs: cfg.pairs.map((p) => (p.id === pair.id ? pair : p)),
+  };
 }
 
 export async function saveConfig(cfg: DuoConfig): Promise<void> {

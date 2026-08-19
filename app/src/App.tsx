@@ -12,6 +12,8 @@ import {
 import {
   DuoConfig, PairInfo, loadConfig, saveConfig,
   isServerConfigured, isPaired, VIDEO_PROFILES,
+  registraCoppia, passaACoppia, dimenticaCoppia, ricordaNomeCoppia,
+  allineaServerCoppia,
 } from './config';
 import { Signaling, PresenceStatus, Mode } from './signaling';
 import { ChannelSession } from './webrtc';
@@ -360,6 +362,26 @@ export default function App() {
       ].join('|')
     : '';
 
+  /**
+   * Il nome vero dell'altro, ricordato nel collegamento.
+   *
+   * All'accoppiamento il nome può mancare - è facoltativo - o essere
+   * cambiato dopo. Con più collegamenti in elenco è l'unica cosa che li
+   * distingue: l'impronta della stanza non dice niente a nessuno. Si
+   * scrive solo quando cambia davvero, quindi non costa nulla farlo a
+   * ogni ingresso.
+   */
+  const segnaNome = useCallback((n: string) => {
+    setPeerName(n);
+    setCfg((prev) => {
+      if (!prev?.pair) return prev;
+      const next = ricordaNomeCoppia(prev, prev.pair.id, n);
+      if (!next) return prev;
+      saveConfig(next).catch(() => { /* noop */ });
+      return next;
+    });
+  }, []);
+
   // --- connessione persistente --------------------------------------------
   // Vive finché c'è una coppia: passare da "in ascolto" a "nel canale"
   // non riconnette nulla, cambia solo lo stato dichiarato al server.
@@ -423,7 +445,7 @@ export default function App() {
             politeRef.current = pair.side === 'A';
             peerActiveRef.current = peerActive;
             setPeerPresent(present);
-            if (n) setPeerName(n);
+            if (n) segnaNome(n);
             if (peerActive && inChannelRef.current) {
               if (afterOutage) riprendiDopoCaduta(); else attachPeer();
             }
@@ -431,7 +453,7 @@ export default function App() {
 
           onPeerJoined: (n, mode) => {
             setPeerPresent(true);
-            setPeerName(n);
+            segnaNome(n);
             // È tornato: l'attesa che stava per dimenticarlo si annulla.
             fermaAttesa();
             peerActiveRef.current = mode === 'active';
@@ -449,7 +471,7 @@ export default function App() {
           },
 
           onPeerMode: (mode, n) => {
-            if (n) setPeerName(n);
+            if (n) segnaNome(n);
             peerActiveRef.current = mode === 'active';
             if (mode === 'active') {
               fermaAttesa();
@@ -463,7 +485,7 @@ export default function App() {
           },
 
           onNotify: (reason, n) => {
-            setPeerName(n);
+            segnaNome(n);
             setKnockPending(false);
             // Il nome è facoltativo: senza, si evita di scrivere "Qualcuno".
             const named = n && n !== 'Qualcuno';
@@ -947,7 +969,11 @@ export default function App() {
     if (tell) signalingRef.current?.sendSignal({ kind: 'audio', migliore });
   }, []);
 
-  const onSaveSettings = useCallback(async (next: DuoConfig) => {
+  const onSaveSettings = useCallback(async (scritta: DuoConfig) => {
+    // Il server appena scritto è il server di questa coppia: se resta
+    // solo nell'app, tornando qui da un altro collegamento si
+    // riporterebbe dietro l'indirizzo vecchio.
+    const next = allineaServerCoppia(scritta);
     await saveConfig(next);
     setCfg(next);
     // La qualità è già stata applicata al tocco, ma applicarla di nuovo
@@ -958,19 +984,59 @@ export default function App() {
 
   const onPaired = useCallback(async (pair: PairInfo) => {
     if (!cfg) return;
-    const next = { ...cfg, pair };
+    // Non sostituisce il collegamento di prima: gli si affianca, e passa
+    // in testa. Chi si accoppia con qualcun altro non sta dicendo di
+    // volersi dimenticare del primo.
+    const next = registraCoppia(cfg, pair);
     await saveConfig(next);
     setCfg(next);
     setPeerName(pair.peerName);
     setScreen(next.setupShown ? 'channel' : 'setup');
   }, [cfg]);
 
-  const onUnpair = useCallback(async () => {
+  /**
+   * Passa a un altro collegamento già configurato.
+   *
+   * Non c'è niente da smontare a mano: cambiando la coppia cambia
+   * `connKey`, e l'effetto della connessione si rifà da capo - chiude il
+   * vecchio, apre il nuovo, rientra nel canale. Qui si spegne solo ciò
+   * che si vede, che altrimenti resterebbe a mostrare la persona
+   * appena lasciata.
+   */
+  const onSwitchPair = useCallback(async (id: string) => {
     if (!cfg) return;
-    const next = { ...cfg, pair: null };
+    const next = passaACoppia(cfg, id);
+    if (next === cfg) return;
     await saveConfig(next);
     setCfg(next);
-    setScreen('pairing');
+    setPeerName(next.pair?.peerName || '');
+    setPeerPresent(false);
+    peerActiveRef.current = false;
+    setPeerState({ audio: true, video: false });
+    setPeerVp9(false);
+    setRemoteStream(null);
+    setRemoteHasVideo(false);
+    setConnState('new');
+    fermaAttesa();
+    setScreen('channel');
+  }, [cfg, fermaAttesa]);
+
+  const onForgetPair = useCallback(async (id: string) => {
+    if (!cfg) return;
+    const next = dimenticaCoppia(cfg, id);
+    await saveConfig(next);
+    setCfg(next);
+    if (cfg.pair?.id === id) {
+      setPeerName(next.pair?.peerName || '');
+      setPeerPresent(false);
+      peerActiveRef.current = false;
+      setRemoteStream(null);
+      setRemoteHasVideo(false);
+      setConnState('new');
+      // Sciogliendo l'ultimo non resta nulla a cui collegarsi; se invece
+      // ne resta un altro si è già passati a quello.
+      setScreen(isPaired(next) ? 'channel' : 'pairing');
+    }
   }, [cfg]);
 
   // --- resa ----------------------------------------------------------------
@@ -990,9 +1056,10 @@ export default function App() {
         <SettingsScreen
           initial={cfg}
           onSave={onSaveSettings}
-          onUnpair={onUnpair}
-          // Non si tocca la coppia attuale: la sostituisce solo il nuovo
-          // accoppiamento, se e quando riesce.
+          onForgetPair={onForgetPair}
+          onSwitchPair={onSwitchPair}
+          // Non si tocca nessun collegamento esistente: quello nuovo si
+          // aggiunge, se e quando riesce.
           onRepair={() => setScreen('pairing')}
           onClose={isPaired(cfg) ? () => setScreen('channel') : undefined}
           onOpenSetup={() => { setSetupFrom('impostazioni'); setScreen('setup'); }}

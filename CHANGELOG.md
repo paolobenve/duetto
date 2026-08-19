@@ -8,6 +8,19 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.1.40
+
+**Un telefono può tenere più collegamenti e passare dall'uno all'altro.** Prima
+accoppiarsi con qualcun altro voleva dire buttare via il collegamento di prima, e per
+tornare indietro rifare tutto da capo — con l'altra persona presente, il telefono in mano e
+il codice da dettarsi a voce. Ora ogni accoppiamento resta: nelle impostazioni c'è l'elenco,
+quello in uso è il primo e ha il bordo acceso, e toccarne un altro ci passa. All'avvio si
+riprende sempre l'ultimo usato, quindi chi ne ha uno solo non si accorge di niente.
+
+Ogni collegamento si ricorda anche il server su cui è nato, e se lo porta dietro quando lo
+si riprende. Il nome dell'altro si aggiorna da sé a ogni ingresso: in un elenco è l'unica
+cosa che distingue un collegamento dall'altro.
+
 ## 1.1.39
 
 **Nel riquadro «Non tu» ora si vede come ti sta ascoltando l'altro.** Accanto alla scritta

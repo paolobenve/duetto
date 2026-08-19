@@ -3,10 +3,11 @@ import {
   View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity,
   KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
-import type { DuoConfig, VideoQuality } from './config';
+import type { DuoConfig, PairInfo, VideoQuality } from './config';
 import {
   isServerConfigured, isPaired, normalizeServerUrl, displayServer, VIDEO_PROFILES,
 } from './config';
+import { peerAvatar } from './avatar';
 import { VERSION_FULL } from './version';
 import { Avvisi } from 'duetto-platform';
 
@@ -53,11 +54,14 @@ const SUONI: {
 type Props = {
   initial: DuoConfig;
   onSave: (cfg: DuoConfig) => void;
-  onUnpair: () => void;
+  /** dimentica un collegamento, in uso o no */
+  onForgetPair: (id: string) => void;
+  /** mette in uso un collegamento già configurato */
+  onSwitchPair: (id: string) => void;
   /**
-   * Rifà l'accoppiamento restando accoppiati fino a che il nuovo non
-   * riesce: serve quando l'altro ha sciolto la coppia dalla sua parte e
-   * qui non c'è modo di saperlo.
+   * Aggiunge un accoppiamento senza toccare quelli che ci sono: serve
+   * per una persona nuova, e serve quando l'altro ha sciolto dalla sua
+   * parte e qui non c'è modo di saperlo.
    */
   onRepair: () => void;
   /** torna indietro senza salvare; assente se non c'è dove tornare */
@@ -97,8 +101,8 @@ type Props = {
  * Tutto il resto è facoltativo e sta sotto "Altre impostazioni".
  */
 export default function SettingsScreen({
-  initial, onSave, onUnpair, onRepair, onClose, onOpenSetup, vp9Here, vp9Peer,
-  onQualityChange, onLive,
+  initial, onForgetPair, onSwitchPair, onSave, onRepair, onClose, onOpenSetup,
+  vp9Here, vp9Peer, onQualityChange, onLive,
 }: Props) {
   const vp9Available = !!vp9Here && !!vp9Peer;
   const vp9Motivo = vp9Available
@@ -123,15 +127,33 @@ export default function SettingsScreen({
   const paired = isPaired(cfg);
   const resolved = normalizeServerUrl(cfg.serverUrl);
 
-  const confirmUnpair = () => {
+  /**
+   * I collegamenti, quello in uso per primo.
+   *
+   * Si legge dalla configurazione arrivata, non da quella in
+   * lavorazione: qui dentro si modifica solo il campo del server, e
+   * l'elenco lo cambiano i pulsanti, che passano dal genitore.
+   */
+  const collegamenti = initial.pairs;
+  const inUso = initial.pair?.id;
+
+  const nomeDi = (p: PairInfo) => p.peerName && p.peerName !== 'Qualcuno'
+    ? p.peerName : 'Senza nome';
+
+  const confermaScioglimento = (p: PairInfo) => {
+    const attivo = p.id === inUso;
+    const rimasti = collegamenti.filter((q) => q.id !== p.id);
+    const dopo = attivo && rimasti.length
+      ? `\n\nPasserai a ${nomeDi(rimasti[0])}.`
+      : '';
     Alert.alert(
-      'Sciogliere la coppia?',
-      'Dovrete rifare l’accoppiamento con un codice nuovo.\n\n' +
+      `Sciogliere il collegamento con ${nomeDi(p)}?`,
+      'Per riaverlo dovrete rifare l’accoppiamento con un codice nuovo.\n\n' +
       'Non serve sciogliere anche sull’altro telefono: da lì basta ' +
-      '«Accoppia di nuovo».',
+      '«Aggiungi un collegamento».' + dopo,
       [
         { text: 'Annulla', style: 'cancel' },
-        { text: 'Sciogli', style: 'destructive', onPress: onUnpair },
+        { text: 'Sciogli', style: 'destructive', onPress: () => onForgetPair(p.id) },
       ],
     );
   };
@@ -202,30 +224,53 @@ export default function SettingsScreen({
 
         {paired ? (
           <>
-            <Text style={styles.section}>Coppia</Text>
-            <View style={styles.pairBox}>
-              <Text style={styles.pairName}>
-                {cfg.pair?.peerName || 'Accoppiato'}
+            <Text style={styles.section}>
+              {collegamenti.length > 1 ? 'Collegamenti' : 'Coppia'}
+            </Text>
+            {collegamenti.length > 1 ? (
+              <Text style={styles.sectionHint}>
+                All’avvio riprende quello in uso, che è l’ultimo che hai
+                usato. Toccane un altro per passare a quello: da quel momento
+                sei raggiungibile lì, e non più dov’eri.
               </Text>
-              <Text style={styles.pairMeta}>
-                Dal{' '}
-                {cfg.pair?.pairedAt
-                  ? new Date(cfg.pair.pairedAt).toLocaleDateString()
-                  : '—'}
-              </Text>
-            </View>
+            ) : null}
+            {collegamenti.map((p) => {
+              const attivo = p.id === inUso;
+              const faccia = peerAvatar(p.id, p.side);
+              return (
+                <View key={p.id} style={styles.pairRow}>
+                  <TouchableOpacity
+                    style={[styles.pairBox, attivo && styles.pairBoxInUso]}
+                    disabled={attivo}
+                    onPress={() => onSwitchPair(p.id)}>
+                    <View style={[styles.pairFace, { backgroundColor: faccia.color }]}>
+                      <Text style={styles.pairFaceText}>{faccia.symbol}</Text>
+                    </View>
+                    <View style={styles.pairWho}>
+                      <Text style={styles.pairName}>{nomeDi(p)}</Text>
+                      <Text style={styles.pairMeta}>
+                        {attivo ? 'In uso · dal ' : 'Dal '}
+                        {p.pairedAt ? new Date(p.pairedAt).toLocaleDateString() : '—'}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.pairAway}
+                    onPress={() => confermaScioglimento(p)}>
+                    <Text style={styles.pairAwayText}>{'\u2715'}</Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
             <TouchableOpacity style={styles.secondary} onPress={onRepair}>
-              <Text style={styles.secondaryText}>Accoppia di nuovo</Text>
+              <Text style={styles.secondaryText}>Aggiungi un collegamento</Text>
             </TouchableOpacity>
             <Text style={styles.sectionHint}>
-              Mostra un codice nuovo, o digita quello dell’altro. Finché non
-              riesce resti accoppiato come sei; quando riesce, la coppia
-              vecchia viene sostituita. Serve se l’altro ha sciolto dalla sua
-              parte: da qui non c’è modo di accorgersene.
+              Mostra un codice nuovo, o digita quello dell’altro. Quelli che
+              hai restano dove sono: il nuovo si aggiunge e passa in uso.
+              Serve per una persona nuova, e serve se l’altro ha sciolto dalla
+              sua parte, perché da qui non c’è modo di accorgersene.
             </Text>
-            <TouchableOpacity style={styles.danger} onPress={confirmUnpair}>
-              <Text style={styles.dangerText}>Sciogli la coppia</Text>
-            </TouchableOpacity>
           </>
         ) : null}
 
@@ -534,10 +579,25 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#252c38',
   },
   hint: { color: '#6b7686', fontSize: 12, marginTop: 6, lineHeight: 17 },
+  pairRow: { flexDirection: 'row', alignItems: 'stretch', gap: 8, marginTop: 10 },
   pairBox: {
-    backgroundColor: '#151a23', borderRadius: 12, padding: 16, marginTop: 10,
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: '#151a23', borderRadius: 12, padding: 16,
     borderWidth: 1, borderColor: '#252c38',
   },
+  /** quello in uso si riconosce senza leggere: è l'unico col bordo acceso */
+  pairBoxInUso: { borderColor: '#2f7cf6', backgroundColor: '#16203050' },
+  pairFace: {
+    width: 40, height: 40, borderRadius: 20,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  pairFaceText: { fontSize: 20 },
+  pairWho: { flex: 1 },
+  pairAway: {
+    width: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: '#252c38',
+  },
+  pairAwayText: { color: '#e5484d', fontSize: 17, fontWeight: '700' },
   pairName: { color: '#e6ebf1', fontSize: 17, fontWeight: '700' },
   pairMeta: { color: '#6b7686', fontSize: 13, marginTop: 4 },
   rowButton: {
@@ -547,8 +607,6 @@ const styles = StyleSheet.create({
   },
   rowButtonText: { color: '#e6ebf1', fontSize: 16, fontWeight: '600' },
   rowButtonArrow: { color: '#6b7686', fontSize: 22, lineHeight: 24 },
-  danger: { marginTop: 10, paddingVertical: 12, alignItems: 'center' },
-  dangerText: { color: '#e5484d', fontSize: 15, fontWeight: '600' },
   toggle: { marginTop: 20, paddingVertical: 10 },
   toggleText: { color: '#7cc4ff', fontSize: 15, fontWeight: '600' },
   advanced: { borderLeftWidth: 2, borderLeftColor: '#252c38', paddingLeft: 14 },
