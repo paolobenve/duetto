@@ -7,8 +7,20 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
-    "versione": "1.1.39",
+    "versione": "1.1.44",
     "paragrafi": [
+      {
+        "forte": "Tenendo premuto «Esci» si sceglie come uscire.",
+        "testo": "Il tocco fa quello di sempre — chiudi il canale ma resti raggiungibile, e il suo avviso ti arriva. La pressione lunga aggiunge l'altra: *esci e renditi non disponibile*, che stacca Duetto del tutto — niente connessione, niente notifica, niente avvisi, e all'altro risulti non raggiungibile, che è la verità. Dura finché non riapri l'app: riaprirla è già dire «ci sono»."
+      },
+      {
+        "forte": "Se il sistema uccide l'app, la presenza torna da sé.",
+        "testo": "Quando Android chiude Duetto per fare posto ad altro, il servizio ripartiva mostrando la notifica ma senza connessione: una presenza dichiarata e inesistente. Ora in quel caso riparte anche il motore che tiene la connessione, per la stessa strada che si usa dopo il riavvio del telefono. Se invece sei tu a togliere l'app dai recenti, resta chiusa: quella è una decisione, non un incidente."
+      },
+      {
+        "forte": "A ogni collegamento puoi dare il nome che vuoi.",
+        "testo": "Il nome che vedi lo dichiara l'altro, ed è facoltativo: con più collegamenti in elenco diventavano tutti «Senza nome». Ora la matita accanto a ciascuno apre un campo dove scrivere come lo chiami tu — «Mamma», «Casa» — e quel nome vince ovunque, notifiche comprese. Resta su questo telefono: l'altro non lo vede. Nel riquadro di ogni collegamento c'è anche il server su cui è stato fatto."
+      },
       {
         "forte": "Un telefono può tenere più collegamenti e passare dall'uno all'altro.",
         "testo": "Prima accoppiarsi con qualcun altro voleva dire buttare via il collegamento di prima, e per tornare indietro rifare tutto da capo — con l'altra persona presente, il telefono in mano e il codice da dettarsi a voce. Ora ogni accoppiamento resta: nelle impostazioni c'è l'elenco, quello in uso è il primo e ha il bordo acceso, e toccarne un altro ci passa. All'avvio si riprende sempre l'ultimo usato, quindi chi ne ha uno solo non si accorge di niente."
@@ -31,7 +43,7 @@ export const CHANGELOG: NotaVersione[] = [
       },
       {
         "forte": "Nel riquadro «Non tu» ora si vede come ti sta ascoltando l'altro.",
-        "testo": "Accanto alla scritta c'è il segno della sua uscita audio — vivavoce, orecchio, cuffie, bluetooth — e se ha il microfono spento il segno è sbarrato. Sono le due cose che durante una conversazione ci si chiede a voce di continuo, «mi senti?», «sei in vivavoce?», e che il telefono sa già."
+        "testo": "Accanto alla scritta c'è il segno della sua uscita audio — vivavoce, orecchio, cuffie, bluetooth — e se ha il microfono spento il segno è sbarrato. Sono le due cose che durante una conversazione ci si chiede a voce di continuo, «mi senti?», «sei in vivavoce?», e che il telefono sa già. Il segno c'è anche quando l'altro non accende la camera: non avendo un riquadrino suo su cui appoggiarsi, prende una pastiglia tutta sua accanto a quella del tuo video."
       },
       {
         "forte": "Il pulsante «Avvisa» resta acceso anche quando siete tutti e due nel canale.",

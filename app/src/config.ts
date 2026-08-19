@@ -19,6 +19,16 @@ export type PairInfo = {
   side: 'A' | 'B';
   /** come si chiama l'altro, per mostrarlo nelle notifiche */
   peerName: string;
+  /**
+   * Il nome che gli do io.
+   *
+   * `peerName` lo dichiara l'altro, ed è facoltativo: chi non lo scrive
+   * resta "Qualcuno" per sempre, e con più collegamenti in elenco
+   * diventano tutti "Senza nome", indistinguibili. Questo invece lo
+   * scrivo io da questa parte, non viaggia da nessuna parte e vince su
+   * quello dichiarato: è il nome con cui penso a quella persona.
+   */
+  etichetta?: string;
   /** quando è stato fatto l'accoppiamento (ISO) */
   pairedAt: string;
   /**
@@ -251,6 +261,31 @@ export function ricordaNomeCoppia(cfg: DuoConfig, id: string, nome: string): Duo
     ...cfg,
     pair: cfg.pair?.id === id ? { ...cfg.pair, peerName: nome } : cfg.pair,
     pairs,
+  };
+}
+
+/**
+ * Come si chiama questo collegamento, in una parola sola.
+ *
+ * Prima il nome che gli ho dato io, poi quello che dichiara lui, e se
+ * non c'è né l'uno né l'altro niente: chi chiama decide cosa mettere al
+ * posto del niente, perché "Senza nome" in un elenco e la scritta al
+ * centro di una schermata d'attesa non sono la stessa cosa.
+ */
+export function nomeCoppia(p: PairInfo | null | undefined): string {
+  if (!p) return '';
+  if (p.etichetta) return p.etichetta;
+  return p.peerName && p.peerName !== 'Qualcuno' ? p.peerName : '';
+}
+
+/** Cambia il nome che do a un collegamento. Vuoto = torna al suo. */
+export function rinominaCoppia(cfg: DuoConfig, id: string, etichetta: string): DuoConfig {
+  const pulita = etichetta.trim().slice(0, 32);
+  const tocca = (p: PairInfo) => (p.id === id ? { ...p, etichetta: pulita || undefined } : p);
+  return {
+    ...cfg,
+    pair: cfg.pair ? tocca(cfg.pair) : cfg.pair,
+    pairs: cfg.pairs.map(tocca),
   };
 }
 

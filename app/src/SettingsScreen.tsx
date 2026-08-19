@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity,
-  KeyboardAvoidingView, Platform, Alert,
+  KeyboardAvoidingView, Platform, Alert, Modal, Pressable,
 } from 'react-native';
 import type { DuoConfig, PairInfo, VideoQuality } from './config';
 import {
   isServerConfigured, isPaired, normalizeServerUrl, displayServer, VIDEO_PROFILES,
+  nomeCoppia,
 } from './config';
 import { peerAvatar } from './avatar';
 import { VERSION_FULL } from './version';
@@ -58,6 +59,8 @@ type Props = {
   onForgetPair: (id: string) => void;
   /** mette in uso un collegamento già configurato */
   onSwitchPair: (id: string) => void;
+  /** il nome che do io a un collegamento; vuoto = torna al suo */
+  onRenamePair: (id: string, nome: string) => void;
   /**
    * Aggiunge un accoppiamento senza toccare quelli che ci sono: serve
    * per una persona nuova, e serve quando l'altro ha sciolto dalla sua
@@ -101,7 +104,7 @@ type Props = {
  * Tutto il resto è facoltativo e sta sotto "Altre impostazioni".
  */
 export default function SettingsScreen({
-  initial, onForgetPair, onSwitchPair, onSave, onRepair, onClose, onOpenSetup,
+  initial, onForgetPair, onSwitchPair, onRenamePair, onSave, onRepair, onClose, onOpenSetup,
   vp9Here, vp9Peer, onQualityChange, onLive,
 }: Props) {
   const vp9Available = !!vp9Here && !!vp9Peer;
@@ -137,8 +140,19 @@ export default function SettingsScreen({
   const collegamenti = initial.pairs;
   const inUso = initial.pair?.id;
 
-  const nomeDi = (p: PairInfo) => p.peerName && p.peerName !== 'Qualcuno'
-    ? p.peerName : 'Senza nome';
+  const nomeDi = (p: PairInfo) => nomeCoppia(p) || 'Senza nome';
+
+  /** il collegamento a cui si sta dando un nome, e il nome in corso */
+  const [battezzo, setBattezzo] = useState<PairInfo | null>(null);
+  const [nomeScritto, setNomeScritto] = useState('');
+  const apriBattesimo = (p: PairInfo) => {
+    setNomeScritto(p.etichetta || '');
+    setBattezzo(p);
+  };
+  const chiudiBattesimo = (salva: boolean) => {
+    if (salva && battezzo) onRenamePair(battezzo.id, nomeScritto);
+    setBattezzo(null);
+  };
 
   const confermaScioglimento = (p: PairInfo) => {
     const attivo = p.id === inUso;
@@ -252,7 +266,19 @@ export default function SettingsScreen({
                         {attivo ? 'In uso · dal ' : 'Dal '}
                         {p.pairedAt ? new Date(p.pairedAt).toLocaleDateString() : '—'}
                       </Text>
+                      {/* Il server fa parte dell'identità del collegamento:
+                          la stanza sta lì, e passando a un altro ci si
+                          sposta anche di server. Chi ne ha uno solo legge
+                          sempre la stessa riga e non ci pensa più. */}
+                      <Text style={styles.pairMeta}>
+                        {displayServer(p.serverUrl || initial.serverUrl) || '—'}
+                      </Text>
                     </View>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.pairAway}
+                    onPress={() => apriBattesimo(p)}>
+                    <Text style={styles.pairNomeText}>{'\u270E'}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.pairAway}
@@ -503,6 +529,45 @@ export default function SettingsScreen({
 
         <Text style={styles.version}>{VERSION_FULL}</Text>
       </ScrollView>
+
+      {/* Il nome da dare a un collegamento: si apre dalla matita. */}
+      <Modal
+        visible={!!battezzo}
+        transparent
+        animationType="fade"
+        onRequestClose={() => chiudiBattesimo(false)}>
+        <Pressable style={styles.sheetBack} onPress={() => chiudiBattesimo(false)}>
+          {/* Il tocco dentro al riquadro non deve chiuderlo: si sta
+              scrivendo. */}
+          <Pressable style={styles.sheet} onPress={() => { /* trattieni */ }}>
+            <Text style={styles.sheetTitle}>Come lo chiami</Text>
+            <TextInput
+              style={styles.input}
+              value={nomeScritto}
+              onChangeText={setNomeScritto}
+              placeholder={battezzo?.peerName && battezzo.peerName !== 'Qualcuno'
+                ? battezzo.peerName : 'Un nome qualsiasi'}
+              placeholderTextColor="#5b6472"
+              autoFocus
+              maxLength={32}
+              returnKeyType="done"
+              onSubmitEditing={() => chiudiBattesimo(true)}
+            />
+            <Text style={styles.hint}>
+              Resta su questo telefono: l’altro non lo vede e non lo saprà
+              mai. Lasciandolo vuoto torna il nome che si è dato lui.
+            </Text>
+            <View style={styles.sheetAzioni}>
+              <TouchableOpacity style={styles.sheetAzione} onPress={() => chiudiBattesimo(false)}>
+                <Text style={styles.sheetAnnulla}>Annulla</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.sheetAzione} onPress={() => chiudiBattesimo(true)}>
+                <Text style={styles.sheetOk}>Salva</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -598,6 +663,20 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#252c38',
   },
   pairAwayText: { color: '#e5484d', fontSize: 17, fontWeight: '700' },
+  pairNomeText: { color: '#7cc4ff', fontSize: 19, fontWeight: '700' },
+  sheetBack: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center', justifyContent: 'center', padding: 24,
+  },
+  sheet: {
+    width: '100%', maxWidth: 420, backgroundColor: '#151a23', borderRadius: 16,
+    padding: 20, borderWidth: 1, borderColor: '#252c38',
+  },
+  sheetTitle: { color: '#e6ebf1', fontSize: 18, fontWeight: '700', marginBottom: 14 },
+  sheetAzioni: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 6 },
+  sheetAzione: { paddingVertical: 10, paddingHorizontal: 16 },
+  sheetAnnulla: { color: '#8892a0', fontSize: 16, fontWeight: '600' },
+  sheetOk: { color: '#2f7cf6', fontSize: 16, fontWeight: '700' },
   pairName: { color: '#e6ebf1', fontSize: 17, fontWeight: '700' },
   pairMeta: { color: '#6b7686', fontSize: 13, marginTop: 4 },
   rowButton: {

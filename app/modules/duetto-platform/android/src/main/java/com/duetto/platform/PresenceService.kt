@@ -27,6 +27,24 @@ class PresenceService : HeadlessJsTaskService() {
         return super.onStartCommand(intent, flags, startId)
     }
 
+    /**
+     * Se il padrone del telefono scarta l'app dai recenti, si smette.
+     *
+     * Il sistema ci rimette in piedi da solo quando ci uccide lui - il
+     * compito torna con il suo intento (START_REDELIVER_INTENT) - ed e'
+     * giusto cosi': non e' una decisione di nessuno, e' memoria che
+     * serviva altrove. Ma quando a togliere di mezzo l'app e' chi il
+     * telefono ce l'ha in mano, resuscitare sarebbe disubbidire. E' la
+     * stessa regola del servizio del canale.
+     *
+     * Dopo un riavvio del telefono l'app non ha nessun compito nei
+     * recenti, quindi qui non arriva nulla e la presenza resta.
+     */
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        stopSelf()
+        super.onTaskRemoved(rootIntent)
+    }
+
     override fun getTaskConfig(intent: Intent?): HeadlessJsTaskConfig? {
         return HeadlessJsTaskConfig(
             "duetto-presence",

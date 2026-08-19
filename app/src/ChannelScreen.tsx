@@ -107,7 +107,14 @@ type Props = {
   onSwitchCamera: () => void;
   onSelectRoute: (r: AudioRoute) => void;
   onKnock: () => void;
-  onLeave: () => void;
+  /**
+   * Esce dal canale.
+   *
+   * `disponibile` dice se restare raggiungibili: uscendo si continua a
+   * ricevere l'avviso dell'altro, a meno che non si scelga di staccarsi
+   * del tutto.
+   */
+  onLeave: (disponibile: boolean) => void;
   onOpenSettings: () => void;
 };
 
@@ -163,6 +170,8 @@ export default function ChannelScreen(props: Props) {
   const [routeMenu, setRouteMenu] = useState(false);
   const [novita, setNovita] = useState(false);
   const [menuQualita, setMenuQualita] = useState(false);
+  /** le due uscite, tenendo premuto "Esci" */
+  const [menuUscita, setMenuUscita] = useState(false);
   /** chi occupa lo schermo quando c'è un video solo: 'tu', 'altro', o niente */
   const [soloGrande, setSoloGrande] = useState<'tu' | 'altro' | null>(null);
 
@@ -364,13 +373,15 @@ export default function ChannelScreen(props: Props) {
    * Se l'altro ha una versione che non le dichiara, `uscita` non arriva
    * e si mostra il vivavoce, che è il caso normale entrando nel canale.
    */
-  const segnoAltro = React.useMemo(() => {
+  const segno = React.useCallback((size: number, sfondo: string) => {
     const dove = (peerState.uscita as AudioRoute) ?? 'SPEAKER_PHONE';
     const Icona = ICONA_USCITA[dove] ?? ICONA_USCITA.SPEAKER_PHONE;
-    // Lo sfondo serve alla barra per staccarsi dal disegno: qui sotto
-    // c'è la pastiglia scura, non il pannello dei comandi.
-    return <Icona size={13} color="#e6ebf1" off={!peerState.audio} sfondo="#1b1d21" />;
+    // Lo sfondo serve alla barra dello sbarramento per staccarsi dal
+    // disegno: cambia con ciò su cui il segno è appoggiato.
+    return <Icona size={size} color="#e6ebf1" off={!peerState.audio} sfondo={sfondo} />;
   }, [peerState.uscita, peerState.audio]);
+  /** sopra la pastiglia scura del riquadrino e delle etichette */
+  const segnoAltro = React.useMemo(() => segno(13, '#1b1d21'), [segno]);
 
   const bussa = useCallback(() => {
     setAppenaBussato(true);
@@ -404,6 +415,7 @@ export default function ChannelScreen(props: Props) {
         segnoAltro={segnoAltro}
         placeholder={
           <PresenceCard
+            segno={segno(17, '#0b0e14')}
             peerPresent={peerPresent}
             status={status}
             linked={linked}
@@ -458,12 +470,26 @@ export default function ChannelScreen(props: Props) {
       {soloGrande ? (
         <Animated.View
           style={[
-            styles.chiBadge,
+            styles.chiRiga,
             { top: 14 + inset.v, left: 14 + inset.h, opacity: opacitaEtichetta },
           ]}
           pointerEvents="none">
-          <Text style={styles.chiText}>{soloGrande === 'tu' ? 'Tu' : 'Non tu'}</Text>
-          {soloGrande === 'altro' ? segnoAltro : null}
+          <View style={styles.chiBadge}>
+            <Text style={styles.chiText}>{soloGrande === 'tu' ? 'Tu' : 'Non tu'}</Text>
+            {soloGrande === 'altro' ? segnoAltro : null}
+          </View>
+          {/* Se l'altro non accende la camera non c'è nessun riquadrino
+              suo su cui appoggiare il segno, e come ti sta ascoltando
+              sparirebbe proprio quando è l'unica cosa che si può sapere
+              di lui. Allora la pastiglia se la prende da sola, accanto
+              alla tua. Non durante un'interruzione: lì il riquadrino
+              vuoto c'è ancora, e il segno è già suo. */}
+          {soloGrande === 'tu' && together && !remoteHasVideo && !interrupted ? (
+            <View style={styles.chiBadge}>
+              <Text style={styles.chiText}>Non tu</Text>
+              {segnoAltro}
+            </View>
+          ) : null}
         </Animated.View>
       ) : null}
 
@@ -556,7 +582,12 @@ export default function ChannelScreen(props: Props) {
           label="Esci"
           icon={<IconaEsci sfondo="#da373c" />}
           danger
-          onPress={press(onLeave)}
+          // Il tocco fa la cosa di tutti i giorni: si esce e si resta
+          // raggiungibili. Staccarsi davvero è una decisione diversa, e
+          // sta sotto la pressione lunga, dove non ci si finisce per
+          // sbaglio.
+          onPress={press(() => onLeave(true))}
+          onLongPress={press(() => setMenuUscita(true))}
         />
         </View>
         {showStats ? (
@@ -606,6 +637,42 @@ export default function ChannelScreen(props: Props) {
               Vale per tutti e due i telefoni: cambiandola qui cambia anche
               all’altro.
             </Text>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* Le due uscite: si apre tenendo premuto "Esci". */}
+      <Modal
+        visible={menuUscita}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMenuUscita(false)}>
+        <Pressable style={styles.sheetBack} onPress={() => setMenuUscita(false)}>
+          <View style={styles.sheet}>
+            <Text style={styles.sheetTitle}>Uscire dal canale</Text>
+            <TouchableOpacity
+              style={styles.sheetRow}
+              onPress={() => { setMenuUscita(false); onLeave(true); }}>
+              <View style={styles.sheetText}>
+                <Text style={styles.sheetLabel}>Esci e resta disponibile</Text>
+                <Text style={styles.sheetNota}>
+                  Come toccando «Esci»: il canale si chiude, ma resti
+                  raggiungibile e il suo avviso ti arriva.
+                </Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.sheetRow}
+              onPress={() => { setMenuUscita(false); onLeave(false); }}>
+              <View style={styles.sheetText}>
+                <Text style={styles.sheetLabel}>Esci e renditi non disponibile</Text>
+                <Text style={styles.sheetNota}>
+                  Duetto si stacca del tutto: niente avvisi, niente notifica,
+                  e all’altro risulti non raggiungibile. Finché non riapri
+                  l’app.
+                </Text>
+              </View>
+            </TouchableOpacity>
           </View>
         </Pressable>
       </Modal>
@@ -665,8 +732,12 @@ function PresenceCard(props: {
   peerAvatar: Avatar;
   peerAudio: boolean;
   peerPresent: boolean;
+  /** il segno dell'uscita audio dell'altro, alla misura del riepilogo */
+  segno: React.ReactNode;
 }) {
-  const { status, linked, connectionState, peerName, peerAvatar, peerAudio, peerPresent } = props;
+  const {
+    status, linked, connectionState, peerName, peerAvatar, peerAudio, peerPresent, segno,
+  } = props;
 
   if (status === 'connecting') {
     return (
@@ -714,6 +785,9 @@ function PresenceCard(props: {
     <View style={styles.card}>
       <PeerFace name={peerName} avatar={peerAvatar} live />
       <Text style={styles.cardTitle}>{peerName || 'L’altro'} è nel canale</Text>
+      {/* La riga qui sotto dice già se ha il microfono muto, ma non da
+          dove gli esce il suono: il segno lo aggiunge senza allungarla. */}
+      {linked ? <View style={styles.cardSegno}>{segno}</View> : null}
       <Text style={styles.cardSub}>
         {linked
           ? (peerAudio ? 'Audio collegato · video non attivo' : 'Ha il microfono muto')
@@ -905,13 +979,14 @@ const styles = StyleSheet.create({
     paddingVertical: 10, paddingHorizontal: 18, overflow: 'hidden',
   },
   cardTiny: { color: '#4a5462', fontSize: 12, marginTop: 10 },
+  cardSegno: { marginTop: 12 },
 
   topBar: {
     position: 'absolute', top: 14, left: 14, right: 14,
     flexDirection: 'row', alignItems: 'center', gap: 8,
   },
+  chiRiga: { position: 'absolute', flexDirection: 'row', alignItems: 'center', gap: 8 },
   chiBadge: {
-    position: 'absolute',
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 14,
     paddingHorizontal: 10, paddingVertical: 5,

@@ -123,8 +123,39 @@ class ChannelForegroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        intent?.getStringExtra(EXTRA_TEXT)?.let { currentText = it }
-        if (intent?.hasExtra(EXTRA_CAMERA) == true) {
+        // Intento nullo = ci ha rimessi in piedi il sistema, dopo averci
+        // uccisi per fare posto ad altro (START_STICKY). Il servizio
+        // torna, ma il motore JavaScript se n'e' andato insieme al
+        // processo: da solo, questo servizio saprebbe soltanto mostrare
+        // una notifica che dichiara una presenza inesistente, che e'
+        // peggio di niente.
+        //
+        // La strada per rimettere in piedi la connessione esiste gia' ed
+        // e' quella del riavvio del telefono: si passa la mano a
+        // PresenceService, che avvia il JavaScript senza interfaccia. La
+        // notifica e' la stessa - stesso canale, stesso numero - quindi
+        // il passaggio non si vede.
+        if (intent == null) {
+            goForeground()
+            if (PresenceService.canStart()) {
+                try {
+                    androidx.core.content.ContextCompat.startForegroundService(
+                        this,
+                        Intent(this, PresenceService::class.java),
+                    )
+                    android.util.Log.i("Duetto", "risvegliati dal sistema: presenza riavviata")
+                } catch (e: Exception) {
+                    android.util.Log.w("Duetto", "risveglio non riuscito: ${e.message}")
+                }
+            }
+            // Il posto e' suo: restare in due significherebbe due servizi
+            // e un wake lock di troppo.
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        intent.getStringExtra(EXTRA_TEXT)?.let { currentText = it }
+        if (intent.hasExtra(EXTRA_CAMERA)) {
             cameraActive = intent.getBooleanExtra(EXTRA_CAMERA, false)
         }
         goForeground()

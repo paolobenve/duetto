@@ -8,7 +8,25 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
-## 1.1.39
+## 1.1.44
+
+**Tenendo premuto «Esci» si sceglie come uscire.** Il tocco fa quello di sempre — chiudi il
+canale ma resti raggiungibile, e il suo avviso ti arriva. La pressione lunga aggiunge
+l'altra: *esci e renditi non disponibile*, che stacca Duetto del tutto — niente
+connessione, niente notifica, niente avvisi, e all'altro risulti non raggiungibile, che è
+la verità. Dura finché non riapri l'app: riaprirla è già dire «ci sono».
+
+**Se il sistema uccide l'app, la presenza torna da sé.** Quando Android chiude Duetto per
+fare posto ad altro, il servizio ripartiva mostrando la notifica ma senza connessione: una
+presenza dichiarata e inesistente. Ora in quel caso riparte anche il motore che tiene la
+connessione, per la stessa strada che si usa dopo il riavvio del telefono. Se invece sei tu
+a togliere l'app dai recenti, resta chiusa: quella è una decisione, non un incidente.
+
+**A ogni collegamento puoi dare il nome che vuoi.** Il nome che vedi lo dichiara l'altro, ed
+è facoltativo: con più collegamenti in elenco diventavano tutti «Senza nome». Ora la matita
+accanto a ciascuno apre un campo dove scrivere come lo chiami tu — «Mamma», «Casa» — e quel
+nome vince ovunque, notifiche comprese. Resta su questo telefono: l'altro non lo vede.
+Nel riquadro di ogni collegamento c'è anche il server su cui è stato fatto.
 
 **Un telefono può tenere più collegamenti e passare dall'uno all'altro.** Prima accoppiarsi
 con qualcun altro voleva dire buttare via il collegamento di prima, e per tornare indietro
@@ -43,7 +61,9 @@ finché non apri l'app.
 **Nel riquadro «Non tu» ora si vede come ti sta ascoltando l'altro.** Accanto alla scritta
 c'è il segno della sua uscita audio — vivavoce, orecchio, cuffie, bluetooth — e se ha il
 microfono spento il segno è sbarrato. Sono le due cose che durante una conversazione ci si
-chiede a voce di continuo, «mi senti?», «sei in vivavoce?», e che il telefono sa già.
+chiede a voce di continuo, «mi senti?», «sei in vivavoce?», e che il telefono sa già. Il
+segno c'è anche quando l'altro non accende la camera: non avendo un riquadrino suo su cui
+appoggiarsi, prende una pastiglia tutta sua accanto a quella del tuo video.
 
 **Il pulsante «Avvisa» resta acceso anche quando siete tutti e due nel canale.** Prima si
 spegneva, con l'idea che lì non ci fosse più nulla da avvisare; ma il pulsante lì è

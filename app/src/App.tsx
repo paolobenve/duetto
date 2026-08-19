@@ -13,7 +13,7 @@ import {
   DuoConfig, PairInfo, loadConfig, saveConfig,
   isServerConfigured, isPaired, VIDEO_PROFILES,
   registraCoppia, passaACoppia, dimenticaCoppia, ricordaNomeCoppia,
-  allineaServerCoppia,
+  allineaServerCoppia, rinominaCoppia, nomeCoppia,
 } from './config';
 import { Signaling, PresenceStatus, Mode } from './signaling';
 import { ChannelSession } from './webrtc';
@@ -110,6 +110,19 @@ export default function App() {
 
   const [status, setStatus] = useState<PresenceStatus>('connecting');
   const [peerPresent, setPeerPresent] = useState(false);
+  /**
+   * Raggiungibili o staccati del tutto.
+   *
+   * Uscendo dal canale si resta normalmente in ascolto: è il senso
+   * dell'app, esserci senza tenere lo schermo acceso. Ma qualche volta
+   * si vuole proprio non esserci - e allora non basta uscire, bisogna
+   * togliere la presenza: niente connessione, niente notifica fissa,
+   * niente avvisi, e all'altro si risulta non raggiungibile, che è la
+   * verità.
+   *
+   * Dura finché non si riapre l'app: riaprirla è già dire "ci sono".
+   */
+  const [disponibile, setDisponibile] = useState(true);
   const [peerName, setPeerName] = useState('');
   const [connState, setConnState] = useState('new');
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -189,13 +202,21 @@ export default function App() {
     sessionRef.current?.setUscita(audio.route);
   }, [audio.route, inChannel]);
 
-  /** Il nome è facoltativo: se manca non mostriamo il segnaposto del server. */
+  /**
+   * Come si chiama l'altro, ovunque lo si nomini.
+   *
+   * Il nome che gli ho dato io viene prima di tutto: se ho deciso di
+   * chiamarlo "Mamma", la notifica non deve dirmi il nome che si è
+   * scelto lui. Poi quello che dichiara adesso, poi quello registrato
+   * all'accoppiamento. Il segnaposto del server ("Qualcuno") non si
+   * mostra mai: meglio niente.
+   */
   const shownName =
-    peerName && peerName !== 'Qualcuno'
-      ? peerName
-      : cfg?.pair?.peerName && cfg.pair.peerName !== 'Qualcuno'
-        ? cfg.pair.peerName
-        : '';
+    cfg?.pair?.etichetta
+      ? cfg.pair.etichetta
+      : peerName && peerName !== 'Qualcuno'
+        ? peerName
+        : nomeCoppia(cfg?.pair);
 
   /**
    * L'immagine da mostrare al posto del video dell'altro.
@@ -232,10 +253,22 @@ export default function App() {
    * di partenza e resterebbe finché non cambia qualcos'altro.
    */
   const testoNotificaRef = useRef(testoNotifica);
+  /**
+   * Scrivere la riga solo quando la presenza c'è davvero.
+   *
+   * `setText` non si limita a cambiare il testo: passa da
+   * `startForegroundService`, e un servizio spento lo riaccende. Senza
+   * questo controllo, dichiararsi non disponibili avrebbe fatto
+   * ricomparire la notifica un istante dopo averla tolta - e prima
+   * ancora di accoppiarsi ne sarebbe comparsa una per una presenza che
+   * non esiste.
+   */
+  const presenzaViva = !!cfg && isPaired(cfg) && isServerConfigured(cfg) && disponibile;
   useEffect(() => {
     testoNotificaRef.current = testoNotifica;
+    if (!presenzaViva) return;
     Foreground.setText(testoNotifica).catch(() => { /* noop */ });
-  }, [testoNotifica]);
+  }, [testoNotifica, presenzaViva]);
 
   /**
    * Ogni tanto si torna a chiedere al server se l'altro c'è.
@@ -360,6 +393,9 @@ export default function App() {
       if (s !== 'active') return;
 
       Foreground.clearNotification().catch(() => {});
+      // Riaprire l'app è già dire "ci sono": se ci si era staccati, la
+      // presenza torna da sé. Chi vuole restare invisibile non riapre.
+      setDisponibile(true);
       // Tornando in primo piano non ha senso aspettare il prossimo
       // tentativo programmato: si riprova subito.
       signalingRef.current?.reconnectNow();
@@ -465,7 +501,7 @@ export default function App() {
   // Vive finché c'è una coppia: passare da "in ascolto" a "nel canale"
   // non riconnette nulla, cambia solo lo stato dichiarato al server.
   useEffect(() => {
-    if (!cfg || !isPaired(cfg) || !isServerConfigured(cfg)) return;
+    if (!cfg || !isPaired(cfg) || !isServerConfigured(cfg) || !disponibile) return;
     const pair = cfg.pair!;
 
     // Se la presenza era tenuta viva dal servizio senza interfaccia
@@ -705,7 +741,7 @@ export default function App() {
     // attachPeer è stabile: usa solo ref. `cfg` si legge dalla chiusura
     // ma non è una dipendenza: solo connKey deve far rifare tutto.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connKey]);
+  }, [connKey, disponibile]);
 
   /**
    * Assicura un collegamento diretto vivo, quando siamo entrambi nel canale.
@@ -908,7 +944,7 @@ export default function App() {
 
   useEffect(() => { enterChannelRef.current = enterChannel; }, [enterChannel]);
 
-  const leaveChannel = useCallback(() => {
+  const leaveChannel = useCallback((restaDisponibile = true) => {
     const sig = signalingRef.current;
     sessionRef.current?.leaveChannel();
     sessionRef.current = null;
@@ -924,6 +960,11 @@ export default function App() {
     setInChannel(false);
     inChannelRef.current = false;
     sig?.setMode('listening');
+    // Staccarsi non è una cosa da fare a mano qui: basta dichiararsi non
+    // disponibili, e l'effetto della connessione smonta tutto da sé -
+    // sessione, signaling, servizio in primo piano - come fa a ogni
+    // cambio di coppia.
+    if (!restaDisponibile) setDisponibile(false);
 
     // Uscire dal canale è uscire dall'app: la finestra sparisce. Il
     // processo però resta vivo, così continui a essere raggiungibile e
@@ -1118,6 +1159,20 @@ export default function App() {
     setScreen('channel');
   }, [cfg, fermaAttesa]);
 
+  /**
+   * Il nome che do io a un collegamento.
+   *
+   * Non viaggia da nessuna parte: l'altro non lo vede e non lo saprà
+   * mai. Serve qui, dove i collegamenti stanno in fila e senza un nome
+   * si assomigliano tutti.
+   */
+  const onRenamePair = useCallback(async (id: string, nome: string) => {
+    if (!cfg) return;
+    const next = rinominaCoppia(cfg, id, nome);
+    await saveConfig(next);
+    setCfg(next);
+  }, [cfg]);
+
   const onForgetPair = useCallback(async (id: string) => {
     if (!cfg) return;
     const next = dimenticaCoppia(cfg, id);
@@ -1155,6 +1210,7 @@ export default function App() {
           onSave={onSaveSettings}
           onForgetPair={onForgetPair}
           onSwitchPair={onSwitchPair}
+          onRenamePair={onRenamePair}
           // Non si tocca nessun collegamento esistente: quello nuovo si
           // aggiunge, se e quando riesce.
           onRepair={() => setScreen('pairing')}
