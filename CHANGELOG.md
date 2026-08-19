@@ -8,7 +8,12 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
-## 1.1.50
+## 1.1.53
+
+**Chi si stacca apposta lo si vede.** Il server distingue chi saluta da chi sparisce, e per
+chi resta la differenza è tutta: da un tunnel si esce, da una scelta no. Se l'altro sceglie
+«esci e renditi non disponibile», ora leggi «si è reso non raggiungibile: ha staccato Duetto
+di proposito», invece di un «non raggiungibile» che sembra un guasto da aspettare.
 
 **Tenendo premuto «Esci» si sceglie come uscire.** Il tocco fa quello di sempre — chiudi il
 canale ma resti raggiungibile, e il suo avviso ti arriva. La pressione lunga aggiunge
@@ -27,7 +32,14 @@ telefono si ricorda com'è andata, e allora lo dice: «Anna è sparita alle 23:0
 era senza memoria. Adesso è tornata». Arriva come notizia silenziosa, non come avviso: non
 suona e non vibra. E se l'assenza è durata più di un minuto senza essere una morte, il
 ritorno viene annunciato lo stesso, qualche secondo dopo — giusto il tempo di lasciar
-passare avanti il racconto, quando c'è.
+passare avanti il racconto, quando c'è. La stessa frase compare anche dentro l'app, in un
+cartellino in alto che va via toccandolo: la tendina delle notifiche non la apre chi sta
+già guardando lo schermo.
+
+**Le righe tecniche sotto ai pulsanti si leggono anche attenuate.** Erano di un grigio da
+nota a piè di pagina: appena i comandi cominciavano a farsi da parte sparivano, perché
+l'attenuazione moltiplica quel poco contrasto che c'era. Ora sono più chiare, con un'ombra
+sotto che le stacca dall'immagine.
 
 **I comandi che si fanno da parte adesso hanno tre modi.** «Poco sfumati» è quello di sempre
 (40%, restano leggibili), «molto sfumati» li riduce a un'ombra (15%), «nascosti» li toglie

@@ -7,8 +7,12 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
-    "versione": "1.1.50",
+    "versione": "1.1.53",
     "paragrafi": [
+      {
+        "forte": "Chi si stacca apposta lo si vede.",
+        "testo": "Il server distingue chi saluta da chi sparisce, e per chi resta la differenza è tutta: da un tunnel si esce, da una scelta no. Se l'altro sceglie «esci e renditi non disponibile», ora leggi «si è reso non raggiungibile: ha staccato Duetto di proposito», invece di un «non raggiungibile» che sembra un guasto da aspettare."
+      },
       {
         "forte": "Tenendo premuto «Esci» si sceglie come uscire.",
         "testo": "Il tocco fa quello di sempre — chiudi il canale ma resti raggiungibile, e il suo avviso ti arriva. La pressione lunga aggiunge l'altra: *esci e renditi non disponibile*, che stacca Duetto del tutto — niente connessione, niente notifica, niente avvisi, e all'altro risulti non raggiungibile, che è la verità. Dura finché non riapri l'app: riaprirla è già dire «ci sono»."
@@ -19,7 +23,11 @@ export const CHANGELOG: NotaVersione[] = [
       },
       {
         "forte": "Se l'app di uno dei due muore, l'altro lo viene a sapere.",
-        "testo": "Nessuno può avvisare mentre muore — un processo ucciso dal sistema non riceve nessun preavviso — ma riaccendendosi il telefono si ricorda com'è andata, e allora lo dice: «Anna è sparita alle 23:04: il telefono era senza memoria. Adesso è tornata». Arriva come notizia silenziosa, non come avviso: non suona e non vibra. E se l'assenza è durata più di un minuto senza essere una morte, il ritorno viene annunciato lo stesso, qualche secondo dopo — giusto il tempo di lasciar passare avanti il racconto, quando c'è."
+        "testo": "Nessuno può avvisare mentre muore — un processo ucciso dal sistema non riceve nessun preavviso — ma riaccendendosi il telefono si ricorda com'è andata, e allora lo dice: «Anna è sparita alle 23:04: il telefono era senza memoria. Adesso è tornata». Arriva come notizia silenziosa, non come avviso: non suona e non vibra. E se l'assenza è durata più di un minuto senza essere una morte, il ritorno viene annunciato lo stesso, qualche secondo dopo — giusto il tempo di lasciar passare avanti il racconto, quando c'è. La stessa frase compare anche dentro l'app, in un cartellino in alto che va via toccandolo: la tendina delle notifiche non la apre chi sta già guardando lo schermo."
+      },
+      {
+        "forte": "Le righe tecniche sotto ai pulsanti si leggono anche attenuate.",
+        "testo": "Erano di un grigio da nota a piè di pagina: appena i comandi cominciavano a farsi da parte sparivano, perché l'attenuazione moltiplica quel poco contrasto che c'era. Ora sono più chiare, con un'ombra sotto che le stacca dall'immagine."
       },
       {
         "forte": "I comandi che si fanno da parte adesso hanno tre modi.",

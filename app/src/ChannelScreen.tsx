@@ -98,6 +98,13 @@ type Props = {
    * secondo no.
    */
   peerPresent: boolean;
+  /**
+   * Non c'è perché ha staccato lui, non perché è caduta la linea.
+   *
+   * Il server distingue chi saluta da chi sparisce, e per chi resta la
+   * differenza è tutta: da un tunnel si esce, da una scelta no.
+   */
+  peerStaccato: boolean;
   /** risoluzione e banda effettive, in uscita e in entrata */
   videoStats: VideoStats;
   /** profilo scelto: senza, non si capisce da cosa dipendano quei numeri */
@@ -107,6 +114,16 @@ type Props = {
   /** i comandi spariscono del tutto invece di attenuarsi */
   /** quanto si fanno da parte i comandi: 'poco' | 'molto' | 'nascondi' */
   comandi: 'poco' | 'molto' | 'nascondi';
+  /**
+   * Una notizia da leggere: l'app dell'altro è morta ed è tornata, o è
+   * tornato dopo una lunga assenza.
+   *
+   * Fuori dall'app la stessa cosa la dice una notifica silenziosa, che
+   * però è nella tendina - cioè in un posto dove chi sta guardando
+   * questa schermata non guarda. Qui sta davanti, e va via toccandola.
+   */
+  avviso?: string | null;
+  onAvvisoLetto?: () => void;
   /** quale camera sta riprendendo: lo dice l'icona di "Gira" */
   cameraFrontale: boolean;
   /** profilo in uso e come cambiarlo: si apre tenendo premuto "Video" */
@@ -153,7 +170,7 @@ type Props = {
  */
 export default function ChannelScreen(props: Props) {
   const {
-    collegamento, peerName, peerAvatar, peerPresent, videoStats, qualityLabel, showStats, comandi, cameraFrontale, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
+    collegamento, peerName, peerAvatar, peerPresent, peerStaccato, videoStats, qualityLabel, showStats, comandi, avviso, onAvvisoLetto, cameraFrontale, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes,
     onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, onOpenSettings,
@@ -448,6 +465,7 @@ export default function ChannelScreen(props: Props) {
           <PresenceCard
             segno={segno(17, '#0b0e14')}
             peerPresent={peerPresent}
+            peerStaccato={peerStaccato}
             status={status}
             linked={linked}
             connectionState={connectionState}
@@ -473,18 +491,33 @@ export default function ChannelScreen(props: Props) {
         <Animated.View style={[styles.attesaSopra, { opacity }]} pointerEvents="none">
           <Text style={styles.attesaTesto}>
             Sei nel canale.{'\n'}
-            {comeSta(peerName, peerPresent)}
+            {comeSta(peerName, peerPresent, peerStaccato)}
             {peerPresent ? (
               <>
                 {': tocca '}
                 <Text style={styles.bold}>Avvisa</Text>
                 {' per farglielo sapere.'}
               </>
+            ) : peerStaccato ? (
+              ': ha staccato Duetto di proposito.'
             ) : (
               ': il suo telefono non è collegato.'
             )}
           </Text>
         </Animated.View>
+      ) : null}
+
+      {/* La notizia sta sopra a tutto e non si attenua con i comandi:
+          non è un comando, è una cosa da leggere una volta. Sotto la
+          barra in alto, per non coprire l'ingranaggio. */}
+      {!compact && avviso ? (
+        <TouchableOpacity
+          style={[styles.notiziaSopra, { top: 62 + inset.v, left: 14 + inset.h, right: 14 + inset.h }]}
+          activeOpacity={0.85}
+          onPress={onAvvisoLetto}>
+          <Text style={styles.notiziaTesto}>{avviso}</Text>
+          <Text style={styles.notiziaVia}>tocca per togliere</Text>
+        </TouchableOpacity>
       ) : null}
 
       {/* In PiP finisce qui: la finestrella mostra solo il video. */}
@@ -742,10 +775,11 @@ export default function ChannelScreen(props: Props) {
  * server non è collegato, e allora l'avviso non ha dove andare. Sono le
  * stesse parole della notifica, di proposito: sono la stessa cosa.
  */
-function comeSta(nome: string, presente: boolean): string {
+function comeSta(nome: string, presente: boolean, staccato = false): string {
   const chi = nome || 'L’altro';
-  return presente
-    ? `${chi} è in attesa`
+  if (presente) return `${chi} è in attesa`;
+  return staccato
+    ? `${chi} si è reso non raggiungibile`
     : `${chi} non è raggiungibile`;
 }
 
@@ -757,11 +791,13 @@ function PresenceCard(props: {
   peerAvatar: Avatar;
   peerAudio: boolean;
   peerPresent: boolean;
+  peerStaccato: boolean;
   /** il segno dell'uscita audio dell'altro, alla misura del riepilogo */
   segno: React.ReactNode;
 }) {
   const {
-    status, linked, connectionState, peerName, peerAvatar, peerAudio, peerPresent, segno,
+    status, linked, connectionState, peerName, peerAvatar, peerAudio, peerPresent,
+    peerStaccato, segno,
   } = props;
 
   if (status === 'connecting') {
@@ -789,11 +825,16 @@ function PresenceCard(props: {
         <PeerFace name={peerName} avatar={peerAvatar} live={false} />
         <Text style={styles.cardTitle}>Sei nel canale</Text>
         <Text style={styles.cardSub}>
-          {comeSta(peerName, peerPresent)}
+          {comeSta(peerName, peerPresent, peerStaccato)}
           {peerPresent ? (
             <>
               {': non è nel canale, ma l’avviso gli arriva.'}
               {'\n'}Tocca <Text style={styles.bold}>Avvisa</Text> per farglielo sapere.
+            </>
+          ) : peerStaccato ? (
+            <>
+              {': ha staccato Duetto di proposito.'}
+              {'\n'}Tornerà raggiungibile quando riaprirà l’app.
             </>
           ) : (
             <>
@@ -984,9 +1025,21 @@ const styles = StyleSheet.create({
   avatarText: { color: '#e6ebf1', fontSize: 42, fontWeight: '700' },
   avatarSymbol: { fontSize: 52 },
   statsBox: { height: 36, justifyContent: 'center' },
+  /**
+   * Le righe tecniche devono restare leggibili anche attenuate.
+   *
+   * Erano di un grigio da nota a piè di pagina: giusto a pieno schermo,
+   * illeggibile appena i comandi cominciano a farsi da parte, perché
+   * l'attenuazione moltiplica quel poco contrasto che c'era. Ora sono
+   * di un grigio chiaro, con un'ombra scura sotto che le stacca anche
+   * quando il pannello dietro è quasi sparito.
+   */
   stats: {
-    color: '#7d8794', fontSize: 10.5, textAlign: 'center',
+    color: '#c9d2de', fontSize: 11, textAlign: 'center',
     letterSpacing: 0.2, lineHeight: 16,
+    textShadowColor: 'rgba(0,0,0,0.9)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   avatarGhost: { fontSize: 54, marginBottom: 16 },
   cardTitle: { color: '#e6ebf1', fontSize: 21, fontWeight: '700', textAlign: 'center' },
@@ -994,6 +1047,14 @@ const styles = StyleSheet.create({
   bold: { color: '#c9d2de', fontWeight: '700' },
   // Come l'avviso di VideoStage: una pastiglia al centro, non una fascia,
   // così sotto resta visibile il più possibile dell'immagine.
+  notiziaSopra: {
+    position: 'absolute',
+    backgroundColor: 'rgba(20,26,36,0.94)', borderRadius: 14,
+    paddingVertical: 12, paddingHorizontal: 16,
+    borderWidth: 1, borderColor: '#2f7cf6',
+  },
+  notiziaTesto: { color: '#e6ebf1', fontSize: 14.5, lineHeight: 20 },
+  notiziaVia: { color: '#6b7686', fontSize: 12, marginTop: 6 },
   attesaSopra: {
     position: 'absolute', left: 0, right: 0, top: '42%',
     alignItems: 'center', paddingHorizontal: 24,

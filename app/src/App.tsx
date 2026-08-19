@@ -161,6 +161,23 @@ export default function App() {
    * Dura finché non si riapre l'app: riaprirla è già dire "ci sono".
    */
   const [disponibile, setDisponibile] = useState(true);
+  /**
+   * L'ultima notizia da mostrare dentro l'app.
+   *
+   * Fuori c'è la notifica silenziosa, ma chi sta guardando questa
+   * schermata la tendina non la apre: la stessa frase va messa anche
+   * qui, dove l'occhio è già.
+   */
+  const [avviso, setAvviso] = useState<string | null>(null);
+  /**
+   * L'altro se n'è andato di proposito, non gli è caduta la linea.
+   *
+   * Il server distingue le due cose - chi saluta e chi sparisce - e la
+   * differenza conta per chi resta: da un tunnel si esce, da una scelta
+   * no. "Non raggiungibile" per uno che ha staccato apposta suonerebbe
+   * come un guasto da aspettare.
+   */
+  const [peerStaccato, setPeerStaccato] = useState(false);
   const [peerName, setPeerName] = useState('');
   const [connState, setConnState] = useState('new');
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -297,10 +314,11 @@ export default function App() {
     inChannel,
     peerActive: status === 'together',
     peerPresent,
+    staccato: peerStaccato,
     nome: shownName,
     collegamento,
     server: status === 'offline' ? 'giu' : status === 'connecting' ? 'incorso' : 'ok',
-  }), [inChannel, status, peerPresent, shownName, collegamento]);
+  }), [inChannel, status, peerPresent, peerStaccato, shownName, collegamento]);
 
   /**
    * Il testo serve anche a chi accende il servizio, che parte prima che
@@ -419,7 +437,9 @@ export default function App() {
     ritornoInArrivo.current = setTimeout(() => {
       ritornoInArrivo.current = null;
       const chi = shownNameRef.current || 'L’altro';
-      Foreground.nota('Duetto', `${chi} è di nuovo raggiungibile.`).catch(() => {});
+      const testo = `${chi} è di nuovo raggiungibile.`;
+      Foreground.nota('Duetto', testo).catch(() => {});
+      setAvviso(testo);
     }, ATTESA_RACCONTO_MS);
   }, [peerPresent, scordaRitorno]);
 
@@ -674,6 +694,9 @@ export default function App() {
           },
 
           onJoined: ({ peerPresent: present, peerActive, peerName: n, turn }) => {
+            // Ritrovandolo collegato, qualunque cosa avesse fatto prima
+            // non conta più.
+            if (present) setPeerStaccato(false);
             // Il relay lo configura il server: sui telefoni non si digita nulla.
             serverTurnRef.current = turn ? [turn] : [];
             sessionRef.current?.setServerIceServers(serverTurnRef.current);
@@ -704,6 +727,7 @@ export default function App() {
 
           onPeerJoined: (n, mode) => {
             setPeerPresent(true);
+            setPeerStaccato(false);
             segnaNome(n);
             // È tornato: l'attesa che stava per dimenticarlo si annulla.
             fermaAttesa();
@@ -713,6 +737,7 @@ export default function App() {
 
           onPeerLeft: (motivo) => {
             setPeerPresent(false);
+            setPeerStaccato(motivo === 'bye');
             peerActiveRef.current = false;
             sessionRef.current?.detachPeer();
             // Se ha salutato è uscito davvero; se è caduto gli si tiene il
@@ -732,6 +757,7 @@ export default function App() {
            */
           onPresence: ({ peerPresent: present, peerActive, peerName: n }) => {
             setPeerPresent(present);
+            if (present) setPeerStaccato(false);
             if (n) segnaNome(n);
             peerActiveRef.current = peerActive;
             if (peerActive) {
@@ -823,6 +849,7 @@ export default function App() {
               const testo = `${chi} è sparito ${quandoScritto(Number(msg.quando))}: `
                 + `${frasePerMorte(String(msg.causa))}. Adesso è tornato.`;
               Foreground.nota('Duetto', testo).catch(() => {});
+              setAvviso(testo);
               Diario.segna(`morte-altrui:${msg.causa}`).catch(() => {});
               return;
             }
@@ -1437,10 +1464,13 @@ export default function App() {
         peerName={shownName}
         peerAvatar={face}
         peerPresent={peerPresent}
+        peerStaccato={peerStaccato}
         videoStats={videoStats}
         qualityLabel={(VIDEO_PROFILES[cfg.videoQuality] ?? VIDEO_PROFILES.standard).etichetta}
         showStats={cfg.mostraDiagnostica}
         comandi={cfg.comandi}
+        avviso={avviso}
+        onAvvisoLetto={() => setAvviso(null)}
         cameraFrontale={cameraFrontale}
         quality={cfg.videoQuality}
         onSelectQuality={(q) => applyQuality(q, true)}

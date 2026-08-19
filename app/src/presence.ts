@@ -37,6 +37,14 @@ export function testoPresenza(o: {
   peerActive: boolean;
   /** l'altro è almeno collegato al server */
   peerPresent: boolean;
+  /**
+   * Se n'è andato di proposito: ha staccato, non gli è caduta la linea.
+   *
+   * Vale la pena distinguerlo: chi legge "non raggiungibile" aspetta
+   * che torni da un momento all'altro, chi legge "si è staccato" sa che
+   * dipende da lui.
+   */
+  staccato?: boolean;
   nome: string;
   /**
    * Il nome dato al collegamento in uso, se ne ha uno.
@@ -59,7 +67,9 @@ export function testoPresenza(o: {
       ? `Nel canale con ${chi}`
       : `${mio} \u00b7 ${chi} \u00e8 nel canale`);
   }
-  if (!o.peerPresent) return `${dove}${mio} \u00b7 ${chi} non raggiungibile`;
+  if (!o.peerPresent) {
+    return `${dove}${mio} \u00b7 ${chi} ${o.staccato ? 'si \u00e8 staccato' : 'non raggiungibile'}`;
+  }
   return dove + (o.inChannel ? `${mio} \u00b7 ${chi} in attesa` : 'In attesa tutti e due');
 }
 
@@ -89,11 +99,12 @@ export async function startListening(): Promise<boolean> {
    */
   let presente = false;
   let attivo = false;
+  let staccato = false;
   let nome = pair.peerName || '';
   const aggiorna = () => {
     Foreground.setText(testoPresenza({
       inChannel: false, peerActive: attivo, peerPresent: presente, nome,
-      collegamento: pair.etichetta,
+      staccato, collegamento: pair.etichetta,
     })).catch(() => { /* noop */ });
   };
 
@@ -109,17 +120,24 @@ export async function startListening(): Promise<boolean> {
     {
       onJoined: ({ peerPresent, peerActive, peerName }) => {
         presente = peerPresent;
+        if (peerPresent) staccato = false;
         attivo = peerActive;
         if (peerName) nome = peerName;
         aggiorna();
       },
       onPeerJoined: (name, mode) => {
         presente = true;
+        staccato = false;
         attivo = mode === 'active';
         if (name) nome = name;
         aggiorna();
       },
-      onPeerLeft: () => { presente = false; attivo = false; aggiorna(); },
+      onPeerLeft: (motivo) => {
+        presente = false;
+        attivo = false;
+        staccato = motivo === 'bye';
+        aggiorna();
+      },
       onPeerMode: (mode, name) => {
         presente = true;
         attivo = mode === 'active';
