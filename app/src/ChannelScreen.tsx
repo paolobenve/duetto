@@ -57,7 +57,14 @@ const ICONA_USCITA: Record<
 };
 
 type Props = {
-  channel: string;
+  /**
+   * Il nome dato a questo collegamento, se ne ha uno.
+   *
+   * Prende il posto del nome dell'app sulla pastiglia in alto: con più
+   * collegamenti configurati, sapere in quale si sta vale più che
+   * rileggere "Duetto".
+   */
+  collegamento: string;
   peerName: string;
   /** immagine dell'altro, quando non ha un nome */
   peerAvatar: Avatar;
@@ -124,7 +131,7 @@ type Props = {
  */
 export default function ChannelScreen(props: Props) {
   const {
-    channel, peerName, peerAvatar, peerPresent, videoStats, qualityLabel, showStats, hideControls, cameraFrontale, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
+    collegamento, peerName, peerAvatar, peerPresent, videoStats, qualityLabel, showStats, hideControls, cameraFrontale, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes,
     onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, onOpenSettings,
@@ -502,7 +509,7 @@ export default function ChannelScreen(props: Props) {
           // perché qualcosa è cambiato.
           onPress={press(() => setNovita(true))}>
           <View style={[styles.dot, together ? styles.dotGreen : styles.dotGrey]} />
-          <Text style={styles.badgeText}>Duetto</Text>
+          <Text style={styles.badgeText}>{collegamento || 'Duetto'}</Text>
           <Text style={styles.version}>  {VERSION_LABEL}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.gear} onPress={press(onOpenSettings)}>

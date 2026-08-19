@@ -13,7 +13,7 @@ import {
   DuoConfig, PairInfo, loadConfig, saveConfig,
   isServerConfigured, isPaired, VIDEO_PROFILES,
   registraCoppia, passaACoppia, dimenticaCoppia, ricordaNomeCoppia,
-  allineaServerCoppia, rinominaCoppia, nomeCoppia,
+  allineaServerCoppia, rinominaCoppia,
 } from './config';
 import { Signaling, PresenceStatus, Mode } from './signaling';
 import { ChannelSession } from './webrtc';
@@ -203,20 +203,29 @@ export default function App() {
   }, [audio.route, inChannel]);
 
   /**
-   * Come si chiama l'altro, ovunque lo si nomini.
+   * Come si chiama l'altro: come si è chiamato lui, o niente.
    *
-   * Il nome che gli ho dato io viene prima di tutto: se ho deciso di
-   * chiamarlo "Mamma", la notifica non deve dirmi il nome che si è
-   * scelto lui. Poi quello che dichiara adesso, poi quello registrato
-   * all'accoppiamento. Il segnaposto del server ("Qualcuno") non si
-   * mostra mai: meglio niente.
+   * Il nome del collegamento non c'entra - quello è il nome del filo,
+   * non della persona - e infatti non compare qui: se l'altro un nome
+   * non se l'è dato, resta "l'altro", e a dire in quale collegamento
+   * siete ci pensa l'etichetta, per conto suo.
    */
   const shownName =
-    cfg?.pair?.etichetta
-      ? cfg.pair.etichetta
-      : peerName && peerName !== 'Qualcuno'
-        ? peerName
-        : nomeCoppia(cfg?.pair);
+    peerName && peerName !== 'Qualcuno'
+      ? peerName
+      : cfg?.pair?.peerName && cfg.pair.peerName !== 'Qualcuno'
+        ? cfg.pair.peerName
+        : '';
+
+  /**
+   * Il nome di questo collegamento, se gliene ho dato uno.
+   *
+   * Si mostra dov'è utile sapere in quale collegamento si sta: sulla
+   * pastiglia in alto, al posto del nome dell'app, e in testa alla
+   * notifica fissa. Senza nome non compare niente: chi ha un
+   * collegamento solo non ha nulla da distinguere.
+   */
+  const collegamento = cfg?.pair?.etichetta || '';
 
   /**
    * L'immagine da mostrare al posto del video dell'altro.
@@ -244,8 +253,9 @@ export default function App() {
     peerActive: status === 'together',
     peerPresent,
     nome: shownName,
+    collegamento,
     server: status === 'offline' ? 'giu' : status === 'connecting' ? 'incorso' : 'ok',
-  }), [inChannel, status, peerPresent, shownName]);
+  }), [inChannel, status, peerPresent, shownName, collegamento]);
 
   /**
    * Il testo serve anche a chi accende il servizio, che parte prima che
@@ -1016,6 +1026,15 @@ export default function App() {
         setScreen('channel');
         return true;
       }
+      // Dall'accoppiamento si torna sempre alle impostazioni: da lì si
+      // rientra nel canale, o si cambia server. Senza questo, il tasto
+      // Indietro sulla schermata «Collega i due telefoni» chiudeva
+      // l'app - e chi ci era arrivato per aggiungere un collegamento non
+      // aveva nessun modo di tornare da dove era venuto.
+      if (screen === 'pairing') {
+        setScreen('settings');
+        return true;
+      }
       if (screen !== 'channel') return false;
       if (!pipSupported.current) return false;
       Pip.enter(stageAspect).catch(() => {});
@@ -1274,7 +1293,7 @@ export default function App() {
     <View style={styles.safe}>
       <StatusBar barStyle="light-content" />
       <ChannelScreen
-        channel={shownName || 'Duetto'}
+        collegamento={collegamento}
         peerName={shownName}
         peerAvatar={face}
         peerPresent={peerPresent}

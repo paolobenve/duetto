@@ -20,13 +20,13 @@ export type PairInfo = {
   /** come si chiama l'altro, per mostrarlo nelle notifiche */
   peerName: string;
   /**
-   * Il nome che gli do io.
+   * Il nome del COLLEGAMENTO, non della persona.
    *
-   * `peerName` lo dichiara l'altro, ed è facoltativo: chi non lo scrive
-   * resta "Qualcuno" per sempre, e con più collegamenti in elenco
-   * diventano tutti "Senza nome", indistinguibili. Questo invece lo
-   * scrivo io da questa parte, non viaggia da nessuna parte e vince su
-   * quello dichiarato: è il nome con cui penso a quella persona.
+   * L'altro si chiama come si è chiamato lui, o non si chiama affatto;
+   * questo è il nome del filo che vi unisce - "Casa", "Ufficio" - e
+   * serve solo da questa parte, per sapere in quale dei collegamenti si
+   * sta. Non viaggia da nessuna parte: l'altro non lo vede e non lo
+   * saprà mai.
    */
   etichetta?: string;
   /** quando è stato fatto l'accoppiamento (ISO) */
@@ -265,12 +265,12 @@ export function ricordaNomeCoppia(cfg: DuoConfig, id: string, nome: string): Duo
 }
 
 /**
- * Come si chiama questo collegamento, in una parola sola.
+ * Come chiamare un collegamento in un elenco.
  *
- * Prima il nome che gli ho dato io, poi quello che dichiara lui, e se
- * non c'è né l'uno né l'altro niente: chi chiama decide cosa mettere al
- * posto del niente, perché "Senza nome" in un elenco e la scritta al
- * centro di una schermata d'attesa non sono la stessa cosa.
+ * Prima il nome che gli ho dato io, poi - non avendone dato nessuno -
+ * quello di chi ci sta dall'altra parte, che è pur sempre il modo più
+ * naturale di distinguerlo. Se non c'è né l'uno né l'altro, niente: chi
+ * chiama decide cosa mettere al posto del niente.
  */
 export function nomeCoppia(p: PairInfo | null | undefined): string {
   if (!p) return '';
@@ -278,7 +278,7 @@ export function nomeCoppia(p: PairInfo | null | undefined): string {
   return p.peerName && p.peerName !== 'Qualcuno' ? p.peerName : '';
 }
 
-/** Cambia il nome che do a un collegamento. Vuoto = torna al suo. */
+/** Cambia il nome del collegamento. Vuoto = non ne ha nessuno. */
 export function rinominaCoppia(cfg: DuoConfig, id: string, etichetta: string): DuoConfig {
   const pulita = etichetta.trim().slice(0, 32);
   const tocca = (p: PairInfo) => (p.id === id ? { ...p, etichetta: pulita || undefined } : p);

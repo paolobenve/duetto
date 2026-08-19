@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator,
   ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { DuoConfig, PairInfo, displayServer } from './config';
+import { DuoConfig, PairInfo, displayServer, isPaired } from './config';
 import { Signaling, PairMessage } from './signaling';
 import {
   generateCode, normalizeCode, formatCode, isCodeComplete,
@@ -292,6 +292,10 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
       </Text>
       <Primary label="Crea il codice" onPress={startCreate} />
       <Primary label="Ho un codice" outline onPress={() => setStep('join')} />
+      {/* Chi è già accoppiato è qui per aggiungere un collegamento, non
+          perché deve: deve poter cambiare idea. Chi non lo è ancora non
+          ha nessun posto dove tornare, e il pulsante non compare. */}
+      {isPaired(cfg) ? <Secondary label="Annulla" onPress={onBack} /> : null}
       <Secondary label="Cambia server" value={displayServer(cfg.serverUrl)} onPress={onBack} />
       <Text style={styles.version}>{VERSION_LABEL}</Text>
     </Screen>

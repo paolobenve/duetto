@@ -262,6 +262,12 @@ export default function SettingsScreen({
                     </View>
                     <View style={styles.pairWho}>
                       <Text style={styles.pairName}>{nomeDi(p)}</Text>
+                      {/* Col nome del collegamento in testa, chi ci sta
+                          dall'altra parte va detto lo stesso: sono due
+                          cose diverse, e il nome se l'è dato lui. */}
+                      {p.etichetta && p.peerName && p.peerName !== 'Qualcuno' ? (
+                        <Text style={styles.pairMeta}>con {p.peerName}</Text>
+                      ) : null}
                       <Text style={styles.pairMeta}>
                         {attivo ? 'In uso · dal ' : 'Dal '}
                         {p.pairedAt ? new Date(p.pairedAt).toLocaleDateString() : '—'}
@@ -540,13 +546,12 @@ export default function SettingsScreen({
           {/* Il tocco dentro al riquadro non deve chiuderlo: si sta
               scrivendo. */}
           <Pressable style={styles.sheet} onPress={() => { /* trattieni */ }}>
-            <Text style={styles.sheetTitle}>Come lo chiami</Text>
+            <Text style={styles.sheetTitle}>Nome del collegamento</Text>
             <TextInput
               style={styles.input}
               value={nomeScritto}
               onChangeText={setNomeScritto}
-              placeholder={battezzo?.peerName && battezzo.peerName !== 'Qualcuno'
-                ? battezzo.peerName : 'Un nome qualsiasi'}
+              placeholder="Casa, ufficio, montagna…"
               placeholderTextColor="#5b6472"
               autoFocus
               maxLength={32}
@@ -554,8 +559,10 @@ export default function SettingsScreen({
               onSubmitEditing={() => chiudiBattesimo(true)}
             />
             <Text style={styles.hint}>
-              Resta su questo telefono: l’altro non lo vede e non lo saprà
-              mai. Lasciandolo vuoto torna il nome che si è dato lui.
+              È il nome del collegamento, non della persona: serve a te per
+              sapere in quale dei tuoi collegamenti stai. Compare sulla
+              pastiglia in alto e nella notifica. Resta su questo telefono:
+              l’altro non lo vede e non lo saprà mai.
             </Text>
             <View style={styles.sheetAzioni}>
               <TouchableOpacity style={styles.sheetAzione} onPress={() => chiudiBattesimo(false)}>

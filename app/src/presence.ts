@@ -38,18 +38,29 @@ export function testoPresenza(o: {
   /** l'altro è almeno collegato al server */
   peerPresent: boolean;
   nome: string;
+  /**
+   * Il nome dato al collegamento in uso, se ne ha uno.
+   *
+   * Va in testa alla riga, come il nome di una stanza: dice in quale
+   * dei collegamenti si sta, cosa che con più di uno configurato è la
+   * prima domanda. Non è il nome dell'altro, che resta il suo.
+   */
+  collegamento?: string;
   /** com'è messo il NOSTRO collegamento al server */
   server?: 'ok' | 'giu' | 'incorso';
 }): string {
-  const mio = o.inChannel ? 'Sei nel canale' : 'In attesa';
+  const dove = o.collegamento ? `${o.collegamento} \u00b7 ` : '';
+  const mio = (o.inChannel ? 'Sei nel canale' : 'In attesa');
   const chi = o.nome && o.nome !== 'Qualcuno' ? o.nome : 'l\u2019altro';
-  if (o.server === 'giu') return `${mio} \u00b7 senza collegamento al server`;
-  if (o.server === 'incorso') return mio;
+  if (o.server === 'giu') return `${dove}${mio} \u00b7 senza collegamento al server`;
+  if (o.server === 'incorso') return `${dove}${mio}`;
   if (o.peerActive) {
-    return o.inChannel ? `Nel canale con ${chi}` : `${mio} \u00b7 ${chi} \u00e8 nel canale`;
+    return dove + (o.inChannel
+      ? `Nel canale con ${chi}`
+      : `${mio} \u00b7 ${chi} \u00e8 nel canale`);
   }
-  if (!o.peerPresent) return `${mio} \u00b7 ${chi} non raggiungibile`;
-  return o.inChannel ? `${mio} \u00b7 ${chi} in attesa` : 'In attesa tutti e due';
+  if (!o.peerPresent) return `${dove}${mio} \u00b7 ${chi} non raggiungibile`;
+  return dove + (o.inChannel ? `${mio} \u00b7 ${chi} in attesa` : 'In attesa tutti e due');
 }
 
 const log = (...args: any[]) => console.log('[duetto-presenza]', ...args);
@@ -82,6 +93,7 @@ export async function startListening(): Promise<boolean> {
   const aggiorna = () => {
     Foreground.setText(testoPresenza({
       inChannel: false, peerActive: attivo, peerPresent: presente, nome,
+      collegamento: pair.etichetta,
     })).catch(() => { /* noop */ });
   };
 

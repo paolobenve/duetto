@@ -7,19 +7,23 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
-    "versione": "1.1.44",
+    "versione": "1.1.46",
     "paragrafi": [
       {
         "forte": "Tenendo premuto «Esci» si sceglie come uscire.",
         "testo": "Il tocco fa quello di sempre — chiudi il canale ma resti raggiungibile, e il suo avviso ti arriva. La pressione lunga aggiunge l'altra: *esci e renditi non disponibile*, che stacca Duetto del tutto — niente connessione, niente notifica, niente avvisi, e all'altro risulti non raggiungibile, che è la verità. Dura finché non riapri l'app: riaprirla è già dire «ci sono»."
       },
       {
+        "forte": "Dalla schermata «Collega i due telefoni» si può tornare indietro.",
+        "testo": "Chi ci arrivava per aggiungere un collegamento non aveva nessun modo di cambiare idea: il tasto Indietro chiudeva l'app, e l'unica via era «Cambia server», che promette tutt'altro. Ora c'è «Annulla», e il tasto Indietro riporta alle impostazioni."
+      },
+      {
         "forte": "Se il sistema uccide l'app, la presenza torna da sé.",
         "testo": "Quando Android chiude Duetto per fare posto ad altro, il servizio ripartiva mostrando la notifica ma senza connessione: una presenza dichiarata e inesistente. Ora in quel caso riparte anche il motore che tiene la connessione, per la stessa strada che si usa dopo il riavvio del telefono. Se invece sei tu a togliere l'app dai recenti, resta chiusa: quella è una decisione, non un incidente."
       },
       {
-        "forte": "A ogni collegamento puoi dare il nome che vuoi.",
-        "testo": "Il nome che vedi lo dichiara l'altro, ed è facoltativo: con più collegamenti in elenco diventavano tutti «Senza nome». Ora la matita accanto a ciascuno apre un campo dove scrivere come lo chiami tu — «Mamma», «Casa» — e quel nome vince ovunque, notifiche comprese. Resta su questo telefono: l'altro non lo vede. Nel riquadro di ogni collegamento c'è anche il server su cui è stato fatto."
+        "forte": "A ogni collegamento puoi dare un nome.",
+        "testo": "Non è il nome della persona — quello se lo dà lei, o non ce l'ha — è il nome del filo che vi unisce: «Casa», «Ufficio». Con più collegamenti in elenco diventavano tutti «Senza nome» e non si distinguevano; ora la matita accanto a ciascuno apre il campo dove scriverlo. Il nome compare sulla pastiglia in alto, al posto di «Duetto», e in testa alla notifica fissa, così sai sempre in quale collegamento sei. Resta su questo telefono: l'altro non lo vede e non lo saprà mai. Nel riquadro di ogni collegamento c'è anche il server su cui è stato fatto."
       },
       {
         "forte": "Un telefono può tenere più collegamenti e passare dall'uno all'altro.",
