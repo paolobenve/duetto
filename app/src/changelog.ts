@@ -7,6 +7,43 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.1.39",
+    "paragrafi": [
+      {
+        "forte": "Un telefono può tenere più collegamenti e passare dall'uno all'altro.",
+        "testo": "Prima accoppiarsi con qualcun altro voleva dire buttare via il collegamento di prima, e per tornare indietro rifare tutto da capo — con l'altra persona presente, il telefono in mano e il codice da dettarsi a voce. Ora ogni accoppiamento resta: nelle impostazioni c'è l'elenco, quello in uso è il primo e ha il bordo acceso, e toccarne un altro ci passa. All'avvio si riprende sempre l'ultimo usato, quindi chi ne ha uno solo non si accorge di niente."
+      },
+      {
+        "forte": "",
+        "testo": "Ogni collegamento si ricorda anche il server su cui è nato, e se lo porta dietro quando lo si riprende. Il nome dell'altro si aggiorna da sé a ogni ingresso: in un elenco è l'unica cosa che distingue un collegamento dall'altro."
+      },
+      {
+        "forte": "La schermata d'attesa ora dice se l'altro è in attesa o non è raggiungibile.",
+        "testo": "Prima diceva soltanto «non c'è ancora», che sono due cose molto diverse: se è in attesa non è nel canale ma l'avviso gli arriva; se non è raggiungibile il suo telefono al server non è collegato, e l'avviso non ha dove andare — quindi non ti si propone nemmeno di bussare."
+      },
+      {
+        "forte": "Lo stato si rinfresca da sé",
+        "testo": ": ogni minuto nel primo quarto d'ora, poi ogni cinque, e subito ogni volta che riaccendi lo schermo. Serve perché la caduta di chi sta solo in attesa il server la scopre con comodo — il suo battito è di quattro minuti, ed è così apposta per non tenere sveglia la radio tutta la notte — e fino ad allora la riga direbbe «in attesa» di qualcuno che non c'è più."
+      },
+      {
+        "forte": "Anche la notifica fissa lo dice",
+        "testo": ", e «In ascolto» è diventato «In attesa»: «In attesa tutti e due» quando ci siete entrambi e nessuno è ancora entrato, «In attesa · Anna è nel canale» quando ti sta aspettando dentro, «Sei nel canale · Anna in attesa» quando sei entrato tu e lei no, «Nel canale con Anna» quando ci siete tutti e due, e «non raggiungibile» al posto dell'attesa quando il suo telefono non è collegato. Vale anche per la notifica che compare da sola dopo un riavvio del telefono, che è l'unica cosa che parla finché non apri l'app."
+      },
+      {
+        "forte": "Nel riquadro «Non tu» ora si vede come ti sta ascoltando l'altro.",
+        "testo": "Accanto alla scritta c'è il segno della sua uscita audio — vivavoce, orecchio, cuffie, bluetooth — e se ha il microfono spento il segno è sbarrato. Sono le due cose che durante una conversazione ci si chiede a voce di continuo, «mi senti?», «sei in vivavoce?», e che il telefono sa già."
+      },
+      {
+        "forte": "Il pulsante «Avvisa» resta acceso anche quando siete tutti e due nel canale.",
+        "testo": "Prima si spegneva, con l'idea che lì non ci fosse più nulla da avvisare; ma il pulsante lì è premibile eccome, ed è anzi il caso in cui serve di più — l'altro c'è e non risponde. Sembrava guasto un pulsante che funzionava."
+      },
+      {
+        "forte": "Il riquadrino non salta più appena lo si prende.",
+        "testo": "All'inizio del movimento schizzava altrove, e solo dopo seguiva il dito: al primo spostamento si portava dietro il residuo dei tocchi precedenti. Ora il conto parte da dove il dito si è posato davvero. Lo stesso valeva per la maniglia che lo ridimensiona."
+      }
+    ]
+  },
+  {
     "versione": "1.1.38",
     "paragrafi": [
       {

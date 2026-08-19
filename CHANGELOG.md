@@ -8,7 +8,18 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
-## 1.1.41
+## 1.1.39
+
+**Un telefono può tenere più collegamenti e passare dall'uno all'altro.** Prima accoppiarsi
+con qualcun altro voleva dire buttare via il collegamento di prima, e per tornare indietro
+rifare tutto da capo — con l'altra persona presente, il telefono in mano e il codice da
+dettarsi a voce. Ora ogni accoppiamento resta: nelle impostazioni c'è l'elenco, quello in
+uso è il primo e ha il bordo acceso, e toccarne un altro ci passa. All'avvio si riprende
+sempre l'ultimo usato, quindi chi ne ha uno solo non si accorge di niente.
+
+Ogni collegamento si ricorda anche il server su cui è nato, e se lo porta dietro quando lo
+si riprende. Il nome dell'altro si aggiorna da sé a ogni ingresso: in un elenco è l'unica
+cosa che distingue un collegamento dall'altro.
 
 **La schermata d'attesa ora dice se l'altro è in attesa o non è raggiungibile.** Prima
 diceva soltanto «non c'è ancora», che sono due cose molto diverse: se è in attesa non è nel
@@ -21,32 +32,13 @@ attesa il server la scopre con comodo — il suo battito è di quattro minuti, e
 apposta per non tenere sveglia la radio tutta la notte — e fino ad allora la riga direbbe
 «in attesa» di qualcuno che non c'è più.
 
-**Anche la notifica fissa lo dice**, e «In ascolto» è diventato «In attesa»:
-
-- *In attesa tutti e due* — ci siete entrambi, nessuno è ancora entrato nel canale
-- *In attesa · Anna è nel canale* — ti sta aspettando dentro
-- *In attesa · Anna non raggiungibile* — il suo telefono non è collegato
-- *Nel canale con Anna* — ci siete tutti e due
-- *Sei nel canale · Anna in attesa* — sei entrato, lei no: è il momento di avvisarla
-- *Sei nel canale · Anna non raggiungibile*
-
-Vale anche per la notifica che compare da sola dopo un riavvio del telefono, che è l'unica
-cosa che parla finché non apri l'app.
-
-## 1.1.40
-
-**Un telefono può tenere più collegamenti e passare dall'uno all'altro.** Prima
-accoppiarsi con qualcun altro voleva dire buttare via il collegamento di prima, e per
-tornare indietro rifare tutto da capo — con l'altra persona presente, il telefono in mano e
-il codice da dettarsi a voce. Ora ogni accoppiamento resta: nelle impostazioni c'è l'elenco,
-quello in uso è il primo e ha il bordo acceso, e toccarne un altro ci passa. All'avvio si
-riprende sempre l'ultimo usato, quindi chi ne ha uno solo non si accorge di niente.
-
-Ogni collegamento si ricorda anche il server su cui è nato, e se lo porta dietro quando lo
-si riprende. Il nome dell'altro si aggiorna da sé a ogni ingresso: in un elenco è l'unica
-cosa che distingue un collegamento dall'altro.
-
-## 1.1.39
+**Anche la notifica fissa lo dice**, e «In ascolto» è diventato «In attesa»: «In attesa
+tutti e due» quando ci siete entrambi e nessuno è ancora entrato, «In attesa · Anna è nel
+canale» quando ti sta aspettando dentro, «Sei nel canale · Anna in attesa» quando sei
+entrato tu e lei no, «Nel canale con Anna» quando ci siete tutti e due, e «non
+raggiungibile» al posto dell'attesa quando il suo telefono non è collegato. Vale anche per
+la notifica che compare da sola dopo un riavvio del telefono, che è l'unica cosa che parla
+finché non apri l'app.
 
 **Nel riquadro «Non tu» ora si vede come ti sta ascoltando l'altro.** Accanto alla scritta
 c'è il segno della sua uscita audio — vivavoce, orecchio, cuffie, bluetooth — e se ha il
