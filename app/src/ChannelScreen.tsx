@@ -46,7 +46,10 @@ const COMPACT_WIDTH = 340;
 const SU_CHIARO = { color: '#1e1f22', sfondo: 'rgb(243,243,243)' } as const;
 
 /** Il disegno di ogni uscita audio, per la pastiglia e per il menu. */
-const ICONA_USCITA: Record<AudioRoute, (p: { size?: number; color?: string }) => JSX.Element> = {
+const ICONA_USCITA: Record<
+  AudioRoute,
+  (p: { size?: number; color?: string; off?: boolean; sfondo?: string }) => JSX.Element
+> = {
   SPEAKER_PHONE: IconaVivavoce,
   EARPIECE: IconaTelefono,
   WIRED_HEADSET: IconaCuffie,
@@ -77,7 +80,8 @@ type Props = {
   connectionState: string;
   audioOn: boolean;
   videoOn: boolean;
-  peerState: { audio: boolean; video: boolean; aspect?: number };
+  /** `uscita`: da dove esce il suono dall'altra parte, se lo dichiara */
+  peerState: { audio: boolean; video: boolean; aspect?: number; uscita?: string };
   /** traccia video dell'altro davvero in arrivo */
   remoteHasVideo: boolean;
   /** cambia a ogni ripartenza del video remoto, per ricreare il visualizzatore */
@@ -340,6 +344,25 @@ export default function ChannelScreen(props: Props) {
   useEffect(() => () => {
     if (timerBussata.current) clearTimeout(timerBussata.current);
   }, []);
+  /**
+   * Come sta ascoltando l'altro, da mettere accanto a "Non tu".
+   *
+   * L'icona dice da dove gli esce il suono - vivavoce, orecchio, cuffie,
+   * bluetooth - ed è barrata quando ha il microfono spento. Sono le due
+   * cose che durante una conversazione si chiedono a voce ("mi senti?",
+   * "sei in vivavoce?") e che il telefono sa già.
+   *
+   * Se l'altro ha una versione che non le dichiara, `uscita` non arriva
+   * e si mostra il vivavoce, che è il caso normale entrando nel canale.
+   */
+  const segnoAltro = React.useMemo(() => {
+    const dove = (peerState.uscita as AudioRoute) ?? 'SPEAKER_PHONE';
+    const Icona = ICONA_USCITA[dove] ?? ICONA_USCITA.SPEAKER_PHONE;
+    // Lo sfondo serve alla barra per staccarsi dal disegno: qui sotto
+    // c'è la pastiglia scura, non il pannello dei comandi.
+    return <Icona size={13} color="#e6ebf1" off={!peerState.audio} sfondo="#1b1d21" />;
+  }, [peerState.uscita, peerState.audio]);
+
   const bussa = useCallback(() => {
     setAppenaBussato(true);
     if (timerBussata.current) clearTimeout(timerBussata.current);
@@ -369,6 +392,7 @@ export default function ChannelScreen(props: Props) {
         insetBasso={!compact && showStats ? 36 : 0}
         onSfondo={tocco}
         onSoloGrande={setSoloGrande}
+        segnoAltro={segnoAltro}
         placeholder={
           <PresenceCard
             status={status}
@@ -423,6 +447,7 @@ export default function ChannelScreen(props: Props) {
           ]}
           pointerEvents="none">
           <Text style={styles.chiText}>{soloGrande === 'tu' ? 'Tu' : 'Non tu'}</Text>
+          {soloGrande === 'altro' ? segnoAltro : null}
         </Animated.View>
       ) : null}
 
@@ -496,15 +521,15 @@ export default function ChannelScreen(props: Props) {
           // troppo poco per accorgersene.
           icon={appenaBussato || knockPending ? <IconaAvvisato /> : <IconaAvvisa />}
           /**
-           * Acceso quando l'altro non c'è: lì avvisare è la cosa da fare.
+           * Sempre acceso, tranne il lampo alla pressione.
            *
-           * Alla pressione si spegne per un attimo e poi si riaccende: il
-           * lampo è il segno che il tocco è stato raccolto. Prima restava
-           * spento per i due secondi di `knockPending`, e bussando di
-           * nuovo dentro quei due secondi non si riaccendeva affatto -
-           * sembrava un pulsante che si era guastato premendolo.
+           * Prima si spegneva quando eravate tutti e due nel canale, con
+           * l'idea che lì non ci fosse nulla da avvisare. Ma il pulsante
+           * resta premibile proprio per quel caso - l'altro c'è e non
+           * risponde - quindi lo spegnimento non diceva niente di vero, e
+           * faceva sembrare guasto un pulsante che funzionava.
            */
-          highlight={!together && !appenaBussato}
+          highlight={!appenaBussato}
           // Sempre premibile: l'altro può essere nel canale ma distratto,
           // e insistere è proprio ciò che si vuole fare quando il primo
           // avviso non ha ottenuto risposta.
@@ -845,6 +870,7 @@ const styles = StyleSheet.create({
   },
   chiBadge: {
     position: 'absolute',
+    flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 14,
     paddingHorizontal: 10, paddingVertical: 5,
   },

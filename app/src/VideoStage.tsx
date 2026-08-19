@@ -122,6 +122,12 @@ type Props = {
   /** mostrato quando non c'è nessun video */
   placeholder: React.ReactNode;
   /**
+   * Segno da mettere accanto a "Non tu": lo stato audio dell'altro.
+   * Solo per il suo video, ovviamente: sul proprio non direbbe nulla che
+   * non si sappia già dai pulsanti.
+   */
+  segnoAltro?: React.ReactNode;
+  /**
    * Proporzioni del video a schermo intero, `null` se non ce n'è nessuno.
    *
    * Serve a chi disegna i comandi sopra: con "contain" il video non
@@ -162,7 +168,7 @@ type Props = {
 export default function VideoStage(props: Props) {
   const {
     localStream, remoteStream, localHasVideo, remoteHasVideo,
-    localAspect, remoteAspect, remoteVideoKey, compact, placeholder,
+    localAspect, remoteAspect, remoteVideoKey, compact, placeholder, segnoAltro,
     awaitingRemote, notice,
   } = props;
   const { width, height } = useWindowDimensions();
@@ -451,6 +457,19 @@ export default function VideoStage(props: Props) {
   const pinchStart = useRef<{ dist: number; w: number } | null>(null);
   const inizioTrascinamento = useRef({ x: 0, y: 0 });
   /**
+   * Lo spostamento del dito al primo movimento del gesto.
+   *
+   * Non è zero come ci si aspetterebbe. Il conteggio di React Native
+   * riparte da zero quando il gesto viene concesso, ma il segnalibro su
+   * quali movimenti ha già contato viene azzerato solo al rilascio: chi
+   * riceve il gesto al TOCCO - il riquadrino e la sua maniglia - al primo
+   * movimento si vede arrivare anche il residuo dei tocchi precedenti, e
+   * saltava di colpo altrove per poi seguire il dito regolarmente.
+   *
+   * Si prende quel primo valore come punto zero e si conta da lì.
+   */
+  const partenzaDito = useRef<{ dx: number; dy: number } | null>(null);
+  /**
    * Un dito è appoggiato sul riquadrino.
    *
    * Mentre lo si muove, la ricollocazione automatica non deve
@@ -475,6 +494,7 @@ export default function VideoStage(props: Props) {
           gestoInCorso.current = true;
           dragged.current = false;
           pinchStart.current = null;
+          partenzaDito.current = null;
           // Niente `extractOffset`: la posizione resta in coordinate
           // assolute per tutta la durata del gesto. Con l'offset attivo
           // la ricollocazione automatica - che scrive coordinate assolute
@@ -489,6 +509,10 @@ export default function VideoStage(props: Props) {
           // Due dita: si ridimensiona, non si sposta.
           if (touches.length >= 2) {
             dragged.current = true;
+            // Tolto un dito si torna a trascinare: da qui, non da dove il
+            // trascinamento era cominciato prima del pizzico.
+            partenzaDito.current = null;
+            inizioTrascinamento.current = { ...posRef.current };
             const dist = twoFingerDistance(touches);
             if (!pinchStart.current) {
               pinchStart.current = { dist, w: sizeRef.current.w };
@@ -500,10 +524,13 @@ export default function VideoStage(props: Props) {
           }
 
           pinchStart.current = null;
-          if (Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4) dragged.current = true;
+          if (!partenzaDito.current) partenzaDito.current = { dx: g.dx, dy: g.dy };
+          const dx = g.dx - partenzaDito.current.dx;
+          const dy = g.dy - partenzaDito.current.dy;
+          if (Math.abs(dx) > 4 || Math.abs(dy) > 4) dragged.current = true;
           pan.setValue({
-            x: inizioTrascinamento.current.x + g.dx,
-            y: inizioTrascinamento.current.y + g.dy,
+            x: inizioTrascinamento.current.x + dx,
+            y: inizioTrascinamento.current.y + dy,
           });
         },
         onPanResponderRelease: () => {
@@ -528,14 +555,23 @@ export default function VideoStage(props: Props) {
 
   // --- Maniglia d'angolo per ridimensionare con un dito -------------------
   const resizeStart = useRef(0);
+  /** punto zero del dito sulla maniglia, come `partenzaDito` */
+  const partenzaManiglia = useRef<number | null>(null);
   const resizeResponder = useMemo(
     () =>
       PanResponder.create({
         onStartShouldSetPanResponder: () => true,
         onMoveShouldSetPanResponder: () => true,
-        onPanResponderGrant: () => { resizeStart.current = sizeRef.current.w; },
+        onPanResponderGrant: () => {
+          resizeStart.current = sizeRef.current.w;
+          partenzaManiglia.current = null;
+        },
         onPanResponderMove: (_e, g) => {
-          applicaLarghezza(clampWidth(resizeStart.current + g.dx));
+          // Come per il trascinamento: il primo movimento porta con sé un
+          // residuo, e senza il punto zero il riquadrino cambiava taglia
+          // di scatto appena si toccava la maniglia.
+          if (partenzaManiglia.current === null) partenzaManiglia.current = g.dx;
+          applicaLarghezza(clampWidth(resizeStart.current + g.dx - partenzaManiglia.current));
         },
         onPanResponderRelease: () => clampIntoScreen(),
         onPanResponderTerminate: () => clampIntoScreen(),
@@ -737,6 +773,7 @@ export default function VideoStage(props: Props) {
             <Text style={styles.pipTagText}>
               {pipStream ? (pipIsSelf ? 'Tu' : 'Non tu') : 'in attesa'}
             </Text>
+            {!pipIsSelf && segnoAltro ? segnoAltro : null}
           </View>
         </Animated.View>
       ) : null}
@@ -805,6 +842,7 @@ const styles = StyleSheet.create({
    */
   pipTag: {
     position: 'absolute', top: 5, left: 5,
+    flexDirection: 'row', alignItems: 'center', gap: 5,
     backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 10,
     paddingHorizontal: 7, paddingVertical: 3,
   },

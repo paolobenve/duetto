@@ -34,7 +34,11 @@ export type ChannelEvents = {
   onRemoteStream?: (s: MediaStream | null) => void;
   onConnectionState?: (state: string) => void;
   /** stato di mic/camera dell'altra persona, con le proporzioni del suo video */
-  onPeerState?: (st: { audio: boolean; video: boolean; aspect?: number; hwVp9?: boolean }) => void;
+  onPeerState?: (st: {
+    audio: boolean; video: boolean; aspect?: number; hwVp9?: boolean;
+    /** da dove esce il suono dall'altra parte, se lo dichiara */
+    uscita?: string;
+  }) => void;
   /**
    * Se stiamo ricevendo una traccia video.
    *
@@ -116,6 +120,13 @@ export class ChannelSession {
    * non c'è ancora, ma la scelta sì.
    */
   private audioDesired = true;
+
+  /**
+   * Da dove esce il suono da questa parte: vivavoce, orecchio, cuffie,
+   * bluetooth. Serve solo per dirlo all'altro, che altrimenti lo deve
+   * chiedere a voce.
+   */
+  private uscitaLocale = 'SPEAKER_PHONE';
 
   /** Creazione della connessione in corso: chi arriva dopo aspetta questa. */
   private inCreazione: Promise<void> | null = null;
@@ -510,6 +521,7 @@ export class ChannelSession {
         video: msg.video,
         aspect: msg.aspect,
         hwVp9: this.peerVp9,
+        uscita: msg.uscita,
       });
       this.setPeerWatching(msg.watching !== false);
       // Ciò che l'altro dichiara entra nel giudizio su "c'è il suo
@@ -1273,11 +1285,19 @@ export class ChannelSession {
     this.signaling.sendSignal({
       kind: 'state',
       audio: this.isAudioEnabled(),
+      uscita: this.uscitaLocale,
       video: this.isVideoEnabled(),
       aspect: this.getLocalVideoAspect(),
       watching: this.localWatching,
       hwVp9: this.localVp9,
     });
+  }
+
+  /** Cambia l'uscita audio dichiarata e lo fa sapere all'altro. */
+  setUscita(uscita: string) {
+    if (uscita === this.uscitaLocale) return;
+    this.uscitaLocale = uscita;
+    this.broadcastState();
   }
 
   /** Se il microfono è stato aperto. Falso mentre si aspetta l'altro. */

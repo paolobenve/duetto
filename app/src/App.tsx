@@ -101,6 +101,8 @@ export default function App() {
   const [cameraFrontale, setCameraFrontale] = useState(true);
   const [peerState, setPeerState] = useState<{
     audio: boolean; video: boolean; aspect?: number;
+    /** da dove esce il suono dall'altra parte: lo dichiara lui */
+    uscita?: string;
   }>({ audio: true, video: false });
   /** VP9 in hardware: nostro e dell'altro. L'opzione si mostra solo con entrambi. */
   const [localVp9, setLocalVp9] = useState(false);
@@ -154,6 +156,18 @@ export default function App() {
   }, []);
 
   const audio = useAudioRoute(inChannel);
+
+  /**
+   * L'altro deve sapere da dove stiamo ascoltando.
+   *
+   * È l'informazione che a voce ci si chiede di continuo - "sei in
+   * vivavoce?" - e il telefono la sa già. Si manda a ogni cambio, e non
+   * costa nulla: è un campo in più nel messaggio di stato che parte
+   * comunque.
+   */
+  useEffect(() => {
+    sessionRef.current?.setUscita(audio.route);
+  }, [audio.route, inChannel]);
 
   /** Il nome è facoltativo: se manca non mostriamo il segnaposto del server. */
   const shownName =

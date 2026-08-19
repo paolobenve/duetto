@@ -22,7 +22,11 @@ export type SignalMessage =
   // `watching`: l'app dell'altro sta davvero mostrando lo schermo.
   // Assente nelle build vecchie, e allora si assume di sì: meglio
   // trasmettere per niente che mostrare un riquadro nero.
-  | { kind: 'state'; audio: boolean; video: boolean; aspect?: number; watching?: boolean; hwVp9?: boolean }
+  // `uscita`: da dove esce il suono dall'altra parte - vivavoce,
+  // orecchio, cuffie, bluetooth. Dice come ti sta ascoltando, cosa
+  // che a voce si chiede di continuo ("sei in vivavoce?").
+  | { kind: 'state'; audio: boolean; video: boolean; aspect?: number; watching?: boolean;
+      hwVp9?: boolean; uscita?: string }
   // Chi risponde non può offrire: se resta senza collegamento e l'altro
   // non se ne accorge, l'unica via d'uscita è chiederglielo.
   | { kind: 'renegotiate' }

@@ -8,6 +8,23 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.1.39
+
+**Nel riquadro «Non tu» ora si vede come ti sta ascoltando l'altro.** Accanto alla scritta
+c'è il segno della sua uscita audio — vivavoce, orecchio, cuffie, bluetooth — e se ha il
+microfono spento il segno è sbarrato. Sono le due cose che durante una conversazione ci si
+chiede a voce di continuo, «mi senti?», «sei in vivavoce?», e che il telefono sa già.
+
+**Il pulsante «Avvisa» resta acceso anche quando siete tutti e due nel canale.** Prima si
+spegneva, con l'idea che lì non ci fosse più nulla da avvisare; ma il pulsante lì è
+premibile eccome, ed è anzi il caso in cui serve di più — l'altro c'è e non risponde.
+Sembrava guasto un pulsante che funzionava.
+
+**Il riquadrino non salta più appena lo si prende.** All'inizio del movimento schizzava
+altrove, e solo dopo seguiva il dito: al primo spostamento si portava dietro il residuo dei
+tocchi precedenti. Ora il conto parte da dove il dito si è posato davvero. Lo stesso valeva
+per la maniglia che lo ridimensiona.
+
 ## 1.1.38
 
 **La vibrazione dell'avviso ora funziona anche se il telefono non vibra per le altre
