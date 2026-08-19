@@ -357,6 +357,30 @@ wss.on('connection', (ws, req) => {
       return;
     }
 
+    // --- 6) "C'e' ancora?": stato dell'altro su richiesta ----------------
+    //
+    // Il canale e' fatto di annunci: chi entra, chi esce, chi cade. Ma
+    // l'annuncio di una caduta arriva solo quando il server se ne
+    // accorge, e con il battito rado di chi sta in ascolto puo' volerci
+    // qualche minuto. Chi sta aspettando qualcuno guarda quella riga -
+    // "in ascolto" o "scollegato" - e merita di poterla rinfrescare.
+    //
+    // La risposta e' cio' che il server sa adesso; insieme parte un
+    // colpetto all'altro, cosi' se quella presenza e' un fantasma il
+    // `peer-left` arriva entro pochi secondi e la riga si corregge da
+    // sola.
+    if (msg.type === 'presence') {
+      const other = peersOf(ws.roomId, ws)[0];
+      send(ws, {
+        type: 'presence',
+        peerPresent: !!other,
+        peerActive: other ? other.mode === 'active' : false,
+        peerName: other ? other.name : '',
+      });
+      if (other) verificaPresenza(other);
+      return;
+    }
+
     if (msg.type === 'bye') {
       ws.salutato = true;
       leaveRoom(ws);

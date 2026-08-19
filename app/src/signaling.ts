@@ -75,6 +75,8 @@ export type SignalingEvents = {
   /** @param motivo 'bye' se è uscito lui, 'caduta' se è sparita la rete */
   onPeerLeft?: (motivo: 'bye' | 'caduta') => void;
   onPeerMode?: (mode: Mode, name: string) => void;
+  /** risposta a `chiediPresenza`: com'e' messo l'altro adesso */
+  onPresence?: (info: { peerPresent: boolean; peerActive: boolean; peerName: string }) => void;
   /** il server ci avvisa: l'altro è entrato, oppure ha bussato */
   onNotify?: (reason: 'peer-active' | 'knock', name: string) => void;
   onSignal?: (msg: SignalMessage) => void;
@@ -226,6 +228,14 @@ export class Signaling {
         this.events.onPeerLeft?.(msg.reason === 'bye' ? 'bye' : 'caduta');
         break;
 
+      case 'presence':
+        this.events.onPresence?.({
+          peerPresent: !!msg.peerPresent,
+          peerActive: !!msg.peerActive,
+          peerName: msg.peerName || '',
+        });
+        break;
+
       case 'peer-mode':
         this.events.onStatus?.(msg.mode === 'active' ? 'together' : 'alone');
         this.events.onPeerMode?.(msg.mode, msg.name || '');
@@ -282,6 +292,19 @@ export class Signaling {
 
   getMode(): Mode {
     return this.mode;
+  }
+
+  /**
+   * Chiede al server com'e' messo l'altro in questo momento.
+   *
+   * Serve a chi sta aspettando: gli annunci dicono i cambiamenti, ma la
+   * caduta di chi sta solo in ascolto il server la scopre con comodo, e
+   * fino ad allora la riga "in ascolto" resta li' a dire una cosa che
+   * non e' piu' vera. Domandare la rinfresca, e fa anche verificare
+   * quella presenza dall'altra parte.
+   */
+  chiediPresenza() {
+    this.rawSend({ type: 'presence' });
   }
 
   /** Chiede al server di avvisare l'altro. */

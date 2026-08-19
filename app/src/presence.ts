@@ -18,6 +18,40 @@ import { Signaling } from './signaling';
 
 let sig: Signaling | null = null;
 
+/**
+ * Cosa dice la notifica fissa, in una riga.
+ *
+ * Sta qui perché la scrivono in due: l'app, che sa tutto, e l'ascolto
+ * senza interfaccia qui sotto, che dopo un riavvio del telefono è
+ * l'unica cosa che parla all'utente finché non apre l'app. Devono dire
+ * le stesse parole, e sono le stesse della schermata di attesa:
+ *
+ *  - "in attesa": collegato al server, l'avviso gli arriva;
+ *  - "non raggiungibile": il suo telefono al server non è collegato, e
+ *    l'avviso non ha dove andare.
+ */
+export function testoPresenza(o: {
+  /** siamo noi dentro al canale */
+  inChannel: boolean;
+  /** l'altro è nel canale */
+  peerActive: boolean;
+  /** l'altro è almeno collegato al server */
+  peerPresent: boolean;
+  nome: string;
+  /** com'è messo il NOSTRO collegamento al server */
+  server?: 'ok' | 'giu' | 'incorso';
+}): string {
+  const mio = o.inChannel ? 'Sei nel canale' : 'In attesa';
+  const chi = o.nome && o.nome !== 'Qualcuno' ? o.nome : 'l\u2019altro';
+  if (o.server === 'giu') return `${mio} \u00b7 senza collegamento al server`;
+  if (o.server === 'incorso') return mio;
+  if (o.peerActive) {
+    return o.inChannel ? `Nel canale con ${chi}` : `${mio} \u00b7 ${chi} \u00e8 nel canale`;
+  }
+  if (!o.peerPresent) return `${mio} \u00b7 ${chi} non raggiungibile`;
+  return o.inChannel ? `${mio} \u00b7 ${chi} in attesa` : 'In attesa tutti e due';
+}
+
 const log = (...args: any[]) => console.log('[duetto-presenza]', ...args);
 
 /** Attiva l'ascolto, se c'è una coppia configurata. */
@@ -33,6 +67,24 @@ export async function startListening(): Promise<boolean> {
   const pair = cfg.pair!;
   log('ascolto avviato');
 
+  /**
+   * Lo stato dell'altro, per la sola notifica.
+   *
+   * Qui non si chiede niente a nessuno: dopo un riavvio del telefono
+   * nessuno sta guardando uno schermo, e svegliare la radio ogni minuto
+   * per aggiornare una riga che nessuno legge sarebbe il contrario di
+   * quello che questa parte dell'app cerca di fare. Si ascolta quello
+   * che il server manda da sé.
+   */
+  let presente = false;
+  let attivo = false;
+  let nome = pair.peerName || '';
+  const aggiorna = () => {
+    Foreground.setText(testoPresenza({
+      inChannel: false, peerActive: attivo, peerPresent: presente, nome,
+    })).catch(() => { /* noop */ });
+  };
+
   sig = new Signaling(
     {
       serverUrl: cfg.serverUrl.trim(),
@@ -43,6 +95,25 @@ export async function startListening(): Promise<boolean> {
       mode: 'listening',
     },
     {
+      onJoined: ({ peerPresent, peerActive, peerName }) => {
+        presente = peerPresent;
+        attivo = peerActive;
+        if (peerName) nome = peerName;
+        aggiorna();
+      },
+      onPeerJoined: (name, mode) => {
+        presente = true;
+        attivo = mode === 'active';
+        if (name) nome = name;
+        aggiorna();
+      },
+      onPeerLeft: () => { presente = false; attivo = false; aggiorna(); },
+      onPeerMode: (mode, name) => {
+        presente = true;
+        attivo = mode === 'active';
+        if (name) nome = name;
+        aggiorna();
+      },
       onNotify: (reason, name) => {
         const named = name && name !== 'Qualcuno';
         const text = reason === 'knock'

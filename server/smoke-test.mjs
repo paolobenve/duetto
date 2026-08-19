@@ -233,7 +233,10 @@ try {
   const h2 = client();
   await h2.open();
   h2.send({ type: 'join', room: 'battito', name: 'H2', side: 'B', mode: 'listening' });
-  await h2.expect('joined');
+  const h2Joined = await h2.expect('joined');
+  // Da questo campo dipende se chi arriva si attacca subito all'altro:
+  // sbagliato, resterebbero tutti e due davanti a una schermata d'attesa.
+  check(h2Joined.peerActive === true, 'chi arriva sa che l’altro è già nel canale');
   await h1.expect('peer-joined');
   await wait(100);
 
@@ -254,6 +257,71 @@ try {
   check(congedato?.reason === 'caduta', 'una connessione morta è annunciata come caduta');
 
   h1.close(); h2.close();
+
+  // --- "c'e' ancora?": lo stato dell'altro su richiesta ---------------------
+  // Chi aspetta guarda una riga che dice "in attesa" o "non
+  // raggiungibile". Gli annunci dicono i cambiamenti, ma la caduta di chi
+  // sta solo in ascolto il server la scopre con comodo: senza poterlo
+  // chiedere, quella riga resterebbe a dire una cosa non piu' vera.
+  const p1 = client();
+  await p1.open();
+  p1.send({ type: 'join', room: 'chiedi', name: 'P1', side: 'A', mode: 'active' });
+  await p1.expect('joined');
+
+  p1.send({ type: 'presence' });
+  const solo = await p1.expect('presence');
+  check(solo.peerPresent === false, 'da soli: l\u2019altro risulta assente');
+
+  const p2 = client();
+  await p2.open();
+  p2.send({ type: 'join', room: 'chiedi', name: 'P2', side: 'B', mode: 'listening' });
+  await p2.expect('joined');
+  await p1.expect('peer-joined');
+
+  p1.send({ type: 'presence' });
+  const inAscolto = await p1.expect('presence');
+  check(inAscolto.peerPresent === true && inAscolto.peerActive === false,
+    'l\u2019altro in ascolto: presente ma non nel canale');
+  check(inAscolto.peerName === 'P2', 'la risposta dice anche come si chiama');
+
+  p2.send({ type: 'mode', mode: 'active' });
+  await p1.expect('peer-mode');
+  p1.send({ type: 'presence' });
+  const nelCanale = await p1.expect('presence');
+  check(nelCanale.peerActive === true, 'l\u2019altro nel canale: la risposta lo dice');
+
+  // Domandare fa anche verificare quella presenza. Si guarda con l'altro
+  // in ASCOLTO, dove il battito normale e' rado: cosi' un colpetto che
+  // arriva subito puo' essere solo quello chiesto da qui, e non il giro
+  // ordinario che sarebbe passato comunque.
+  p2.send({ type: 'mode', mode: 'listening' });
+  await p1.expect('peer-mode');
+  await wait(100);
+  const primaDelleDomande = p2.pings();
+  p1.send({ type: 'presence' });
+  await p1.expect('presence');
+  await wait(150);
+  check(p2.pings() > primaDelleDomande, 'domandare interroga l\u2019altro');
+
+  // E se quella presenza e' un fantasma, il congedo arriva entro pochi
+  // secondi invece che al prossimo giro del battito rado.
+  p2.muori();
+  p1.send({ type: 'presence' });
+  await p1.expect('presence');
+  const fantasma = await p1.expect('peer-left').then((m) => m, () => null);
+  check(!!fantasma, 'una presenza morta viene smascherata dalla domanda');
+
+  p1.close(); p2.close();
+
+  // Chi non e' entrato in nessuna stanza non ha nessuno di cui chiedere:
+  // gli si ricorda di presentarsi, invece di rispondergli "non c'e'",
+  // che sarebbe vero per caso.
+  const p3 = client();
+  await p3.open();
+  p3.send({ type: 'presence' });
+  const senzaStanza = await p3.expect('error');
+  check(senzaStanza.error === 'expected-join', 'senza stanza si chiede prima di presentarsi');
+  p3.close();
 
   // --- uscita voluta --------------------------------------------------------
   const v1 = client();

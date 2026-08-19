@@ -108,7 +108,7 @@ object Notifier {
 
         val notification = NotificationCompat.Builder(service, PRESENCE_CHANNEL_ID)
             .setContentTitle("Duetto")
-            .setContentText("In ascolto")
+            .setContentText("In attesa")
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setContentIntent(pending)
             .setOngoing(true)

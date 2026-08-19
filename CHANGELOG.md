@@ -8,6 +8,31 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.1.41
+
+**La schermata d'attesa ora dice se l'altro è in attesa o non è raggiungibile.** Prima
+diceva soltanto «non c'è ancora», che sono due cose molto diverse: se è in attesa non è nel
+canale ma l'avviso gli arriva; se non è raggiungibile il suo telefono al server non è
+collegato, e l'avviso non ha dove andare — quindi non ti si propone nemmeno di bussare.
+
+**Lo stato si rinfresca da sé**: ogni minuto nel primo quarto d'ora, poi ogni cinque, e
+subito ogni volta che riaccendi lo schermo. Serve perché la caduta di chi sta solo in
+attesa il server la scopre con comodo — il suo battito è di quattro minuti, ed è così
+apposta per non tenere sveglia la radio tutta la notte — e fino ad allora la riga direbbe
+«in attesa» di qualcuno che non c'è più.
+
+**Anche la notifica fissa lo dice**, e «In ascolto» è diventato «In attesa»:
+
+- *In attesa tutti e due* — ci siete entrambi, nessuno è ancora entrato nel canale
+- *In attesa · Anna è nel canale* — ti sta aspettando dentro
+- *In attesa · Anna non raggiungibile* — il suo telefono non è collegato
+- *Nel canale con Anna* — ci siete tutti e due
+- *Sei nel canale · Anna in attesa* — sei entrato, lei no: è il momento di avvisarla
+- *Sei nel canale · Anna non raggiungibile*
+
+Vale anche per la notifica che compare da sola dopo un riavvio del telefono, che è l'unica
+cosa che parla finché non apri l'app.
+
 ## 1.1.40
 
 **Un telefono può tenere più collegamenti e passare dall'uno all'altro.** Prima

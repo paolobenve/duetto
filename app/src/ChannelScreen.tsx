@@ -61,6 +61,15 @@ type Props = {
   peerName: string;
   /** immagine dell'altro, quando non ha un nome */
   peerAvatar: Avatar;
+  /**
+   * L'altro è collegato al server, anche se non è nel canale.
+   *
+   * È la differenza fra aspettare qualcuno che può arrivare da un
+   * momento all'altro e aspettare qualcuno che in questo momento non ha
+   * nemmeno il telefono acceso: nel primo caso l'avviso arriva, nel
+   * secondo no.
+   */
+  peerPresent: boolean;
   /** risoluzione e banda effettive, in uscita e in entrata */
   videoStats: VideoStats;
   /** profilo scelto: senza, non si capisce da cosa dipendano quei numeri */
@@ -108,7 +117,7 @@ type Props = {
  */
 export default function ChannelScreen(props: Props) {
   const {
-    channel, peerName, peerAvatar, videoStats, qualityLabel, showStats, hideControls, cameraFrontale, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
+    channel, peerName, peerAvatar, peerPresent, videoStats, qualityLabel, showStats, hideControls, cameraFrontale, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes,
     onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, onOpenSettings,
@@ -395,6 +404,7 @@ export default function ChannelScreen(props: Props) {
         segnoAltro={segnoAltro}
         placeholder={
           <PresenceCard
+            peerPresent={peerPresent}
             status={status}
             linked={linked}
             connectionState={connectionState}
@@ -420,10 +430,16 @@ export default function ChannelScreen(props: Props) {
         <Animated.View style={[styles.attesaSopra, { opacity }]} pointerEvents="none">
           <Text style={styles.attesaTesto}>
             Sei nel canale.{'\n'}
-            {peerName ? `${peerName} non c’è ancora` : 'L’altro non c’è ancora'}
-            {': tocca '}
-            <Text style={styles.bold}>Avvisa</Text>
-            {' per farglielo sapere.'}
+            {comeSta(peerName, peerPresent)}
+            {peerPresent ? (
+              <>
+                {': tocca '}
+                <Text style={styles.bold}>Avvisa</Text>
+                {' per farglielo sapere.'}
+              </>
+            ) : (
+              ': il suo telefono non è collegato.'
+            )}
           </Text>
         </Animated.View>
       ) : null}
@@ -626,6 +642,21 @@ export default function ChannelScreen(props: Props) {
   );
 }
 
+/**
+ * Come sta l'altro mentre lo si aspetta, in una riga.
+ *
+ * "In attesa" vuol dire collegato al server e raggiungibile
+ * dall'avviso; "non raggiungibile" vuol dire che il suo telefono al
+ * server non è collegato, e allora l'avviso non ha dove andare. Sono le
+ * stesse parole della notifica, di proposito: sono la stessa cosa.
+ */
+function comeSta(nome: string, presente: boolean): string {
+  const chi = nome || 'L’altro';
+  return presente
+    ? `${chi} è in attesa`
+    : `${chi} non è raggiungibile`;
+}
+
 function PresenceCard(props: {
   status: PresenceStatus;
   linked: boolean;
@@ -633,8 +664,9 @@ function PresenceCard(props: {
   peerName: string;
   peerAvatar: Avatar;
   peerAudio: boolean;
+  peerPresent: boolean;
 }) {
-  const { status, linked, connectionState, peerName, peerAvatar, peerAudio } = props;
+  const { status, linked, connectionState, peerName, peerAvatar, peerAudio, peerPresent } = props;
 
   if (status === 'connecting') {
     return (
@@ -661,8 +693,18 @@ function PresenceCard(props: {
         <PeerFace name={peerName} avatar={peerAvatar} live={false} />
         <Text style={styles.cardTitle}>Sei nel canale</Text>
         <Text style={styles.cardSub}>
-          {peerName ? `${peerName} non c’è ancora.` : 'L’altro non c’è ancora.'}
-          {'\n'}Tocca <Text style={styles.bold}>Avvisa</Text> per farglielo sapere.
+          {comeSta(peerName, peerPresent)}
+          {peerPresent ? (
+            <>
+              {': non è nel canale, ma l’avviso gli arriva.'}
+              {'\n'}Tocca <Text style={styles.bold}>Avvisa</Text> per farglielo sapere.
+            </>
+          ) : (
+            <>
+              {': il suo telefono non è collegato.'}
+              {'\n'}Finché non torna, l’avviso non può raggiungerlo.
+            </>
+          )}
         </Text>
       </View>
     );

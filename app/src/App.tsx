@@ -24,7 +24,7 @@ import PairingScreen from './PairingScreen';
 import ChannelScreen from './ChannelScreen';
 import { caricaPosizionePip } from './VideoStage';
 import { useAudioRoute } from './audioRoute';
-import { stopListening } from './presence';
+import { stopListening, testoPresenza } from './presence';
 import { avatarFor, peerAvatar } from './avatar';
 
 // Nessuna schermata intermedia: o si configura, o ci si accoppia, o si è
@@ -53,6 +53,24 @@ const SCAMBIO_DIARIO_MS = 60 * 60 * 1000;
 
 /** Quante righe di diario sono già state mandate all'altro. */
 const CHIAVE_DIARIO_INVIATE = 'duetto.diario.inviate';
+
+/**
+ * Ogni quanto si torna a chiedere se l'altro c'è, mentre lo si aspetta.
+ *
+ * Il server annuncia i cambiamenti, ma la caduta di chi sta soltanto in
+ * ascolto la scopre con comodo - il suo battito è di quattro minuti, ed
+ * è così apposta, per non tenere sveglia la radio tutta la notte. Fino
+ * ad allora la riga direbbe "in ascolto" di qualcuno che non c'è più.
+ *
+ * Fitto all'inizio, quando si è appena entrati e si sta guardando lo
+ * schermo aspettando; rado dopo un quarto d'ora, quando l'attesa è
+ * diventata un sottofondo e nessuno sta più fissando quella riga. Una
+ * domanda ogni cinque minuti costa quanto un battito: è il risveglio
+ * della radio a costare, non i venti byte.
+ */
+const PRESENZA_FITTA_MS = 60 * 1000;
+const PRESENZA_RADA_MS = 5 * 60 * 1000;
+const PRESENZA_PAZIENZA_MS = 15 * 60 * 1000;
 
 /**
  * Chiede TUTTI i permessi in un colpo solo, al primo avvio.
@@ -193,6 +211,62 @@ export default function App() {
   useEffect(() => { inChannelRef.current = inChannel; }, [inChannel]);
 
   /**
+   * Cosa dice la notifica fissa.
+   *
+   * Serve a chi guarda la barra senza aprire l'app, e finora diceva solo
+   * come stava questo telefono. Ma la domanda vera è sull'altro: se è
+   * in attesa basta bussargli, se non è raggiungibile non c'è niente da
+   * fare se non aspettare. Stesse parole della schermata di attesa.
+   */
+  const testoNotifica = React.useMemo(() => testoPresenza({
+    inChannel,
+    peerActive: status === 'together',
+    peerPresent,
+    nome: shownName,
+    server: status === 'offline' ? 'giu' : status === 'connecting' ? 'incorso' : 'ok',
+  }), [inChannel, status, peerPresent, shownName]);
+
+  /**
+   * Il testo serve anche a chi accende il servizio, che parte prima che
+   * ci sia qualcosa da dire: senza questo, la prima riga sarebbe quella
+   * di partenza e resterebbe finché non cambia qualcos'altro.
+   */
+  const testoNotificaRef = useRef(testoNotifica);
+  useEffect(() => {
+    testoNotificaRef.current = testoNotifica;
+    Foreground.setText(testoNotifica).catch(() => { /* noop */ });
+  }, [testoNotifica]);
+
+  /**
+   * Ogni tanto si torna a chiedere al server se l'altro c'è.
+   *
+   * Solo mentre lo si aspetta: appena entra nel canale non serve più
+   * chiedere niente, e fuori dal canale non c'è nessuna schermata che
+   * lo stia dicendo.
+   *
+   * Il primo quarto d'ora è quello in cui si sta davvero aspettando,
+   * spesso guardando lo schermo: lì una domanda al minuto è poca cosa.
+   * Dopo, l'attesa è diventata un sottofondo e si dirada a cinque
+   * minuti, che è il passo del battito del server.
+   */
+  useEffect(() => {
+    if (!inChannel || status !== 'alone') return;
+    const inizio = Date.now();
+    let timer: ReturnType<typeof setTimeout>;
+    const giro = () => {
+      signalingRef.current?.chiediPresenza();
+      const atteso = Date.now() - inizio >= PRESENZA_PAZIENZA_MS
+        ? PRESENZA_RADA_MS : PRESENZA_FITTA_MS;
+      timer = setTimeout(giro, atteso);
+    };
+    // Non subito: entrando nel canale la risposta del server è appena
+    // arrivata, e richiederla nello stesso istante sarebbe chiederla due
+    // volte.
+    timer = setTimeout(giro, PRESENZA_FITTA_MS);
+    return () => clearTimeout(timer);
+  }, [inChannel, status]);
+
+  /**
    * Il diario segue lo stato: senza, le righe direbbero quanto è sceso
    * il telefono senza dire cosa stava facendo l'app, che è l'unica cosa
    * che rende quei numeri confrontabili fra loro.
@@ -289,6 +363,11 @@ export default function App() {
       // Tornando in primo piano non ha senso aspettare il prossimo
       // tentativo programmato: si riprova subito.
       signalingRef.current?.reconnectNow();
+      // E si ridomanda dov'è l'altro: il telefono può aver dormito per
+      // ore, e i conti alla rovescia dormono con lui. Chi riaccende lo
+      // schermo guarda quella riga per prima cosa, e deve trovarla
+      // fresca, non ferma a com'era prima della notte.
+      if (inChannelRef.current) signalingRef.current?.chiediPresenza();
       // Tornare in primo piano - da icona o toccando la notifica - vuol
       // dire voler stare nel canale: si rientra senza chiedere nulla.
       if (!wasActive && !inChannelRef.current && signalingRef.current) {
@@ -405,7 +484,7 @@ export default function App() {
       }
       if (cancelled) return;
 
-      Foreground.start('In ascolto', false).catch(() => {});
+      Foreground.start(testoNotificaRef.current, false).catch(() => {});
 
       const sig = new Signaling(
         {
@@ -468,6 +547,26 @@ export default function App() {
             // posto qualche secondo, che è il tempo di un cambio di rete.
             scordaAltro(motivo === 'bye');
             setConnState('new');
+          },
+
+          /**
+           * La risposta a "c'è ancora?".
+           *
+           * Di solito conferma quello che già si sapeva. Quando non lo
+           * conferma - l'altro risulta nel canale e noi non ce n'eravamo
+           * accorti - vuol dire che un annuncio è andato perso, e questa
+           * è l'occasione per rimettersi in pari invece di restare a
+           * guardare una schermata di attesa mentre lui aspetta noi.
+           */
+          onPresence: ({ peerPresent: present, peerActive, peerName: n }) => {
+            setPeerPresent(present);
+            if (n) segnaNome(n);
+            peerActiveRef.current = peerActive;
+            if (peerActive) {
+              fermaAttesa();
+              setStatus('together');
+              if (inChannelRef.current) attachPeer();
+            }
           },
 
           onPeerMode: (mode, n) => {
@@ -799,7 +898,6 @@ export default function App() {
     // regolano il multimedia e non hanno effetto sulla voce dell'altro.
     Audio.useCallVolumeKeys(true).catch(() => {});
 
-    Foreground.setText('Sei nel canale').catch(() => {});
     setInChannel(true);
     inChannelRef.current = true;
     setScreen('channel');
@@ -817,7 +915,6 @@ export default function App() {
     try { InCallManager.stop(); } catch { /* noop */ }
     Audio.useCallVolumeKeys(false).catch(() => {});
     Foreground.setCameraActive(false).catch(() => {});
-    Foreground.setText('In ascolto').catch(() => {});
     setLocalStream(null);
     setRemoteStream(null);
     setRemoteHasVideo(false);
@@ -1124,6 +1221,7 @@ export default function App() {
         channel={shownName || 'Duetto'}
         peerName={shownName}
         peerAvatar={face}
+        peerPresent={peerPresent}
         videoStats={videoStats}
         qualityLabel={(VIDEO_PROFILES[cfg.videoQuality] ?? VIDEO_PROFILES.standard).etichetta}
         showStats={cfg.mostraDiagnostica}
