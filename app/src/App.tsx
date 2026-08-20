@@ -164,6 +164,13 @@ export default function App() {
    */
   const [disponibile, setDisponibile] = useState(true);
   /**
+   * La prossima chiusura è un addio, non un passaggio di mano.
+   *
+   * Lo alza chi se ne va di proposito - "renditi non disponibile", o lo
+   * scioglimento di un collegamento - e lo abbassa la chiusura stessa.
+   */
+  const salutiamo = useRef(false);
+  /**
    * L'ultima notizia da mostrare dentro l'app.
    *
    * Fuori c'è la notifica silenziosa, ma chi sta guardando questa
@@ -1053,7 +1060,12 @@ export default function App() {
       cancelled = true;
       sessionRef.current?.leaveChannel();
       sessionRef.current = null;
-      signalingRef.current?.close();
+      // Si saluta solo se ce ne andiamo davvero, cioè se qualcuno ha
+      // scelto di rendersi non disponibile o ha sciolto il collegamento.
+      // Tutte le altre chiusure sono passaggi di mano, e l'altro non
+      // deve leggere "si è staccato" per una connessione che si rifà.
+      signalingRef.current?.close(salutiamo.current);
+      salutiamo.current = false;
       signalingRef.current = null;
       Foreground.stop().catch(() => {});
       try { InCallManager.stop(); } catch { /* noop */ }
@@ -1286,7 +1298,10 @@ export default function App() {
     // disponibili, e l'effetto della connessione smonta tutto da sé -
     // sessione, signaling, servizio in primo piano - come fa a ogni
     // cambio di coppia.
-    if (!restaDisponibile) setDisponibile(false);
+    if (!restaDisponibile) {
+      salutiamo.current = true;
+      setDisponibile(false);
+    }
 
     // Uscire dal canale è uscire dall'app: la finestra sparisce. Il
     // processo però resta vivo, così continui a essere raggiungibile e
@@ -1519,6 +1534,9 @@ export default function App() {
 
   const onForgetPair = useCallback(async (id: string) => {
     if (!cfg) return;
+    // Sciogliere un collegamento è un addio vero: chi resta dall'altra
+    // parte deve sapere che non si tratta di una caduta.
+    if (cfg.pair?.id === id) salutiamo.current = true;
     const next = dimenticaCoppia(cfg, id);
     await saveConfig(next);
     setCfg(next);

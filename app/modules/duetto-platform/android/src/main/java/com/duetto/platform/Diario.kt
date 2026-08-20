@@ -276,8 +276,7 @@ object Diario {
                 // quello - e ripeterlo su ogni riga sarebbe la stessa
                 // parola cento volte.
                 if (motivo == "avvio") {
-                    append(" telefono=\"").append(Build.MANUFACTURER).append(' ')
-                        .append(Build.MODEL).append('"')
+                    append(" telefono=\"").append(nomeTelefono()).append('"')
                     append(" android=").append(Build.VERSION.RELEASE)
                 }
                 append(" stato=").append(stato)
@@ -397,6 +396,20 @@ object Diario {
             Log.w(TAG, "diario: non riesco a leggere l'ultima uscita: ${e.message}")
             null
         }
+    }
+
+    /**
+     * Marca e modello, senza ripetere la marca.
+     *
+     * Parecchi produttori la mettono gia' dentro al modello - Motorola
+     * scrive "motorola edge 50 fusion" - e incollandoci davanti la marca
+     * veniva "motorola motorola edge 50 fusion".
+     */
+    private fun nomeTelefono(): String {
+        val marca = Build.MANUFACTURER ?: ""
+        val modello = Build.MODEL ?: ""
+        return if (modello.startsWith(marca, ignoreCase = true)) modello
+        else "$marca $modello".trim()
     }
 
     /** In che modo sta l'audio del telefono: e' lui a decidere le regole. */

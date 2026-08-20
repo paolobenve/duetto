@@ -231,7 +231,7 @@ class ChannelForegroundService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Duetto")
             .setContentText(currentText)
-            .setSmallIcon(android.R.drawable.ic_btn_speak_now)
+            .setSmallIcon(R.drawable.ic_notifica)
             .setContentIntent(pending)
             .setOngoing(true)
             .setSilent(true)

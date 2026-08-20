@@ -7,7 +7,7 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
-    "versione": "1.1.68",
+    "versione": "1.1.72",
     "paragrafi": [
       {
         "forte": "Chi si stacca apposta lo si vede.",
@@ -64,6 +64,18 @@ export const CHANGELOG: NotaVersione[] = [
       {
         "forte": "Con il video acceso la voce si fa ricca da sé.",
         "testo": "L'audio migliore costa 4 kB/s per direzione: accanto a mezzo megabit di video non si notano, e rinunciare alla voce buona per risparmiarli è un cattivo affare. Ora, quando il video supera i 320 kbit/s, il tetto dell'audio si alza da solo; torna all'impostazione quando il video scende sotto i 160 o si spegne. L'impostazione non viene toccata, e se l'hai accesa tu resta accesa comunque."
+      },
+      {
+        "forte": "Basta con «si è staccato» detto di chi non si è staccato affatto.",
+        "testo": "Il saluto che dice all'altro «me ne vado di proposito» partiva a ogni chiusura della connessione — anche quando si chiudeva per riaprirla un istante dopo, cosa che succede ogni volta che riprendi in mano il telefono e l'app subentra all'ascolto senza interfaccia. Chi guardava leggeva che l'altro aveva staccato apposta, e smetteva di aspettarlo. Ora il saluto parte solo quando è vero: «esci e renditi non disponibile», o lo scioglimento di un collegamento. Tutto il resto è una caduta, dopo la quale è normale tornare."
+      },
+      {
+        "forte": "Con la camera posteriore l'immagine non è più rovesciata.",
+        "testo": "Lo specchio ha senso per la camera frontale — chi si guarda si aspetta lo specchio, ed è così che ci si sistema i capelli — ma inquadrando il mondo è sbagliato e basta: le scritte si leggono al contrario e ci si muove dalla parte opposta a quella che si vede. L'altro riceveva comunque l'immagine giusta: lo specchio era solo nell'anteprima."
+      },
+      {
+        "forte": "Anche le notifiche hanno l'icona nuova.",
+        "testo": "Erano rimaste con un simbolo di sistema, uguale a quello di cento altre app."
       },
       {
         "forte": "L'icona dell'app.",

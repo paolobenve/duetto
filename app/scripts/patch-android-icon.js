@@ -167,7 +167,37 @@ for (const [dpi, lato] of Object.entries(MISURE)) {
   scritti += 4;
 }
 
-// --- 5) Le descrizioni ----------------------------------------------------
+// --- 5) L'icona delle notifiche -------------------------------------------
+// Android la disegna in bianco su fondo trasparente, dentro un quadrato
+// piccolissimo: dei colori non resta niente, conta solo la sagoma. Si
+// ritaglia stretta attorno alle cornette, perché in 24 punti il margine
+// bianco della tela adattiva la ridurrebbe a un puntino.
+//
+// Va nelle risorse del modulo, non in android/: lì c'è il codice che la
+// usa, e quella cartella non viene rigenerata da nessuno.
+const resModulo = path.join(
+  appDir, 'modules', 'duetto-platform', 'android', 'src', 'main', 'res',
+);
+const MISURE_NOTIFICA = { mdpi: 24, hdpi: 36, xhdpi: 48, xxhdpi: 72, xxxhdpi: 96 };
+magick([
+  dentro('sagoma.png'),
+  '-trim', '+repage',
+  '-bordercolor', 'none', '-border', '6%',
+  dentro('sagoma-stretta.png'),
+]);
+for (const [dpi, lato] of Object.entries(MISURE_NOTIFICA)) {
+  const cartella = path.join(resModulo, `drawable-${dpi}`);
+  fs.mkdirSync(cartella, { recursive: true });
+  magick([
+    dentro('sagoma-stretta.png'),
+    '-resize', `${lato}x${lato}`,
+    '-background', 'none', '-gravity', 'center', '-extent', `${lato}x${lato}`,
+    path.join(cartella, 'ic_notifica.png'),
+  ]);
+  scritti += 1;
+}
+
+// --- 6) Le descrizioni ----------------------------------------------------
 const adattiva = `<?xml version="1.0" encoding="utf-8"?>
 <!-- Generata da scripts/patch-android-icon.js: non modificare a mano. -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">

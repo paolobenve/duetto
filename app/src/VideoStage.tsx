@@ -119,6 +119,18 @@ type Props = {
   notice?: string;
   /** in Picture-in-Picture: solo il video grande, senza riquadrino */
   compact?: boolean;
+  /**
+   * La propria immagine va rovesciata come uno specchio.
+   *
+   * Vale per la camera frontale e solo per quella: chi si guarda si
+   * aspetta lo specchio, ed è così che ci si sistema i capelli. Con la
+   * camera dietro si sta inquadrando il mondo, e il mondo rovesciato è
+   * sbagliato e basta: le scritte si leggono al contrario e ci si
+   * muove dalla parte opposta a quella che si vede. L'altro riceve
+   * comunque l'immagine come la produce la camera: lo specchio è solo
+   * nell'anteprima di qua.
+   */
+  specchia?: boolean;
   /** mostrato quando non c'è nessun video */
   placeholder: React.ReactNode;
   /**
@@ -169,6 +181,7 @@ export default function VideoStage(props: Props) {
   const {
     localStream, remoteStream, localHasVideo, remoteHasVideo,
     localAspect, remoteAspect, remoteVideoKey, compact, placeholder, segnoAltro,
+    specchia = true,
     awaitingRemote, notice,
   } = props;
   const { width, height } = useWindowDimensions();
@@ -720,7 +733,7 @@ export default function VideoStage(props: Props) {
             streamURL={bigStream.toURL()}
             style={styles.bigVideo}
             objectFit="contain"
-            mirror={bigIsSelf}
+            mirror={bigIsSelf && specchia}
             zOrder={0}
           />
         </Animated.View>
@@ -763,7 +776,7 @@ export default function VideoStage(props: Props) {
               streamURL={pipStream.toURL()}
               style={styles.pipVideo}
               objectFit="contain"
-              mirror={pipIsSelf}
+              mirror={pipIsSelf && specchia}
               zOrder={1}
             />
           ) : (

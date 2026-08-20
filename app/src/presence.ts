@@ -230,7 +230,11 @@ export async function startListening(): Promise<boolean> {
 export function stopListening() {
   if (!sig) return;
   log('ascolto ceduto all\'app');
-  sig.close();
+  // Senza saluto: non ce ne stiamo andando, stiamo passando la mano
+  // all'app che si è appena aperta. Salutare qui faceva scrivere
+  // all'altro "si è staccato" ogni volta che questo telefono veniva
+  // ripreso in mano.
+  sig.close(false);
   sig = null;
 }
 

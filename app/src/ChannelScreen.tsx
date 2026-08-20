@@ -540,6 +540,7 @@ export default function ChannelScreen(props: Props) {
         localAspect={localAspect}
         remoteAspect={remoteAspect}
         compact={compact}
+        specchia={cameraFrontale}
         onBigAspect={setBigAspect}
         insetV={compact ? 0 : inset.v}
         insetH={compact ? 0 : inset.h}

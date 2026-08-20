@@ -351,14 +351,34 @@ export class Signaling {
     }, delay);
   }
 
-  close() {
+  /**
+   * Chiude la connessione al server.
+   *
+   * @param saluta dire all'altro che ce ne andiamo DAVVERO
+   *
+   * Il saluto non è un dettaglio di cortesia: il server lo gira
+   * all'altro come "se n'è andato di proposito", e il suo telefono
+   * scrive "si è staccato". Va detto solo quando è vero.
+   *
+   * Quasi tutte le chiusure non lo sono: si chiude per riaprire subito
+   * dopo - l'ascolto senza interfaccia che passa la mano all'app,
+   * un cambio di collegamento, la connessione che si rifà. Salutare in
+   * quei casi accusava di essersi staccato apposta chi non aveva fatto
+   * niente, e chi leggeva smetteva di aspettarlo.
+   *
+   * Senza saluto il server vede cadere il socket e lo racconta per
+   * quello che è: una caduta, dopo la quale è normale tornare.
+   */
+  close(saluta = false) {
     this.closedByUser = true;
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
     if (this.ws) {
-      try { this.rawSend({ type: 'bye' }); } catch { /* noop */ }
+      if (saluta) {
+        try { this.rawSend({ type: 'bye' }); } catch { /* noop */ }
+      }
       try { this.ws.close(); } catch { /* noop */ }
       this.ws = null;
     }

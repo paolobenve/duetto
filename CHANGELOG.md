@@ -8,7 +8,7 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
-## 1.1.68
+## 1.1.72
 
 **Chi si stacca apposta lo si vede.** Il server distingue chi saluta da chi sparisce, e per
 chi resta la differenza è tutta: da un tunnel si esce, da una scelta no. Se l'altro sceglie
@@ -91,6 +91,23 @@ direzione: accanto a mezzo megabit di video non si notano, e rinunciare alla voc
 risparmiarli è un cattivo affare. Ora, quando il video supera i 320 kbit/s, il tetto
 dell'audio si alza da solo; torna all'impostazione quando il video scende sotto i 160 o si
 spegne. L'impostazione non viene toccata, e se l'hai accesa tu resta accesa comunque.
+
+**Basta con «si è staccato» detto di chi non si è staccato affatto.** Il saluto che dice
+all'altro «me ne vado di proposito» partiva a ogni chiusura della connessione — anche quando
+si chiudeva per riaprirla un istante dopo, cosa che succede ogni volta che riprendi in mano
+il telefono e l'app subentra all'ascolto senza interfaccia. Chi guardava leggeva che l'altro
+aveva staccato apposta, e smetteva di aspettarlo. Ora il saluto parte solo quando è vero:
+«esci e renditi non disponibile», o lo scioglimento di un collegamento. Tutto il resto è una
+caduta, dopo la quale è normale tornare.
+
+**Con la camera posteriore l'immagine non è più rovesciata.** Lo specchio ha senso per la
+camera frontale — chi si guarda si aspetta lo specchio, ed è così che ci si sistema i
+capelli — ma inquadrando il mondo è sbagliato e basta: le scritte si leggono al contrario e
+ci si muove dalla parte opposta a quella che si vede. L'altro riceveva comunque l'immagine
+giusta: lo specchio era solo nell'anteprima.
+
+**Anche le notifiche hanno l'icona nuova.** Erano rimaste con un simbolo di sistema, uguale
+a quello di cento altre app.
 
 **L'icona dell'app.** Due cornette di telefono, una blu e una verde, una di fronte all'altra
 e unite dal filo attorcigliato. Al posto del robottino del modello, che era rimasto lì dal
