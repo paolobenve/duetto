@@ -308,6 +308,22 @@ export default function App() {
    * sa quale sia, ma si sa che è più vecchia di questa, ed è già la
    * cosa che conta.
    */
+  /**
+   * Che versione ha l'altro, scritta nel diario una volta per sessione.
+   *
+   * Serve quando qualcosa non torna sul telefono lontano: metà delle
+   * volte la spiegazione è che lì gira una versione di due settimane fa,
+   * e senza questa riga bisogna chiederlo a voce e fidarsi della
+   * risposta. Va nel diario nostro, che a un cavo ci arriva.
+   */
+  const versioneAltroVista = useRef('');
+  useEffect(() => {
+    const v = peerState.versione;
+    if (!v || v === versioneAltroVista.current) return;
+    versioneAltroVista.current = v;
+    Diario.segna(`altro-versione:${v}`).catch(() => { /* noop */ });
+  }, [peerState.versione]);
+
   const avvisoVersione = React.useMemo(() => {
     if (!peerVisto) return null;
     const sua = peerState.versione;
