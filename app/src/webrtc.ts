@@ -223,6 +223,16 @@ export class ChannelSession {
     this.events.onLocalStream?.(stream);
   }
 
+  /**
+   * Quanto alzare la voce dell'altro dentro WebRTC.
+   *
+   * Serve dove il volume di chiamata del telefono non si muove - in
+   * vivavoce, su parecchi modelli, e' inchiodato al massimo dal
+   * produttore. Questo guadagno non chiede niente al telefono: moltiplica
+   * il segnale prima che esca. 1 = com'e' arrivato.
+   */
+  private guadagnoAltro = 1;
+
   /** Il sender audio della connessione viva. */
   private liveAudioSender(): any {
     const pc: any = this.pc;
@@ -377,6 +387,10 @@ export class ChannelSession {
 
       this.events.onRemoteStream?.(stream);
       this.reportRemoteVideo();
+      // La traccia nuova nasce a volume pieno: se l'utente aveva
+      // abbassato la voce dell'altro, senza questo tornerebbe
+      // assordante da sola a ogni riconnessione.
+      if (incoming?.kind === 'audio') this.applicaGuadagno();
 
       incoming?.addEventListener?.('ended', () => {
         log('traccia terminata:', incoming.kind, incoming.id);
@@ -1362,6 +1376,27 @@ export class ChannelSession {
     if (uscita === this.uscitaLocale) return;
     this.uscitaLocale = uscita;
     this.broadcastState();
+  }
+
+  /**
+   * Alza o abbassa la voce dell'altro, dentro di noi.
+   *
+   * Si riapplica a ogni traccia nuova: una connessione rifatta porta una
+   * traccia nuova, che nasce a volume pieno e senza questo tornerebbe
+   * assordante da sola.
+   */
+  setRemoteGain(g: number) {
+    this.guadagnoAltro = g;
+    this.applicaGuadagno();
+  }
+
+  private applicaGuadagno() {
+    const tracce = this.remoteStream?.getAudioTracks?.() ?? [];
+    for (const t of tracce) {
+      try {
+        (t as any)._setVolume?.(this.guadagnoAltro);
+      } catch { /* una voce non regolata non vale un errore */ }
+    }
   }
 
   /** Se il microfono è stato aperto. Falso mentre si aspetta l'altro. */

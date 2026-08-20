@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
 import {
-  Foreground, Pip, AppWindow, Visibility, Codecs, Audio, Avvisi, Diario,
+  Foreground, Pip, AppWindow, Visibility, Codecs, Audio, Avvisi, Diario, Volume,
 } from 'duetto-platform';
 import {
   DuoConfig, PairInfo, loadConfig, saveConfig,
@@ -59,6 +59,25 @@ const CHIAVE_DIARIO_INVIATE = 'duetto.diario.inviate';
 
 /** L'ultima morte già raccontata all'altro telefono: non si ripete. */
 const CHIAVE_MORTE_RACCONTATA = 'duetto.morte.raccontata';
+
+/**
+ * Quanto alzare la voce dell'altro quando il telefono non ubbidisce.
+ *
+ * Su parecchi modelli il volume di chiamata in vivavoce è inchiodato al
+ * massimo dal produttore: i tasti sembrano rotti e la voce resta
+ * assordante. Allora ci pensa WebRTC, moltiplicando il segnale prima
+ * che esca.
+ *
+ * Il passo è di un quarto: dieci pressioni per dimezzare o raddoppiare,
+ * che è la sensibilità di una manopola vera. Sotto un quarto non si
+ * scende - a quel punto è più onesto spegnere il microfono - e sopra il
+ * quadruplo non si sale, che è già oltre il punto in cui la voce
+ * comincia a distorcere.
+ */
+const GUADAGNO_PASSO = 0.25;
+const GUADAGNO_MIN = 0.25;
+const GUADAGNO_MAX = 4;
+const CHIAVE_GUADAGNO = 'duetto.volume.altro';
 
 /**
  * Come dire a voce alta la causa di una morte.
@@ -169,6 +188,11 @@ export default function App() {
    * qui, dove l'occhio è già.
    */
   const [avviso, setAvviso] = useState<string | null>(null);
+  /** quanto stiamo alzando la voce dell'altro, 1 = com'è arrivata */
+  const [guadagno, setGuadagno] = useState(1);
+  /** mostrato per un attimo mentre si preme: sennò non si vede l'effetto */
+  const [guadagnoVisibile, setGuadagnoVisibile] = useState(false);
+  const timerGuadagno = useRef<ReturnType<typeof setTimeout> | null>(null);
   /**
    * L'altro se n'è andato di proposito, non gli è caduta la linea.
    *
@@ -271,6 +295,45 @@ export default function App() {
       : cfg?.pair?.peerName && cfg.pair.peerName !== 'Qualcuno'
         ? cfg.pair.peerName
         : '';
+
+  /**
+   * Il guadagno si riapplica a ogni cambiamento e a ogni rientro nel
+   * canale: la sessione può essere nata dopo che il valore era già lì.
+   */
+  useEffect(() => {
+    sessionRef.current?.setRemoteGain(guadagno);
+  }, [guadagno, inChannel]);
+
+  /**
+   * I tasti del volume che il sistema non ha saputo muovere.
+   *
+   * Arrivano solo in quel caso - il volume di chiamata al suo limite - e
+   * allora la voce dell'altro la alza l'app. L'indicatore si mostra
+   * perché senza, premendo, non succederebbe niente di visibile e i
+   * tasti sembrerebbero rotti lo stesso.
+   */
+  useEffect(() => {
+    if (!inChannel) return;
+    Volume.prendiTasti(true).catch(() => {});
+    const stop = Volume.subscribe((direzione) => {
+      if (!direzione) return;
+      setGuadagno((g) => {
+        const nuovo = Math.min(
+          GUADAGNO_MAX,
+          Math.max(GUADAGNO_MIN, Math.round((g + direzione * GUADAGNO_PASSO) * 100) / 100),
+        );
+        if (nuovo !== g) AsyncStorage.setItem(CHIAVE_GUADAGNO, String(nuovo)).catch(() => {});
+        return nuovo;
+      });
+      setGuadagnoVisibile(true);
+      if (timerGuadagno.current) clearTimeout(timerGuadagno.current);
+      timerGuadagno.current = setTimeout(() => setGuadagnoVisibile(false), 1800);
+    });
+    return () => {
+      stop();
+      Volume.prendiTasti(false).catch(() => {});
+    };
+  }, [inChannel]);
 
   /**
    * Il nome serve anche dentro i gestori della connessione, che nascono
@@ -602,6 +665,13 @@ export default function App() {
       const c = await loadConfig();
       setCfg(c);
       leggiLaPropriaMorte();
+      // La voce dell'altro resta come l'avevi lasciata: chi l'ha
+      // abbassata una volta l'ha abbassata per come suona quel telefono,
+      // e domani suonerà uguale.
+      try {
+        const g = Number(await AsyncStorage.getItem(CHIAVE_GUADAGNO));
+        if (g >= GUADAGNO_MIN && g <= GUADAGNO_MAX) setGuadagno(g);
+      } catch { /* niente di grave */ }
       // Il canale di notifica va preparato prima che serva: nasce con
       // suono e vibrazione dentro, e crearlo al primo avviso vorrebbe
       // dire farlo mentre lo si sta già usando.
@@ -1471,6 +1541,7 @@ export default function App() {
         comandi={cfg.comandi}
         avviso={avviso}
         onAvvisoLetto={() => setAvviso(null)}
+        guadagno={guadagnoVisibile ? guadagno : null}
         cameraFrontale={cameraFrontale}
         quality={cfg.videoQuality}
         onSelectQuality={(q) => applyQuality(q, true)}

@@ -124,6 +124,15 @@ type Props = {
    */
   avviso?: string | null;
   onAvvisoLetto?: () => void;
+  /**
+   * Quanto si sta alzando la voce dell'altro, mentre si preme.
+   *
+   * `null` quasi sempre: si mostra solo nei telefoni dove il volume di
+   * chiamata non si muove e ci pensa l'app, e solo per il paio di
+   * secondi che seguono la pressione. Senza, premere non produrrebbe
+   * nulla di visibile e i tasti sembrerebbero rotti lo stesso.
+   */
+  guadagno?: number | null;
   /** quale camera sta riprendendo: lo dice l'icona di "Gira" */
   cameraFrontale: boolean;
   /** profilo in uso e come cambiarlo: si apre tenendo premuto "Video" */
@@ -170,7 +179,7 @@ type Props = {
  */
 export default function ChannelScreen(props: Props) {
   const {
-    collegamento, peerName, peerAvatar, peerPresent, peerStaccato, videoStats, qualityLabel, showStats, comandi, avviso, onAvvisoLetto, cameraFrontale, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
+    collegamento, peerName, peerAvatar, peerPresent, peerStaccato, videoStats, qualityLabel, showStats, comandi, avviso, onAvvisoLetto, guadagno, cameraFrontale, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes,
     onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, onOpenSettings,
@@ -518,6 +527,17 @@ export default function ChannelScreen(props: Props) {
           <Text style={styles.notiziaTesto}>{avviso}</Text>
           <Text style={styles.notiziaVia}>tocca per togliere</Text>
         </TouchableOpacity>
+      ) : null}
+
+      {/* Il volume dell'altro, mentre lo si sta cambiando. Sta al centro
+          e non si tocca: è un riscontro, non un comando. */}
+      {!compact && guadagno != null ? (
+        <View style={styles.volumeSopra} pointerEvents="none">
+          <Text style={styles.volumeTesto}>
+            Voce dell’altro{'  '}
+            <Text style={styles.volumeCifra}>{Math.round(guadagno * 100)}%</Text>
+          </Text>
+        </View>
       ) : null}
 
       {/* In PiP finisce qui: la finestrella mostra solo il video. */}
@@ -1047,6 +1067,15 @@ const styles = StyleSheet.create({
   bold: { color: '#c9d2de', fontWeight: '700' },
   // Come l'avviso di VideoStage: una pastiglia al centro, non una fascia,
   // così sotto resta visibile il più possibile dell'immagine.
+  volumeSopra: {
+    position: 'absolute', left: 0, right: 0, top: '46%', alignItems: 'center',
+  },
+  volumeTesto: {
+    color: '#e6ebf1', fontSize: 15, fontWeight: '600',
+    backgroundColor: 'rgba(0,0,0,0.72)', borderRadius: 18, overflow: 'hidden',
+    paddingVertical: 10, paddingHorizontal: 20,
+  },
+  volumeCifra: { color: '#7cc4ff', fontWeight: '800' },
   notiziaSopra: {
     position: 'absolute',
     backgroundColor: 'rgba(20,26,36,0.94)', borderRadius: 14,

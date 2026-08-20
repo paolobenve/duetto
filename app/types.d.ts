@@ -8,6 +8,13 @@ declare module 'tweetnacl-util' {
 }
 
 declare module 'duetto-platform' {
+  export const Volume: {
+    /** nel canale l'app prende i tasti del volume; fuori li lascia */
+    prendiTasti(attivo: boolean): Promise<boolean>;
+    /** `cb(+1|-1)` quando il volume di sistema non si è mosso */
+    subscribe(cb: (direzione: number) => void): () => void;
+  };
+
   /** Foreground service Android: tiene viva la presenza nel canale. */
   export const Foreground: {
     start(text?: string, withCamera?: boolean): Promise<boolean>;

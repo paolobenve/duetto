@@ -8,6 +8,7 @@ const NativeCodecs = NativeModules.DuettoCodecs;
 const NativeAudio = NativeModules.DuettoAudio;
 const NativeAvvisi = NativeModules.DuettoAvvisi;
 const NativeDiario = NativeModules.DuettoDiario;
+const NativeVolume = NativeModules.DuettoVolume;
 
 /**
  * Chiama un metodo nativo solo se esiste davvero.
@@ -261,3 +262,30 @@ export const Visibility = isAndroid && NativeVisibility
       },
     }
   : { get: unavailable, subscribe: () => () => {} };
+
+
+/**
+ * I tasti del volume, mentre si è nel canale.
+ *
+ * L'app li prende in mano e li gira al sistema; l'evento arriva qui solo
+ * quando il sistema NON si è mosso, perché il volume di chiamata è al
+ * suo limite - cosa che su parecchi telefoni, in vivavoce, è la
+ * normalità. In quel caso tocca all'app alzare la voce dell'altro per
+ * conto suo.
+ */
+export const Volume = isAndroid && NativeVolume
+  ? {
+      /** Nel canale sì, fuori no: fuori i tasti sono del sistema. */
+      prendiTasti: (attivo) => call(NativeVolume, 'prendiTasti', !!attivo),
+
+      /**
+       * Chiama `cb(+1 | -1)` quando il volume di sistema non si muove.
+       * Restituisce la funzione per smettere di ascoltare.
+       */
+      subscribe(cb) {
+        const emitter = new NativeEventEmitter(NativeVolume);
+        const sub = emitter.addListener('duetto-volume', (d) => cb(Number(d) || 0));
+        return () => sub.remove();
+      },
+    }
+  : { prendiTasti: unavailable, subscribe: () => () => {} };

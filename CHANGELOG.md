@@ -8,7 +8,7 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
-## 1.1.56
+## 1.1.59
 
 **Chi si stacca apposta lo si vede.** Il server distingue chi saluta da chi sparisce, e per
 chi resta la differenza è tutta: da un tunnel si esce, da una scelta no. Se l'altro sceglie
@@ -35,6 +35,15 @@ ritorno viene annunciato lo stesso, qualche secondo dopo — giusto il tempo di 
 passare avanti il racconto, quando c'è. La stessa frase compare anche dentro l'app, in un
 cartellino in alto che va via toccandolo: la tendina delle notifiche non la apre chi sta
 già guardando lo schermo.
+
+**I tasti del volume alzano la voce dell'altro anche dove il telefono non ubbidisce.** Su
+parecchi modelli il volume di chiamata sull'altoparlante è inchiodato al massimo dal
+produttore: premi «più» e non succede niente, e la voce resta assordante — nessuna app può
+cambiare quel limite dall'esterno. Ora Duetto, mentre sei nel canale, prende i tasti in
+mano: prima li gira al sistema, com'è giusto, e **solo se il sistema non si muove** alza o
+abbassa la voce dell'altro per conto suo, dentro la conversazione, mostrando a che punto sta
+(«Voce dell'altro 75%»). Dove il volume di sistema funziona non cambia niente. Il valore
+resta come l'hai lasciato, anche dopo una riconnessione.
 
 **Le barre di sistema, sopra e sotto, sono nere come l'app.** Su un telefono in tema chiaro
 la barra di stato veniva grigia e quella dei tasti bianca con i tasti scuri: due fasce
