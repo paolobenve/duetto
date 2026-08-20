@@ -15,10 +15,13 @@ una macchietta, e una batteria costruita e' un tonfo senza pelle.
 
 Le fonti stanno in assets/, e qui sotto c'e' da dove vengono:
 
-  tamburi.wav   freesound.org #556255, "waveplaysfx"
-  batteria.wav  freesound.org #695331, "hewnmarrow"
-  fanfara.wav   freesound.org #534017, "robinhood76"  CC BY-NC 4.0
-  gallo.flac    freesound.org #454174, "kyles"
+  tamburi.wav   freesound.org #556255, "waveplaysfx"    CC0
+  batteria.wav  freesound.org #695331, "hewnmarrow"     CC0
+  fanfara.wav   freesound.org #534017, "robinhood76"    CC BY-NC 4.0
+  gallo.flac    freesound.org #454174, "kyles"          CC0
+
+CC0 vuol dire senza diritti riservati: quei tre non chiedono niente, e
+sono nominati per correttezza, non per obbligo.
 
 La fanfara e' l'unica con una licenza che chiede qualcosa in cambio:
 l'attribuzione, che sta nelle impostazioni dell'app sotto "Da dove

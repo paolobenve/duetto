@@ -576,10 +576,10 @@ export default function SettingsScreen({
         <Text style={styles.sectionHint}>
           I suoni per richiamare l’altro sono registrazioni pubblicate su
           freesound.org.{'\n'}
-          Tamburi — waveplaysfx (#556255){'\n'}
-          Batteria — hewnmarrow (#695331){'\n'}
-          Fanfara — robinhood76 (#534017), licenza CC BY-NC 4.0{'\n'}
-          Canto del gallo — kyles (#454174){'\n'}
+          Tamburi — waveplaysfx (#556255), CC0{'\n'}
+          Batteria — hewnmarrow (#695331), CC0{'\n'}
+          Fanfara — robinhood76 (#534017), CC BY-NC 4.0{'\n'}
+          Canto del gallo — kyles (#454174), CC0{'\n'}
           La strombazzata invece la genera l’app, non viene da nessuno.
         </Text>
 
