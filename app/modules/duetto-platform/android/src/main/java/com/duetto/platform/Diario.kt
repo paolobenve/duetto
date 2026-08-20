@@ -59,6 +59,21 @@ object Diario {
     @Volatile private var stato: String = "avvio"
 
     /**
+     * Se i tasti del volume sono stati mandati sul volume della voce.
+     *
+     * Su certi telefoni quei tasti non hanno effetto sulla voce
+     * dell'altro, e lo si e' scoperto una volta guardando il telefono in
+     * mano. Con il telefono lontano non c'e' modo di guardare: o il
+     * diario lo racconta, o resta la parola di chi lo usa contro
+     * l'ipotesi di chi legge il codice.
+     */
+    @Volatile private var tastiVoce = false
+
+    fun tastiVoce(attivi: Boolean) {
+        tastiVoce = attivi
+    }
+
+    /**
      * Quanto dello scorso intervallo è passato a schermo acceso.
      *
      * E' la cosa più importante da sapere per interpretare il resto: lo
@@ -244,6 +259,12 @@ object Diario {
                 // o di chi stava usando il telefono.
                 append(" schermoOn=").append(secondiSchermo(ctx)).append('s')
                 append(" sistema=").append(letargo(ctx))
+                // Il suono: da che modo passa, a che volume sta la voce,
+                // e se i tasti la comandano. Le tre cose che servono a
+                // capire un "non si sente" raccontato per telefono.
+                append(" audio=").append(modoAudio(ctx))
+                append(" volVoce=").append(volumeVoce(ctx))
+                append(" tastiVoce=").append(if (tastiVoce) "si" else "no")
                 append(" rete=").append(rete(ctx))
                 if (minuti >= 0) append(" min=").append(String.format(Locale.US, "%.1f", minuti))
                 if (dCpu >= 0) append(" cpu=+").append(dCpu / 1000).append('s')
@@ -340,6 +361,30 @@ object Diario {
         } catch (e: Exception) {
             Log.w(TAG, "diario: non riesco a leggere l'ultima uscita: ${e.message}")
             null
+        }
+    }
+
+    /** In che modo sta l'audio del telefono: e' lui a decidere le regole. */
+    private fun modoAudio(ctx: Context): String {
+        val am = ctx.getSystemService(android.media.AudioManager::class.java) ?: return "?"
+        return when (am.mode) {
+            android.media.AudioManager.MODE_NORMAL -> "normale"
+            android.media.AudioManager.MODE_RINGTONE -> "suoneria"
+            android.media.AudioManager.MODE_IN_CALL -> "chiamata"
+            android.media.AudioManager.MODE_IN_COMMUNICATION -> "comunicazione"
+            else -> "altro(${am.mode})"
+        }
+    }
+
+    /** A che punto sta il volume della voce, sul suo massimo. */
+    private fun volumeVoce(ctx: Context): String {
+        val am = ctx.getSystemService(android.media.AudioManager::class.java) ?: return "?"
+        return try {
+            val v = am.getStreamVolume(android.media.AudioManager.STREAM_VOICE_CALL)
+            val max = am.getStreamMaxVolume(android.media.AudioManager.STREAM_VOICE_CALL)
+            "$v/$max"
+        } catch (e: Exception) {
+            "?"
         }
     }
 

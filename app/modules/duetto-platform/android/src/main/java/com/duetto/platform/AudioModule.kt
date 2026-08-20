@@ -63,6 +63,9 @@ class AudioModule(private val ctx: ReactApplicationContext) :
                 activity.volumeControlStream =
                     if (active) AudioManager.STREAM_VOICE_CALL
                     else AudioManager.USE_DEFAULT_STREAM_TYPE
+                // Il diario lo registra: su un telefono lontano e' l'unico
+                // modo di sapere se questa riga e' stata eseguita davvero.
+                Diario.tastiVoce(active)
             } catch (_: Exception) {
                 // Peggio che possa andare: i tasti restano sul multimedia,
                 // che è la situazione di partenza.

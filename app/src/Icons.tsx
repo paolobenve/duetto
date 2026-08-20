@@ -62,13 +62,21 @@ function Base({ size = 26, color = '#fff', sfondo = '#12141a', off, children }: 
   );
 }
 
-/** Videocamera: corpo squadrato e obiettivo sporgente. */
+/**
+ * Videocamera: corpo e obiettivo sporgente.
+ *
+ * Gli angoli del corpo sono tondi quanto quelli del pulsante che la
+ * ospita. Erano appena smussati, e a video acceso - dove il disegno è
+ * scuro su una pastiglia chiara e riempie quasi tutto - quel rettangolo
+ * quasi retto si leggeva come se fosse il pulsante ad avere gli spigoli
+ * vivi, diverso da tutti gli altri della fila.
+ */
 export function IconaVideo(p: Props) {
   const c = p.color ?? '#fff';
   return (
     <Base {...p}>
       <Rect
-        x={2.5} y={6.5} width={12} height={11} rx={2.5}
+        x={2.5} y={6.5} width={12} height={11} rx={3.6}
         stroke={c} strokeWidth={STROKE}
       />
       <Path

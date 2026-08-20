@@ -8,7 +8,7 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
-## 1.1.53
+## 1.1.54
 
 **Chi si stacca apposta lo si vede.** Il server distingue chi saluta da chi sparisce, e per
 chi resta la differenza è tutta: da un tunnel si esce, da una scelta no. Se l'altro sceglie
@@ -35,6 +35,16 @@ ritorno viene annunciato lo stesso, qualche secondo dopo — giusto il tempo di 
 passare avanti il racconto, quando c'è. La stessa frase compare anche dentro l'app, in un
 cartellino in alto che va via toccandolo: la tendina delle notifiche non la apre chi sta
 già guardando lo schermo.
+
+**Il simbolo della videocamera ha gli angoli tondi come il suo pulsante.** Erano appena
+smussati, e a video acceso — dove il disegno è scuro su una pastiglia chiara e riempie quasi
+tutto — quel rettangolo quasi retto faceva sembrare che fosse il pulsante ad avere gli
+spigoli vivi, diverso da tutti gli altri della fila.
+
+**Il diario registra anche come sta il suono**: da che modo passa l'audio del telefono, a
+che punto sta il volume della voce e se i tasti laterali la comandano. Su un telefono
+lontano quelle tre cose non si possono guardare, e senza di esse un «non si sente» resta
+un'ipotesi.
 
 **Le righe tecniche sotto ai pulsanti si leggono anche attenuate.** Erano di un grigio da
 nota a piè di pagina: appena i comandi cominciavano a farsi da parte sparivano, perché
