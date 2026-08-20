@@ -17,6 +17,7 @@ import {
   allineaServerCoppia, rinominaCoppia, chiaveCoppia,
 } from './config';
 import { Signaling, PresenceStatus, Mode } from './signaling';
+import { VERSION } from './version';
 import { ChannelSession } from './webrtc';
 import type { VideoStats } from './webrtc';
 import SettingsScreen from './SettingsScreen';
@@ -197,7 +198,17 @@ export default function App() {
     audio: boolean; video: boolean; aspect?: number;
     /** da dove esce il suono dall'altra parte: lo dichiara lui */
     uscita?: string;
+    /** quale Duetto ha di là; assente se è più vecchio di questo campo */
+    versione?: string;
   }>({ audio: true, video: false });
+  /**
+   * Se l'altro ci ha già detto come sta.
+   *
+   * Prima che arrivi il suo primo stato non si sa niente di lui, e
+   * l'assenza della versione non vuol dire "ha una build vecchia": vuol
+   * dire solo che non ha ancora parlato.
+   */
+  const [peerVisto, setPeerVisto] = useState(false);
   /** VP9 in hardware: nostro e dell'altro. L'opzione si mostra solo con entrambi. */
   const [localVp9, setLocalVp9] = useState(false);
   const [peerVp9, setPeerVp9] = useState(false);
@@ -277,6 +288,26 @@ export default function App() {
       : cfg?.pair?.peerName && cfg.pair.peerName !== 'Qualcuno'
         ? cfg.pair.peerName
         : '';
+
+  /**
+   * Due Duetto diversi ai capi dello stesso canale.
+   *
+   * È la spiegazione di metà delle stranezze - una cosa che qui c'è e lì
+   * no, un pulsante che si comporta in due modi - e finora bisognava
+   * chiederselo a voce. Si dice solo quando c'è qualcosa da dire: con le
+   * versioni uguali, silenzio.
+   *
+   * Una build più vecchia del campo stesso non lo manda: allora non si
+   * sa quale sia, ma si sa che è più vecchia di questa, ed è già la
+   * cosa che conta.
+   */
+  const avvisoVersione = React.useMemo(() => {
+    if (!peerVisto) return null;
+    const sua = peerState.versione;
+    if (!sua) return `Versioni diverse: qui ${VERSION}, di là una più vecchia`;
+    if (sua === VERSION) return null;
+    return `Versioni diverse: qui ${VERSION}, di là ${sua}`;
+  }, [peerVisto, peerState.versione]);
 
   /**
    * Il guadagno si riapplica a ogni cambiamento e a ogni rientro nel
@@ -806,6 +837,7 @@ export default function App() {
 
           onPeerLeft: (motivo) => {
             setPeerPresent(false);
+            setPeerVisto(false);
             setPeerStaccato(motivo === 'bye');
             peerActiveRef.current = false;
             sessionRef.current?.detachPeer();
@@ -1152,6 +1184,7 @@ export default function App() {
         },
         onVideoStats: setVideoStats,
         onPeerState: (st) => {
+          setPeerVisto(true);
           // Se ci manda il suo stato è tornato, qualunque cosa dicesse il
           // conto alla rovescia: senza fermarlo, poco dopo spegnerebbe uno
           // stato appena arrivato.
@@ -1416,6 +1449,7 @@ export default function App() {
     setPeerPresent(false);
     peerActiveRef.current = false;
     setPeerState({ audio: true, video: false });
+    setPeerVisto(false);
     setPeerVp9(false);
     setRemoteStream(null);
     setRemoteHasVideo(false);
@@ -1563,6 +1597,7 @@ export default function App() {
         avviso={avviso}
         onAvvisoLetto={() => setAvviso(null)}
         guadagno={guadagnoVisibile ? guadagno : null}
+        avvisoVersione={avvisoVersione}
         cameraFrontale={cameraFrontale}
         quality={cfg.videoQuality}
         onSelectQuality={(q) => applyQuality(q, true)}

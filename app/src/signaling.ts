@@ -25,8 +25,12 @@ export type SignalMessage =
   // `uscita`: da dove esce il suono dall'altra parte - vivavoce,
   // orecchio, cuffie, bluetooth. Dice come ti sta ascoltando, cosa
   // che a voce si chiede di continuo ("sei in vivavoce?").
+  // `versione`: quale Duetto sta girando dall'altra parte. Serve a
+  // spiegare le stranezze - una cosa che qui c'e' e li' no - senza
+  // doverselo chiedere a voce. Assente nelle build vecchie, ed e' gia'
+  // una risposta: vuol dire che e' piu' vecchia di questo campo.
   | { kind: 'state'; audio: boolean; video: boolean; aspect?: number; watching?: boolean;
-      hwVp9?: boolean; uscita?: string }
+      hwVp9?: boolean; uscita?: string; versione?: string }
   // Chi risponde non può offrire: se resta senza collegamento e l'altro
   // non se ne accorge, l'unica via d'uscita è chiederglielo.
   | { kind: 'renegotiate' }

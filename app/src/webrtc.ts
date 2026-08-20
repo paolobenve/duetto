@@ -10,6 +10,7 @@ import {
 import type { DuoConfig } from './config';
 import { iceServers, VIDEO_PROFILES, CAPTURE_FPS } from './config';
 import type { Signaling, SignalMessage } from './signaling';
+import { VERSION } from './version';
 
 /**
  * Sessione del canale: audio sempre, video a richiesta.
@@ -38,6 +39,8 @@ export type ChannelEvents = {
     audio: boolean; video: boolean; aspect?: number; hwVp9?: boolean;
     /** da dove esce il suono dall'altra parte, se lo dichiara */
     uscita?: string;
+    /** quale Duetto sta girando di là; assente se è più vecchio di questo campo */
+    versione?: string;
   }) => void;
   /**
    * Se stiamo ricevendo una traccia video.
@@ -585,6 +588,7 @@ export class ChannelSession {
         aspect: msg.aspect,
         hwVp9: this.peerVp9,
         uscita: msg.uscita,
+        versione: msg.versione,
       });
       this.setPeerWatching(msg.watching !== false);
       // Ciò che l'altro dichiara entra nel giudizio su "c'è il suo
@@ -1364,6 +1368,7 @@ export class ChannelSession {
       kind: 'state',
       audio: this.isAudioEnabled(),
       uscita: this.uscitaLocale,
+      versione: VERSION,
       video: this.isVideoEnabled(),
       aspect: this.getLocalVideoAspect(),
       watching: this.localWatching,

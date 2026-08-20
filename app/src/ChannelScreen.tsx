@@ -158,6 +158,15 @@ type Props = {
    * nulla di visibile e i tasti sembrerebbero rotti lo stesso.
    */
   guadagno?: number | null;
+  /**
+   * Le due parti hanno versioni diverse di Duetto.
+   *
+   * `null` quando sono uguali, che è il caso normale e non merita una
+   * riga. Quando non lo sono, spiega da solo metà delle stranezze - una
+   * cosa che qui c'è e lì no - e va detto dove si va a guardare quando
+   * qualcosa non torna: fra le righe tecniche.
+   */
+  avvisoVersione?: string | null;
   /** quale camera sta riprendendo: lo dice l'icona di "Gira" */
   cameraFrontale: boolean;
   /** profilo in uso e come cambiarlo: si apre tenendo premuto "Video" */
@@ -211,7 +220,7 @@ type Props = {
  */
 export default function ChannelScreen(props: Props) {
   const {
-    collegamento, peerName, peerAvatar, peerPresent, peerStaccato, videoStats, qualityLabel, showStats, comandi, avviso, onAvvisoLetto, guadagno, cameraFrontale, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
+    collegamento, peerName, peerAvatar, peerPresent, peerStaccato, videoStats, qualityLabel, showStats, comandi, avviso, onAvvisoLetto, guadagno, avvisoVersione, cameraFrontale, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes,
     onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, onSveglia, onOpenSettings,
@@ -505,7 +514,7 @@ export default function ChannelScreen(props: Props) {
         onBigAspect={setBigAspect}
         insetV={compact ? 0 : inset.v}
         insetH={compact ? 0 : inset.h}
-        insetBasso={!compact && showStats ? 36 : 0}
+        insetBasso={!compact && showStats ? (avvisoVersione ? 54 : 36) : 0}
         onSfondo={tocco}
         onSoloGrande={setSoloGrande}
         segnoAltro={segnoAltro}
@@ -716,12 +725,13 @@ export default function ChannelScreen(props: Props) {
           // Altezza fissa: comparendo la seconda riga solo quando il
           // percorso è noto, il pannello cresceva sotto le dita e i
           // pulsanti si spostavano.
-          <View style={styles.statsBox}>
+          <View style={[styles.statsBox, avvisoVersione ? styles.statsBoxTre : null]}>
             <StatsLine
               stats={videoStats}
               quality={qualityLabel}
               mostraSu={localHasVideo}
               mostraGiu={remoteHasVideo}
+              versioni={avvisoVersione}
             />
           </View>
         ) : null}
@@ -984,12 +994,14 @@ function PresenceCard(props: {
  * mentre si riceve 640x352 spiega in un colpo d'occhio perché l'immagine
  * dell'altro è brutta - senza dover leggere un log.
  */
-function StatsLine({ stats, quality, mostraSu, mostraGiu }: {
+function StatsLine({ stats, quality, mostraSu, mostraGiu, versioni }: {
   stats: VideoStats;
   quality: string;
   /** camere davvero accese: le statistiche restano indietro di un campione */
   mostraSu: boolean;
   mostraGiu: boolean;
+  /** avviso sulle versioni diverse, o `null` se sono uguali */
+  versioni?: string | null;
 }) {
   const fmt = (v?: { w: number; h: number; fps: number; kbps: number | null }) => {
     if (!v || !v.w || !v.h) return null;
@@ -1036,6 +1048,11 @@ function StatsLine({ stats, quality, mostraSu, mostraGiu }: {
         {su ? `  \u2191${su}` : ''}
         {giu ? `  \u2193${giu}` : ''}
       </Text>
+      {versioni ? (
+        <Text style={[styles.stats, styles.statsAvviso]} numberOfLines={1}>
+          {versioni}
+        </Text>
+      ) : null}
       {strada || stats.audioKbps != null ? (
         <Text style={styles.stats} numberOfLines={1}>
           {strada ? `Collegamento: ${strada}` : ''}
@@ -1128,6 +1145,8 @@ const styles = StyleSheet.create({
   avatarText: { color: '#e6ebf1', fontSize: 42, fontWeight: '700' },
   avatarSymbol: { fontSize: 52 },
   statsBox: { height: 36, justifyContent: 'center' },
+  /** con l'avviso sulle versioni le righe diventano tre */
+  statsBoxTre: { height: 54 },
   /**
    * Le righe tecniche devono restare leggibili anche attenuate.
    *
@@ -1144,6 +1163,8 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
+  /** giallo da avviso: è l'unica riga tecnica che chiede di essere letta */
+  statsAvviso: { color: '#e8b33a', fontWeight: '700' },
   avatarGhost: { fontSize: 54, marginBottom: 16 },
   cardTitle: { color: '#e6ebf1', fontSize: 21, fontWeight: '700', textAlign: 'center' },
   cardSub: { color: '#8892a0', fontSize: 15, textAlign: 'center', marginTop: 10, lineHeight: 22 },

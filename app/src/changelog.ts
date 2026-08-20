@@ -7,7 +7,7 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
-    "versione": "1.1.63",
+    "versione": "1.1.65",
     "paragrafi": [
       {
         "forte": "Chi si stacca apposta lo si vede.",
@@ -56,6 +56,10 @@ export const CHANGELOG: NotaVersione[] = [
       {
         "forte": "Con il video acceso la voce si fa ricca da sé.",
         "testo": "L'audio migliore costa 4 kB/s per direzione: accanto a mezzo megabit di video non si notano, e rinunciare alla voce buona per risparmiarli è un cattivo affare. Ora, quando il video supera i 320 kbit/s, il tetto dell'audio si alza da solo; torna all'impostazione quando il video scende sotto i 160 o si spegne. L'impostazione non viene toccata, e se l'hai accesa tu resta accesa comunque."
+      },
+      {
+        "forte": "Se i due telefoni hanno versioni diverse di Duetto, le righe tecniche lo dicono.",
+        "testo": "In giallo, sotto ai pulsanti: «Versioni diverse: qui 1.1.65, di là 1.1.55». È la spiegazione di metà delle stranezze — una cosa che qui c'è e lì no, un pulsante che si comporta in due modi — e prima bisognava chiederselo a voce. Se le versioni sono uguali non compare niente. Chi ha una versione più vecchia di questa non dichiara la sua: allora si legge «di là una più vecchia», che è comunque la cosa che conta."
       },
       {
         "forte": "Ogni collegamento ha il suo diario, separato dagli altri.",
