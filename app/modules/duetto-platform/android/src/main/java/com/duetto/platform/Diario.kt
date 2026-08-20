@@ -267,6 +267,19 @@ object Diario {
             val riga = buildString {
                 append(formato.format(Date(ora)))
                 append(" motivo=").append(motivo)
+                // Di che telefono si tratta, sulla riga d'avvio.
+                //
+                // Ogni sessione ne scrive una, quindi il modello c'è
+                // sempre, ma non su ogni riga: leggendo il diario di
+                // qualcun altro la prima domanda è "che telefono è",
+                // perché mezzo comportamento dell'audio dipende da
+                // quello - e ripeterlo su ogni riga sarebbe la stessa
+                // parola cento volte.
+                if (motivo == "avvio") {
+                    append(" telefono=\"").append(Build.MANUFACTURER).append(' ')
+                        .append(Build.MODEL).append('"')
+                    append(" android=").append(Build.VERSION.RELEASE)
+                }
                 append(" stato=").append(stato)
                 append(" batt=").append(perc).append('%')
                 append(" carica=").append(carica).append("uAh")

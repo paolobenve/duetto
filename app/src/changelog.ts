@@ -7,7 +7,7 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
-    "versione": "1.1.67",
+    "versione": "1.1.68",
     "paragrafi": [
       {
         "forte": "Chi si stacca apposta lo si vede.",
@@ -30,8 +30,16 @@ export const CHANGELOG: NotaVersione[] = [
         "testo": "Serve per quando c'è ma non risponde: si è addormentato, o ha lasciato il telefono dall'altra parte della stanza e a voce non lo raggiungi. Tre suoni, ben diversi fra loro — **tamburi**, **strombazzata**, **canto del gallo** — e suonano sul suo telefono al volume della sveglia, non a quello della conversazione: si sentono anche se la voce era bassa. Viaggiano dentro la busta cifrata della conversazione, quindi il server non sa nemmeno che è successo."
       },
       {
-        "forte": "I tasti del volume alzano la voce dell'altro anche dove il telefono non ubbidisce.",
-        "testo": "Su parecchi modelli il volume di chiamata sull'altoparlante è inchiodato al massimo dal produttore: premi «più» e non succede niente, e la voce resta assordante — nessuna app può cambiare quel limite dall'esterno. Ora Duetto, mentre sei nel canale, prende i tasti in mano: prima li gira al sistema, com'è giusto, e **solo se il sistema non si muove** alza o abbassa la voce dell'altro per conto suo, dentro la conversazione, mostrando a che punto sta («Voce dell'altro 75%»). Dove il volume di sistema funziona non cambia niente. Il valore resta come l'hai lasciato, anche dopo una riconnessione."
+        "forte": "Nel canale, i tasti del volume regolano la voce dell'altro.",
+        "testo": "Non il volume del telefono: quanto Duetto alza quella voce prima di suonarla, cosa che nessun telefono può ignorare. Premendo compare «Voce dell'altro 75%» al posto della barretta di sistema. Lo stesso comando c'è anche a mano, tenendo premuto «Audio»."
+      },
+      {
+        "forte": "",
+        "testo": "Il motivo è nei dati: su un Motorola Edge 50 Fusion i tasti arrivavano al posto giusto e l'indice del volume di chiamata scendeva da 4/8 a 2/8 — il sistema si muoveva eccome — e all'orecchio non cambiava niente. Il telefono registra il numero e lo ignora, e da fuori un volume che scende senza effetto è indistinguibile da uno che scende davvero. Il volume di sistema resta dov'è e si regola fuori dal canale, come ogni altro volume."
+      },
+      {
+        "forte": "Il diario dice di che telefono è",
+        "testo": ": marca, modello e versione di Android, sulla riga d'avvio. Leggendo il diario di qualcun altro è la prima domanda, perché metà del comportamento dell'audio dipende da quello."
       },
       {
         "forte": "Le barre di sistema, sopra e sotto, sono nere come l'app.",

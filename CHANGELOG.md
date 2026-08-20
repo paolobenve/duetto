@@ -8,7 +8,7 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
-## 1.1.67
+## 1.1.68
 
 **Chi si stacca apposta lo si vede.** Il server distingue chi saluta da chi sparisce, e per
 chi resta la differenza è tutta: da un tunnel si esce, da una scelta no. Se l'altro sceglie
@@ -44,14 +44,20 @@ della sveglia, non a quello della conversazione: si sentono anche se la voce era
 Viaggiano dentro la busta cifrata della conversazione, quindi il server non sa nemmeno che è
 successo.
 
-**I tasti del volume alzano la voce dell'altro anche dove il telefono non ubbidisce.** Su
-parecchi modelli il volume di chiamata sull'altoparlante è inchiodato al massimo dal
-produttore: premi «più» e non succede niente, e la voce resta assordante — nessuna app può
-cambiare quel limite dall'esterno. Ora Duetto, mentre sei nel canale, prende i tasti in
-mano: prima li gira al sistema, com'è giusto, e **solo se il sistema non si muove** alza o
-abbassa la voce dell'altro per conto suo, dentro la conversazione, mostrando a che punto sta
-(«Voce dell'altro 75%»). Dove il volume di sistema funziona non cambia niente. Il valore
-resta come l'hai lasciato, anche dopo una riconnessione.
+**Nel canale, i tasti del volume regolano la voce dell'altro.** Non il volume del telefono:
+quanto Duetto alza quella voce prima di suonarla, cosa che nessun telefono può ignorare.
+Premendo compare «Voce dell'altro 75%» al posto della barretta di sistema. Lo stesso comando
+c'è anche a mano, tenendo premuto «Audio».
+
+Il motivo è nei dati: su un Motorola Edge 50 Fusion i tasti arrivavano al posto giusto e
+l'indice del volume di chiamata scendeva da 4/8 a 2/8 — il sistema si muoveva eccome — e
+all'orecchio non cambiava niente. Il telefono registra il numero e lo ignora, e da fuori un
+volume che scende senza effetto è indistinguibile da uno che scende davvero. Il volume di
+sistema resta dov'è e si regola fuori dal canale, come ogni altro volume.
+
+**Il diario dice di che telefono è**: marca, modello e versione di Android, sulla riga
+d'avvio. Leggendo il diario di qualcun altro è la prima domanda, perché metà del
+comportamento dell'audio dipende da quello.
 
 **Le barre di sistema, sopra e sotto, sono nere come l'app.** Su un telefono in tema chiaro
 la barra di stato veniva grigia e quella dei tasti bianca con i tasti scuri: due fasce

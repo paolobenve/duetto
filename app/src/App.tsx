@@ -325,28 +325,39 @@ export default function App() {
    * perché senza, premendo, non succederebbe niente di visibile e i
    * tasti sembrerebbero rotti lo stesso.
    */
+  /**
+   * Alza o abbassa la voce dell'altro di un passo.
+   *
+   * La chiamano in due: i tasti del volume, quando il telefono non li
+   * ubbidisce, e il menu dell'audio, dove c'è per chi quei tasti non li
+   * vede muovere niente comunque - certi telefoni fanno scorrere
+   * l'indice del volume di chiamata senza che all'orecchio cambi nulla,
+   * e da fuori quel caso è indistinguibile da uno che funziona.
+   */
+  const cambiaGuadagno = useCallback((direzione: number) => {
+    if (!direzione) return;
+    setGuadagno((g) => {
+      const nuovo = Math.min(
+        GUADAGNO_MAX,
+        Math.max(GUADAGNO_MIN, Math.round((g + direzione * GUADAGNO_PASSO) * 100) / 100),
+      );
+      if (nuovo !== g) AsyncStorage.setItem(CHIAVE_GUADAGNO, String(nuovo)).catch(() => {});
+      return nuovo;
+    });
+    setGuadagnoVisibile(true);
+    if (timerGuadagno.current) clearTimeout(timerGuadagno.current);
+    timerGuadagno.current = setTimeout(() => setGuadagnoVisibile(false), 1800);
+  }, []);
+
   useEffect(() => {
     if (!inChannel) return;
     Volume.prendiTasti(true).catch(() => {});
-    const stop = Volume.subscribe((direzione) => {
-      if (!direzione) return;
-      setGuadagno((g) => {
-        const nuovo = Math.min(
-          GUADAGNO_MAX,
-          Math.max(GUADAGNO_MIN, Math.round((g + direzione * GUADAGNO_PASSO) * 100) / 100),
-        );
-        if (nuovo !== g) AsyncStorage.setItem(CHIAVE_GUADAGNO, String(nuovo)).catch(() => {});
-        return nuovo;
-      });
-      setGuadagnoVisibile(true);
-      if (timerGuadagno.current) clearTimeout(timerGuadagno.current);
-      timerGuadagno.current = setTimeout(() => setGuadagnoVisibile(false), 1800);
-    });
+    const stop = Volume.subscribe(cambiaGuadagno);
     return () => {
       stop();
       Volume.prendiTasti(false).catch(() => {});
     };
-  }, [inChannel]);
+  }, [inChannel, cambiaGuadagno]);
 
   /**
    * Il nome serve anche dentro i gestori della connessione, che nascono
@@ -1619,6 +1630,8 @@ export default function App() {
         avviso={avviso}
         onAvvisoLetto={() => setAvviso(null)}
         guadagno={guadagnoVisibile ? guadagno : null}
+        guadagnoAltro={guadagno}
+        onGuadagno={cambiaGuadagno}
         avvisoVersione={avvisoVersione}
         cameraFrontale={cameraFrontale}
         quality={cfg.videoQuality}

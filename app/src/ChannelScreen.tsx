@@ -159,6 +159,16 @@ type Props = {
    */
   guadagno?: number | null;
   /**
+   * Il guadagno in questo momento, per il menu dell'audio.
+   *
+   * Lì c'è un comando a mano perché i tasti non bastano dappertutto: su
+   * certi telefoni l'indice del volume di chiamata scorre e all'orecchio
+   * non cambia niente, e da fuori quel caso è indistinguibile da uno che
+   * funziona.
+   */
+  guadagnoAltro?: number;
+  onGuadagno?: (direzione: number) => void;
+  /**
    * Le due parti hanno versioni diverse di Duetto.
    *
    * `null` quando sono uguali, che è il caso normale e non merita una
@@ -220,7 +230,8 @@ type Props = {
  */
 export default function ChannelScreen(props: Props) {
   const {
-    collegamento, peerName, peerAvatar, peerPresent, peerStaccato, videoStats, qualityLabel, showStats, comandi, avviso, onAvvisoLetto, guadagno, avvisoVersione, cameraFrontale, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
+    collegamento, peerName, peerAvatar, peerPresent, peerStaccato, videoStats, qualityLabel, showStats, comandi, avviso, onAvvisoLetto, guadagno, guadagnoAltro, onGuadagno,
+    avvisoVersione, cameraFrontale, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes,
     onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, onSveglia, onOpenSettings,
@@ -900,6 +911,32 @@ export default function ChannelScreen(props: Props) {
                 Collega cuffie o un dispositivo Bluetooth per avere altre scelte.
               </Text>
             ) : null}
+
+            {/* Il volume della voce dell'altro, dentro l'app.
+                I tasti laterali fanno la stessa cosa; questo serve
+                quando si vuole vedere dove si è, e per i telefoni dove
+                i tasti sembrano non fare niente. */}
+            <Text style={styles.sheetTitle}>Voce dell’altro</Text>
+            <View style={styles.sheetRow}>
+              <TouchableOpacity
+                style={styles.passo}
+                onPress={() => onGuadagno?.(-1)}>
+                <Text style={styles.passoSegno}>−</Text>
+              </TouchableOpacity>
+              <Text style={styles.passoValore}>
+                {Math.round((guadagnoAltro ?? 1) * 100)}%
+              </Text>
+              <TouchableOpacity
+                style={styles.passo}
+                onPress={() => onGuadagno?.(+1)}>
+                <Text style={styles.passoSegno}>+</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.sheetHint}>
+              Non è il volume del telefono: è quanto Duetto alza la sua voce
+              prima di suonarla, e funziona anche dove i tasti del volume non
+              cambiano niente.
+            </Text>
           </View>
         </Pressable>
       </Modal>
@@ -1328,6 +1365,16 @@ const styles = StyleSheet.create({
   sheetNota: { color: '#6b7686', fontSize: 12.5, marginTop: 2 },
   sheetLabelOn: { color: '#7cc4ff', fontWeight: '700' },
   sheetCheck: { color: '#7cc4ff', fontSize: 18, fontWeight: '700' },
+  passo: {
+    width: 52, height: 44, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#1e2531', borderWidth: 1, borderColor: '#2f3846',
+  },
+  passoSegno: { color: '#e6ebf1', fontSize: 22, fontWeight: '700' },
+  passoValore: {
+    flex: 1, textAlign: 'center',
+    color: '#7cc4ff', fontSize: 19, fontWeight: '800',
+  },
   sheetHint: {
     color: '#5a6472', fontSize: 12, paddingHorizontal: 14, paddingTop: 6, lineHeight: 17,
   },
