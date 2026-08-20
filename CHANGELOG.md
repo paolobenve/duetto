@@ -8,7 +8,7 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
-## 1.1.54
+## 1.1.56
 
 **Chi si stacca apposta lo si vede.** Il server distingue chi saluta da chi sparisce, e per
 chi resta la differenza è tutta: da un tunnel si esce, da una scelta no. Se l'altro sceglie
@@ -36,13 +36,19 @@ passare avanti il racconto, quando c'è. La stessa frase compare anche dentro l'
 cartellino in alto che va via toccandolo: la tendina delle notifiche non la apre chi sta
 già guardando lo schermo.
 
+**Le barre di sistema, sopra e sotto, sono nere come l'app.** Su un telefono in tema chiaro
+la barra di stato veniva grigia e quella dei tasti bianca con i tasti scuri: due fasce
+chiare ai bordi che spezzavano l'immagine proprio dove dovrebbe continuare. Ora il fondo è
+lo stesso nero dell'app e i simboli sono chiari, tema del telefono o no.
+
 **Il simbolo della videocamera ha gli angoli tondi come il suo pulsante.** Erano appena
 smussati, e a video acceso — dove il disegno è scuro su una pastiglia chiara e riempie quasi
 tutto — quel rettangolo quasi retto faceva sembrare che fosse il pulsante ad avere gli
 spigoli vivi, diverso da tutti gli altri della fila.
 
 **Il diario registra anche come sta il suono**: da che modo passa l'audio del telefono, a
-che punto sta il volume della voce e se i tasti laterali la comandano. Su un telefono
+che punto stanno il volume della voce e quello del multimedia, se il suono esce dal
+vivavoce, e se i tasti laterali comandano la voce. Su un telefono
 lontano quelle tre cose non si possono guardare, e senza di esse un «non si sente» resta
 un'ipotesi.
 

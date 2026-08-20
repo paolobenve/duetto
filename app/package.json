@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "sync": "node scripts/sync-local-modules.js",
-    "patch": "node scripts/patch-android-manifest.js && node scripts/patch-android-gradle.js",
+    "patch": "node scripts/patch-android-manifest.js && node scripts/patch-android-gradle.js && node scripts/patch-android-theme.js",
     "android": "npm run sync && npm run patch && npm run bump && react-native run-android",
     "start": "react-native start",
     "build:apk": "npm run sync && npm run patch && npm run bump && cd android && ./gradlew assembleRelease",

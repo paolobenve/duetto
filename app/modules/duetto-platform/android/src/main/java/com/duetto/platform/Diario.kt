@@ -264,6 +264,8 @@ object Diario {
                 // capire un "non si sente" raccontato per telefono.
                 append(" audio=").append(modoAudio(ctx))
                 append(" volVoce=").append(volumeVoce(ctx))
+                append(" volMulti=").append(volumeMulti(ctx))
+                append(" vivavoce=").append(if (vivavoce(ctx)) "si" else "no")
                 append(" tastiVoce=").append(if (tastiVoce) "si" else "no")
                 append(" rete=").append(rete(ctx))
                 if (minuti >= 0) append(" min=").append(String.format(Locale.US, "%.1f", minuti))
@@ -374,6 +376,31 @@ object Diario {
             android.media.AudioManager.MODE_IN_COMMUNICATION -> "comunicazione"
             else -> "altro(${am.mode})"
         }
+    }
+
+    /**
+     * Il volume del multimedia, accanto a quello della voce.
+     *
+     * Serve a distinguere il caso in cui i tasti del volume finiscono
+     * sul flusso sbagliato: se premendo si muove questo e non l'altro,
+     * la voce non la comandano.
+     */
+    private fun volumeMulti(ctx: Context): String {
+        val am = ctx.getSystemService(android.media.AudioManager::class.java) ?: return "?"
+        return try {
+            val v = am.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)
+            val max = am.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
+            "$v/$max"
+        } catch (e: Exception) {
+            "?"
+        }
+    }
+
+    /** Se il suono sta uscendo dal vivavoce: cambia quale volume comanda. */
+    @Suppress("DEPRECATION")
+    private fun vivavoce(ctx: Context): Boolean {
+        val am = ctx.getSystemService(android.media.AudioManager::class.java) ?: return false
+        return try { am.isSpeakerphoneOn } catch (e: Exception) { false }
     }
 
     /** A che punto sta il volume della voce, sul suo massimo. */

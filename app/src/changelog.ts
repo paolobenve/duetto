@@ -7,7 +7,7 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
-    "versione": "1.1.54",
+    "versione": "1.1.56",
     "paragrafi": [
       {
         "forte": "Chi si stacca apposta lo si vede.",
@@ -26,12 +26,16 @@ export const CHANGELOG: NotaVersione[] = [
         "testo": "Nessuno può avvisare mentre muore — un processo ucciso dal sistema non riceve nessun preavviso — ma riaccendendosi il telefono si ricorda com'è andata, e allora lo dice: «Anna è sparita alle 23:04: il telefono era senza memoria. Adesso è tornata». Arriva come notizia silenziosa, non come avviso: non suona e non vibra. E se l'assenza è durata più di un minuto senza essere una morte, il ritorno viene annunciato lo stesso, qualche secondo dopo — giusto il tempo di lasciar passare avanti il racconto, quando c'è. La stessa frase compare anche dentro l'app, in un cartellino in alto che va via toccandolo: la tendina delle notifiche non la apre chi sta già guardando lo schermo."
       },
       {
+        "forte": "Le barre di sistema, sopra e sotto, sono nere come l'app.",
+        "testo": "Su un telefono in tema chiaro la barra di stato veniva grigia e quella dei tasti bianca con i tasti scuri: due fasce chiare ai bordi che spezzavano l'immagine proprio dove dovrebbe continuare. Ora il fondo è lo stesso nero dell'app e i simboli sono chiari, tema del telefono o no."
+      },
+      {
         "forte": "Il simbolo della videocamera ha gli angoli tondi come il suo pulsante.",
         "testo": "Erano appena smussati, e a video acceso — dove il disegno è scuro su una pastiglia chiara e riempie quasi tutto — quel rettangolo quasi retto faceva sembrare che fosse il pulsante ad avere gli spigoli vivi, diverso da tutti gli altri della fila."
       },
       {
         "forte": "Il diario registra anche come sta il suono",
-        "testo": ": da che modo passa l'audio del telefono, a che punto sta il volume della voce e se i tasti laterali la comandano. Su un telefono lontano quelle tre cose non si possono guardare, e senza di esse un «non si sente» resta un'ipotesi."
+        "testo": ": da che modo passa l'audio del telefono, a che punto stanno il volume della voce e quello del multimedia, se il suono esce dal vivavoce, e se i tasti laterali comandano la voce. Su un telefono lontano quelle tre cose non si possono guardare, e senza di esse un «non si sente» resta un'ipotesi."
       },
       {
         "forte": "Le righe tecniche sotto ai pulsanti si leggono anche attenuate.",
