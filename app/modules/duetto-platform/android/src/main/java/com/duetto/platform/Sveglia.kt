@@ -30,11 +30,12 @@ object Sveglia {
     /** Uno alla volta: due tamburi sovrapposti sono solo rumore. */
     private var player: MediaPlayer? = null
 
-    val nomi = listOf("tamburi", "strombazzata", "gallo")
+    val nomi = listOf("tamburi", "batteria", "strombazzata", "gallo")
 
     fun suona(ctx: Context, nome: String) {
         val res = when (nome) {
             "tamburi" -> R.raw.sveglia_tamburi
+            "batteria" -> R.raw.sveglia_batteria
             "strombazzata" -> R.raw.sveglia_strombazzata
             "gallo" -> R.raw.sveglia_gallo
             else -> return

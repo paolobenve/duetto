@@ -91,6 +91,11 @@ const SVEGLIE: { nome: string; etichetta: string; nota: string }[] = [
     nota: 'Colpi bassi e insistenti: si sentono anche attraverso una porta.',
   },
   {
+    nome: 'batteria',
+    etichetta: 'Batteria',
+    nota: 'Due giri di batteria. Più musica che allarme, ma non si ignora.',
+  },
+  {
     nome: 'strombazzata',
     etichetta: 'Strombazzata',
     nota: 'Il clacson di un’automobile. Sveglia chiunque, e infastidisce.',

@@ -19,6 +19,7 @@ nessuno; la citazione qui sotto sta per onesta', non perche' serva:
 
   gallo.flac    freesound.org #454174, "kyles"
   tamburo.wav   freesound.org #598889, "stoltingmediagroup"
+  batteria.wav  freesound.org #695331, "hewnmarrow"
 
 Il tamburo e' un colpo solo, di due decimi di secondo: il ritmo lo
 mettiamo noi, ed e' quello con cui si bussa a una porta quando si ha
@@ -76,6 +77,28 @@ def tamburi():
              (1.62, 1.0), (2.04, 0.8)]
     for quando, forza in ritmo:
         metti(x, quando, c, forza)
+    return normalizza(x)
+
+# --- Batteria --------------------------------------------------------------
+# Un giro intero, non un colpo: dura una battuta - quattro quarti a 130
+# al minuto, un secondo e ottantacinque - e finisce dove ricomincia,
+# quindi ripetendolo non si sente la giunta. Due giri: uno solo passa
+# troppo in fretta per chi sta dormendo.
+BATTERIA = os.path.join(QUI, 'batteria.wav')
+
+def batteria():
+    grezzo = subprocess.run(
+        ['ffmpeg', '-v', 'error', '-i', BATTERIA,
+         '-f', 's16le', '-ar', str(SR), '-ac', '1', 'pipe:1'],
+        check=True, capture_output=True,
+    ).stdout
+    giro = np.frombuffer(grezzo, '<i2').astype(np.float64) / 32768
+    x = np.concatenate([giro, giro])
+    # Dissolvenza in coda: la battuta finisce su una risonanza, e
+    # tagliarla di netto fa un click.
+    coda = int(SR * 0.05)
+    x = x.copy()
+    x[-coda:] *= np.linspace(1, 0, coda)
     return normalizza(x)
 
 # --- Strombazzata ----------------------------------------------------------
@@ -141,5 +164,6 @@ def salva(nome, dati):
 
 if __name__ == '__main__':
     salva('sveglia_tamburi', tamburi())
+    salva('sveglia_batteria', batteria())
     salva('sveglia_strombazzata', strombazzata())
     salva('sveglia_gallo', gallo())

@@ -7,7 +7,7 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
-    "versione": "1.1.76",
+    "versione": "1.1.77",
     "paragrafi": [
       {
         "forte": "Chi si stacca apposta lo si vede.",
@@ -26,12 +26,16 @@ export const CHANGELOG: NotaVersione[] = [
         "testo": "Nessuno può avvisare mentre muore — un processo ucciso dal sistema non riceve nessun preavviso — ma riaccendendosi il telefono si ricorda com'è andata, e allora lo dice: «Anna è sparita alle 23:04: il telefono era senza memoria. Adesso è tornata». Arriva come notizia silenziosa, non come avviso: non suona e non vibra. E se l'assenza è durata più di un minuto senza essere una morte, il ritorno viene annunciato lo stesso, qualche secondo dopo — giusto il tempo di lasciar passare avanti il racconto, quando c'è. La stessa frase compare anche dentro l'app, in un cartellino in alto che va via toccandolo: la tendina delle notifiche non la apre chi sta già guardando lo schermo."
       },
       {
+        "forte": "Quattro suoni per richiamare, non più tre",
+        "testo": ": si aggiunge la batteria, due giri di una battuta vera."
+      },
+      {
         "forte": "Il gallo e i tamburi ora sono registrazioni vere",
         "testo": ", non più sintetizzate: un «chicchirichì» costruito resta una macchietta, e un tamburo costruito è un tonfo senza pelle. Vengono da due suoni pubblicati in CC0; il ritmo dei colpi resta il nostro, quello con cui si bussa a una porta quando si ha fretta."
       },
       {
         "forte": "Tenendo premuto «Avvisa», quando siete tutti e due nel canale, puoi richiamarlo con un suono.",
-        "testo": "Serve per quando c'è ma non risponde: si è addormentato, o ha lasciato il telefono dall'altra parte della stanza e a voce non lo raggiungi. Tre suoni, ben diversi fra loro — **tamburi**, **strombazzata**, **canto del gallo** — e suonano sul suo telefono al volume della sveglia, non a quello della conversazione: si sentono anche se la voce era bassa. Viaggiano dentro la busta cifrata della conversazione, quindi il server non sa nemmeno che è successo."
+        "testo": "Serve per quando c'è ma non risponde: si è addormentato, o ha lasciato il telefono dall'altra parte della stanza e a voce non lo raggiungi. Tre suoni, ben diversi fra loro — **tamburi**, **batteria**, **strombazzata**, **canto del gallo** — e suonano sul suo telefono al volume della sveglia, non a quello della conversazione: si sentono anche se la voce era bassa. Viaggiano dentro la busta cifrata della conversazione, quindi il server non sa nemmeno che è successo."
       },
       {
         "forte": "Nel canale, i tasti del volume regolano la voce dell'altro.",
