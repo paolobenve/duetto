@@ -9,6 +9,7 @@ const NativeAudio = NativeModules.DuettoAudio;
 const NativeAvvisi = NativeModules.DuettoAvvisi;
 const NativeDiario = NativeModules.DuettoDiario;
 const NativeVolume = NativeModules.DuettoVolume;
+const NativeSveglia = NativeModules.DuettoSveglia;
 
 /**
  * Chiama un metodo nativo solo se esiste davvero.
@@ -289,3 +290,18 @@ export const Volume = isAndroid && NativeVolume
       },
     }
   : { prendiTasti: unavailable, subscribe: () => () => {} };
+
+
+/**
+ * I suoni per richiamare l'altro quando è nel canale ma non risponde.
+ *
+ * Escono dal volume della sveglia, non da quello della conversazione:
+ * vedi Sveglia.kt.
+ */
+export const Sveglia = isAndroid && NativeSveglia
+  ? {
+      suona: (nome) => call(NativeSveglia, 'suona', String(nome)),
+      ferma: () => call(NativeSveglia, 'ferma'),
+      elenco: () => call(NativeSveglia, 'elenco'),
+    }
+  : { suona: unavailable, ferma: unavailable, elenco: () => Promise.resolve([]) };

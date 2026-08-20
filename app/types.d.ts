@@ -8,6 +8,13 @@ declare module 'tweetnacl-util' {
 }
 
 declare module 'duetto-platform' {
+  /** I suoni per richiamare l'altro: escono dal volume della sveglia. */
+  export const Sveglia: {
+    suona(nome: string): Promise<boolean>;
+    ferma(): Promise<boolean>;
+    elenco(): Promise<string[]>;
+  };
+
   export const Volume: {
     /** nel canale l'app prende i tasti del volume; fuori li lascia */
     prendiTasti(attivo: boolean): Promise<boolean>;

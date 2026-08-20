@@ -44,7 +44,11 @@ export type SignalMessage =
   // "Sono morta e sono tornata": chi ha visto sparire l'altro senza un
   // perche' merita di saperlo, e il telefono che e' morto il perche' lo
   // scopre riaccendendosi. Nessuno puo' mandarlo mentre muore.
-  | { kind: 'morte'; quando: number; causa: string };
+  | { kind: 'morte'; quando: number; causa: string }
+  // Un suono forte per richiamare chi e' nel canale ma non risponde:
+  // addormentato, o col telefono dall'altra parte della stanza. Lo
+  // sceglie chi lo manda, lo suona il telefono di chi lo riceve.
+  | { kind: 'sveglia'; suono: string };
 
 export type PairMessage =
   | { kind: 'pubkey'; pub: string; name: string }

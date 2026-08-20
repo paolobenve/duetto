@@ -8,6 +8,7 @@ import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
 import {
   Foreground, Pip, AppWindow, Visibility, Codecs, Audio, Avvisi, Diario, Volume,
+  Sveglia,
 } from 'duetto-platform';
 import {
   DuoConfig, PairInfo, loadConfig, saveConfig,
@@ -924,6 +925,15 @@ export default function App() {
               return;
             }
 
+            // Un suono per svegliarci: lo suona questo telefono, forte,
+            // dal volume della sveglia. Arriva solo da chi è nel canale
+            // con noi, cioè da una persona sola al mondo.
+            if (msg.kind === 'sveglia') {
+              Sveglia.suona(String(msg.suono ?? '')).catch(() => {});
+              Diario.segna(`sveglia:${msg.suono}`).catch(() => {});
+              return;
+            }
+
             if (msg.kind === 'diario') {
               Diario.aggiungiAltro(String(msg.testo ?? '')).catch(() => {});
               return;
@@ -1429,6 +1439,18 @@ export default function App() {
     setCfg(next);
   }, [cfg]);
 
+  /**
+   * Manda all'altro un suono che lo svegli.
+   *
+   * Non passa dal server come l'avviso: viaggia dentro la busta cifrata
+   * della conversazione, che c'è già perché siete tutti e due nel
+   * canale. Il server non sa nemmeno che è successo.
+   */
+  const onSveglia = useCallback((suono: string) => {
+    signalingRef.current?.sendSignal({ kind: 'sveglia', suono });
+    Diario.segna(`sveglia-mandata:${suono}`).catch(() => {});
+  }, []);
+
   const onForgetPair = useCallback(async (id: string) => {
     if (!cfg) return;
     const next = dimenticaCoppia(cfg, id);
@@ -1571,6 +1593,7 @@ export default function App() {
         onSelectRoute={audio.select}
         onKnock={() => signalingRef.current?.knock()}
         onLeave={leaveChannel}
+        onSveglia={onSveglia}
         onOpenSettings={() => setScreen('settings')}
       />
     </View>

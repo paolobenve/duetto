@@ -77,6 +77,31 @@ const ICONA_USCITA: Record<
   BLUETOOTH: IconaBluetooth,
 };
 
+/**
+ * I suoni per richiamare chi è nel canale ma non risponde.
+ *
+ * Tre soli, e ben diversi fra loro: si sceglie a colpo sicuro, senza
+ * doverli riascoltare uno per uno. Il nome tecnico lo conosce anche il
+ * telefono dall'altra parte, che è quello che poi lo suona.
+ */
+const SVEGLIE: { nome: string; etichetta: string; nota: string }[] = [
+  {
+    nome: 'tamburi',
+    etichetta: 'Tamburi',
+    nota: 'Colpi bassi e insistenti: si sentono anche attraverso una porta.',
+  },
+  {
+    nome: 'strombazzata',
+    etichetta: 'Strombazzata',
+    nota: 'Il clacson di un’automobile. Sveglia chiunque, e infastidisce.',
+  },
+  {
+    nome: 'gallo',
+    etichetta: 'Canto del gallo',
+    nota: 'Chicchirichì. Fa sorridere chi si stava addormentando.',
+  },
+];
+
 type Props = {
   /**
    * Il nome dato a questo collegamento, se ne ha uno.
@@ -170,6 +195,13 @@ type Props = {
    * del tutto.
    */
   onLeave: (disponibile: boolean) => void;
+  /**
+   * Manda all'altro un suono forte per richiamarlo.
+   *
+   * Ha senso solo mentre siete tutti e due nel canale: se non c'è, il
+   * suono non ha dove suonare, e per quello serve l'avviso.
+   */
+  onSveglia: (suono: string) => void;
   onOpenSettings: () => void;
 };
 
@@ -182,7 +214,7 @@ export default function ChannelScreen(props: Props) {
     collegamento, peerName, peerAvatar, peerPresent, peerStaccato, videoStats, qualityLabel, showStats, comandi, avviso, onAvvisoLetto, guadagno, cameraFrontale, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes,
-    onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, onOpenSettings,
+    onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, onSveglia, onOpenSettings,
   } = props;
 
   // In Picture-in-Picture la finestra è minuscola: niente comandi.
@@ -227,6 +259,8 @@ export default function ChannelScreen(props: Props) {
   const [menuQualita, setMenuQualita] = useState(false);
   /** le due uscite, tenendo premuto "Esci" */
   const [menuUscita, setMenuUscita] = useState(false);
+  /** i suoni per richiamare l'altro, tenendo premuto "Avvisa" */
+  const [menuSveglia, setMenuSveglia] = useState(false);
   /** chi occupa lo schermo quando c'è un video solo: 'tu', 'altro', o niente */
   const [soloGrande, setSoloGrande] = useState<'tu' | 'altro' | null>(null);
 
@@ -440,12 +474,17 @@ export default function ChannelScreen(props: Props) {
   /** sopra la pastiglia scura del riquadrino e delle etichette */
   const segnoAltro = React.useMemo(() => segno(13, '#1b1d21'), [segno]);
 
-  const bussa = useCallback(() => {
+  /** Il lampo della campanella: dice che qualcosa è partito davvero. */
+  const bussata = useCallback(() => {
     setAppenaBussato(true);
     if (timerBussata.current) clearTimeout(timerBussata.current);
     timerBussata.current = setTimeout(() => setAppenaBussato(false), 700);
+  }, []);
+
+  const bussa = useCallback(() => {
+    bussata();
     onKnock();
-  }, [onKnock]);
+  }, [bussata, onKnock]);
 
   return (
     // Il tocco si raccoglie dentro VideoStage, sulla sola immagine
@@ -655,6 +694,11 @@ export default function ChannelScreen(props: Props) {
           // avviso non ha ottenuto risposta.
           disabled={false}
           onPress={press(bussa)}
+          // Tenendolo premuto, i suoni per richiamarlo. Solo mentre
+          // siete tutti e due nel canale: fuori di lì non c'è nessun
+          // telefono acceso su cui potrebbero suonare, e l'avviso -
+          // quello sì - passa dal server.
+          onLongPress={together ? press(() => setMenuSveglia(true)) : undefined}
         />
         <CircleButton
           label="Esci"
@@ -714,6 +758,40 @@ export default function ChannelScreen(props: Props) {
             <Text style={styles.sheetHint}>
               Vale per tutti e due i telefoni: cambiandola qui cambia anche
               all’altro.
+            </Text>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* I suoni per richiamare: si apre tenendo premuto "Avvisa". */}
+      <Modal
+        visible={menuSveglia}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMenuSveglia(false)}>
+        <Pressable style={styles.sheetBack} onPress={() => setMenuSveglia(false)}>
+          <View style={styles.sheet}>
+            <Text style={styles.sheetTitle}>Richiamalo</Text>
+            {SVEGLIE.map((sv) => (
+              <TouchableOpacity
+                key={sv.nome}
+                style={styles.sheetRow}
+                onPress={() => {
+                  setMenuSveglia(false);
+                  // Lo stesso lampo della campanella: il suono suona di
+                  // là, e da qui non si sente nulla.
+                  bussata();
+                  onSveglia(sv.nome);
+                }}>
+                <View style={styles.sheetText}>
+                  <Text style={styles.sheetLabel}>{sv.etichetta}</Text>
+                  <Text style={styles.sheetNota}>{sv.nota}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+            <Text style={styles.sheetHint}>
+              Suona sul suo telefono, al volume della sveglia: si sente anche
+              con la suoneria bassa e il telefono lontano.
             </Text>
           </View>
         </Pressable>
@@ -1006,23 +1084,28 @@ function CircleButton(props: {
       delayLongPress={350}
       disabled={props.disabled}
       activeOpacity={0.6}>
-      <View
-        style={[
-          styles.circle,
-          // Come su Discord: l'icona sta nuda sul pannello, e prende uno
-          // sfondo solo quando la funzione è spenta o va evidenziata.
-          props.danger
-            ? styles.circleDanger
-            : props.highlight
-              ? styles.circleHighlight
-              : props.active === true
-                ? styles.circleOn
-                : null,
-          props.disabled && styles.circleDisabled,
-        ]}>
-        {props.icon}
+      {/* Il simbolo d'angolo sta FUORI dalla pastiglia, che ritaglia
+          quello che contiene: dentro, sporgendo, verrebbe tagliato a
+          metà. La scatola tiene i due insieme. */}
+      <View style={styles.circleBox}>
+        <View
+          style={[
+            styles.circle,
+            // Come su Discord: l'icona sta nuda sul pannello, e prende uno
+            // sfondo solo quando la funzione è spenta o va evidenziata.
+            props.danger
+              ? styles.circleDanger
+              : props.highlight
+                ? styles.circleHighlight
+                : props.active === true
+                  ? styles.circleOn
+                  : null,
+            props.disabled && styles.circleDisabled,
+          ]}>
+          {props.icon}
+        </View>
         {props.badge ? (
-          <View style={styles.miniBadge}>
+          <View style={[styles.miniBadge, props.disabled && styles.circleDisabled]}>
             <props.badge size={13} color="#e6ebf1" />
           </View>
         ) : null}
@@ -1166,8 +1249,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'flex-start',
   },
   ctrlItem: { alignItems: 'center', flex: 1 },
+  /**
+   * La pastiglia di ogni comando.
+   *
+   * I quattro angoli sono dichiarati uno per uno, e la pastiglia ritaglia
+   * quello che contiene. Con il solo `borderRadius` il pulsante del video
+   * si vedeva quadrato quando si accendeva - solo quello, solo acceso -
+   * e su Android succede: il fondo viene ridisegnato mentre la camera si
+   * apre, e in quel ridisegno il raggio si perde. Dichiararli tutti e
+   * quattro e ritagliare toglie di mezzo la strada che lo perdeva.
+   */
+  circleBox: { width: 48, height: 48 },
   circle: {
-    width: 48, height: 48, borderRadius: 16,
+    width: 48, height: 48,
+    borderRadius: 16,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    overflow: 'hidden',
     alignItems: 'center', justifyContent: 'center',
   },
   // Spento: sfondo chiaro, come Discord segnala il microfono in muto.

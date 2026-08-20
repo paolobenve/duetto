@@ -25,6 +25,7 @@ class DuettoPackage : ReactPackage {
         AvvisiModule(reactContext),
         DiarioModule(reactContext),
         VolumeModule(reactContext),
+        SvegliaModule(reactContext),
     )
 
     override fun createViewManagers(
