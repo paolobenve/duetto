@@ -45,10 +45,16 @@ class DiarioModule(private val ctx: ReactApplicationContext) :
         promise.resolve(Diario.leggiMio(ctx, daRiga))
     }
 
-    /** Aggiunge in coda il diario arrivato dall'altro telefono. */
+    /**
+     * Aggiunge in coda il diario arrivato dall'altro telefono.
+     *
+     * `chi` dice da quale collegamento arriva: ognuno ha il suo file,
+     * altrimenti i consumi di telefoni diversi finirebbero mescolati in
+     * righe che non dicono di chi sono.
+     */
     @ReactMethod
-    fun aggiungiAltro(testo: String, promise: Promise) {
-        Diario.aggiungiAltro(ctx, testo)
+    fun aggiungiAltro(testo: String, chi: String, promise: Promise) {
+        Diario.aggiungiAltro(ctx, testo, chi)
         promise.resolve(true)
     }
 

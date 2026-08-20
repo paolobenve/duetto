@@ -1,6 +1,6 @@
 import { AppState } from 'react-native';
 import { Foreground, Diario } from 'duetto-platform';
-import { loadConfig, isPaired, isServerConfigured } from './config';
+import { loadConfig, isPaired, isServerConfigured, chiaveCoppia } from './config';
 import { Signaling } from './signaling';
 
 /**
@@ -189,7 +189,8 @@ export async function startListening(): Promise<boolean> {
        */
       onSignal: (msg) => {
         if (msg.kind === 'diario') {
-          Diario.aggiungiAltro(String(msg.testo ?? '')).catch(() => { /* noop */ });
+          Diario.aggiungiAltro(String(msg.testo ?? ''), chiaveCoppia(pair))
+            .catch(() => { /* noop */ });
           return;
         }
         if (msg.kind === 'morte') {

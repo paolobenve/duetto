@@ -137,7 +137,27 @@ object Diario {
     }
 
     fun fileMio(ctx: Context): File? = cartella(ctx)?.let { File(it, MIO) }
-    fun fileAltro(ctx: Context): File? = cartella(ctx)?.let { File(it, ALTRO) }
+    /**
+     * Il diario che arriva dall'altro, uno per collegamento.
+     *
+     * Con piu' collegamenti configurati, mettere tutto in un file solo
+     * vorrebbe dire mescolare i consumi di telefoni diversi in un'unica
+     * colonna di righe uguali fra loro: illeggibile, e senza modo di
+     * separarle dopo, perche' le righe non dicono di chi sono.
+     *
+     * Il nome porta l'etichetta del collegamento e un pezzo della sua
+     * impronta: leggibile da chi scarica i file, e diverso per ogni
+     * coppia anche quando le etichette si somigliano.
+     */
+    fun fileAltro(ctx: Context, chi: String = ""): File? {
+        val cartella = cartella(ctx) ?: return null
+        val pulito = chi.lowercase()
+            .map { if (it.isLetterOrDigit() || it == '-') it else '-' }
+            .joinToString("")
+            .trim('-')
+            .take(40)
+        return File(cartella, if (pulito.isEmpty()) ALTRO else "altro-$pulito.log")
+    }
 
     /** Percentuale, carica residua in microampere-ora, corrente istantanea. */
     private fun batteria(ctx: Context): Triple<Int, Int, Int> {
@@ -482,9 +502,9 @@ object Diario {
 
     /** Aggiunge in coda quello che ha mandato l'altro telefono. */
     @Synchronized
-    fun aggiungiAltro(ctx: Context, testo: String) {
+    fun aggiungiAltro(ctx: Context, testo: String, chi: String = "") {
         try {
-            val file = fileAltro(ctx) ?: return
+            val file = fileAltro(ctx, chi) ?: return
             ruotaSeGrosso(file)
             file.appendText(if (testo.endsWith("\n")) testo else testo + "\n")
         } catch (e: Exception) {

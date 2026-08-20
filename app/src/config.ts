@@ -301,6 +301,25 @@ export function nomeCoppia(p: PairInfo | null | undefined): string {
   return p.peerName && p.peerName !== 'Qualcuno' ? p.peerName : '';
 }
 
+/**
+ * Come si chiama questo collegamento nei nomi dei file.
+ *
+ * Serve al diario, che ne tiene uno per collegamento: dentro c'è il
+ * nome che gli hai dato - così chi scarica i file capisce di chi sono -
+ * e un pezzo dell'impronta della stanza, che li distingue anche quando
+ * i nomi si somigliano o non ci sono.
+ */
+export function chiaveCoppia(p: PairInfo | null | undefined): string {
+  if (!p) return '';
+  const nome = (p.etichetta || p.peerName || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 24);
+  const impronta = (p.id || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 8).toLowerCase();
+  return nome ? `${nome}-${impronta}` : impronta;
+}
+
 /** Cambia il nome del collegamento. Vuoto = non ne ha nessuno. */
 export function rinominaCoppia(cfg: DuoConfig, id: string, etichetta: string): DuoConfig {
   const pulita = etichetta.trim().slice(0, 32);

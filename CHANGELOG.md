@@ -8,7 +8,7 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
-## 1.1.62
+## 1.1.63
 
 **Chi si stacca apposta lo si vede.** Il server distingue chi saluta da chi sparisce, e per
 chi resta la differenza è tutta: da un tunnel si esce, da una scelta no. Se l'altro sceglie
@@ -85,6 +85,13 @@ direzione: accanto a mezzo megabit di video non si notano, e rinunciare alla voc
 risparmiarli è un cattivo affare. Ora, quando il video supera i 320 kbit/s, il tetto
 dell'audio si alza da solo; torna all'impostazione quando il video scende sotto i 160 o si
 spegne. L'impostazione non viene toccata, e se l'hai accesa tu resta accesa comunque.
+
+**Ogni collegamento ha il suo diario, separato dagli altri.** Con più collegamenti
+configurati finiva tutto in un file solo: righe identiche fra loro, di telefoni diversi, e
+nessun modo di separarle dopo, perché le righe non dicono di chi sono. Ora il file porta il
+nome che hai dato al collegamento. Anche il conto delle righe già spedite è per
+collegamento: prima era uno solo, e quello che avevi mandato a uno risultava mandato pure
+all'altro, che quelle righe non le avrebbe viste mai.
 
 **Il diario non si perde più quando l'altro sta ascoltando senza app aperta.** Dopo un
 riavvio del telefono — o dopo che il sistema ha ucciso l'app e la presenza è ripartita da

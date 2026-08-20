@@ -14,7 +14,7 @@ import {
   DuoConfig, PairInfo, loadConfig, saveConfig,
   isServerConfigured, isPaired, VIDEO_PROFILES,
   registraCoppia, passaACoppia, dimenticaCoppia, ricordaNomeCoppia,
-  allineaServerCoppia, rinominaCoppia,
+  allineaServerCoppia, rinominaCoppia, chiaveCoppia,
 } from './config';
 import { Signaling, PresenceStatus, Mode } from './signaling';
 import { ChannelSession } from './webrtc';
@@ -55,8 +55,19 @@ const ATTESA_RITORNO_MS = 6000;
  */
 const SCAMBIO_DIARIO_MS = 5 * 60 * 1000;
 
-/** Quante righe di diario sono già state mandate all'altro. */
+/**
+ * Quante righe di diario sono già state mandate, per collegamento.
+ *
+ * Il conto non può essere uno solo: con più collegamenti, le righe
+ * spedite a uno risulterebbero spedite anche all'altro, che non le
+ * riceverebbe mai. Ognuno ha il suo segnaposto.
+ *
+ * La chiave vecchia, unica, fa da punto di partenza per chi c'era già:
+ * senza, il primo scambio dopo l'aggiornamento rimanderebbe da capo
+ * mesi di righe che l'altro ha già.
+ */
 const CHIAVE_DIARIO_INVIATE = 'duetto.diario.inviate';
+const chiaveInviate = (id: string) => `${CHIAVE_DIARIO_INVIATE}.${id}`;
 
 /** L'ultima morte già raccontata all'altro telefono: non si ripete. */
 const CHIAVE_MORTE_RACCONTATA = 'duetto.morte.raccontata';
@@ -314,6 +325,17 @@ export default function App() {
   useEffect(() => { shownNameRef.current = shownName; }, [shownName]);
 
   /**
+   * Sotto che nome archiviare il diario che arriva.
+   *
+   * In un ref perché lo legge il gestore dei messaggi, che nasce una
+   * volta sola: cambiando il nome del collegamento, senza questo
+   * continuerebbe a scrivere sotto quello vecchio fino al prossimo
+   * riaggancio.
+   */
+  const chiaveDiarioRef = useRef('');
+  useEffect(() => { chiaveDiarioRef.current = chiaveCoppia(cfg?.pair); }, [cfg?.pair]);
+
+  /**
    * Il nome di questo collegamento, se gliene ho dato uno.
    *
    * Si mostra dov'è utile sapere in quale collegamento si sta: sulla
@@ -516,17 +538,21 @@ export default function App() {
     const manda = async () => {
       const sig = signalingRef.current;
       if (!vivo || !sig?.connected) return;
+      const chiave = chiaveInviate(cfg?.pair?.id ?? '');
       try {
         const righe = await Diario.righe();
-        const grezzo = await AsyncStorage.getItem(CHIAVE_DIARIO_INVIATE);
-        let inviate = Number(grezzo) || 0;
+        const suo = await AsyncStorage.getItem(chiave);
+        const vecchio = suo === null
+          ? await AsyncStorage.getItem(CHIAVE_DIARIO_INVIATE)
+          : null;
+        let inviate = Number(suo ?? vecchio) || 0;
         if (inviate > righe) inviate = 0;
         if (righe <= inviate) return;
 
         const testo = await Diario.leggi(inviate);
         if (!testo) return;
         sig.sendSignal({ kind: 'diario', testo });
-        await AsyncStorage.setItem(CHIAVE_DIARIO_INVIATE, String(righe));
+        await AsyncStorage.setItem(chiave, String(righe));
       } catch {
         /* il diario non vale un errore in faccia a nessuno */
       }
@@ -538,7 +564,7 @@ export default function App() {
     const primo = setTimeout(manda, 60_000);
     const timer = setInterval(manda, SCAMBIO_DIARIO_MS);
     return () => { vivo = false; clearTimeout(primo); clearInterval(timer); };
-  }, [peerPresent]);
+  }, [peerPresent, cfg?.pair?.id]);
 
   /**
    * Se stiamo passando dal relay, si tenta una volta la strada diretta.
@@ -907,7 +933,8 @@ export default function App() {
             }
 
             if (msg.kind === 'diario') {
-              Diario.aggiungiAltro(String(msg.testo ?? '')).catch(() => {});
+              Diario.aggiungiAltro(String(msg.testo ?? ''), chiaveDiarioRef.current)
+                .catch(() => {});
               return;
             }
             // Se l'altro ha ricostruito prima di noi, la sua offerta

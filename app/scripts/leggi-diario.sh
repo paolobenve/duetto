@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
-# Tira giù dal telefono collegato i diari dei consumi, tutti e due.
+# Tira giù dal telefono collegato tutti i diari dei consumi.
 #
-#   mio.log    scritto da questo telefono
-#   altro.log  quello che l'altro telefono gli ha mandato via server
+#   mio.log            scritto da questo telefono
+#   altro-<nome>.log   quello che gli ha mandato l'altro telefono, un
+#                      file per collegamento: il nome è quello che hai
+#                      dato al collegamento più un pezzo della sua
+#                      impronta, così due file non si confondono mai
+#   altro.log          i diari arrivati prima che i file fossero divisi
 #
 # Basta collegare UN telefono: l'altro, in mano a un'altra persona, a un
 # cavo non ci arriva mai, e per questo si scambiano i diari da soli.

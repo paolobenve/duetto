@@ -63,7 +63,8 @@ declare module 'duetto-platform' {
     segna(motivo: string): Promise<boolean>;
     righe(): Promise<number>;
     leggi(daRiga: number): Promise<string>;
-    aggiungiAltro(testo: string): Promise<boolean>;
+    /** `chi`: da quale collegamento arriva, per tenerli in file separati */
+    aggiungiAltro(testo: string, chi?: string): Promise<boolean>;
     percorso(): Promise<string>;
     /** com'è morta l'app l'ultima volta; null se il telefono non lo sa */
     ultimaMorte(): Promise<{

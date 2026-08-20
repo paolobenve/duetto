@@ -179,7 +179,8 @@ export const Diario = isAndroid && NativeDiario
       segna: (motivo) => call(NativeDiario, 'segna', String(motivo)),
       righe: () => call(NativeDiario, 'righe'),
       leggi: (daRiga) => call(NativeDiario, 'leggi', Number(daRiga) || 0),
-      aggiungiAltro: (testo) => call(NativeDiario, 'aggiungiAltro', String(testo)),
+      aggiungiAltro: (testo, chi) =>
+        call(NativeDiario, 'aggiungiAltro', String(testo), String(chi || '')),
       percorso: () => call(NativeDiario, 'percorso'),
       /** Com'è morta l'app l'ultima volta; null se il telefono non lo sa. */
       ultimaMorte: () => call(NativeDiario, 'ultimaMorte'),
