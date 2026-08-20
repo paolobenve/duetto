@@ -8,7 +8,7 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
-## 1.1.79
+## 1.1.80
 
 **Chi si stacca apposta lo si vede.** Il server distingue chi saluta da chi sparisce, e per
 chi resta la differenza è tutta: da un tunnel si esce, da una scelta no. Se l'altro sceglie
@@ -35,6 +35,10 @@ ritorno viene annunciato lo stesso, qualche secondo dopo — giusto il tempo di 
 passare avanti il racconto, quando c'è. La stessa frase compare anche dentro l'app, in un
 cartellino in alto che va via toccandolo: la tendina delle notifiche non la apre chi sta
 già guardando lo schermo.
+
+**Nelle impostazioni c'è scritto da dove vengono i suoni.** Sono registrazioni di altri, e
+chi le ha fatte va nominato: la fanfara lo chiede la sua licenza (CC BY-NC 4.0), gli altri
+tre no — ma citare solo quello obbligatorio sarebbe una cortesia a metà.
 
 **Cinque suoni per richiamare, e sono registrazioni vere**: tamburi, batteria, fanfara,
 strombazzata, canto del gallo. Solo la strombazzata resta fatta in casa — un clacson sono

@@ -17,8 +17,15 @@ Le fonti stanno in assets/, e qui sotto c'e' da dove vengono:
 
   tamburi.wav   freesound.org #556255, "waveplaysfx"
   batteria.wav  freesound.org #695331, "hewnmarrow"
-  fanfara.wav   freesound.org #534017, "robinhood76"
+  fanfara.wav   freesound.org #534017, "robinhood76"  CC BY-NC 4.0
   gallo.flac    freesound.org #454174, "kyles"
+
+La fanfara e' l'unica con una licenza che chiede qualcosa in cambio:
+l'attribuzione, che sta nelle impostazioni dell'app sotto "Da dove
+vengono i suoni", e il non commerciale - Duetto non si vende e non ha
+pubblicita', quindi va bene, ma se un giorno cambiasse quella fanfara
+dovrebbe uscire. Gli altri tre non chiedono niente; nominarli lo stesso
+costa una riga.
 
 Lo script non le tocca se non per tagliarle dove finiscono, ripeterle
 quando sono giri di una battuta sola, e portarle tutte allo stesso

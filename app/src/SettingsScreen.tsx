@@ -568,6 +568,21 @@ export default function SettingsScreen({
           </Text>
         </View>
 
+        {/* I suoni per richiamare vengono da fuori, e chi li ha
+            registrati va nominato: uno dei quattro lo chiede la sua
+            licenza, gli altri no, ma citare solo quello obbligatorio
+            sarebbe una cortesia a metà. */}
+        <Text style={styles.subsection}>Da dove vengono i suoni</Text>
+        <Text style={styles.sectionHint}>
+          I suoni per richiamare l’altro sono registrazioni pubblicate su
+          freesound.org.{'\n'}
+          Tamburi — waveplaysfx (#556255){'\n'}
+          Batteria — hewnmarrow (#695331){'\n'}
+          Fanfara — robinhood76 (#534017), licenza CC BY-NC 4.0{'\n'}
+          Canto del gallo — kyles (#454174){'\n'}
+          La strombazzata invece la genera l’app, non viene da nessuno.
+        </Text>
+
         <Text style={styles.version}>{VERSION_FULL}</Text>
       </ScrollView>
 

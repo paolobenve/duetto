@@ -7,7 +7,7 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
-    "versione": "1.1.79",
+    "versione": "1.1.80",
     "paragrafi": [
       {
         "forte": "Chi si stacca apposta lo si vede.",
@@ -24,6 +24,10 @@ export const CHANGELOG: NotaVersione[] = [
       {
         "forte": "Se l'app di uno dei due muore, l'altro lo viene a sapere.",
         "testo": "Nessuno può avvisare mentre muore — un processo ucciso dal sistema non riceve nessun preavviso — ma riaccendendosi il telefono si ricorda com'è andata, e allora lo dice: «Anna è sparita alle 23:04: il telefono era senza memoria. Adesso è tornata». Arriva come notizia silenziosa, non come avviso: non suona e non vibra. E se l'assenza è durata più di un minuto senza essere una morte, il ritorno viene annunciato lo stesso, qualche secondo dopo — giusto il tempo di lasciar passare avanti il racconto, quando c'è. La stessa frase compare anche dentro l'app, in un cartellino in alto che va via toccandolo: la tendina delle notifiche non la apre chi sta già guardando lo schermo."
+      },
+      {
+        "forte": "Nelle impostazioni c'è scritto da dove vengono i suoni.",
+        "testo": "Sono registrazioni di altri, e chi le ha fatte va nominato: la fanfara lo chiede la sua licenza (CC BY-NC 4.0), gli altri tre no — ma citare solo quello obbligatorio sarebbe una cortesia a metà."
       },
       {
         "forte": "Cinque suoni per richiamare, e sono registrazioni vere",
