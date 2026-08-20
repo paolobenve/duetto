@@ -8,7 +8,7 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
-## 1.1.65
+## 1.1.66
 
 **Chi si stacca apposta lo si vede.** Il server distingue chi saluta da chi sparisce, e per
 chi resta la differenza è tutta: da un tunnel si esce, da una scelta no. Se l'altro sceglie
@@ -85,6 +85,11 @@ direzione: accanto a mezzo megabit di video non si notano, e rinunciare alla voc
 risparmiarli è un cattivo affare. Ora, quando il video supera i 320 kbit/s, il tetto
 dell'audio si alza da solo; torna all'impostazione quando il video scende sotto i 160 o si
 spegne. L'impostazione non viene toccata, e se l'hai accesa tu resta accesa comunque.
+
+**Nella finestrella, aspettando l'altro, ora c'è una faccia e una parola.** Premendo
+Indietro l'app resta in un rettangolo grande come un pollice, e lì il riepilogo «Sei nel
+canale…» non ci stava: usciva dai bordi e si leggeva mezza parola. Chi ha premuto Indietro
+non sta leggendo, sta tenendo d'occhio.
 
 **Se i due telefoni hanno versioni diverse di Duetto, le righe tecniche lo dicono.** In
 giallo, sotto ai pulsanti: «Versioni diverse: qui 1.1.65, di là 1.1.55». È la spiegazione di

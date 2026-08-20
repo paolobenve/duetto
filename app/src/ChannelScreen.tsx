@@ -518,7 +518,19 @@ export default function ChannelScreen(props: Props) {
         onSfondo={tocco}
         onSoloGrande={setSoloGrande}
         segnoAltro={segnoAltro}
-        placeholder={
+        placeholder={compact ? (
+          /* Nella finestrella di Picture-in-Picture il riepilogo grande
+             non ci sta: esce dai bordi e si legge mezza parola. Lì basta
+             la faccia e una parola sola, che è tutto quello che si
+             riesce a leggere in un rettangolo grande come un pollice. */
+          <PresenceMini
+            status={status}
+            peerName={peerName}
+            peerAvatar={peerAvatar}
+            peerPresent={peerPresent}
+            peerStaccato={peerStaccato}
+          />
+        ) : (
           <PresenceCard
             segno={segno(17, '#0b0e14')}
             peerPresent={peerPresent}
@@ -530,7 +542,7 @@ export default function ChannelScreen(props: Props) {
             peerAvatar={peerAvatar}
             peerAudio={peerState.audio}
           />
-        }
+        )}
       />
 
       {/*
@@ -891,6 +903,40 @@ function comeSta(nome: string, presente: boolean, staccato = false): string {
     : `${chi} non è raggiungibile`;
 }
 
+/**
+ * Lo stesso riepilogo, ridotto a quello che sta in un pollice.
+ *
+ * Serve in Picture-in-Picture: chi ha premuto Indietro non sta
+ * leggendo, sta tenendo d'occhio. Una faccia e una parola.
+ */
+function PresenceMini(props: {
+  status: PresenceStatus;
+  peerName: string;
+  peerAvatar: Avatar;
+  peerPresent: boolean;
+  peerStaccato: boolean;
+}) {
+  const { status, peerName, peerAvatar, peerPresent, peerStaccato } = props;
+  const testo = status === 'connecting' ? 'mi collego…'
+    : status === 'offline' ? 'senza server'
+      : status === 'together' ? (peerName || 'c’è')
+        : peerStaccato ? 'si è staccato'
+          : peerPresent ? 'in attesa' : 'non raggiungibile';
+  const iniziale = peerName.trim().charAt(0).toUpperCase();
+  return (
+    <View style={styles.miniCard}>
+      <View
+        style={[
+          styles.miniFaccia,
+          { backgroundColor: peerAvatar.color + '33', borderColor: peerAvatar.color },
+        ]}>
+        <Text style={styles.miniSimbolo}>{iniziale || peerAvatar.symbol}</Text>
+      </View>
+      <Text style={styles.miniTesto} numberOfLines={1}>{testo}</Text>
+    </View>
+  );
+}
+
 function PresenceCard(props: {
   status: PresenceStatus;
   linked: boolean;
@@ -1199,6 +1245,14 @@ const styles = StyleSheet.create({
   },
   cardTiny: { color: '#4a5462', fontSize: 12, marginTop: 10 },
   cardSegno: { marginTop: 12 },
+
+  miniCard: { alignItems: 'center', paddingHorizontal: 10 },
+  miniFaccia: {
+    width: 34, height: 34, borderRadius: 17, borderWidth: 2,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 6,
+  },
+  miniSimbolo: { color: '#e6ebf1', fontSize: 15, fontWeight: '700' },
+  miniTesto: { color: '#c9d2de', fontSize: 11, fontWeight: '600' },
 
   topBar: {
     position: 'absolute', top: 14, left: 14, right: 14,
