@@ -8,7 +8,7 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
-## 1.1.72
+## 1.1.76
 
 **Chi si stacca apposta lo si vede.** Il server distingue chi saluta da chi sparisce, e per
 chi resta la differenza è tutta: da un tunnel si esce, da una scelta no. Se l'altro sceglie
@@ -35,6 +35,11 @@ ritorno viene annunciato lo stesso, qualche secondo dopo — giusto il tempo di 
 passare avanti il racconto, quando c'è. La stessa frase compare anche dentro l'app, in un
 cartellino in alto che va via toccandolo: la tendina delle notifiche non la apre chi sta
 già guardando lo schermo.
+
+**Il gallo e i tamburi ora sono registrazioni vere**, non più sintetizzate: un
+«chicchirichì» costruito resta una macchietta, e un tamburo costruito è un tonfo senza
+pelle. Vengono da due suoni pubblicati in CC0; il ritmo dei colpi resta il nostro, quello
+con cui si bussa a una porta quando si ha fretta.
 
 **Tenendo premuto «Avvisa», quando siete tutti e due nel canale, puoi richiamarlo con un
 suono.** Serve per quando c'è ma non risponde: si è addormentato, o ha lasciato il telefono
@@ -91,6 +96,14 @@ direzione: accanto a mezzo megabit di video non si notano, e rinunciare alla voc
 risparmiarli è un cattivo affare. Ora, quando il video supera i 320 kbit/s, il tetto
 dell'audio si alza da solo; torna all'impostazione quando il video scende sotto i 160 o si
 spegne. L'impostazione non viene toccata, e se l'hai accesa tu resta accesa comunque.
+
+**Scartare l'app dai recenti non ti rende più irraggiungibile.** Era una scorciatoia che
+sembrava ragionevole — chi butta via l'app vuole chiuderla — ma i diari di tre telefoni
+diversi raccontano un'altra storia: dopo quel gesto il processo restava lì senza servizio, e
+mezz'ora dopo Android lo riciclava per far posto ad altro. Chi aveva scartato l'app solo per
+riordinare i recenti si ritrovava irraggiungibile senza averlo chiesto e senza modo di
+accorgersene. Per non essere raggiungibili c'è «esci e renditi non disponibile», che lo dice
+con parole sue — e quando quella scorciatoia è stata scritta non esisteva ancora.
 
 **Basta con «si è staccato» detto di chi non si è staccato affatto.** Il saluto che dice
 all'altro «me ne vado di proposito» partiva a ogni chiusura della connessione — anche quando

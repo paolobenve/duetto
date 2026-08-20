@@ -7,7 +7,7 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
-    "versione": "1.1.72",
+    "versione": "1.1.76",
     "paragrafi": [
       {
         "forte": "Chi si stacca apposta lo si vede.",
@@ -24,6 +24,10 @@ export const CHANGELOG: NotaVersione[] = [
       {
         "forte": "Se l'app di uno dei due muore, l'altro lo viene a sapere.",
         "testo": "Nessuno può avvisare mentre muore — un processo ucciso dal sistema non riceve nessun preavviso — ma riaccendendosi il telefono si ricorda com'è andata, e allora lo dice: «Anna è sparita alle 23:04: il telefono era senza memoria. Adesso è tornata». Arriva come notizia silenziosa, non come avviso: non suona e non vibra. E se l'assenza è durata più di un minuto senza essere una morte, il ritorno viene annunciato lo stesso, qualche secondo dopo — giusto il tempo di lasciar passare avanti il racconto, quando c'è. La stessa frase compare anche dentro l'app, in un cartellino in alto che va via toccandolo: la tendina delle notifiche non la apre chi sta già guardando lo schermo."
+      },
+      {
+        "forte": "Il gallo e i tamburi ora sono registrazioni vere",
+        "testo": ", non più sintetizzate: un «chicchirichì» costruito resta una macchietta, e un tamburo costruito è un tonfo senza pelle. Vengono da due suoni pubblicati in CC0; il ritmo dei colpi resta il nostro, quello con cui si bussa a una porta quando si ha fretta."
       },
       {
         "forte": "Tenendo premuto «Avvisa», quando siete tutti e due nel canale, puoi richiamarlo con un suono.",
@@ -64,6 +68,10 @@ export const CHANGELOG: NotaVersione[] = [
       {
         "forte": "Con il video acceso la voce si fa ricca da sé.",
         "testo": "L'audio migliore costa 4 kB/s per direzione: accanto a mezzo megabit di video non si notano, e rinunciare alla voce buona per risparmiarli è un cattivo affare. Ora, quando il video supera i 320 kbit/s, il tetto dell'audio si alza da solo; torna all'impostazione quando il video scende sotto i 160 o si spegne. L'impostazione non viene toccata, e se l'hai accesa tu resta accesa comunque."
+      },
+      {
+        "forte": "Scartare l'app dai recenti non ti rende più irraggiungibile.",
+        "testo": "Era una scorciatoia che sembrava ragionevole — chi butta via l'app vuole chiuderla — ma i diari di tre telefoni diversi raccontano un'altra storia: dopo quel gesto il processo restava lì senza servizio, e mezz'ora dopo Android lo riciclava per far posto ad altro. Chi aveva scartato l'app solo per riordinare i recenti si ritrovava irraggiungibile senza averlo chiesto e senza modo di accorgersene. Per non essere raggiungibili c'è «esci e renditi non disponibile», che lo dice con parole sue — e quando quella scorciatoia è stata scritta non esisteva ancora."
       },
       {
         "forte": "Basta con «si è staccato» detto di chi non si è staccato affatto.",

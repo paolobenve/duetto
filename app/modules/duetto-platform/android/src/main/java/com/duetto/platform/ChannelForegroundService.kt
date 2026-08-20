@@ -191,9 +191,26 @@ class ChannelForegroundService : Service() {
         super.onDestroy()
     }
 
-    /** Se l'utente scarta l'app dai recenti, esce dal canale. */
+    /**
+     * Scartare l'app dai recenti NON spegne la presenza.
+     *
+     * Prima si', e sembrava ragionevole: chi butta via l'app dai recenti
+     * vuole chiuderla. Ma il diario di due telefoni diversi racconta
+     * un'altra storia: dopo ogni "uscita" il processo restava li' senza
+     * servizio, e mezz'ora dopo Android lo riciclava - `era=in-cache`,
+     * "[TOO MANY EMPTY PROCS]", "memoria-finita". Chi aveva scartato
+     * l'app per riordinare i recenti si ritrovava irraggiungibile senza
+     * averlo chiesto, e senza modo di accorgersene.
+     *
+     * Il gesto e' ambiguo, e ora non serve piu' a nulla: per non essere
+     * raggiungibili c'e' "esci e renditi non disponibile", che lo dice
+     * con parole sue. Non c'era, quando questa scorciatoia e' stata
+     * scritta.
+     *
+     * Restando in piedi, il servizio tiene su anche il processo: e'
+     * esattamente cio' che gli si chiede.
+     */
     override fun onTaskRemoved(rootIntent: Intent?) {
-        stopSelf()
         super.onTaskRemoved(rootIntent)
     }
 

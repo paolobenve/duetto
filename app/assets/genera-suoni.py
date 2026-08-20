@@ -1,15 +1,28 @@
 #!/usr/bin/env python3
 """
-I suoni per richiamare l'altro, fatti in casa.
+I suoni per richiamare l'altro.
 
 Servono a svegliare qualcuno che si e' addormentato o che ha lasciato il
 telefono acceso dall'altra parte della stanza: devono bucare, non essere
 carini. Tre soli, ben diversi fra loro, cosi' si sceglie a colpo sicuro
 senza doverli riascoltare.
 
-Sono generati e non scaricati per una ragione pratica: cosi' non c'e'
-nessuna licenza da rispettare, nessun file di provenienza incerta dentro
-l'app, e chiunque puo' rifarli cambiando due numeri qui dentro.
+La strombazzata e' fatta in casa: un clacson sono letteralmente due note
+con le armoniche dispari, e sintetizzarlo viene meglio che cercarne una
+registrazione pulita.
+
+Gli altri due vengono da registrazioni vere, perche' li' la sintesi si
+sente: un "chicchirichi" costruito resta una macchietta, e un tamburo
+costruito e' un tonfo senza pelle. Le fonti stanno in assets/ e sono
+pubblicate in CC0 - senza diritti riservati, senza obbligo di citare
+nessuno; la citazione qui sotto sta per onesta', non perche' serva:
+
+  gallo.flac    freesound.org #454174, "kyles"
+  tamburo.wav   freesound.org #598889, "stoltingmediagroup"
+
+Il tamburo e' un colpo solo, di due decimi di secondo: il ritmo lo
+mettiamo noi, ed e' quello con cui si bussa a una porta quando si ha
+fretta.
 
     python3 assets/genera-suoni.py
     -> modules/duetto-platform/android/src/main/res/raw/*.ogg
@@ -41,28 +54,28 @@ def normalizza(x, picco=0.89):
     return x if m == 0 else x * (picco / m)
 
 # --- Tamburi ---------------------------------------------------------------
-# Una pelle percossa: l'altezza cala di colpo mentre il colpo si spegne.
-# Il ritmo e' quello con cui si bussa a una porta quando si ha fretta.
-def tamburo(dur=0.45, f0=180, f1=62, tau=0.13):
-    n = int(SR * dur)
-    tempo = np.linspace(0, dur, n, endpoint=False)
-    freq = f1 + (f0 - f1) * np.exp(-tempo / 0.045)
-    fase = 2 * np.pi * np.cumsum(freq) / SR
-    corpo = np.sin(fase) * decadi(n, tau)
-    # Il colpo secco della bacchetta: senza, il tamburo sembra un fischio.
-    schiocco = np.random.default_rng(7).normal(0, 1, n) * decadi(n, 0.006)
-    return corpo * 0.9 + schiocco * 0.25
+TAMBURO = os.path.join(QUI, 'tamburo.wav')
+
+def colpo():
+    """Il campione, in mono a 44.1 kHz."""
+    grezzo = subprocess.run(
+        ['ffmpeg', '-v', 'error', '-i', TAMBURO,
+         '-f', 's16le', '-ar', str(SR), '-ac', '1', 'pipe:1'],
+        check=True, capture_output=True,
+    ).stdout
+    return np.frombuffer(grezzo, '<i2').astype(np.float64) / 32768
 
 def tamburi():
     x = np.zeros(int(SR * 2.6))
-    ritmo = [(0.00, 1.0), (0.42, 0.75), (0.84, 1.0),
-             (1.05, 0.7), (1.26, 0.7),
-             (1.62, 1.0), (2.04, 0.85)]
+    c = colpo()
+    # Il ritmo con cui si bussa a una porta quando si ha fretta: tre
+    # colpi staccati, una terzina fitta, e altri due per non lasciare
+    # l'impressione che sia finito.
+    ritmo = [(0.00, 1.0), (0.42, 0.72), (0.84, 1.0),
+             (1.05, 0.62), (1.26, 0.62),
+             (1.62, 1.0), (2.04, 0.8)]
     for quando, forza in ritmo:
-        metti(x, quando, tamburo(), forza)
-        # Un secondo tamburo piu' grosso sotto ai colpi forti: da' il peso.
-        if forza >= 0.9:
-            metti(x, quando, tamburo(dur=0.6, f0=120, f1=44, tau=0.2), forza * 0.7)
+        metti(x, quando, c, forza)
     return normalizza(x)
 
 # --- Strombazzata ----------------------------------------------------------
@@ -93,47 +106,24 @@ def strombazzata():
     return normalizza(x)
 
 # --- Canto del gallo -------------------------------------------------------
-# Quattro sillabe, "chic-chi-ri-chi", ognuna con la sua altezza; l'ultima
-# lunga e tremolante. La voce e' un dente di sega rauco passato per due
-# risonanze, che e' il minimo per non sembrare un fischio.
-def risonanza(x, f, q):
-    """Un passa-banda povero ma sufficiente, a due poli."""
-    w = 2 * np.pi * f / SR
-    r = np.exp(-w / (2 * q))
-    a1, a2 = 2 * r * np.cos(w), -(r ** 2)
-    y = np.zeros_like(x)
-    for i in range(2, len(x)):
-        y[i] = x[i] - x[i - 2] + a1 * y[i - 1] + a2 * y[i - 2]
-    return y
-
-def sillaba(dur, f_ini, f_fin, tremolo=0.0, rauco=0.35, seme=11):
-    n = int(SR * dur)
-    tempo = np.linspace(0, dur, n, endpoint=False)
-    freq = np.linspace(f_ini, f_fin, n)
-    if tremolo:
-        freq = freq * (1 + tremolo * np.sin(2 * np.pi * 11 * tempo))
-    fase = 2 * np.pi * np.cumsum(freq) / SR
-    # Dente di sega: ricco di armoniche, come una voce animale.
-    voce = 2 * (fase / (2 * np.pi) % 1.0) - 1
-    rumore = np.random.default_rng(seme).normal(0, 1, n)
-    grezzo = voce * (1 - rauco) + rumore * rauco * 0.5
-    corpo = risonanza(grezzo, 1250, 6) + 0.6 * risonanza(grezzo, 2600, 8)
-    inv = np.ones(n)
-    salita = int(SR * 0.012)
-    discesa = int(SR * min(0.06, dur / 3))
-    inv[:salita] = np.linspace(0, 1, salita)
-    inv[-discesa:] = np.linspace(1, 0, discesa)
-    return corpo * inv
+# Registrato, non costruito: si taglia dove il canto finisce e si porta
+# allo stesso volume degli altri due, perche' scegliendo un suono
+# dall'elenco non ci si aspetta che uno arrivi a meta' forza.
+GALLO = os.path.join(QUI, 'gallo.flac')
+FINE_GALLO = 3.3   # secondi: dopo c'e' solo il fruscio del campo
 
 def gallo():
-    x = np.zeros(int(SR * 2.4))
-    metti(x, 0.00, sillaba(0.16, 520, 700, seme=1), 0.85)
-    metti(x, 0.22, sillaba(0.14, 700, 640, seme=2), 0.8)
-    metti(x, 0.40, sillaba(0.20, 900, 830, seme=3), 1.0)
-    metti(x, 0.66, sillaba(0.95, 800, 560, tremolo=0.035, seme=4), 1.0)
-    # Un secondo canto piu' lontano: un gallo solo sembra un incidente.
-    metti(x, 1.75, sillaba(0.14, 520, 700, seme=5), 0.35)
-    metti(x, 1.95, sillaba(0.40, 880, 640, tremolo=0.03, seme=6), 0.4)
+    grezzo = subprocess.run(
+        ['ffmpeg', '-v', 'error', '-i', GALLO,
+         '-t', str(FINE_GALLO),
+         '-f', 's16le', '-ar', str(SR), '-ac', '1', 'pipe:1'],
+        check=True, capture_output=True,
+    ).stdout
+    x = np.frombuffer(grezzo, '<i2').astype(np.float64) / 32768
+    # Una dissolvenza corta in coda: tagliare di netto fa un click.
+    coda = int(SR * 0.08)
+    x = x.copy()
+    x[-coda:] *= np.linspace(1, 0, coda)
     return normalizza(x)
 
 # --- scrittura -------------------------------------------------------------
