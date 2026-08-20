@@ -1,5 +1,5 @@
 import { AppState } from 'react-native';
-import { Foreground } from 'duetto-platform';
+import { Foreground, Diario } from 'duetto-platform';
 import { loadConfig, isPaired, isServerConfigured } from './config';
 import { Signaling } from './signaling';
 
@@ -17,6 +17,39 @@ import { Signaling } from './signaling';
  */
 
 let sig: Signaling | null = null;
+
+/**
+ * Come dire a voce alta la causa di una morte.
+ *
+ * Sta qui perché la usano in due: l'app, e l'ascolto senza interfaccia
+ * qui sotto. Un telefono che si è appena rialzato può trovare l'altro in
+ * uno qualunque dei due stati, e il racconto dev'essere lo stesso.
+ */
+export function fraseMorte(quando: number, causa: string, nome: string): string {
+  const chi = nome && nome !== 'Qualcuno' ? nome : 'L\u2019altro';
+  const perche = (() => {
+    switch (causa) {
+      case 'memoria-finita': return 'il telefono era senza memoria';
+      case 'errore':
+      case 'errore-nativo': return 'l\u2019app \u00e8 andata in errore';
+      case 'bloccata': return 'l\u2019app si era bloccata';
+      case 'arresto-forzato': return 'l\u2019app \u00e8 stata fermata a mano';
+      case 'chiusa-dall-utente': return 'l\u2019app \u00e8 stata chiusa';
+      case 'troppe-risorse': return 'il telefono l\u2019ha chiusa per consumi';
+      case 'permessi-cambiati': return 'sono cambiati i permessi';
+      case 'congelata':
+      case 'segnale':
+      case 'altro': return 'il telefono l\u2019ha chiusa';
+      default: return 'non si sa perch\u00e9';
+    }
+  })();
+  const d = new Date(quando);
+  const ora = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  const quandoScritto = d.toDateString() === new Date().toDateString()
+    ? `alle ${ora}`
+    : `il ${d.toLocaleDateString()} alle ${ora}`;
+  return `${chi} \u00e8 sparito ${quandoScritto}: ${perche}. Adesso \u00e8 tornato.`;
+}
 
 /**
  * Cosa dice la notifica fissa, in una riga.
@@ -144,6 +177,29 @@ export async function startListening(): Promise<boolean> {
         if (name) nome = name;
         aggiorna();
       },
+      /**
+       * Anche senza interfaccia si raccoglie quello che l'altro manda.
+       *
+       * Senza questo, un diario spedito a un telefono che sta ascoltando
+       * senza app aperta - dopo un riavvio, o dopo che il sistema ci ha
+       * uccisi - arrivava a un JavaScript che non lo guardava, e chi
+       * l'aveva mandato aveva gia' segnato quelle righe come spedite:
+       * perse per sempre. Sono proprio le righe che raccontano perche'
+       * quel telefono era morto.
+       */
+      onSignal: (msg) => {
+        if (msg.kind === 'diario') {
+          Diario.aggiungiAltro(String(msg.testo ?? '')).catch(() => { /* noop */ });
+          return;
+        }
+        if (msg.kind === 'morte') {
+          Foreground.nota(
+            'Duetto',
+            fraseMorte(Number(msg.quando), String(msg.causa), nome),
+          ).catch(() => { /* noop */ });
+        }
+      },
+
       onNotify: (reason, name) => {
         const named = name && name !== 'Qualcuno';
         const text = reason === 'knock'

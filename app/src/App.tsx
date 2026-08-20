@@ -25,7 +25,7 @@ import PairingScreen from './PairingScreen';
 import ChannelScreen from './ChannelScreen';
 import { caricaPosizionePip } from './VideoStage';
 import { useAudioRoute } from './audioRoute';
-import { stopListening, testoPresenza } from './presence';
+import { stopListening, testoPresenza, fraseMorte } from './presence';
 import { avatarFor, peerAvatar } from './avatar';
 
 // Nessuna schermata intermedia: o si configura, o ci si accoppia, o si è
@@ -80,37 +80,7 @@ const GUADAGNO_MIN = 0.25;
 const GUADAGNO_MAX = 4;
 const CHIAVE_GUADAGNO = 'duetto.volume.altro';
 
-/**
- * Come dire a voce alta la causa di una morte.
- *
- * I nomi tecnici li scrive il diario; qui serve una frase che spieghi a
- * chi ha visto sparire una persona cos'è successo dall'altra parte.
- */
-function frasePerMorte(causa: string): string {
-  switch (causa) {
-    case 'memoria-finita': return 'il telefono era senza memoria';
-    case 'errore':
-    case 'errore-nativo': return 'l’app è andata in errore';
-    case 'bloccata': return 'l’app si era bloccata';
-    case 'arresto-forzato': return 'l’app è stata fermata a mano';
-    case 'chiusa-dall-utente': return 'l’app è stata chiusa';
-    case 'troppe-risorse': return 'il telefono l’ha chiusa per consumi';
-    case 'permessi-cambiati': return 'sono cambiati i permessi';
-    case 'congelata':
-    case 'segnale':
-    case 'altro': return 'il telefono l’ha chiusa';
-    default: return 'non si sa perché';
-  }
-}
 
-/** "alle 23:04" se è di oggi, con la data se è più vecchia. */
-function quandoScritto(ms: number): string {
-  const d = new Date(ms);
-  const ora = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  const oggi = new Date();
-  const stessoGiorno = d.toDateString() === oggi.toDateString();
-  return stessoGiorno ? `alle ${ora}` : `il ${d.toLocaleDateString()} alle ${ora}`;
-}
 
 /**
  * Ogni quanto si torna a chiedere se l'altro c'è, mentre lo si aspetta.
@@ -562,7 +532,9 @@ export default function App() {
       }
     };
 
-    // Il primo giro poco dopo essersi trovati, poi a ogni ora.
+    // Il primo giro poco dopo essersi trovati, poi ogni cinque minuti.
+    // Basta che l'altro sia COLLEGATO, non che siate nel canale: i
+    // diari si scambiano anche mentre state solo in attesa.
     const primo = setTimeout(manda, 60_000);
     const timer = setInterval(manda, SCAMBIO_DIARIO_MS);
     return () => { vivo = false; clearTimeout(primo); clearInterval(timer); };
@@ -916,9 +888,9 @@ export default function App() {
               // Questo racconto contiene già il ritorno: l'annuncio
               // generico non serve più.
               scordaRitorno();
-              const chi = shownNameRef.current || 'L’altro';
-              const testo = `${chi} è sparito ${quandoScritto(Number(msg.quando))}: `
-                + `${frasePerMorte(String(msg.causa))}. Adesso è tornato.`;
+              const testo = fraseMorte(
+                Number(msg.quando), String(msg.causa), shownNameRef.current,
+              );
               Foreground.nota('Duetto', testo).catch(() => {});
               setAvviso(testo);
               Diario.segna(`morte-altrui:${msg.causa}`).catch(() => {});

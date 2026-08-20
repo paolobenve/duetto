@@ -8,7 +8,7 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
-## 1.1.61
+## 1.1.62
 
 **Chi si stacca apposta lo si vede.** Il server distingue chi saluta da chi sparisce, e per
 chi resta la differenza è tutta: da un tunnel si esce, da una scelta no. Se l'altro sceglie
@@ -85,6 +85,13 @@ direzione: accanto a mezzo megabit di video non si notano, e rinunciare alla voc
 risparmiarli è un cattivo affare. Ora, quando il video supera i 320 kbit/s, il tetto
 dell'audio si alza da solo; torna all'impostazione quando il video scende sotto i 160 o si
 spegne. L'impostazione non viene toccata, e se l'hai accesa tu resta accesa comunque.
+
+**Il diario non si perde più quando l'altro sta ascoltando senza app aperta.** Dopo un
+riavvio del telefono — o dopo che il sistema ha ucciso l'app e la presenza è ripartita da
+sé — l'altro è raggiungibile ma senza interfaccia, e lì il diario che gli mandavi arrivava a
+un pezzo di app che non lo guardava: chi l'aveva mandato aveva già segnato quelle righe come
+spedite, e sparivano. Erano proprio le righe che raccontano perché quel telefono era morto.
+Ora vengono raccolte anche lì, e lì arriva anche la notizia della morte.
 
 **Il diario passa all'altro telefono ogni cinque minuti** invece che ogni ora: un diario che
 arriva subito racconta cos'è appena successo dall'altra parte, uno che arriva con un'ora di

@@ -7,7 +7,7 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
-    "versione": "1.1.61",
+    "versione": "1.1.62",
     "paragrafi": [
       {
         "forte": "Chi si stacca apposta lo si vede.",
@@ -56,6 +56,10 @@ export const CHANGELOG: NotaVersione[] = [
       {
         "forte": "Con il video acceso la voce si fa ricca da sé.",
         "testo": "L'audio migliore costa 4 kB/s per direzione: accanto a mezzo megabit di video non si notano, e rinunciare alla voce buona per risparmiarli è un cattivo affare. Ora, quando il video supera i 320 kbit/s, il tetto dell'audio si alza da solo; torna all'impostazione quando il video scende sotto i 160 o si spegne. L'impostazione non viene toccata, e se l'hai accesa tu resta accesa comunque."
+      },
+      {
+        "forte": "Il diario non si perde più quando l'altro sta ascoltando senza app aperta.",
+        "testo": "Dopo un riavvio del telefono — o dopo che il sistema ha ucciso l'app e la presenza è ripartita da sé — l'altro è raggiungibile ma senza interfaccia, e lì il diario che gli mandavi arrivava a un pezzo di app che non lo guardava: chi l'aveva mandato aveva già segnato quelle righe come spedite, e sparivano. Erano proprio le righe che raccontano perché quel telefono era morto. Ora vengono raccolte anche lì, e lì arriva anche la notizia della morte."
       },
       {
         "forte": "Il diario passa all'altro telefono ogni cinque minuti",
