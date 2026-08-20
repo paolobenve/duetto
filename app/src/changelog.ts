@@ -7,7 +7,7 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
-    "versione": "1.1.66",
+    "versione": "1.1.67",
     "paragrafi": [
       {
         "forte": "Chi si stacca apposta lo si vede.",
@@ -56,6 +56,18 @@ export const CHANGELOG: NotaVersione[] = [
       {
         "forte": "Con il video acceso la voce si fa ricca da sé.",
         "testo": "L'audio migliore costa 4 kB/s per direzione: accanto a mezzo megabit di video non si notano, e rinunciare alla voce buona per risparmiarli è un cattivo affare. Ora, quando il video supera i 320 kbit/s, il tetto dell'audio si alza da solo; torna all'impostazione quando il video scende sotto i 160 o si spegne. L'impostazione non viene toccata, e se l'hai accesa tu resta accesa comunque."
+      },
+      {
+        "forte": "L'icona dell'app.",
+        "testo": "Due cornette di telefono, una blu e una verde, una di fronte all'altra e unite dal filo attorcigliato. Al posto del robottino del modello, che era rimasto lì dal primo giorno."
+      },
+      {
+        "forte": "Se i comandi sono spariti del tutto, non si premono.",
+        "testo": "Con «nascosti» restavano premibili anche invisibili, e un dito appoggiato dove prima c'era un pulsante spegneva il video o usciva dal canale senza che niente lo annunciasse. Ora il primo tocco li richiama e basta: poi si decide guardando. Sbiaditi al 15% invece si premono, che si vedono ancora."
+      },
+      {
+        "forte": "Con più collegamenti, l'avviso dice su quale è arrivato.",
+        "testo": "«Duetto · Casa» invece di «Duetto»: chi ti cerca è uno solo dei due o tre che conosci, e prima per sapere quale bisognava aprire l'app."
       },
       {
         "forte": "Nella finestrella, aspettando l'altro, ora c'è una faccia e una parola.",

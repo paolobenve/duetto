@@ -14,7 +14,7 @@ import {
   DuoConfig, PairInfo, loadConfig, saveConfig,
   isServerConfigured, isPaired, VIDEO_PROFILES,
   registraCoppia, passaACoppia, dimenticaCoppia, ricordaNomeCoppia,
-  allineaServerCoppia, rinominaCoppia, chiaveCoppia,
+  allineaServerCoppia, rinominaCoppia, chiaveCoppia, nomeCoppia,
 } from './config';
 import { Signaling, PresenceStatus, Mode } from './signaling';
 import { VERSION } from './version';
@@ -365,6 +365,23 @@ export default function App() {
    */
   const chiaveDiarioRef = useRef('');
   useEffect(() => { chiaveDiarioRef.current = chiaveCoppia(cfg?.pair); }, [cfg?.pair]);
+
+  /**
+   * Il titolo degli avvisi: dice su quale collegamento sono arrivati.
+   *
+   * Con un collegamento solo non c'è niente da distinguere e resta
+   * "Duetto". Con più di uno diventa "Duetto · Casa": senza, un avviso
+   * nella barra di stato dice che qualcuno ti cerca ma non quale dei due
+   * o tre che conosci, e per scoprirlo devi aprire l'app.
+   *
+   * In un ref perché lo legge il gestore dei messaggi, che nasce una
+   * volta sola e non vedrebbe mai un nome cambiato dopo.
+   */
+  const titoloAvvisoRef = useRef('Duetto');
+  useEffect(() => {
+    const nome = cfg && cfg.pairs.length > 1 ? nomeCoppia(cfg.pair) : '';
+    titoloAvvisoRef.current = nome ? `Duetto \u00b7 ${nome}` : 'Duetto';
+  }, [cfg]);
 
   /**
    * Il nome di questo collegamento, se gliene ho dato uno.
@@ -887,13 +904,18 @@ export default function App() {
             setKnockPending(false);
             // Il nome è facoltativo: senza, si evita di scrivere "Qualcuno".
             const named = n && n !== 'Qualcuno';
+            // Con più collegamenti configurati, "ti stanno chiamando" non
+            // basta: chiama uno solo dei due o tre che conosci, e sapere
+            // quale è metà dell'informazione. Con un collegamento solo il
+            // titolo resta "Duetto", che non ha niente da disambiguare.
+            const titolo = titoloAvvisoRef.current;
 
             if (reason === 'knock') {
               // Un richiamo esplicito passa sempre, anche con l'app aperta:
               // chi bussa lo fa proprio perché l'altro non risponde, e il
               // telefono può essere acceso sul tavolo senza nessuno davanti.
               Foreground.notify(
-                'Duetto',
+                titolo,
                 named ? `${n} ti sta chiamando` : 'Ti stanno chiamando',
               ).catch(() => {});
               // La vibrazione non si fa più da qui: sta nel canale della
@@ -907,7 +929,7 @@ export default function App() {
             // notificarlo sarebbe solo rumore.
             if (appStateRef.current !== 'active') {
               Foreground.notify(
-                'Duetto',
+                titolo,
                 named ? `${n} è nel canale` : 'C’è qualcuno nel canale',
               ).catch(() => {});
             }

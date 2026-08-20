@@ -1,6 +1,6 @@
 import { AppState } from 'react-native';
 import { Foreground, Diario } from 'duetto-platform';
-import { loadConfig, isPaired, isServerConfigured, chiaveCoppia } from './config';
+import { loadConfig, isPaired, isServerConfigured, chiaveCoppia, nomeCoppia } from './config';
 import { Signaling } from './signaling';
 
 /**
@@ -122,6 +122,17 @@ export async function startListening(): Promise<boolean> {
   log('ascolto avviato');
 
   /**
+   * Su quale collegamento arrivano gli avvisi.
+   *
+   * Con più collegamenti configurati, "ti aspettano nel canale" non dice
+   * abbastanza: ti aspetta uno solo dei due o tre che conosci. Con un
+   * collegamento solo non c'è niente da distinguere.
+   */
+  const titolo = cfg.pairs.length > 1 && nomeCoppia(pair)
+    ? `Duetto \u00b7 ${nomeCoppia(pair)}`
+    : 'Duetto';
+
+  /**
    * Lo stato dell'altro, per la sola notifica.
    *
    * Qui non si chiede niente a nessuno: dopo un riavvio del telefono
@@ -207,7 +218,7 @@ export async function startListening(): Promise<boolean> {
           ? (named ? `${name} ti aspetta nel canale` : 'Ti aspettano nel canale')
           : (named ? `${name} è nel canale` : 'C’è qualcuno nel canale');
         log('avviso:', text);
-        Foreground.notify('Duetto', text).catch(() => { /* noop */ });
+        Foreground.notify(titolo, text).catch(() => { /* noop */ });
       },
     },
   );

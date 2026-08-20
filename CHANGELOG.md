@@ -8,7 +8,7 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
-## 1.1.66
+## 1.1.67
 
 **Chi si stacca apposta lo si vede.** Il server distingue chi saluta da chi sparisce, e per
 chi resta la differenza è tutta: da un tunnel si esce, da una scelta no. Se l'altro sceglie
@@ -85,6 +85,19 @@ direzione: accanto a mezzo megabit di video non si notano, e rinunciare alla voc
 risparmiarli è un cattivo affare. Ora, quando il video supera i 320 kbit/s, il tetto
 dell'audio si alza da solo; torna all'impostazione quando il video scende sotto i 160 o si
 spegne. L'impostazione non viene toccata, e se l'hai accesa tu resta accesa comunque.
+
+**L'icona dell'app.** Due cornette di telefono, una blu e una verde, una di fronte all'altra
+e unite dal filo attorcigliato. Al posto del robottino del modello, che era rimasto lì dal
+primo giorno.
+
+**Se i comandi sono spariti del tutto, non si premono.** Con «nascosti» restavano premibili
+anche invisibili, e un dito appoggiato dove prima c'era un pulsante spegneva il video o
+usciva dal canale senza che niente lo annunciasse. Ora il primo tocco li richiama e basta:
+poi si decide guardando. Sbiaditi al 15% invece si premono, che si vedono ancora.
+
+**Con più collegamenti, l'avviso dice su quale è arrivato.** «Duetto · Casa» invece di
+«Duetto»: chi ti cerca è uno solo dei due o tre che conosci, e prima per sapere quale
+bisognava aprire l'app.
 
 **Nella finestrella, aspettando l'altro, ora c'è una faccia e una parola.** Premendo
 Indietro l'app resta in un rettangolo grande come un pollice, e lì il riepilogo «Sei nel

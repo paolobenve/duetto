@@ -377,16 +377,33 @@ export default function ChannelScreen(props: Props) {
    */
   const finCalo = useRef(0);
 
+  /**
+   * Comandi spariti del tutto: da lì in poi non si premono.
+   *
+   * Con "nascosti" restavano premibili anche invisibili, e un dito
+   * appoggiato dove prima c'era un pulsante spegneva il video o usciva
+   * dal canale senza che niente lo annunciasse. Un comando che non si
+   * vede non è un comando: il primo tocco li richiama, e da lì si
+   * decide guardando.
+   *
+   * Vale solo per lo zero assoluto: sbiaditi al 15% si vedono ancora, e
+   * chi sa dove sono ha diritto di premerli senza due tocchi.
+   */
+  const [spariti, setSpariti] = useState(false);
+
   /** Il calo: parte subito e dura dieci secondi. */
   const attenua = useCallback((durata = FADE_MS) => {
     if (idleTimer.current) clearTimeout(idleTimer.current);
     finCalo.current = Date.now() + durata;
+    const meta = OPACITA_COMANDI[comandi] ?? OPACITA_COMANDI.poco;
     Animated.timing(opacity, {
-      // Invisibili, ma sempre premibili: un tocco ovunque li richiama.
-      toValue: OPACITA_COMANDI[comandi] ?? OPACITA_COMANDI.poco,
+      toValue: meta,
       duration: durata,
       useNativeDriver: true,
-    }).start();
+    }).start(({ finished }) => {
+      // Solo a calo finito: durante la discesa si vedono ancora.
+      if (finished && meta === 0) setSpariti(true);
+    });
   }, [opacity, comandi]);
 
   /**
@@ -400,6 +417,7 @@ export default function ChannelScreen(props: Props) {
   const daVedere = localHasVideo || remoteHasVideo;
 
   const wake = useCallback(() => {
+    setSpariti(false);
     finCalo.current = 0;
     if (idleTimer.current) clearTimeout(idleTimer.current);
     Animated.timing(opacity, {
@@ -632,6 +650,7 @@ export default function ChannelScreen(props: Props) {
       ) : null}
 
       <Animated.View
+        pointerEvents={spariti ? 'none' : 'auto'}
         style={[styles.topBar, { opacity, top: 14 + inset.v, left: 14 + inset.h, right: 14 + inset.h }]}>
         <View style={styles.spacer} pointerEvents="none" />
         <TouchableOpacity
@@ -650,6 +669,7 @@ export default function ChannelScreen(props: Props) {
 
       {/* Controlli: sempre presenti, in basso, dentro un pannello scuro */}
       <Animated.View
+        pointerEvents={spariti ? 'none' : 'auto'}
         style={[
           styles.panel,
           { opacity, bottom: 8 + inset.v, left: 12 + inset.h, right: 12 + inset.h },
