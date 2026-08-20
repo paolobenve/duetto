@@ -643,10 +643,18 @@ export default function App() {
       }
     };
 
-    // Il primo giro poco dopo essersi trovati, poi ogni cinque minuti.
+    // Il primo giro DIECI SECONDI dopo essersi trovati, non un minuto.
+    //
+    // Il minuto era prudenza sprecata: un giro costa qualche centinaio
+    // di byte. E soprattutto era controproducente proprio nel caso in
+    // cui il diario serve - un telefono la cui app muore di continuo -
+    // perche' quel telefono non restava collegato abbastanza a lungo da
+    // arrivare al primo invio, e le righe che spiegavano le sue morti
+    // non partivano mai.
+    //
     // Basta che l'altro sia COLLEGATO, non che siate nel canale: i
     // diari si scambiano anche mentre state solo in attesa.
-    const primo = setTimeout(manda, 60_000);
+    const primo = setTimeout(manda, 10_000);
     const timer = setInterval(manda, SCAMBIO_DIARIO_MS);
     return () => { vivo = false; clearTimeout(primo); clearInterval(timer); };
   }, [peerPresent, cfg?.pair?.id]);
