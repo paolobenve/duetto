@@ -494,20 +494,30 @@ object Diario {
     /**
      * Quanto contava il processo agli occhi di Android quando e' morto.
      *
-     * Distingue il caso che qui interessa da tutti gli altri: un
-     * processo ucciso mentre teneva un servizio in primo piano e' un
-     * telefono che ha voluto liberarsene comunque; uno ucciso da
-     * "cached" e' semplicemente un'app che non serviva piu' a nessuno,
-     * e vuol dire che il servizio non c'era gia' piu'.
+     * E' il campo che distingue le storie fra loro: un processo ucciso
+     * mentre teneva un servizio in primo piano e' un telefono che ha
+     * voluto liberarsene comunque; uno ucciso "in cache" e' un'app che
+     * non serviva piu' a nessuno, e vuol dire che il servizio non c'era
+     * gia' piu'.
+     *
+     * Attenzione a "primo-piano-a-schermo-spento"
+     * (IMPORTANCE_TOP_SLEEPING): e' l'app che era in primo piano quando
+     * lo schermo si e' spento da se'. Non e' primo piano - l'activity e'
+     * ferma - ma non e' nemmeno cache, ed e' esattamente lo stato di chi
+     * stava guardando l'app un minuto fa e non ha toccato niente. Prima
+     * finiva confuso con la cache, e avrebbe fatto raccontare la storia
+     * sbagliata proprio nel caso che interessa.
      */
     internal fun importanza(v: Int): String = when {
-        v <= 100 -> "primo-piano"
-        v <= 125 -> "servizio-in-primo-piano"
-        v <= 200 -> "visibile"
-        v <= 230 -> "percepibile"
-        v <= 300 -> "servizio"
-        v <= 350 -> "in-cache-pesante"
-        else -> "in-cache"
+        v <= 100 -> "primo-piano"                   // IMPORTANCE_FOREGROUND
+        v <= 125 -> "servizio-in-primo-piano"       // FOREGROUND_SERVICE
+        v <= 200 -> "visibile"                      // VISIBLE
+        v <= 230 -> "percepibile"                   // PERCEPTIBLE
+        v <= 300 -> "servizio"                      // SERVICE
+        v <= 325 -> "primo-piano-a-schermo-spento"  // TOP_SLEEPING
+        v <= 350 -> "non-salvabile"                 // CANT_SAVE_STATE
+        v <= 400 -> "in-cache"                      // CACHED
+        else -> "sparito($v)"                       // GONE
     }
 
     /**
