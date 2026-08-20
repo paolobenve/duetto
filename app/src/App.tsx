@@ -560,7 +560,10 @@ export default function App() {
       ritornoInArrivo.current = null;
       const chi = shownNameRef.current || 'L’altro';
       const testo = `${chi} è di nuovo raggiungibile.`;
-      Foreground.nota('Duetto', testo).catch(() => {});
+      // Il titolo dice su quale collegamento, come per gli avvisi: con
+      // più di uno configurato, "è di nuovo raggiungibile" da solo non
+      // dice chi.
+      Foreground.nota(titoloAvvisoRef.current, testo).catch(() => {});
       setAvviso(testo);
     }, ATTESA_RACCONTO_MS);
   }, [peerPresent, scordaRitorno]);
@@ -989,7 +992,7 @@ export default function App() {
               const testo = fraseMorte(
                 Number(msg.quando), String(msg.causa), shownNameRef.current,
               );
-              Foreground.nota('Duetto', testo).catch(() => {});
+              Foreground.nota(titoloAvvisoRef.current, testo).catch(() => {});
               setAvviso(testo);
               Diario.segna(`morte-altrui:${msg.causa}`).catch(() => {});
               return;

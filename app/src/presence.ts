@@ -206,7 +206,7 @@ export async function startListening(): Promise<boolean> {
         }
         if (msg.kind === 'morte') {
           Foreground.nota(
-            'Duetto',
+            titolo,
             fraseMorte(Number(msg.quando), String(msg.causa), nome),
           ).catch(() => { /* noop */ });
         }
