@@ -8,7 +8,7 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
-## 1.1.77
+## 1.1.79
 
 **Chi si stacca apposta lo si vede.** Il server distingue chi saluta da chi sparisce, e per
 chi resta la differenza è tutta: da un tunnel si esce, da una scelta no. Se l'altro sceglie
@@ -36,18 +36,16 @@ passare avanti il racconto, quando c'è. La stessa frase compare anche dentro l'
 cartellino in alto che va via toccandolo: la tendina delle notifiche non la apre chi sta
 già guardando lo schermo.
 
-**Quattro suoni per richiamare, non più tre**: si aggiunge la batteria, due giri di una
-battuta vera.
-
-**Il gallo e i tamburi ora sono registrazioni vere**, non più sintetizzate: un
-«chicchirichì» costruito resta una macchietta, e un tamburo costruito è un tonfo senza
-pelle. Vengono da due suoni pubblicati in CC0; il ritmo dei colpi resta il nostro, quello
-con cui si bussa a una porta quando si ha fretta.
+**Cinque suoni per richiamare, e sono registrazioni vere**: tamburi, batteria, fanfara,
+strombazzata, canto del gallo. Solo la strombazzata resta fatta in casa — un clacson sono
+letteralmente due note con le armoniche dispari, e viene meglio così che cercandone una
+registrazione pulita. Gli altri quattro erano sintetizzati e si sentiva: un «chicchirichì»
+costruito resta una macchietta, una batteria costruita è un tonfo senza pelle.
 
 **Tenendo premuto «Avvisa», quando siete tutti e due nel canale, puoi richiamarlo con un
 suono.** Serve per quando c'è ma non risponde: si è addormentato, o ha lasciato il telefono
-dall'altra parte della stanza e a voce non lo raggiungi. Tre suoni, ben diversi fra loro —
-**tamburi**, **batteria**, **strombazzata**, **canto del gallo** — e suonano sul suo telefono al volume
+dall'altra parte della stanza e a voce non lo raggiungi. Cinque suoni, ben diversi fra loro —
+**tamburi**, **batteria**, **fanfara**, **strombazzata**, **canto del gallo** — e suonano sul suo telefono al volume
 della sveglia, non a quello della conversazione: si sentono anche se la voce era bassa.
 Viaggiano dentro la busta cifrata della conversazione, quindi il server non sa nemmeno che è
 successo.

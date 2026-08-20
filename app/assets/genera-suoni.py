@@ -7,23 +7,23 @@ telefono acceso dall'altra parte della stanza: devono bucare, non essere
 carini. Tre soli, ben diversi fra loro, cosi' si sceglie a colpo sicuro
 senza doverli riascoltare.
 
-La strombazzata e' fatta in casa: un clacson sono letteralmente due note
-con le armoniche dispari, e sintetizzarlo viene meglio che cercarne una
-registrazione pulita.
+Uno solo e' fatto in casa, la strombazzata: un clacson sono letteralmente
+due note con le armoniche dispari, e sintetizzarlo viene meglio che
+cercarne una registrazione pulita. Tutti gli altri sono registrazioni,
+perche' altrove la sintesi si sente - un "chicchirichi" costruito resta
+una macchietta, e una batteria costruita e' un tonfo senza pelle.
 
-Gli altri due vengono da registrazioni vere, perche' li' la sintesi si
-sente: un "chicchirichi" costruito resta una macchietta, e un tamburo
-costruito e' un tonfo senza pelle. Le fonti stanno in assets/ e sono
-pubblicate in CC0 - senza diritti riservati, senza obbligo di citare
-nessuno; la citazione qui sotto sta per onesta', non perche' serva:
+Le fonti stanno in assets/, e qui sotto c'e' da dove vengono:
 
-  gallo.flac    freesound.org #454174, "kyles"
-  tamburo.wav   freesound.org #598889, "stoltingmediagroup"
+  tamburi.wav   freesound.org #556255, "waveplaysfx"
   batteria.wav  freesound.org #695331, "hewnmarrow"
+  fanfara.wav   freesound.org #534017, "robinhood76"
+  gallo.flac    freesound.org #454174, "kyles"
 
-Il tamburo e' un colpo solo, di due decimi di secondo: il ritmo lo
-mettiamo noi, ed e' quello con cui si bussa a una porta quando si ha
-fretta.
+Lo script non le tocca se non per tagliarle dove finiscono, ripeterle
+quando sono giri di una battuta sola, e portarle tutte allo stesso
+volume: scegliendo da un elenco non ci si aspetta che uno arrivi a meta'
+forza.
 
     python3 assets/genera-suoni.py
     -> modules/duetto-platform/android/src/main/res/raw/*.ogg
@@ -55,29 +55,35 @@ def normalizza(x, picco=0.89):
     return x if m == 0 else x * (picco / m)
 
 # --- Tamburi ---------------------------------------------------------------
-TAMBURO = os.path.join(QUI, 'tamburo.wav')
+# Un giro di batteria di una battuta esatta a 120 al minuto - due
+# secondi - con l'ultimo mezzo secondo di pausa, che fa parte del giro.
+# Due volte, perche' uno solo passa troppo in fretta per chi dorme; la
+# pausa finale si taglia, che chiudere con mezzo secondo di niente fa
+# sembrare il suono troncato.
+TAMBURI = os.path.join(QUI, 'tamburi.wav')
 
-def colpo():
-    """Il campione, in mono a 44.1 kHz."""
-    grezzo = subprocess.run(
-        ['ffmpeg', '-v', 'error', '-i', TAMBURO,
-         '-f', 's16le', '-ar', str(SR), '-ac', '1', 'pipe:1'],
-        check=True, capture_output=True,
-    ).stdout
+def campione(percorso, fino=None):
+    """Il file, in mono a 44.1 kHz, eventualmente accorciato."""
+    comando = ['ffmpeg', '-v', 'error', '-i', percorso]
+    if fino is not None:
+        comando += ['-t', str(fino)]
+    comando += ['-f', 's16le', '-ar', str(SR), '-ac', '1', 'pipe:1']
+    grezzo = subprocess.run(comando, check=True, capture_output=True).stdout
     return np.frombuffer(grezzo, '<i2').astype(np.float64) / 32768
 
+def sfuma(x, secondi=0.06):
+    """Dissolvenza in coda: tagliare di netto fa un click."""
+    coda = int(SR * secondi)
+    y = x.copy()
+    y[-coda:] *= np.linspace(1, 0, coda)
+    return y
+
 def tamburi():
-    x = np.zeros(int(SR * 2.6))
-    c = colpo()
-    # Il ritmo con cui si bussa a una porta quando si ha fretta: tre
-    # colpi staccati, una terzina fitta, e altri due per non lasciare
-    # l'impressione che sia finito.
-    ritmo = [(0.00, 1.0), (0.42, 0.72), (0.84, 1.0),
-             (1.05, 0.62), (1.26, 0.62),
-             (1.62, 1.0), (2.04, 0.8)]
-    for quando, forza in ritmo:
-        metti(x, quando, c, forza)
-    return normalizza(x)
+    giro = campione(TAMBURI)
+    # Dove il giro smette di suonare: da li' in poi e' la sua pausa.
+    forte = np.where(np.abs(giro) > 0.02)[0]
+    suono = giro[:forte[-1] + int(SR * 0.05)] if len(forte) else giro
+    return normalizza(sfuma(np.concatenate([giro, suono])))
 
 # --- Batteria --------------------------------------------------------------
 # Un giro intero, non un colpo: dura una battuta - quattro quarti a 130
@@ -87,19 +93,18 @@ def tamburi():
 BATTERIA = os.path.join(QUI, 'batteria.wav')
 
 def batteria():
-    grezzo = subprocess.run(
-        ['ffmpeg', '-v', 'error', '-i', BATTERIA,
-         '-f', 's16le', '-ar', str(SR), '-ac', '1', 'pipe:1'],
-        check=True, capture_output=True,
-    ).stdout
-    giro = np.frombuffer(grezzo, '<i2').astype(np.float64) / 32768
-    x = np.concatenate([giro, giro])
-    # Dissolvenza in coda: la battuta finisce su una risonanza, e
-    # tagliarla di netto fa un click.
-    coda = int(SR * 0.05)
-    x = x.copy()
-    x[-coda:] *= np.linspace(1, 0, coda)
-    return normalizza(x)
+    giro = campione(BATTERIA)
+    return normalizza(sfuma(np.concatenate([giro, giro])))
+
+# --- Fanfara ---------------------------------------------------------------
+# "Ta-daaa": due secondi di trombe, con la coda che si spegne da se' in
+# un riverbero. Si taglia dove il riverbero e' finito - il resto e'
+# silenzio registrato, che nel file occupa e all'orecchio non aggiunge.
+FANFARA = os.path.join(QUI, 'fanfara.wav')
+FINE_FANFARA = 2.3
+
+def fanfara():
+    return normalizza(sfuma(campione(FANFARA, FINE_FANFARA), 0.08))
 
 # --- Strombazzata ----------------------------------------------------------
 # Il clacson di un'automobile e' fatto di due note insieme, a distanza di
@@ -136,18 +141,7 @@ GALLO = os.path.join(QUI, 'gallo.flac')
 FINE_GALLO = 3.3   # secondi: dopo c'e' solo il fruscio del campo
 
 def gallo():
-    grezzo = subprocess.run(
-        ['ffmpeg', '-v', 'error', '-i', GALLO,
-         '-t', str(FINE_GALLO),
-         '-f', 's16le', '-ar', str(SR), '-ac', '1', 'pipe:1'],
-        check=True, capture_output=True,
-    ).stdout
-    x = np.frombuffer(grezzo, '<i2').astype(np.float64) / 32768
-    # Una dissolvenza corta in coda: tagliare di netto fa un click.
-    coda = int(SR * 0.08)
-    x = x.copy()
-    x[-coda:] *= np.linspace(1, 0, coda)
-    return normalizza(x)
+    return normalizza(sfuma(campione(GALLO, FINE_GALLO), 0.08))
 
 # --- scrittura -------------------------------------------------------------
 def salva(nome, dati):
@@ -165,5 +159,6 @@ def salva(nome, dati):
 if __name__ == '__main__':
     salva('sveglia_tamburi', tamburi())
     salva('sveglia_batteria', batteria())
+    salva('sveglia_fanfara', fanfara())
     salva('sveglia_strombazzata', strombazzata())
     salva('sveglia_gallo', gallo())

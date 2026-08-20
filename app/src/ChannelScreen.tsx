@@ -88,12 +88,17 @@ const SVEGLIE: { nome: string; etichetta: string; nota: string }[] = [
   {
     nome: 'tamburi',
     etichetta: 'Tamburi',
-    nota: 'Colpi bassi e insistenti: si sentono anche attraverso una porta.',
+    nota: 'Un giro di batteria secco, due volte. Difficile ignorarlo.',
   },
   {
     nome: 'batteria',
     etichetta: 'Batteria',
     nota: 'Due giri di batteria. Più musica che allarme, ma non si ignora.',
+  },
+  {
+    nome: 'fanfara',
+    etichetta: 'Fanfara',
+    nota: 'Trombe, «ta-daaa». Chi si sveglia così non se la prende.',
   },
   {
     nome: 'strombazzata',
