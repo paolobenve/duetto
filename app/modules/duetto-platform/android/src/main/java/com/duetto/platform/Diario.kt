@@ -278,6 +278,19 @@ object Diario {
                 if (motivo == "avvio") {
                     append(" telefono=\"").append(nomeTelefono()).append('"')
                     append(" android=").append(Build.VERSION.RELEASE)
+                    // Se il telefono ha promesso di non mettersi in mezzo.
+                    //
+                    // E' l'unica delle restrizioni che si possa leggere da
+                    // codice: quelle in piu' dei produttori - avvio
+                    // automatico, "attivita' in background" - nessuna app
+                    // puo' interrogarle. Ma questa e' la prima da
+                    // guardare quando un'app muore sempre sullo stesso
+                    // telefono, ed e' assurdo doverla chiedere a voce a
+                    // chi quel telefono ce l'ha in mano.
+                    append(" batteria=").append(
+                        if (StartupHelper.isIgnoringBatteryOptimizations(ctx)) "senza-restrizioni"
+                        else "ottimizzata",
+                    )
                 }
                 append(" stato=").append(stato)
                 append(" batt=").append(perc).append('%')
