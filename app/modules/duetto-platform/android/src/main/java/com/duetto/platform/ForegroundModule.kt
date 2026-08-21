@@ -63,6 +63,37 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
         }
     }
 
+    /**
+     * Passa la mano all'ascolto senza interfaccia.
+     *
+     * Si chiama quando l'interfaccia sta per sparire senza che nessuno
+     * abbia chiesto di andarsene: da quel momento il motore JavaScript
+     * dell'app non c'e' piu', e con lui se ne andrebbe la connessione.
+     * PresenceService ne avvia uno senza finestra, che la riapre.
+     *
+     * Con un po' di ritardo: il contesto vecchio deve finire di
+     * smontarsi, altrimenti il compito senza interfaccia nascerebbe
+     * dentro a quello che sta morendo.
+     */
+    @ReactMethod
+    fun riprendiPresenza(promise: Promise) {
+        if (!PresenceService.canStart()) {
+            promise.resolve(false)
+            return
+        }
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            try {
+                ContextCompat.startForegroundService(
+                    ctx,
+                    Intent(ctx, PresenceService::class.java),
+                )
+            } catch (e: Exception) {
+                android.util.Log.w("Duetto", "presenza non ripresa: ${e.message}")
+            }
+        }, 1500)
+        promise.resolve(true)
+    }
+
     // --- Impostazioni da cui dipende il restare raggiungibili ---------
 
     @ReactMethod

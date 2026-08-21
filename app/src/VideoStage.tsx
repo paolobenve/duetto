@@ -134,6 +134,14 @@ type Props = {
   /** mostrato quando non c'è nessun video */
   placeholder: React.ReactNode;
   /**
+   * Quanto si è ingrandito, a gesto finito.
+   *
+   * Serve al diario: durante il pizzico il numero cambia cento volte al
+   * secondo, e cento righe non raccontano niente. Quella che conta è
+   * dove si è deciso di restare.
+   */
+  onIngrandimento?: (zoom: number) => void;
+  /**
    * Segno da mettere accanto a "Non tu": lo stato audio dell'altro.
    * Solo per il suo video, ovviamente: sul proprio non direbbe nulla che
    * non si sappia già dai pulsanti.
@@ -181,7 +189,7 @@ export default function VideoStage(props: Props) {
   const {
     localStream, remoteStream, localHasVideo, remoteHasVideo,
     localAspect, remoteAspect, remoteVideoKey, compact, placeholder, segnoAltro,
-    specchia = true,
+    specchia = true, onIngrandimento,
     awaitingRemote, notice,
   } = props;
   const { width, height } = useWindowDimensions();
@@ -607,6 +615,31 @@ export default function VideoStage(props: Props) {
   /** attesa che distingue un tocco singolo dal primo di un doppio */
   const attesaTocco = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /**
+   * Quanto siamo ingranditi, secondo noi.
+   *
+   * L'ingrandimento vero lo fa il motore nativo, che di quel numero non
+   * ci rende conto: gli ascoltatori qui sotto smettono di essere
+   * chiamati appena il valore passa al nativo, e la nostra copia resta
+   * ferma a 1 mentre lo schermo è a 2,5. Da lì tre guai in fila: il
+   * pizzico ripartiva dal 100%, il rilascio credeva che non avessi
+   * ingrandito e riportava tutto indietro come un elastico, e il doppio
+   * tocco non tornava mai a schermo pieno.
+   *
+   * La copia va scritta da noi, nello stesso istante in cui muoviamo
+   * l'immagine: siamo noi a decidere quel numero, non c'è ragione di
+   * andarlo a chiedere a qualcuno che può non rispondere.
+   *
+   * Gli ascoltatori restano: quando il valore non è ancora passato al
+   * nativo funzionano, e due fonti concordi non fanno danno.
+   */
+  const segnaZoom = useCallback((z: number) => {
+    zoomRef.current = z;
+  }, []);
+  const segnaShift = useCallback((x: number, y: number) => {
+    shiftRef.current = { x, y };
+  }, []);
+
   useEffect(() => {
     const z = zoom.addListener((v) => { zoomRef.current = v.value; });
     const p2 = shift.addListener((v) => { shiftRef.current = v; });
@@ -614,14 +647,24 @@ export default function VideoStage(props: Props) {
   }, [zoom, shift]);
 
   const resetZoom = useCallback(() => {
+    segnaZoom(1);
+    segnaShift(0, 0);
     Animated.parallel([
       Animated.timing(zoom, { toValue: 1, duration: 180, useNativeDriver: true }),
       Animated.timing(shift, { toValue: { x: 0, y: 0 }, duration: 180, useNativeDriver: true }),
     ]).start();
-  }, [zoom, shift]);
+  }, [zoom, shift, segnaZoom, segnaShift]);
 
-  // Cambiando chi sta a schermo grande, l'ingrandimento non ha più senso.
-  useEffect(() => { resetZoom(); }, [bigIsSelf, remoteVideoKey, resetZoom]);
+  /**
+   * Cambiando CHI sta a schermo grande, l'ingrandimento non ha più senso:
+   * stavi guardando il dettaglio di un'altra immagine.
+   *
+   * Non vale invece quando l'immagine dell'altro viene solo ricostruita
+   * - cosa che succede a ogni suo video che va e viene, e sulla rete
+   * mobile succede spesso: è la stessa persona, e chi stava guardando
+   * un dettaglio non ha chiesto di tornare indietro.
+   */
+  useEffect(() => { resetZoom(); }, [bigIsSelf, resetZoom]);
 
   /** Non lasciare che l'immagine ingrandita esca dai bordi. */
   const clampShift = useCallback(() => {
@@ -631,6 +674,7 @@ export default function VideoStage(props: Props) {
     const x = Math.min(Math.max(shiftRef.current.x, -maxX), maxX);
     const y = Math.min(Math.max(shiftRef.current.y, -maxY), maxY);
     if (x !== shiftRef.current.x || y !== shiftRef.current.y) {
+      shiftRef.current = { x, y };
       Animated.spring(shift, {
         toValue: { x, y }, useNativeDriver: true, friction: 8,
       }).start();
@@ -666,14 +710,15 @@ export default function VideoStage(props: Props) {
               MAX_ZOOM,
             );
             zoom.setValue(next);
+            segnaZoom(next);
             return;
           }
           if (zoomRef.current > 1.01) {
             if (Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4) movedInGesture.current = true;
-            shift.setValue({
-              x: shiftStart.current.x + g.dx,
-              y: shiftStart.current.y + g.dy,
-            });
+            const sx = shiftStart.current.x + g.dx;
+            const sy = shiftStart.current.y + g.dy;
+            shift.setValue({ x: sx, y: sy });
+            segnaShift(sx, sy);
           }
         },
         onPanResponderRelease: () => {
@@ -688,10 +733,12 @@ export default function VideoStage(props: Props) {
               }
               if (zoomRef.current > 1.01) resetZoom();
               else {
+                segnaZoom(TAP_ZOOM);
                 Animated.timing(zoom, {
                   toValue: TAP_ZOOM, duration: 180, useNativeDriver: true,
                 }).start();
               }
+              onIngrandimento?.(zoomRef.current);
               return;
             }
             lastTap.current = now;
@@ -707,10 +754,11 @@ export default function VideoStage(props: Props) {
           }
           if (zoomRef.current <= 1.01) resetZoom();
           else clampShift();
+          onIngrandimento?.(zoomRef.current);
         },
         onPanResponderTerminate: () => clampShift(),
       }),
-    [zoom, shift, resetZoom, clampShift, onSfondo],
+    [zoom, shift, resetZoom, clampShift, onSfondo, segnaZoom, segnaShift, onIngrandimento],
   );
 
   return (

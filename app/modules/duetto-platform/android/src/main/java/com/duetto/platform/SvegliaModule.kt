@@ -12,9 +12,10 @@ class SvegliaModule(private val ctx: ReactApplicationContext) :
 
     override fun getName() = "DuettoSveglia"
 
+    /** `eco`: lo sta suonando chi lo ha mandato, e allora esce piano. */
     @ReactMethod
-    fun suona(nome: String, promise: Promise) {
-        Sveglia.suona(ctx, nome)
+    fun suona(nome: String, eco: Boolean, promise: Promise) {
+        Sveglia.suona(ctx, nome, eco)
         promise.resolve(true)
     }
 

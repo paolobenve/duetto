@@ -94,9 +94,33 @@ if (!activityMatch) {
     changes++;
   }
 
-  // Il PiP è un cambio di configurazione: se l'activity non lo dichiara,
-  // Android la ricrea e la connessione si perde.
-  const neededConfig = ['screenSize', 'smallestScreenSize', 'screenLayout', 'orientation'];
+  /**
+   * Cambiamenti di configurazione che ce la sbrighiamo da soli.
+   *
+   * Se l'activity non li dichiara, Android la RICOSTRUISCE da capo: e
+   * ricostruire l'activity vuol dire rimontare tutta l'interfaccia,
+   * cioè smontare quella di prima - con tutto quello che si porta
+   * dietro. Il PiP è il caso ovvio: senza `screenSize` la finestrella
+   * ricreava l'activity e la conversazione cadeva.
+   *
+   * Gli altri quattro li ha insegnati una notte di agosto: alle 00:45,
+   * col telefono dell'altra persona sceso al 28% e nessuno sveglio a
+   * toccarlo, l'interfaccia è ripartita da capo. Al 30% entra in
+   * funzione il risparmio energetico, e quello cambia cose come la
+   * profondità di colore o la densità dello schermo. Non erano
+   * dichiarate, quindi la finestra è stata ricostruita, l'interfaccia
+   * vecchia smontata, e nello smontaggio se n'è andato il servizio che
+   * teneva viva la presenza: un quarto d'ora dopo il gestore di
+   * Motorola si è preso il processo.
+   *
+   * Dichiarandole, per quei cambiamenti non si ricostruisce piu'
+   * niente: React Native ridisegna da sé, che è quello che fa a ogni
+   * rotazione.
+   */
+  const neededConfig = [
+    'screenSize', 'smallestScreenSize', 'screenLayout', 'orientation',
+    'colorMode', 'density', 'fontScale', 'locale', 'layoutDirection',
+  ];
   const configMatch = tag.match(/android:configChanges="([^"]*)"/);
   if (configMatch) {
     const have = configMatch[1].split('|').filter(Boolean);

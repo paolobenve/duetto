@@ -19,6 +19,19 @@ import { Signaling } from './signaling';
 let sig: Signaling | null = null;
 
 /**
+ * L'interfaccia ha una sua connessione aperta.
+ *
+ * Serve a non averne due dallo stesso telefono: il server tiene un
+ * posto per lato, e la seconda scalzerebbe la prima a vicenda, per
+ * sempre. Lo dice l'app quando apre e quando chiude la sua.
+ */
+let interfaccia = false;
+
+export function interfacciaAlComando(viva: boolean) {
+  interfaccia = viva;
+}
+
+/**
  * Come dire a voce alta la causa di una morte.
  *
  * Sta qui perché la usano in due: l'app, e l'ascolto senza interfaccia
@@ -111,6 +124,10 @@ const log = (...args: any[]) => console.log('[duetto-presenza]', ...args);
 /** Attiva l'ascolto, se c'è una coppia configurata. */
 export async function startListening(): Promise<boolean> {
   if (sig) return true;
+  if (interfaccia) {
+    log('l\'app ha gia\' la sua connessione: non ne apro un\'altra');
+    return false;
+  }
 
   const cfg = await loadConfig();
   if (!isPaired(cfg) || !isServerConfigured(cfg)) {

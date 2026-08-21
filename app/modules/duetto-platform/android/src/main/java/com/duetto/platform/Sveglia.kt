@@ -32,7 +32,19 @@ object Sveglia {
 
     val nomi = listOf("tamburi", "batteria", "fanfara", "strombazzata", "gallo")
 
-    fun suona(ctx: Context, nome: String) {
+    /**
+     * @param eco lo sta suonando chi lo ha MANDATO, non chi lo riceve
+     *
+     * Chi manda un suono deve sentire cos'ha mandato: senza, si preme
+     * un pulsante e non succede niente di percepibile da questa parte.
+     * Ma non allo stesso modo: al volume della sveglia finirebbe dritto
+     * nel proprio microfono, e tornerebbe all'altro raddoppiato sopra a
+     * quello che sta gia' suonando da lui. Quindi piano, e dalla via
+     * della conversazione - la stessa dell'avviso di chiamata in attesa
+     * - che e' fatta apposta per i segnali brevi durante una chiamata e
+     * che la cancellazione d'eco conosce.
+     */
+    fun suona(ctx: Context, nome: String, eco: Boolean = false) {
         val res = when (nome) {
             "tamburi" -> R.raw.sveglia_tamburi
             "batteria" -> R.raw.sveglia_batteria
@@ -44,7 +56,10 @@ object Sveglia {
         ferma()
         try {
             val attributi = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ALARM)
+                .setUsage(
+                    if (eco) AudioAttributes.USAGE_VOICE_COMMUNICATION_SIGNALLING
+                    else AudioAttributes.USAGE_ALARM,
+                )
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                 .build()
             val mp = MediaPlayer.create(ctx, res, attributi, AudioManager.AUDIO_SESSION_ID_GENERATE)
@@ -56,6 +71,8 @@ object Sveglia {
                 it.release()
                 if (player === it) player = null
             }
+            // Un terzo del volume: e' un riscontro, non un allarme.
+            if (eco) mp.setVolume(0.33f, 0.33f)
             player = mp
             mp.start()
         } catch (e: Exception) {

@@ -45,7 +45,95 @@ export type PairInfo = {
    * dell'app, che era l'unico che ci fosse.
    */
   serverUrl?: string;
+  /**
+   * Le impostazioni di QUESTO collegamento.
+   *
+   * Quasi tutto quello che si sceglie riguarda una persona in
+   * particolare, non l'app: la qualità del video dipende dalla rete che
+   * ha lei, il suono dell'avviso serve a riconoscerla senza guardare, il
+   * volume della sua voce dipende da com'è registrato il suo microfono,
+   * e l'uscita audio da come si sta insieme - in vivavoce mentre si
+   * cucina, all'orecchio la sera.
+   *
+   * Tenendole una sola volta per l'app, cambiando collegamento ci si
+   * portava dietro le scelte fatte per un'altra persona. Qui viaggiano
+   * con lei.
+   *
+   * Assente per i collegamenti nati prima: allora valgono quelle in uso,
+   * che diventano le sue al primo salvataggio.
+   */
+  impostazioni?: ImpostazioniCoppia;
 };
+
+/**
+ * Cosa appartiene al collegamento e non all'app.
+ *
+ * Fuori restano solo tre cose, e per una ragione: le coppie
+ * (`pair`/`pairs`), che sono l'elenco stesso, e `setupShown`, che
+ * ricorda una schermata mostrata una volta nella vita del telefono.
+ */
+export type ImpostazioniCoppia = {
+  displayName: string;
+  videoQuality: VideoQuality;
+  audioMigliore: boolean;
+  mostraDiagnostica: boolean;
+  comandi: 'poco' | 'molto' | 'nascondi';
+  videoCodec: 'auto' | 'vp9';
+  avvisoVibra: 'predefinito' | 'sempre' | 'mai';
+  avvisoSuono: 'predefinito' | 'nessuno' | 'scelto';
+  avvisoSuonoUri: string;
+  avvisoSuonoNome: string;
+  /** da dove esce il suono: 'SPEAKER_PHONE', 'EARPIECE', ... */
+  uscitaAudio: string;
+  /** quanto alzare la voce dell'altro, 1 = com'è arrivata */
+  guadagno: number;
+  /** con quale camera si riprende */
+  cameraFrontale: boolean;
+};
+
+/** I campi che viaggiano con il collegamento, in un posto solo. */
+const CAMPI_COPPIA: (keyof ImpostazioniCoppia)[] = [
+  'displayName', 'videoQuality', 'audioMigliore', 'mostraDiagnostica', 'comandi',
+  'videoCodec', 'avvisoVibra', 'avvisoSuono', 'avvisoSuonoUri', 'avvisoSuonoNome',
+  'uscitaAudio', 'guadagno', 'cameraFrontale',
+];
+
+/** Le impostazioni in uso, prese dalla configurazione. */
+export function impostazioniInUso(cfg: DuoConfig): ImpostazioniCoppia {
+  const out = {} as ImpostazioniCoppia;
+  for (const k of CAMPI_COPPIA) (out as any)[k] = (cfg as any)[k];
+  return out;
+}
+
+/**
+ * Scrive le impostazioni in uso dentro al collegamento in uso.
+ *
+ * Si chiama a ogni salvataggio: così il collegamento ha sempre l'ultima
+ * parola detta mentre era lui a essere in uso, e ritrovandolo domani si
+ * ritrova com'era.
+ */
+export function salvaImpostazioniNellaCoppia(cfg: DuoConfig): DuoConfig {
+  if (!cfg.pair) return cfg;
+  const pair: PairInfo = { ...cfg.pair, impostazioni: impostazioniInUso(cfg) };
+  return { ...cfg, pair, pairs: cfg.pairs.map((p) => (p.id === pair.id ? pair : p)) };
+}
+
+/**
+ * Rimette in uso le impostazioni di un collegamento.
+ *
+ * Quelle che non ha - perché è nato prima, o perché è appena stato
+ * creato - restano quelle correnti: meglio ereditare che azzerare.
+ */
+function applicaImpostazioni(cfg: DuoConfig, p: PairInfo): DuoConfig {
+  const sue = p.impostazioni;
+  if (!sue) return cfg;
+  const out = { ...cfg };
+  for (const k of CAMPI_COPPIA) {
+    const v = (sue as any)[k];
+    if (v !== undefined) (out as any)[k] = v;
+  }
+  return out;
+}
 
 /**
  * Quanto spendere per il video.
@@ -143,6 +231,27 @@ export type DuoConfig = {
   avvisoSuonoUri: string;
   /** Il suo nome, per poterlo mostrare senza doverlo richiedere. */
   avvisoSuonoNome: string;
+
+  /**
+   * Da dove esce il suono, e quanto forte è la voce dell'altro.
+   *
+   * Stavano in due memorie separate, fuori di qui: ci sono rientrate
+   * quando le impostazioni sono diventate di ogni collegamento, perché
+   * sono fra le più legate alla persona - il suo microfono, il modo in
+   * cui state insieme.
+   */
+  uscitaAudio: string;
+  guadagno: number;
+
+  /**
+   * Con quale camera si riprende: davanti o dietro.
+   *
+   * Non era ricordata da nessuna parte - ogni sessione ripartiva dalla
+   * frontale - e invece è una scelta che dura: con una persona ci si
+   * guarda in faccia, con un'altra si inquadra quello che si sta
+   * facendo.
+   */
+  cameraFrontale: boolean;
 };
 
 export const DEFAULT_CONFIG: DuoConfig = {
@@ -164,6 +273,9 @@ export const DEFAULT_CONFIG: DuoConfig = {
   avvisoSuono: 'predefinito',
   avvisoSuonoUri: '',
   avvisoSuonoNome: '',
+  uscitaAudio: 'SPEAKER_PHONE',
+  guadagno: 1,
+  cameraFrontale: true,
 };
 
 const STORAGE_KEY = 'duetto.config.v3';
@@ -219,7 +331,13 @@ function normalizzaCoppie(cfg: DuoConfig): DuoConfig {
  * affiancarlo.
  */
 export function registraCoppia(cfg: DuoConfig, pair: PairInfo): DuoConfig {
-  const nuova: PairInfo = { serverUrl: cfg.serverUrl, ...pair };
+  // Nasce con le impostazioni che hai adesso: sono l'unica cosa
+  // ragionevole da dargli, e da lì in poi sono sue.
+  const nuova: PairInfo = {
+    serverUrl: cfg.serverUrl,
+    impostazioni: impostazioniInUso(cfg),
+    ...pair,
+  };
   return {
     ...cfg,
     pair: nuova,
@@ -236,12 +354,17 @@ export function registraCoppia(cfg: DuoConfig, pair: PairInfo): DuoConfig {
 export function passaACoppia(cfg: DuoConfig, id: string): DuoConfig {
   const scelta = cfg.pairs.find((p) => p.id === id);
   if (!scelta || scelta.id === cfg.pair?.id) return cfg;
-  return {
-    ...cfg,
-    serverUrl: scelta.serverUrl || cfg.serverUrl,
+  // Prima si mettono al sicuro quelle di chi si sta lasciando, poi si
+  // ripescano le sue: senza il primo passo, le ultime scelte fatte con
+  // l'una finirebbero addosso all'altra.
+  const salvato = salvaImpostazioniNellaCoppia(cfg);
+  const dopo: DuoConfig = {
+    ...salvato,
+    serverUrl: scelta.serverUrl || salvato.serverUrl,
     pair: scelta,
-    pairs: [scelta, ...cfg.pairs.filter((p) => p.id !== id)],
+    pairs: [scelta, ...salvato.pairs.filter((p) => p.id !== id)],
   };
+  return applicaImpostazioni(dopo, scelta);
 }
 
 /**
@@ -255,12 +378,13 @@ export function dimenticaCoppia(cfg: DuoConfig, id: string): DuoConfig {
   const restano = cfg.pairs.filter((p) => p.id !== id);
   if (cfg.pair?.id !== id) return { ...cfg, pairs: restano };
   const prossima = restano[0] ?? null;
-  return {
+  const dopo: DuoConfig = {
     ...cfg,
     serverUrl: prossima?.serverUrl || cfg.serverUrl,
     pair: prossima,
     pairs: restano,
   };
+  return prossima ? applicaImpostazioni(dopo, prossima) : dopo;
 }
 
 /**

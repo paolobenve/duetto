@@ -41,6 +41,8 @@ export type ChannelEvents = {
     uscita?: string;
     /** quale Duetto sta girando di là; assente se è più vecchio di questo campo */
     versione?: string;
+    /** con quale camera sta riprendendo: 'frontale' o 'posteriore' */
+    camera?: string;
   }) => void;
   /**
    * Se stiamo ricevendo una traccia video.
@@ -151,7 +153,14 @@ export class ChannelSession {
    * sceglierla prima di accendere, e sopravvive a una riapertura della
    * camera (cambio di risoluzione).
    */
-  private cameraFrontale = true;
+  /**
+   * Con quale camera si riprende.
+   *
+   * Il valore di partenza viene dalle impostazioni del collegamento:
+   * prima ogni sessione ripartiva dalla frontale, e chi inquadrava
+   * qualcos'altro doveva rigirarla ogni volta.
+   */
+  private cameraFrontale: boolean;
 
   /**
    * Microfono acceso o muto, come lo vuole chi usa l'app. Vale anche
@@ -198,7 +207,9 @@ export class ChannelSession {
     private cfg: DuoConfig,
     private signaling: Signaling,
     private events: ChannelEvents,
-  ) {}
+  ) {
+    this.cameraFrontale = cfg.cameraFrontale !== false;
+  }
 
   // --- Ingresso nel canale -------------------------------------------------
 
@@ -589,6 +600,7 @@ export class ChannelSession {
         hwVp9: this.peerVp9,
         uscita: msg.uscita,
         versione: msg.versione,
+        camera: msg.camera,
       });
       this.setPeerWatching(msg.watching !== false);
       // Ciò che l'altro dichiara entra nel giudizio su "c'è il suo
@@ -1369,6 +1381,7 @@ export class ChannelSession {
       audio: this.isAudioEnabled(),
       uscita: this.uscitaLocale,
       versione: VERSION,
+      camera: this.isCameraFrontale() ? 'frontale' : 'posteriore',
       video: this.isVideoEnabled(),
       aspect: this.getLocalVideoAspect(),
       watching: this.localWatching,

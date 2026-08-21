@@ -211,6 +211,27 @@ class ChannelForegroundService : Service() {
      * esattamente cio' che gli si chiede.
      */
     override fun onTaskRemoved(rootIntent: Intent?) {
+        Diario.campiona(applicationContext, "recenti-svuotati")
+        // Il motore JavaScript se ne va con l'activity: senza qualcuno
+        // che riprenda la connessione, questo servizio resterebbe a
+        // mostrare una presenza che non c'e' piu'. Si passa la mano a
+        // PresenceService, la stessa strada del riavvio del telefono.
+        //
+        // Con un po' di ritardo: prima deve finire di smontarsi il
+        // contesto vecchio, altrimenti il compito senza interfaccia
+        // nascerebbe dentro a quello che sta morendo.
+        if (PresenceService.canStart()) {
+            orologio.postDelayed({
+                try {
+                    androidx.core.content.ContextCompat.startForegroundService(
+                        applicationContext,
+                        Intent(applicationContext, PresenceService::class.java),
+                    )
+                } catch (e: Exception) {
+                    android.util.Log.w("Duetto", "recenti: presenza non ripresa: ${e.message}")
+                }
+            }, 2500)
+        }
         super.onTaskRemoved(rootIntent)
     }
 

@@ -29,8 +29,12 @@ export type SignalMessage =
   // spiegare le stranezze - una cosa che qui c'e' e li' no - senza
   // doverselo chiedere a voce. Assente nelle build vecchie, ed e' gia'
   // una risposta: vuol dire che e' piu' vecchia di questo campo.
+  // `camera`: quale delle due sta riprendendo. Non cambia niente di
+  // quello che si vede - l'immagine e' la stessa - ma nel diario dice
+  // cos'ha fatto l'altro, e "ha girato la camera" spiega un'inquadratura
+  // che cambia di colpo.
   | { kind: 'state'; audio: boolean; video: boolean; aspect?: number; watching?: boolean;
-      hwVp9?: boolean; uscita?: string; versione?: string }
+      hwVp9?: boolean; uscita?: string; versione?: string; camera?: string }
   // Chi risponde non può offrire: se resta senza collegamento e l'altro
   // non se ne accorge, l'unica via d'uscita è chiederglielo.
   | { kind: 'renegotiate' }

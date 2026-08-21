@@ -15,6 +15,7 @@ import {
   isServerConfigured, isPaired, VIDEO_PROFILES,
   registraCoppia, passaACoppia, dimenticaCoppia, ricordaNomeCoppia,
   allineaServerCoppia, rinominaCoppia, chiaveCoppia, nomeCoppia,
+  salvaImpostazioniNellaCoppia,
 } from './config';
 import { Signaling, PresenceStatus, Mode } from './signaling';
 import { VERSION } from './version';
@@ -25,8 +26,10 @@ import SetupScreen from './SetupScreen';
 import PairingScreen from './PairingScreen';
 import ChannelScreen from './ChannelScreen';
 import { caricaPosizionePip } from './VideoStage';
-import { useAudioRoute } from './audioRoute';
-import { stopListening, testoPresenza, fraseMorte } from './presence';
+import { useAudioRoute, CHIAVE_USCITA_VECCHIA } from './audioRoute';
+import {
+  stopListening, testoPresenza, fraseMorte, interfacciaAlComando,
+} from './presence';
 import { avatarFor, peerAvatar } from './avatar';
 
 // Nessuna schermata intermedia: o si configura, o ci si accoppia, o si è
@@ -144,6 +147,21 @@ async function requestAllPermissions(): Promise<{ mic: boolean; camera: boolean 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('loading');
   const [cfg, setCfg] = useState<DuoConfig | null>(null);
+
+  /**
+   * Salva la configurazione, e con lei le impostazioni del collegamento.
+   *
+   * Ogni scelta che si fa vale per la persona con cui si sta parlando:
+   * scriverla solo "nell'app" vorrebbe dire ritrovarsela addosso
+   * passando a un altro collegamento. Qui si scrive nei due posti in un
+   * colpo solo, così non ci si può dimenticare di farlo.
+   */
+  const salvaCfg = useCallback((next: DuoConfig) => {
+    const con = salvaImpostazioniNellaCoppia(next);
+    saveConfig(con).catch(() => { /* noop */ });
+    return con;
+  }, []);
+
   const [inChannel, setInChannel] = useState(false);
   /** dove tornare chiudendo la schermata delle impostazioni di sistema */
   const [setupFrom, setSetupFrom] = useState<'avvio' | 'impostazioni'>('avvio');
@@ -178,8 +196,23 @@ export default function App() {
    * qui, dove l'occhio è già.
    */
   const [avviso, setAvviso] = useState<string | null>(null);
-  /** quanto stiamo alzando la voce dell'altro, 1 = com'è arrivata */
-  const [guadagno, setGuadagno] = useState(1);
+  /**
+   * L'uscita è in corso: si sta svuotando il diario.
+   *
+   * Dura qualche decimo di secondo, ma senza dirlo sembrerebbe che il
+   * pulsante non abbia fatto niente - e chi non vede reazione preme di
+   * nuovo.
+   */
+  const [uscendo, setUscendo] = useState(false);
+
+  /**
+   * Quanto stiamo alzando la voce dell'altro, 1 = com'è arrivata.
+   *
+   * Sta nella configurazione, e da lì nel collegamento: dipende da
+   * com'è registrato il microfono di quella persona, quindi cambiando
+   * collegamento deve cambiare anche questo.
+   */
+  const guadagno = cfg?.guadagno ?? 1;
   /** mostrato per un attimo mentre si preme: sennò non si vede l'effetto */
   const [guadagnoVisibile, setGuadagnoVisibile] = useState(false);
   const timerGuadagno = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -200,6 +233,13 @@ export default function App() {
   const [videoOn, setVideoOn] = useState(false);
   const [localAspect, setLocalAspect] = useState<number | undefined>(undefined);
   /** la camera si accende sempre frontale: da lì in poi lo si segue */
+  /**
+   * Quale camera mostra il pulsante "Gira".
+   *
+   * La verità sta nella sessione, ma la sessione nasce dopo di noi: il
+   * valore di partenza è quello del collegamento in uso, e cambiando
+   * collegamento cambia con lui.
+   */
   const [cameraFrontale, setCameraFrontale] = useState(true);
   const [peerState, setPeerState] = useState<{
     audio: boolean; video: boolean; aspect?: number;
@@ -267,7 +307,26 @@ export default function App() {
     if (hardTimer.current) { clearTimeout(hardTimer.current); hardTimer.current = null; }
   }, []);
 
-  const audio = useAudioRoute(inChannel);
+  /**
+   * L'uscita audio la ricorda il collegamento, non l'app.
+   *
+   * Il gancio non se la salva più da sé: la riceve da qui e ci
+   * restituisce le scelte, che finiscono nel collegamento in uso.
+   */
+  const ricordaUscita = useCallback((route: string) => {
+    setCfg((prev) => (prev && prev.uscitaAudio !== route
+      ? salvaCfg({ ...prev, uscitaAudio: route })
+      : prev));
+  }, [salvaCfg]);
+
+  const audio = useAudioRoute(inChannel, cfg?.uscitaAudio, ricordaUscita);
+
+  /**
+   * In un ref perché lo chiama `enterChannel`, che nasce prima e non
+   * deve rifarsi ogni volta che cambia qualcosa dell'audio.
+   */
+  const riapplicaUscitaRef = useRef<(() => void) | null>(null);
+  useEffect(() => { riapplicaUscitaRef.current = audio.riapplica; }, [audio.riapplica]);
 
   /**
    * L'altro deve sapere da dove stiamo ascoltando.
@@ -316,6 +375,17 @@ export default function App() {
    * e senza questa riga bisogna chiederlo a voce e fidarsi della
    * risposta. Va nel diario nostro, che a un cavo ci arriva.
    */
+  /**
+   * L'ultimo stato dell'altro, per accorgersi di cosa CAMBIA.
+   *
+   * Il messaggio di stato arriva anche quando non è cambiato nulla:
+   * senza un confronto, il diario si riempirebbe di righe che dicono la
+   * stessa cosa.
+   */
+  const statoAltroRef = useRef<{
+    audio?: boolean; video?: boolean; camera?: string; uscita?: string;
+  }>({});
+
   const versioneAltroVista = useRef('');
   useEffect(() => {
     const v = peerState.versione;
@@ -359,18 +429,22 @@ export default function App() {
    */
   const cambiaGuadagno = useCallback((direzione: number) => {
     if (!direzione) return;
-    setGuadagno((g) => {
+    setCfg((prev) => {
+      if (!prev) return prev;
       const nuovo = Math.min(
         GUADAGNO_MAX,
-        Math.max(GUADAGNO_MIN, Math.round((g + direzione * GUADAGNO_PASSO) * 100) / 100),
+        Math.max(
+          GUADAGNO_MIN,
+          Math.round((prev.guadagno + direzione * GUADAGNO_PASSO) * 100) / 100,
+        ),
       );
-      if (nuovo !== g) AsyncStorage.setItem(CHIAVE_GUADAGNO, String(nuovo)).catch(() => {});
-      return nuovo;
+      if (nuovo === prev.guadagno) return prev;
+      return salvaCfg({ ...prev, guadagno: nuovo });
     });
     setGuadagnoVisibile(true);
     if (timerGuadagno.current) clearTimeout(timerGuadagno.current);
     timerGuadagno.current = setTimeout(() => setGuadagnoVisibile(false), 1800);
-  }, []);
+  }, [salvaCfg]);
 
   useEffect(() => {
     if (!inChannel) return;
@@ -511,6 +585,39 @@ export default function App() {
   }, [inChannel, status]);
 
   /**
+   * Quando l'interfaccia nasce e quando muore, scritto per esteso.
+   *
+   * Sembra ridondante - la riga "ascolto" c'è già - e invece è proprio
+   * l'ambiguità di quella riga ad aver fatto perdere una notte: "ascolto"
+   * la scrive sia chi esce dal canale sia un'interfaccia che riparte da
+   * capo, e distinguere le due cose e' la differenza fra "l'ha chiusa
+   * lui" e "si e' ricostruita da sola mentre dormiva".
+   *
+   * Lo smontaggio si scrive mentre il motore JavaScript sta gia'
+   * chiudendo: la riga parte, ma se il processo muore nello stesso
+   * istante puo' non arrivare al file. Meglio una riga incerta che
+   * nessuna.
+   */
+  useEffect(() => {
+    Diario.segna('interfaccia-avviata').catch(() => { /* noop */ });
+    return () => {
+      Diario.segna('interfaccia-smontata').catch(() => { /* noop */ });
+      // Se non ce ne stiamo andando di proposito, qui si perde la
+      // connessione: il motore JavaScript muore con l'interfaccia, e
+      // nessuno lo sa tranne noi, in questo istante. Si passa la mano
+      // all'ascolto senza interfaccia, che la riapre.
+      //
+      // Il servizio in primo piano non basta: quello tiene vivo il
+      // processo, non la connessione. Sono due cose diverse, e all'altro
+      // ne serve una sola per vederti sparire.
+      if (!salutiamo.current) {
+        interfacciaAlComando(false);
+        Foreground.riprendiPresenza().catch(() => { /* noop */ });
+      }
+    };
+  }, []);
+
+  /**
    * Il diario segue lo stato: senza, le righe direbbero quanto è sceso
    * il telefono senza dire cosa stava facendo l'app, che è l'unica cosa
    * che rende quei numeri confrontabili fra loro.
@@ -616,32 +723,41 @@ export default function App() {
    * Si mandano solo le righe nuove; se il file è stato ruotato e adesso
    * ne ha meno di quante ne avevamo mandate, si riparte da capo.
    */
+  /**
+   * Manda all'altro le righe di diario non ancora partite.
+   *
+   * Sta fuori dall'effetto periodico perché la chiama anche l'uscita:
+   * lì è l'ultimo momento utile, la connessione è ancora aperta e da lì
+   * a poco non lo sarà più.
+   */
+  const mandaDiario = useCallback(async () => {
+    const sig = signalingRef.current;
+    if (!sig?.connected) return;
+    const chiave = chiaveInviate(cfg?.pair?.id ?? '');
+    try {
+      const righe = await Diario.righe();
+      const suo = await AsyncStorage.getItem(chiave);
+      const vecchio = suo === null
+        ? await AsyncStorage.getItem(CHIAVE_DIARIO_INVIATE)
+        : null;
+      let inviate = Number(suo ?? vecchio) || 0;
+      if (inviate > righe) inviate = 0;
+      if (righe <= inviate) return;
+
+      const testo = await Diario.leggi(inviate);
+      if (!testo) return;
+      sig.sendSignal({ kind: 'diario', testo });
+      await AsyncStorage.setItem(chiave, String(righe));
+    } catch {
+      /* il diario non vale un errore in faccia a nessuno */
+    }
+  }, [cfg?.pair?.id]);
+
   useEffect(() => {
     if (!peerPresent) return;
     let vivo = true;
 
-    const manda = async () => {
-      const sig = signalingRef.current;
-      if (!vivo || !sig?.connected) return;
-      const chiave = chiaveInviate(cfg?.pair?.id ?? '');
-      try {
-        const righe = await Diario.righe();
-        const suo = await AsyncStorage.getItem(chiave);
-        const vecchio = suo === null
-          ? await AsyncStorage.getItem(CHIAVE_DIARIO_INVIATE)
-          : null;
-        let inviate = Number(suo ?? vecchio) || 0;
-        if (inviate > righe) inviate = 0;
-        if (righe <= inviate) return;
-
-        const testo = await Diario.leggi(inviate);
-        if (!testo) return;
-        sig.sendSignal({ kind: 'diario', testo });
-        await AsyncStorage.setItem(chiave, String(righe));
-      } catch {
-        /* il diario non vale un errore in faccia a nessuno */
-      }
-    };
+    const manda = () => { if (vivo) mandaDiario(); };
 
     // Il primo giro DIECI SECONDI dopo essersi trovati, non un minuto.
     //
@@ -657,7 +773,7 @@ export default function App() {
     const primo = setTimeout(manda, 10_000);
     const timer = setInterval(manda, SCAMBIO_DIARIO_MS);
     return () => { vivo = false; clearTimeout(primo); clearInterval(timer); };
-  }, [peerPresent, cfg?.pair?.id]);
+  }, [peerPresent, mandaDiario]);
 
   /**
    * Se stiamo passando dal relay, si tenta una volta la strada diretta.
@@ -757,12 +873,21 @@ export default function App() {
       const c = await loadConfig();
       setCfg(c);
       leggiLaPropriaMorte();
-      // La voce dell'altro resta come l'avevi lasciata: chi l'ha
-      // abbassata una volta l'ha abbassata per come suona quel telefono,
-      // e domani suonerà uguale.
+      /**
+       * Le due memorie di prima: volume dell'altro e uscita audio.
+       *
+       * Stavano fuori dalla configurazione, una per tutta l'app. Ora
+       * appartengono al collegamento, e quel che c'era diventa il valore
+       * del collegamento in uso: chi aveva già scelto non ricomincia da
+       * capo.
+       */
       try {
+        const patch: Partial<DuoConfig> = {};
         const g = Number(await AsyncStorage.getItem(CHIAVE_GUADAGNO));
-        if (g >= GUADAGNO_MIN && g <= GUADAGNO_MAX) setGuadagno(g);
+        if (g >= GUADAGNO_MIN && g <= GUADAGNO_MAX && c.guadagno === 1) patch.guadagno = g;
+        const u = await AsyncStorage.getItem(CHIAVE_USCITA_VECCHIA);
+        if (u && c.uscitaAudio === 'SPEAKER_PHONE') patch.uscitaAudio = u;
+        if (Object.keys(patch).length) setCfg(salvaCfg({ ...c, ...patch }));
       } catch { /* niente di grave */ }
       // Il canale di notifica va preparato prima che serva: nasce con
       // suono e vibrazione dentro, e crearlo al primo avviso vorrebbe
@@ -810,10 +935,9 @@ export default function App() {
       if (!prev?.pair) return prev;
       const next = ricordaNomeCoppia(prev, prev.pair.id, n);
       if (!next) return prev;
-      saveConfig(next).catch(() => { /* noop */ });
-      return next;
+      return salvaCfg(next);
     });
-  }, []);
+  }, [salvaCfg]);
 
   // --- connessione persistente --------------------------------------------
   // Vive finché c'è una coppia: passare da "in ascolto" a "nel canale"
@@ -888,6 +1012,8 @@ export default function App() {
           },
 
           onPeerJoined: (n, mode) => {
+            Diario.segna(`altro-torna:${mode === 'active' ? 'canale' : 'attesa'}`)
+              .catch(() => { /* noop */ });
             setPeerPresent(true);
             setPeerStaccato(false);
             segnaNome(n);
@@ -898,6 +1024,12 @@ export default function App() {
           },
 
           onPeerLeft: (motivo) => {
+            // Nel diario, perché è la domanda che ci si fa dopo: "l'altro
+            // è sparito - ha chiuso lui o è caduto?". La notifica lo dice
+            // sul momento a chi sta guardando; questa riga lo dice a chi
+            // leggerà domani col cavo, e sta sul telefono di qua, quindi
+            // si legge senza aspettare nessuno scambio.
+            Diario.segna(`altro-via:${motivo}`).catch(() => { /* noop */ });
             setPeerPresent(false);
             setPeerVisto(false);
             setPeerStaccato(motivo === 'bye');
@@ -945,6 +1077,7 @@ export default function App() {
           },
 
           onNotify: (reason, n) => {
+            Diario.segna(reason === 'knock' ? 'altro-avvisa' : 'altro-entra').catch(() => {});
             segnaNome(n);
             setKnockPending(false);
             // Il nome è facoltativo: senza, si evita di scrivere "Qualcuno".
@@ -1075,6 +1208,10 @@ export default function App() {
       );
 
       signalingRef.current = sig;
+      // Da qui in poi la connessione è nostra: l'ascolto senza
+      // interfaccia deve saperlo, o se ne aprirebbe una seconda che
+      // scalzerebbe questa.
+      interfacciaAlComando(true);
       sig.connect();
 
       // Ingresso automatico. setMode aggiorna lo stato dichiarato anche
@@ -1091,10 +1228,24 @@ export default function App() {
       // scelto di rendersi non disponibile o ha sciolto il collegamento.
       // Tutte le altre chiusure sono passaggi di mano, e l'altro non
       // deve leggere "si è staccato" per una connessione che si rifà.
-      signalingRef.current?.close(salutiamo.current);
+      interfacciaAlComando(false);
+      const addio = salutiamo.current;
       salutiamo.current = false;
+      signalingRef.current?.close(addio);
       signalingRef.current = null;
-      Foreground.stop().catch(() => {});
+      /**
+       * Il servizio si ferma SOLO se ce ne andiamo davvero.
+       *
+       * Prima si fermava a ogni smontaggio, e questo comprende il caso
+       * in cui l'utente toglie l'app dai recenti: lì React Native
+       * smonta tutto, questa riga spegneva il servizio, e da quel
+       * momento il processo era un guscio vuoto in attesa di essere
+       * riciclato. Nel diario si vede benissimo - "uscita", e un quarto
+       * d'ora dopo la morte - ed era il difetto che restava dopo aver
+       * tolto la scorciatoia dai recenti nel servizio stesso: la
+       * scorciatoia era due, e ne avevo tolta una sola.
+       */
+      if (addio) Foreground.stop().catch(() => {});
       try { InCallManager.stop(); } catch { /* noop */ }
       Audio.useCallVolumeKeys(false).catch(() => {});
     };
@@ -1257,6 +1408,25 @@ export default function App() {
         onVideoStats: setVideoStats,
         onPeerState: (st) => {
           setPeerVisto(true);
+          // Solo i cambiamenti: lo stato arriva anche quando non è
+          // cambiato niente, e una riga per ogni messaggio sarebbe un
+          // diario che racconta il silenzio.
+          const prima = statoAltroRef.current;
+          if (prima.audio !== st.audio) {
+            Diario.segna(`altro-audio:${st.audio ? 'on' : 'off'}`).catch(() => {});
+          }
+          if (prima.video !== st.video) {
+            Diario.segna(`altro-video:${st.video ? 'on' : 'off'}`).catch(() => {});
+          }
+          if (st.camera && prima.camera !== st.camera) {
+            Diario.segna(`altro-camera:${st.camera}`).catch(() => {});
+          }
+          if (st.uscita && prima.uscita !== st.uscita) {
+            Diario.segna(`altro-uscita-audio:${st.uscita}`).catch(() => {});
+          }
+          statoAltroRef.current = {
+            audio: st.audio, video: st.video, camera: st.camera, uscita: st.uscita,
+          };
           // Se ci manda il suo stato è tornato, qualunque cosa dicesse il
           // conto alla rovescia: senza fermarlo, poco dopo spegnerebbe uno
           // stato appena arrivato.
@@ -1290,6 +1460,10 @@ export default function App() {
     try {
       InCallManager.start({ media: 'audio' });
     } catch { /* noop */ }
+    // Riaccendendo l'audio, InCallManager riporta l'uscita a quella
+    // predefinita: la scelta di questo collegamento va rimessa adesso,
+    // non prima.
+    riapplicaUscitaRef.current?.();
 
     // I tasti del volume vanno detti a mano: senza, su certi telefoni
     // regolano il multimedia e non hanno effetto sulla voce dell'altro.
@@ -1305,7 +1479,51 @@ export default function App() {
 
   useEffect(() => { enterChannelRef.current = enterChannel; }, [enterChannel]);
 
-  const leaveChannel = useCallback((restaDisponibile = true) => {
+  /**
+   * Quanto si aspetta al massimo prima di uscire comunque.
+   *
+   * Con la rete lenta o assente, il diario non parte: "attendi un
+   * momento" non deve mai diventare "l'app non esce".
+   */
+  const ATTESA_USCITA_MS = 2000;
+  /**
+   * Un respiro fra l'invio e la chiusura del socket.
+   *
+   * Mandare un messaggio e chiudere nello stesso istante rischia di
+   * chiudere prima che sia partito davvero: quello che si guadagna
+   * scrivendolo si perderebbe nel non spedirlo.
+   */
+  const RESPIRO_MS = 250;
+
+  /**
+   * Uscire dal canale, dopo aver messo al sicuro il diario.
+   *
+   * L'ordine conta: prima si scrive la riga dell'uscita, poi la si
+   * manda all'altro telefono finché la connessione è ancora aperta, e
+   * solo allora si esce davvero. Uscendo prima, il racconto di quello
+   * che si è appena fatto restava su questo telefono - e se l'app
+   * moriva nel frattempo, non lo leggeva più nessuno.
+   */
+  const leaveChannel = useCallback(async (restaDisponibile = true) => {
+    // La riga dell'uscita si scrive PRIMA di mandare, altrimenti parte
+    // tutto tranne la cosa che si sta facendo.
+    await Diario.segna(restaDisponibile ? 'uscita-canale' : 'non-disponibile')
+      .catch(() => { /* noop */ });
+
+    setUscendo(true);
+    try {
+      const attendi = (ms: number) => new Promise<void>((r) => { setTimeout(r, ms); });
+      await Promise.race([
+        (async () => {
+          await mandaDiario();
+          await attendi(RESPIRO_MS);
+        })(),
+        attendi(ATTESA_USCITA_MS),
+      ]);
+    } finally {
+      setUscendo(false);
+    }
+
     const sig = signalingRef.current;
     sessionRef.current?.leaveChannel();
     sessionRef.current = null;
@@ -1335,7 +1553,7 @@ export default function App() {
     // ricevi la notifica quando l'altro entra. Riaprendo l'app si rientra
     // direttamente nel canale.
     AppWindow.minimize().catch(() => {});
-  }, []);
+  }, [mandaDiario]);
 
   /**
    * Rete di sicurezza contro il collegamento che non riparte.
@@ -1452,14 +1670,13 @@ export default function App() {
     (q: DuoConfig['videoQuality'], tell: boolean) => {
       setCfg((prev) => {
         if (!prev || prev.videoQuality === q) return prev;
-        const next = { ...prev, videoQuality: q };
-        saveConfig(next).catch(() => {});
-        return next;
+        return salvaCfg({ ...prev, videoQuality: q });
       });
       sessionRef.current?.setVideoQuality(q);
+      Diario.segna(`${tell ? '' : 'altro-'}qualita:${q}`).catch(() => {});
       if (tell) signalingRef.current?.sendSignal({ kind: 'quality', value: q });
     },
-    [],
+    [salvaCfg],
   );
 
   /**
@@ -1472,21 +1689,21 @@ export default function App() {
   const applyAudio = useCallback((migliore: boolean, tell: boolean) => {
     setCfg((prev) => {
       if (!prev || prev.audioMigliore === migliore) return prev;
-      const next = { ...prev, audioMigliore: migliore };
-      saveConfig(next).catch(() => {});
-      return next;
+      return salvaCfg({ ...prev, audioMigliore: migliore });
     });
     sessionRef.current?.setAudioOptions(migliore);
+    Diario.segna(`${tell ? '' : 'altro-'}voce-ricca:${migliore ? 'si' : 'no'}`)
+      .catch(() => {});
     if (tell) signalingRef.current?.sendSignal({ kind: 'audio', migliore });
-  }, []);
+  }, [salvaCfg]);
 
   const onSaveSettings = useCallback(async (scritta: DuoConfig) => {
+    Diario.segna('impostazioni-salvate').catch(() => { /* noop */ });
     // Il server appena scritto è il server di questa coppia: se resta
     // solo nell'app, tornando qui da un altro collegamento si
     // riporterebbe dietro l'indirizzo vecchio.
     const next = allineaServerCoppia(scritta);
-    await saveConfig(next);
-    setCfg(next);
+    setCfg(salvaCfg(next));
     // La qualità è già stata applicata al tocco, ma applicarla di nuovo
     // non costa nulla e copre il caso di una config arrivata da altrove.
     applyQuality(next.videoQuality, true);
@@ -1499,8 +1716,7 @@ export default function App() {
     // in testa. Chi si accoppia con qualcun altro non sta dicendo di
     // volersi dimenticare del primo.
     const next = registraCoppia(cfg, pair);
-    await saveConfig(next);
-    setCfg(next);
+    setCfg(salvaCfg(next));
     setPeerName(pair.peerName);
     setScreen(next.setupShown ? 'channel' : 'setup');
   }, [cfg]);
@@ -1514,24 +1730,85 @@ export default function App() {
    * che si vede, che altrimenti resterebbe a mostrare la persona
    * appena lasciata.
    */
+  /**
+   * Riporta i comandi allo stato di una connessione appena aperta.
+   *
+   * Cambiando collegamento la sessione si rifà da capo: microfono
+   * acceso, camera spenta, niente immagini. I pulsanti però restavano
+   * come li avevi lasciati con l'altra persona, e un pulsante "video"
+   * acceso sopra a un video che non c'è non è una svista grafica: è il
+   * pulsante che dice il falso, e premendolo si spegne una cosa mai
+   * accesa.
+   */
+  /**
+   * Con che impostazioni è partito questo collegamento.
+   *
+   * Una riga sola, quando si comincia e a ogni cambio di collegamento.
+   * Le azioni le racconta il diario riga per riga, ma senza sapere da
+   * dove si parte non si capisce cosa vuol dire non averle cambiate: se
+   * la camera resta la posteriore per tutta la sera, la riga che lo
+   * spiega non c'è, perché nessuno l'ha girata.
+   *
+   * Solo al cambio di collegamento: scriverla a ogni ritocco sarebbe
+   * ripetere quello che la riga dell'azione ha appena detto.
+   */
+  const cfgRef = useRef<DuoConfig | null>(null);
+  useEffect(() => { cfgRef.current = cfg; }, [cfg]);
+  useEffect(() => {
+    const c = cfgRef.current;
+    if (!c?.pair) return;
+    const pezzi = [
+      `camera=${c.cameraFrontale !== false ? 'frontale' : 'posteriore'}`,
+      `uscita=${c.uscitaAudio}`,
+      `qualita=${c.videoQuality}`,
+      `voce-ricca=${c.audioMigliore ? 'si' : 'no'}`,
+      `volume=${Math.round(c.guadagno * 100)}%`,
+      `avviso=${c.avvisoSuono}`,
+      `vibra=${c.avvisoVibra}`,
+      `comandi=${c.comandi}`,
+      `diagnostica=${c.mostraDiagnostica ? 'si' : 'no'}`,
+    ];
+    Diario.segna(`impostazioni:${pezzi.join(',')}`).catch(() => { /* noop */ });
+  }, [cfg?.pair?.id]);
+
+  /**
+   * Il pulsante della camera segue il collegamento in uso.
+   *
+   * Non basta darlo alla sessione: il pulsante lo si guarda anche a
+   * video spento, ed è lì che dice con quale camera si aprirà.
+   */
+  useEffect(() => {
+    if (cfg) setCameraFrontale(cfg.cameraFrontale !== false);
+  }, [cfg?.cameraFrontale, cfg?.pair?.id]);
+
+  const azzeraComandi = useCallback(() => {
+    // Anche la memoria di com'era l'altro: è un'altra persona, e i suoi
+    // primi messaggi non sono "cambiamenti" rispetto al precedente.
+    statoAltroRef.current = {};
+    setVideoOn(false);
+    setAudioOn(true);
+    setLocalStream(null);
+    setLocalAspect(undefined);
+    setRemoteStream(null);
+    setRemoteHasVideo(false);
+    setPeerState({ audio: true, video: false });
+    setPeerVisto(false);
+    setPeerVp9(false);
+    setConnState('new');
+  }, []);
+
   const onSwitchPair = useCallback(async (id: string) => {
     if (!cfg) return;
     const next = passaACoppia(cfg, id);
     if (next === cfg) return;
-    await saveConfig(next);
-    setCfg(next);
+    setCfg(salvaCfg(next));
     setPeerName(next.pair?.peerName || '');
     setPeerPresent(false);
     peerActiveRef.current = false;
-    setPeerState({ audio: true, video: false });
-    setPeerVisto(false);
-    setPeerVp9(false);
-    setRemoteStream(null);
-    setRemoteHasVideo(false);
-    setConnState('new');
+    azzeraComandi();
     fermaAttesa();
     setScreen('channel');
-  }, [cfg, fermaAttesa]);
+  }, [cfg, fermaAttesa, azzeraComandi]);
 
   /**
    * Il nome che do io a un collegamento.
@@ -1543,8 +1820,7 @@ export default function App() {
   const onRenamePair = useCallback(async (id: string, nome: string) => {
     if (!cfg) return;
     const next = rinominaCoppia(cfg, id, nome);
-    await saveConfig(next);
-    setCfg(next);
+    setCfg(salvaCfg(next));
   }, [cfg]);
 
   /**
@@ -1556,6 +1832,12 @@ export default function App() {
    */
   const onSveglia = useCallback((suono: string) => {
     signalingRef.current?.sendSignal({ kind: 'sveglia', suono });
+    // Lo si sente anche da questa parte: chi manda un suono deve sapere
+    // cos'ha mandato, e sentire che è partito davvero. Qui però esce
+    // piano e dalla via della conversazione, non dalla sveglia: al
+    // volume pieno finirebbe dritto nel proprio microfono e tornerebbe
+    // all'altro raddoppiato, sopra a quello che sta già suonando da lui.
+    Sveglia.suona(suono, true).catch(() => {});
     Diario.segna(`sveglia-mandata:${suono}`).catch(() => {});
   }, []);
 
@@ -1565,20 +1847,17 @@ export default function App() {
     // parte deve sapere che non si tratta di una caduta.
     if (cfg.pair?.id === id) salutiamo.current = true;
     const next = dimenticaCoppia(cfg, id);
-    await saveConfig(next);
-    setCfg(next);
+    setCfg(salvaCfg(next));
     if (cfg.pair?.id === id) {
       setPeerName(next.pair?.peerName || '');
       setPeerPresent(false);
       peerActiveRef.current = false;
-      setRemoteStream(null);
-      setRemoteHasVideo(false);
-      setConnState('new');
+      azzeraComandi();
       // Sciogliendo l'ultimo non resta nulla a cui collegarsi; se invece
       // ne resta un altro si è già passati a quello.
       setScreen(isPaired(next) ? 'channel' : 'pairing');
     }
-  }, [cfg]);
+  }, [cfg, azzeraComandi]);
 
   // --- resa ----------------------------------------------------------------
   if (screen === 'loading' || !cfg) {
@@ -1608,8 +1887,7 @@ export default function App() {
           onQualityChange={(q) => applyQuality(q, true)}
           onLive={(patch) => setCfg((prev) => {
             if (!prev) return prev;
-            const next = { ...prev, ...patch };
-            saveConfig(next).catch(() => {});
+            const next = salvaCfg({ ...prev, ...patch });
             // Le opzioni audio vanno anche applicate: il tetto a caldo,
             // le elaborazioni riaprendo il microfono.
             if ('audioMigliore' in patch) applyAudio(next.audioMigliore, true);
@@ -1635,9 +1913,11 @@ export default function App() {
         <SetupScreen
           onDone={async () => {
             if (!cfg.setupShown) {
-              const next = { ...cfg, setupShown: true };
-              await saveConfig(next);
-              setCfg(next);
+              // `setupShown` è dell'app - una schermata mostrata una
+              // volta nella vita del telefono - ma il salvataggio passa
+              // di lì lo stesso, così le impostazioni della coppia
+              // restano allineate.
+              setCfg(salvaCfg({ ...cfg, setupShown: true }));
             }
             setScreen(setupFrom === 'impostazioni' ? 'settings' : 'channel');
           }}
@@ -1695,19 +1975,41 @@ export default function App() {
         knockPending={knockPending}
         audioRoute={audio.route}
         audioRoutes={audio.available}
-        onToggleAudio={() => setAudioOn(sessionRef.current?.toggleAudio() ?? false)}
+        onToggleAudio={() => {
+          const acceso = sessionRef.current?.toggleAudio() ?? false;
+          setAudioOn(acceso);
+          Diario.segna(`audio:${acceso ? 'on' : 'off'}`).catch(() => {});
+        }}
         onToggleVideo={onToggleVideo}
         onSwitchCamera={() => {
           const s = sessionRef.current;
           if (!s) return;
           // La verità sta nella sessione, anche a video spento: è lei che
           // ricorda con quale camera si aprirà.
-          setCameraFrontale(s.switchCamera());
+          const frontale = s.switchCamera();
+          setCameraFrontale(frontale);
+          // Se la scelta non si scrive, la sessione dopo riparte dalla
+          // frontale e la si deve rigirare ogni volta.
+          setCfg((prev) => (prev ? salvaCfg({ ...prev, cameraFrontale: frontale }) : prev));
+          Diario.segna(`camera:${frontale ? 'frontale' : 'posteriore'}`).catch(() => {});
         }}
         onSelectRoute={audio.select}
-        onKnock={() => signalingRef.current?.knock()}
+        onKnock={() => {
+          signalingRef.current?.knock();
+          Diario.segna('avvisa').catch(() => {});
+        }}
         onLeave={leaveChannel}
+        uscendo={uscendo}
         onSveglia={onSveglia}
+        /**
+         * L'ingrandimento resta di qua: cambia come guardo io, non cosa
+         * vede lui. Nel diario ci va lo stesso, perché spiega
+         * un'inquadratura che a rileggerla dopo non tornerebbe.
+         */
+        onIngrandimento={(z) => {
+          Diario.segna(z > 1.01 ? `ingrandimento:${z.toFixed(1)}x` : 'ingrandimento:pieno')
+            .catch(() => {});
+        }}
         onOpenSettings={() => setScreen('settings')}
       />
     </View>

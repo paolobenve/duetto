@@ -31,10 +31,14 @@
             </intent-filter>
         </receiver>
 
+        <!-- Niente `stopWithTask`: diceva ad Android di spegnere il
+             servizio quando il telefono mette via l'app, ed e' proprio il
+             momento in cui la presenza deve restare. Chi non vuole essere
+             raggiungibile ha "esci e renditi non disponibile", che lo dice
+             a parole sue. -->
         <service
             android:name=".ChannelForegroundService"
             android:exported="false"
-            android:stopWithTask="true"
             android:foregroundServiceType="microphone|camera" />
     </application>
 </manifest>

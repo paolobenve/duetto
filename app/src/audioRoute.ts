@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DeviceEventEmitter } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import InCallManager from 'react-native-incall-manager';
 
 /**
@@ -20,7 +19,13 @@ export type AudioRoute = 'SPEAKER_PHONE' | 'EARPIECE' | 'WIRED_HEADSET' | 'BLUET
 /** Ordine con cui il pulsante cicla. */
 const ORDER: AudioRoute[] = ['SPEAKER_PHONE', 'EARPIECE', 'WIRED_HEADSET', 'BLUETOOTH'];
 
-const STORAGE_KEY = 'duetto.audioRoute.v1';
+/**
+ * La memoria di prima, quando l'uscita era una sola per tutta l'app.
+ *
+ * Non si scrive più: la legge App una volta, per non far ricominciare
+ * da capo chi aveva già scelto. Vedi `impostazioni` dentro PairInfo.
+ */
+export const CHIAVE_USCITA_VECCHIA = 'duetto.audioRoute.v1';
 
 export const ROUTE_LABEL: Record<AudioRoute, string> = {
   SPEAKER_PHONE: 'Vivavoce',
@@ -43,9 +48,22 @@ const isRoute = (v: any): v is AudioRoute =>
 
 /**
  * Tiene traccia dell'uscita attiva e di quelle disponibili.
- * @param enabled attivo solo mentre si è nel canale
+ *
+ * @param enabled   attivo solo mentre si è nel canale
+ * @param preferita l'uscita ricordata per QUESTO collegamento
+ * @param ricorda   chiamata quando l'utente ne sceglie una
+ *
+ * L'uscita non è più una preferenza dell'app ma del collegamento: con
+ * una persona si parla in vivavoce mentre si cucina, con un'altra
+ * all'orecchio la sera. Per questo non se la ricorda più da sé - non
+ * saprebbe di chi è - ma la riceve e la restituisce a chi tiene i
+ * collegamenti.
  */
-export function useAudioRoute(enabled: boolean) {
+export function useAudioRoute(
+  enabled: boolean,
+  preferita?: string,
+  ricorda?: (route: AudioRoute) => void,
+) {
   // Prima che arrivi il primo evento assumiamo il minimo garantito.
   const [available, setAvailable] = useState<AudioRoute[]>([
     'SPEAKER_PHONE',
@@ -73,17 +91,15 @@ export function useAudioRoute(enabled: boolean) {
     }
   }, []);
 
-  // Preferenza salvata, letta una volta sola all'avvio.
+  // La preferenza arriva dal collegamento in uso, e cambia con lui.
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then((v) => {
-        if (isRoute(v)) {
-          preferred.current = v;
-          setCurrent(v);
-        }
-      })
-      .catch(() => { /* noop */ });
-  }, []);
+    if (!isRoute(preferita)) return;
+    preferred.current = preferita;
+    setCurrent(preferita);
+    // Fuori dal canale non si applica: l'uscita si sceglie quando c'è
+    // un suono da mandare da qualche parte.
+    if (enabled) applyRoute(preferita);
+  }, [preferita, enabled, applyRoute]);
 
   useEffect(() => {
     if (!enabled) {
@@ -138,8 +154,28 @@ export function useAudioRoute(enabled: boolean) {
     setCurrent(next); // ottimistico: l'evento confermera'
     preferred.current = next;
     applyRoute(next);
-    AsyncStorage.setItem(STORAGE_KEY, next).catch(() => { /* noop */ });
-  }, [available, current, applyRoute]);
+    ricorda?.(next);
+  }, [available, current, applyRoute, ricorda]);
+
+  /**
+   * Rimette l'uscita scelta, adesso.
+   *
+   * Serve dopo che qualcun altro ha rimesso mano all'audio: `start` di
+   * InCallManager riporta l'uscita a quella predefinita di sistema, e
+   * succede a ogni ingresso nel canale - anche quando l'ingresso è la
+   * conseguenza di un cambio di collegamento. Senza questo, la scelta
+   * veniva applicata a un audio appena spento e poi sovrascritta da chi
+   * lo riaccendeva: si salvava e non si vedeva.
+   */
+  const riapplica = useCallback(() => {
+    const want = preferred.current;
+    // Il prossimo elenco di dispositivi può ancora rimetterla a posto.
+    initialised.current = false;
+    if (want) {
+      setCurrent(want);
+      applyRoute(want);
+    }
+  }, [applyRoute]);
 
   /** Sceglie un'uscita precisa, e la ricorda. */
   const select = useCallback((route: AudioRoute) => {
@@ -147,11 +183,12 @@ export function useAudioRoute(enabled: boolean) {
     setCurrent(route);
     preferred.current = route;
     applyRoute(route);
-    AsyncStorage.setItem(STORAGE_KEY, route).catch(() => { /* noop */ });
-  }, [current, applyRoute]);
+    ricorda?.(route);
+  }, [current, applyRoute, ricorda]);
 
   return {
     route: current,
+    riapplica,
     /** solo quelle davvero collegate, nell'ordine di presentazione */
     available: ORDER.filter((r) => available.includes(r)),
     /** con una sola uscita non c'è nulla da scegliere */

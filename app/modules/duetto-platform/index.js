@@ -74,6 +74,12 @@ export const Foreground = isAndroid && NativeForeground
       nota: (title, text) =>
         call(NativeForeground, 'nota', String(title), String(text)),
 
+      /**
+       * Passa la mano all'ascolto senza interfaccia: si chiama quando
+       * l'interfaccia sta per sparire senza che nessuno l'abbia chiesto.
+       */
+      riprendiPresenza: () => call(NativeForeground, 'riprendiPresenza'),
+
       /** Toglie l'avviso, quando si rientra nell'app. */
       clearNotification: () => call(NativeForeground, 'clearNotification'),
 
@@ -112,6 +118,7 @@ export const Foreground = isAndroid && NativeForeground
       stop: unavailable,
       notify: unavailable,
       nota: unavailable,
+      riprendiPresenza: unavailable,
       clearNotification: unavailable,
       isBatteryUnrestricted: unavailable,
       requestBatteryUnrestricted: unavailable,
@@ -301,7 +308,7 @@ export const Volume = isAndroid && NativeVolume
  */
 export const Sveglia = isAndroid && NativeSveglia
   ? {
-      suona: (nome) => call(NativeSveglia, 'suona', String(nome)),
+      suona: (nome, eco) => call(NativeSveglia, 'suona', String(nome), !!eco),
       ferma: () => call(NativeSveglia, 'ferma'),
       elenco: () => call(NativeSveglia, 'elenco'),
     }

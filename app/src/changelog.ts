@@ -7,8 +7,28 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
-    "versione": "1.1.87",
+    "versione": "1.1.95",
     "paragrafi": [
+      {
+        "forte": "La presenza sopravvive al telefono che mette via l'app.",
+        "testo": "Su certi telefoni — un Motorola recente, per esempio — l'app viene smantellata **tre secondi** dopo essere finita in secondo piano, senza che nessuno l'abbia chiusa: da lì l'altro ti vedeva «non raggiungibile» finché non riaprivi Duetto. Ora in quel momento la presenza passa all'ascolto senza interfaccia, che riapre la connessione da solo, e il servizio non si spegne più insieme alla finestra."
+      },
+      {
+        "forte": "Ogni collegamento ricorda le sue impostazioni.",
+        "testo": "Nome con cui ti presenti, qualità del video, voce più ricca, righe tecniche, sfumatura dei comandi, suono e vibrazione dell'avviso, uscita audio, volume della voce dell'altro, camera: cambiando collegamento tornano quelle di quella persona. Prima erano una sola per tutta l'app, e con la seconda persona ti ritrovavi addosso le scelte fatte per la prima. La camera, poi, non era ricordata affatto: ogni volta si ripartiva dalla frontale."
+      },
+      {
+        "forte": "Uscendo, il diario parte prima di chiudere.",
+        "testo": "Premendo «Esci» compare «Sto uscendo, un momento…» per una frazione di secondo: è il tempo di mandare all'altro telefono le ultime righe, finché la connessione è ancora aperta. Prima restavano lì fino al collegamento successivo, e se l'app moriva nel frattempo raccontavano una storia che non arrivava a nessuno."
+      },
+      {
+        "forte": "L'ingrandimento del video non torna più indietro come un elastico.",
+        "testo": "Il numero dell'ingrandimento lo teneva il sistema e noi ne avevamo una copia che smetteva di aggiornarsi: lo schermo ingrandiva, il codice credeva di no, e al rilascio riportava tutto a schermo pieno. Ora il pizzico riparte da dove sei, il rilascio tiene, e il doppio tocco fa avanti e indietro. E l'ingrandimento non si azzera più quando l'immagine dell'altro si interrompe e ricompare."
+      },
+      {
+        "forte": "Il diario racconta cosa fate.",
+        "testo": "Microfono, camera, qualità, avvisi, ingrandimento, uscite: le tue azioni e le sue, ciascuna con la sua riga, più una riga d'apertura che dice con che impostazioni quel collegamento è partito. Serve a ricostruire dopo cos'è successo, e a capire cosa vuol dire non aver cambiato niente."
+      },
       {
         "forte": "Chi si stacca apposta lo si vede.",
         "testo": "Il server distingue chi saluta da chi sparisce, e per chi resta la differenza è tutta: da un tunnel si esce, da una scelta no. Se l'altro sceglie «esci e renditi non disponibile», ora leggi «si è reso non raggiungibile: ha staccato Duetto di proposito», invece di un «non raggiungibile» che sembra un guasto da aspettare."

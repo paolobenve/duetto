@@ -225,12 +225,21 @@ type Props = {
    */
   onLeave: (disponibile: boolean) => void;
   /**
+   * L'uscita è in corso: si sta mettendo al sicuro il diario.
+   *
+   * Dura qualche decimo di secondo. Senza dirlo, il pulsante sembra non
+   * aver fatto niente, e chi non vede reazione preme di nuovo.
+   */
+  uscendo?: boolean;
+  /**
    * Manda all'altro un suono forte per richiamarlo.
    *
    * Ha senso solo mentre siete tutti e due nel canale: se non c'è, il
    * suono non ha dove suonare, e per quello serve l'avviso.
    */
   onSveglia: (suono: string) => void;
+  /** quanto si è ingrandito il video grande, a gesto finito */
+  onIngrandimento?: (zoom: number) => void;
   onOpenSettings: () => void;
 };
 
@@ -244,7 +253,8 @@ export default function ChannelScreen(props: Props) {
     avvisoVersione, cameraFrontale, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes,
-    onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, onSveglia, onOpenSettings,
+    onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, uscendo,
+    onSveglia, onIngrandimento, onOpenSettings,
   } = props;
 
   // In Picture-in-Picture la finestra è minuscola: niente comandi.
@@ -557,6 +567,7 @@ export default function ChannelScreen(props: Props) {
         insetBasso={!compact && showStats ? (avvisoVersione ? 54 : 36) : 0}
         onSfondo={tocco}
         onSoloGrande={setSoloGrande}
+        onIngrandimento={onIngrandimento}
         segnoAltro={segnoAltro}
         placeholder={compact ? (
           /* Nella finestrella di Picture-in-Picture il riepilogo grande
@@ -627,6 +638,16 @@ export default function ChannelScreen(props: Props) {
           <Text style={styles.notiziaTesto}>{avviso}</Text>
           <Text style={styles.notiziaVia}>tocca per togliere</Text>
         </TouchableOpacity>
+      ) : null}
+
+      {/* "Sto uscendo": copre lo schermo e ferma i tocchi, così nessuno
+          preme altro mentre il diario sta partendo. */}
+      {uscendo ? (
+        <View style={styles.uscendoSopra}>
+          <Text style={styles.uscendoTesto}>
+            Sto uscendo, un momento…
+          </Text>
+        </View>
       ) : null}
 
       {/* Il volume dell'altro, mentre lo si sta cambiando. Sta al centro
@@ -1285,6 +1306,15 @@ const styles = StyleSheet.create({
   bold: { color: '#c9d2de', fontWeight: '700' },
   // Come l'avviso di VideoStage: una pastiglia al centro, non una fascia,
   // così sotto resta visibile il più possibile dell'immagine.
+  uscendoSopra: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(11,14,20,0.82)',
+    alignItems: 'center', justifyContent: 'center',
+    zIndex: 10,
+  },
+  uscendoTesto: {
+    color: '#e6ebf1', fontSize: 16, fontWeight: '600',
+  },
   volumeSopra: {
     position: 'absolute', left: 0, right: 0, top: '46%', alignItems: 'center',
   },

@@ -10,7 +10,8 @@ declare module 'tweetnacl-util' {
 declare module 'duetto-platform' {
   /** I suoni per richiamare l'altro: escono dal volume della sveglia. */
   export const Sveglia: {
-    suona(nome: string): Promise<boolean>;
+    /** `eco`: lo suona chi lo ha mandato, e allora esce piano */
+    suona(nome: string, eco?: boolean): Promise<boolean>;
     ferma(): Promise<boolean>;
     elenco(): Promise<string[]>;
   };
@@ -31,6 +32,8 @@ declare module 'duetto-platform' {
     notify(title: string, text: string): Promise<boolean>;
     /** notizia silenziosa: non suona e non vibra */
     nota(title: string, text: string): Promise<boolean>;
+    /** avvia l'ascolto senza interfaccia, quando l'app sta per sparire */
+    riprendiPresenza(): Promise<boolean>;
     clearNotification(): Promise<boolean>;
     isBatteryUnrestricted(): Promise<boolean>;
     requestBatteryUnrestricted(): Promise<boolean>;
