@@ -78,7 +78,14 @@ export type PresenceStatus =
   | 'offline';   // niente rete o server irraggiungibile
 
 export type SignalingEvents = {
-  onStatus?: (s: PresenceStatus) => void;
+  /**
+   * @param dettaglio con `offline`, il codice di chiusura del socket
+   *
+   * Il codice dice CHI ha chiuso: 1006 e' una caduta di rete, 1000 e
+   * 1001 una chiusura ordinata, 4xxx un rifiuto del server. Serve a chi
+   * legge il diario domani, non a chi guarda lo schermo adesso.
+   */
+  onStatus?: (s: PresenceStatus, dettaglio?: string) => void;
   onJoined?: (info: {
     polite: boolean;
     peerPresent: boolean;
@@ -205,7 +212,7 @@ export class Signaling {
       // rete, 1000/1001 una chiusura ordinata, 4xxx un rifiuto nostro.
       log('caduto dopo', Math.round((Date.now() - openedAt) / 1000), 's',
         '- codice', e?.code ?? '?', e?.reason ? `(${e.reason})` : '');
-      this.events.onStatus?.('offline');
+      this.events.onStatus?.('offline', `${e?.code ?? '?'}${e?.reason ? `/${e.reason}` : ''}`);
       if (!this.closedByUser) this.scheduleReconnect();
     };
   }
@@ -330,6 +337,39 @@ export class Signaling {
 
   get connected(): boolean {
     return this.ws?.readyState === WebSocket.OPEN;
+  }
+
+  /**
+   * Butta via il socket in corso e ne apre uno nuovo, subito.
+   *
+   * `reconnectNow` non basta quando il socket non e' ne' vivo ne' morto:
+   * per il sistema e' ancora "in apertura", nessun evento arriva piu' e
+   * l'attesa non scade mai. Qui lo si chiude a mano - la chiusura non
+   * conta come volontaria, quindi il riaggancio resta acceso - e si
+   * riparte.
+   */
+  rifaiDaCapo() {
+    if (this.closedByUser) return;
+    log('connessione rifatta da capo');
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    const vecchio = this.ws;
+    this.ws = null;
+    if (vecchio) {
+      // Zittito prima di chiuderlo: il suo `onclose` arriverebbe dopo che
+      // il nuovo e' gia' in piedi, e lo dichiarerebbe caduto.
+      try {
+        vecchio.onopen = null;
+        vecchio.onmessage = null;
+        vecchio.onerror = null;
+        vecchio.onclose = null;
+        vecchio.close();
+      } catch { /* noop */ }
+    }
+    this.backoff = RECONNECT_MIN_MS;
+    this.open();
   }
 
   private rawSend(obj: unknown) {

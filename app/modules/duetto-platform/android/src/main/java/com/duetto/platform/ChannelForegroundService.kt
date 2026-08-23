@@ -136,7 +136,9 @@ class ChannelForegroundService : Service() {
         // notifica e' la stessa - stesso canale, stesso numero - quindi
         // il passaggio non si vede.
         if (intent == null) {
-            goForeground()
+            // Ci ha rimessi in piedi il sistema: siamo in secondo piano, e
+            // il microfono da qui non si puo' chiedere.
+            goForeground(puoUsareIlMicrofono = false)
             if (PresenceService.canStart()) {
                 try {
                     androidx.core.content.ContextCompat.startForegroundService(
@@ -279,16 +281,42 @@ class ChannelForegroundService : Service() {
             .build()
     }
 
-    private fun goForeground() {
+    /**
+     * @param puoUsareIlMicrofono false quando non siamo noi ad avviarci
+     *
+     * Il tipo "microfono" da Android 14 si puo' chiedere solo stando in
+     * primo piano: chiederlo da fermi - come quando e' il SISTEMA a
+     * rimetterci in piedi dopo averci uccisi - fa lanciare un'eccezione
+     * e morire l'app. In quel caso si parte senza tipo: la notifica c'e'
+     * lo stesso, e chi ha davvero bisogno del microfono - l'ingresso nel
+     * canale - lo chiede da capo quando l'utente e' davanti allo schermo.
+     *
+     * E in ogni caso non si muore: se il sistema rifiuta, si scrive nel
+     * diario e ci si ferma. Un'app che va in errore non lascia nemmeno il
+     * modo di capire cos'e' successo.
+     */
+    private fun goForeground(puoUsareIlMicrofono: Boolean = true) {
         val notification = buildNotification()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            var type = ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-            if (cameraActive) {
-                type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && puoUsareIlMicrofono) {
+                var type = ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                if (cameraActive) {
+                    type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+                }
+                startForeground(NOTIFICATION_ID, notification, type)
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(
+                    NOTIFICATION_ID,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+                )
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
             }
-            startForeground(NOTIFICATION_ID, notification, type)
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
+        } catch (e: Exception) {
+            android.util.Log.w("Duetto", "servizio rifiutato dal sistema: ${e.message}")
+            Diario.campiona(applicationContext, "servizio-rifiutato")
+            try { stopSelf() } catch (_: Exception) { /* noop */ }
         }
     }
 

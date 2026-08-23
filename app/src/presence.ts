@@ -61,7 +61,12 @@ export function fraseMorte(quando: number, causa: string, nome: string): string 
   const quandoScritto = d.toDateString() === new Date().toDateString()
     ? `alle ${ora}`
     : `il ${d.toLocaleDateString()} alle ${ora}`;
-  return `${chi} \u00e8 sparito ${quandoScritto}: ${perche}. Adesso \u00e8 tornato.`;
+  // L'ora del ritorno, al secondo: una notizia letta due ore dopo, senza
+  // quel numero, non dice se e' tornato subito o poco fa.
+  const adesso = new Date().toLocaleTimeString(undefined, {
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  });
+  return `${chi} \u00e8 sparito ${quandoScritto}: ${perche}. Adesso (${adesso}) \u00e8 tornato.`;
 }
 
 /**

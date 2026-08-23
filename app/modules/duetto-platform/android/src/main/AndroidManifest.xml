@@ -4,6 +4,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
+    <!-- Per l'ascolto senza interfaccia, che non usa ne' microfono ne'
+         camera: tiene aperta una connessione e aspetta. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Android 13+: serve per mostrare la notifica del servizio -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -14,11 +17,27 @@
 
     <application>
         <!-- Presenza senza interfaccia: rimette in piedi la connessione
-             dopo il riavvio, senza aprire l'app (vietato da Android 10). -->
+             dopo il riavvio, senza aprire l'app (vietato da Android 10).
+
+             Il tipo NON e' "microphone": questo servizio il microfono non
+             lo apre mai - tiene una connessione e aspetta - e dichiararlo
+             era sbagliato di suo. Era anche fatale: da Android 14 un'app
+             che non e' in primo piano non puo' avviare un servizio di
+             tipo microfono, e noi lo avviamo proprio quando l'interfaccia
+             e' appena sparita. Il sistema lanciava un'eccezione e l'app
+             moriva.
+
+             "dataSync" sarebbe l'altra scelta ovvia, ma da Android 15 ha
+             un tetto di sei ore al giorno, e questa presenza deve poter
+             stare accesa tutta la notte. -->
         <service
             android:name=".PresenceService"
             android:exported="false"
-            android:foregroundServiceType="microphone" />
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Resta raggiungibile per la chiamata dell'altra persona" />
+        </service>
 
         <receiver
             android:name=".BootReceiver"

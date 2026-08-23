@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 
@@ -19,6 +20,7 @@ import androidx.core.app.NotificationManagerCompat
  */
 object Notifier {
 
+    private const val TAG = "Duetto"
     private const val ALERT_NOTIFICATION_ID = 4712
     private const val PRESENCE_CHANNEL_ID = "duetto_presence"
     private const val PRESENCE_NOTIFICATION_ID = 4711
@@ -154,14 +156,39 @@ object Notifier {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            service.startForeground(
-                PRESENCE_NOTIFICATION_ID,
-                notification,
-                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE,
-            )
-        } else {
-            service.startForeground(PRESENCE_NOTIFICATION_ID, notification)
+        /**
+         * Il tipo dice ad Android a cosa serve questo servizio, e da
+         * Android 14 alcuni tipi si possono chiedere solo stando in primo
+         * piano. Qui non si e' quasi mai: la presenza riparte dopo un
+         * riavvio, o quando l'interfaccia e' appena stata smantellata.
+         *
+         * "specialUse" e' quello onesto - restare raggiungibili - e
+         * l'unico senza permessi da chiedere ne' tetti di durata.
+         */
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                service.startForeground(
+                    PRESENCE_NOTIFICATION_ID,
+                    notification,
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+                )
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                service.startForeground(
+                    PRESENCE_NOTIFICATION_ID,
+                    notification,
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE,
+                )
+            } else {
+                service.startForeground(PRESENCE_NOTIFICATION_ID, notification)
+            }
+        } catch (e: Exception) {
+            // Se il sistema rifiuta, la presenza non parte: e' un guaio.
+            // Ma un'app che va in errore e' peggio, e a chi la usa non
+            // resta nemmeno il modo di sapere cos'e' successo. Lo scrive
+            // nel diario e si ferma.
+            Log.w(TAG, "presenza rifiutata dal sistema: ${e.message}")
+            Diario.campiona(service.applicationContext, "presenza-rifiutata")
+            try { service.stopSelf() } catch (_: Exception) { /* noop */ }
         }
     }
 

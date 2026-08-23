@@ -111,6 +111,29 @@ const CHIAVE_GUADAGNO = 'duetto.volume.altro';
  * domanda ogni cinque minuti costa quanto un battito: è il risveglio
  * della radio a costare, non i venti byte.
  */
+/**
+ * Quanto si sopporta prima di rifare la connessione da zero.
+ *
+ * Due attese, perché i due stati vogliono dire cose diverse.
+ *
+ * «Senza collegamento» dura poco per costruzione: il riaggancio riprova
+ * dopo mezzo secondo, poi 1, 2, 4, e da lì ogni quattro - e a ogni
+ * tentativo lo stato passa a «mi collego». Restarci fermi otto secondi
+ * vuol dire che nessuno sta più riprovando.
+ *
+ * «Mi collego» invece è lo stato in cui si nasconde il socket che non è
+ * né vivo né morto: abbiamo chiesto di aprire, nessuno risponde, nessun
+ * evento arriva più e nessuna attesa scade. Aprire una connessione, anche
+ * su rete mobile lenta, prende un secondo o due: quindici vuol dire che
+ * la risposta non arriverà mai.
+ *
+ * Sbagliare per eccesso costa quasi nulla - rifare da zero è ciò che il
+ * riaggancio fa già, solo partendo pulito - e sbagliare per difetto
+ * costa una conversazione.
+ */
+const ATTESA_SENZA_SERVER_MS = 8 * 1000;
+const ATTESA_IN_APERTURA_MS = 15 * 1000;
+
 const PRESENZA_FITTA_MS = 60 * 1000;
 const PRESENZA_RADA_MS = 5 * 60 * 1000;
 const PRESENZA_PAZIENZA_MS = 15 * 60 * 1000;
@@ -375,6 +398,9 @@ export default function App() {
    * e senza questa riga bisogna chiederlo a voce e fidarsi della
    * risposta. Va nel diario nostro, che a un cavo ci arriva.
    */
+  /** Lo stato del server visto l'ultima volta, per segnarne i passaggi. */
+  const statoServerRef = useRef<PresenceStatus>('connecting');
+
   /**
    * L'ultimo stato dell'altro, per accorgersi di cosa CAMBIA.
    *
@@ -556,6 +582,29 @@ export default function App() {
   }, [testoNotifica, presenzaViva]);
 
   /**
+   * Se restiamo senza server troppo a lungo, si rifà da capo.
+   *
+   * Il riaggancio normale riprova ogni mezzo secondo fino a quattro, e
+   * quasi sempre basta. Non basta quando il socket non è né vivo né
+   * morto: per il sistema è ancora in apertura, non arriva più nessun
+   * evento, e l'attesa non scade mai - l'app resta a dire «senza
+   * collegamento al server» con il telefono perfettamente in rete.
+   *
+   * Vale per tutti e due gli stati in cui si può restare appesi, con
+   * attese diverse: vedi ATTESA_SENZA_SERVER_MS e ATTESA_IN_APERTURA_MS.
+   */
+  useEffect(() => {
+    if (!disponibile) return;
+    if (status !== 'offline' && status !== 'connecting') return;
+    const quanto = status === 'offline' ? ATTESA_SENZA_SERVER_MS : ATTESA_IN_APERTURA_MS;
+    const t = setTimeout(() => {
+      Diario.segna(`server:rifaccio:${status}`).catch(() => { /* noop */ });
+      signalingRef.current?.rifaiDaCapo();
+    }, quanto);
+    return () => clearTimeout(t);
+  }, [status, disponibile]);
+
+  /**
    * Ogni tanto si torna a chiedere al server se l'altro c'è.
    *
    * Solo mentre lo si aspetta: appena entra nel canale non serve più
@@ -682,7 +731,12 @@ export default function App() {
     ritornoInArrivo.current = setTimeout(() => {
       ritornoInArrivo.current = null;
       const chi = shownNameRef.current || 'L’altro';
-      const testo = `${chi} è di nuovo raggiungibile.`;
+      // Con l'ora al secondo: una notifica trovata dopo, senza, non dice
+      // se è tornato un minuto fa o stamattina.
+      const adesso = new Date().toLocaleTimeString(undefined, {
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+      });
+      const testo = `${chi} è di nuovo raggiungibile (${adesso}).`;
       // Il titolo dice su quale collegamento, come per gli avvisi: con
       // più di uno configurato, "è di nuovo raggiungibile" da solo non
       // dice chi.
@@ -974,9 +1028,26 @@ export default function App() {
           mode: 'listening',
         },
         {
-          onStatus: (st) => {
+          onStatus: (st, dettaglio) => {
             setStatus(st);
             if (st === 'offline') signalingWasDown.current = true;
+            /**
+             * Le cadute del collegamento al server, nel diario.
+             *
+             * Era l'unica cosa che non registravamo: cosa fai tu, cosa fa
+             * lui, quando muore l'app, quando cade lui - e non quando il
+             * server sparisce per noi. È il buco che ha fatto perdere due
+             * giorni su un altro fronte. Il codice dice chi ha chiuso:
+             * 1006 caduta di rete, 1000 chiusura ordinata, 4xxx rifiuto
+             * del server.
+             */
+            const era = statoServerRef.current;
+            if (st === 'offline' && era !== 'offline') {
+              Diario.segna(`server:giu:${dettaglio ?? '?'}`).catch(() => {});
+            } else if (st !== 'offline' && st !== 'connecting' && era === 'offline') {
+              Diario.segna('server:ok').catch(() => {});
+            }
+            statoServerRef.current = st;
           },
 
           onJoined: ({ peerPresent: present, peerActive, peerName: n, turn }) => {
