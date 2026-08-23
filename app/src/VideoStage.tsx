@@ -185,13 +185,23 @@ type Props = {
    * guardando, e il riquadrino da solo non lo dice.
    */
   onSoloGrande?: (chi: 'tu' | 'altro' | null) => void;
+  /**
+   * Cosa scrivere nel riquadrino quando dentro non c'è nessuna immagine.
+   *
+   * Lo decide chi ci sta sopra, perché è lui a sapere come sta l'altro:
+   * qui si sa solo che un video non c'è, e "in attesa" - che è quello
+   * che c'era scritto sempre - è vero quando la sua immagine sta per
+   * tornare, ma non quando è nel canale con la camera spenta o non è
+   * raggiungibile affatto.
+   */
+  etichettaVuoto?: string;
 };
 
 export default function VideoStage(props: Props) {
   const {
     localStream, remoteStream, localHasVideo, remoteHasVideo,
     localAspect, remoteAspect, remoteVideoKey, compact, placeholder, segnoAltro, segnoMio,
-    specchia = true, onIngrandimento,
+    specchia = true, onIngrandimento, etichettaVuoto,
     awaitingRemote, notice,
   } = props;
   const { width, height } = useWindowDimensions();
@@ -201,13 +211,23 @@ export default function VideoStage(props: Props) {
   const [selfBig, setSelfBig] = useState(false);
   const bothHaveVideo = localHasVideo && remoteHasVideo;
 
-  // Con un solo video acceso lo scambio non ha senso e si torna al
-  // default - ma NON durante un'interruzione: lì il video dell'altro
-  // manca solo momentaneamente, e azzerare la disposizione scelta
-  // significherebbe ritrovarsela cambiata a ogni caduta di rete.
+  /**
+   * Si torna al default solo quando di mio non c'è niente da mostrare.
+   *
+   * Prima si tornava indietro appena i video non erano due, e con la
+   * camera accesa da solo lo scambio non teneva: si toccava il
+   * riquadrino, la propria immagine saliva e nello stesso istante
+   * ridiscendeva. Ma lì la scelta esiste eccome - la propria immagine
+   * grande, o il riepilogo di dov'è l'altro con la propria immagine nel
+   * riquadrino - ed è di chi guarda.
+   *
+   * NON si azzera durante un'interruzione: lì il video dell'altro manca
+   * solo momentaneamente, e azzerare significherebbe ritrovarsi la
+   * disposizione cambiata a ogni caduta di rete.
+   */
   useEffect(() => {
-    if (!bothHaveVideo && selfBig && !awaitingRemote) setSelfBig(false);
-  }, [bothHaveVideo, selfBig, awaitingRemote]);
+    if (!localHasVideo && selfBig && !awaitingRemote) setSelfBig(false);
+  }, [localHasVideo, selfBig, awaitingRemote]);
 
   // --- Chi va dove --------------------------------------------------------
   let bigStream: MediaStream | null = null;
@@ -243,17 +263,27 @@ export default function VideoStage(props: Props) {
     }
   } else if (localHasVideo) {
     /**
-     * Solo la mia camera accesa: la mia immagine sta nel RIQUADRINO, e
-     * il posto grande resta al riepilogo.
+     * Solo la mia camera accesa: di norma la mia immagine sta nel
+     * RIQUADRINO e il posto grande resta al riepilogo.
      *
      * Prima la mia faccia prendeva tutto lo schermo, e con lei spariva
      * l'unica cosa che dicesse dov'era l'altro: accendendo il video non
      * si sapeva più se fosse nel canale, in attesa o irraggiungibile.
      * La propria immagine serve a controllare l'inquadratura, e per
      * quello un riquadrino basta e avanza.
+     *
+     * Ma è la norma, non un divieto: un tocco sul riquadrino porta la
+     * propria immagine a schermo intero, e il riquadrino resta lì vuoto
+     * - con il segno di come sta l'altro - per tornare indietro.
      */
-    pipStream = localStream;
-    pipIsSelf = true;
+    if (selfBig) {
+      bigStream = localStream;
+      bigIsSelf = true;
+      pipEmpty = true;
+    } else {
+      pipStream = localStream;
+      pipIsSelf = true;
+    }
   }
 
   // Chi guarda da fuori ha bisogno di sapere quanto spazio occupa
@@ -844,7 +874,7 @@ export default function VideoStage(props: Props) {
           )}
           <View style={styles.pipTag} pointerEvents="none">
             <Text style={styles.pipTagText}>
-              {pipStream ? (pipIsSelf ? 'Tu' : 'Non tu') : 'in attesa'}
+              {pipStream ? (pipIsSelf ? 'Tu' : 'Non tu') : (etichettaVuoto || 'in attesa')}
             </Text>
             {pipIsSelf ? segnoMio : segnoAltro}
           </View>

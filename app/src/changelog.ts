@@ -7,6 +7,19 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.1.100",
+    "paragrafi": [
+      {
+        "forte": "Con la camera accesa da solo puoi andare a schermo intero.",
+        "testo": "Un tocco sul riquadrino porta la tua immagine grande, un altro ti riporta al riepilogo; prima la scelta cadeva nello stesso istante in cui la facevi. Il riquadrino resta lì vuoto, e dice com'è messo l'altro con le parole vere - il suo nome se è nel canale, «in attesa», «si è staccato», «non raggiungibile» - invece di un «in attesa» buono per tutte le stagioni."
+      },
+      {
+        "forte": "Niente più versioni vecchie inventate.",
+        "testo": "Quando l'altro usciva dal canale, l'app continuava a dire «di là una più vecchia»: è il segno con cui si riconosce un Duetto vecchio, cioè non dichiarare la versione, ma uscendo non la dichiara nessuno."
+      }
+    ]
+  },
+  {
     "versione": "1.1.99",
     "paragrafi": [
       {

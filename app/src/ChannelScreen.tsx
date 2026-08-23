@@ -626,6 +626,11 @@ export default function ChannelScreen(props: Props) {
         remoteVideoKey={remoteVideoKey}
         awaitingRemote={interrupted}
         notice={notice}
+        // Il riquadrino vuoto - quando la camera ce l'hai solo tu e sei
+        // andato a schermo intero - è l'unica cosa rimasta a dire dov'è
+        // l'altro: che dica quello vero, non un "in attesa" buono per
+        // tutte le stagioni.
+        etichettaVuoto={parolaAltro(status, peerName, peerPresent, peerStaccato)}
         localAspect={localAspect}
         remoteAspect={remoteAspect}
         compact={compact}
@@ -1110,6 +1115,24 @@ function comeSta(nome: string, presente: boolean, staccato = false): string {
  * Serve in Picture-in-Picture: chi ha premuto Indietro non sta
  * leggendo, sta tenendo d'occhio. Una faccia e una parola.
  */
+/**
+ * Come sta l'altro, in due parole.
+ *
+ * Sta fuori dai componenti perché la usano in due: il riquadro piccolo
+ * della modalità finestrella e l'etichetta del riquadrino vuoto. Due
+ * vocabolari diversi per la stessa cosa, nello stesso schermo, sarebbero
+ * due cose da imparare invece di una.
+ */
+function parolaAltro(
+  status: PresenceStatus, peerName: string, peerPresent: boolean, peerStaccato: boolean,
+): string {
+  return status === 'connecting' ? 'mi collego\u2026'
+    : status === 'offline' ? 'senza server'
+      : status === 'together' ? (peerName || 'c\u2019\u00e8')
+        : peerStaccato ? 'si \u00e8 staccato'
+          : peerPresent ? 'in attesa' : 'non raggiungibile';
+}
+
 function PresenceMini(props: {
   status: PresenceStatus;
   peerName: string;
@@ -1118,11 +1141,7 @@ function PresenceMini(props: {
   peerStaccato: boolean;
 }) {
   const { status, peerName, peerAvatar, peerPresent, peerStaccato } = props;
-  const testo = status === 'connecting' ? 'mi collego…'
-    : status === 'offline' ? 'senza server'
-      : status === 'together' ? (peerName || 'c’è')
-        : peerStaccato ? 'si è staccato'
-          : peerPresent ? 'in attesa' : 'non raggiungibile';
+  const testo = parolaAltro(status, peerName, peerPresent, peerStaccato);
   const iniziale = peerName.trim().charAt(0).toUpperCase();
   return (
     <View style={styles.miniCard}>

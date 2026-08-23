@@ -1402,7 +1402,14 @@ export default function App() {
    */
   const scordaAltro = useCallback((subito: boolean) => {
     fermaAttesa();
-    const spegni = () => setPeerState({ audio: true, video: false });
+    const spegni = () => {
+      setPeerState({ audio: true, video: false });
+      // Anche "l'ho visto": senza, restava vero mentre il suo stato era
+      // vuoto, e siccome un Duetto vecchio si riconosce proprio dal non
+      // dichiarare la versione, uscito dal canale gli veniva attribuita
+      // una versione vecchia che non ha mai avuto.
+      setPeerVisto(false);
+    };
     if (subito) { spegni(); return; }
     timerAssenza.current = setTimeout(() => {
       timerAssenza.current = null;
