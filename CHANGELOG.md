@@ -8,6 +8,24 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.1.105
+
+**Il nome del collegamento si vede in ogni notifica**, in corsivo, in testa al testo: «*Casa* ·
+Sei nel canale · Anna in attesa». Stava nel titolo, che con la notifica ripiegata su parecchi
+telefoni non si vede - e «Sei nel canale», con più collegamenti configurati, non dice in quale.
+Lo stesso nome, sempre in corsivo, nella pastiglia in alto e nel riepilogo al centro.
+
+**Una notifica scacciata non torna più.** Veniva riscritta ogni minuto per rimediare a un
+aggiornamento perso, e una notifica riscritta rinasce: ora si riscrive solo quando il testo
+cambia davvero, e riprova soltanto se la scrittura è fallita.
+
+## 1.1.101
+
+**Il riquadrino non si perde più fuori dallo schermo.** Si poteva trascinare ovunque e rientrava
+solo alla fine del gesto: se quella fine non arrivava - gesto rubato da un altro tocco - restava
+fuori, e niente lo recuperava. Adesso il bordo lo ferma mentre lo muovi, come le finestrelle di
+WhatsApp o FaceTime, e lo stesso vale allargandolo.
+
 ## 1.1.100
 
 **Con la camera accesa da solo puoi andare a schermo intero.** Un tocco sul riquadrino porta la

@@ -27,12 +27,12 @@ declare module 'duetto-platform' {
   export const Foreground: {
     start(text?: string, withCamera?: boolean): Promise<boolean>;
     setCameraActive(active: boolean): Promise<boolean>;
-    /** titolo e testo della notifica fissa: il titolo dice il collegamento */
-    setText(text: string, title?: string): Promise<boolean>;
+    /** testo della notifica fissa, e nome del collegamento da metterci davanti */
+    setText(text: string, nome?: string): Promise<boolean>;
     stop(): Promise<boolean>;
-    notify(title: string, text: string): Promise<boolean>;
+    notify(nome: string, text: string): Promise<boolean>;
     /** notizia silenziosa: non suona e non vibra */
-    nota(title: string, text: string): Promise<boolean>;
+    nota(nome: string, text: string): Promise<boolean>;
     /** toglie la notizia quando non è più vera */
     togliNota(): Promise<boolean>;
     /** avvia l'ascolto senza interfaccia, quando l'app sta per sparire */

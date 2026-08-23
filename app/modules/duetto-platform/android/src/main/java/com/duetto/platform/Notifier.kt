@@ -9,6 +9,7 @@ import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.text.HtmlCompat
 
 /**
  * Notifiche di avviso ("Anna è nel canale").
@@ -46,6 +47,33 @@ object Notifier {
      * costruzione, e sta in un posto suo per non scacciare l'avviso vero
      * se arrivano insieme.
      */
+    /** Il titolo: uguale per tutte, il nome del collegamento sta nel testo. */
+    private const val TITOLO = "Duetto"
+
+    /**
+     * Il testo di una notifica, con davanti il nome del collegamento.
+     *
+     * In corsivo, perche' non e' parte della frase: e' la stanza in cui
+     * la frase e' stata detta. Sta nel TESTO e non nel titolo perche' il
+     * titolo, con la notifica ripiegata, su parecchi telefoni non si
+     * vede - e "Sei nel canale" senza il nome, con piu' di un
+     * collegamento configurato, non dice in quale.
+     *
+     * Con un collegamento solo il nome e' vuoto e non compare niente:
+     * non c'e' nulla da distinguere.
+     */
+    fun conNome(nome: String, testo: String): CharSequence {
+        if (nome.isEmpty()) return testo
+        return HtmlCompat.fromHtml(
+            "<i>${scappa(nome)}</i> \u00b7 ${scappa(testo)}",
+            HtmlCompat.FROM_HTML_MODE_LEGACY,
+        )
+    }
+
+    /** I nomi li scrive l'utente: un "<" non deve diventare un tag. */
+    private fun scappa(s: String) =
+        s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
     /** Toglie la notizia: si usa quando quello che diceva non vale piu'. */
     fun togliNota(ctx: Context) {
         try {
@@ -53,7 +81,7 @@ object Notifier {
         } catch (_: Exception) { /* noop */ }
     }
 
-    fun mostraNota(ctx: Context, title: String, text: String) {
+    fun mostraNota(ctx: Context, nome: String, text: String) {
         val launch = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)?.apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
@@ -64,9 +92,9 @@ object Notifier {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val notification = NotificationCompat.Builder(ctx, PRESENCE_CHANNEL_ID)
-            .setContentTitle(title)
-            .setContentText(text)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setContentTitle(TITOLO)
+            .setContentText(conNome(nome, text))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(conNome(nome, text)))
             .setSmallIcon(R.drawable.ic_notifica)
             .setContentIntent(pending)
             .setAutoCancel(true)
@@ -80,7 +108,7 @@ object Notifier {
         }
     }
 
-    fun show(ctx: Context, title: String, text: String) {
+    fun show(ctx: Context, nome: String, text: String) {
         // Il canale dipende dalle preferenze: vedi Avvisi. Da lì viene
         // il suono nel caso normale; vibrazione e suono in conversazione
         // li fa Avvisi.avvisaOra qui sotto, perché il canale non può.
@@ -97,8 +125,8 @@ object Notifier {
         )
 
         val builder = NotificationCompat.Builder(ctx, canale)
-            .setContentTitle(title)
-            .setContentText(text)
+            .setContentTitle(TITOLO)
+            .setContentText(conNome(nome, text))
             .setSmallIcon(R.drawable.ic_notifica)
             .setContentIntent(pending)
             .setAutoCancel(true)
@@ -133,7 +161,7 @@ object Notifier {
     private const val CHIAVE_TITOLO = "titolo-notifica"
 
     /** Ricorda come si chiama il collegamento in uso. */
-    fun ricordaTitolo(ctx: Context, titolo: String) {
+    fun ricordaNome(ctx: Context, titolo: String) {
         try {
             ctx.getSharedPreferences(BootReceiver.PREFS, Context.MODE_PRIVATE)
                 .edit().putString(CHIAVE_TITOLO, titolo).apply()
@@ -141,19 +169,17 @@ object Notifier {
     }
 
     /**
-     * Il titolo da mettere nelle notifiche: "Duetto - Casa".
+     * Il nome del collegamento in uso, come l'ha scritto l'app.
      *
-     * Lo scrive l'app, che sa il nome del collegamento; qui si rilegge
-     * perché dopo un riavvio del telefono la notifica di presenza
-     * compare prima che l'app abbia parlato, e senza questo si
-     * presenterebbe con il nome nudo mentre tutte le altre hanno anche
-     * quello del collegamento.
+     * Si rilegge da qui perché dopo un riavvio del telefono la notifica
+     * di presenza compare prima che l'app abbia parlato, e senza questo
+     * non direbbe su quale collegamento sta aspettando.
      */
-    fun titolo(ctx: Context): String {
+    fun nome(ctx: Context): String {
         return try {
             ctx.getSharedPreferences(BootReceiver.PREFS, Context.MODE_PRIVATE)
-                .getString(CHIAVE_TITOLO, null) ?: "Duetto"
-        } catch (_: Exception) { "Duetto" }
+                .getString(CHIAVE_TITOLO, null) ?: ""
+        } catch (_: Exception) { "" }
     }
 
     /**
@@ -191,8 +217,8 @@ object Notifier {
         }
 
         val notification = NotificationCompat.Builder(service, PRESENCE_CHANNEL_ID)
-            .setContentTitle(titolo(service))
-            .setContentText("In attesa")
+            .setContentTitle(TITOLO)
+            .setContentText(conNome(nome(service), "In attesa"))
             .setSmallIcon(R.drawable.ic_notifica)
             .setContentIntent(pending)
             .setOngoing(true)

@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { RTCView, MediaStream } from 'react-native-webrtc';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Diario } from 'duetto-platform';
 import { DEFAULT_ASPECT } from './webrtc';
 
 /**
@@ -373,6 +374,27 @@ export default function VideoStage(props: Props) {
     };
   }, [width, height, insetV, insetH, insetBasso]);
 
+  /**
+   * Traccia TEMPORANEA di chi sposta il riquadrino.
+   *
+   * Il riquadrino, all'inizio di un trascinamento, salta in un'altra
+   * posizione - ma solo dopo aver spento e riacceso il video, mai la
+   * prima volta. Dal codice i sospetti sono tre (la ricollocazione
+   * automatica, la rete di sicurezza sulla posizione, la molla del
+   * rilascio precedente ripresa a metà) e non si distinguono guardando:
+   * si distinguono guardando il diario di chi ce l'ha in mano. Da
+   * togliere quando il colpevole è noto.
+   */
+  const traccia = (chi: string, x: number, y: number, da?: { x: number; y: number }) => {
+    const dx = Math.round(x - (da?.x ?? 0));
+    const dy = Math.round(y - (da?.y ?? 0));
+    if (da && Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+    Diario.segna(
+      `riquadrino:${chi}:${Math.round(x)},${Math.round(y)}` +
+      (da ? ` da ${Math.round(da.x)},${Math.round(da.y)}` : ''),
+    ).catch(() => { /* noop */ });
+  };
+
   const posIniziale = useRef<{ x: number; y: number } | null>(null);
   if (posIniziale.current === null) {
     const w = Math.round(width * (posizioneScelta?.fw ?? START_FRACTION));
@@ -451,6 +473,7 @@ export default function VideoStage(props: Props) {
         // senza il fermo, ogni correzione ne chiama un'altra e la pila
         // delle chiamate si esaurisce - l'app cadeva accendendo il video.
         stiamoSistemando.current = true;
+        traccia('rete', x, y, v);
         posRef.current = { x, y };
         pan.setValue({ x, y });
         stiamoSistemando.current = false;
@@ -476,6 +499,7 @@ export default function VideoStage(props: Props) {
     const y = !a ? minY : a.ay === 'alto'
       ? minY + a.oy * dy : maxY - a.oy * dy;
     if (Math.abs(x - posRef.current.x) < 0.5 && Math.abs(y - posRef.current.y) < 0.5) return;
+    traccia('ricolloca', x, y, posRef.current);
     posRef.current = { x, y };
     if (animate) {
       Animated.spring(pan, {
@@ -486,11 +510,33 @@ export default function VideoStage(props: Props) {
     }
   }, [pan, spazio]);
 
+  /**
+   * Le stesse coordinate, riportate dentro i bordi.
+   *
+   * Serve DURANTE il gesto, non solo alla fine: prima il riquadrino si
+   * poteva trascinare dove si voleva e rientrava al rilascio, il che
+   * regge finché il rilascio arriva. Se il gesto viene rubato da un
+   * altro, o il riquadrino smette di esistere sotto il dito, quel
+   * rientro non avviene mai e il riquadrino resta fuori dallo schermo -
+   * senza più niente che lo riporti dentro, perché tutte le reti di
+   * sicurezza tacciono finché un gesto risulta in corso. Fermandolo al
+   * bordo mentre lo si muove, la posizione è sempre buona: non c'è
+   * nessun momento in cui debba essere qualcuno a rimediare.
+   */
+  const dentro = useCallback((x: number, y: number) => {
+    const { minX, minY, maxX, maxY } = spazio();
+    return {
+      x: Math.min(Math.max(x, minX), maxX),
+      y: Math.min(Math.max(y, minY), maxY),
+    };
+  }, [spazio]);
+
   const clampIntoScreen = useCallback((animate = true) => {
     const { minX, minY, maxX, maxY } = spazio();
     const x = Math.min(Math.max(posRef.current.x, minX), maxX);
     const y = Math.min(Math.max(posRef.current.y, minY), maxY);
     if (x === posRef.current.x && y === posRef.current.y) { ricorda(); return; }
+    traccia('rientro', x, y, posRef.current);
     // La posizione finale si registra subito: aspettando la fine
     // dell'animazione si ricorderebbe quella di partenza.
     posRef.current = { x, y };
@@ -582,19 +628,38 @@ export default function VideoStage(props: Props) {
             } else if (pinchStart.current.dist > 0) {
               const ratio = dist / pinchStart.current.dist;
               applicaLarghezza(clampWidth(pinchStart.current.w * ratio));
+              // Crescendo, il riquadrino sfora dal bordo a cui è
+              // appoggiato: la ricollocazione automatica qui non entra,
+              // perché un gesto è in corso.
+              pan.setValue(dentro(posRef.current.x, posRef.current.y));
             }
             return;
           }
 
           pinchStart.current = null;
-          if (!partenzaDito.current) partenzaDito.current = { dx: g.dx, dy: g.dy };
+          if (!partenzaDito.current) {
+            partenzaDito.current = { dx: g.dx, dy: g.dy };
+            {
+              // Con i bordi consentiti: serve a sapere se la posizione
+              // di partenza era già fuori da essi, cioè se il salto è
+              // una correzione o uno spostamento inventato.
+              const b = spazio();
+              Diario.segna(
+                `riquadrino:primo-tocco:${Math.round(inizioTrascinamento.current.x)},` +
+                `${Math.round(inizioTrascinamento.current.y)} ` +
+                `dentro ${Math.round(b.minX)}..${Math.round(b.maxX)},` +
+                `${Math.round(b.minY)}..${Math.round(b.maxY)} ` +
+                `misura ${sizeRef.current.w}x${sizeRef.current.h}`,
+              ).catch(() => { /* noop */ });
+            }
+          }
           const dx = g.dx - partenzaDito.current.dx;
           const dy = g.dy - partenzaDito.current.dy;
           if (Math.abs(dx) > 4 || Math.abs(dy) > 4) dragged.current = true;
-          pan.setValue({
-            x: inizioTrascinamento.current.x + dx,
-            y: inizioTrascinamento.current.y + dy,
-          });
+          pan.setValue(dentro(
+            inizioTrascinamento.current.x + dx,
+            inizioTrascinamento.current.y + dy,
+          ));
         },
         onPanResponderRelease: () => {
           gestoInCorso.current = false;
@@ -613,7 +678,7 @@ export default function VideoStage(props: Props) {
           clampIntoScreen();
         },
       }),
-    [pan, clampIntoScreen, clampWidth, applicaLarghezza],
+    [pan, dentro, spazio, clampIntoScreen, clampWidth, applicaLarghezza],
   );
 
   // --- Maniglia d'angolo per ridimensionare con un dito -------------------
@@ -635,11 +700,12 @@ export default function VideoStage(props: Props) {
           // di scatto appena si toccava la maniglia.
           if (partenzaManiglia.current === null) partenzaManiglia.current = g.dx;
           applicaLarghezza(clampWidth(resizeStart.current + g.dx - partenzaManiglia.current));
+          pan.setValue(dentro(posRef.current.x, posRef.current.y));
         },
         onPanResponderRelease: () => clampIntoScreen(),
         onPanResponderTerminate: () => clampIntoScreen(),
       }),
-    [clampWidth, clampIntoScreen, applicaLarghezza],
+    [pan, dentro, clampWidth, clampIntoScreen, applicaLarghezza],
   );
 
   // --- Zoom sul video grande ----------------------------------------------

@@ -47,12 +47,10 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
     }
 
     @ReactMethod
-    fun setText(text: String, title: String, promise: Promise) {
+    fun setText(text: String, nome: String, promise: Promise) {
         sendToService(promise) {
             putExtra(ChannelForegroundService.EXTRA_TEXT, text)
-            if (title.isNotEmpty()) {
-                putExtra(ChannelForegroundService.EXTRA_TITLE, title)
-            }
+            putExtra(ChannelForegroundService.EXTRA_NOME, nome)
         }
     }
 
@@ -153,9 +151,9 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
 
     /** Notizia da leggere con comodo: non suona e non vibra. */
     @ReactMethod
-    fun nota(title: String, text: String, promise: Promise) {
+    fun nota(nome: String, text: String, promise: Promise) {
         try {
-            Notifier.mostraNota(ctx, title, text)
+            Notifier.mostraNota(ctx, nome, text)
             promise.resolve(true)
         } catch (e: Exception) {
             promise.reject("notify_error", e)
@@ -164,9 +162,9 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
 
     /** Avviso da mostrare quando l'app non è in primo piano. */
     @ReactMethod
-    fun notify(title: String, text: String, promise: Promise) {
+    fun notify(nome: String, text: String, promise: Promise) {
         try {
-            Notifier.show(ctx, title, text)
+            Notifier.show(ctx, nome, text)
             promise.resolve(true)
         } catch (e: Exception) {
             promise.reject("notify_error", e)

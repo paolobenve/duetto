@@ -132,13 +132,12 @@ const CHIAVE_GUADAGNO = 'duetto.volume.altro';
  * costa una conversazione.
  */
 /**
- * Ogni quanto si riscrive la notifica fissa anche se non è cambiata.
+ * Dopo quanto si ritenta una riga di notifica che non è stata scritta.
  *
- * È la rete di sicurezza contro una riga rimasta indietro: un minuto è
- * poco perché una frase falsa non stia lì a lungo, e abbastanza perché
- * la spesa sia nulla.
+ * Succede quando il sistema rifiuta di avviare il servizio: qualche
+ * secondo dopo, di solito, l'app è tornata in una condizione in cui può.
  */
-const RINFRESCO_NOTIFICA_MS = 60_000;
+const RITENTO_NOTIFICA_MS = 5_000;
 
 const ATTESA_SENZA_SERVER_MS = 8 * 1000;
 const ATTESA_IN_APERTURA_MS = 15 * 1000;
@@ -522,12 +521,12 @@ export default function App() {
    * In un ref perché lo legge il gestore dei messaggi, che nasce una
    * volta sola e non vedrebbe mai un nome cambiato dopo.
    */
-  const titoloAvviso = React.useMemo(() => {
-    const nome = cfg && cfg.pairs.length > 1 ? nomeCoppia(cfg.pair) : '';
-    return nome ? `Duetto \u00b7 ${nome}` : 'Duetto';
-  }, [cfg]);
-  const titoloAvvisoRef = useRef(titoloAvviso);
-  useEffect(() => { titoloAvvisoRef.current = titoloAvviso; }, [titoloAvviso]);
+  const nomeAvviso = React.useMemo(
+    () => (cfg && cfg.pairs.length > 1 ? nomeCoppia(cfg.pair) || '' : ''),
+    [cfg],
+  );
+  const nomeAvvisoRef = useRef(nomeAvviso);
+  useEffect(() => { nomeAvvisoRef.current = nomeAvviso; }, [nomeAvviso]);
 
   /**
    * Il nome di questo collegamento, se gliene ho dato uno.
@@ -589,29 +588,32 @@ export default function App() {
   useEffect(() => {
     testoNotificaRef.current = testoNotifica;
     if (!presenzaViva) return;
-    Foreground.setText(testoNotifica, titoloAvviso).catch(() => { /* noop */ });
-  }, [testoNotifica, titoloAvviso, presenzaViva]);
-
-  /**
-   * La riga fissa si riscrive da sola ogni minuto.
-   *
-   * Non serve a dire cose nuove - il testo lo aggiorna l'effetto qui
-   * sopra a ogni cambiamento - ma a non lasciarne una vecchia. Basta
-   * che una sola scrittura vada persa (il servizio stava ripartendo,
-   * il sistema l'ha rifiutata) perché resti in tendina una frase che
-   * non vale più, tipo «senza collegamento al server» a collegamento
-   * tornato: è quello che si è visto, e da fuori non si distingue da
-   * un'app bloccata. Riscriverla è una riga di testo, non costa nulla,
-   * e ogni minuto la verità torna al suo posto.
-   */
-  useEffect(() => {
-    if (!presenzaViva) return;
-    const t = setInterval(() => {
-      Foreground.setText(testoNotificaRef.current, titoloAvviso)
-        .catch(() => { /* noop */ });
-    }, RINFRESCO_NOTIFICA_MS);
-    return () => clearInterval(t);
-  }, [presenzaViva, titoloAvviso]);
+    let vivo = true;
+    let ritento: ReturnType<typeof setTimeout> | null = null;
+    /**
+     * Se la scrittura non riesce, si ritenta - ma non si riscrive mai
+     * una riga uguale a quella che c'è già.
+     *
+     * Prima si riscriveva ogni minuto comunque, per rimediare a un
+     * aggiornamento perso: ma una notifica riscritta è una notifica che
+     * RINASCE, e chi l'aveva scacciata via se la ritrovava lì un minuto
+     * dopo. Il caso da coprire era solo quello della scrittura fallita -
+     * il sistema può rifiutare di avviare il servizio con l'app in
+     * secondo piano - e quello si riconosce da sé, senza disturbare
+     * tutti gli altri.
+     */
+    const scrivi = (quante: number) => {
+      Foreground.setText(testoNotifica, nomeAvviso).catch(() => {
+        if (!vivo || quante <= 0) return;
+        ritento = setTimeout(() => scrivi(quante - 1), RITENTO_NOTIFICA_MS);
+      });
+    };
+    scrivi(3);
+    return () => {
+      vivo = false;
+      if (ritento) clearTimeout(ritento);
+    };
+  }, [testoNotifica, nomeAvviso, presenzaViva]);
 
   /**
    * Se restiamo senza server troppo a lungo, si rifà da capo.
@@ -774,7 +776,7 @@ export default function App() {
       // dice chi.
       // Solo in tendina: dentro l'app comparirebbe la stessa frase due
       // volte, una nel riquadro e una nella notifica dietro.
-      Foreground.nota(titoloAvvisoRef.current, testo).catch(() => {});
+      Foreground.nota(nomeAvvisoRef.current, testo).catch(() => {});
     }, ATTESA_RACCONTO_MS);
   }, [peerPresent, scordaRitorno]);
 
@@ -1202,7 +1204,7 @@ export default function App() {
             // basta: chiama uno solo dei due o tre che conosci, e sapere
             // quale è metà dell'informazione. Con un collegamento solo il
             // titolo resta "Duetto", che non ha niente da disambiguare.
-            const titolo = titoloAvvisoRef.current;
+            const titolo = nomeAvvisoRef.current;
 
             if (reason === 'knock') {
               // Un richiamo esplicito passa sempre, anche con l'app aperta:
@@ -1265,7 +1267,7 @@ export default function App() {
               const testo = fraseMorte(
                 Number(msg.quando), String(msg.causa), shownNameRef.current,
               );
-              Foreground.nota(titoloAvvisoRef.current, testo).catch(() => {});
+              Foreground.nota(nomeAvvisoRef.current, testo).catch(() => {});
               setAvviso(testo);
               Diario.segna(`morte-altrui:${msg.causa}`).catch(() => {});
               return;

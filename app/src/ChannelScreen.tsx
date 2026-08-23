@@ -658,6 +658,7 @@ export default function ChannelScreen(props: Props) {
           />
         ) : (
           <PresenceCard
+            collegamento={collegamento}
             segno={
               <View style={styles.cardSegnoRiga}>
                 {segno(17, '#0b0e14')}
@@ -815,7 +816,12 @@ export default function ChannelScreen(props: Props) {
           // perché qualcosa è cambiato.
           onPress={press(() => setNovita(true))}>
           <View style={[styles.dot, together ? styles.dotGreen : styles.dotGrey]} />
-          <Text style={styles.badgeText}>{collegamento || 'Duetto'}</Text>
+          {/* In corsivo quando è un nome dato da te: così si distingue
+              da una parola dell'app, ed è la stessa forma che ha in
+              testa alle notifiche. */}
+          <Text style={[styles.badgeText, collegamento ? styles.badgeNome : null]}>
+            {collegamento || 'Duetto'}
+          </Text>
           <Text style={styles.version}>  {VERSION_LABEL}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.gear} onPress={press(onOpenSettings)}>
@@ -1168,10 +1174,12 @@ function PresenceCard(props: {
   peerStaccato: boolean;
   /** il segno dell'uscita audio dell'altro, alla misura del riepilogo */
   segno: React.ReactNode;
+  /** il nome dato a questo collegamento, se ce n'è più di uno */
+  collegamento?: string;
 }) {
   const {
     status, linked, connectionState, peerName, peerAvatar, peerAudio, peerPresent,
-    peerStaccato, segno,
+    peerStaccato, segno, collegamento,
   } = props;
 
   if (status === 'connecting') {
@@ -1197,7 +1205,12 @@ function PresenceCard(props: {
     return (
       <View style={styles.card}>
         <PeerFace name={peerName} avatar={peerAvatar} live={false} />
-        <Text style={styles.cardTitle}>Sei nel canale</Text>
+        <Text style={styles.cardTitle}>
+          Sei nel canale
+          {collegamento ? (
+            <Text style={styles.cardNome}>{'  '}{collegamento}</Text>
+          ) : null}
+        </Text>
         <Text style={styles.cardSub}>
           {comeSta(peerName, peerPresent, peerStaccato)}
           {peerPresent ? (
@@ -1504,6 +1517,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 5,
   },
   chiText: { color: '#e6ebf1', fontSize: 12.5, fontWeight: '700' },
+  /** il nome del collegamento: è un nome, non una parola dell'app */
+  badgeNome: { fontStyle: 'italic' },
+  /** lo stesso nome, nel riepilogo al centro */
+  cardNome: { fontStyle: 'italic', fontWeight: '400', color: '#9fb4c8' },
   /** la pastiglia dell'audio proprio: c'è ma non compete con la prima */
   chiBadgeAudio: { backgroundColor: 'rgba(0,0,0,0.42)' },
   chiTextTenue: { color: '#9fb4c8', fontSize: 12, fontWeight: '600' },

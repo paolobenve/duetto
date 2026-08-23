@@ -77,9 +77,9 @@ export function fraseMorte(quando: number, causa: string, nome: string): string 
  * l'unica cosa che parla all'utente finché non apre l'app. Devono dire
  * le stesse parole, e sono le stesse della schermata di attesa:
  *
- * Il nome del collegamento non sta qui ma nel titolo della notifica,
- * dove sta anche in avvisi e notizie: la riga dice come stanno le cose,
- * il titolo dice di quale collegamento si parla.
+ * Il nome del collegamento non si scrive qui: lo mette Android in testa
+ * al testo, in corsivo, e vale per tutte le notifiche di Duetto - questa
+ * riga dice come stanno le cose, il nome dice in quale stanza.
  *
  *  - "in attesa": collegato al server, l'avviso gli arriva;
  *  - "non raggiungibile": il suo telefono al server non è collegato, e
@@ -145,12 +145,10 @@ export async function startListening(): Promise<boolean> {
    * abbastanza: ti aspetta uno solo dei due o tre che conosci. Con un
    * collegamento solo non c'è niente da distinguere.
    *
-   * Vale per tutte le notifiche, anche per quella fissa: il titolo dice
-   * di quale collegamento si parla, il testo come stanno le cose.
+   * Vale per tutte le notifiche, compresa quella fissa: il nome va in
+   * testa al testo, in corsivo, e lo compone Android.
    */
-  const titolo = cfg.pairs.length > 1 && nomeCoppia(pair)
-    ? `Duetto \u00b7 ${nomeCoppia(pair)}`
-    : 'Duetto';
+  const nome0 = cfg.pairs.length > 1 ? nomeCoppia(pair) || '' : '';
 
   /**
    * Lo stato dell'altro, per la sola notifica.
@@ -169,7 +167,7 @@ export async function startListening(): Promise<boolean> {
     Foreground.setText(testoPresenza({
       inChannel: false, peerActive: attivo, peerPresent: presente, nome,
       staccato,
-    }), titolo).catch(() => { /* noop */ });
+    }), nome0).catch(() => { /* noop */ });
     // Un avviso vecchio è peggio di nessun avviso: "ti aspetta nel
     // canale" resta vero solo finché ci sta davvero.
     if (!attivo) Foreground.clearNotification().catch(() => { /* noop */ });
@@ -229,7 +227,7 @@ export async function startListening(): Promise<boolean> {
         }
         if (msg.kind === 'morte') {
           Foreground.nota(
-            titolo,
+            nome0,
             fraseMorte(Number(msg.quando), String(msg.causa), nome),
           ).catch(() => { /* noop */ });
         }
@@ -241,7 +239,7 @@ export async function startListening(): Promise<boolean> {
           ? (named ? `${name} ti aspetta nel canale` : 'Ti aspettano nel canale')
           : (named ? `${name} è nel canale` : 'C’è qualcuno nel canale');
         log('avviso:', text);
-        Foreground.notify(titolo, text).catch(() => { /* noop */ });
+        Foreground.notify(nome0, text).catch(() => { /* noop */ });
       },
     },
   );

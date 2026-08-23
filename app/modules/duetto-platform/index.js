@@ -61,25 +61,25 @@ export const Foreground = isAndroid && NativeForeground
         call(NativeForeground, 'setCameraActive', !!active),
 
       /**
-       * Aggiorna la notifica fissa: titolo e testo.
+       * Aggiorna la notifica fissa: testo, e nome del collegamento.
        *
-       * Il titolo dice su quale collegamento siamo ("Duetto · Casa"),
-       * come negli avvisi: prima il nome finiva in testa al testo e le
-       * notifiche di Duetto erano di due formati diversi.
+       * Il nome va in testa al testo, in corsivo, e lo compone Android:
+       * nel titolo non si vede quando la notifica è ripiegata, ed è
+       * proprio lì che serve sapere in quale dei collegamenti si è.
        */
-      setText: (text, title) =>
-        call(NativeForeground, 'setText', String(text), String(title || '')),
+      setText: (text, nome) =>
+        call(NativeForeground, 'setText', String(text), String(nome || '')),
 
       /** Ferma il servizio e rilascia il wake lock. */
       stop: () => call(NativeForeground, 'stop'),
 
       /** Avviso da mostrare quando l'app non è in primo piano. */
-      notify: (title, text) =>
-        call(NativeForeground, 'notify', String(title), String(text)),
+      notify: (nome, text) =>
+        call(NativeForeground, 'notify', String(nome || ''), String(text)),
 
       /** Notizia da leggere con comodo: non suona e non vibra. */
-      nota: (title, text) =>
-        call(NativeForeground, 'nota', String(title), String(text)),
+      nota: (nome, text) =>
+        call(NativeForeground, 'nota', String(nome || ''), String(text)),
 
       /** Toglie la notizia, quando quello che diceva non vale più. */
       togliNota: () => call(NativeForeground, 'togliNota'),

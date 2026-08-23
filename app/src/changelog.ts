@@ -7,6 +7,28 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.1.105",
+    "paragrafi": [
+      {
+        "forte": "Il nome del collegamento si vede in ogni notifica",
+        "testo": ", in corsivo, in testa al testo: «*Casa* · Sei nel canale · Anna in attesa». Stava nel titolo, che con la notifica ripiegata su parecchi telefoni non si vede - e «Sei nel canale», con più collegamenti configurati, non dice in quale. Lo stesso nome, sempre in corsivo, nella pastiglia in alto e nel riepilogo al centro."
+      },
+      {
+        "forte": "Una notifica scacciata non torna più.",
+        "testo": "Veniva riscritta ogni minuto per rimediare a un aggiornamento perso, e una notifica riscritta rinasce: ora si riscrive solo quando il testo cambia davvero, e riprova soltanto se la scrittura è fallita."
+      }
+    ]
+  },
+  {
+    "versione": "1.1.101",
+    "paragrafi": [
+      {
+        "forte": "Il riquadrino non si perde più fuori dallo schermo.",
+        "testo": "Si poteva trascinare ovunque e rientrava solo alla fine del gesto: se quella fine non arrivava - gesto rubato da un altro tocco - restava fuori, e niente lo recuperava. Adesso il bordo lo ferma mentre lo muovi, come le finestrelle di WhatsApp o FaceTime, e lo stesso vale allargandolo."
+      }
+    ]
+  },
+  {
     "versione": "1.1.100",
     "paragrafi": [
       {

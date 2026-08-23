@@ -33,14 +33,13 @@ class ChannelForegroundService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     private var currentText: String = "Sei nel canale"
     /**
-     * Il titolo della notifica fissa.
+     * Il nome del collegamento in uso, che va in testa al testo.
      *
-     * Lo manda l'app, perché è lei a sapere come si chiama il
-     * collegamento in uso: "Duetto - Casa". Prima era scritto qui e il
-     * nome finiva in mezzo al testo, cosi' le notifiche di Duetto erano
-     * di due formati diversi a seconda di chi le scriveva.
+     * Lo manda l'app, perché è lei a saperlo. Nel testo e non nel
+     * titolo: la notifica ripiegata, su parecchi telefoni, il titolo non
+     * lo mostra, e "Sei nel canale" senza nome non dice in quale.
      */
-    private var currentTitle: String? = null
+    private var currentNome: String? = null
     private var cameraActive: Boolean = false
 
     /**
@@ -71,7 +70,7 @@ class ChannelForegroundService : Service() {
         const val CHANNEL_ID = "duetto_presence"
         const val NOTIFICATION_ID = 4711
         const val EXTRA_TEXT = "text"
-        const val EXTRA_TITLE = "title"
+        const val EXTRA_NOME = "nome"
         const val EXTRA_CAMERA = "camera"
 
         // Rete di sicurezza: se qualcosa va storto e non fermiamo il
@@ -167,11 +166,11 @@ class ChannelForegroundService : Service() {
         }
 
         intent.getStringExtra(EXTRA_TEXT)?.let { currentText = it }
-        intent.getStringExtra(EXTRA_TITLE)?.let {
-            currentTitle = it
+        intent.getStringExtra(EXTRA_NOME)?.let {
+            currentNome = it
             // Anche su disco: dopo un riavvio la notifica di presenza
             // nasce prima che l'app possa dire come si chiama.
-            Notifier.ricordaTitolo(this, it)
+            Notifier.ricordaNome(this, it)
         }
         if (intent.hasExtra(EXTRA_CAMERA)) {
             cameraActive = intent.getBooleanExtra(EXTRA_CAMERA, false)
@@ -285,8 +284,8 @@ class ChannelForegroundService : Service() {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(currentTitle ?: Notifier.titolo(this))
-            .setContentText(currentText)
+            .setContentTitle("Duetto")
+            .setContentText(Notifier.conNome(currentNome ?: Notifier.nome(this), currentText))
             .setSmallIcon(R.drawable.ic_notifica)
             .setContentIntent(pending)
             .setOngoing(true)
