@@ -28,6 +28,13 @@ import {
  * qualcosa, e quando ci si accorge che sono sbiaditi lo sono già da un
  * pezzo.
  */
+/**
+ * Quanto resta a schermo una notizia prima di sbiadire.
+ *
+ * Dieci secondi: il tempo di leggerla senza doverla togliere a mano.
+ */
+const DURATA_NOTIZIA_MS = 10_000;
+
 const FADE_MS = 10000;
 
 /**
@@ -199,7 +206,11 @@ type Props = {
   audioOn: boolean;
   videoOn: boolean;
   /** `uscita`: da dove esce il suono dall'altra parte, se lo dichiara */
-  peerState: { audio: boolean; video: boolean; aspect?: number; uscita?: string };
+  peerState: {
+    audio: boolean; video: boolean; aspect?: number; uscita?: string;
+    /** a che volume l'altro sta ascoltando NOI: 1 = come glielo mandiamo */
+    volume?: number;
+  };
   /** traccia video dell'altro davvero in arrivo */
   remoteHasVideo: boolean;
   /** cambia a ogni ripartenza del video remoto, per ricreare il visualizzatore */
@@ -389,6 +400,29 @@ export default function ChannelScreen(props: Props) {
   const localHasVideo =
     !!localStream && videoOn && localStream.getVideoTracks().length > 0;
 
+  /**
+   * La notizia si legge e se ne va: dieci secondi, poi sbiadisce.
+   *
+   * Prima restava lì finché non la si toccava, e siccome le notizie
+   * invecchiano in fretta - «è di nuovo raggiungibile» mentre intanto è
+   * uscito di nuovo - il riquadro finiva per dire cose non più vere
+   * proprio nel punto dove l'occhio va per prima cosa. Si può ancora
+   * toccarla per toglierla subito.
+   */
+  const notiziaOpacita = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (!avviso) return;
+    notiziaOpacita.setValue(1);
+    const anim = Animated.timing(notiziaOpacita, {
+      toValue: 0,
+      delay: DURATA_NOTIZIA_MS,
+      duration: 700,
+      useNativeDriver: true,
+    });
+    anim.start(({ finished }) => { if (finished) onAvvisoLetto?.(); });
+    return () => anim.stop();
+  }, [avviso, notiziaOpacita, onAvvisoLetto]);
+
   // I pulsanti restano SEMPRE sullo schermo: non spariscono mai, si
   // attenuano soltanto, e tornano pieni al primo tocco.
   const opacity = useRef(new Animated.Value(1)).current;
@@ -529,8 +563,38 @@ export default function ChannelScreen(props: Props) {
     // disegno: cambia con ciò su cui il segno è appoggiato.
     return <Icona size={size} color="#e6ebf1" off={!peerState.audio} sfondo={sfondo} />;
   }, [peerState.uscita, peerState.audio]);
-  /** sopra la pastiglia scura del riquadrino e delle etichette */
-  const segnoAltro = React.useMemo(() => segno(13, '#1b1d21'), [segno]);
+  /**
+   * Le due pastiglie dicono chi si sta guardando; con le righe tecniche
+   * accese dicono anche come suona quel telefono lì.
+   *
+   * Ognuna descrive il suo: da dove esce il suono e a che volume lo sta
+   * ascoltando chi ce l'ha in mano. Su «Non tu» quindi c'è la sua
+   * uscita e il suo volume - cioè quanto forte sente TE - che è l'unica
+   * delle quattro cose che non potresti sapere in nessun altro modo, e
+   * la sola che spieghi «non ti sento» senza doverselo chiedere a voce.
+   */
+  const percento = (v?: number) => `${Math.round((v ?? 1) * 100)}%`;
+
+  const segnoAltro = React.useMemo(() => (
+    <>
+      {segno(13, '#1b1d21')}
+      {showStats && peerState.volume != null ? (
+        <Text style={styles.pastigliaVolume}>{percento(peerState.volume)}</Text>
+      ) : null}
+    </>
+  ), [segno, showStats, peerState.volume]);
+
+  const segnoMio = React.useMemo(() => {
+    const Icona = ICONA_USCITA[audioRoute] ?? ICONA_USCITA.SPEAKER_PHONE;
+    return (
+      <>
+        <Icona size={13} color="#e6ebf1" off={!audioOn} sfondo="#1b1d21" />
+        {showStats ? (
+          <Text style={styles.pastigliaVolume}>{percento(guadagnoAltro)}</Text>
+        ) : null}
+      </>
+    );
+  }, [audioRoute, audioOn, showStats, guadagnoAltro]);
 
   /** Il lampo della campanella: dice che qualcosa è partito davvero. */
   const bussata = useCallback(() => {
@@ -569,6 +633,7 @@ export default function ChannelScreen(props: Props) {
         onSoloGrande={setSoloGrande}
         onIngrandimento={onIngrandimento}
         segnoAltro={segnoAltro}
+        segnoMio={segnoMio}
         placeholder={compact ? (
           /* Nella finestrella di Picture-in-Picture il riepilogo grande
              non ci sta: esce dai bordi e si legge mezza parola. Lì basta
@@ -583,7 +648,24 @@ export default function ChannelScreen(props: Props) {
           />
         ) : (
           <PresenceCard
-            segno={segno(17, '#0b0e14')}
+            segno={
+              <View style={styles.cardSegnoRiga}>
+                {segno(17, '#0b0e14')}
+                {showStats ? (
+                  <>
+                    {peerState.volume != null ? (
+                      <Text style={styles.cardVolume}>
+                        ti sente {percento(peerState.volume)}
+                      </Text>
+                    ) : null}
+                    <Text style={styles.cardVolume}>
+                      {peerState.volume != null ? '· ' : ''}
+                      lo senti {percento(guadagnoAltro)}
+                    </Text>
+                  </>
+                ) : null}
+              </View>
+            }
             peerPresent={peerPresent}
             peerStaccato={peerStaccato}
             status={status}
@@ -607,7 +689,7 @@ export default function ChannelScreen(props: Props) {
         chi resta a lungo in attesa vuole vedere l'immagine, non la
         scritta.
       */}
-      {!compact && daVedere && status === 'alone' && !notice ? (
+      {!compact && soloGrande && status === 'alone' && !notice ? (
         <Animated.View style={[styles.attesaSopra, { opacity }]} pointerEvents="none">
           <Text style={styles.attesaTesto}>
             Sei nel canale.{'\n'}
@@ -631,13 +713,17 @@ export default function ChannelScreen(props: Props) {
           non è un comando, è una cosa da leggere una volta. Sotto la
           barra in alto, per non coprire l'ingranaggio. */}
       {!compact && avviso ? (
-        <TouchableOpacity
-          style={[styles.notiziaSopra, { top: 62 + inset.v, left: 14 + inset.h, right: 14 + inset.h }]}
-          activeOpacity={0.85}
-          onPress={onAvvisoLetto}>
-          <Text style={styles.notiziaTesto}>{avviso}</Text>
-          <Text style={styles.notiziaVia}>tocca per togliere</Text>
-        </TouchableOpacity>
+        <Animated.View
+          style={[
+            styles.notiziaSopra,
+            { top: 62 + inset.v, left: 14 + inset.h, right: 14 + inset.h },
+            { opacity: notiziaOpacita },
+          ]}>
+          <TouchableOpacity activeOpacity={0.85} onPress={onAvvisoLetto}>
+            <Text style={styles.notiziaTesto}>{avviso}</Text>
+            <Text style={styles.notiziaVia}>tocca per togliere</Text>
+          </TouchableOpacity>
+        </Animated.View>
       ) : null}
 
       {/* "Sto uscendo": copre lo schermo e ferma i tocchi, così nessuno
@@ -681,7 +767,7 @@ export default function ChannelScreen(props: Props) {
           pointerEvents="none">
           <View style={styles.chiBadge}>
             <Text style={styles.chiText}>{soloGrande === 'tu' ? 'Tu' : 'Non tu'}</Text>
-            {soloGrande === 'altro' ? segnoAltro : null}
+            {soloGrande === 'altro' ? segnoAltro : segnoMio}
           </View>
           {/* Niente pastiglia "Non tu" quando di suo non c'è nessuna
               immagine: queste etichette dicono CHI si sta guardando, e
@@ -1162,6 +1248,7 @@ function StatsLine({ stats, quality, mostraSu, mostraGiu, versioni }: {
    * subito che è la strada e non il telefono. Leggerlo dal log a casa
    * dell'altra persona non è praticabile.
    */
+  // La latenza vale anche senza video: si mostra insieme al percorso.
   const strada = stats.percorso === 'locale'
     ? 'diretto, stessa rete'
     : stats.percorso === 'diretto'
@@ -1188,12 +1275,13 @@ function StatsLine({ stats, quality, mostraSu, mostraGiu, versioni }: {
           {versioni}
         </Text>
       ) : null}
-      {strada || stats.audioKbps != null ? (
+      {strada || stats.audioKbps != null || stats.latenza != null ? (
         <Text style={styles.stats} numberOfLines={1}>
           {strada ? `Collegamento: ${strada}` : ''}
           {stats.audioKbps != null
             ? `${strada ? '   ' : ''}audio ${stats.audioKbps} kbit/s`
             : ''}
+          {stats.latenza != null ? `   andata e ritorno ${stats.latenza} ms` : ''}
         </Text>
       ) : null}
     </>
@@ -1343,6 +1431,8 @@ const styles = StyleSheet.create({
   },
   cardTiny: { color: '#4a5462', fontSize: 12, marginTop: 10 },
   cardSegno: { marginTop: 12 },
+  cardSegnoRiga: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  cardVolume: { color: '#7d8794', fontSize: 13 },
 
   miniCard: { alignItems: 'center', paddingHorizontal: 10 },
   miniFaccia: {
@@ -1363,6 +1453,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 5,
   },
   chiText: { color: '#e6ebf1', fontSize: 12.5, fontWeight: '700' },
+  /** la percentuale accanto al segno dell'uscita, quando le righe
+   *  tecniche sono accese */
+  pastigliaVolume: { color: '#9fb4c8', fontSize: 11, fontWeight: '700' },
   badge: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 18,

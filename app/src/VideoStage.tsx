@@ -147,6 +147,8 @@ type Props = {
    * non si sappia già dai pulsanti.
    */
   segnoAltro?: React.ReactNode;
+  /** lo stesso, per la propria immagine: uscita e volume con cui l'altro ci sente */
+  segnoMio?: React.ReactNode;
   /**
    * Proporzioni del video a schermo intero, `null` se non ce n'è nessuno.
    *
@@ -188,7 +190,7 @@ type Props = {
 export default function VideoStage(props: Props) {
   const {
     localStream, remoteStream, localHasVideo, remoteHasVideo,
-    localAspect, remoteAspect, remoteVideoKey, compact, placeholder, segnoAltro,
+    localAspect, remoteAspect, remoteVideoKey, compact, placeholder, segnoAltro, segnoMio,
     specchia = true, onIngrandimento,
     awaitingRemote, notice,
   } = props;
@@ -240,8 +242,18 @@ export default function VideoStage(props: Props) {
       pipIsSelf = true;
     }
   } else if (localHasVideo) {
-    bigStream = localStream;
-    bigIsSelf = true;
+    /**
+     * Solo la mia camera accesa: la mia immagine sta nel RIQUADRINO, e
+     * il posto grande resta al riepilogo.
+     *
+     * Prima la mia faccia prendeva tutto lo schermo, e con lei spariva
+     * l'unica cosa che dicesse dov'era l'altro: accendendo il video non
+     * si sapeva più se fosse nel canale, in attesa o irraggiungibile.
+     * La propria immagine serve a controllare l'inquadratura, e per
+     * quello un riquadrino basta e avanza.
+     */
+    pipStream = localStream;
+    pipIsSelf = true;
   }
 
   // Chi guarda da fuori ha bisogno di sapere quanto spazio occupa
@@ -834,7 +846,7 @@ export default function VideoStage(props: Props) {
             <Text style={styles.pipTagText}>
               {pipStream ? (pipIsSelf ? 'Tu' : 'Non tu') : 'in attesa'}
             </Text>
-            {!pipIsSelf && segnoAltro ? segnoAltro : null}
+            {pipIsSelf ? segnoMio : segnoAltro}
           </View>
         </Animated.View>
       ) : null}

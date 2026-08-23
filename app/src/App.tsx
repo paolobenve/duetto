@@ -131,6 +131,15 @@ const CHIAVE_GUADAGNO = 'duetto.volume.altro';
  * riaggancio fa già, solo partendo pulito - e sbagliare per difetto
  * costa una conversazione.
  */
+/**
+ * Ogni quanto si riscrive la notifica fissa anche se non è cambiata.
+ *
+ * È la rete di sicurezza contro una riga rimasta indietro: un minuto è
+ * poco perché una frase falsa non stia lì a lungo, e abbastanza perché
+ * la spesa sia nulla.
+ */
+const RINFRESCO_NOTIFICA_MS = 60_000;
+
 const ATTESA_SENZA_SERVER_MS = 8 * 1000;
 const ATTESA_IN_APERTURA_MS = 15 * 1000;
 
@@ -270,6 +279,8 @@ export default function App() {
     uscita?: string;
     /** quale Duetto ha di là; assente se è più vecchio di questo campo */
     versione?: string;
+    /** quanto forte sta ascoltando noi: 1 = come glielo mandiamo */
+    volume?: number;
   }>({ audio: true, video: false });
   /**
    * Se l'altro ci ha già detto come sta.
@@ -511,11 +522,12 @@ export default function App() {
    * In un ref perché lo legge il gestore dei messaggi, che nasce una
    * volta sola e non vedrebbe mai un nome cambiato dopo.
    */
-  const titoloAvvisoRef = useRef('Duetto');
-  useEffect(() => {
+  const titoloAvviso = React.useMemo(() => {
     const nome = cfg && cfg.pairs.length > 1 ? nomeCoppia(cfg.pair) : '';
-    titoloAvvisoRef.current = nome ? `Duetto \u00b7 ${nome}` : 'Duetto';
+    return nome ? `Duetto \u00b7 ${nome}` : 'Duetto';
   }, [cfg]);
+  const titoloAvvisoRef = useRef(titoloAvviso);
+  useEffect(() => { titoloAvvisoRef.current = titoloAvviso; }, [titoloAvviso]);
 
   /**
    * Il nome di questo collegamento, se gliene ho dato uno.
@@ -554,9 +566,8 @@ export default function App() {
     peerPresent,
     staccato: peerStaccato,
     nome: shownName,
-    collegamento,
     server: status === 'offline' ? 'giu' : status === 'connecting' ? 'incorso' : 'ok',
-  }), [inChannel, status, peerPresent, peerStaccato, shownName, collegamento]);
+  }), [inChannel, status, peerPresent, peerStaccato, shownName]);
 
   /**
    * Il testo serve anche a chi accende il servizio, che parte prima che
@@ -578,8 +589,29 @@ export default function App() {
   useEffect(() => {
     testoNotificaRef.current = testoNotifica;
     if (!presenzaViva) return;
-    Foreground.setText(testoNotifica).catch(() => { /* noop */ });
-  }, [testoNotifica, presenzaViva]);
+    Foreground.setText(testoNotifica, titoloAvviso).catch(() => { /* noop */ });
+  }, [testoNotifica, titoloAvviso, presenzaViva]);
+
+  /**
+   * La riga fissa si riscrive da sola ogni minuto.
+   *
+   * Non serve a dire cose nuove - il testo lo aggiorna l'effetto qui
+   * sopra a ogni cambiamento - ma a non lasciarne una vecchia. Basta
+   * che una sola scrittura vada persa (il servizio stava ripartendo,
+   * il sistema l'ha rifiutata) perché resti in tendina una frase che
+   * non vale più, tipo «senza collegamento al server» a collegamento
+   * tornato: è quello che si è visto, e da fuori non si distingue da
+   * un'app bloccata. Riscriverla è una riga di testo, non costa nulla,
+   * e ogni minuto la verità torna al suo posto.
+   */
+  useEffect(() => {
+    if (!presenzaViva) return;
+    const t = setInterval(() => {
+      Foreground.setText(testoNotificaRef.current, titoloAvviso)
+        .catch(() => { /* noop */ });
+    }, RINFRESCO_NOTIFICA_MS);
+    return () => clearInterval(t);
+  }, [presenzaViva, titoloAvviso]);
 
   /**
    * Se restiamo senza server troppo a lungo, si rifà da capo.
@@ -744,6 +776,19 @@ export default function App() {
       setAvviso(testo);
     }, ATTESA_RACCONTO_MS);
   }, [peerPresent, scordaRitorno]);
+
+  /**
+   * «È di nuovo raggiungibile» smette di valere quando risparisce.
+   *
+   * La notizia scade anche da sola dopo dieci minuti, ma se se ne va
+   * prima non ha senso lasciarla lì: chi apre la tendina leggerebbe il
+   * contrario di quello che dice la notifica fissa due righe sotto.
+   */
+  useEffect(() => {
+    if (peerPresent) return;
+    Foreground.togliNota().catch(() => { /* noop */ });
+    setAvviso((v) => (v && /raggiungibile|tornato/.test(v) ? null : v));
+  }, [peerPresent]);
 
   const leggiLaPropriaMorte = useCallback(async () => {
     try {
@@ -2067,6 +2112,11 @@ export default function App() {
         onSelectRoute={audio.select}
         onKnock={() => {
           signalingRef.current?.knock();
+          // Un rullo di tamburi anche da questa parte, piano: l'avviso
+          // parte verso un telefono che non è nel canale, e da qui non
+          // si sente niente - il pulsante lampeggia e basta. Sapere che
+          // è partito vale quanto mandarlo.
+          Sveglia.suona('tamburi', true).catch(() => {});
           Diario.segna('avvisa').catch(() => {});
         }}
         onLeave={leaveChannel}

@@ -27,6 +27,15 @@ object Notifier {
     private const val NOTA_NOTIFICATION_ID = 4713
 
     /**
+     * Dopo quanto una notizia si toglie da sola: dieci minuti.
+     *
+     * Una notizia invecchia. "E' tornato alle 8:35" letto a mezzogiorno
+     * non dice piu' niente di vero, e intanto sta li' in mezzo alle
+     * altre: meglio che sparisca da se'.
+     */
+    private const val SCADENZA_NOTA_MS = 10L * 60L * 1000L
+
+    /**
      * Una notifica che non fa rumore.
      *
      * Serve per le cose da sapere, non per quelle a cui rispondere:
@@ -37,6 +46,13 @@ object Notifier {
      * costruzione, e sta in un posto suo per non scacciare l'avviso vero
      * se arrivano insieme.
      */
+    /** Toglie la notizia: si usa quando quello che diceva non vale piu'. */
+    fun togliNota(ctx: Context) {
+        try {
+            NotificationManagerCompat.from(ctx).cancel(NOTA_NOTIFICATION_ID)
+        } catch (_: Exception) { /* noop */ }
+    }
+
     fun mostraNota(ctx: Context, title: String, text: String) {
         val launch = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)?.apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -55,6 +71,7 @@ object Notifier {
             .setContentIntent(pending)
             .setAutoCancel(true)
             .setSilent(true)
+            .setTimeoutAfter(SCADENZA_NOTA_MS)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .build()
         try {
@@ -112,6 +129,33 @@ object Notifier {
         Avvisi.avvisaOra(ctx)
     }
 
+    /** Dove teniamo l'ultimo titolo, per ritrovarlo dopo un riavvio. */
+    private const val CHIAVE_TITOLO = "titolo-notifica"
+
+    /** Ricorda come si chiama il collegamento in uso. */
+    fun ricordaTitolo(ctx: Context, titolo: String) {
+        try {
+            ctx.getSharedPreferences(BootReceiver.PREFS, Context.MODE_PRIVATE)
+                .edit().putString(CHIAVE_TITOLO, titolo).apply()
+        } catch (_: Exception) { /* noop */ }
+    }
+
+    /**
+     * Il titolo da mettere nelle notifiche: "Duetto - Casa".
+     *
+     * Lo scrive l'app, che sa il nome del collegamento; qui si rilegge
+     * perché dopo un riavvio del telefono la notifica di presenza
+     * compare prima che l'app abbia parlato, e senza questo si
+     * presenterebbe con il nome nudo mentre tutte le altre hanno anche
+     * quello del collegamento.
+     */
+    fun titolo(ctx: Context): String {
+        return try {
+            ctx.getSharedPreferences(BootReceiver.PREFS, Context.MODE_PRIVATE)
+                .getString(CHIAVE_TITOLO, null) ?: "Duetto"
+        } catch (_: Exception) { "Duetto" }
+    }
+
     /**
      * Porta un servizio in primo piano con la notifica di presenza.
      *
@@ -147,7 +191,7 @@ object Notifier {
         }
 
         val notification = NotificationCompat.Builder(service, PRESENCE_CHANNEL_ID)
-            .setContentTitle("Duetto")
+            .setContentTitle(titolo(service))
             .setContentText("In attesa")
             .setSmallIcon(R.drawable.ic_notifica)
             .setContentIntent(pending)

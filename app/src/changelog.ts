@@ -7,6 +7,35 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.1.97",
+    "paragrafi": [
+      {
+        "forte": "Sai a che volume l'altro ti sente.",
+        "testo": "Con le righe tecniche accese, ogni pastiglia dice come suona il telefono di cui porta il nome: accanto a «Non tu» da dove esce il suo suono e a che volume lui sta ascoltando **te**, accanto a «Tu» la tua uscita e il tuo volume. Il numero che conta è il suo: era l'unica cosa che non potevi sapere in nessun modo, e spiega da sola i «non ti sento» — se ti ha al 25%, adesso si vede. Il dato viaggia da sé e si aggiorna appena lui tocca i tasti del volume."
+      },
+      {
+        "forte": "Se l'altro non ha il video, nel riquadrino c'è il tuo.",
+        "testo": "Prima, accendendo il video da solo, non restava niente a dire che dall'altra parte c'era qualcuno: ora il posto grande tiene il riepilogo di com'è messo lui, e il tuo video sta nel riquadrino."
+      },
+      {
+        "forte": "Il rullo di tamburi lo senti anche tu.",
+        "testo": "Bussando all'altro, il suono suona anche qui: è il riscontro che l'avviso è partito davvero."
+      },
+      {
+        "forte": "La latenza tra le righe tecniche.",
+        "testo": "«Andata e ritorno 42 ms»: quanto ci mette la voce a fare il giro."
+      },
+      {
+        "forte": "Le notifiche parlano tutte allo stesso modo, e non invecchiano.",
+        "testo": "Il nome del collegamento sta nel titolo — «Duetto · Casa» — e non più a volte lì e a volte in mezzo al testo. «È di nuovo raggiungibile» sparisce appena risparisce; «ti aspetta nel canale» sparisce quando esce dal canale; e ogni notizia si toglie comunque da sola dopo dieci minuti, invece di restare a raccontare una cosa di stamattina. La riga fissa si riscrive ogni minuto: se un aggiornamento va perso — capita, il sistema può rifiutarlo — non resta più appeso un «senza collegamento al server» a collegamento tornato."
+      },
+      {
+        "forte": "I riquadri dentro l'app sbiadiscono.",
+        "testo": "Dopo dieci secondi se ne vanno da soli; toccarli li toglie subito, come prima."
+      }
+    ]
+  },
+  {
     "versione": "1.1.95",
     "paragrafi": [
       {

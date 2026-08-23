@@ -47,10 +47,20 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
     }
 
     @ReactMethod
-    fun setText(text: String, promise: Promise) {
+    fun setText(text: String, title: String, promise: Promise) {
         sendToService(promise) {
             putExtra(ChannelForegroundService.EXTRA_TEXT, text)
+            if (title.isNotEmpty()) {
+                putExtra(ChannelForegroundService.EXTRA_TITLE, title)
+            }
         }
+    }
+
+    /** Toglie la notizia silenziosa quando non è più vera. */
+    @ReactMethod
+    fun togliNota(promise: Promise) {
+        Notifier.togliNota(ctx)
+        promise.resolve(true)
     }
 
     @ReactMethod

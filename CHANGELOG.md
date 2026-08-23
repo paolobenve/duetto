@@ -8,6 +8,36 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.1.97
+
+**Sai a che volume l'altro ti sente.** Con le righe tecniche accese, ogni pastiglia dice come
+suona il telefono di cui porta il nome: accanto a «Non tu» da dove esce il suo suono e a che
+volume lui sta ascoltando **te**, accanto a «Tu» la tua uscita e il tuo volume. Il numero che
+conta è il suo: era l'unica cosa che non potevi sapere in nessun modo, e spiega da sola i «non
+ti sento» — se ti ha al 25%, adesso si vede. Il dato viaggia da sé e si aggiorna appena lui
+tocca i tasti del volume.
+
+**Se l'altro non ha il video, nel riquadrino c'è il tuo.** Prima, accendendo il video da solo,
+non restava niente a dire che dall'altra parte c'era qualcuno: ora il posto grande tiene il
+riepilogo di com'è messo lui, e il tuo video sta nel riquadrino.
+
+**Il rullo di tamburi lo senti anche tu.** Bussando all'altro, il suono suona anche qui: è il
+riscontro che l'avviso è partito davvero.
+
+**La latenza tra le righe tecniche.** «Andata e ritorno 42 ms»: quanto ci mette la voce a fare
+il giro.
+
+**Le notifiche parlano tutte allo stesso modo, e non invecchiano.** Il nome del collegamento sta
+nel titolo — «Duetto · Casa» — e non più a volte lì e a volte in mezzo al testo. «È di nuovo
+raggiungibile» sparisce appena risparisce; «ti aspetta nel canale» sparisce quando esce dal
+canale; e ogni notizia si toglie comunque da sola dopo dieci minuti, invece di restare a
+raccontare una cosa di stamattina. La riga fissa si riscrive ogni minuto: se un aggiornamento
+va perso — capita, il sistema può rifiutarlo — non resta più appeso un «senza collegamento al
+server» a collegamento tornato.
+
+**I riquadri dentro l'app sbiadiscono.** Dopo dieci secondi se ne vanno da soli; toccarli li
+toglie subito, come prima.
+
 ## 1.1.95
 
 **La presenza sopravvive al telefono che mette via l'app.** Su certi telefoni — un Motorola

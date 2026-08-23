@@ -33,8 +33,13 @@ export type SignalMessage =
   // quello che si vede - l'immagine e' la stessa - ma nel diario dice
   // cos'ha fatto l'altro, e "ha girato la camera" spiega un'inquadratura
   // che cambia di colpo.
+  // `volume`: quanto forte sto ascoltando TE. E' l'unico modo di sapere
+  // se l'altro ti sente piano: e' una sua impostazione, sul suo telefono,
+  // e senza dirsela si finisce a ripetere "mi senti?" senza mai scoprire
+  // che ti aveva a un quarto.
   | { kind: 'state'; audio: boolean; video: boolean; aspect?: number; watching?: boolean;
-      hwVp9?: boolean; uscita?: string; versione?: string; camera?: string }
+      hwVp9?: boolean; uscita?: string; versione?: string; camera?: string;
+      volume?: number }
   // Chi risponde non può offrire: se resta senza collegamento e l'altro
   // non se ne accorge, l'unica via d'uscita è chiederglielo.
   | { kind: 'renegotiate' }

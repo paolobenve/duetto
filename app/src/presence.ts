@@ -77,6 +77,10 @@ export function fraseMorte(quando: number, causa: string, nome: string): string 
  * l'unica cosa che parla all'utente finché non apre l'app. Devono dire
  * le stesse parole, e sono le stesse della schermata di attesa:
  *
+ * Il nome del collegamento non sta qui ma nel titolo della notifica,
+ * dove sta anche in avvisi e notizie: la riga dice come stanno le cose,
+ * il titolo dice di quale collegamento si parla.
+ *
  *  - "in attesa": collegato al server, l'avviso gli arriva;
  *  - "non raggiungibile": il suo telefono al server non è collegato, e
  *    l'avviso non ha dove andare.
@@ -97,31 +101,22 @@ export function testoPresenza(o: {
    */
   staccato?: boolean;
   nome: string;
-  /**
-   * Il nome dato al collegamento in uso, se ne ha uno.
-   *
-   * Va in testa alla riga, come il nome di una stanza: dice in quale
-   * dei collegamenti si sta, cosa che con più di uno configurato è la
-   * prima domanda. Non è il nome dell'altro, che resta il suo.
-   */
-  collegamento?: string;
   /** com'è messo il NOSTRO collegamento al server */
   server?: 'ok' | 'giu' | 'incorso';
 }): string {
-  const dove = o.collegamento ? `${o.collegamento} \u00b7 ` : '';
   const mio = (o.inChannel ? 'Sei nel canale' : 'In attesa');
   const chi = o.nome && o.nome !== 'Qualcuno' ? o.nome : 'l\u2019altro';
-  if (o.server === 'giu') return `${dove}${mio} \u00b7 senza collegamento al server`;
-  if (o.server === 'incorso') return `${dove}${mio}`;
+  if (o.server === 'giu') return `${mio} \u00b7 senza collegamento al server`;
+  if (o.server === 'incorso') return mio;
   if (o.peerActive) {
-    return dove + (o.inChannel
+    return o.inChannel
       ? `Nel canale con ${chi}`
-      : `${mio} \u00b7 ${chi} \u00e8 nel canale`);
+      : `${mio} \u00b7 ${chi} \u00e8 nel canale`;
   }
   if (!o.peerPresent) {
-    return `${dove}${mio} \u00b7 ${chi} ${o.staccato ? 'si \u00e8 staccato' : 'non raggiungibile'}`;
+    return `${mio} \u00b7 ${chi} ${o.staccato ? 'si \u00e8 staccato' : 'non raggiungibile'}`;
   }
-  return dove + (o.inChannel ? `${mio} \u00b7 ${chi} in attesa` : 'In attesa tutti e due');
+  return o.inChannel ? `${mio} \u00b7 ${chi} in attesa` : 'In attesa tutti e due';
 }
 
 const log = (...args: any[]) => console.log('[duetto-presenza]', ...args);
@@ -149,6 +144,9 @@ export async function startListening(): Promise<boolean> {
    * Con più collegamenti configurati, "ti aspettano nel canale" non dice
    * abbastanza: ti aspetta uno solo dei due o tre che conosci. Con un
    * collegamento solo non c'è niente da distinguere.
+   *
+   * Vale per tutte le notifiche, anche per quella fissa: il titolo dice
+   * di quale collegamento si parla, il testo come stanno le cose.
    */
   const titolo = cfg.pairs.length > 1 && nomeCoppia(pair)
     ? `Duetto \u00b7 ${nomeCoppia(pair)}`
@@ -170,8 +168,11 @@ export async function startListening(): Promise<boolean> {
   const aggiorna = () => {
     Foreground.setText(testoPresenza({
       inChannel: false, peerActive: attivo, peerPresent: presente, nome,
-      staccato, collegamento: pair.etichetta,
-    })).catch(() => { /* noop */ });
+      staccato,
+    }), titolo).catch(() => { /* noop */ });
+    // Un avviso vecchio è peggio di nessun avviso: "ti aspetta nel
+    // canale" resta vero solo finché ci sta davvero.
+    if (!attivo) Foreground.clearNotification().catch(() => { /* noop */ });
   };
 
   sig = new Signaling(

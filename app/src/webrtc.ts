@@ -43,6 +43,8 @@ export type ChannelEvents = {
     versione?: string;
     /** con quale camera sta riprendendo: 'frontale' o 'posteriore' */
     camera?: string;
+    /** quanto forte sta ascoltando NOI: 1 = come glielo mandiamo */
+    volume?: number;
   }) => void;
   /**
    * Se stiamo ricevendo una traccia video.
@@ -57,6 +59,16 @@ export type ChannelEvents = {
 };
 
 export type VideoStats = {
+  /**
+   * Quanto ci mette un pacchetto ad andare e tornare, in millesimi.
+   *
+   * È il numero che spiega le conversazioni in cui ci si accavalla: sotto
+   * i 100 non si nota, sopra i 300 si comincia a parlarsi addosso. Lo
+   * misura ICE sulla strada che sta davvero usando, quindi dice anche se
+   * quella strada è buona - un relay dall'altra parte del mondo si vede
+   * qui prima che nell'immagine.
+   */
+  latenza?: number | null;
   out?: { w: number; h: number; fps: number; kbps: number | null };
   in?: { w: number; h: number; fps: number; kbps: number | null };
   /** quanto sta uscendo di audio: l'unico modo di verificare il tetto */
@@ -601,6 +613,7 @@ export class ChannelSession {
         uscita: msg.uscita,
         versione: msg.versione,
         camera: msg.camera,
+        volume: msg.volume,
       });
       this.setPeerWatching(msg.watching !== false);
       // Ciò che l'altro dichiara entra nel giudizio su "c'è il suo
@@ -889,6 +902,10 @@ export class ChannelSession {
         }
       });
       if (coppia) {
+        const giroCompleto = coppia.currentRoundTripTime;
+        out.latenza = typeof giroCompleto === 'number'
+          ? Math.round(giroCompleto * 1000)
+          : null;
         const l = candidati.get(coppia.localCandidateId);
         const rr = candidati.get(coppia.remoteCandidateId);
         out.percorso =
@@ -1382,6 +1399,7 @@ export class ChannelSession {
       uscita: this.uscitaLocale,
       versione: VERSION,
       camera: this.isCameraFrontale() ? 'frontale' : 'posteriore',
+      volume: this.guadagnoAltro,
       video: this.isVideoEnabled(),
       aspect: this.getLocalVideoAspect(),
       watching: this.localWatching,
@@ -1404,8 +1422,12 @@ export class ChannelSession {
    * assordante da sola.
    */
   setRemoteGain(g: number) {
+    if (g === this.guadagnoAltro) return;
     this.guadagnoAltro = g;
     this.applicaGuadagno();
+    // Glielo si dice: è l'unico modo che ha di sapere se lo stai
+    // sentendo piano, e a voce quella domanda non si risolve mai.
+    this.broadcastState();
   }
 
   private applicaGuadagno() {
