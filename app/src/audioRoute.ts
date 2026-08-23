@@ -22,8 +22,11 @@ const ORDER: AudioRoute[] = ['SPEAKER_PHONE', 'EARPIECE', 'WIRED_HEADSET', 'BLUE
 /**
  * La memoria di prima, quando l'uscita era una sola per tutta l'app.
  *
- * Non si scrive più: la legge App una volta, per non far ricominciare
- * da capo chi aveva già scelto. Vedi `impostazioni` dentro PairInfo.
+ * Non si scrive più: la legge App al primo avvio dopo l'aggiornamento -
+ * per non far ricominciare da capo chi aveva già scelto - e subito dopo
+ * la cancella, perché una migrazione che si ripete a ogni avvio non è
+ * una migrazione, è un valore che torna indietro da solo. Adesso
+ * l'uscita sta in `impostazioni` dentro PairInfo.
  */
 export const CHIAVE_USCITA_VECCHIA = 'duetto.audioRoute.v1';
 

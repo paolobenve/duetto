@@ -7,6 +7,15 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.1.111",
+    "paragrafi": [
+      {
+        "forte": "L'uscita audio non torna più indietro da sola.",
+        "testo": "Dopo un aggiornamento il vivavoce poteva ridiventare cornetta: una vecchia memoria, rimasta da quando l'uscita era una sola per tutta l'app, veniva ritravasata a ogni avvio ogni volta che la scelta era quella di partenza. Ora si legge una volta e si cancella. Valeva anche per il volume della voce dell'altro."
+      }
+    ]
+  },
+  {
     "versione": "1.1.110",
     "paragrafi": [
       {

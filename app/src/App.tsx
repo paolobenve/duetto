@@ -93,6 +93,12 @@ const CHIAVE_MORTE_RACCONTATA = 'duetto.morte.raccontata';
 const GUADAGNO_PASSO = 0.25;
 const GUADAGNO_MIN = 0.25;
 const GUADAGNO_MAX = 4;
+/**
+ * La memoria di prima del volume, quando era una per tutta l'app.
+ *
+ * Si legge una volta all'avvio e si cancella subito dopo: adesso il
+ * volume appartiene al collegamento. Vedi anche CHIAVE_USCITA_VECCHIA.
+ */
 const CHIAVE_GUADAGNO = 'duetto.volume.altro';
 
 
@@ -998,6 +1004,18 @@ export default function App() {
         const u = await AsyncStorage.getItem(CHIAVE_USCITA_VECCHIA);
         if (u && c.uscitaAudio === 'SPEAKER_PHONE') patch.uscitaAudio = u;
         if (Object.keys(patch).length) setCfg(salvaCfg({ ...c, ...patch }));
+        /**
+         * Le vecchie memorie si cancellano: la migrazione è una volta
+         * sola, e senza questo non lo era.
+         *
+         * Il travaso avviene quando il valore nuovo è quello di partenza
+         * - vivavoce, volume al 100% - perché quello vuol dire "nessuno
+         * ha ancora scelto". Ma è anche una scelta legittima: chi mette
+         * il vivavoce si ritrova il valore vecchio al riavvio dopo, e
+         * ogni aggiornamento dell'app è un riavvio. È così che il
+         * vivavoce tornava cornetta da solo.
+         */
+        await AsyncStorage.multiRemove([CHIAVE_GUADAGNO, CHIAVE_USCITA_VECCHIA]);
       } catch { /* niente di grave */ }
       // Il canale di notifica va preparato prima che serva: nasce con
       // suono e vibrazione dentro, e crearlo al primo avviso vorrebbe

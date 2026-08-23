@@ -8,6 +8,13 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.1.111
+
+**L'uscita audio non torna più indietro da sola.** Dopo un aggiornamento il vivavoce poteva
+ridiventare cornetta: una vecchia memoria, rimasta da quando l'uscita era una sola per tutta
+l'app, veniva ritravasata a ogni avvio ogni volta che la scelta era quella di partenza. Ora si
+legge una volta e si cancella. Valeva anche per il volume della voce dell'altro.
+
 ## 1.1.110
 
 **Il riquadrino non salta più.** Spegnendo e riaccendendo il video, al trascinamento successivo
