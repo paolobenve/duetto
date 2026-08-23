@@ -8,6 +8,19 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.1.98
+
+**Una notizia sola.** «È di nuovo raggiungibile» compariva sia nella tendina di Android sia
+nel riquadro dentro l'app: adesso solo nella tendina.
+
+**Le righe tecniche non escono più dallo schermo.** «andata e ritorno 42 ms» è diventato
+«latenza a/r 42 ms», e quella riga si rimpicciolisce da sola quando serve, come già faceva
+quella della risoluzione.
+
+**Il volume che viaggia è giusto dal primo istante.** La sessione nasceva annunciando 100% e
+si correggeva un attimo dopo: se quella correzione si perdeva, dall'altra parte restava un
+numero mai stato vero.
+
 ## 1.1.97
 
 **Sai a che volume l'altro ti sente.** Con le righe tecniche accese, ogni pastiglia dice come

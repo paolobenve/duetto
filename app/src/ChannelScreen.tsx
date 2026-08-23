@@ -1033,7 +1033,11 @@ export default function ChannelScreen(props: Props) {
             {/* Il volume della voce dell'altro, dentro l'app.
                 I tasti laterali fanno la stessa cosa; questo serve
                 quando si vuole vedere dove si è, e per i telefoni dove
-                i tasti sembrano non fare niente. */}
+                i tasti sembrano non fare niente.
+
+                Attenzione a non confonderlo con la percentuale sulla
+                pastiglia «Non tu», che è l'altra metà: lì c'è il volume
+                a cui LUI sente TE. Questo è quanto tu senti lui. */}
             <Text style={styles.sheetTitle}>Voce dell’altro</Text>
             <View style={styles.sheetRow}>
               <TouchableOpacity
@@ -1276,12 +1280,18 @@ function StatsLine({ stats, quality, mostraSu, mostraGiu, versioni }: {
         </Text>
       ) : null}
       {strada || stats.audioKbps != null || stats.latenza != null ? (
-        <Text style={styles.stats} numberOfLines={1}>
+        // Come la riga sopra: con la latenza in coda finiva fuori dallo
+        // schermo, e una riga tagliata a metà numero non dice niente.
+        <Text
+          style={styles.stats}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.6}>
           {strada ? `Collegamento: ${strada}` : ''}
           {stats.audioKbps != null
             ? `${strada ? '   ' : ''}audio ${stats.audioKbps} kbit/s`
             : ''}
-          {stats.latenza != null ? `   andata e ritorno ${stats.latenza} ms` : ''}
+          {stats.latenza != null ? `   latenza a/r ${stats.latenza} ms` : ''}
         </Text>
       ) : null}
     </>

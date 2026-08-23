@@ -221,6 +221,17 @@ export class ChannelSession {
     private events: ChannelEvents,
   ) {
     this.cameraFrontale = cfg.cameraFrontale !== false;
+    /**
+     * Il volume parte da quello salvato, non da "tutto".
+     *
+     * Serve perché questo numero adesso viaggia: la prima dichiarazione
+     * di stato parte prima che l'app abbia avuto tempo di riapplicare il
+     * guadagno, e annunciava 100% mentre questo telefono ascoltava al
+     * 50%. La correzione arriva subito dopo, ma è un messaggio in più
+     * che può perdersi - e finché non ne arriva un altro, dall'altra
+     * parte si legge un numero falso.
+     */
+    this.guadagnoAltro = cfg.guadagno ?? 1;
   }
 
   // --- Ingresso nel canale -------------------------------------------------

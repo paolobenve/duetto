@@ -7,6 +7,23 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.1.98",
+    "paragrafi": [
+      {
+        "forte": "Una notizia sola.",
+        "testo": "«È di nuovo raggiungibile» compariva sia nella tendina di Android sia nel riquadro dentro l'app: adesso solo nella tendina."
+      },
+      {
+        "forte": "Le righe tecniche non escono più dallo schermo.",
+        "testo": "«andata e ritorno 42 ms» è diventato «latenza a/r 42 ms», e quella riga si rimpicciolisce da sola quando serve, come già faceva quella della risoluzione."
+      },
+      {
+        "forte": "Il volume che viaggia è giusto dal primo istante.",
+        "testo": "La sessione nasceva annunciando 100% e si correggeva un attimo dopo: se quella correzione si perdeva, dall'altra parte restava un numero mai stato vero."
+      }
+    ]
+  },
+  {
     "versione": "1.1.97",
     "paragrafi": [
       {

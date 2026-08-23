@@ -772,8 +772,9 @@ export default function App() {
       // Il titolo dice su quale collegamento, come per gli avvisi: con
       // più di uno configurato, "è di nuovo raggiungibile" da solo non
       // dice chi.
+      // Solo in tendina: dentro l'app comparirebbe la stessa frase due
+      // volte, una nel riquadro e una nella notifica dietro.
       Foreground.nota(titoloAvvisoRef.current, testo).catch(() => {});
-      setAvviso(testo);
     }, ATTESA_RACCONTO_MS);
   }, [peerPresent, scordaRitorno]);
 
@@ -787,7 +788,6 @@ export default function App() {
   useEffect(() => {
     if (peerPresent) return;
     Foreground.togliNota().catch(() => { /* noop */ });
-    setAvviso((v) => (v && /raggiungibile|tornato/.test(v) ? null : v));
   }, [peerPresent]);
 
   const leggiLaPropriaMorte = useCallback(async () => {
