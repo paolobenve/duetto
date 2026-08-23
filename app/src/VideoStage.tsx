@@ -4,7 +4,6 @@ import {
 } from 'react-native';
 import { RTCView, MediaStream } from 'react-native-webrtc';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Diario } from 'duetto-platform';
 import { DEFAULT_ASPECT } from './webrtc';
 
 /**
@@ -287,6 +286,15 @@ export default function VideoStage(props: Props) {
     }
   }
 
+  /**
+   * Il riquadrino è disegnato in questo momento.
+   *
+   * Serve a non ricollocare quello che non c'è: una posizione scritta
+   * mentre la vista non esiste non la vede nessuno, e resta a divergere
+   * da quella disegnata.
+   */
+  const pipVivo = !compact && (!!pipStream || pipEmpty);
+
   // Chi guarda da fuori ha bisogno di sapere quanto spazio occupa
   // davvero il video grande, per non appoggiarci sopra i comandi a metà.
   const bigAspect = bigStream
@@ -374,27 +382,6 @@ export default function VideoStage(props: Props) {
     };
   }, [width, height, insetV, insetH, insetBasso]);
 
-  /**
-   * Traccia TEMPORANEA di chi sposta il riquadrino.
-   *
-   * Il riquadrino, all'inizio di un trascinamento, salta in un'altra
-   * posizione - ma solo dopo aver spento e riacceso il video, mai la
-   * prima volta. Dal codice i sospetti sono tre (la ricollocazione
-   * automatica, la rete di sicurezza sulla posizione, la molla del
-   * rilascio precedente ripresa a metà) e non si distinguono guardando:
-   * si distinguono guardando il diario di chi ce l'ha in mano. Da
-   * togliere quando il colpevole è noto.
-   */
-  const traccia = (chi: string, x: number, y: number, da?: { x: number; y: number }) => {
-    const dx = Math.round(x - (da?.x ?? 0));
-    const dy = Math.round(y - (da?.y ?? 0));
-    if (da && Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-    Diario.segna(
-      `riquadrino:${chi}:${Math.round(x)},${Math.round(y)}` +
-      (da ? ` da ${Math.round(da.x)},${Math.round(da.y)}` : ''),
-    ).catch(() => { /* noop */ });
-  };
-
   const posIniziale = useRef<{ x: number; y: number } | null>(null);
   if (posIniziale.current === null) {
     const w = Math.round(width * (posizioneScelta?.fw ?? START_FRACTION));
@@ -462,6 +449,32 @@ export default function VideoStage(props: Props) {
   const stiamoSistemando = useRef(false);
 
   useEffect(() => {
+    /**
+     * Riagganciato ogni volta che il riquadrino ricompare.
+     *
+     * Non e' un eccesso di prudenza: in React Native, quando una vista
+     * animata si smonta, il valore si stacca - e staccandosi butta via
+     * TUTTI i suoi ascoltatori. Si legge in Libraries/Animated/nodes/
+     * AnimatedNode.js:
+     *
+     *     __detach(): void {
+     *       this.removeAllListeners();
+     *
+     * Spegnendo il video il riquadrino spariva, il valore si staccava e
+     * questo ascoltatore moriva per sempre: la vista continuava a
+     * muoversi - il valore la muove lo stesso - ma nessuno diceva piu'
+     * al codice dov'era finita. Il codice restava fermo all'ultima
+     * posizione vista, e al trascinamento successivo il riquadrino
+     * saltava li'.
+     *
+     * Quindi: si riaggancia alla ricomparsa, e si riparte dal valore
+     * vero - che e' quello animato, non la nostra copia, perche' e' lui
+     * ad aver mosso la vista mentre non ascoltavamo.
+     */
+    posRef.current = {
+      x: (pan.x as any).__getValue(),
+      y: (pan.y as any).__getValue(),
+    };
     const id = pan.addListener((v) => {
       posRef.current = v;
       if (gestoInCorso.current || stiamoSistemando.current) return;
@@ -473,14 +486,13 @@ export default function VideoStage(props: Props) {
         // senza il fermo, ogni correzione ne chiama un'altra e la pila
         // delle chiamate si esaurisce - l'app cadeva accendendo il video.
         stiamoSistemando.current = true;
-        traccia('rete', x, y, v);
         posRef.current = { x, y };
         pan.setValue({ x, y });
         stiamoSistemando.current = false;
       }
     });
     return () => pan.removeListener(id);
-  }, [pan, spazio]);
+  }, [pan, spazio, pipVivo]);
 
   /**
    * Rimette il riquadrino dove l'utente l'ha scelto, ricalcolandolo sui
@@ -499,7 +511,6 @@ export default function VideoStage(props: Props) {
     const y = !a ? minY : a.ay === 'alto'
       ? minY + a.oy * dy : maxY - a.oy * dy;
     if (Math.abs(x - posRef.current.x) < 0.5 && Math.abs(y - posRef.current.y) < 0.5) return;
-    traccia('ricolloca', x, y, posRef.current);
     posRef.current = { x, y };
     if (animate) {
       Animated.spring(pan, {
@@ -536,7 +547,6 @@ export default function VideoStage(props: Props) {
     const x = Math.min(Math.max(posRef.current.x, minX), maxX);
     const y = Math.min(Math.max(posRef.current.y, minY), maxY);
     if (x === posRef.current.x && y === posRef.current.y) { ricorda(); return; }
-    traccia('rientro', x, y, posRef.current);
     // La posizione finale si registra subito: aspettando la fine
     // dell'animazione si ricorderebbe quella di partenza.
     posRef.current = { x, y };
@@ -559,8 +569,24 @@ export default function VideoStage(props: Props) {
   // dall'angolo in alto a sinistra - e tornare al suo posto solo
   // mollandolo. Ricollocandolo subito, il bordo a cui è ancorato resta
   // fermo e la crescita va verso l'interno.
-  useEffect(() => { riposiziona(false); },
-    [width, height, pipWidth, pipHeight, insetV, insetH, riposiziona]);
+  useEffect(() => {
+    // Non mentre il riquadrino non c'è: vedi qui sotto.
+    if (!pipVivo) return;
+    riposiziona(false);
+  }, [pipVivo, width, height, pipWidth, pipHeight, insetV, insetH, riposiziona]);
+
+  /**
+   * Ricomparendo, il riquadrino si rimette dove va.
+   *
+   * Un fotogramma dopo, non subito: la vista è appena nata, e il quadro
+   * in cui deve stare - bande nere, ingombro delle righe tecniche - si
+   * assesta insieme a lei.
+   */
+  useEffect(() => {
+    if (!pipVivo) return;
+    const id = requestAnimationFrame(() => riposiziona(false));
+    return () => cancelAnimationFrame(id);
+  }, [pipVivo, riposiziona]);
 
   // --- Trascinamento (e pizzico a due dita per ridimensionare) ------------
   const pinchStart = useRef<{ dist: number; w: number } | null>(null);
@@ -637,22 +663,7 @@ export default function VideoStage(props: Props) {
           }
 
           pinchStart.current = null;
-          if (!partenzaDito.current) {
-            partenzaDito.current = { dx: g.dx, dy: g.dy };
-            {
-              // Con i bordi consentiti: serve a sapere se la posizione
-              // di partenza era già fuori da essi, cioè se il salto è
-              // una correzione o uno spostamento inventato.
-              const b = spazio();
-              Diario.segna(
-                `riquadrino:primo-tocco:${Math.round(inizioTrascinamento.current.x)},` +
-                `${Math.round(inizioTrascinamento.current.y)} ` +
-                `dentro ${Math.round(b.minX)}..${Math.round(b.maxX)},` +
-                `${Math.round(b.minY)}..${Math.round(b.maxY)} ` +
-                `misura ${sizeRef.current.w}x${sizeRef.current.h}`,
-              ).catch(() => { /* noop */ });
-            }
-          }
+          if (!partenzaDito.current) partenzaDito.current = { dx: g.dx, dy: g.dy };
           const dx = g.dx - partenzaDito.current.dx;
           const dy = g.dy - partenzaDito.current.dy;
           if (Math.abs(dx) > 4 || Math.abs(dy) > 4) dragged.current = true;
@@ -678,7 +689,7 @@ export default function VideoStage(props: Props) {
           clampIntoScreen();
         },
       }),
-    [pan, dentro, spazio, clampIntoScreen, clampWidth, applicaLarghezza],
+    [pan, dentro, clampIntoScreen, clampWidth, applicaLarghezza],
   );
 
   // --- Maniglia d'angolo per ridimensionare con un dito -------------------

@@ -7,6 +7,15 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.1.110",
+    "paragrafi": [
+      {
+        "forte": "Il riquadrino non salta più.",
+        "testo": "Spegnendo e riaccendendo il video, al trascinamento successivo saltava in un'altra posizione e ripartiva da lì - e nei casi peggiori finiva fuori dallo schermo. Ora resta dove lo lasci, sempre."
+      }
+    ]
+  },
+  {
     "versione": "1.1.107",
     "paragrafi": [
       {

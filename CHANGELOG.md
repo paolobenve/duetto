@@ -8,6 +8,12 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.1.110
+
+**Il riquadrino non salta più.** Spegnendo e riaccendendo il video, al trascinamento successivo
+saltava in un'altra posizione e ripartiva da lì - e nei casi peggiori finiva fuori dallo
+schermo. Ora resta dove lo lasci, sempre.
+
 ## 1.1.107
 
 **Chi bussa sente bussare.** Al posto del rullo di tamburi, due colpi su una porta: mezzo
