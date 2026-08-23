@@ -7,6 +7,19 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.1.99",
+    "paragrafi": [
+      {
+        "forte": "I volumi si leggono anche quando ha il video solo lui.",
+        "testo": "Prima, con il suo video a tutto schermo, sparivano insieme il riepilogo al centro (coperto) e il riquadrino (che non c'è): con le righe tecniche accese compare una seconda pastiglia in alto, «Tu», con la tua uscita audio e il tuo volume accanto alla sua."
+      },
+      {
+        "forte": "Nel riepilogo ogni volume ha il segno di chi ascolta",
+        "testo": ": il suo davanti a «ti sente», il tuo dopo «lo senti». Prima ce n'era uno solo in testa alla riga, e sembrava valere per tutti e due."
+      }
+    ]
+  },
+  {
     "versione": "1.1.98",
     "paragrafi": [
       {

@@ -584,17 +584,22 @@ export default function ChannelScreen(props: Props) {
     </>
   ), [segno, showStats, peerState.volume]);
 
-  const segnoMio = React.useMemo(() => {
+  /** Da dove esce il suono QUI, come `segno` fa per il suo. */
+  const segnoUscitaMia = React.useCallback((size: number, sfondo: string) => {
     const Icona = ICONA_USCITA[audioRoute] ?? ICONA_USCITA.SPEAKER_PHONE;
+    return <Icona size={size} color="#e6ebf1" off={!audioOn} sfondo={sfondo} />;
+  }, [audioRoute, audioOn]);
+
+  const segnoMio = React.useMemo(() => {
     return (
       <>
-        <Icona size={13} color="#e6ebf1" off={!audioOn} sfondo="#1b1d21" />
+        {segnoUscitaMia(13, '#1b1d21')}
         {showStats ? (
           <Text style={styles.pastigliaVolume}>{percento(guadagnoAltro)}</Text>
         ) : null}
       </>
     );
-  }, [audioRoute, audioOn, showStats, guadagnoAltro]);
+  }, [segnoUscitaMia, showStats, guadagnoAltro]);
 
   /** Il lampo della campanella: dice che qualcosa è partito davvero. */
   const bussata = useCallback(() => {
@@ -662,6 +667,11 @@ export default function ChannelScreen(props: Props) {
                       {peerState.volume != null ? '· ' : ''}
                       lo senti {percento(guadagnoAltro)}
                     </Text>
+                    {/* Il segno dell'uscita sta accanto al numero di
+                        chi ascolta: il suo davanti al suo, il mio dopo
+                        il mio. Prima ce n'era uno solo, in testa, e
+                        sembrava valere per tutta la riga. */}
+                    {segnoUscitaMia(17, '#0b0e14')}
                   </>
                 ) : null}
               </View>
@@ -772,9 +782,21 @@ export default function ChannelScreen(props: Props) {
           {/* Niente pastiglia "Non tu" quando di suo non c'è nessuna
               immagine: queste etichette dicono CHI si sta guardando, e
               una che nomina un video inesistente sembra un secondo video
-              che non arriva. Come ti sta ascoltando lo dice il riepilogo
-              al centro, quando nessuno dei due ha il video, e il suo
-              riquadrino quando ce l'ha. */}
+              che non arriva.
+
+              Con le righe tecniche accese però una pastiglia in più ci
+              vuole: se ha il video solo lui, il riquadrino non c'è, e
+              con il riquadrino sparivano le uniche due cose che dicono
+              come stai sentendo e come ti sente - le altre volte le
+              dice il riepilogo al centro, che qui è coperto dal suo
+              video. Questa non promette nessun video: porta il nome e
+              i due segni dell'audio, e basta. */}
+          {showStats && soloGrande === 'altro' && !localHasVideo ? (
+            <View style={[styles.chiBadge, styles.chiBadgeAudio]}>
+              <Text style={styles.chiTextTenue}>Tu</Text>
+              {segnoMio}
+            </View>
+          ) : null}
         </Animated.View>
       ) : null}
 
@@ -1463,6 +1485,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 5,
   },
   chiText: { color: '#e6ebf1', fontSize: 12.5, fontWeight: '700' },
+  /** la pastiglia dell'audio proprio: c'è ma non compete con la prima */
+  chiBadgeAudio: { backgroundColor: 'rgba(0,0,0,0.42)' },
+  chiTextTenue: { color: '#9fb4c8', fontSize: 12, fontWeight: '600' },
   /** la percentuale accanto al segno dell'uscita, quando le righe
    *  tecniche sono accese */
   pastigliaVolume: { color: '#9fb4c8', fontSize: 11, fontWeight: '700' },
