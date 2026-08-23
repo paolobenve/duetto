@@ -7,7 +7,7 @@ telefono acceso dall'altra parte della stanza: devono bucare, non essere
 carini. Tre soli, ben diversi fra loro, cosi' si sceglie a colpo sicuro
 senza doverli riascoltare.
 
-Uno solo e' fatto in casa, la strombazzata: un clacson sono letteralmente
+Due sono fatti in casa, la strombazzata e la bussata: un clacson sono letteralmente
 due note con le armoniche dispari, e sintetizzarlo viene meglio che
 cercarne una registrazione pulita. Tutti gli altri sono registrazioni,
 perche' altrove la sintesi si sente - un "chicchirichi" costruito resta
@@ -153,6 +153,53 @@ FINE_GALLO = 3.3   # secondi: dopo c'e' solo il fruscio del campo
 def gallo():
     return normalizza(sfuma(campione(GALLO, FINE_GALLO), 0.08))
 
+# --- Bussata ---------------------------------------------------------------
+# Non e' un suono per svegliare: e' il riscontro che sente CHI bussa, nel
+# proprio telefono, per sapere che l'avviso e' partito. Prima era il rullo
+# di tamburi, che pero' e' un annuncio, e per due colpi alla porta bastano
+# due colpi alla porta.
+#
+# Fatta in casa, come la strombazzata, e per lo stesso motivo: un colpo su
+# una porta e' un impulso su un pezzo di legno, cioe' un rumore secco piu'
+# qualche modo che scende in fretta. La sintesi qui non si sente perche'
+# non c'e' nessun timbro da imitare - c'e' un tonfo.
+def colpo(f0, seme, dur=0.24):
+    n = int(SR * dur)
+    tempo = t(dur)
+    x = np.zeros(n)
+    # Il legno: pochi modi, non armonici fra loro. Bassi e lunghi: una
+    # porta pesante suona sotto, e i modi acuti - che pure ci sono in un
+    # colpo su un tavolino - la fanno diventare una nocca sul legno
+    # sottile.
+    for f, tau, peso in (
+        (f0, 0.085, 1.0), (f0 * 2.31, 0.045, 0.48),
+        (f0 * 4.10, 0.024, 0.22), (f0 * 7.60, 0.012, 0.10),
+    ):
+        x += np.sin(2 * np.pi * f * tempo) * decadi(n, tau) * peso
+    # Il colpo vero: rumore che dura un battito di ciglia. E' questo a
+    # fare "toc" e non "boo", ma va tenuto scuro - il rumore bianco
+    # crudo fa lo schiocco di una frusta - quindi passa da un filtro che
+    # gli toglie la parte alta.
+    caso = np.random.default_rng(seme)
+    rumore = caso.standard_normal(n) * decadi(n, 0.005)
+    coda = np.exp(-np.arange(48) / 12.0)
+    rumore = np.convolve(rumore, coda / coda.sum())[:n]
+    x += rumore * 1.4
+    salita = max(1, int(SR * 0.0008))
+    x[:salita] *= np.linspace(0, 1, salita)
+    return x
+
+def bussata():
+    # Poco piu' dei due colpi: dopo il secondo c'e' solo la sua coda, e
+    # mezzo secondo di silenzio in fondo occupa e non si sente.
+    x = np.zeros(int(SR * 0.56))
+    # Due colpi, non identici: una mano non ripete mai lo stesso colpo,
+    # e due copie esatte suonano finte. Il secondo un filo piu' forte
+    # del primo, come viene naturale bussando.
+    metti(x, 0.00, colpo(142.0, 1), 0.88)
+    metti(x, 0.26, colpo(132.0, 2), 1.00)
+    return normalizza(sfuma(x, 0.05))
+
 # --- scrittura -------------------------------------------------------------
 def salva(nome, dati):
     os.makedirs(FUORI, exist_ok=True)
@@ -172,3 +219,4 @@ if __name__ == '__main__':
     salva('sveglia_fanfara', fanfara())
     salva('sveglia_strombazzata', strombazzata())
     salva('sveglia_gallo', gallo())
+    salva('bussata', bussata())

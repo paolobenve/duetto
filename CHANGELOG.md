@@ -8,6 +8,18 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.1.107
+
+**Chi bussa sente bussare.** Al posto del rullo di tamburi, due colpi su una porta: mezzo
+secondo, il riscontro che l'avviso è partito davvero. Il rullo resta fra i suoni da mandare
+all'altro.
+
+**«Avvisa» si spegne quando non c'è dove bussare.** Grigio e non premibile quando il telefono
+dell'altro al server non è collegato - staccato di proposito, o senza rete - perché lì l'avviso
+non ha dove arrivare. Resta acceso quando è in attesa e anche quando siete tutti e due nel
+canale, che è il caso in cui insistere serve. Con lui è sparita la finestrella «Non
+raggiungibile», che diceva a cose fatte quello che ora si vede prima.
+
 ## 1.1.105
 
 **Il nome del collegamento si vede in ogni notifica**, in corsivo, in testa al testo: «*Casa* ·

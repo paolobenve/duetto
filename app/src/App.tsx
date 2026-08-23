@@ -139,6 +139,15 @@ const CHIAVE_GUADAGNO = 'duetto.volume.altro';
  */
 const RITENTO_NOTIFICA_MS = 5_000;
 
+/**
+ * Il tetto di durata del riscontro sonoro di chi bussa.
+ *
+ * I due colpi durano mezzo secondo e finiscono da soli: il tetto resta
+ * come rete, perché un suono di riscontro che continua mentre si sta già
+ * facendo altro è la cosa che si voleva togliere.
+ */
+const ECO_BUSSATA_MS = 2_000;
+
 const ATTESA_SENZA_SERVER_MS = 8 * 1000;
 const ATTESA_IN_APERTURA_MS = 15 * 1000;
 
@@ -1303,9 +1312,12 @@ export default function App() {
               // quando il primo avviso non ha ottenuto risposta.
               setKnockPending(true);
               setTimeout(() => setKnockPending(false), 2000);
-            } else if (error === 'peer-offline') {
-              Alert.alert('Non raggiungibile', 'L’altro telefono non è collegato in questo momento.');
             }
+            // Niente finestrella quando il server risponde "non c'è":
+            // il pulsante è già spento e non premibile quando il suo
+            // telefono non è collegato, quindi o non ci si è arrivati,
+            // o è appena caduto - e per quello c'è già la riga che dice
+            // com'è messo, senza fermare quello che si stava facendo.
           },
 
           onError: (code) => {
@@ -2121,11 +2133,11 @@ export default function App() {
         onSelectRoute={audio.select}
         onKnock={() => {
           signalingRef.current?.knock();
-          // Un rullo di tamburi anche da questa parte, piano: l'avviso
-          // parte verso un telefono che non è nel canale, e da qui non
-          // si sente niente - il pulsante lampeggia e basta. Sapere che
-          // è partito vale quanto mandarlo.
-          Sveglia.suona('tamburi', true).catch(() => {});
+          // Due colpi su una porta, piano, anche da questa parte:
+          // l'avviso parte verso un telefono lontano e da qui non si
+          // sentirebbe niente - il pulsante lampeggia e basta. Sapere
+          // che è partito vale quanto mandarlo.
+          Sveglia.suona('bussata', true, ECO_BUSSATA_MS).catch(() => {});
           Diario.segna('avvisa').catch(() => {});
         }}
         onLeave={leaveChannel}

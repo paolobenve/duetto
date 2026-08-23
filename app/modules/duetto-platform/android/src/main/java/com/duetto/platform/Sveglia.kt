@@ -4,6 +4,8 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.MediaPlayer
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 
 /**
@@ -32,8 +34,12 @@ object Sveglia {
 
     val nomi = listOf("tamburi", "batteria", "fanfara", "strombazzata", "gallo")
 
+    /** Il taglio programmato, da annullare se il suono finisce prima. */
+    private val orologio = Handler(Looper.getMainLooper())
+
     /**
      * @param eco lo sta suonando chi lo ha MANDATO, non chi lo riceve
+     * @param maxMs quanto suonare al massimo; 0 = tutto
      *
      * Chi manda un suono deve sentire cos'ha mandato: senza, si preme
      * un pulsante e non succede niente di percepibile da questa parte.
@@ -43,14 +49,22 @@ object Sveglia {
      * della conversazione - la stessa dell'avviso di chiamata in attesa
      * - che e' fatta apposta per i segnali brevi durante una chiamata e
      * che la cancellazione d'eco conosce.
+     *
+     * E per un pezzo solo: il rullo di tamburi dura parecchio, e a chi
+     * l'ha mandato bastano i primi due secondi per sapere che e'
+     * partito - il resto continua a suonare mentre si sta gia' facendo
+     * altro.
      */
-    fun suona(ctx: Context, nome: String, eco: Boolean = false) {
+    fun suona(ctx: Context, nome: String, eco: Boolean = false, maxMs: Int = 0) {
         val res = when (nome) {
             "tamburi" -> R.raw.sveglia_tamburi
             "batteria" -> R.raw.sveglia_batteria
             "fanfara" -> R.raw.sveglia_fanfara
             "strombazzata" -> R.raw.sveglia_strombazzata
             "gallo" -> R.raw.sveglia_gallo
+            // Non e' una sveglia e non sta nell'elenco: e' il riscontro
+            // di chi bussa, due colpi su una porta.
+            "bussata" -> R.raw.bussata
             else -> return
         }
         ferma()
@@ -75,6 +89,9 @@ object Sveglia {
             if (eco) mp.setVolume(0.33f, 0.33f)
             player = mp
             mp.start()
+            if (maxMs > 0) {
+                orologio.postDelayed({ if (player === mp) ferma() }, maxMs.toLong())
+            }
         } catch (e: Exception) {
             Log.w(TAG, "sveglia: $nome non suona: ${e.message}")
         }
@@ -82,6 +99,7 @@ object Sveglia {
 
     /** Zittisce quello in corso: si usa anche prima di farne partire un altro. */
     fun ferma() {
+        orologio.removeCallbacksAndMessages(null)
         val mp = player ?: return
         player = null
         try {

@@ -11,7 +11,7 @@ declare module 'duetto-platform' {
   /** I suoni per richiamare l'altro: escono dal volume della sveglia. */
   export const Sveglia: {
     /** `eco`: lo suona chi lo ha mandato, e allora esce piano */
-    suona(nome: string, eco?: boolean): Promise<boolean>;
+    suona(nome: string, eco?: boolean, maxMs?: number): Promise<boolean>;
     ferma(): Promise<boolean>;
     elenco(): Promise<string[]>;
   };

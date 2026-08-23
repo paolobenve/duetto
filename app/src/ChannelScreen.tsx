@@ -384,6 +384,16 @@ export default function ChannelScreen(props: Props) {
    */
   const interrupted = peerState.video && !remoteHasVideo;
 
+  /**
+   * L'avviso ha dove arrivare.
+   *
+   * Basta che il suo telefono sia collegato al server: nel canale o in
+   * attesa non fa differenza, l'avviso passa di lì in tutti e due i
+   * casi. Se invece non è collegato - staccato di proposito, o senza
+   * rete - non c'è nessuno a cui bussare.
+   */
+  const raggiungibile = peerPresent || status === 'together';
+
   // Senza questo, perdendo il server restava uno schermo nero muto: il
   // video dell'altro è ancora lì ma non ci arriva più nessun
   // fotogramma, e nulla lo spiegava.
@@ -883,19 +893,24 @@ export default function ChannelScreen(props: Props) {
           // troppo poco per accorgersene.
           icon={appenaBussato || knockPending ? <IconaAvvisato /> : <IconaAvvisa />}
           /**
-           * Sempre acceso, tranne il lampo alla pressione.
+           * Acceso finché l'avviso ha dove andare.
            *
            * Prima si spegneva quando eravate tutti e due nel canale, con
            * l'idea che lì non ci fosse nulla da avvisare. Ma il pulsante
            * resta premibile proprio per quel caso - l'altro c'è e non
            * risponde - quindi lo spegnimento non diceva niente di vero, e
            * faceva sembrare guasto un pulsante che funzionava.
+           *
+           * Si spegne invece quando il suo telefono al server non è
+           * collegato: lì l'avviso non ha dove arrivare, e un pulsante
+           * blu che promette di chiamarlo promette una cosa che non
+           * succede.
            */
-          highlight={!appenaBussato}
-          // Sempre premibile: l'altro può essere nel canale ma distratto,
-          // e insistere è proprio ciò che si vuole fare quando il primo
-          // avviso non ha ottenuto risposta.
-          disabled={false}
+          highlight={!appenaBussato && raggiungibile}
+          // Premibile finché è raggiungibile: può essere nel canale ma
+          // distratto, e insistere è proprio ciò che si vuole fare
+          // quando il primo avviso non ha ottenuto risposta.
+          disabled={!raggiungibile}
           onPress={press(bussa)}
           // Tenendolo premuto, i suoni per richiamarlo. Solo mentre
           // siete tutti e due nel canale: fuori di lì non c'è nessun

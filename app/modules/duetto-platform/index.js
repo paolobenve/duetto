@@ -319,7 +319,8 @@ export const Volume = isAndroid && NativeVolume
  */
 export const Sveglia = isAndroid && NativeSveglia
   ? {
-      suona: (nome, eco) => call(NativeSveglia, 'suona', String(nome), !!eco),
+      suona: (nome, eco, maxMs) =>
+        call(NativeSveglia, 'suona', String(nome), !!eco, Number(maxMs) || 0),
       ferma: () => call(NativeSveglia, 'ferma'),
       elenco: () => call(NativeSveglia, 'elenco'),
     }

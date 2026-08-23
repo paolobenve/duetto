@@ -7,6 +7,19 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.1.107",
+    "paragrafi": [
+      {
+        "forte": "Chi bussa sente bussare.",
+        "testo": "Al posto del rullo di tamburi, due colpi su una porta: mezzo secondo, il riscontro che l'avviso è partito davvero. Il rullo resta fra i suoni da mandare all'altro."
+      },
+      {
+        "forte": "«Avvisa» si spegne quando non c'è dove bussare.",
+        "testo": "Grigio e non premibile quando il telefono dell'altro al server non è collegato - staccato di proposito, o senza rete - perché lì l'avviso non ha dove arrivare. Resta acceso quando è in attesa e anche quando siete tutti e due nel canale, che è il caso in cui insistere serve. Con lui è sparita la finestrella «Non raggiungibile», che diceva a cose fatte quello che ora si vede prima."
+      }
+    ]
+  },
+  {
     "versione": "1.1.105",
     "paragrafi": [
       {
