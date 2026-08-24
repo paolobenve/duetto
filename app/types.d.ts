@@ -23,6 +23,11 @@ declare module 'duetto-platform' {
     subscribe(cb: (direzione: number) => void): () => void;
   };
 
+  /** I cambi di rete del telefono: cella, wifi, indirizzo nuovo. */
+  export const Rete: {
+    subscribe(cb: (cosa: string) => void): () => void;
+  };
+
   /** Foreground service Android: tiene viva la presenza nel canale. */
   export const Foreground: {
     start(text?: string, withCamera?: boolean): Promise<boolean>;

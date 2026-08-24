@@ -4,6 +4,7 @@ const isAndroid = Platform.OS === 'android';
 const NativeForeground = NativeModules.DuettoForeground;
 const NativePip = NativeModules.DuettoPip;
 const NativeVisibility = NativeModules.DuettoVisibility;
+const NativeRete = NativeModules.DuettoRete;
 const NativeCodecs = NativeModules.DuettoCodecs;
 const NativeAudio = NativeModules.DuettoAudio;
 const NativeAvvisi = NativeModules.DuettoAvvisi;
@@ -265,6 +266,27 @@ export const Audio = isAndroid && NativeAudio
  * finestrella è ben visibile. Qui contano onStart/onStop, che in PiP non
  * scattano.
  */
+/**
+ * I cambi di rete del telefono: cella, wifi, indirizzo nuovo.
+ *
+ * Serve a rifare la connessione appena c'è una rete nuova, invece di
+ * aspettare che qualcuno inciampi nel socket morto. Vedi ReteModule.
+ */
+export const Rete = isAndroid && NativeRete
+  ? {
+      /**
+       * Chiama `cb(cosa)` a ogni cambiamento: "arrivata", "persa",
+       * "indirizzo", "valida". Restituisce la funzione per smettere.
+       */
+      subscribe(cb) {
+        call(NativeRete, 'start');
+        const emitter = new NativeEventEmitter(NativeRete);
+        const sub = emitter.addListener('duetto-rete', (v) => cb(String(v || '')));
+        return () => sub.remove();
+      },
+    }
+  : { subscribe: () => () => {} };
+
 export const Visibility = isAndroid && NativeVisibility
   ? {
       /** Vero se l'app è visibile in questo momento. */

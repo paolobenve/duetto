@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
 import {
-  Foreground, Pip, AppWindow, Visibility, Codecs, Audio, Avvisi, Diario, Volume,
+  Foreground, Pip, AppWindow, Visibility, Codecs, Audio, Avvisi, Diario, Volume, Rete,
   Sveglia,
 } from 'duetto-platform';
 import {
@@ -144,6 +144,21 @@ const CHIAVE_GUADAGNO = 'duetto.volume.altro';
  * secondo dopo, di solito, l'app è tornata in una condizione in cui può.
  */
 const RITENTO_NOTIFICA_MS = 5_000;
+
+/**
+ * Quanto si aspetta, dopo un cambio di rete, prima di rifare la
+ * connessione: gli eventi arrivano a raffica e uno basta.
+ */
+const RESPIRO_RETE_MS = 700;
+
+/**
+ * Quanto si tace prima di dire che il server non c'è.
+ *
+ * Cinque secondi: un cambio di cella si risolve in uno o due, e non
+ * merita un allarme; un guasto vero dura molto di più e si vede lo
+ * stesso.
+ */
+const GRAZIA_SERVER_MS = 5_000;
 
 /** Ogni quanto si guarda se siamo ancora senza server. */
 const CONTROLLO_SERVER_MS = 3_000;
@@ -580,14 +595,43 @@ export default function App() {
    * in attesa basta bussargli, se non è raggiungibile non c'è niente da
    * fare se non aspettare. Stesse parole della schermata di attesa.
    */
+  /**
+   * Lo stato da MOSTRARE, che non è sempre quello vero.
+   *
+   * Perdere il server per un secondo è la normalità di un telefono che
+   * si muove: cambiando cella l'indirizzo cambia, e con lui muore ogni
+   * connessione aperta - succede a tutte le app, solo che nelle altre
+   * non c'è niente di visibile appeso a quel socket. Dirlo subito
+   * mette in allarme per una cosa che si sistema da sé in un paio di
+   * secondi.
+   *
+   * Quindi la brutta notizia aspetta qualche secondo prima di andare a
+   * schermo: se nel frattempo il collegamento torna, non se ne parla
+   * più. È lo stesso respiro che l'avviso sul video si prende già.
+   *
+   * Vale per quello che si vede - riquadro al centro e notifica - non
+   * per quello che si fa: chi decide di rifare la connessione guarda lo
+   * stato vero, che è il solo a sapere com'è messa davvero.
+   */
+  const [statusVisibile, setStatusVisibile] = useState<PresenceStatus>(status);
+  useEffect(() => {
+    if (status !== 'offline' && status !== 'connecting') {
+      setStatusVisibile(status);
+      return;
+    }
+    const t = setTimeout(() => setStatusVisibile(status), GRAZIA_SERVER_MS);
+    return () => clearTimeout(t);
+  }, [status]);
+
   const testoNotifica = React.useMemo(() => testoPresenza({
     inChannel,
     peerActive: status === 'together',
     peerPresent,
     staccato: peerStaccato,
     nome: shownName,
-    server: status === 'offline' ? 'giu' : status === 'connecting' ? 'incorso' : 'ok',
-  }), [inChannel, status, peerPresent, peerStaccato, shownName]);
+    server: statusVisibile === 'offline' ? 'giu'
+      : statusVisibile === 'connecting' ? 'incorso' : 'ok',
+  }), [inChannel, statusVisibile, peerPresent, peerStaccato, shownName]);
 
   /**
    * Il testo serve anche a chi accende il servizio, che parte prima che
@@ -683,6 +727,39 @@ export default function App() {
     }, CONTROLLO_SERVER_MS);
     return () => clearInterval(t);
   }, [status, disponibile]);
+
+  /**
+   * La rete è cambiata: si rifà la connessione subito.
+   *
+   * Nessuna connessione TCP sopravvive a un cambio di indirizzo, e
+   * cambiando cella l'indirizzo cambia sempre: il socket verso il
+   * server è morto anche se sembra aperto, e la notizia della sua morte
+   * può arrivare minuti dopo. Chi lo sa per primo è Android, che il
+   * cambio lo ha appena fatto: da lì si riparte, senza aspettare che
+   * qualcuno inciampi in un socket che non porta più niente.
+   *
+   * Un momento di respiro prima di rifare: al cambio di rete gli eventi
+   * arrivano a raffica - arrivata, indirizzo, valida - e rifare tre
+   * volte non serve a niente.
+   */
+  useEffect(() => {
+    if (!disponibile) return;
+    let quando: ReturnType<typeof setTimeout> | null = null;
+    const stop = Rete.subscribe((cosa) => {
+      if (cosa === 'persa') return;
+      if (quando) clearTimeout(quando);
+      quando = setTimeout(() => {
+        quando = null;
+        Diario.segna(`rete:${cosa}`).catch(() => { /* noop */ });
+        senzaServerDa.current = senzaServerDa.current || Date.now();
+        signalingRef.current?.rifaiDaCapo();
+      }, RESPIRO_RETE_MS);
+    });
+    return () => {
+      if (quando) clearTimeout(quando);
+      stop();
+    };
+  }, [disponibile]);
 
   /**
    * Ogni tanto si torna a chiedere al server se l'altro c'è.
@@ -2169,7 +2246,8 @@ export default function App() {
         onSelectQuality={(q) => applyQuality(q, true)}
         localStream={localStream}
         remoteStream={remoteStream}
-        status={status}
+        // Quello da mostrare, non quello vero: vedi statusVisibile.
+        status={statusVisibile}
         connectionState={connState}
         audioOn={audioOn}
         videoOn={videoOn}

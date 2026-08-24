@@ -7,6 +7,15 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.1.114",
+    "paragrafi": [
+      {
+        "forte": "Il cambio di cella non si vede più.",
+        "testo": "Duetto ora si accorge da sé quando la rete del telefono cambia - cella, wifi, indirizzo nuovo - e rifà subito il collegamento invece di aspettare che qualcuno inciampi in un socket morto. E la scritta «senza collegamento al server» aspetta cinque secondi prima di comparire: un cambio di rete si sistema in uno o due, e non merita un allarme."
+      }
+    ]
+  },
+  {
     "versione": "1.1.113",
     "paragrafi": [
       {

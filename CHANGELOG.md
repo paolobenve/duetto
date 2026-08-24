@@ -8,6 +8,13 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.1.114
+
+**Il cambio di cella non si vede più.** Duetto ora si accorge da sé quando la rete del telefono
+cambia - cella, wifi, indirizzo nuovo - e rifà subito il collegamento invece di aspettare che
+qualcuno inciampi in un socket morto. E la scritta «senza collegamento al server» aspetta cinque
+secondi prima di comparire: un cambio di rete si sistema in uno o due, e non merita un allarme.
+
 ## 1.1.113
 
 **«Senza collegamento al server» quando il collegamento c'era.** Cambiando cella o passando dal
