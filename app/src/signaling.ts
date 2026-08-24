@@ -57,7 +57,12 @@ export type SignalMessage =
   // "Sono morta e sono tornata": chi ha visto sparire l'altro senza un
   // perche' merita di saperlo, e il telefono che e' morto il perche' lo
   // scopre riaccendendosi. Nessuno puo' mandarlo mentre muore.
-  | { kind: 'morte'; quando: number; causa: string }
+  // `tornato` e' l'ora in cui l'app e' ripartita, sul telefono che era
+  // morto. Senza, chi riceve puo' solo dire "adesso" - e se era
+  // scollegato, quel messaggio gli arriva quando si ricollega lui, cosi'
+  // l'avviso raccontava come ora del ritorno dell'altro l'ora del
+  // rientro proprio.
+  | { kind: 'morte'; quando: number; causa: string; tornato?: number }
   // Un suono forte per richiamare chi e' nel canale ma non risponde:
   // addormentato, o col telefono dall'altra parte della stanza. Lo
   // sceglie chi lo manda, lo suona il telefono di chi lo riceve.
@@ -193,10 +198,31 @@ export class Signaling {
       this.scheduleReconnect();
       return;
     }
+    // Il precedente si chiude sul serio: abbandonarlo e basta lo lascia
+    // vivo a consumare e a parlare quando non deve.
+    const vecchio = this.ws;
     this.ws = ws;
+    if (vecchio && vecchio !== ws) {
+      try { vecchio.close(); } catch { /* era gia' morto */ }
+    }
+
+    /**
+     * Parla ancora il socket in uso?
+     *
+     * Un socket abbandonato non tace: la sua chiusura puo' arrivare
+     * minuti dopo che ne abbiamo aperto un altro - sulle reti mobili
+     * succede a ogni cambio di cella, perche' la rete si accorge tardi
+     * che quella connessione non esiste piu'. Senza questo controllo
+     * quella chiusura tardiva dichiarava "senza collegamento al server"
+     * mentre il socket nuovo era vivo e funzionante, e da fuori si
+     * vedeva l'app perdere il server da sola dopo qualche minuto di
+     * calma.
+     */
+    const attuale = () => this.ws === ws;
 
     const openedAt = Date.now();
     ws.onopen = () => {
+      if (!attuale()) { try { ws.close(); } catch { /* noop */ } return; }
       log('collegato al server');
       this.backoff = RECONNECT_MIN_MS;
       this.rawSend({
@@ -208,11 +234,16 @@ export class Signaling {
       });
     };
 
-    ws.onmessage = (ev) => this.handle(ev.data);
+    ws.onmessage = (ev) => { if (attuale()) this.handle(ev.data); };
     ws.onerror = (e: any) => {
+      if (!attuale()) return;
       log('errore di rete:', e?.message ?? '(senza dettagli)');
     };
     ws.onclose = (e: any) => {
+      if (!attuale()) {
+        log('caduto un socket gia\' abbandonato: non ci riguarda piu\'');
+        return;
+      }
       // Il codice dice CHI ha chiuso e perché: 1006 è una caduta di
       // rete, 1000/1001 una chiusura ordinata, 4xxx un rifiuto nostro.
       log('caduto dopo', Math.round((Date.now() - openedAt) / 1000), 's',

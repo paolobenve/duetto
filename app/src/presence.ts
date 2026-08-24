@@ -38,7 +38,9 @@ export function interfacciaAlComando(viva: boolean) {
  * qui sotto. Un telefono che si è appena rialzato può trovare l'altro in
  * uno qualunque dei due stati, e il racconto dev'essere lo stesso.
  */
-export function fraseMorte(quando: number, causa: string, nome: string): string {
+export function fraseMorte(
+  quando: number, causa: string, nome: string, tornato?: number,
+): string {
   const chi = nome && nome !== 'Qualcuno' ? nome : 'L\u2019altro';
   const perche = (() => {
     switch (causa) {
@@ -61,12 +63,22 @@ export function fraseMorte(quando: number, causa: string, nome: string): string 
   const quandoScritto = d.toDateString() === new Date().toDateString()
     ? `alle ${ora}`
     : `il ${d.toLocaleDateString()} alle ${ora}`;
-  // L'ora del ritorno, al secondo: una notizia letta due ore dopo, senza
-  // quel numero, non dice se e' tornato subito o poco fa.
-  const adesso = new Date().toLocaleTimeString(undefined, {
+  /**
+   * L'ora del ritorno, al secondo.
+   *
+   * La manda chi e' tornato, perche' e' l'unico a saperla: se noi in
+   * quel momento eravamo scollegati, il suo messaggio ci arriva quando
+   * ci ricolleghiamo, e "adesso" sarebbe l'ora del NOSTRO rientro. E'
+   * successo davvero: "e' sparito alle 17:00, adesso (19:32) e'
+   * tornato", con le 19:32 che erano l'ora in cui era tornato chi
+   * leggeva. Da un Duetto piu' vecchio quel dato non arriva, e allora
+   * si ripiega su adesso, che e' quello che si sapeva fare prima.
+   */
+  const ritorno = new Date(tornato && tornato > 0 ? tornato : Date.now());
+  const oraRitorno = ritorno.toLocaleTimeString(undefined, {
     hour: '2-digit', minute: '2-digit', second: '2-digit',
   });
-  return `${chi} \u00e8 sparito ${quandoScritto}: ${perche}. Adesso (${adesso}) \u00e8 tornato.`;
+  return `${chi} \u00e8 sparito ${quandoScritto}: ${perche}. \u00c8 tornato alle ${oraRitorno}.`;
 }
 
 /**
@@ -228,7 +240,9 @@ export async function startListening(): Promise<boolean> {
         if (msg.kind === 'morte') {
           Foreground.nota(
             nome0,
-            fraseMorte(Number(msg.quando), String(msg.causa), nome),
+            fraseMorte(
+              Number(msg.quando), String(msg.causa), nome, Number(msg.tornato) || 0,
+            ),
           ).catch(() => { /* noop */ });
         }
       },

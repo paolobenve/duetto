@@ -145,6 +145,9 @@ const CHIAVE_GUADAGNO = 'duetto.volume.altro';
  */
 const RITENTO_NOTIFICA_MS = 5_000;
 
+/** Ogni quanto si guarda se siamo ancora senza server. */
+const CONTROLLO_SERVER_MS = 3_000;
+
 /**
  * Il tetto di durata del riscontro sonoro di chi bussa.
  *
@@ -154,8 +157,14 @@ const RITENTO_NOTIFICA_MS = 5_000;
  */
 const ECO_BUSSATA_MS = 2_000;
 
-const ATTESA_SENZA_SERVER_MS = 8 * 1000;
-const ATTESA_IN_APERTURA_MS = 15 * 1000;
+/**
+ * Da quanto si può restare senza server prima di rifare tutto da capo.
+ *
+ * Si misura dall'ultima connessione funzionante: dieci secondi senza
+ * server sono dieci secondi, che ci si sia riprovato tre volte o
+ * trenta.
+ */
+const ATTESA_SENZA_SERVER_MS = 10 * 1000;
 
 const PRESENZA_FITTA_MS = 60 * 1000;
 const PRESENZA_RADA_MS = 5 * 60 * 1000;
@@ -423,9 +432,6 @@ export default function App() {
    * e senza questa riga bisogna chiederlo a voce e fidarsi della
    * risposta. Va nel diario nostro, che a un cavo ci arriva.
    */
-  /** Lo stato del server visto l'ultima volta, per segnarne i passaggi. */
-  const statoServerRef = useRef<PresenceStatus>('connecting');
-
   /**
    * L'ultimo stato dell'altro, per accorgersi di cosa CAMBIA.
    *
@@ -588,6 +594,15 @@ export default function App() {
    * ci sia qualcosa da dire: senza questo, la prima riga sarebbe quella
    * di partenza e resterebbe finché non cambia qualcos'altro.
    */
+  /**
+   * Da quando siamo senza server, o 0 se ce l'abbiamo.
+   *
+   * Un solo numero al posto dello stato precedente: dice sia quando
+   * scrivere le righe del diario, sia da quanto tempo dura - che è
+   * l'unica misura buona per decidere di rifare tutto da capo.
+   */
+  const senzaServerDa = useRef(0);
+
   const testoNotificaRef = useRef(testoNotifica);
   /**
    * Scrivere la riga solo quando la presenza c'è davvero.
@@ -639,18 +654,34 @@ export default function App() {
    * evento, e l'attesa non scade mai - l'app resta a dire «senza
    * collegamento al server» con il telefono perfettamente in rete.
    *
-   * Vale per tutti e due gli stati in cui si può restare appesi, con
-   * attese diverse: vedi ATTESA_SENZA_SERVER_MS e ATTESA_IN_APERTURA_MS.
+   * Si conta dall'ultima connessione FUNZIONANTE, non da quanto dura lo
+   * stato attuale. Contando lo stato, questa rete non è mai scattata
+   * nemmeno una volta - nel diario, zero righe in giorni: un tentativo
+   * fallito cambia stato ogni due secondi, `offline → in apertura →
+   * offline`, e il conto alla rovescia ripartiva da capo ogni volta
+   * senza arrivare mai in fondo. Chi è senza server da mezzo minuto lo è
+   * comunque, per quante volte ci abbia riprovato in mezzo.
    */
   useEffect(() => {
     if (!disponibile) return;
     if (status !== 'offline' && status !== 'connecting') return;
-    const quanto = status === 'offline' ? ATTESA_SENZA_SERVER_MS : ATTESA_IN_APERTURA_MS;
-    const t = setTimeout(() => {
-      Diario.segna(`server:rifaccio:${status}`).catch(() => { /* noop */ });
+    const t = setInterval(() => {
+      // Se non stiamo già contando, si comincia adesso: siamo qui
+      // perché il collegamento non c'è, e il caso peggiore - il socket
+      // che resta "in apertura" per sempre, senza mai una caduta da
+      // segnare - è proprio quello che non farebbe partire nessun
+      // conto.
+      const da = senzaServerDa.current || (senzaServerDa.current = Date.now());
+      const fermo = Date.now() - da;
+      if (fermo < ATTESA_SENZA_SERVER_MS) return;
+      Diario.segna(`server:rifaccio:${Math.round(fermo / 1000)}s`)
+        .catch(() => { /* noop */ });
+      // Il conto riparte da adesso: rifare da capo è un tentativo, e se
+      // non basta se ne farà un altro fra altrettanto tempo.
+      senzaServerDa.current = Date.now();
       signalingRef.current?.rifaiDaCapo();
-    }, quanto);
-    return () => clearTimeout(t);
+    }, CONTROLLO_SERVER_MS);
+    return () => clearInterval(t);
   }, [status, disponibile]);
 
   /**
@@ -740,7 +771,8 @@ export default function App() {
    * Si racconta una volta sola: la stessa morte raccontata a ogni
    * riconnessione diventerebbe un ritornello.
    */
-  const morteDaRaccontare = useRef<{ quando: number; causa: string } | null>(null);
+  const morteDaRaccontare =
+    useRef<{ quando: number; causa: string; tornato: number } | null>(null);
 
   /**
    * Da quando l'altro non c'è più, e il ritorno da annunciare.
@@ -817,7 +849,9 @@ export default function App() {
       if (/installPackage|PackageUpdate/i.test(m.descrizione || '')) return;
       const grezzo = await AsyncStorage.getItem(CHIAVE_MORTE_RACCONTATA);
       if (Number(grezzo) >= m.quando) return;
-      morteDaRaccontare.current = { quando: m.quando, causa: m.causa };
+      // L'ora del ritorno è adesso: l'app sta ripartendo proprio ora, e
+      // questo è l'unico telefono che possa saperla.
+      morteDaRaccontare.current = { quando: m.quando, causa: m.causa, tornato: Date.now() };
     } catch { /* se il telefono non lo sa, non lo sa */ }
   }, []);
 
@@ -826,7 +860,9 @@ export default function App() {
     const da = morteDaRaccontare.current;
     const sig = signalingRef.current;
     if (!da || !sig?.connected) return;
-    sig.sendSignal({ kind: 'morte', quando: da.quando, causa: da.causa });
+    sig.sendSignal({
+      kind: 'morte', quando: da.quando, causa: da.causa, tornato: da.tornato,
+    });
     morteDaRaccontare.current = null;
     AsyncStorage.setItem(CHIAVE_MORTE_RACCONTATA, String(da.quando)).catch(() => {});
   }, [peerPresent, status]);
@@ -1115,13 +1151,27 @@ export default function App() {
              * 1006 caduta di rete, 1000 chiusura ordinata, 4xxx rifiuto
              * del server.
              */
-            const era = statoServerRef.current;
-            if (st === 'offline' && era !== 'offline') {
-              Diario.segna(`server:giu:${dettaglio ?? '?'}`).catch(() => {});
-            } else if (st !== 'offline' && st !== 'connecting' && era === 'offline') {
-              Diario.segna('server:ok').catch(() => {});
+            /**
+             * Il ritorno si misura da quando si è rimasti senza, non dal
+             * passo precedente.
+             *
+             * Guardando solo lo stato di prima, `server:ok` pretendeva un
+             * salto diretto da "offline" a "collegato" - ma si passa
+             * sempre da "in apertura", quindi quella riga non si è
+             * scritta mai, e il diario non sapeva dire quando il
+             * collegamento fosse tornato. Che è esattamente la domanda
+             * per cui il diario esiste.
+             */
+            if (st === 'offline') {
+              if (!senzaServerDa.current) {
+                senzaServerDa.current = Date.now();
+                Diario.segna(`server:giu:${dettaglio ?? '?'}`).catch(() => {});
+              }
+            } else if (st !== 'connecting' && senzaServerDa.current) {
+              const quanto = Math.round((Date.now() - senzaServerDa.current) / 1000);
+              senzaServerDa.current = 0;
+              Diario.segna(`server:ok:dopo ${quanto}s`).catch(() => {});
             }
-            statoServerRef.current = st;
           },
 
           onJoined: ({ peerPresent: present, peerActive, peerName: n, turn }) => {
@@ -1293,6 +1343,7 @@ export default function App() {
               scordaRitorno();
               const testo = fraseMorte(
                 Number(msg.quando), String(msg.causa), shownNameRef.current,
+                Number(msg.tornato) || 0,
               );
               Foreground.nota(nomeAvvisoRef.current, testo).catch(() => {});
               setAvviso(testo);

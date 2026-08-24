@@ -8,6 +8,22 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.1.113
+
+**«Senza collegamento al server» quando il collegamento c'era.** Cambiando cella o passando dal
+wifi ai dati, la connessione muore e l'app ne apre subito un'altra - ma la notizia della morte
+della prima arriva con minuti di ritardo, e finiva per dichiarare scollegata una connessione
+nuova e funzionante. Ora chi parla deve essere la connessione in uso, e quella abbandonata si
+chiude sul serio.
+
+**La rete di sicurezza adesso scatta davvero.** Doveva rifare tutto da capo dopo qualche secondo
+senza server, e in giorni di diario non è mai partita: il conto ripartiva a ogni tentativo. Ora
+conta dall'ultima connessione funzionante, e dopo dieci secondi di buio rifà da capo.
+
+**L'avviso della morte dice l'ora vera del ritorno.** «È tornato alle 17:04», mandata da chi è
+tornato: prima diceva l'ora in cui la notizia arrivava a te, che se eri scollegato è tutt'altra
+cosa.
+
 ## 1.1.112
 
 **Un tocco distratto non ti fa più uscire dal canale.** Con un video acceso i comandi sbiadiscono,

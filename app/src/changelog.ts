@@ -7,6 +7,23 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.1.113",
+    "paragrafi": [
+      {
+        "forte": "«Senza collegamento al server» quando il collegamento c'era.",
+        "testo": "Cambiando cella o passando dal wifi ai dati, la connessione muore e l'app ne apre subito un'altra - ma la notizia della morte della prima arriva con minuti di ritardo, e finiva per dichiarare scollegata una connessione nuova e funzionante. Ora chi parla deve essere la connessione in uso, e quella abbandonata si chiude sul serio."
+      },
+      {
+        "forte": "La rete di sicurezza adesso scatta davvero.",
+        "testo": "Doveva rifare tutto da capo dopo qualche secondo senza server, e in giorni di diario non è mai partita: il conto ripartiva a ogni tentativo. Ora conta dall'ultima connessione funzionante, e dopo dieci secondi di buio rifà da capo."
+      },
+      {
+        "forte": "L'avviso della morte dice l'ora vera del ritorno.",
+        "testo": "«È tornato alle 17:04», mandata da chi è tornato: prima diceva l'ora in cui la notizia arrivava a te, che se eri scollegato è tutt'altra cosa."
+      }
+    ]
+  },
+  {
     "versione": "1.1.112",
     "paragrafi": [
       {
