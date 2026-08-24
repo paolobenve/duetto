@@ -7,6 +7,19 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.1.112",
+    "paragrafi": [
+      {
+        "forte": "Un tocco distratto non ti fa più uscire dal canale.",
+        "testo": "Con un video acceso i comandi sbiadiscono, e se non li tocchi da un minuto adesso dormono: il primo tocco li riaccende e basta, senza premere niente. Vale anche per «Esci», che prima usciva al primo tocco senza chiedere."
+      },
+      {
+        "forte": "Il diario diceva «schermo acceso» anche a schermo spento.",
+        "testo": "Chiedeva ad Android una cosa che somiglia ma non è: durante una conversazione il telefono resta «interattivo» mentre il sensore di prossimità spegne il display. Ora si guarda lo stato del display vero - acceso, spento, o l'orologio sempre visibile."
+      }
+    ]
+  },
+  {
     "versione": "1.1.111",
     "paragrafi": [
       {

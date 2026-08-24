@@ -5,6 +5,7 @@ import android.app.ApplicationExitInfo
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.hardware.display.DisplayManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.TrafficStats
@@ -13,6 +14,7 @@ import android.os.Build
 import android.os.PowerManager
 import android.os.Process
 import android.util.Log
+import android.view.Display
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -188,7 +190,29 @@ object Diario {
         }
     }
 
+    /**
+     * Lo schermo e' ACCESO davvero.
+     *
+     * Non si chiede a PowerManager.isInteractive, che qui mentiva: la
+     * documentazione stessa avverte che quel nome parla dello schermo
+     * "per ragioni storiche" ma descrive lo stato interattivo del
+     * telefono. Durante una conversazione il sensore di prossimita'
+     * spegne il display lasciando il telefono interattivo, e cosi' il
+     * diario dell'altro ha raccontato una notte intera di "schermo
+     * acceso" mentre assorbiva 18 mA - un decimo di quanto beve un
+     * display vero. Sulla riga sbagliata poi ci si costruiscono le
+     * ipotesi sbagliate: "qualcuno ha toccato lo schermo".
+     *
+     * Il display si chiede al DisplayManager, che distingue acceso,
+     * spento e dormiente (l'orologio sempre visibile). Se non risponde
+     * si ripiega sul vecchio indicatore, che e' meglio di niente.
+     */
     private fun schermoAcceso(ctx: Context): Boolean {
+        try {
+            val dm = ctx.getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager
+            val display = dm?.getDisplay(Display.DEFAULT_DISPLAY)
+            if (display != null) return display.state == Display.STATE_ON
+        } catch (_: Exception) { /* si ripiega */ }
         val pm = ctx.getSystemService(Context.POWER_SERVICE) as? PowerManager ?: return false
         return pm.isInteractive
     }

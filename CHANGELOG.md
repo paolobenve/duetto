@@ -8,6 +8,17 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.1.112
+
+**Un tocco distratto non ti fa più uscire dal canale.** Con un video acceso i comandi sbiadiscono,
+e se non li tocchi da un minuto adesso dormono: il primo tocco li riaccende e basta, senza premere
+niente. Vale anche per «Esci», che prima usciva al primo tocco senza chiedere.
+
+**Il diario diceva «schermo acceso» anche a schermo spento.** Chiedeva ad Android una cosa che
+somiglia ma non è: durante una conversazione il telefono resta «interattivo» mentre il sensore di
+prossimità spegne il display. Ora si guarda lo stato del display vero - acceso, spento, o
+l'orologio sempre visibile.
+
 ## 1.1.111
 
 **L'uscita audio non torna più indietro da sola.** Dopo un aggiornamento il vivavoce poteva

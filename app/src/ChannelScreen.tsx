@@ -4,6 +4,7 @@ import {
   useWindowDimensions, Modal, Pressable,
 } from 'react-native';
 import { MediaStream } from 'react-native-webrtc';
+import { Diario } from 'duetto-platform';
 import type { PresenceStatus } from './signaling';
 import VideoStage from './VideoStage';
 import { AudioRoute, ROUTE_LABEL } from './audioRoute';
@@ -36,6 +37,17 @@ import {
 const DURATA_NOTIZIA_MS = 10_000;
 
 const FADE_MS = 10000;
+
+/**
+ * Dopo quanto i comandi si addormentano.
+ *
+ * Attenuati e non toccati da un minuto: da lì in poi il primo tocco li
+ * risveglia soltanto, senza premere niente. È la stessa regola dei
+ * comandi invisibili, estesa a quelli sbiaditi: un telefono lasciato
+ * acceso con Duetto davanti non deve poter uscire dal canale perché
+ * qualcosa gli si è appoggiato sopra.
+ */
+const SONNO_MS = 60000;
 
 /**
  * Quanto restano visibili i comandi quando il calo è finito.
@@ -523,6 +535,15 @@ export default function ChannelScreen(props: Props) {
   });
 
   const tocco = useCallback(() => {
+    const fermo = Date.now() - ultimoTocco.current;
+    ultimoTocco.current = Date.now();
+    // Anche il tocco sull'immagine conta come risveglio, e se veniva
+    // dopo un lungo silenzio vale la pena saperlo: è il gemello buono
+    // del tocco che nessuno ha voluto.
+    if (fermo > SONNO_MS) {
+      Diario.segna(`comandi-risvegliati:fermi ${Math.round(fermo / 1000)}s`)
+        .catch(() => { /* noop */ });
+    }
     // Chiedere di toglierli è diverso dal lasciarli calare: qui si vuole
     // vedere l'immagine adesso.
     if (Date.now() < finCalo.current) attenua(400); else wake();
@@ -535,10 +556,35 @@ export default function ChannelScreen(props: Props) {
     return () => { if (idleTimer.current) clearTimeout(idleTimer.current); };
   }, [wake]);
 
-  /** Ogni pressione riporta i pulsanti in evidenza e poi fa il suo lavoro. */
+  /** Quando lo schermo è stato toccato l'ultima volta. */
+  const ultimoTocco = useRef(Date.now());
+
+  /**
+   * Ogni pressione riporta i pulsanti in evidenza e poi fa il suo
+   * lavoro - tranne la prima dopo un lungo silenzio, che li risveglia e
+   * basta.
+   *
+   * Serve contro il tocco che nessuno ha voluto: una notte, sul
+   * telefono dell'altro, è comparsa un'uscita dal canale alle 4:46 che
+   * nessuno aveva premuto, e il pulsante Esci fa il suo lavoro al primo
+   * tocco senza chiedere niente. Con i comandi sbiaditi e fermi da un
+   * minuto, quel tocco adesso non preme: accende.
+   */
   const press = useCallback(
-    (action: () => void) => () => { wake(); action(); },
-    [wake],
+    (action: () => void) => () => {
+      const fermo = Date.now() - ultimoTocco.current;
+      ultimoTocco.current = Date.now();
+      const attenuati = daVedere && (OPACITA_COMANDI[comandi] ?? 0.4) < 1;
+      if (attenuati && fermo > SONNO_MS) {
+        wake();
+        Diario.segna(`comandi-risvegliati:fermi ${Math.round(fermo / 1000)}s`)
+          .catch(() => { /* noop */ });
+        return;
+      }
+      wake();
+      action();
+    },
+    [wake, daVedere, comandi],
   );
 
   /**
