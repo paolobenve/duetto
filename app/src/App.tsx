@@ -160,6 +160,12 @@ const RESPIRO_RETE_MS = 700;
  */
 const GRAZIA_SERVER_MS = 5_000;
 
+/**
+ * Quanto si aspetta la risposta del server prima di dare per morto il
+ * collegamento, dopo che la rete è cambiata sotto i piedi.
+ */
+const ATTESA_PROVA_MS = 3_000;
+
 /** Ogni quanto si guarda se siamo ancora senza server. */
 const CONTROLLO_SERVER_MS = 3_000;
 
@@ -728,15 +734,25 @@ export default function App() {
     return () => clearInterval(t);
   }, [status, disponibile]);
 
+  /** La prova in corso dopo un cambio di rete, se ce n'è una. */
+  const provaRete = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fermaProvaRete = useCallback(() => {
+    if (!provaRete.current) return;
+    clearTimeout(provaRete.current);
+    provaRete.current = null;
+  }, []);
+
   /**
-   * La rete è cambiata: si rifà la connessione subito.
+   * La rete è cambiata: si controlla che il collegamento sia ancora vivo.
    *
    * Nessuna connessione TCP sopravvive a un cambio di indirizzo, e
    * cambiando cella l'indirizzo cambia sempre: il socket verso il
    * server è morto anche se sembra aperto, e la notizia della sua morte
    * può arrivare minuti dopo. Chi lo sa per primo è Android, che il
-   * cambio lo ha appena fatto: da lì si riparte, senza aspettare che
-   * qualcuno inciampi in un socket che non porta più niente.
+   * cambio lo ha appena fatto - ma "la rete è cambiata" non vuol dire
+   * "la connessione è morta", e demolirla per sospetto costa all'altro
+   * una sparizione. Quindi si domanda al server, e si rifà da capo solo
+   * se non risponde.
    *
    * Un momento di respiro prima di rifare: al cambio di rete gli eventi
    * arrivano a raffica - arrivata, indirizzo, valida - e rifare tre
@@ -751,15 +767,41 @@ export default function App() {
       quando = setTimeout(() => {
         quando = null;
         Diario.segna(`rete:${cosa}`).catch(() => { /* noop */ });
-        senzaServerDa.current = senzaServerDa.current || Date.now();
-        signalingRef.current?.rifaiDaCapo();
+        const sig = signalingRef.current;
+        if (!sig) return;
+        // Già senza server: non c'è niente da salvare, si rifà e basta.
+        if (!sig.connected) {
+          senzaServerDa.current = senzaServerDa.current || Date.now();
+          sig.rifaiDaCapo();
+          return;
+        }
+        /**
+         * Sembra viva: prima si chiede se lo è davvero.
+         *
+         * Buttare giù una connessione sana non è gratis - l'altro ti
+         * vede sparire e tornare - e la prima versione di questo pezzo
+         * lo faceva a ogni sospiro della rete: i due telefoni si
+         * sparivano a vicenda ogni pochi secondi. Il server risponde
+         * alla domanda sulla presenza, e quella risposta è la prova che
+         * il socket è vivo: se non arriva entro qualche secondo, allora
+         * sì che era morto.
+         */
+        fermaProvaRete();
+        sig.chiediPresenza();
+        provaRete.current = setTimeout(() => {
+          provaRete.current = null;
+          Diario.segna('rete:muto').catch(() => { /* noop */ });
+          senzaServerDa.current = senzaServerDa.current || Date.now();
+          signalingRef.current?.rifaiDaCapo();
+        }, ATTESA_PROVA_MS);
       }, RESPIRO_RETE_MS);
     });
     return () => {
       if (quando) clearTimeout(quando);
+      fermaProvaRete();
       stop();
     };
-  }, [disponibile]);
+  }, [disponibile, fermaProvaRete]);
 
   /**
    * Ogni tanto si torna a chiedere al server se l'altro c'è.
@@ -1323,6 +1365,9 @@ export default function App() {
            * guardare una schermata di attesa mentre lui aspetta noi.
            */
           onPresence: ({ peerPresent: present, peerActive, peerName: n }) => {
+            // Il server ha risposto: qualunque dubbio avessimo sul
+            // socket, è vivo. Vedi la prova dopo un cambio di rete.
+            fermaProvaRete();
             setPeerPresent(present);
             if (present) setPeerStaccato(false);
             if (n) segnaNome(n);

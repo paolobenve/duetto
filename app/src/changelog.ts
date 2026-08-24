@@ -7,6 +7,15 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.1.115",
+    "paragrafi": [
+      {
+        "forte": "Correzione di un guaio introdotto dalla 1.1.114",
+        "testo": ": i due telefoni si vedevano sparire a vicenda ogni pochi secondi. L'ascolto dei cambi di rete era troppo nervoso e rifaceva connessioni sanissime. Ora, quando la rete cambia, prima si chiede al server se il collegamento è ancora vivo, e lo si rifà solo se non risponde."
+      }
+    ]
+  },
+  {
     "versione": "1.1.114",
     "paragrafi": [
       {

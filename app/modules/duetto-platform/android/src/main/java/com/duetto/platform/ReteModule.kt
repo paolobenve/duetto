@@ -42,16 +42,29 @@ class ReteModule(private val ctx: ReactApplicationContext) :
     /** L'ultimo indirizzo visto: serve a non gridare al lupo. */
     private var ultimoIndirizzo: String = ""
 
+    /**
+     * Se l'ultima volta la rete era buona per internet.
+     *
+     * onCapabilitiesChanged scatta di continuo su una rete ferma - la
+     * stima di banda, la congestione, il segnale - e segnalarlo ogni
+     * volta faceva rifare una connessione sana ogni pochi secondi: i due
+     * telefoni si buttavano giu' a turno e si vedevano sparire a
+     * vicenda. Interessa il PASSAGGIO da inutile a buona, non lo stato.
+     */
+    private var eraValida = false
+
     private val cm: ConnectivityManager?
         get() = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
 
     private val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
+            eraValida = false
             emit("arrivata")
         }
 
         override fun onLost(network: Network) {
             ultimoIndirizzo = ""
+            eraValida = false
             emit("persa")
         }
 
@@ -66,10 +79,15 @@ class ReteModule(private val ctx: ReactApplicationContext) :
         }
 
         override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
-            // Interessa un caso solo: la rete che diventa buona per
+            // Interessa un caso solo: la rete che DIVENTA buona per
             // internet dopo essere stata inutile - il wifi dell'ospite
-            // che chiede la password, i dati che si agganciano.
-            if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) emit("valida")
+            // che chiede la password, i dati che si agganciano. Lo
+            // stato, da solo, cambia decine di volte al minuto senza
+            // che sia successo niente.
+            val valida = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            if (valida == eraValida) return
+            eraValida = valida
+            if (valida) emit("valida")
         }
     }
 

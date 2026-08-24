@@ -8,6 +8,13 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.1.115
+
+**Correzione di un guaio introdotto dalla 1.1.114**: i due telefoni si vedevano sparire a
+vicenda ogni pochi secondi. L'ascolto dei cambi di rete era troppo nervoso e rifaceva
+connessioni sanissime. Ora, quando la rete cambia, prima si chiede al server se il collegamento
+è ancora vivo, e lo si rifà solo se non risponde.
+
 ## 1.1.114
 
 **Il cambio di cella non si vede più.** Duetto ora si accorge da sé quando la rete del telefono
