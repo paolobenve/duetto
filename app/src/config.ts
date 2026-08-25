@@ -85,8 +85,8 @@ export type ImpostazioniCoppia = {
   avvisoSuonoNome: string;
   /** da dove esce il suono: 'SPEAKER_PHONE', 'EARPIECE', ... */
   uscitaAudio: string;
-  /** quanto alzare la voce dell'altro, 1 = com'è arrivata */
-  guadagno: number;
+  /** quanto alzare la voce dell'altro OLTRE il massimo del telefono, per uscita */
+  guadagni: Record<string, number>;
   /** con quale camera si riprende */
   cameraFrontale: boolean;
 };
@@ -95,7 +95,7 @@ export type ImpostazioniCoppia = {
 const CAMPI_COPPIA: (keyof ImpostazioniCoppia)[] = [
   'displayName', 'videoQuality', 'audioMigliore', 'mostraDiagnostica', 'comandi',
   'videoCodec', 'avvisoVibra', 'avvisoSuono', 'avvisoSuonoUri', 'avvisoSuonoNome',
-  'uscitaAudio', 'guadagno', 'cameraFrontale',
+  'uscitaAudio', 'guadagni', 'cameraFrontale',
 ];
 
 /** Le impostazioni in uso, prese dalla configurazione. */
@@ -241,7 +241,17 @@ export type DuoConfig = {
    * cui state insieme.
    */
   uscitaAudio: string;
-  guadagno: number;
+
+  /**
+   * Quanto si alza la voce dell'altro OLTRE il massimo del telefono.
+   *
+   * Uno per ogni uscita, perché il livello giusto all'orecchio non è
+   * quello giusto in vivavoce. Sotto il massimo del telefono non serve:
+   * lì comanda il volume di chiamata, che Android ricorda già separato
+   * per ogni uscita. Questo è solo la parte che sta sopra, e vale 1
+   * finché non si chiede di più.
+   */
+  guadagni: Record<string, number>;
 
   /**
    * Con quale camera si riprende: davanti o dietro.
@@ -274,17 +284,50 @@ export const DEFAULT_CONFIG: DuoConfig = {
   avvisoSuonoUri: '',
   avvisoSuonoNome: '',
   uscitaAudio: 'SPEAKER_PHONE',
-  guadagno: 1,
+  guadagni: {},
   cameraFrontale: true,
 };
 
 const STORAGE_KEY = 'duetto.config.v3';
 
+/**
+ * Il guadagno unico di prima diventa quello di tutte le uscite.
+ *
+ * Era un numero solo per cornetta, vivavoce e cuffie insieme: chi
+ * l'aveva alzato per il vivavoce se lo ritrovava all'orecchio. Da qui in
+ * poi sono quattro; quello che c'era viene copiato in tutti e quattro,
+ * così il primo avvio dopo l'aggiornamento non cambia niente all'orecchio
+ * di nessuno.
+ */
+function normalizzaGuadagni<T extends { guadagni?: Record<string, number>; guadagno?: number }>(
+  o: T,
+): T {
+  if (o.guadagni && Object.keys(o.guadagni).length) return o;
+  const vecchio = typeof o.guadagno === 'number' ? o.guadagno : 0;
+  if (!vecchio || vecchio === 1) return o;
+  const uguale = Math.max(1, vecchio);
+  return {
+    ...o,
+    guadagni: {
+      SPEAKER_PHONE: uguale, EARPIECE: uguale,
+      WIRED_HEADSET: uguale, BLUETOOTH: uguale,
+    },
+  };
+}
+
 export async function loadConfig(): Promise<DuoConfig> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_CONFIG;
-    return normalizzaComandi(normalizzaCoppie({ ...DEFAULT_CONFIG, ...JSON.parse(raw) }));
+    const letta = normalizzaComandi(
+      normalizzaCoppie({ ...DEFAULT_CONFIG, ...JSON.parse(raw) }),
+    );
+    return {
+      ...normalizzaGuadagni(letta),
+      pairs: letta.pairs.map((p) => (p.impostazioni
+        ? { ...p, impostazioni: normalizzaGuadagni(p.impostazioni) }
+        : p)),
+    };
   } catch {
     return DEFAULT_CONFIG;
   }

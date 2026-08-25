@@ -5,6 +5,7 @@ const NativeForeground = NativeModules.DuettoForeground;
 const NativePip = NativeModules.DuettoPip;
 const NativeVisibility = NativeModules.DuettoVisibility;
 const NativeRete = NativeModules.DuettoRete;
+const NativeBattito = NativeModules.DuettoBattito;
 const NativeCodecs = NativeModules.DuettoCodecs;
 const NativeAudio = NativeModules.DuettoAudio;
 const NativeAvvisi = NativeModules.DuettoAvvisi;
@@ -267,6 +268,29 @@ export const Audio = isAndroid && NativeAudio
  * scattano.
  */
 /**
+ * Il battito che arriva anche a schermo spento.
+ *
+ * I timer di JavaScript, in React Native, seguono il ritmo dei
+ * fotogrammi dello schermo: spento lo schermo non scadono più. Questo
+ * invece nasce da un Handler nativo ed è un evento, e gli eventi il
+ * motore JavaScript li riceve comunque. Vedi BattitoModule.
+ */
+export const Battito = isAndroid && NativeBattito
+  ? {
+      /** Chiama `cb()` a ogni battito. Restituisce la funzione per smettere. */
+      subscribe(cb) {
+        call(NativeBattito, 'start');
+        const emitter = new NativeEventEmitter(NativeBattito);
+        const sub = emitter.addListener('duetto-battito', () => cb());
+        return () => {
+          sub.remove();
+          call(NativeBattito, 'stop');
+        };
+      },
+    }
+  : { subscribe: () => () => {} };
+
+/**
  * I cambi di rete del telefono: cella, wifi, indirizzo nuovo.
  *
  * Serve a rifare la connessione appena c'è una rete nuova, invece di
@@ -329,8 +353,37 @@ export const Volume = isAndroid && NativeVolume
         const sub = emitter.addListener('duetto-volume', (d) => cb(Number(d) || 0));
         return () => sub.remove();
       },
+
+      /**
+       * Il volume di chiamata del telefono: `{ volume, max }`.
+       *
+       * È metà di quello che si sente - l'altra metà è il guadagno di
+       * Duetto - ed è la metà che Android ricorda separatamente per ogni
+       * uscita e che si muove anche da fuori.
+       */
+      leggi: () => call(NativeVolume, 'leggi'),
+
+      /** Lo mette a un valore preciso, senza suoni né barretta di sistema. */
+      metti: (valore) => call(NativeVolume, 'metti', Math.round(Number(valore) || 0)),
+
+      /**
+       * Chiama `cb(valore)` quando il volume di chiamata cambia, anche
+       * per mano di un'altra app.
+       */
+      ascoltaSistema(cb) {
+        call(NativeVolume, 'ascoltaSistema');
+        const emitter = new NativeEventEmitter(NativeVolume);
+        const sub = emitter.addListener('duetto-volume-sistema', (v) => cb(Number(v)));
+        return () => sub.remove();
+      },
     }
-  : { prendiTasti: unavailable, subscribe: () => () => {} };
+  : {
+      prendiTasti: unavailable,
+      subscribe: () => () => {},
+      leggi: () => Promise.resolve({ volume: 0, max: 0 }),
+      metti: unavailable,
+      ascoltaSistema: () => () => {},
+    };
 
 
 /**

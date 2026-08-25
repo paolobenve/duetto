@@ -8,6 +8,28 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.1.116
+
+**Il volume adesso è un numero solo, e dice la verità.** Prima Duetto mostrava soltanto la
+propria parte, e il volume di chiamata del telefono - che ha una manopola per ogni uscita e la
+muovono anche le altre app - non lo guardava: potevi leggere 150% mentre il telefono stava a uno
+su otto. Ora il livello è il prodotto dei due, si aggiorna anche quando lo cambi da fuori, ed è
+quello che viaggia all'altro: «ti sente 25%» è diventata una frase esatta.
+
+**E ogni uscita ha il suo.** Salendo, i tasti portano prima al massimo il volume di chiamata -
+che Android ricorda già separato per cornetta, vivavoce, cuffie e bluetooth - e solo dopo
+moltiplicano; scendendo fanno il contrario. Quello che avevi impostato vale ora per tutte e
+quattro le uscite, e da lì in poi si separano.
+
+**Quando il telefono ti chiude l'app, l'altro lo sa.** Su certi telefoni Duetto viene smontato da
+solo, anche di notte: all'altro compariva «in attesa», identico a quando esci tu. Ora dice «in
+attesa (app chiusa dal telefono)», nel riquadro e nella notifica.
+
+**La connessione si controlla ogni minuto, anche a schermo spento.** I cronometri di React Native
+seguono il ritmo dei fotogrammi: a schermo spento non scadono, e nessuna delle reti di sicurezza
+partiva - una notte la connessione è rimasta caduta otto minuti e mezzo, fino al momento in cui
+lo schermo si è acceso. Ora il controllo lo sveglia un battito nativo.
+
 ## 1.1.115
 
 **Correzione di un guaio introdotto dalla 1.1.114**: i due telefoni si vedevano sparire a

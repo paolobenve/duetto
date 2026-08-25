@@ -159,6 +159,14 @@ type Props = {
    * differenza è tutta: da un tunnel si esce, da una scelta no.
    */
   peerStaccato: boolean;
+  /**
+   * È in attesa perché il suo telefono gli ha chiuso l'app.
+   *
+   * Non è una sua scelta, ed è il contrario di quello che "in attesa"
+   * lascia immaginare: certi telefoni smontano l'app da soli, anche di
+   * notte, e chi legge merita di saperlo.
+   */
+  peerSmontato?: boolean;
   /** risoluzione e banda effettive, in uscita e in entrata */
   videoStats: VideoStats;
   /** profilo scelto: senza, non si capisce da cosa dipendano quei numeri */
@@ -179,7 +187,7 @@ type Props = {
   avviso?: string | null;
   onAvvisoLetto?: () => void;
   /**
-   * Quanto si sta alzando la voce dell'altro, mentre si preme.
+   * A che volume si sta sentendo l'altro, mentre si preme.
    *
    * `null` quasi sempre: si mostra solo nei telefoni dove il volume di
    * chiamata non si muove e ci pensa l'app, e solo per il paio di
@@ -188,14 +196,25 @@ type Props = {
    */
   guadagno?: number | null;
   /**
-   * Il guadagno in questo momento, per il menu dell'audio.
+   * Il livello in questo momento, per il menu dell'audio.
    *
    * Lì c'è un comando a mano perché i tasti non bastano dappertutto: su
    * certi telefoni l'indice del volume di chiamata scorre e all'orecchio
    * non cambia niente, e da fuori quel caso è indistinguibile da uno che
    * funziona.
+   *
+   * È il prodotto delle due metà: il volume di chiamata del telefono e
+   * il guadagno di Duetto. Vedi `volumeSistema`.
    */
   guadagnoAltro?: number;
+  /**
+   * Il volume di chiamata del telefono e il suo massimo.
+   *
+   * Si mostra fra le righe tecniche, perché è l'altra metà del livello:
+   * sapere che il telefono sta a 3 su 12 spiega da solo un "non ti
+   * sento" che nessuna percentuale, da sola, spiegherebbe.
+   */
+  volumeSistema?: { volume: number; max: number };
   onGuadagno?: (direzione: number) => void;
   /**
    * Le due parti hanno versioni diverse di Duetto.
@@ -272,7 +291,7 @@ type Props = {
  */
 export default function ChannelScreen(props: Props) {
   const {
-    collegamento, peerName, peerAvatar, peerPresent, peerStaccato, videoStats, qualityLabel, showStats, comandi, avviso, onAvvisoLetto, guadagno, guadagnoAltro, onGuadagno,
+    collegamento, peerName, peerAvatar, peerPresent, peerStaccato, peerSmontato, videoStats, qualityLabel, showStats, comandi, avviso, onAvvisoLetto, guadagno, guadagnoAltro, volumeSistema, onGuadagno,
     avvisoVersione, cameraFrontale, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes,
@@ -740,6 +759,7 @@ export default function ChannelScreen(props: Props) {
             }
             peerPresent={peerPresent}
             peerStaccato={peerStaccato}
+            peerSmontato={peerSmontato}
             status={status}
             linked={linked}
             connectionState={connectionState}
@@ -1148,10 +1168,22 @@ export default function ChannelScreen(props: Props) {
                 <Text style={styles.passoSegno}>+</Text>
               </TouchableOpacity>
             </View>
+            {showStats && volumeSistema && volumeSistema.max > 0 ? (
+              // Le due metà, per chi guarda i numeri: il volume di
+              // chiamata del telefono e quanto Duetto ci moltiplica
+              // sopra. Il totale è la percentuale qui sopra.
+              <Text style={styles.sheetMeta}>
+                telefono {volumeSistema.volume}/{volumeSistema.max}
+                {volumeSistema.volume >= volumeSistema.max && (guadagnoAltro ?? 1) > 1
+                  ? `  ·  Duetto ×${(guadagnoAltro ?? 1).toFixed(2).replace(/0$/, '')}`
+                  : ''}
+              </Text>
+            ) : null}
             <Text style={styles.sheetHint}>
-              Non è il volume del telefono: è quanto Duetto alza la sua voce
-              prima di suonarla, e funziona anche dove i tasti del volume non
-              cambiano niente.
+              È il volume a cui stai sentendo l’altro: il volume di chiamata del
+              telefono, e quando quello è al massimo Duetto continua ad alzare
+              per conto suo. Funziona anche dove i tasti del volume non cambiano
+              niente.
             </Text>
           </View>
         </Pressable>
@@ -1233,6 +1265,8 @@ function PresenceCard(props: {
   peerAudio: boolean;
   peerPresent: boolean;
   peerStaccato: boolean;
+  /** è in attesa perché il telefono gli ha chiuso l'app, non per scelta */
+  peerSmontato?: boolean;
   /** il segno dell'uscita audio dell'altro, alla misura del riepilogo */
   segno: React.ReactNode;
   /** il nome dato a questo collegamento, se ce n'è più di uno */
@@ -1240,7 +1274,7 @@ function PresenceCard(props: {
 }) {
   const {
     status, linked, connectionState, peerName, peerAvatar, peerAudio, peerPresent,
-    peerStaccato, segno, collegamento,
+    peerStaccato, peerSmontato, segno, collegamento,
   } = props;
 
   if (status === 'connecting') {
@@ -1274,7 +1308,16 @@ function PresenceCard(props: {
         </Text>
         <Text style={styles.cardSub}>
           {comeSta(peerName, peerPresent, peerStaccato)}
-          {peerPresent ? (
+          {peerPresent && peerSmontato ? (
+            // Non è una sua scelta: certi telefoni smontano l'app da
+            // soli, anche di notte, e dirlo evita di attribuirgli una
+            // decisione che non ha preso.
+            <>
+              {': il suo telefono gli ha chiuso l’app.'}
+              {'\n'}L’avviso gli arriva lo stesso. Tocca{' '}
+              <Text style={styles.bold}>Avvisa</Text> per farglielo sapere.
+            </>
+          ) : peerPresent ? (
             <>
               {': non è nel canale, ma l’avviso gli arriva.'}
               {'\n'}Tocca <Text style={styles.bold}>Avvisa</Text> per farglielo sapere.
@@ -1582,6 +1625,10 @@ const styles = StyleSheet.create({
   badgeNome: { fontStyle: 'italic' },
   /** lo stesso nome, nel riepilogo al centro */
   cardNome: { fontStyle: 'italic', fontWeight: '400', color: '#9fb4c8' },
+  /** le due metà del livello, sotto al numero, con le righe tecniche */
+  sheetMeta: {
+    color: '#7d8794', fontSize: 12.5, textAlign: 'center', marginTop: 2,
+  },
   /** la pastiglia dell'audio proprio: c'è ma non compete con la prima */
   chiBadgeAudio: { backgroundColor: 'rgba(0,0,0,0.42)' },
   chiTextTenue: { color: '#9fb4c8', fontSize: 12, fontWeight: '600' },

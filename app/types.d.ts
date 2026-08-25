@@ -21,6 +21,17 @@ declare module 'duetto-platform' {
     prendiTasti(attivo: boolean): Promise<boolean>;
     /** `cb(+1|-1)` quando il volume di sistema non si è mosso */
     subscribe(cb: (direzione: number) => void): () => void;
+    /** il volume di chiamata del telefono, e il suo massimo */
+    leggi(): Promise<{ volume: number; max: number }>;
+    /** lo mette a un valore preciso */
+    metti(valore: number): Promise<boolean>;
+    /** `cb(valore)` quando il volume di chiamata cambia, anche da fuori */
+    ascoltaSistema(cb: (valore: number) => void): () => void;
+  };
+
+  /** Un battito ogni minuto, che arriva anche a schermo spento. */
+  export const Battito: {
+    subscribe(cb: () => void): () => void;
   };
 
   /** I cambi di rete del telefono: cella, wifi, indirizzo nuovo. */

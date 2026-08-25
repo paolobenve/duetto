@@ -27,8 +27,18 @@ let sig: Signaling | null = null;
  */
 let interfaccia = false;
 
-export function interfacciaAlComando(viva: boolean) {
+/**
+ * L'interfaccia se n'è andata senza che nessuno l'abbia chiesta.
+ *
+ * Non è la stessa cosa di un'uscita: là c'è una scelta, qui c'è un
+ * telefono che ha smontato l'app. Lo si ricorda per dirlo all'altro,
+ * appena l'ascolto senza interfaccia riapre la connessione.
+ */
+let smontata = false;
+
+export function interfacciaAlComando(viva: boolean, chiusaDalTelefono = false) {
   interfaccia = viva;
+  if (!viva && chiusaDalTelefono) smontata = true;
 }
 
 /**
@@ -112,6 +122,13 @@ export function testoPresenza(o: {
    * dipende da lui.
    */
   staccato?: boolean;
+  /**
+   * È in attesa perché il telefono gli ha chiuso l'app.
+   *
+   * "In attesa" fa pensare a una scelta sua, e su certi telefoni non lo
+   * è affatto: l'app viene smontata da sola, anche di notte.
+   */
+  smontato?: boolean;
   nome: string;
   /** com'è messo il NOSTRO collegamento al server */
   server?: 'ok' | 'giu' | 'incorso';
@@ -128,7 +145,8 @@ export function testoPresenza(o: {
   if (!o.peerPresent) {
     return `${mio} \u00b7 ${chi} ${o.staccato ? 'si \u00e8 staccato' : 'non raggiungibile'}`;
   }
-  return o.inChannel ? `${mio} \u00b7 ${chi} in attesa` : 'In attesa tutti e due';
+  const come = o.smontato ? 'in attesa (app chiusa dal telefono)' : 'in attesa';
+  return o.inChannel ? `${mio} \u00b7 ${chi} ${come}` : 'In attesa tutti e due';
 }
 
 const log = (...args: any[]) => console.log('[duetto-presenza]', ...args);
@@ -196,6 +214,12 @@ export async function startListening(): Promise<boolean> {
     },
     {
       onJoined: ({ peerPresent, peerActive, peerName }) => {
+        // "Non sono uscito io": si dice una volta sola, appena si è
+        // collegati, e solo se c'è qualcuno che possa sentirlo.
+        if (smontata && peerPresent) {
+          smontata = false;
+          sig?.sendSignal({ kind: 'smontata' });
+        }
         presente = peerPresent;
         if (peerPresent) staccato = false;
         attivo = peerActive;

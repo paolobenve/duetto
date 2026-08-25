@@ -40,6 +40,13 @@ export type SignalMessage =
   | { kind: 'state'; audio: boolean; video: boolean; aspect?: number; watching?: boolean;
       hwVp9?: boolean; uscita?: string; versione?: string; camera?: string;
       volume?: number }
+  // "Non sono uscito io: il telefono mi ha chiuso la finestra."
+  //
+  // Lo manda l'ascolto senza interfaccia quando prende il posto di
+  // un'app smontata senza che nessuno l'abbia chiesto. Dall'altra parte
+  // le due cose arrivavano identiche - "in attesa" - e chi guardava
+  // doveva immaginare quale delle due fosse.
+  | { kind: 'smontata' }
   // Chi risponde non può offrire: se resta senza collegamento e l'altro
   // non se ne accorge, l'unica via d'uscita è chiederglielo.
   | { kind: 'renegotiate' }

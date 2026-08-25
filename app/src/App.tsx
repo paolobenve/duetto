@@ -8,6 +8,7 @@ import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
 import {
   Foreground, Pip, AppWindow, Visibility, Codecs, Audio, Avvisi, Diario, Volume, Rete,
+  Battito,
   Sveglia,
 } from 'duetto-platform';
 import {
@@ -91,7 +92,13 @@ const CHIAVE_MORTE_RACCONTATA = 'duetto.morte.raccontata';
  * comincia a distorcere.
  */
 const GUADAGNO_PASSO = 0.25;
-const GUADAGNO_MIN = 0.25;
+/**
+ * Il nostro moltiplicatore non scende sotto l'uno.
+ *
+ * Sotto il massimo del telefono non serve moltiplicare: c'è la manopola
+ * del volume di chiamata, che è più fine e non tocca il suono. Il
+ * guadagno è solo la parte che sta sopra.
+ */
 const GUADAGNO_MAX = 4;
 /**
  * La memoria di prima del volume, quando era una per tutta l'app.
@@ -288,7 +295,17 @@ export default function App() {
    * com'è registrato il microfono di quella persona, quindi cambiando
    * collegamento deve cambiare anche questo.
    */
-  const guadagno = cfg?.guadagno ?? 1;
+  /**
+   * Il volume di chiamata del telefono, letto da Android.
+   *
+   * È metà di quello che si sente, e non è nostra: ha una manopola per
+   * ogni uscita, la muovono anche le altre app, e finora l'app non la
+   * guardava - mostrava il proprio numero come se fosse tutta la
+   * verità.
+   */
+  const [sistema, setSistema] = useState({ volume: 0, max: 0 });
+
+
   /** mostrato per un attimo mentre si preme: sennò non si vede l'effetto */
   const [guadagnoVisibile, setGuadagnoVisibile] = useState(false);
   const timerGuadagno = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -301,6 +318,16 @@ export default function App() {
    * come un guasto da aspettare.
    */
   const [peerStaccato, setPeerStaccato] = useState(false);
+  /**
+   * L'altro è in attesa perché il suo telefono gli ha chiuso l'app.
+   *
+   * Vale la pena distinguerlo: "in attesa" fa pensare a una sua scelta,
+   * e su certi telefoni - un Motorola recente, per dirne uno - l'app
+   * viene smontata di notte senza che nessuno l'abbia toccata. Chi
+   * legge merita di sapere che dall'altra parte non è stato deciso
+   * niente.
+   */
+  const [peerSmontato, setPeerSmontato] = useState(false);
   const [peerName, setPeerName] = useState('');
   const [connState, setConnState] = useState('new');
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -400,6 +427,37 @@ export default function App() {
   const audio = useAudioRoute(inChannel, cfg?.uscitaAudio, ricordaUscita);
 
   /**
+   * Quanto si alza la voce dell'altro OLTRE il massimo del telefono.
+   *
+   * Uno per uscita: il livello giusto all'orecchio non è quello giusto
+   * in vivavoce. Vale 1 finché non si chiede più del massimo.
+   */
+  const guadagno = cfg?.guadagni?.[audio.route] ?? 1;
+
+  /**
+   * Le copie per i gestori, che nascono una volta sola e non vedrebbero
+   * mai un valore cambiato dopo.
+   */
+  const audioRef = useRef(audio.route);
+  useEffect(() => { audioRef.current = audio.route; }, [audio.route]);
+  const sistemaRef = useRef(sistema);
+  useEffect(() => { sistemaRef.current = sistema; }, [sistema]);
+
+  /**
+   * Il livello: quello che si sente davvero, e l'unico numero mostrato.
+   *
+   * È il prodotto delle due metà - la manopola del telefono e il nostro
+   * guadagno - perché è quello il volume a cui stai ascoltando. Il
+   * numero di prima era solo la nostra metà, e mentiva ogni volta che
+   * qualcuno muoveva l'altra: si è visto il diario di un telefono con il
+   * volume di chiamata a uno su otto e il nostro 100% sopra, e nessuno
+   * dei due numeri, da solo, spiegava il "non ti sento".
+   */
+  const livello = sistema.max > 0
+    ? Math.round((sistema.volume / sistema.max) * guadagno * 100) / 100
+    : guadagno;
+
+  /**
    * In un ref perché lo chiama `enterChannel`, che nasce prima e non
    * deve rifarsi ogni volta che cambia qualcosa dell'audio.
    */
@@ -481,12 +539,44 @@ export default function App() {
   }, [peerVisto, peerState.versione]);
 
   /**
+   * Il volume di chiamata si rilegge quando può essere cambiato.
+   *
+   * All'ingresso nel canale e al cambio di uscita, perché ogni uscita ha
+   * la sua manopola; e a ogni annuncio del sistema, che arriva anche
+   * quando a muoverla è un'altra app. Senza, il livello mostrato
+   * resterebbe fermo su un valore che non è più vero.
+   */
+  useEffect(() => {
+    let vivo = true;
+    const rileggi = () => {
+      Volume.leggi().then((v) => {
+        if (vivo && v && v.max > 0) setSistema({ volume: v.volume, max: v.max });
+      }).catch(() => { /* noop */ });
+    };
+    rileggi();
+    const stop = Volume.ascoltaSistema(rileggi);
+    return () => { vivo = false; stop(); };
+  }, [inChannel, audio.route]);
+
+  /**
    * Il guadagno si riapplica a ogni cambiamento e a ogni rientro nel
    * canale: la sessione può essere nata dopo che il valore era già lì.
    */
   useEffect(() => {
     sessionRef.current?.setRemoteGain(guadagno);
   }, [guadagno, inChannel]);
+
+  /**
+   * All'altro si dichiara il LIVELLO, non il guadagno.
+   *
+   * A lui serve sapere a che volume lo stai sentendo, e quel volume è il
+   * prodotto delle due metà: il nostro moltiplicatore da solo non gli
+   * direbbe niente di utile, perché non sa a che punto sta la manopola
+   * del tuo telefono.
+   */
+  useEffect(() => {
+    sessionRef.current?.setLivelloUdito(livello);
+  }, [livello, inChannel]);
 
   /**
    * I tasti del volume che il sistema non ha saputo muovere.
@@ -505,34 +595,67 @@ export default function App() {
    * l'indice del volume di chiamata senza che all'orecchio cambi nulla,
    * e da fuori quel caso è indistinguibile da uno che funziona.
    */
-  const cambiaGuadagno = useCallback((direzione: number) => {
+  /**
+   * Alza o abbassa il LIVELLO, dividendo il lavoro fra le due metà.
+   *
+   * Salendo: prima si porta al massimo il volume di chiamata del
+   * telefono, che è la manopola vera - la ricorda Android per ogni
+   * uscita, la vedono le altre app, e non tocca il suono - e solo
+   * quando è finito si comincia a moltiplicare con il nostro guadagno,
+   * che serve per i telefoni dove il massimo non basta.
+   *
+   * Scendendo si fa il contrario: prima si toglie il nostro, poi si
+   * abbassa il suo. Così il moltiplicatore, che è la parte che può
+   * distorcere, viene usato il meno possibile.
+   */
+  const cambiaLivello = useCallback((direzione: number) => {
     if (!direzione) return;
-    setCfg((prev) => {
-      if (!prev) return prev;
-      const nuovo = Math.min(
-        GUADAGNO_MAX,
-        Math.max(
-          GUADAGNO_MIN,
-          Math.round((prev.guadagno + direzione * GUADAGNO_PASSO) * 100) / 100,
-        ),
-      );
-      if (nuovo === prev.guadagno) return prev;
-      return salvaCfg({ ...prev, guadagno: nuovo });
-    });
-    setGuadagnoVisibile(true);
-    if (timerGuadagno.current) clearTimeout(timerGuadagno.current);
-    timerGuadagno.current = setTimeout(() => setGuadagnoVisibile(false), 1800);
+    const mostra = () => {
+      setGuadagnoVisibile(true);
+      if (timerGuadagno.current) clearTimeout(timerGuadagno.current);
+      timerGuadagno.current = setTimeout(() => setGuadagnoVisibile(false), 1800);
+    };
+    const uscita = audioRef.current;
+    const suo = sistemaRef.current;
+    const mio = cfgRef.current?.guadagni?.[uscita] ?? 1;
+
+    const cambiaMio = (nuovo: number) => {
+      setCfg((prev) => {
+        if (!prev) return prev;
+        const quanto = Math.min(GUADAGNO_MAX, Math.max(1, nuovo));
+        if (quanto === (prev.guadagni?.[uscita] ?? 1)) return prev;
+        return salvaCfg({
+          ...prev,
+          guadagni: { ...(prev.guadagni ?? {}), [uscita]: quanto },
+        });
+      });
+    };
+
+    if (direzione > 0) {
+      if (suo.max > 0 && suo.volume < suo.max) {
+        setSistema({ ...suo, volume: suo.volume + 1 });
+        Volume.metti(suo.volume + 1).catch(() => { /* noop */ });
+      } else {
+        cambiaMio(Math.round((mio + GUADAGNO_PASSO) * 100) / 100);
+      }
+    } else if (mio > 1) {
+      cambiaMio(Math.round((mio - GUADAGNO_PASSO) * 100) / 100);
+    } else if (suo.max > 0 && suo.volume > 0) {
+      setSistema({ ...suo, volume: suo.volume - 1 });
+      Volume.metti(suo.volume - 1).catch(() => { /* noop */ });
+    }
+    mostra();
   }, [salvaCfg]);
 
   useEffect(() => {
     if (!inChannel) return;
     Volume.prendiTasti(true).catch(() => {});
-    const stop = Volume.subscribe(cambiaGuadagno);
+    const stop = Volume.subscribe(cambiaLivello);
     return () => {
       stop();
       Volume.prendiTasti(false).catch(() => {});
     };
-  }, [inChannel, cambiaGuadagno]);
+  }, [inChannel, cambiaLivello]);
 
   /**
    * Il nome serve anche dentro i gestori della connessione, che nascono
@@ -634,10 +757,11 @@ export default function App() {
     peerActive: status === 'together',
     peerPresent,
     staccato: peerStaccato,
+    smontato: peerSmontato,
     nome: shownName,
     server: statusVisibile === 'offline' ? 'giu'
       : statusVisibile === 'connecting' ? 'incorso' : 'ok',
-  }), [inChannel, statusVisibile, peerPresent, peerStaccato, shownName]);
+  }), [inChannel, statusVisibile, peerPresent, peerStaccato, peerSmontato, shownName]);
 
   /**
    * Il testo serve anche a chi accende il servizio, che parte prima che
@@ -734,6 +858,27 @@ export default function App() {
     return () => clearInterval(t);
   }, [status, disponibile]);
 
+  /**
+   * L'ultima domanda mandata al server e l'ultima risposta ricevuta.
+   *
+   * Servono al battito: due numeri al posto di un cronometro, perché un
+   * cronometro qui non si può usare - a schermo spento non scade.
+   * Confrontandoli a ogni battito si sa se quello di prima è rimasto
+   * senza risposta, e una domanda senza risposta è un socket morto.
+   */
+  const provaMandata = useRef(0);
+  const rispostaVista = useRef(0);
+
+  /**
+   * "Gli hanno chiuso l'app" vale finché resta in attesa.
+   *
+   * Appena entra nel canale, o appena sparisce del tutto, quella
+   * spiegazione non racconta più il presente.
+   */
+  useEffect(() => {
+    if (!peerPresent || status === 'together') setPeerSmontato(false);
+  }, [peerPresent, status]);
+
   /** La prova in corso dopo un cambio di rete, se ce n'è una. */
   const provaRete = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fermaProvaRete = useCallback(() => {
@@ -804,6 +949,45 @@ export default function App() {
   }, [disponibile, fermaProvaRete]);
 
   /**
+   * Il battito nativo: l'unica sveglia che suona a schermo spento.
+   *
+   * A ogni battito si guarda il collegamento. Se il socket è già
+   * dichiarato morto si rifà e basta. Se sembra vivo gli si fa una
+   * domanda, e la risposta si controlla al battito DOPO: un cronometro
+   * qui non servirebbe a niente, perché i cronometri di JavaScript a
+   * schermo spento non scadono - ed è esattamente il buco che questo
+   * battito viene a tappare.
+   *
+   * Costa un messaggio di poche decine di byte al minuto, e in cambio
+   * tiene aperta anche la strada nei router di mezzo, che chiudono le
+   * connessioni ferme.
+   */
+  useEffect(() => {
+    if (!disponibile) return;
+    provaMandata.current = 0;
+    rispostaVista.current = Date.now();
+    return Battito.subscribe(() => {
+      const sig = signalingRef.current;
+      if (!sig) return;
+      const rifai = (perche: string) => {
+        Diario.segna(`battito:${perche}`).catch(() => { /* noop */ });
+        senzaServerDa.current = senzaServerDa.current || Date.now();
+        provaMandata.current = 0;
+        sig.rifaiDaCapo();
+      };
+      if (!sig.connected) { rifai('senza-socket'); return; }
+      // La domanda di prima è rimasta senza risposta: il socket sembra
+      // vivo ma non porta più niente.
+      if (provaMandata.current && rispostaVista.current < provaMandata.current) {
+        rifai('muto');
+        return;
+      }
+      provaMandata.current = Date.now();
+      sig.chiediPresenza();
+    });
+  }, [disponibile]);
+
+  /**
    * Ogni tanto si torna a chiedere al server se l'altro c'è.
    *
    * Solo mentre lo si aspetta: appena entra nel canale non serve più
@@ -859,7 +1043,11 @@ export default function App() {
       // processo, non la connessione. Sono due cose diverse, e all'altro
       // ne serve una sola per vederti sparire.
       if (!salutiamo.current) {
-        interfacciaAlComando(false);
+        // Con il perché: nessuno ha chiesto di uscire, è il telefono che
+        // ha chiuso la finestra. L'ascolto senza interfaccia lo dirà
+        // all'altro, che altrimenti legge "in attesa" e pensa a una tua
+        // scelta.
+        interfacciaAlComando(false, true);
         Foreground.riprendiPresenza().catch(() => { /* noop */ });
       }
     };
@@ -1155,7 +1343,11 @@ export default function App() {
       try {
         const patch: Partial<DuoConfig> = {};
         const g = Number(await AsyncStorage.getItem(CHIAVE_GUADAGNO));
-        if (g >= GUADAGNO_MIN && g <= GUADAGNO_MAX && c.guadagno === 1) patch.guadagno = g;
+        if (g > 1 && g <= GUADAGNO_MAX && !Object.keys(c.guadagni ?? {}).length) {
+          patch.guadagni = {
+            SPEAKER_PHONE: g, EARPIECE: g, WIRED_HEADSET: g, BLUETOOTH: g,
+          };
+        }
         const u = await AsyncStorage.getItem(CHIAVE_USCITA_VECCHIA);
         if (u && c.uscitaAudio === 'SPEAKER_PHONE') patch.uscitaAudio = u;
         if (Object.keys(patch).length) setCfg(salvaCfg({ ...c, ...patch }));
@@ -1366,8 +1558,10 @@ export default function App() {
            */
           onPresence: ({ peerPresent: present, peerActive, peerName: n }) => {
             // Il server ha risposto: qualunque dubbio avessimo sul
-            // socket, è vivo. Vedi la prova dopo un cambio di rete.
+            // socket, è vivo. Vale per la prova dopo un cambio di rete
+            // e per quella del battito.
             fermaProvaRete();
+            rispostaVista.current = Date.now();
             setPeerPresent(present);
             if (present) setPeerStaccato(false);
             if (n) segnaNome(n);
@@ -1459,6 +1653,13 @@ export default function App() {
             // resto: il server lo inoltra senza poterlo leggere.
             // L'altro è morto e ora è tornato: dirlo, senza far suonare
             // niente. È una notizia, non una chiamata.
+            // "Non sono uscito io, mi hanno chiuso l'app."
+            if (msg.kind === 'smontata') {
+              setPeerSmontato(true);
+              Diario.segna('altro-smontata').catch(() => {});
+              return;
+            }
+
             if (msg.kind === 'morte') {
               // Questo racconto contiene già il ritorno: l'annuncio
               // generico non serve più.
@@ -2082,6 +2283,8 @@ export default function App() {
    */
   const cfgRef = useRef<DuoConfig | null>(null);
   useEffect(() => { cfgRef.current = cfg; }, [cfg]);
+  const livelloRef = useRef(livello);
+  useEffect(() => { livelloRef.current = livello; }, [livello]);
   useEffect(() => {
     const c = cfgRef.current;
     if (!c?.pair) return;
@@ -2090,7 +2293,7 @@ export default function App() {
       `uscita=${c.uscitaAudio}`,
       `qualita=${c.videoQuality}`,
       `voce-ricca=${c.audioMigliore ? 'si' : 'no'}`,
-      `volume=${Math.round(c.guadagno * 100)}%`,
+      `volume=${Math.round(livelloRef.current * 100)}%`,
       `avviso=${c.avvisoSuono}`,
       `vibra=${c.avvisoVibra}`,
       `comandi=${c.comandi}`,
@@ -2276,15 +2479,19 @@ export default function App() {
         peerAvatar={face}
         peerPresent={peerPresent}
         peerStaccato={peerStaccato}
+        peerSmontato={peerSmontato}
         videoStats={videoStats}
         qualityLabel={(VIDEO_PROFILES[cfg.videoQuality] ?? VIDEO_PROFILES.standard).etichetta}
         showStats={cfg.mostraDiagnostica}
         comandi={cfg.comandi}
         avviso={avviso}
         onAvvisoLetto={() => setAvviso(null)}
-        guadagno={guadagnoVisibile ? guadagno : null}
-        guadagnoAltro={guadagno}
-        onGuadagno={cambiaGuadagno}
+        // Alla schermata va il LIVELLO, non il guadagno: è il numero
+        // che dice a che volume stai sentendo l'altro.
+        guadagno={guadagnoVisibile ? livello : null}
+        guadagnoAltro={livello}
+        volumeSistema={sistema}
+        onGuadagno={cambiaLivello}
         avvisoVersione={avvisoVersione}
         cameraFrontale={cameraFrontale}
         quality={cfg.videoQuality}

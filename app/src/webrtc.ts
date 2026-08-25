@@ -222,16 +222,15 @@ export class ChannelSession {
   ) {
     this.cameraFrontale = cfg.cameraFrontale !== false;
     /**
-     * Il volume parte da quello salvato, non da "tutto".
+     * Il guadagno parte da quello salvato per l'uscita in uso.
      *
-     * Serve perché questo numero adesso viaggia: la prima dichiarazione
-     * di stato parte prima che l'app abbia avuto tempo di riapplicare il
-     * guadagno, e annunciava 100% mentre questo telefono ascoltava al
-     * 50%. La correzione arriva subito dopo, ma è un messaggio in più
-     * che può perdersi - e finché non ne arriva un altro, dall'altra
-     * parte si legge un numero falso.
+     * Serve perché la prima dichiarazione di stato parte prima che l'app
+     * abbia avuto tempo di riapplicarlo: senza, annuncerebbe un livello
+     * che questo telefono non sta usando, e la correzione è un messaggio
+     * in più che può perdersi.
      */
-    this.guadagnoAltro = cfg.guadagno ?? 1;
+    this.guadagnoAltro = cfg.guadagni?.[cfg.uscitaAudio] ?? 1;
+    this.livelloUdito = this.guadagnoAltro;
   }
 
   // --- Ingresso nel canale -------------------------------------------------
@@ -269,6 +268,16 @@ export class ChannelSession {
    * il segnale prima che esca. 1 = com'e' arrivato.
    */
   private guadagnoAltro = 1;
+
+  /**
+   * Il livello a cui stiamo sentendo l'altro, da dichiarare a lui.
+   *
+   * Non è il guadagno: è il prodotto fra il volume di chiamata del
+   * telefono e il guadagno, cioè quello che si sente davvero. A lui
+   * serve quello - il nostro moltiplicatore da solo non gli direbbe
+   * niente, perché non sa a che punto sta la manopola di qua.
+   */
+  private livelloUdito = 1;
 
   /** Il sender audio della connessione viva. */
   private liveAudioSender(): any {
@@ -1410,7 +1419,7 @@ export class ChannelSession {
       uscita: this.uscitaLocale,
       versione: VERSION,
       camera: this.isCameraFrontale() ? 'frontale' : 'posteriore',
-      volume: this.guadagnoAltro,
+      volume: this.livelloUdito,
       video: this.isVideoEnabled(),
       aspect: this.getLocalVideoAspect(),
       watching: this.localWatching,
@@ -1438,6 +1447,15 @@ export class ChannelSession {
     this.applicaGuadagno();
     // Glielo si dice: è l'unico modo che ha di sapere se lo stai
     // sentendo piano, e a voce quella domanda non si risolve mai.
+    this.broadcastState();
+  }
+
+  /** Il livello dichiarato all'altro; non tocca il suono, solo il racconto. */
+  setLivelloUdito(l: number) {
+    // Lo zero è un valore come gli altri: vuol dire che non lo si sente
+    // affatto, ed è proprio quello che l'altro ha bisogno di sapere.
+    if (!(l >= 0) || l === this.livelloUdito) return;
+    this.livelloUdito = l;
     this.broadcastState();
   }
 

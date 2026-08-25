@@ -7,6 +7,27 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.1.116",
+    "paragrafi": [
+      {
+        "forte": "Il volume adesso è un numero solo, e dice la verità.",
+        "testo": "Prima Duetto mostrava soltanto la propria parte, e il volume di chiamata del telefono - che ha una manopola per ogni uscita e la muovono anche le altre app - non lo guardava: potevi leggere 150% mentre il telefono stava a uno su otto. Ora il livello è il prodotto dei due, si aggiorna anche quando lo cambi da fuori, ed è quello che viaggia all'altro: «ti sente 25%» è diventata una frase esatta."
+      },
+      {
+        "forte": "E ogni uscita ha il suo.",
+        "testo": "Salendo, i tasti portano prima al massimo il volume di chiamata - che Android ricorda già separato per cornetta, vivavoce, cuffie e bluetooth - e solo dopo moltiplicano; scendendo fanno il contrario. Quello che avevi impostato vale ora per tutte e quattro le uscite, e da lì in poi si separano."
+      },
+      {
+        "forte": "Quando il telefono ti chiude l'app, l'altro lo sa.",
+        "testo": "Su certi telefoni Duetto viene smontato da solo, anche di notte: all'altro compariva «in attesa», identico a quando esci tu. Ora dice «in attesa (app chiusa dal telefono)», nel riquadro e nella notifica."
+      },
+      {
+        "forte": "La connessione si controlla ogni minuto, anche a schermo spento.",
+        "testo": "I cronometri di React Native seguono il ritmo dei fotogrammi: a schermo spento non scadono, e nessuna delle reti di sicurezza partiva - una notte la connessione è rimasta caduta otto minuti e mezzo, fino al momento in cui lo schermo si è acceso. Ora il controllo lo sveglia un battito nativo."
+      }
+    ]
+  },
+  {
     "versione": "1.1.115",
     "paragrafi": [
       {
