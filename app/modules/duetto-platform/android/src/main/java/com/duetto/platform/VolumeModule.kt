@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.media.AudioManager
+import androidx.core.content.ContextCompat
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -111,7 +112,14 @@ class VolumeModule(private val ctx: ReactApplicationContext) :
     fun ascoltaSistema(promise: Promise) {
         if (registrato) { promise.resolve(true); return }
         try {
-            ctx.registerReceiver(ascolto, IntentFilter(AZIONE_VOLUME))
+            // Con la bandiera, e non a mano: da Android 14 registrare un
+            // ricevitore senza dichiarare se il segnale puo' venire da
+            // fuori fa cadere l'app con una SecurityException. Questo
+            // arriva dal sistema, quindi non e' esportato.
+            ContextCompat.registerReceiver(
+                ctx, ascolto, IntentFilter(AZIONE_VOLUME),
+                ContextCompat.RECEIVER_NOT_EXPORTED,
+            )
             registrato = true
             promise.resolve(true)
         } catch (_: Exception) {

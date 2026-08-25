@@ -221,7 +221,17 @@ object Notifier {
             .setContentText(conNome(nome(service), "In attesa"))
             .setSmallIcon(R.drawable.ic_notifica)
             .setContentIntent(pending)
-            .setOngoing(true)
+            // Niente `setOngoing`: e' quella dichiarazione a rendere la
+            // notifica non cancellabile, e su Android 13 e successivi non
+            // serve piu' a niente. Da li' in poi il sistema lascia
+            // scacciare la notifica di un servizio in primo piano - il
+            // servizio continua a girare e si resta raggiungibili lo
+            // stesso - mentre prima della 13 e' il sistema stesso a
+            // tenerla ferma, con o senza questa riga. Toglierla non
+            // cambia niente sui telefoni vecchi e restituisce la scelta
+            // su quelli nuovi. Ricompare al primo cambiamento di stato,
+            // perche' un servizio in primo piano una notifica deve
+            // averla.
             .setSilent(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
