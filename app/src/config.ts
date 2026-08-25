@@ -254,6 +254,20 @@ export type DuoConfig = {
   guadagni: Record<string, number>;
 
   /**
+   * I moltiplicatori sono già stati azzerati una volta.
+   *
+   * Il volume di Duetto è nato come un moltiplicatore unico, applicato
+   * sopra a un volume di chiamata che nessuno guardava. Diventando il
+   * prodotto delle due metà, quel numero ha cambiato significato: 125%
+   * non voleva più dire "un po' più forte del telefono" ma "un quarto
+   * in più sopra qualunque cosa", su ogni uscita - e sulla cornetta
+   * suonava come un vivavoce. Traghettarlo è stato un errore: si azzera
+   * una volta sola, e da lì in poi il lavoro lo fa la manopola del
+   * telefono, che ha già una memoria per ogni uscita.
+   */
+  guadagniAzzerati: boolean;
+
+  /**
    * Con quale camera si riprende: davanti o dietro.
    *
    * Non era ricordata da nessuna parte - ogni sessione ripartiva dalla
@@ -285,49 +299,17 @@ export const DEFAULT_CONFIG: DuoConfig = {
   avvisoSuonoNome: '',
   uscitaAudio: 'SPEAKER_PHONE',
   guadagni: {},
+  guadagniAzzerati: false,
   cameraFrontale: true,
 };
 
 const STORAGE_KEY = 'duetto.config.v3';
 
-/**
- * Il guadagno unico di prima diventa quello di tutte le uscite.
- *
- * Era un numero solo per cornetta, vivavoce e cuffie insieme: chi
- * l'aveva alzato per il vivavoce se lo ritrovava all'orecchio. Da qui in
- * poi sono quattro; quello che c'era viene copiato in tutti e quattro,
- * così il primo avvio dopo l'aggiornamento non cambia niente all'orecchio
- * di nessuno.
- */
-function normalizzaGuadagni<T extends { guadagni?: Record<string, number>; guadagno?: number }>(
-  o: T,
-): T {
-  if (o.guadagni && Object.keys(o.guadagni).length) return o;
-  const vecchio = typeof o.guadagno === 'number' ? o.guadagno : 0;
-  if (!vecchio || vecchio === 1) return o;
-  const uguale = Math.max(1, vecchio);
-  return {
-    ...o,
-    guadagni: {
-      SPEAKER_PHONE: uguale, EARPIECE: uguale,
-      WIRED_HEADSET: uguale, BLUETOOTH: uguale,
-    },
-  };
-}
-
 export async function loadConfig(): Promise<DuoConfig> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_CONFIG;
-    const letta = normalizzaComandi(
-      normalizzaCoppie({ ...DEFAULT_CONFIG, ...JSON.parse(raw) }),
-    );
-    return {
-      ...normalizzaGuadagni(letta),
-      pairs: letta.pairs.map((p) => (p.impostazioni
-        ? { ...p, impostazioni: normalizzaGuadagni(p.impostazioni) }
-        : p)),
-    };
+    return normalizzaComandi(normalizzaCoppie({ ...DEFAULT_CONFIG, ...JSON.parse(raw) }));
   } catch {
     return DEFAULT_CONFIG;
   }

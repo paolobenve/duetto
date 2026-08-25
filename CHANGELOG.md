@@ -8,6 +8,18 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.1.119
+
+**Via il venticinque per cento di troppo.** Diventando il prodotto delle due metà, il volume di
+Duetto ha cambiato significato: il moltiplicatore di prima, traghettato sulle quattro uscite,
+restava come un'amplificazione fissa sopra qualunque cosa - e sulla cornetta suonava come un
+vivavoce. Ora riparte da 1 dappertutto, e il livello è quello del volume di chiamata del
+telefono, che ha già una memoria per ogni uscita.
+
+**Il tocco su «Esci» non esce**: apre lo stesso pannello della pressione lunga, con le due uscite
+scritte per esteso e una riga «Resta nel canale». La conferma piccola sotto l'icona non si
+vedeva, ed era proprio nel caso in cui serve - quando quel tocco non l'hai fatto tu.
+
 ## 1.1.118
 
 **Il volume scende fino al silenzio, e sotto il minimo del telefono.** In vivavoce il primo

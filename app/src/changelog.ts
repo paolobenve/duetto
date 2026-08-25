@@ -7,6 +7,19 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.1.119",
+    "paragrafi": [
+      {
+        "forte": "Via il venticinque per cento di troppo.",
+        "testo": "Diventando il prodotto delle due metà, il volume di Duetto ha cambiato significato: il moltiplicatore di prima, traghettato sulle quattro uscite, restava come un'amplificazione fissa sopra qualunque cosa - e sulla cornetta suonava come un vivavoce. Ora riparte da 1 dappertutto, e il livello è quello del volume di chiamata del telefono, che ha già una memoria per ogni uscita."
+      },
+      {
+        "forte": "Il tocco su «Esci» non esce",
+        "testo": ": apre lo stesso pannello della pressione lunga, con le due uscite scritte per esteso e una riga «Resta nel canale». La conferma piccola sotto l'icona non si vedeva, ed era proprio nel caso in cui serve - quando quel tocco non l'hai fatto tu."
+      }
+    ]
+  },
+  {
     "versione": "1.1.118",
     "paragrafi": [
       {

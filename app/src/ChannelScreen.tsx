@@ -49,9 +49,6 @@ const FADE_MS = 10000;
  */
 const SONNO_MS = 60000;
 
-/** Quanto resta armato il pulsante di uscita, dopo il primo tocco. */
-const ATTESA_CONFERMA_MS = 3000;
-
 /**
  * Quanto restano visibili i comandi quando il calo è finito.
  *
@@ -679,21 +676,6 @@ export default function ChannelScreen(props: Props) {
     );
   }, [segnoUscitaMia, showStats, guadagnoAltro]);
 
-  /**
-   * Il pulsante di uscita è armato: il prossimo tocco esce davvero.
-   *
-   * Dura pochi secondi, poi torna «Esci» e ci vuole di nuovo il primo
-   * tocco.
-   */
-  const [escoArmato, setEscoArmato] = useState(false);
-  const timerEsco = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const disarma = useCallback(() => {
-    if (timerEsco.current) clearTimeout(timerEsco.current);
-    timerEsco.current = null;
-    setEscoArmato(false);
-  }, []);
-  useEffect(() => () => { if (timerEsco.current) clearTimeout(timerEsco.current); }, []);
-
   /** Il lampo della campanella: dice che qualcosa è partito davvero. */
   const bussata = useCallback(() => {
     setAppenaBussato(true);
@@ -1005,37 +987,26 @@ export default function ChannelScreen(props: Props) {
           onLongPress={together ? press(() => setMenuSveglia(true)) : undefined}
         />
         <CircleButton
-          label={escoArmato ? 'Sicuro?' : 'Esci'}
+          label="Esci"
           icon={<IconaEsci sfondo="#da373c" />}
           danger
           /**
-           * Due tocchi, non uno.
+           * Il tocco non esce: apre le due uscite, in mezzo allo schermo.
            *
-           * Il primo arma - l'etichetta diventa «Sicuro?» per tre
-           * secondi - il secondo esce. Uscire dal canale è l'unica cosa
-           * distruttiva che questa schermata sappia fare, e stava in un
-           * angolo dove i tocchi capitano: sono comparse uscite che
-           * nessuno aveva premuto, di notte e in pieno giorno, tre volte
-           * in un minuto. Qualunque cosa le produca - un dito
-           * distratto, un gesto di sistema, un tocco fantasma - un tocco
-           * solo non basta più.
+           * Uscire dal canale era l'unica cosa distruttiva che questa
+           * schermata sapesse fare, con un tocco solo, in un angolo dove
+           * i tocchi capitano: sono comparse uscite che nessuno aveva
+           * premuto, di notte e in pieno giorno. Prima avevo provato con
+           * l'etichetta che diventava «Sicuro?», ma è una scritta
+           * piccola sotto un'icona, e non la si vede.
            *
-           * La pressione lunga resta com'era, con le sue due voci
-           * esplicite: tenere premuto un terzo di secondo non capita per
-           * sbaglio.
+           * Adesso il tocco apre lo stesso pannello della pressione
+           * lunga: una domanda grande in mezzo allo schermo, con le due
+           * uscite scritte per esteso, e si esce toccando quella che si
+           * vuole. Un tocco solo non porta più fuori da nessuna parte.
            */
-          onPress={press(() => {
-            if (escoArmato) {
-              disarma();
-              onLeave(true);
-              return;
-            }
-            setEscoArmato(true);
-            if (timerEsco.current) clearTimeout(timerEsco.current);
-            timerEsco.current = setTimeout(() => setEscoArmato(false), ATTESA_CONFERMA_MS);
-            Diario.segna('esci:armato').catch(() => { /* noop */ });
-          })}
-          onLongPress={press(() => { disarma(); setMenuUscita(true); })}
+          onPress={press(() => setMenuUscita(true))}
+          onLongPress={press(() => setMenuUscita(true))}
         />
         </View>
         {showStats ? (
@@ -1132,15 +1103,15 @@ export default function ChannelScreen(props: Props) {
         onRequestClose={() => setMenuUscita(false)}>
         <Pressable style={styles.sheetBack} onPress={() => setMenuUscita(false)}>
           <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>Uscire dal canale</Text>
+            <Text style={styles.sheetTitle}>Uscire dal canale?</Text>
             <TouchableOpacity
               style={styles.sheetRow}
               onPress={() => { setMenuUscita(false); onLeave(true); }}>
               <View style={styles.sheetText}>
                 <Text style={styles.sheetLabel}>Esci e resta disponibile</Text>
                 <Text style={styles.sheetNota}>
-                  Come toccando «Esci»: il canale si chiude, ma resti
-                  raggiungibile e il suo avviso ti arriva.
+                  Il canale si chiude, ma resti raggiungibile e il suo avviso
+                  ti arriva.
                 </Text>
               </View>
             </TouchableOpacity>
@@ -1154,6 +1125,16 @@ export default function ChannelScreen(props: Props) {
                   e all’altro risulti non raggiungibile. Finché non riapri
                   l’app.
                 </Text>
+              </View>
+            </TouchableOpacity>
+            {/* Esplicita, per chi ci è finito senza volerlo: toccare
+                fuori funziona, ma è una cosa da sapere, e chi si trova
+                davanti questa domanda senza averla chiesta non la sa. */}
+            <TouchableOpacity
+              style={styles.sheetRow}
+              onPress={() => setMenuUscita(false)}>
+              <View style={styles.sheetText}>
+                <Text style={styles.sheetLabel}>Resta nel canale</Text>
               </View>
             </TouchableOpacity>
           </View>

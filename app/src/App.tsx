@@ -1369,7 +1369,7 @@ export default function App() {
       // Prima della configurazione: se arrivasse dopo, il riquadrino
       // comparirebbe al suo posto di nascita e poi salterebbe.
       await caricaPosizionePip();
-      const c = await loadConfig();
+      let c = await loadConfig();
       setCfg(c);
       leggiLaPropriaMorte();
       /**
@@ -1380,6 +1380,29 @@ export default function App() {
        * del collegamento in uso: chi aveva già scelto non ricomincia da
        * capo.
        */
+      /**
+       * I moltiplicatori si azzerano una volta sola.
+       *
+       * Vedi `guadagniAzzerati`: quel numero ha cambiato significato
+       * diventando la parte alta e bassa di un prodotto, e traghettarlo
+       * ha lasciato un +25% fisso sopra ogni uscita - sulla cornetta,
+       * un vivavoce. Si riparte da 1 dappertutto, compresi i
+       * collegamenti che in questo momento non sono in uso.
+       */
+      if (!c.guadagniAzzerati) {
+        const pulita: DuoConfig = {
+          ...c,
+          guadagni: {},
+          guadagniAzzerati: true,
+          pairs: c.pairs.map((p) => (p.impostazioni
+            ? { ...p, impostazioni: { ...p.impostazioni, guadagni: {} } }
+            : p)),
+        };
+        c = pulita;
+        setCfg(salvaCfg(pulita));
+        Diario.segna('guadagni-azzerati').catch(() => { /* noop */ });
+      }
+
       try {
         const patch: Partial<DuoConfig> = {};
         const g = Number(await AsyncStorage.getItem(CHIAVE_GUADAGNO));
