@@ -49,6 +49,9 @@ const FADE_MS = 10000;
  */
 const SONNO_MS = 60000;
 
+/** Quanto resta armato il pulsante di uscita, dopo il primo tocco. */
+const ATTESA_CONFERMA_MS = 3000;
+
 /**
  * Quanto restano visibili i comandi quando il calo è finito.
  *
@@ -676,6 +679,21 @@ export default function ChannelScreen(props: Props) {
     );
   }, [segnoUscitaMia, showStats, guadagnoAltro]);
 
+  /**
+   * Il pulsante di uscita è armato: il prossimo tocco esce davvero.
+   *
+   * Dura pochi secondi, poi torna «Esci» e ci vuole di nuovo il primo
+   * tocco.
+   */
+  const [escoArmato, setEscoArmato] = useState(false);
+  const timerEsco = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const disarma = useCallback(() => {
+    if (timerEsco.current) clearTimeout(timerEsco.current);
+    timerEsco.current = null;
+    setEscoArmato(false);
+  }, []);
+  useEffect(() => () => { if (timerEsco.current) clearTimeout(timerEsco.current); }, []);
+
   /** Il lampo della campanella: dice che qualcosa è partito davvero. */
   const bussata = useCallback(() => {
     setAppenaBussato(true);
@@ -834,7 +852,9 @@ export default function ChannelScreen(props: Props) {
         <View style={styles.volumeSopra} pointerEvents="none">
           <Text style={styles.volumeTesto}>
             Voce dell’altro{'  '}
-            <Text style={styles.volumeCifra}>{Math.round(guadagno * 100)}%</Text>
+            <Text style={styles.volumeCifra}>
+              {guadagno === 0 ? 'muto' : `${Math.round(guadagno * 100)}%`}
+            </Text>
           </Text>
         </View>
       ) : null}
@@ -985,15 +1005,37 @@ export default function ChannelScreen(props: Props) {
           onLongPress={together ? press(() => setMenuSveglia(true)) : undefined}
         />
         <CircleButton
-          label="Esci"
+          label={escoArmato ? 'Sicuro?' : 'Esci'}
           icon={<IconaEsci sfondo="#da373c" />}
           danger
-          // Il tocco fa la cosa di tutti i giorni: si esce e si resta
-          // raggiungibili. Staccarsi davvero è una decisione diversa, e
-          // sta sotto la pressione lunga, dove non ci si finisce per
-          // sbaglio.
-          onPress={press(() => onLeave(true))}
-          onLongPress={press(() => setMenuUscita(true))}
+          /**
+           * Due tocchi, non uno.
+           *
+           * Il primo arma - l'etichetta diventa «Sicuro?» per tre
+           * secondi - il secondo esce. Uscire dal canale è l'unica cosa
+           * distruttiva che questa schermata sappia fare, e stava in un
+           * angolo dove i tocchi capitano: sono comparse uscite che
+           * nessuno aveva premuto, di notte e in pieno giorno, tre volte
+           * in un minuto. Qualunque cosa le produca - un dito
+           * distratto, un gesto di sistema, un tocco fantasma - un tocco
+           * solo non basta più.
+           *
+           * La pressione lunga resta com'era, con le sue due voci
+           * esplicite: tenere premuto un terzo di secondo non capita per
+           * sbaglio.
+           */
+          onPress={press(() => {
+            if (escoArmato) {
+              disarma();
+              onLeave(true);
+              return;
+            }
+            setEscoArmato(true);
+            if (timerEsco.current) clearTimeout(timerEsco.current);
+            timerEsco.current = setTimeout(() => setEscoArmato(false), ATTESA_CONFERMA_MS);
+            Diario.segna('esci:armato').catch(() => { /* noop */ });
+          })}
+          onLongPress={press(() => { disarma(); setMenuUscita(true); })}
         />
         </View>
         {showStats ? (
@@ -1160,7 +1202,9 @@ export default function ChannelScreen(props: Props) {
                 <Text style={styles.passoSegno}>−</Text>
               </TouchableOpacity>
               <Text style={styles.passoValore}>
-                {Math.round((guadagnoAltro ?? 1) * 100)}%
+                {guadagnoAltro === 0
+                  ? 'muto'
+                  : `${Math.round((guadagnoAltro ?? 1) * 100)}%`}
               </Text>
               <TouchableOpacity
                 style={styles.passo}
@@ -1472,6 +1516,18 @@ function PeerFace({ name, avatar, live }: { name: string; avatar: Avatar; live: 
   );
 }
 
+/**
+ * Un comando rotondo, e la firma del tocco che lo ha premuto.
+ *
+ * Il diario registra ogni pressione con il punto dello schermo e quanto
+ * e' durato il contatto, perche' su un telefono lontano e' l'unico modo
+ * di sapere COSA e' arrivato all'app. Serve a una domanda precisa: da
+ * giorni compaiono uscite dal canale che nessuno ha premuto, e nel
+ * codice quella riga ha una sorgente sola, il tocco su questo pulsante.
+ * Un dito lascia una firma riconoscibile - coordinate un po' diverse
+ * ogni volta, contatto di decine o centinaia di millisecondi - che un
+ * tocco sintetico o un fantasma del digitalizzatore non hanno.
+ */
 function CircleButton(props: {
   label: string;
   icon: React.ReactNode;
@@ -1484,11 +1540,33 @@ function CircleButton(props: {
   danger?: boolean;
   disabled?: boolean;
 }) {
+  const giu = useRef<{ t: number; x: number; y: number } | null>(null);
+  const firma = (che: string) => {
+    const g = giu.current;
+    const x = Math.round(g?.x ?? -1);
+    const y = Math.round(g?.y ?? -1);
+    const durata = g ? Date.now() - g.t : -1;
+    Diario.segna(`comando:${che} ${x},${y} dopo ${durata}ms`)
+      .catch(() => { /* noop */ });
+  };
+
   return (
     <TouchableOpacity
       style={styles.ctrlItem}
-      onPress={props.onPress}
-      onLongPress={props.onLongPress}
+      onPressIn={(e) => {
+        giu.current = {
+          t: Date.now(),
+          x: e.nativeEvent.pageX,
+          y: e.nativeEvent.pageY,
+        };
+      }}
+      onPress={() => {
+        firma(props.label.toLowerCase());
+        props.onPress();
+      }}
+      onLongPress={props.onLongPress
+        ? () => { firma(`${props.label.toLowerCase()}-lungo`); props.onLongPress?.(); }
+        : undefined}
       delayLongPress={350}
       disabled={props.disabled}
       activeOpacity={0.6}>

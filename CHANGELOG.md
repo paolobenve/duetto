@@ -8,6 +8,30 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.1.118
+
+**Il volume scende fino al silenzio, e sotto il minimo del telefono.** In vivavoce il primo
+scalino di certi telefoni è ancora fortissimo, e più giù Android non va: da lì in poi attenua
+Duetto, fino a un quarto, e un altro tocco zittisce del tutto. Dal silenzio, il primo tocco in su
+riporta al minimo del telefono.
+
+**Uscendo e rientrando entro dieci secondi si riprende com'era**, microfono e camera compresi:
+un'uscita e un rientro immediati quasi sempre non sono una scelta, e ritrovarsi il video da
+riaccendere a mano era una punizione per qualcosa che non si è fatto.
+
+## 1.1.117
+
+**Uscire dal canale chiede conferma.** Il primo tocco su «Esci» arma il pulsante - diventa
+«Sicuro?» per tre secondi - e solo il secondo esce. Sono comparse uscite dal canale che nessuno
+aveva premuto, di notte e in pieno giorno: qualunque cosa le produca, un tocco solo non basta
+più. Tenendo premuto, il menu con le due uscite resta com'era.
+
+**Il diario registra ogni pressione dei comandi** con il punto dello schermo e quanto è durato il
+contatto. Su un telefono lontano è l'unico modo di sapere cosa è arrivato davvero all'app.
+
+**La notifica fissa si può scacciare** su Android 13 e successivi: il servizio continua a girare e
+resti raggiungibile lo stesso.
+
 ## 1.1.116
 
 **Il volume adesso è un numero solo, e dice la verità.** Prima Duetto mostrava soltanto la

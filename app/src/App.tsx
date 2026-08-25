@@ -93,12 +93,15 @@ const CHIAVE_MORTE_RACCONTATA = 'duetto.morte.raccontata';
  */
 const GUADAGNO_PASSO = 0.25;
 /**
- * Il nostro moltiplicatore non scende sotto l'uno.
+ * Il nostro moltiplicatore lavora ai due estremi.
  *
- * Sotto il massimo del telefono non serve moltiplicare: c'è la manopola
- * del volume di chiamata, che è più fine e non tocca il suono. Il
- * guadagno è solo la parte che sta sopra.
+ * In mezzo comanda la manopola del telefono, che è più fine e non tocca
+ * il suono. Ma il telefono ha due limiti: sopra, il massimo che non
+ * basta mai in vivavoce con una voce piano; e sotto, il primo scalino,
+ * che su certi telefoni - un Motorola recente, in vivavoce - è ancora
+ * fortissimo. Il guadagno copre tutti e due i fuori-scala.
  */
+const GUADAGNO_MIN = 0.25;
 const GUADAGNO_MAX = 4;
 /**
  * La memoria di prima del volume, quando era una per tutta l'app.
@@ -172,6 +175,12 @@ const GRAZIA_SERVER_MS = 5_000;
  * collegamento, dopo che la rete è cambiata sotto i piedi.
  */
 const ATTESA_PROVA_MS = 3_000;
+
+/**
+ * Entro quanto un rientro conta come continuazione, non come nuovo
+ * ingresso: si riprende con il microfono e la camera com'erano.
+ */
+const RIPRESA_MS = 10_000;
 
 /** Ogni quanto si guarda se siamo ancora senza server. */
 const CONTROLLO_SERVER_MS = 3_000;
@@ -622,7 +631,11 @@ export default function App() {
     const cambiaMio = (nuovo: number) => {
       setCfg((prev) => {
         if (!prev) return prev;
-        const quanto = Math.min(GUADAGNO_MAX, Math.max(1, nuovo));
+        // Lo zero è un valore vero: è il silenzio, e lo facciamo noi
+        // perché il telefono non ci arriva.
+        const quanto = nuovo <= 0
+          ? 0
+          : Math.min(GUADAGNO_MAX, Math.max(GUADAGNO_MIN, nuovo));
         if (quanto === (prev.guadagni?.[uscita] ?? 1)) return prev;
         return salvaCfg({
           ...prev,
@@ -631,18 +644,45 @@ export default function App() {
       });
     };
 
+    const muoviSuo = (v: number) => {
+      setSistema({ ...suo, volume: v });
+      Volume.metti(v).catch(() => { /* noop */ });
+    };
+
+    const piu = Math.round((mio + GUADAGNO_PASSO) * 100) / 100;
+    const meno = Math.round((mio - GUADAGNO_PASSO) * 100) / 100;
+
     if (direzione > 0) {
-      if (suo.max > 0 && suo.volume < suo.max) {
-        setSistema({ ...suo, volume: suo.volume + 1 });
-        Volume.metti(suo.volume + 1).catch(() => { /* noop */ });
-      } else {
-        cambiaMio(Math.round((mio + GUADAGNO_PASSO) * 100) / 100);
-      }
+      // Salendo: dal silenzio si torna al minimo del telefono, poi si
+      // smette di attenuare, poi si alza il telefono, e solo quando è
+      // al massimo si moltiplica.
+      if (mio === 0) cambiaMio(1);
+      else if (suo.max > 0 && suo.volume === 0) muoviSuo(1);
+      else if (mio < 1) cambiaMio(piu);
+      else if (suo.max > 0 && suo.volume < suo.max) muoviSuo(suo.volume + 1);
+      else cambiaMio(piu);
+    } else if (mio === 0) {
+      // Già muto: non c'è niente sotto.
     } else if (mio > 1) {
-      cambiaMio(Math.round((mio - GUADAGNO_PASSO) * 100) / 100);
-    } else if (suo.max > 0 && suo.volume > 0) {
-      setSistema({ ...suo, volume: suo.volume - 1 });
-      Volume.metti(suo.volume - 1).catch(() => { /* noop */ });
+      cambiaMio(meno);
+    } else if (suo.max > 0 && suo.volume > 1) {
+      muoviSuo(suo.volume - 1);
+    } else if (mio > GUADAGNO_MIN) {
+      // Il telefono è al primo scalino e si vuole ancora più piano: da
+      // qui in giù attenuiamo noi, perché sotto quello scalino il
+      // telefono non sa andare - e su certi telefoni, in vivavoce,
+      // quello scalino è ancora fortissimo.
+      cambiaMio(meno);
+    } else {
+      /**
+       * L'ultimo scalino in giù è il silenzio, e lo facciamo noi.
+       *
+       * Android il volume di chiamata a zero non lo porta: chiedendogli
+       * zero lo tiene al primo scalino, che resta perfettamente udibile.
+       * Il silenzio vero si ottiene solo azzerando il moltiplicatore,
+       * cioè non suonando ciò che arriva.
+       */
+      cambiaMio(0);
     }
     mostra();
   }, [salvaCfg]);
@@ -2004,9 +2044,35 @@ export default function App() {
     sig.setMode('active');
 
     if (peerActiveRef.current) attachPeer();
+
+    /**
+     * Rientro subito dopo un'uscita: si riprende com'era.
+     *
+     * Il microfono lo si rimette qui; la camera un attimo dopo, perché
+     * accenderla richiede il permesso e il servizio con il tipo giusto,
+     * e in questo istante la sessione sta ancora prendendo posto.
+     */
+    const prima = comEra.current;
+    comEra.current = null;
+    if (prima && Date.now() - prima.quando < RIPRESA_MS) {
+      Diario.segna('riprendo-com-era').catch(() => { /* noop */ });
+      if (!prima.audio) {
+        const acceso = sessionRef.current?.toggleAudio();
+        if (acceso !== undefined) setAudioOn(acceso);
+      }
+      if (prima.video) setTimeout(() => { riaccendiVideoRef.current?.(); }, 300);
+    }
   }, [cfg, attachPeer, fermaAttesa]);
 
   useEffect(() => { enterChannelRef.current = enterChannel; }, [enterChannel]);
+
+  /**
+   * Riaccendere la camera dopo un rientro immediato.
+   *
+   * Sta in un riferimento perché chi lo chiama - l'ingresso nel canale -
+   * nasce prima della funzione che accende il video.
+   */
+  const riaccendiVideoRef = useRef<(() => void) | null>(null);
 
   /**
    * Quanto si aspetta al massimo prima di uscire comunque.
@@ -2033,11 +2099,30 @@ export default function App() {
    * che si è appena fatto restava su questo telefono - e se l'app
    * moriva nel frattempo, non lo leggeva più nessuno.
    */
+  /**
+   * Com'era la conversazione all'ultima uscita, e quando.
+   *
+   * Uscire e rientrare subito quasi sempre non è una scelta: è un tocco
+   * sbagliato, o il telefono che ha chiuso l'app. Ritrovarsi con il
+   * video spento e da riaccendere a mano, in quel caso, è una punizione
+   * per qualcosa che non si è fatto. Entro dieci secondi si riprende
+   * com'era.
+   */
+  const comEra = useRef<{ quando: number; video: boolean; audio: boolean } | null>(null);
+
   const leaveChannel = useCallback(async (restaDisponibile = true) => {
     // La riga dell'uscita si scrive PRIMA di mandare, altrimenti parte
     // tutto tranne la cosa che si sta facendo.
     await Diario.segna(restaDisponibile ? 'uscita-canale' : 'non-disponibile')
       .catch(() => { /* noop */ });
+
+    // Prima di smontare tutto: com'era, per poterlo rimettere se si
+    // rientra subito.
+    comEra.current = {
+      quando: Date.now(),
+      video: sessionRef.current?.isVideoEnabled() === true,
+      audio: sessionRef.current?.isAudioEnabled() !== false,
+    };
 
     setUscendo(true);
     try {
@@ -2185,6 +2270,19 @@ export default function App() {
       Alert.alert('Errore camera', String(e?.message ?? e));
     }
   }, []);
+
+  /**
+   * Il rientro immediato riaccende la camera passando di qui.
+   *
+   * Attraverso un riferimento, perché l'ingresso nel canale nasce prima
+   * di questa funzione e non potrebbe nominarla.
+   */
+  useEffect(() => {
+    riaccendiVideoRef.current = () => {
+      if (sessionRef.current?.isVideoEnabled()) return;
+      onToggleVideo();
+    };
+  }, [onToggleVideo]);
 
   // --- salvataggi ----------------------------------------------------------
   /**

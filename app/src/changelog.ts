@@ -7,6 +7,36 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.1.118",
+    "paragrafi": [
+      {
+        "forte": "Il volume scende fino al silenzio, e sotto il minimo del telefono.",
+        "testo": "In vivavoce il primo scalino di certi telefoni è ancora fortissimo, e più giù Android non va: da lì in poi attenua Duetto, fino a un quarto, e un altro tocco zittisce del tutto. Dal silenzio, il primo tocco in su riporta al minimo del telefono."
+      },
+      {
+        "forte": "Uscendo e rientrando entro dieci secondi si riprende com'era",
+        "testo": ", microfono e camera compresi: un'uscita e un rientro immediati quasi sempre non sono una scelta, e ritrovarsi il video da riaccendere a mano era una punizione per qualcosa che non si è fatto."
+      }
+    ]
+  },
+  {
+    "versione": "1.1.117",
+    "paragrafi": [
+      {
+        "forte": "Uscire dal canale chiede conferma.",
+        "testo": "Il primo tocco su «Esci» arma il pulsante - diventa «Sicuro?» per tre secondi - e solo il secondo esce. Sono comparse uscite dal canale che nessuno aveva premuto, di notte e in pieno giorno: qualunque cosa le produca, un tocco solo non basta più. Tenendo premuto, il menu con le due uscite resta com'era."
+      },
+      {
+        "forte": "Il diario registra ogni pressione dei comandi",
+        "testo": "con il punto dello schermo e quanto è durato il contatto. Su un telefono lontano è l'unico modo di sapere cosa è arrivato davvero all'app."
+      },
+      {
+        "forte": "La notifica fissa si può scacciare",
+        "testo": "su Android 13 e successivi: il servizio continua a girare e resti raggiungibile lo stesso."
+      }
+    ]
+  },
+  {
     "versione": "1.1.116",
     "paragrafi": [
       {
