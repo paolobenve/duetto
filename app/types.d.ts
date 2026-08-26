@@ -29,6 +29,12 @@ declare module 'duetto-platform' {
     ascoltaSistema(cb: (valore: number) => void): () => void;
   };
 
+  /** Quando qualcosa copre lo schermo: una tasca, una cover chiusa. */
+  export const Prossimita: {
+    get(): Promise<boolean>;
+    subscribe(cb: (coperto: boolean) => void): () => void;
+  };
+
   /** Un battito ogni minuto, che arriva anche a schermo spento. */
   export const Battito: {
     subscribe(cb: () => void): () => void;

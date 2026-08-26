@@ -22,6 +22,7 @@ class DuettoPackage : ReactPackage {
         VisibilityModule(reactContext),
         ReteModule(reactContext),
         BattitoModule(reactContext),
+        ProssimitaModule(reactContext),
         CodecsModule(reactContext),
         AudioModule(reactContext),
         AvvisiModule(reactContext),

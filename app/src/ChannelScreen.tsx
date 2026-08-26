@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import type { GestureResponderEvent } from 'react-native';
 import { MediaStream } from 'react-native-webrtc';
-import { Diario } from 'duetto-platform';
+import { Diario, Prossimita } from 'duetto-platform';
 import type { PresenceStatus } from './signaling';
 import VideoStage from './VideoStage';
 import { AudioRoute, ROUTE_LABEL } from './audioRoute';
@@ -592,6 +592,12 @@ export default function ChannelScreen(props: Props) {
    */
   const press = useCallback(
     (action: () => void) => () => {
+      // Schermo coperto: qualunque cosa abbia toccato il vetro, non è
+      // una scelta di nessuno.
+      if (copertoRef.current) {
+        Diario.segna('comando:ignorato-schermo-coperto').catch(() => { /* noop */ });
+        return;
+      }
       const fermo = Date.now() - ultimoTocco.current;
       ultimoTocco.current = Date.now();
       const attenuati = daVedere && (OPACITA_COMANDI[comandi] ?? 0.4) < 1;
@@ -678,6 +684,36 @@ export default function ChannelScreen(props: Props) {
   }, [segnoUscitaMia, showStats, guadagnoAltro]);
 
   /**
+   * Qualcosa copre lo schermo: una tasca, una cover chiusa.
+   *
+   * Finché è coperto i comandi non si premono. Un telefono in tasca
+   * riceve tocchi che non sono scelte di nessuno - nel diario sono
+   * comparse uscite dal canale con contatti di quaranta millisecondi,
+   * mentre l'altro usciva di casa con il telefono in tasca e il
+   * vivavoce acceso, che è la condizione in cui il sistema non spegne
+   * lo schermo.
+   *
+   * In un riferimento oltre che in uno stato: lo leggono i gestori dei
+   * tocchi, che nascono una volta sola.
+   */
+  const [coperto, setCoperto] = useState(false);
+  const copertoRef = useRef(false);
+  useEffect(() => {
+    if (compact) return;
+    let vivo = true;
+    Prossimita.get().then((v) => {
+      if (!vivo) return;
+      copertoRef.current = !!v;
+      setCoperto(!!v);
+    }).catch(() => { /* noop */ });
+    const stop = Prossimita.subscribe((v) => {
+      copertoRef.current = v;
+      setCoperto(v);
+    });
+    return () => { vivo = false; stop(); };
+  }, [compact]);
+
+  /**
    * La firma di un tocco su una riga del pannello.
    *
    * I pulsanti rotondi la scrivono da sé; le righe dei pannelli no, e
@@ -689,7 +725,16 @@ export default function ChannelScreen(props: Props) {
   const firmaTocco = useCallback((che: string, e: GestureResponderEvent) => {
     const x = Math.round(e?.nativeEvent?.pageX ?? -1);
     const y = Math.round(e?.nativeEvent?.pageY ?? -1);
-    Diario.segna(`comando:${che} ${x},${y}`).catch(() => { /* noop */ });
+    Diario.segna(
+      `comando:${che} ${x},${y} coperto=${copertoRef.current ? 'si' : 'no'}`,
+    ).catch(() => { /* noop */ });
+  }, []);
+
+  /** Vero se il tocco va lasciato cadere: lo schermo è coperto. */
+  const daIgnorare = useCallback(() => {
+    if (!copertoRef.current) return false;
+    Diario.segna('comando:ignorato-schermo-coperto').catch(() => { /* noop */ });
+    return true;
   }, []);
 
   /** Il lampo della campanella: dice che qualcosa è partito davvero. */
@@ -932,6 +977,7 @@ export default function ChannelScreen(props: Props) {
         ]}>
         <View style={styles.controls}>
         <CircleButton
+          coperto={coperto}
           label="Video"
           // Acceso il pulsante è una pastiglia bianca, e allora il
           // disegno va in scuro: è ciò che sta funzionando a doversi
@@ -946,6 +992,7 @@ export default function ChannelScreen(props: Props) {
           onLongPress={press(() => setMenuQualita(true))}
         />
         <CircleButton
+          coperto={coperto}
           // Tocco: muto/non muto. Pressione prolungata: da dove esce l'audio.
           label={audioOn ? 'Audio' : 'Muto'}
           icon={<IconaMicrofono off={!audioOn} {...(audioOn ? SU_CHIARO : {})} />}
@@ -955,6 +1002,7 @@ export default function ChannelScreen(props: Props) {
           badge={ICONA_USCITA[audioRoute]}
         />
         <CircleButton
+          coperto={coperto}
           label="Gira"
           // L'icona dice quale camera è accesa: una persona sola per la
           // frontale, più persone per quella dietro, che è ciò che di
@@ -971,6 +1019,7 @@ export default function ChannelScreen(props: Props) {
           onPress={press(onSwitchCamera)}
         />
         <CircleButton
+          coperto={coperto}
           label={knockPending ? 'Avvisato' : 'Avvisa'}
           // Per i due secondi che seguono la pressione la campanella suona:
           // è il segno che l'avviso è partito. La sola scritta cambiava
@@ -1003,6 +1052,7 @@ export default function ChannelScreen(props: Props) {
           onLongPress={together ? press(() => setMenuSveglia(true)) : undefined}
         />
         <CircleButton
+          coperto={coperto}
           label="Esci"
           icon={<IconaEsci sfondo="#da373c" />}
           danger
@@ -1124,6 +1174,7 @@ export default function ChannelScreen(props: Props) {
               style={styles.sheetRow}
               onPress={(e) => {
                 firmaTocco('esci-resto', e);
+                if (daIgnorare()) return;
                 setMenuUscita(false);
                 onLeave(true);
               }}>
@@ -1139,6 +1190,7 @@ export default function ChannelScreen(props: Props) {
               style={styles.sheetRow}
               onPress={(e) => {
                 firmaTocco('esci-staccato', e);
+                if (daIgnorare()) return;
                 setMenuUscita(false);
                 onLeave(false);
               }}>
@@ -1536,6 +1588,8 @@ function PeerFace({ name, avatar, live }: { name: string; avatar: Avatar; live: 
 function CircleButton(props: {
   label: string;
   icon: React.ReactNode;
+  /** lo schermo è coperto: si segna accanto al tocco */
+  coperto?: boolean;
   onPress: () => void;
   onLongPress?: () => void;
   /** piccolo simbolo d'angolo: usato per l'uscita audio attiva */
@@ -1551,8 +1605,9 @@ function CircleButton(props: {
     const x = Math.round(g?.x ?? -1);
     const y = Math.round(g?.y ?? -1);
     const durata = g ? Date.now() - g.t : -1;
-    Diario.segna(`comando:${che} ${x},${y} dopo ${durata}ms`)
-      .catch(() => { /* noop */ });
+    Diario.segna(
+      `comando:${che} ${x},${y} dopo ${durata}ms coperto=${props.coperto ? 'si' : 'no'}`,
+    ).catch(() => { /* noop */ });
   };
 
   return (

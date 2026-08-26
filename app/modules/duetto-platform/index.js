@@ -6,6 +6,7 @@ const NativePip = NativeModules.DuettoPip;
 const NativeVisibility = NativeModules.DuettoVisibility;
 const NativeRete = NativeModules.DuettoRete;
 const NativeBattito = NativeModules.DuettoBattito;
+const NativeProssimita = NativeModules.DuettoProssimita;
 const NativeCodecs = NativeModules.DuettoCodecs;
 const NativeAudio = NativeModules.DuettoAudio;
 const NativeAvvisi = NativeModules.DuettoAvvisi;
@@ -267,6 +268,33 @@ export const Audio = isAndroid && NativeAudio
  * finestrella è ben visibile. Qui contano onStart/onStop, che in PiP non
  * scattano.
  */
+/**
+ * Quando qualcosa copre lo schermo: una tasca, una cover chiusa.
+ *
+ * Serve a non prendere per scelte i tocchi che arrivano al vetro di un
+ * telefono in tasca. Vedi ProssimitaModule.
+ */
+export const Prossimita = isAndroid && NativeProssimita
+  ? {
+      /** Com'è adesso. */
+      get: () => call(NativeProssimita, 'coperto'),
+
+      /**
+       * Chiama `cb(coperto)` a ogni cambiamento, e si mette in ascolto.
+       * Restituisce la funzione per smettere.
+       */
+      subscribe(cb) {
+        call(NativeProssimita, 'start');
+        const emitter = new NativeEventEmitter(NativeProssimita);
+        const sub = emitter.addListener('duetto-prossimita', (v) => cb(!!v));
+        return () => {
+          sub.remove();
+          call(NativeProssimita, 'stop');
+        };
+      },
+    }
+  : { get: () => Promise.resolve(false), subscribe: () => () => {} };
+
 /**
  * Il battito che arriva anche a schermo spento.
  *
