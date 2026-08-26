@@ -277,6 +277,12 @@ export const Audio = isAndroid && NativeAudio
  */
 export const Battito = isAndroid && NativeBattito
   ? {
+      /**
+       * Fitto mentre si è senza server (un battito ogni quindici
+       * secondi), rado quando il collegamento c'è.
+       */
+      fitto: (svelto) => call(NativeBattito, 'fitto', !!svelto),
+
       /** Chiama `cb()` a ogni battito. Restituisce la funzione per smettere. */
       subscribe(cb) {
         call(NativeBattito, 'start');
@@ -288,7 +294,7 @@ export const Battito = isAndroid && NativeBattito
         };
       },
     }
-  : { subscribe: () => () => {} };
+  : { subscribe: () => () => {}, fitto: unavailable };
 
 /**
  * I cambi di rete del telefono: cella, wifi, indirizzo nuovo.
@@ -308,8 +314,14 @@ export const Rete = isAndroid && NativeRete
         const sub = emitter.addListener('duetto-rete', (v) => cb(String(v || '')));
         return () => sub.remove();
       },
+
+      /**
+       * Dice ad Android che su questa rete il traffico non passa, e che
+       * la verifichi adesso. Vedi ReteModule.
+       */
+      segnalaCheNonPassa: () => call(NativeRete, 'segnalaCheNonPassa'),
     }
-  : { subscribe: () => () => {} };
+  : { subscribe: () => () => {}, segnalaCheNonPassa: unavailable };
 
 export const Visibility = isAndroid && NativeVisibility
   ? {

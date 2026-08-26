@@ -32,11 +32,15 @@ declare module 'duetto-platform' {
   /** Un battito ogni minuto, che arriva anche a schermo spento. */
   export const Battito: {
     subscribe(cb: () => void): () => void;
+    /** fitto mentre si è senza server, rado quando il collegamento c'è */
+    fitto(svelto: boolean): Promise<boolean>;
   };
 
   /** I cambi di rete del telefono: cella, wifi, indirizzo nuovo. */
   export const Rete: {
     subscribe(cb: (cosa: string) => void): () => void;
+    /** «su questa rete il traffico non passa, verificala adesso» */
+    segnalaCheNonPassa(): Promise<boolean>;
   };
 
   /** Foreground service Android: tiene viva la presenza nel canale. */

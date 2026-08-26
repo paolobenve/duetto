@@ -177,10 +177,20 @@ const GRAZIA_SERVER_MS = 5_000;
 const ATTESA_PROVA_MS = 3_000;
 
 /**
- * Entro quanto un rientro conta come continuazione, non come nuovo
- * ingresso: si riprende con il microfono e la camera com'erano.
+ * Entro quanto un rientro conta come continuazione e non come nuovo
+ * ingresso. Due attese diverse, perché le due cose non pesano uguale.
+ *
+ * Il microfono cinque minuti: è il tempo di una parentesi - una porta,
+ * una chiamata, un'occhiata a un'altra app - e ritrovarlo com'era non
+ * mostra niente a nessuno.
+ *
+ * La camera un minuto: riaccendersi da sola è un'altra cosa, perché
+ * riprende una stanza e una faccia. Dentro il minuto è chiaramente la
+ * stessa scena di prima; più in là si sta ricominciando, e si riparte
+ * spenti.
  */
-const RIPRESA_MS = 10_000;
+const RIPRESA_MICROFONO_MS = 5 * 60_000;
+const RIPRESA_VIDEO_MS = 60_000;
 
 /** Ogni quanto si guarda se siamo ancora senza server. */
 const CONTROLLO_SERVER_MS = 3_000;
@@ -919,6 +929,9 @@ export default function App() {
     if (!peerPresent || status === 'together') setPeerSmontato(false);
   }, [peerPresent, status]);
 
+  /** Battiti di fila finiti male: al secondo si chiama in causa la rete. */
+  const battitiAvuoto = useRef(0);
+
   /** La prova in corso dopo un cambio di rete, se ce n'è una. */
   const provaRete = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fermaProvaRete = useCallback(() => {
@@ -1013,6 +1026,22 @@ export default function App() {
         Diario.segna(`battito:${perche}`).catch(() => { /* noop */ });
         senzaServerDa.current = senzaServerDa.current || Date.now();
         provaMandata.current = 0;
+        battitiAvuoto.current += 1;
+        /**
+         * Due battiti a vuoto: si dice ad Android di guardare la rete.
+         *
+         * È il caso di chi esce di casa: il wifi, che funziona
+         * benissimo, diventa debole e smette di far passare dati, ma il
+         * telefono ci resta agganciato - a schermo spento anche per
+         * mezzo minuto buono. Noi lo sappiamo prima del sistema, perché
+         * i nostri tentativi falliscono uno dopo l'altro: glielo
+         * diciamo, la verifica la fa lui, e se quella rete non porta a
+         * internet sposta il traffico da sé.
+         */
+        if (battitiAvuoto.current === 2) {
+          Diario.segna('rete:non-passa').catch(() => { /* noop */ });
+          Rete.segnalaCheNonPassa().catch(() => { /* noop */ });
+        }
         sig.rifaiDaCapo();
       };
       if (!sig.connected) { rifai('senza-socket'); return; }
@@ -1022,10 +1051,23 @@ export default function App() {
         rifai('muto');
         return;
       }
+      battitiAvuoto.current = 0;
       provaMandata.current = Date.now();
       sig.chiediPresenza();
     });
   }, [disponibile]);
+
+  /**
+   * Il battito si infittisce mentre siamo senza server.
+   *
+   * A schermo spento è l'unico motore che gira, quindi il suo passo è
+   * anche il passo dei tentativi: uno al minuto quando va tutto bene,
+   * uno ogni quindici secondi quando c'è da rimettersi in piedi.
+   */
+  useEffect(() => {
+    const senza = status === 'offline' || status === 'connecting';
+    Battito.fitto(disponibile && senza).catch(() => { /* noop */ });
+  }, [status, disponibile]);
 
   /**
    * Ogni tanto si torna a chiedere al server se l'altro c'è.
@@ -1544,6 +1586,7 @@ export default function App() {
             } else if (st !== 'connecting' && senzaServerDa.current) {
               const quanto = Math.round((Date.now() - senzaServerDa.current) / 1000);
               senzaServerDa.current = 0;
+              battitiAvuoto.current = 0;
               Diario.segna(`server:ok:dopo ${quanto}s`).catch(() => {});
             }
           },
@@ -2077,13 +2120,19 @@ export default function App() {
      */
     const prima = comEra.current;
     comEra.current = null;
-    if (prima && Date.now() - prima.quando < RIPRESA_MS) {
-      Diario.segna('riprendo-com-era').catch(() => { /* noop */ });
-      if (!prima.audio) {
+    if (prima) {
+      const fermo = Date.now() - prima.quando;
+      if (!prima.audio && fermo < RIPRESA_MICROFONO_MS) {
+        Diario.segna(`riprendo-microfono:dopo ${Math.round(fermo / 1000)}s`)
+          .catch(() => { /* noop */ });
         const acceso = sessionRef.current?.toggleAudio();
         if (acceso !== undefined) setAudioOn(acceso);
       }
-      if (prima.video) setTimeout(() => { riaccendiVideoRef.current?.(); }, 300);
+      if (prima.video && fermo < RIPRESA_VIDEO_MS) {
+        Diario.segna(`riprendo-video:dopo ${Math.round(fermo / 1000)}s`)
+          .catch(() => { /* noop */ });
+        setTimeout(() => { riaccendiVideoRef.current?.(); }, 300);
+      }
     }
   }, [cfg, attachPeer, fermaAttesa]);
 
@@ -2126,10 +2175,11 @@ export default function App() {
    * Com'era la conversazione all'ultima uscita, e quando.
    *
    * Uscire e rientrare subito quasi sempre non è una scelta: è un tocco
-   * sbagliato, o il telefono che ha chiuso l'app. Ritrovarsi con il
-   * video spento e da riaccendere a mano, in quel caso, è una punizione
-   * per qualcosa che non si è fatto. Entro dieci secondi si riprende
-   * com'era.
+   * sbagliato, o il telefono che ha chiuso l'app. E anche quando è una
+   * scelta - metto giù un momento, torno - ritrovarsi il video spento e
+   * da riaccendere a mano è una seccatura. Si riprende com'era, con
+   * due attese diverse per il microfono e per la camera: vedi
+   * RIPRESA_MICROFONO_MS.
    */
   const comEra = useRef<{ quando: number; video: boolean; audio: boolean } | null>(null);
 

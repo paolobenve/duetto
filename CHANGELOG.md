@@ -8,6 +8,21 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.1.120
+
+**Uscendo di casa si torna in linea prima.** Il wifi che si allontana smette di far passare dati
+molto prima che il telefono lo molli - a schermo spento anche per mezzo minuto - e in quel tempo
+Duetto restava scollegato. Ora, dopo due tentativi a vuoto, chiede ad Android di verificare quella
+rete: se non porta a internet, il traffico passa ai dati da sé.
+
+**E ci riprova quattro volte più spesso.** A schermo spento l'unico motore che gira è il battito,
+quindi il suo passo è anche il passo dei tentativi: resta di un minuto quando va tutto bene, e
+scende a quindici secondi finché non si è tornati in linea.
+
+**Il microfono e la camera si riprendono con due attese diverse** dopo un'uscita: cinque minuti il
+microfono, un minuto la camera. Una camera che si riaccende da sola riprende una stanza e una
+faccia, e dopo un minuto non è più chiaramente la stessa scena di prima.
+
 ## 1.1.119
 
 **Via il venticinque per cento di troppo.** Diventando il prodotto delle due metà, il volume di

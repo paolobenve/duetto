@@ -1,8 +1,8 @@
 // Generato da scripts/bump-build.js a ogni compilazione: non modificare a mano.
-export const VERSION = '1.1.119';
-export const BUILD = 119;
-export const BUILT_AT = '25/08 20:12';
+export const VERSION = '1.1.120';
+export const BUILD = 120;
+export const BUILT_AT = '26/08 11:43';
 /** Quello che si vede nell'app. */
-export const VERSION_LABEL = '1.1.119';
+export const VERSION_LABEL = '1.1.120';
 /** Per le impostazioni: serve a distinguere due APK della stessa versione. */
-export const VERSION_FULL = '1.1.119 · 25/08 20:12';
+export const VERSION_FULL = '1.1.120 · 26/08 11:43';

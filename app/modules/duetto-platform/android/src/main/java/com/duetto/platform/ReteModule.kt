@@ -102,6 +102,40 @@ class ReteModule(private val ctx: ReactApplicationContext) :
         }
     }
 
+    /**
+     * Dice ad Android che su questa rete il traffico non passa.
+     *
+     * Non e' "questa rete e' rotta": e' "controlla adesso, perche' io ci
+     * ho appena provato e non passa niente". Il sistema fa la sua
+     * verifica e decide lui - se la rete non porta a internet la
+     * declassa e sposta il traffico altrove, se invece passa non
+     * succede nulla.
+     *
+     * Serve per il caso che si vede uscendo di casa: il wifi, che
+     * funziona benissimo, diventa debole e smette di far passare dati,
+     * ma il telefono ci resta agganciato. A schermo spento Android ci
+     * mette molto a decidersi - stamattina ventinove secondi, e la
+     * decisione e' arrivata un secondo dopo che lo schermo si e'
+     * riacceso. Noi lo sappiamo prima, perche' i nostri tentativi
+     * falliscono: glielo diciamo, e la verifica la fa lui.
+     *
+     * Il giudizio vale per quella connessione li': rientrando in casa il
+     * telefono si riaggancia, la verifica riesce, e il wifi torna quello
+     * di sempre.
+     */
+    @ReactMethod
+    fun segnalaCheNonPassa(promise: Promise) {
+        try {
+            val c = cm
+            val rete = c?.activeNetwork
+            if (c == null || rete == null) { promise.resolve(false); return }
+            c.reportNetworkConnectivity(rete, false)
+            promise.resolve(true)
+        } catch (_: Exception) {
+            promise.resolve(false)
+        }
+    }
+
     /** Comincia ad ascoltare. Idempotente. */
     @ReactMethod
     fun start(promise: Promise) {

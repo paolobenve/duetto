@@ -7,6 +7,23 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.1.120",
+    "paragrafi": [
+      {
+        "forte": "Uscendo di casa si torna in linea prima.",
+        "testo": "Il wifi che si allontana smette di far passare dati molto prima che il telefono lo molli - a schermo spento anche per mezzo minuto - e in quel tempo Duetto restava scollegato. Ora, dopo due tentativi a vuoto, chiede ad Android di verificare quella rete: se non porta a internet, il traffico passa ai dati da sé."
+      },
+      {
+        "forte": "E ci riprova quattro volte più spesso.",
+        "testo": "A schermo spento l'unico motore che gira è il battito, quindi il suo passo è anche il passo dei tentativi: resta di un minuto quando va tutto bene, e scende a quindici secondi finché non si è tornati in linea."
+      },
+      {
+        "forte": "Il microfono e la camera si riprendono con due attese diverse",
+        "testo": "dopo un'uscita: cinque minuti il microfono, un minuto la camera. Una camera che si riaccende da sola riprende una stanza e una faccia, e dopo un minuto non è più chiaramente la stessa scena di prima."
+      }
+    ]
+  },
+  {
     "versione": "1.1.119",
     "paragrafi": [
       {

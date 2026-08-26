@@ -36,11 +36,23 @@ class BattitoModule(private val ctx: ReactApplicationContext) :
     private val orologio = Handler(Looper.getMainLooper())
     private var attivo = false
 
+    /**
+     * Quanto aspettare fino al prossimo battito.
+     *
+     * Fitto quando siamo scollegati, rado quando tutto va: a schermo
+     * spento questo e' l'UNICO motore che gira - i cronometri di
+     * JavaScript seguono il ritmo dei fotogrammi e stanno fermi - quindi
+     * mentre si e' senza server un battito al minuto e' un tentativo al
+     * minuto. Nel diario si e' visto un buco di sette minuti fatto di
+     * sette tentativi soli.
+     */
+    private var passo = INTERVALLO_MS
+
     private val battito = object : Runnable {
         override fun run() {
             if (!attivo) return
             emit()
-            orologio.postDelayed(this, INTERVALLO_MS)
+            orologio.postDelayed(this, passo)
         }
     }
 
@@ -60,7 +72,26 @@ class BattitoModule(private val ctx: ReactApplicationContext) :
     fun start(promise: Promise) {
         if (attivo) { promise.resolve(true); return }
         attivo = true
-        orologio.postDelayed(battito, INTERVALLO_MS)
+        orologio.postDelayed(battito, passo)
+        promise.resolve(true)
+    }
+
+    /**
+     * Fitto o rado, secondo come sta il collegamento.
+     *
+     * Il cambio vale dal battito successivo, tranne quando si passa al
+     * fitto: li' si riprogramma subito, perche' aspettare il minuto che
+     * era gia' in corso vanificherebbe la fretta.
+     */
+    @ReactMethod
+    fun fitto(sveltoOra: Boolean, promise: Promise) {
+        val nuovo = if (sveltoOra) INTERVALLO_FITTO_MS else INTERVALLO_MS
+        if (nuovo == passo) { promise.resolve(true); return }
+        passo = nuovo
+        if (attivo && sveltoOra) {
+            orologio.removeCallbacks(battito)
+            orologio.postDelayed(battito, passo)
+        }
         promise.resolve(true)
     }
 
@@ -84,5 +115,8 @@ class BattitoModule(private val ctx: ReactApplicationContext) :
          * di poche decine di byte.
          */
         const val INTERVALLO_MS = 60_000L
+
+        /** Il passo mentre si e' senza server: quattro tentativi al minuto. */
+        const val INTERVALLO_FITTO_MS = 15_000L
     }
 }
