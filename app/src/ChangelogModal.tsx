@@ -5,55 +5,56 @@ import {
 } from 'react-native';
 import { CHANGELOG } from './changelog';
 import { VERSION_FULL } from './version';
+import { t } from './i18n';
 
 /**
- * Le note di versione, da toccare il nome dell'app.
+ * The release notes, from a touch on the app's name.
  *
- * Chi usa l'app si accorge che qualcosa è cambiato - un'icona diversa,
- * un comportamento nuovo - e non ha nessun posto dove chiedere perché.
- * Le note stanno dietro alla cosa che già dichiara la versione, che è
- * dove uno andrebbe a guardare.
+ * Whoever uses the app notices that something has changed - a different
+ * icon, a new behaviour - and has nowhere to ask why. The notes live
+ * behind the thing that already declares the version, which is where
+ * one would go and look.
  */
 export default function ChangelogModal({ visible, onClose }: {
   visible: boolean;
   onClose: () => void;
 }) {
   /**
-   * Il foglio si misura in pixel, non in percentuale.
+   * The sheet is measured in pixels, not in per cent.
    *
-   * Con `maxHeight: '85%'` la percentuale si riferisce al genitore, che
-   * dentro un Modal non ha sempre l'altezza che ci si aspetta: il foglio
-   * cresceva oltre lo schermo e la lista, non avendo un limite, non
-   * scorreva. Con un'altezza in pixel il limite c'è sempre, e da lì lo
-   * scorrimento è una conseguenza.
+   * With `maxHeight: '85%'` the percentage refers to the parent, which
+   * inside a Modal does not always have the height one expects: the
+   * sheet grew past the screen and the list, having no limit, would not
+   * scroll. With a height in pixels the limit is always there, and the
+   * scrolling follows from it.
    */
   const { height } = useWindowDimensions();
-  const altezzaLista = Math.max(160, Math.round(height * 0.62));
+  const listHeight = Math.max(160, Math.round(height * 0.62));
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      {/* Nessuno, qui dentro, si contende il gesto con la lista.
-          Chiudere toccando lo background costringeva il foglio a candidarsi
-          a gestire il tocco per non chiudersi da solo, e quel candidato
-          ogni tanto vinceva: la lista non scorreva, e cedeva solo dopo
-          qualche secondo di insistenza. Si chiude col pulsante e col
-          tasto Indietro, che bastano. */}
+      {/* Nothing in here competes with the list for the gesture.
+          Closing on a touch of the background forced the sheet to put
+          itself forward to handle the touch so as not to close itself,
+          and that candidate sometimes won: the list would not scroll,
+          and gave in only after a few seconds of insisting. It closes
+          with the button and with the Back key, which are enough. */}
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
-          <Text style={styles.title}>Novità</Text>
+          <Text style={styles.title}>{t('news.title')}</Text>
           <Text style={styles.sub}>{VERSION_FULL}</Text>
 
           <ScrollView
-            style={{ height: altezzaLista }}
+            style={{ height: listHeight }}
             contentContainerStyle={styles.scrollBody}
             nestedScrollEnabled>
             {CHANGELOG.map((v) => (
-              <View key={v.versione} style={styles.blocco}>
-                <Text style={styles.versione}>{v.versione}</Text>
-                {v.paragrafi.map((p, i) => (
-                  <Text key={i} style={styles.paragrafo}>
-                    {p.forte ? <Text style={styles.forte}>{p.forte} </Text> : null}
-                    {p.testo}
+              <View key={v.version} style={styles.block}>
+                <Text style={styles.version}>{v.version}</Text>
+                {v.paragraphs.map((p, i) => (
+                  <Text key={i} style={styles.paragraph}>
+                    {p.strong ? <Text style={styles.strong}>{p.strong} </Text> : null}
+                    {p.text}
                   </Text>
                 ))}
               </View>
@@ -61,7 +62,7 @@ export default function ChangelogModal({ visible, onClose }: {
           </ScrollView>
 
           <TouchableOpacity style={styles.button} onPress={onClose}>
-            <Text style={styles.buttonText}>Chiudi</Text>
+            <Text style={styles.buttonText}>{t('news.close')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -81,12 +82,12 @@ const styles = StyleSheet.create({
   title: { color: '#fff', fontSize: 22, fontWeight: '800' },
   sub: { color: '#6b7686', fontSize: 12.5, marginTop: 4, marginBottom: 12 },
   scrollBody: { paddingBottom: 4 },
-  blocco: { marginBottom: 20 },
-  versione: {
+  block: { marginBottom: 20 },
+  version: {
     color: '#2f7cf6', fontSize: 15, fontWeight: '800', marginBottom: 8,
   },
-  paragrafo: { color: '#a9b3c0', fontSize: 14, lineHeight: 21, marginBottom: 10 },
-  forte: { color: '#e6ebf1', fontWeight: '700' },
+  paragraph: { color: '#a9b3c0', fontSize: 14, lineHeight: 21, marginBottom: 10 },
+  strong: { color: '#e6ebf1', fontWeight: '700' },
   button: {
     marginTop: 18, borderRadius: 12, paddingVertical: 13, alignItems: 'center',
     backgroundColor: '#2f7cf6',

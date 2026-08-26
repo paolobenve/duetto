@@ -197,20 +197,20 @@ export class ChannelSession {
    * connection somebody had just decided to throw away.
    */
   private generation = 0;
-  /** questo telefono sa encodare VP9 in hardware */
+  /** this phone can encode VP9 in hardware */
   private localVp9 = false;
-  /** lo sa fare anche l'altro: VP9 ha senso solo se entrambi */
+  /** the other one can too: VP9 only makes sense if both can */
   private peerVp9 = false;
 
   private polite = false;
   private makingOffer = false;
   private ignoreOffer = false;
-  /** candidate arrivati prima della remote description: li mettiamo in coda */
+  /** candidates that arrived before the remote description: they queue up */
   private pendingCandidates: any[] = [];
-  /** relay comunicato dal server: evita di configurarlo su ogni telefono */
+  /** the relay the server tells us about: no need to set it up on each phone */
   private extraIce: any[] = [];
 
-  /** Collegamento di riserva ricevuto dal server. */
+  /** The fallback link received from the server. */
   setServerIceServers(list: any[]) {
     this.extraIce = list ?? [];
   }
@@ -233,7 +233,7 @@ export class ChannelSession {
     this.heardLevel = this.peerGain;
   }
 
-  // --- Ingresso nel canale -------------------------------------------------
+  // --- Coming into the channel ---------------------------------------------
 
   /**
    * Opens the microphone, if it is not open already.

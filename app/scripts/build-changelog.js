@@ -1,66 +1,67 @@
 #!/usr/bin/env node
 /**
- * Porta CHANGELOG.md dentro l'app.
+ * Carries CHANGELOG.md into the app.
  *
- * Le note di versione si scrivono in un solo posto - il file alla radice
- * del progetto - e da lì finiscono anche nell'app: due copie da tenere
- * allineate a mano diventerebbero due copie diverse.
+ * The release notes are written in one place only - the file at the
+ * root of the project - and from there they also end up in the app: two
+ * copies to be kept in line by hand would become two different copies.
  *
- * Il formato è minimo di proposito: titoli "## versione" e paragrafi,
- * con un'eventuale apertura in grassetto. Basta a rendere le note
- * leggibili senza portarsi dietro un interprete di Markdown.
+ * The format is minimal on purpose: "## version" headings and
+ * paragraphs, with an optional opening in bold. That is enough to make
+ * the notes readable without dragging a Markdown parser along.
  */
 const fs = require('fs');
 const path = require('path');
 
 const appDir = path.join(__dirname, '..');
-const sorgente = path.join(appDir, '..', 'CHANGELOG.md');
+const source = path.join(appDir, '..', 'CHANGELOG.md');
 const outFile = path.join(appDir, 'src', 'changelog.ts');
 
-const testo = fs.readFileSync(sorgente, 'utf8');
+const text = fs.readFileSync(source, 'utf8');
 
-const versioni = [];
-let corrente = null;
+const versions = [];
+let current = null;
 
-for (const riga of testo.split('\n')) {
-  const titolo = riga.match(/^##\s+(.+?)\s*$/);
-  if (titolo) {
-    corrente = { versione: titolo[1], paragrafi: [] };
-    versioni.push(corrente);
+for (const line of text.split('\n')) {
+  const heading = line.match(/^##\s+(.+?)\s*$/);
+  if (heading) {
+    current = { version: heading[1], paragraphs: [] };
+    versions.push(current);
     continue;
   }
-  if (!corrente) continue;              // il preambolo non serve nell'app
-  if (!riga.trim()) { corrente.chiuso = true; continue; }
-  // Le righe si riuniscono in paragrafi: nel file sono spezzate a 100
-  // colonne, ma sullo schermo di un telefono devono riflettere da sole.
-  if (corrente.chiuso || corrente.paragrafi.length === 0) {
-    corrente.paragrafi.push(riga.trim());
-    corrente.chiuso = false;
+  if (!current) continue;              // the preamble is not needed in the app
+  if (!line.trim()) { current.closed = true; continue; }
+  // The lines are gathered back into paragraphs: in the file they are
+  // broken at 100 columns, but on a phone's screen they have to wrap by
+  // themselves.
+  if (current.closed || current.paragraphs.length === 0) {
+    current.paragraphs.push(line.trim());
+    current.closed = false;
   } else {
-    corrente.paragrafi[corrente.paragrafi.length - 1] += ' ' + riga.trim();
+    current.paragraphs[current.paragraphs.length - 1] += ' ' + line.trim();
   }
 }
 
-/** Divide "**Titolo.** resto" in due pezzi: il grassetto e il seguito. */
-function spezza(p) {
+/** Splits "**Title.** the rest" in two: the bold part and what follows. */
+function split(p) {
   const m = p.match(/^\*\*(.+?)\*\*\s*(.*)$/);
-  return m ? { forte: m[1], testo: m[2] } : { forte: '', testo: p };
+  return m ? { strong: m[1], text: m[2] } : { strong: '', text: p };
 }
 
-const dati = versioni.map((v) => ({
-  versione: v.versione,
-  paragrafi: v.paragrafi.map(spezza),
+const data = versions.map((v) => ({
+  version: v.version,
+  paragraphs: v.paragraphs.map(split),
 }));
 
 fs.writeFileSync(outFile,
-`// Generato da scripts/build-changelog.js: non modificare a mano.
-// La sorgente è CHANGELOG.md alla radice del progetto.
-export type NotaVersione = {
-  versione: string;
-  paragrafi: { forte: string; testo: string }[];
+`// Written by scripts/build-changelog.js: do not edit by hand.
+// The source is CHANGELOG.md at the root of the project.
+export type ReleaseNote = {
+  version: string;
+  paragraphs: { strong: string; text: string }[];
 };
 
-export const CHANGELOG: NotaVersione[] = ${JSON.stringify(dati, null, 2)};
+export const CHANGELOG: ReleaseNote[] = ${JSON.stringify(data, null, 2)};
 `);
 
-console.log(`note di versione: ${dati.length} voci`);
+console.log(`release notes: ${data.length} entries`);

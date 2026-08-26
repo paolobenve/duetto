@@ -11,6 +11,7 @@ import {
   keyToBase64, pubToBase64, pubFromBase64,
 } from './pairing';
 import { VERSION_LABEL } from './version';
+import { t } from './i18n';
 
 type Props = {
   cfg: DuoConfig;
@@ -20,15 +21,15 @@ type Props = {
 
 type Step = 'choose' | 'preparing' | 'create' | 'join' | 'exchanging' | 'error';
 
-/** Se in un minuto e mezzo non succede nulla, meglio dirlo che restare a girare. */
+/** If nothing happens in a minute and a half, better say so than spin. */
 const TIMEOUT_MS = 90_000;
 
 /**
- * Attesa prima di poter ritentare dopo un fallimento.
+ * The wait before another attempt is allowed after a failure.
  *
- * È qui che sta la difesa contro chi prova codici a tappeto, non nella
- * lentezza del calcolo: rende inutile insistere, senza far aspettare
- * nessuno quando le cose vanno bene.
+ * This is where the defence against somebody trying codes in bulk
+ * lives, not in the slowness of the computation: it makes insisting
+ * pointless, without keeping anybody waiting when things go well.
  */
 const RETRY_WAIT_S = 20;
 
@@ -67,14 +68,14 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
     setRetryIn(RETRY_WAIT_S);
   }, [cleanup]);
 
-  // Conto alla rovescia prima di poter ritentare.
+  // The countdown before another attempt is allowed.
   useEffect(() => {
     if (retryIn <= 0) return;
     const t = setTimeout(() => setRetryIn((n) => n - 1), 1000);
     return () => clearTimeout(t);
   }, [retryIn]);
 
-  /** Connessione e scambio. Identico per chi crea e per chi si unisce. */
+  /** Connection and exchange. The same for the creating and joining sides. */
   const startExchange = useCallback(async (rawCode: string, side: 'A' | 'B') => {
     const clean = normalizeCode(rawCode);
     codeRef.current = clean;
@@ -83,7 +84,7 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
     sentPubRef.current = false;
     sharedRef.current = null;
 
-    // Volutamente lento (vedi pairing.ts): un secondo circa, una volta sola.
+    // Deliberately slow (see pairing.ts): about a second, once only.
     setStep('preparing');
     const pairId = await pairIdFromCode(clean);
     pairIdRef.current = pairId;
@@ -119,7 +120,7 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
         onPair: (msg: PairMessage) => {
           if (msg.kind === 'pubkey') {
             sendPubOnce(sig);
-            if (sharedRef.current) return; // già calcolata
+            if (sharedRef.current) return; // already worked out
             try {
               peerNameRef.current = msg.name || '';
               const key = deriveSharedKey(
@@ -131,19 +132,16 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
               setStep('exchanging');
               sig.sendPair({ kind: 'confirm', proof: confirmationFor(key, side) });
             } catch {
-              fail('Lo scambio di chiavi non è riuscito. Riprova.');
+              fail(t('pairing.keyExchangeFailed'));
             }
             return;
           }
 
           if (msg.kind === 'confirm') {
             const key = sharedRef.current;
-            if (!key) return; // arrivata prima della chiave: aspettiamo
+            if (!key) return; // it came before the key: we wait
             if (msg.proof !== confirmationFor(key, otherSide)) {
-              fail(
-                'Il codice non coincide.\n\n' +
-                'Controlla di aver digitato esattamente le cifre mostrate sull’altro telefono.',
-              );
+              fail(t('pairing.codeMismatch'));
               return;
             }
             doneRef.current = true;
@@ -160,7 +158,7 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
 
         onError: (err) => {
           if (err === 'room-full') {
-            fail('Quel codice è già usato da due dispositivi.\n\nGeneratene uno nuovo.');
+            fail(t('pairing.codeInUse'));
           }
         },
       },
@@ -170,10 +168,7 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
     sig.connect();
 
     timerRef.current = setTimeout(() => {
-      fail(
-        'Nessuna risposta dall’altro telefono.\n\n' +
-        'Verifica che sia collegato a internet e che abbia digitato lo stesso codice.',
-      );
+      fail(t('pairing.noAnswer'));
     }, TIMEOUT_MS);
   }, [cfg, fail, cleanup, onPaired]);
 
@@ -190,22 +185,22 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
 
   const reset = useCallback(() => {
     cleanup();
-    doneRef.current = true; // ferma un calcolo eventualmente in corso
+    doneRef.current = true; // stops a computation that may be under way
     setTyped('');
     setCode('');
     setStep('choose');
   }, [cleanup]);
 
-  // --- schermate ----------------------------------------------------------
+  // --- the screens --------------------------------------------------------
 
   if (step === 'error') {
     return (
       <Screen>
         <Text style={styles.icon}>{'\u{26A0}'}</Text>
-        <Text style={styles.title}>Accoppiamento non riuscito</Text>
+        <Text style={styles.title}>{t('pairing.failedTitle')}</Text>
         <Text style={styles.body}>{message}</Text>
         <Primary
-          label={retryIn > 0 ? `Riprova fra ${retryIn}\u00A0s` : 'Riprova'}
+          label={retryIn > 0 ? t('pairing.retryIn', { seconds: retryIn }) : t('pairing.retry')}
           disabled={retryIn > 0}
           onPress={reset}
         />
@@ -217,8 +212,8 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
     return (
       <Screen>
         <ActivityIndicator size="large" color="#2f7cf6" />
-        <Text style={[styles.title, { marginTop: 24 }]}>Un istante…</Text>
-        <Text style={styles.body}>Sto preparando l’accoppiamento.</Text>
+        <Text style={[styles.title, { marginTop: 24 }]}>{t('pairing.oneMoment')}</Text>
+        <Text style={styles.body}>{t('pairing.preparing')}</Text>
       </Screen>
     );
   }
@@ -226,22 +221,17 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
   if (step === 'create') {
     return (
       <Screen>
-        <Text style={styles.title}>Detta questo codice</Text>
-        <Text style={styles.body}>
-          Digitalo sull’altro telefono, alla voce «Ho un codice».
-          {'\n'}Serve una volta sola: dopo non vi servirà mai più.
-        </Text>
+        <Text style={styles.title}>{t('pairing.dictateTitle')}</Text>
+        <Text style={styles.body}>{t('pairing.dictateBody')}</Text>
         <View style={styles.codeBox}>
           <Text style={styles.code}>{formatCode(code)}</Text>
         </View>
         <View style={styles.waitRow}>
           <ActivityIndicator color="#2f7cf6" />
-          <Text style={styles.waitText}>In attesa dell’altro telefono…</Text>
+          <Text style={styles.waitText}>{t('pairing.waitingOther')}</Text>
         </View>
-        <Text style={styles.hint}>
-          Dettalo a voce o di persona, non per messaggio.
-        </Text>
-        <Secondary label="Annulla" onPress={reset} />
+        <Text style={styles.hint}>{t('pairing.dictateHint')}</Text>
+        <Secondary label={t('pairing.cancel')} onPress={reset} />
       </Screen>
     );
   }
@@ -250,22 +240,26 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
     return (
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <Screen>
-          <Text style={styles.title}>Digita il codice</Text>
-          <Text style={styles.body}>Le otto cifre mostrate sull’altro telefono.</Text>
+          <Text style={styles.title}>{t('pairing.typeTitle')}</Text>
+          <Text style={styles.body}>{t('pairing.typeBody')}</Text>
           <TextInput
             style={styles.codeInput}
             value={formatCode(typed)}
             onChangeText={(t) => setTyped(normalizeCode(t))}
-            placeholder="0000 0000"
+            placeholder={t('pairing.codePlaceholder')}
             placeholderTextColor="#3a4353"
             keyboardType="number-pad"
             autoCorrect={false}
             maxLength={9}
-            // Si è qui per digitare: la tastiera non si fa aspettare.
+            // One is here to type: the keyboard does not keep anybody waiting.
             autoFocus
           />
-          <Primary label="Accoppia" disabled={!isCodeComplete(typed)} onPress={startJoin} />
-          <Secondary label="Indietro" onPress={reset} />
+          <Primary
+            label={t('pairing.pair')}
+            disabled={!isCodeComplete(typed)}
+            onPress={startJoin}
+          />
+          <Secondary label={t('pairing.back')} onPress={reset} />
         </Screen>
       </KeyboardAvoidingView>
     );
@@ -275,9 +269,9 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
     return (
       <Screen>
         <ActivityIndicator size="large" color="#2f7cf6" />
-        <Text style={[styles.title, { marginTop: 24 }]}>Accoppiamento in corso…</Text>
-        <Text style={styles.body}>Sto stabilendo la chiave con l’altro telefono.</Text>
-        <Secondary label="Annulla" onPress={reset} />
+        <Text style={[styles.title, { marginTop: 24 }]}>{t('pairing.exchanging')}</Text>
+        <Text style={styles.body}>{t('pairing.establishingKey')}</Text>
+        <Secondary label={t('pairing.cancel')} onPress={reset} />
       </Screen>
     );
   }
@@ -285,24 +279,26 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
   return (
     <Screen>
       <Text style={styles.big}>{'\u{1F517}'}</Text>
-      <Text style={styles.title}>Collega i due telefoni</Text>
-      <Text style={styles.body}>
-        Da fare una volta sola. Su un telefono premi «Crea il codice»,
-        sull’altro digita le cifre che appaiono.
-      </Text>
-      <Primary label="Crea il codice" onPress={startCreate} />
-      <Primary label="Ho un codice" outline onPress={() => setStep('join')} />
-      {/* Chi è già accoppiato è qui per aggiungere un connectionName, non
-          perché deve: deve poter cambiare idea. Chi non lo è ancora non
-          ha nessun posto dove tornare, e il pulsante non compare. */}
-      {isPaired(cfg) ? <Secondary label="Annulla" onPress={onBack} /> : null}
-      <Secondary label="Cambia server" value={displayServer(cfg.serverUrl)} onPress={onBack} />
+      <Text style={styles.title}>{t('pairing.connectTitle')}</Text>
+      <Text style={styles.body}>{t('pairing.connectBody')}</Text>
+      <Primary label={t('pairing.createCode')} onPress={startCreate} />
+      <Primary label={t('pairing.haveCode')} outline onPress={() => setStep('join')} />
+      {/* Whoever is already paired is here to add a connection, not
+          because they must: they have to be able to change their mind.
+          Whoever is not paired yet has nowhere to go back to, and the
+          button does not appear. */}
+      {isPaired(cfg) ? <Secondary label={t('pairing.cancel')} onPress={onBack} /> : null}
+      <Secondary
+        label={t('pairing.changeServer')}
+        value={displayServer(cfg.serverUrl)}
+        onPress={onBack}
+      />
       <Text style={styles.version}>{VERSION_LABEL}</Text>
     </Screen>
   );
 }
 
-// --- pezzi di interfaccia ---------------------------------------------------
+// --- pieces of interface ----------------------------------------------------
 
 function Screen({ children }: { children?: React.ReactNode }) {
   return (
@@ -337,9 +333,10 @@ function Secondary(props: { label: string; value?: string; onPress: () => void }
     <TouchableOpacity style={styles.link} onPress={props.onPress}>
       <Text style={styles.linkText}>
         {props.label}
-        {/* Il server in uso accanto al comando che lo cambia: è la sola
-            cosa che si vorrebbe sapere prima di toccarlo, e prima
-            bisognava entrare per scoprire dove si era puntati. */}
+        {/* The server in use beside the control that changes it: it is
+            the one thing one would want to know before touching it, and
+            before this one had to go in to find out where one was
+            pointed. */}
         {props.value ? <Text style={styles.linkValue}>{`  ${props.value}`}</Text> : null}
       </Text>
     </TouchableOpacity>
@@ -383,7 +380,7 @@ const styles = StyleSheet.create({
   buttonOutlineText: { color: '#7cc4ff' },
   link: { marginTop: 22, padding: 10 },
   linkText: { color: '#6b7686', fontSize: 15 },
-  // Più spento del comando: è un'informazione, non una cosa da premere.
+  // Dimmer than the control: it is information, not something to press.
   linkValue: { color: '#4a5462', fontSize: 15 },
   version: { color: '#3a4353', fontSize: 12, marginTop: 20 },
 });

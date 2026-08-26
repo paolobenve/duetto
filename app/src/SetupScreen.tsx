@@ -3,39 +3,40 @@ import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, AppState,
 } from 'react-native';
 import { Foreground } from 'duetto-platform';
+import { t } from './i18n';
 
 type Props = {
   onDone: () => void;
 };
 
 /**
- * Le due impostazioni da cui dipende il restare raggiungibili.
+ * The two settings that staying reachable depends on.
  *
- * Vengono proposte una volta sola, subito dopo l'accoppiamento, perché
- * senza di esse il telefono chiude l'app quando gli pare e le notifiche
- * non arrivano più - un guasto che sembra dell'app ma non lo è.
+ * They are offered once only, right after the pairing, because without
+ * them the phone closes the app whenever it feels like it and the
+ * notifications stop arriving - a fault that looks like the app's and
+ * is not.
  *
- * Nessuna delle due si può concedere da codice: la prima ha una finestra
- * di systemVolume, la seconda è una schermata dei produttori che possiamo
- * solo aprire.
+ * Neither can be granted from code: the first has a system dialog, the
+ * second is a maker's screen we can only open.
  */
 export default function SetupScreen({ onDone }: Props) {
   const [batteryOk, setBatteryOk] = useState(false);
   const [hasAutoStart, setHasAutoStart] = useState(false);
   const [autoStartOpened, setAutoStartOpened] = useState(false);
   /**
-   * Se l'app è ripartita da sola dopo l'ULTIMO riavvio del telefono.
+   * Whether the app started by itself after the phone's LAST restart.
    *
-   * L'autorizzazione all'avvio automatico non è leggibile da nessuna app
-   * - è una schermata del produttore - e prima la spunta si accendeva
-   * solo perché avevi aperto quella schermata, anche senza toccare
-   * niente. Diceva "a posto" senza saperlo.
+   * The automatic-start authorisation cannot be read by any app - it is
+   * a maker's screen - and the tick used to come on merely because you
+   * had opened that screen, even without touching anything. It said
+   * "fine" without knowing.
    *
-   * Questo invece è il fatto: al riavvio il systemVolume ci ha svegliati
-   * oppure no.
+   * This, instead, is the fact: at the restart the system woke us, or
+   * it did not.
    */
-  const [avviatoDaSolo, setAvviatoDaSolo] = useState<boolean | null>(null);
-  /** la richiesta diretta è stata tentata ma non ha cambiato nulla */
+  const [startedByItself, setStartedByItself] = useState<boolean | null>(null);
+  /** the direct request was tried and changed nothing */
   const [batteryRefused, setBatteryRefused] = useState(false);
   const tried = useRef(false);
 
@@ -43,24 +44,24 @@ export default function SetupScreen({ onDone }: Props) {
     try {
       const ok = await Foreground.isBatteryUnrestricted();
       setBatteryOk(ok);
-      // Se avevamo già provato e nulla è cambiato, la richiesta
-      // diretta non è praticabile su questo telefono: si passa alla
-      // strada manuale invece di riproporre una finestra che sparisce.
+      // If we had already tried and nothing changed, the direct
+      // request is not practicable on this phone: we move to the manual
+      // road instead of offering a dialog that vanishes again.
       if (tried.current && !ok) setBatteryRefused(true);
       setHasAutoStart(await Foreground.hasAutoStartScreen());
 
-      // Confronto con l'accensione del telefono: un avvio automatico di
-      // tre riavvii fa non dice niente su come è configurato adesso.
-      const ultimo = await Foreground.lastAutoStart();
-      const acceso = await Foreground.uptimeMs();
-      const accensione = Date.now() - acceso;
-      setAvviatoDaSolo(ultimo > 0 ? ultimo >= accensione - 60_000 : false);
+      // Compared with the phone's switching on: an automatic start
+      // three restarts ago says nothing about how things stand now.
+      const last = await Foreground.lastAutoStart();
+      const up = await Foreground.uptimeMs();
+      const switchedOn = Date.now() - up;
+      setStartedByItself(last > 0 ? last >= switchedOn - 60_000 : false);
     } catch { /* noop */ }
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  // Al ritorno da una schermata di systemVolume, ricontrolliamo.
+  // On coming back from a system screen, we look again.
   useEffect(() => {
     const sub = AppState.addEventListener('change', (st) => {
       if (st === 'active') refresh();
@@ -71,24 +72,15 @@ export default function SetupScreen({ onDone }: Props) {
   return (
     <ScrollView style={styles.flex} contentContainerStyle={styles.container}>
       <Text style={styles.big}>{'\u{1F50B}'}</Text>
-      <Text style={styles.title}>Due cose, e poi non ci pensi più</Text>
-      <Text style={styles.body}>
-        Senza queste, il telefono chiude Duetto quando gli pare e smetti di
-        ricevere gli avvisi. Sembra un difetto dell’app, ma è il systemVolume.
-      </Text>
+      <Text style={styles.title}>{t('setup.title')}</Text>
+      <Text style={styles.body}>{t('setup.body')}</Text>
 
       <Step
         n="1"
-        title="Uso senza restrizioni"
-        text={
-          batteryRefused
-            ? 'Il tuo telefono non permette di chiederlo direttamente. Apri la scheda ' +
-              'dell’app e cerca «Batteria» o «Risparmio energetico»: scegli ' +
-              '«Nessuna restrizione».'
-            : 'Permette a Duetto di restare attiva anche a schermo spento.'
-        }
+        title={t('setup.batteryTitle')}
+        text={batteryRefused ? t('setup.batteryRefused') : t('setup.batteryText')}
         done={batteryOk}
-        action={batteryRefused ? 'Apri la scheda dell’app' : 'Consenti'}
+        action={batteryRefused ? t('setup.batteryOpenApp') : t('setup.batteryAction')}
         onPress={async () => {
           if (batteryRefused) {
             await Foreground.openAppSettings();
@@ -103,18 +95,10 @@ export default function SetupScreen({ onDone }: Props) {
       {hasAutoStart ? (
         <Step
           n="2"
-          title="Avvio automatico"
-          text={
-            avviatoDaSolo
-              ? 'Funziona: dopo l’ultimo riavvio del telefono Duetto è ripartita da ' +
-                'sola, senza che tu la aprissi.'
-              : 'Il tuo telefono blocca le app dopo un riavvio finché non le autorizzi. ' +
-                'Si apre la schermata di systemVolume: cerca Duetto e attivalo.\n\n' +
-                'Se l’hai già fatto, si saprà al prossimo riavvio: è l’unico modo di ' +
-                'verificarlo, perché quell’autorizzazione nessuna app può leggerla.'
-          }
-          done={!!avviatoDaSolo}
-          action={autoStartOpened ? 'Riapri' : 'Apri impostazioni'}
+          title={t('setup.autoStartTitle')}
+          text={startedByItself ? t('setup.autoStartWorks') : t('setup.autoStartText')}
+          done={!!startedByItself}
+          action={autoStartOpened ? t('setup.autoStartReopen') : t('setup.autoStartOpen')}
           onPress={async () => {
             const ok = await Foreground.openAutoStartSettings();
             if (!ok) await Foreground.openAppSettings();
@@ -123,26 +107,21 @@ export default function SetupScreen({ onDone }: Props) {
         />
       ) : null}
 
-      <Text style={styles.hint}>
-        Su alcuni telefoni (Xiaomi, Huawei, Oppo) il risparmio energetico è
-        gestito dal produttore e non da Android: la spunta qui sopra può
-        restare grigia anche dopo averlo impostato. Se l’hai fatto, prosegui.
-      </Text>
+      <Text style={styles.hint}>{t('setup.makersHint')}</Text>
 
       <Text style={styles.hint}>
         {!hasAutoStart
-          ? 'Il tuo telefono non ha una schermata di avvio automatico: il primo punto basta.'
-          : avviatoDaSolo
-            ? 'La spunta qui sopra non è un’ipotesi: è successo davvero, dopo l’ultimo riavvio.'
-            : 'Lo stato di quell’autorizzazione nessuna app può leggerlo. Quello che si può ' +
-              'sapere è se ha funzionato, e lo si scopre al primo riavvio del telefono.'}
+          ? t('setup.noAutoStartHint')
+          : startedByItself
+            ? t('setup.autoStartProved')
+            : t('setup.autoStartUnknown')}
       </Text>
 
       <TouchableOpacity style={styles.button} onPress={onDone}>
-        <Text style={styles.buttonText}>Ho fatto, prosegui</Text>
+        <Text style={styles.buttonText}>{t('setup.done')}</Text>
       </TouchableOpacity>
       <TouchableOpacity style={styles.link} onPress={onDone}>
-        <Text style={styles.linkText}>Salta per ora</Text>
+        <Text style={styles.linkText}>{t('setup.skip')}</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -169,7 +148,7 @@ function Step(props: {
         style={[styles.stepButton, props.done && styles.stepButtonDone]}
         onPress={props.onPress}>
         <Text style={[styles.stepButtonText, props.done && styles.stepButtonTextDone]}>
-          {props.done ? 'Già a posto' : props.action}
+          {props.done ? t('setup.alreadyFine') : props.action}
         </Text>
       </TouchableOpacity>
     </View>
