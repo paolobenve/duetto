@@ -5,94 +5,95 @@ import {
 import { RTCView, MediaStream } from 'react-native-webrtc';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DEFAULT_ASPECT } from './webrtc';
+import { t } from './i18n';
 
 /**
- * L'area video.
+ * The video area.
  *
- *  - chi è a schermo intero non viene MAI tagliato: objectFit "contain",
- *    quindi si vedono eventuali bande nere ma l'immagine è integra;
- *  - il secondo video sta in un riquadrino con le PROPORZIONI della sua
- *    camera (mai quadrato), trascinabile e ridimensionabile;
- *  - toccando il riquadrino i due si scambiano di posto;
- *  - se uno solo dei due ha il video acceso, quello va a schermo intero
- *    e il riquadrino non compare proprio.
+ *  - whoever is full screen is NEVER cut: objectFit "contain", so black
+ *    bands may show but the picture is whole;
+ *  - the second video sits in a little square with the SHAPE of its own
+ *    camera (never square), which can be dragged and resized;
+ *  - touching the little square swaps the two;
+ *  - if only one of the two has the video on, that one goes full screen
+ *    and the little square does not appear at all.
  */
 
 /**
- * Dove l'utente ha messo il riquadrino, e quanto grande.
+ * Where the user put the little square, and how big.
  *
- * Fuori dal componente di proposito: entrando nelle impostazioni la
- * schermata del canale viene smontata, e con lei andava persa la
- * posizione scelta - tornando indietro il riquadrino risaltava in alto a
- * destra, dove nasce. Una preferenza espressa trascinando è comunque una
- * preferenza: va rispettata finché l'app è viva.
+ * Outside the component on purpose: going into the settings tears the
+ * channel screen down, and the chosen position went with it - coming
+ * back, the little square jumped to the top right, where it is born. A
+ * preference expressed by dragging is a preference all the same: it is
+ * to be respected as long as the app is alive.
  *
- * Si ricorda il BORDO a cui è appoggiato e la distanza da quello, non
- * le coordinate: quello che si sceglie è "in basso a sinistra, staccato
- * un dito", non "a 340 pixel dall'angolo dello schermo". Cambiando le
- * proporzioni del video le bande nere si spostano, e con esse i suoi
- * bordi: un riquadrino appoggiato in basso a sinistra deve restare lì,
- * non scivolare verso il centro.
+ * What is remembered is the EDGE it rests against and the distance from
+ * it, not the coordinates: what one chooses is "bottom left, a finger
+ * clear", not "340 pixels from the corner of the screen". When the
+ * shape of the video changes the black bands move, and its edges with
+ * them: a little square resting at the bottom left must stay there, not
+ * slide towards the middle.
  */
-type Ancoraggio = {
+type Anchor = {
   /**
-   * A quale bordo del video è appoggiato, e a che distanza da quello.
+   * Which edge of the video it rests against, and how far from it.
    *
-   * La distanza è una FRAZIONE dello spazio in cui il riquadrino può
-   * muoversi, non una misura in pixel: i quadri hanno formati diversi -
-   * un 4:3 e un 16:9 lasciano bande nere di altezza diversa - e gli
-   * stessi pixel vi peserebbero in modo diverso.
+   * The distance is a FRACTION of the space the little square can move
+   * in, not a measure in pixels: pictures come in different shapes - a
+   * 4:3 and a 16:9 leave black bands of different heights - and the
+   * same pixels would weigh differently in each.
    */
-  ax: 'sinistra' | 'destra';
-  ay: 'alto' | 'basso';
+  ax: 'left' | 'right';
+  ay: 'top' | 'bottom';
   ox: number;
   oy: number;
-  /** larghezza scelta, in frazione della larghezza dello schermo */
+  /** the chosen width, as a fraction of the screen's width */
   fw: number;
 };
 
-let posizioneScelta: Ancoraggio | null = null;
+let chosenPosition: Anchor | null = null;
 const PIP_KEY = 'duetto.pip.v2';
 
-/** Scrittura pigra: trascinando si salverebbe a ogni fotogramma. */
-let salvaTimer: ReturnType<typeof setTimeout> | null = null;
-function salvaPosizione() {
-  if (salvaTimer) clearTimeout(salvaTimer);
-  salvaTimer = setTimeout(() => {
-    if (posizioneScelta) {
-      AsyncStorage.setItem(PIP_KEY, JSON.stringify(posizioneScelta)).catch(() => {});
+/** A lazy write: dragging would save at every frame. */
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+function savePosition() {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    if (chosenPosition) {
+      AsyncStorage.setItem(PIP_KEY, JSON.stringify(chosenPosition)).catch(() => {});
     }
   }, 600);
 }
 
-/** Rilettura all'avvio: la posizione è una preferenza, non uno stato. */
+/** Read again at start-up: the position is a preference, not a state. */
 export async function loadPipPosition(): Promise<void> {
   try {
     const raw = await AsyncStorage.getItem(PIP_KEY);
     if (!raw) return;
     const v = JSON.parse(raw);
-    if (typeof v?.ox === 'number' && typeof v?.oy === 'number') posizioneScelta = v;
-  } catch { /* una posizione persa non è un guasto */ }
+    if (typeof v?.ox === 'number' && typeof v?.oy === 'number') chosenPosition = v;
+  } catch { /* a lost position is not a fault */ }
 }
 
 const MARGIN = 14;
-const TOP_SAFE = 58;     // appena sotto ingranaggio e badge (14 + 36 + 8)
-// Sopra il pannello dei comandi: 8 di distacco dal fondo + ~96 di
-// pannello (bordi, pulsanti, etichette) + aria. Le righe di diagnostica,
-// quando attive, si aggiungono tramite `insetBasso`.
+const TOP_SAFE = 58;     // just under the settings and the badge (14 + 36 + 8)
+// Above the control panel: 8 of gap from the bottom + ~96 of panel
+// (edges, buttons, labels) + air. The diagnostic lines, when on, add
+// themselves through `insetBottom`.
 const BOTTOM_SAFE = 114;
 
-/** Larghezza del riquadrino, come frazione della larghezza schermo. */
+/** The little square's width, as a fraction of the screen's width. */
 const START_FRACTION = 0.3;
 const MIN_FRACTION = 0.18;
 const MAX_FRACTION = 0.62;
 
-const HANDLE = 34; // area di presa per ridimensionare
+const HANDLE = 34; // the grab area for resizing
 
-/** Quanto si può ingrandire il video grande col pizzico. */
+/** How far the big video can be zoomed with a pinch. */
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 5;
-/** Ingrandimento del doppio tocco. */
+/** The double tap's zoom. */
 const TAP_ZOOM = 2.5;
 const DOUBLE_TAP_MS = 300;
 
@@ -101,98 +102,100 @@ type Props = {
   remoteStream: MediaStream | null;
   localHasVideo: boolean;
   remoteHasVideo: boolean;
-  /** larghezza/altezza del proprio video, come viene mostrato */
+  /** width/height of our own video, as it is shown */
   localAspect?: number;
-  /** larghezza/altezza del video dell'altro */
+  /** width/height of the other person's video */
   remoteAspect?: number;
-  /** cambia a ogni ripartenza del video remoto: ricrea il visualizzatore */
+  /** changes at every restart of the remote video: rebuilds the view */
   remoteVideoKey?: number;
   /**
-   * Il video dell'altro è atteso ma momentaneamente assente.
+   * Their video is expected but missing for the moment.
    *
-   * Serve a NON promuovere il proprio video a schermo intero durante
-   * un'interruzione: il posto grande resta dell'altro, così al ritorno
-   * non si vede prima il proprio ingrandirsi e poi rimpicciolirsi.
+   * It keeps us from promoting our own video to full screen during an
+   * interruption: the big place stays theirs, so that on their return
+   * one does not first see one's own grow and then shrink.
    */
   awaitingRemote?: boolean;
-  /** notice da sovrapporre al video, es. durante un'interruzione */
+  /** a notice to lay over the video, e.g. during an interruption */
   notice?: string;
-  /** in Picture-in-Picture: solo il video grande, senza riquadrino */
+  /** in Picture-in-Picture: the big video alone, no little square */
   compact?: boolean;
   /**
-   * La propria immagine va rovesciata come uno specchio.
+   * Our own picture is to be flipped like a mirror.
    *
-   * Vale per la camera frontale e solo per quella: chi si guarda si
-   * aspetta lo specchio, ed è così che ci si systemVolume i capelli. Con la
-   * camera dietro si sta inquadrando il mondo, e il mondo rovesciato è
-   * sbagliato e basta: le scritte si leggono al contrario e ci si
-   * muove dalla parte opposta a quella che si vede. L'altro riceve
-   * comunque l'immagine come la produce la camera: lo specchio è solo
-   * nell'anteprima di qua.
+   * It holds for the front camera and only for it: whoever looks at
+   * themselves expects a mirror, and that is how one straightens one's
+   * hair. With the back camera one is framing the world, and a flipped
+   * world is simply wrong: writing reads backwards and one moves the
+   * opposite way from what one sees. The other person receives the
+   * picture as the camera makes it in any case: the mirror is only in
+   * the preview over here.
    */
-  specchia?: boolean;
-  /** mostrato quando non c'è nessun video */
+  mirror?: boolean;
+  /** shown when there is no video at all */
   placeholder: React.ReactNode;
   /**
-   * Quanto si è ingrandito, a gesto finito.
+   * How far it was zoomed, once the gesture is over.
    *
-   * Serve al diario: durante il pizzico il numero cambia cento volte al
-   * secondo, e cento righe non raccontano niente. Quella che conta è
-   * dove si è deciso di restare.
+   * It is for the journal: during a pinch the number changes a hundred
+   * times a second, and a hundred lines tell nothing. What counts is
+   * where one decided to stay.
    */
   onZoom?: (zoom: number) => void;
   /**
-   * Segno da mettere accanto a "Non tu": lo stato audio dell'altro.
-   * Solo per il suo video, ovviamente: sul proprio non direbbe nulla che
-   * non si sappia già dai pulsanti.
+   * A mark to put beside "Not you": the other person's audio state.
+   * Only for their video, of course: on one's own it would say nothing
+   * the buttons do not already say.
    */
   peerBadge?: React.ReactNode;
-  /** lo stesso, per la propria immagine: uscita e volume con cui l'altro ci sente */
+  /** the same, for one's own picture: the output and volume they hear us at */
   ownBadge?: React.ReactNode;
   /**
-   * Proporzioni del video a schermo intero, `null` se non ce n'è nessuno.
+   * The shape of the full-screen video, `null` if there is none.
    *
-   * Serve a chi disegna i comandi sopra: con "contain" il video non
-   * riempie lo schermo, e una barra posizionata sui bordi dello schermo
-   * finisce a metà sull'immagine e metà sul nero.
+   * Whoever draws the controls on top needs it: with "contain" the
+   * video does not fill the screen, and a bar placed against the edges
+   * of the screen ends up half on the picture and half on the black.
    */
   onBigAspect?: (aspect: number | null) => void;
   /**
-   * Di quanto i comandi sono rientrati rispetto ai bordi dello schermo.
+   * How far the controls have come in from the edges of the screen.
    *
-   * I comandi seguono il bordo del VIDEO, non quello dello schermo: senza
-   * saperlo, il riquadrino userebbe zone di rispetto misurate dallo
-   * schermo e finirebbe sotto l'ingranaggio o sotto il pannello.
+   * The controls follow the edge of the VIDEO, not that of the screen:
+   * without knowing it, the little square would use keep-out zones
+   * measured from the screen and would end up under the settings or
+   * under the panel.
    */
   insetV?: number;
   insetH?: number;
-  /** spazio in più occupato in basso, es. le righe di diagnostica */
-  insetBasso?: number;
+  /** extra space taken at the bottom, e.g. the diagnostic lines */
+  insetBottom?: number;
   /**
-   * Tocco sull'immagine grande, riquadrino escluso.
+   * A touch on the big picture, the little square excepted.
    *
-   * Serve a chi disegna i comandi sopra: un tocco sullo background li mostra
-   * o li nasconde. Il riquadrino ne resta fuori perché lì il tocco ha già
-   * un significato suo - scambia grande e piccolo.
+   * Whoever draws the controls on top needs it: a touch on the
+   * background shows them or hides them. The little square stays out of
+   * it because there a touch already has a meaning of its own - it
+   * swaps big and small.
    */
-  onSfondo?: () => void;
+  onBackground?: () => void;
   /**
-   * Chi occupa lo schermo grande.
+   * Who fills the big screen.
    *
-   * L'etichetta la disegna chi fa la barra in alto, per tenerla sulla
-   * riga del nome. Vale sempre, anche col riquadrino presente: scambiando
-   * i due video con un tocco è facile perdere il conto di chi si sta
-   * guardando, e il riquadrino da solo non lo dice.
+   * The label is drawn by whoever makes the top bar, to keep it on the
+   * name's line. It always holds, even with the little square there:
+   * swapping the two videos with a touch, it is easy to lose track of
+   * who one is looking at, and the little square alone does not say.
    */
   onOnlyBig?: (who: 'you' | 'peer' | null) => void;
   /**
-   * Cosa scrivere nel riquadrino quando dentro non c'è nessuna immagine.
+   * What to write in the little square when there is no picture inside.
    *
-   * Lo decide chi ci sta sopra, perché è lui a sapere come sta l'altro:
-   * qui si sa solo che un video non c'è, e "in attesa" - che è quello
-   * che c'era scritto sempre - è vero quando la sua immagine sta per
-   * tornare, ma non quando è nel canale con la camera spenta o non è
-   * raggiungibile affatto.
+   * Whoever sits above decides, because they are the ones who know how
+   * the other person is: here we only know that a video is missing, and
+   * "waiting" - which is what it always used to say - is true when
+   * their picture is about to come back, but not when they are in the
+   * channel with the camera off or are not reachable at all.
    */
   emptyLabel?: string;
 };
@@ -201,41 +204,43 @@ export default function VideoStage(props: Props) {
   const {
     localStream, remoteStream, localHasVideo, remoteHasVideo,
     localAspect, remoteAspect, remoteVideoKey, compact, placeholder, peerBadge, ownBadge,
-    specchia = true, onZoom, emptyLabel,
+    mirror = true, onZoom, emptyLabel,
     awaitingRemote, notice,
   } = props;
   const { width, height } = useWindowDimensions();
-  const { onBigAspect, insetV = 0, insetH = 0, insetBasso = 0, onSfondo, onOnlyBig } = props;
+  const { onBigAspect, insetV = 0, insetH = 0, insetBottom = 0, onBackground, onOnlyBig } = props;
 
-  // false = l'altro è grande (default), true = sono io ad essere grande
+  // false = they are big (the default), true = I am the big one
   const [selfBig, setSelfBig] = useState(false);
   const bothHaveVideo = localHasVideo && remoteHasVideo;
 
   /**
-   * Si torna al default solo quando di mio non c'è niente da mostrare.
+   * We go back to the default only when there is nothing of ours to
+   * show.
    *
-   * Prima si tornava indietro appena i video non erano due, e con la
-   * camera accesa da solo lo scambio non teneva: si toccava il
-   * riquadrino, la propria immagine saliva e nello stesso istante
-   * ridiscendeva. Ma lì la scelta esiste eccome - la propria immagine
-   * grande, o il riepilogo di dov'è l'altro con la propria immagine nel
-   * riquadrino - ed è di chi guarda.
+   * It used to go back as soon as the videos were not two, and with the
+   * camera on alone the swap would not hold: you touched the little
+   * square, your own picture rose and in the same instant came down
+   * again. But there the choice does exist - your own picture big, or
+   * the summary of where the other person is with your own picture in
+   * the little square - and it belongs to whoever is watching.
    *
-   * NON si azzera durante un'interruzione: lì il video dell'altro manca
-   * solo momentaneamente, e azzerare significherebbe ritrovarsi la
-   * disposizione cambiata a ogni caduta di rete.
+   * It is NOT reset during an interruption: there their video is
+   * missing only for a moment, and resetting would mean finding the
+   * layout changed at every drop of the network.
    */
   useEffect(() => {
     if (!localHasVideo && selfBig && !awaitingRemote) setSelfBig(false);
   }, [localHasVideo, selfBig, awaitingRemote]);
 
-  // --- Chi va dove --------------------------------------------------------
+  // --- Who goes where -----------------------------------------------------
   let bigStream: MediaStream | null = null;
   let bigIsSelf = false;
   let pipStream: MediaStream | null = null;
   let pipIsSelf = false;
-  // Riquadrino da disegnare comunque, anche senza immagine dentro:
-  // toglierlo e rimetterlo a ogni interruzione fa ballare il layout.
+  // The little square is drawn anyway, even with no picture inside:
+  // removing it and putting it back at every interruption makes the
+  // layout dance.
   let pipEmpty = false;
 
   if (bothHaveVideo) {
@@ -246,35 +251,36 @@ export default function VideoStage(props: Props) {
   } else if (remoteHasVideo) {
     bigStream = remoteStream;
   } else if (awaitingRemote && localHasVideo) {
-    // Interruzione in corso: si mantiene la disposizione scelta, così
-    // al ritorno nulla si sposta.
+    // An interruption under way: the chosen layout is kept, so that
+    // nothing moves on the return.
     if (selfBig) {
-      // Avevi messo te stesso davanti: resti davanti, e il riquadrino
-      // dell'altro resta al suo posto in attesa dell'immagine.
+      // You had put yourself in front: you stay in front, and their
+      // little square stays where it is, waiting for the picture.
       bigStream = localStream;
       bigIsSelf = true;
       pipEmpty = true;
     } else {
-      // Il posto grande resta dell'altro, vuoto con l'notice sopra:
-      // promuovere il proprio farebbe vedere il proprio ingrandirsi e
-      // poi rimpicciolirsi appena l'altro torna.
+      // The big place stays theirs, empty with the notice over it:
+      // promoting one's own would show it growing and then shrinking as
+      // soon as they come back.
       pipStream = localStream;
       pipIsSelf = true;
     }
   } else if (localHasVideo) {
     /**
-     * Solo la mia camera accesa: di norma la mia immagine sta nel
-     * RIQUADRINO e il posto grande resta al riepilogo.
+     * Only my camera on: as a rule my picture sits in the LITTLE SQUARE
+     * and the big place is left to the summary.
      *
-     * Prima la mia faccia prendeva tutto lo schermo, e con lei spariva
-     * l'unica cosa che dicesse dov'era l'altro: accendendo il video non
-     * si sapeva più se fosse nel canale, in attesa o irraggiungibile.
-     * La propria immagine serve a controllare l'inquadratura, e per
-     * quello un riquadrino basta e avanza.
+     * My face used to take the whole screen, and with it went the one
+     * thing that said where the other person was: switching the video
+     * on, there was no telling any more whether they were in the
+     * channel, waiting or unreachable. One's own picture is for
+     * checking the framing, and for that a little square is more than
+     * enough.
      *
-     * Ma è la norma, non un divieto: un tocco sul riquadrino porta la
-     * propria immagine a schermo intero, e il riquadrino resta lì vuoto
-     * - con il segno di come sta l'altro - per tornare indietro.
+     * But it is the rule, not a ban: a touch on the little square takes
+     * one's own picture full screen, and the little square stays there
+     * empty - with the mark of how the other person is - to go back.
      */
     if (selfBig) {
       bigStream = localStream;
@@ -287,43 +293,43 @@ export default function VideoStage(props: Props) {
   }
 
   /**
-   * Il riquadrino è disegnato in questo momento.
+   * The little square is being drawn right now.
    *
-   * Serve a non ricollocare quello che non c'è: una posizione scritta
-   * mentre la vista non esiste non la vede nessuno, e resta a divergere
-   * da quella disegnata.
+   * It keeps us from moving what is not there: a position written while
+   * the view does not exist is seen by nobody, and stays diverging from
+   * the one that is drawn.
    */
-  const pipVivo = !compact && (!!pipStream || pipEmpty);
+  const pipAlive = !compact && (!!pipStream || pipEmpty);
 
-  // Chi guarda da fuori ha bisogno di sapere quanto spazio occupa
-  // davvero il video grande, per non appoggiarci sopra i comandi a metà.
+  // Whoever looks from outside needs to know how much room the big
+  // video really takes, so as not to rest the controls half on it.
   const bigAspect = bigStream
     ? (bigIsSelf ? localAspect : remoteAspect) || DEFAULT_ASPECT
     : null;
   useEffect(() => { onBigAspect?.(bigAspect); }, [bigAspect, onBigAspect]);
 
-  const soloGrande = bigStream
+  const onlyBig = bigStream
     ? (bigIsSelf ? 'you' : 'peer') as 'you' | 'peer'
     : null;
-  useEffect(() => { onOnlyBig?.(soloGrande); }, [soloGrande, onOnlyBig]);
+  useEffect(() => { onOnlyBig?.(onlyBig); }, [onlyBig, onOnlyBig]);
 
-  // Le proporzioni sono SEMPRE quelle della camera che il riquadrino mostra.
+  // The shape is ALWAYS that of the camera the little square shows.
   const pipAspect =
     (pipIsSelf ? localAspect : remoteAspect) || DEFAULT_ASPECT;
 
-  // --- Dimensione ---------------------------------------------------------
+  // --- Size ---------------------------------------------------------------
   const [pipWidth, setPipWidth] = useState(
-    () => Math.round(width * (posizioneScelta?.fw ?? START_FRACTION)),
+    () => Math.round(width * (chosenPosition?.fw ?? START_FRACTION)),
   );
   useEffect(() => {
-    if (posizioneScelta) {
-      posizioneScelta = { ...posizioneScelta, fw: pipWidth / width };
-      salvaPosizione();
+    if (chosenPosition) {
+      chosenPosition = { ...chosenPosition, fw: pipWidth / width };
+      savePosition();
     }
   }, [pipWidth, width]);
   const pipHeight = Math.max(1, Math.round(pipWidth / pipAspect));
 
-  // Serve dentro i PanResponder, che non vedono lo stato aggiornato.
+  // Needed inside the PanResponders, which do not see the fresh state.
   const sizeRef = useRef({ w: pipWidth, h: pipHeight });
   useEffect(() => { sizeRef.current = { w: pipWidth, h: pipHeight }; }, [pipWidth, pipHeight]);
 
@@ -331,145 +337,146 @@ export default function VideoStage(props: Props) {
   useEffect(() => { aspectRef.current = pipAspect; }, [pipAspect]);
 
   /**
-   * Cambia larghezza aggiornando SUBITO la dimensione di riferimento.
+   * Changes the width, updating the reference size AT ONCE.
    *
-   * Passando solo per lo stato, `sizeRef` si allineava un fotogramma
-   * dopo: ridimensionando in fretta, i limiti venivano calcolati sulla
-   * dimensione precedente - più piccola - e il riquadrino poteva
-   * finire oltre il bordo.
+   * Going through the state alone, `sizeRef` fell into line one frame
+   * later: resizing quickly, the limits were worked out on the previous
+   * size - a smaller one - and the little square could end up past the
+   * edge.
    */
-  const applicaLarghezza = useCallback((w: number) => {
+  const applyWidth = useCallback((w: number) => {
     const h = Math.max(1, Math.round(w / (aspectRef.current || DEFAULT_ASPECT)));
     sizeRef.current = { w, h };
     setPipWidth(w);
   }, []);
 
   /**
-   * Quanto può essere larga: oltre ai limiti di gusto, non deve mai
-   * uscire dallo spazio fra le barre - e a decidere l'ingombro in
-   * altezza sono le proporzioni, non la larghezza.
+   * How wide it may be: beyond the limits of taste, it must never leave
+   * the space between the bars - and what decides how much room it
+   * takes in height is the shape, not the width.
    */
   const clampWidth = useCallback(
     (w: number) => {
       const a = aspectRef.current || DEFAULT_ASPECT;
-      const maxPerLarghezza = width - 2 * MARGIN - 2 * insetH;
-      const maxPerAltezza = (height - TOP_SAFE - BOTTOM_SAFE - insetBasso - 2 * insetV) * a;
-      const tetto = Math.min(width * MAX_FRACTION, maxPerLarghezza, maxPerAltezza);
+      const maxByWidth = width - 2 * MARGIN - 2 * insetH;
+      const maxByHeight = (height - TOP_SAFE - BOTTOM_SAFE - insetBottom - 2 * insetV) * a;
+      const ceiling = Math.min(width * MAX_FRACTION, maxByWidth, maxByHeight);
       return Math.round(
-        Math.min(Math.max(w, width * MIN_FRACTION), Math.max(width * MIN_FRACTION, tetto)),
+        Math.min(Math.max(w, width * MIN_FRACTION), Math.max(width * MIN_FRACTION, ceiling)),
       );
     },
-    [width, height, insetV, insetH, insetBasso],
+    [width, height, insetV, insetH, insetBottom],
   );
 
-  // --- Posizione ----------------------------------------------------------
+  // --- Position -----------------------------------------------------------
 
   /**
-   * Lo spazio in cui il riquadrino può stare: i bordi del VIDEO, non
-   * dello schermo, meno le zone occupate dai comandi.
+   * The space the little square may sit in: the edges of the VIDEO, not
+   * of the screen, less the areas the controls take up.
    */
-  const spazio = useCallback(() => {
+  const room = useCallback(() => {
     const { w, h } = sizeRef.current;
     const minX = MARGIN + insetH;
-    // I comandi seguono il bordo del video: la zona di rispetto anche,
-    // altrimenti il riquadrino finisce sotto l'ingranaggio.
+    // The controls follow the edge of the video: so does the keep-out
+    // zone, or the little square ends up under the settings.
     const minY = TOP_SAFE + insetV;
     return {
       minX,
       minY,
       maxX: Math.max(minX, width - w - MARGIN - insetH),
-      maxY: Math.max(minY, height - h - BOTTOM_SAFE - insetBasso - insetV),
+      maxY: Math.max(minY, height - h - BOTTOM_SAFE - insetBottom - insetV),
     };
-  }, [width, height, insetV, insetH, insetBasso]);
+  }, [width, height, insetV, insetH, insetBottom]);
 
-  const posIniziale = useRef<{ x: number; y: number } | null>(null);
-  if (posIniziale.current === null) {
-    const w = Math.round(width * (posizioneScelta?.fw ?? START_FRACTION));
+  const startPos = useRef<{ x: number; y: number } | null>(null);
+  if (startPos.current === null) {
+    const w = Math.round(width * (chosenPosition?.fw ?? START_FRACTION));
     const minX = MARGIN + insetH;
     const minY = TOP_SAFE + insetV;
     const maxX = Math.max(minX, width - w - MARGIN - insetH);
-    const maxY = Math.max(minY, height - Math.round(w / DEFAULT_ASPECT) - BOTTOM_SAFE - insetBasso - insetV);
-    const a = posizioneScelta;
-    posIniziale.current = a
+    const maxY = Math.max(minY, height - Math.round(w / DEFAULT_ASPECT) - BOTTOM_SAFE - insetBottom - insetV);
+    const a = chosenPosition;
+    startPos.current = a
       ? {
-          x: a.ax === 'sinistra'
+          x: a.ax === 'left'
             ? minX + a.ox * (maxX - minX) : maxX - a.ox * (maxX - minX),
-          y: a.ay === 'alto'
+          y: a.ay === 'top'
             ? minY + a.oy * (maxY - minY) : maxY - a.oy * (maxY - minY),
         }
-      : { x: maxX, y: minY };  // in alto a destra
+      : { x: maxX, y: minY };  // top right
   }
-  const pan = useRef(new Animated.ValueXY(posIniziale.current)).current;
-  // Da dove parte davvero, non da (0,0): il primo riallineamento leggeva
-  // questo valore e avrebbe portato il riquadrino in alto a sinistra.
-  const posRef = useRef({ ...posIniziale.current });
+  const pan = useRef(new Animated.ValueXY(startPos.current)).current;
+  // Where it really starts from, not from (0,0): the first realignment
+  // read this value and would have taken the little square to the top
+  // left.
+  const posRef = useRef({ ...startPos.current });
   const dragged = useRef(false);
 
   /**
-   * Registra a quale bordo è appoggiato e a che distanza.
+   * Records which edge it rests against and how far from it.
    *
-   * Si sceglie sempre il bordo PIÙ VICINO: chi mette il riquadrino in
-   * basso a sinistra sta esprimendo "in basso a sinistra", e lì deve
-   * restare anche quando il quadro cambia forma.
+   * The NEAREST edge is always chosen: whoever puts the little square
+   * at the bottom left is expressing "bottom left", and there it must
+   * stay even when the picture changes shape.
    */
-  const ricorda = useCallback(() => {
-    const { minX, minY, maxX, maxY } = spazio();
+  const remember = useCallback(() => {
+    const { minX, minY, maxX, maxY } = room();
     const dx = Math.max(1, maxX - minX);
     const dy = Math.max(1, maxY - minY);
-    const daSinistra = posRef.current.x - minX;
-    const daDestra = maxX - posRef.current.x;
-    const daAlto = posRef.current.y - minY;
-    const daBasso = maxY - posRef.current.y;
-    const frazione = (v: number, tot: number) =>
-      Math.min(1, Math.max(0, v / tot));
-    posizioneScelta = {
-      ax: daSinistra <= daDestra ? 'sinistra' : 'destra',
-      ay: daAlto <= daBasso ? 'alto' : 'basso',
-      ox: frazione(Math.min(daSinistra, daDestra), dx),
-      oy: frazione(Math.min(daAlto, daBasso), dy),
+    const fromLeft = posRef.current.x - minX;
+    const fromRight = maxX - posRef.current.x;
+    const fromTop = posRef.current.y - minY;
+    const fromBottom = maxY - posRef.current.y;
+    const fraction = (v: number, total: number) =>
+      Math.min(1, Math.max(0, v / total));
+    chosenPosition = {
+      ax: fromLeft <= fromRight ? 'left' : 'right',
+      ay: fromTop <= fromBottom ? 'top' : 'bottom',
+      ox: fraction(Math.min(fromLeft, fromRight), dx),
+      oy: fraction(Math.min(fromTop, fromBottom), dy),
       fw: sizeRef.current.w / width,
     };
-    salvaPosizione();
-  }, [spazio, width]);
+    savePosition();
+  }, [room, width]);
 
   /**
-   * Rete di sicurezza: la posizione non può stare fuori, comunque ci sia
-   * arrivata.
+   * A safety net: the position cannot be outside, however it got there.
    *
-   * Finora il riquadrino veniva rimesso dentro solo alla fine di un
-   * gesto o al cambio di forma del quadro. Ogni strada che lo spostava
-   * senza passare di lì - e ne sono spuntate tre in una notte, ogni volta
-   * per un motivo diverso - lo lasciava fuori. Qui si controlla il valore
-   * stesso, che è l'unico punto da cui passano tutti.
+   * Until now the little square was put back inside only at the end of
+   * a gesture or at a change of the picture's shape. Every road that
+   * moved it without going through there - and three of them turned up
+   * in one night, each for a different reason - left it outside. Here
+   * the value itself is watched, which is the one point they all pass
+   * through.
    *
-   * Durante un gesto no: lì comanda il dito, e si rimette dentro al
-   * rilascio.
+   * Not during a gesture: there the finger is in charge, and it is put
+   * back inside on release.
    */
-  /** vero mentre siamo noi a scrivere la posizione, non il dito */
-  const stiamoSistemando = useRef(false);
+  /** true while it is us writing the position, not the finger */
+  const weAreFixing = useRef(false);
 
   useEffect(() => {
     /**
-     * Riagganciato ogni volta che il riquadrino ricompare.
+     * Reattached every time the little square comes back.
      *
-     * Non e' un eccesso di prudenza: in React Native, quando una vista
-     * animata si smonta, il valore si stacca - e staccandosi butta via
-     * TUTTI i suoi ascoltatori. Si legge in Libraries/Animated/nodes/
-     * AnimatedNode.js:
+     * This is not an excess of caution: in React Native, when an
+     * animated view is torn down, the value detaches - and on detaching
+     * it throws away ALL its listeners. It reads, in
+     * Libraries/Animated/nodes/AnimatedNode.js:
      *
      *     __detach(): void {
      *       this.removeAllListeners();
      *
-     * Spegnendo il video il riquadrino spariva, il valore si staccava e
-     * questo ascoltatore moriva per sempre: la vista continuava a
-     * muoversi - il valore la muove lo stesso - ma nessuno diceva piu'
-     * al codice dov'era finita. Il codice restava fermo all'ultima
-     * posizione vista, e al trascinamento successivo il riquadrino
-     * saltava li'.
+     * Switching the video off made the little square disappear, the
+     * value detached and this listener died for good: the view went on
+     * moving - the value moves it all the same - but nobody told the
+     * code where it had got to any more. The code stayed frozen at the
+     * last position it had seen, and at the next drag the little square
+     * jumped there.
      *
-     * Quindi: si riaggancia alla ricomparsa, e si riparte dal valore
-     * vero - che e' quello animato, non la nostra copia, perche' e' lui
-     * ad aver mosso la vista mentre non ascoltavamo.
+     * So: it reattaches on reappearance, and starts again from the true
+     * value - the animated one, not our copy, because that is the one
+     * that moved the view while we were not listening.
      */
     posRef.current = {
       x: (pan.x as any).__getValue(),
@@ -477,38 +484,38 @@ export default function VideoStage(props: Props) {
     };
     const id = pan.addListener((v) => {
       posRef.current = v;
-      if (gestoInCorso.current || stiamoSistemando.current) return;
-      const { minX, minY, maxX, maxY } = spazio();
+      if (gestureUnderWay.current || weAreFixing.current) return;
+      const { minX, minY, maxX, maxY } = room();
       const x = Math.min(Math.max(v.x, minX), maxX);
       const y = Math.min(Math.max(v.y, minY), maxY);
       if (Math.abs(x - v.x) > 1 || Math.abs(y - v.y) > 1) {
-        // Scrivere qui dentro fa riscattare questo stesso ascoltatore:
-        // senza il fermo, ogni correzione ne chiama un'altra e la pila
-        // delle chiamate si esaurisce - l'app cadeva accendendo il video.
-        stiamoSistemando.current = true;
+        // Writing in here fires this very listener again: without the
+        // guard, each correction calls another and the call stack runs
+        // out - the app fell over when the video was switched on.
+        weAreFixing.current = true;
         posRef.current = { x, y };
         pan.setValue({ x, y });
-        stiamoSistemando.current = false;
+        weAreFixing.current = false;
       }
     });
     return () => pan.removeListener(id);
-  }, [pan, spazio, pipVivo]);
+  }, [pan, room, pipAlive]);
 
   /**
-   * Rimette il riquadrino dove l'utente l'ha scelto, ricalcolandolo sui
-   * bordi attuali del video. Cambiando le proporzioni le bande nere si
-   * spostano: restando fermo in pixel, il riquadrino uscirebbe dal video
-   * o si staccherebbe dal bordo a cui era appoggiato.
+   * Puts the little square back where the user chose it, worked out
+   * again on the video's present edges. When the shape changes the
+   * black bands move: staying still in pixels, the little square would
+   * leave the video or come away from the edge it was resting against.
    */
-  const riposiziona = useCallback((animate = true) => {
-    if (gestoInCorso.current) return;
-    const { minX, minY, maxX, maxY } = spazio();
-    const a = posizioneScelta;
+  const reposition = useCallback((animate = true) => {
+    if (gestureUnderWay.current) return;
+    const { minX, minY, maxX, maxY } = room();
+    const a = chosenPosition;
     const dx = maxX - minX;
     const dy = maxY - minY;
-    const x = !a ? maxX : a.ax === 'sinistra'
+    const x = !a ? maxX : a.ax === 'left'
       ? minX + a.ox * dx : maxX - a.ox * dx;
-    const y = !a ? minY : a.ay === 'alto'
+    const y = !a ? minY : a.ay === 'top'
       ? minY + a.oy * dy : maxY - a.oy * dy;
     if (Math.abs(x - posRef.current.x) < 0.5 && Math.abs(y - posRef.current.y) < 0.5) return;
     posRef.current = { x, y };
@@ -519,38 +526,38 @@ export default function VideoStage(props: Props) {
     } else {
       pan.setValue({ x, y });
     }
-  }, [pan, spazio]);
+  }, [pan, room]);
 
   /**
-   * Le stesse coordinate, riportate dentro i bordi.
+   * The same coordinates, brought back inside the edges.
    *
-   * Serve DURANTE il gesto, non solo alla fine: prima il riquadrino si
-   * poteva trascinare dove si voleva e rientrava al rilascio, il che
-   * regge finché il rilascio arriva. Se il gesto viene rubato da un
-   * altro, o il riquadrino smette di esistere sotto il dito, quel
-   * rientro non avviene mai e il riquadrino resta fuori dallo schermo -
-   * senza più niente che lo riporti dentro, perché tutte le reti di
-   * sicurezza tacciono finché un gesto risulta in corso. Fermandolo al
-   * bordo mentre lo si muove, la posizione è sempre buona: non c'è
-   * nessun momento in cui debba essere qualcuno a rimediare.
+   * It is needed DURING the gesture, not only at its end: the little
+   * square used to be draggable anywhere and came back on release,
+   * which holds as long as the release arrives. If the gesture is
+   * stolen by another, or the little square stops existing under the
+   * finger, that return never happens and the little square stays off
+   * the screen - with nothing left to bring it back, because all the
+   * safety nets keep quiet while a gesture is under way. Stopping it at
+   * the edge as it moves, the position is always good: there is no
+   * moment at which somebody has to put it right.
    */
-  const dentro = useCallback((x: number, y: number) => {
-    const { minX, minY, maxX, maxY } = spazio();
+  const inside = useCallback((x: number, y: number) => {
+    const { minX, minY, maxX, maxY } = room();
     return {
       x: Math.min(Math.max(x, minX), maxX),
       y: Math.min(Math.max(y, minY), maxY),
     };
-  }, [spazio]);
+  }, [room]);
 
   const clampIntoScreen = useCallback((animate = true) => {
-    const { minX, minY, maxX, maxY } = spazio();
+    const { minX, minY, maxX, maxY } = room();
     const x = Math.min(Math.max(posRef.current.x, minX), maxX);
     const y = Math.min(Math.max(posRef.current.y, minY), maxY);
-    if (x === posRef.current.x && y === posRef.current.y) { ricorda(); return; }
-    // La posizione finale si registra subito: aspettando la fine
-    // dell'animazione si ricorderebbe quella di partenza.
+    if (x === posRef.current.x && y === posRef.current.y) { remember(); return; }
+    // The final position is recorded at once: waiting for the end of
+    // the animation would remember the starting one.
     posRef.current = { x, y };
-    ricorda();
+    remember();
     if (animate) {
       Animated.spring(pan, {
         toValue: { x, y }, useNativeDriver: false, friction: 8,
@@ -558,61 +565,63 @@ export default function VideoStage(props: Props) {
     } else {
       pan.setValue({ x, y });
     }
-  }, [pan, spazio, ricorda]);
+  }, [pan, room, remember]);
 
-  // Cambiando schermo, proporzioni o dimensione del riquadrino, si torna
-  // alla posizione SCELTA ricalcolata sui bordi nuovi - non si riporta
-  // dentro quella vecchia, che era espressa in pixel di un altro quadro.
-  // Senza animazione: ridimensionando, questo scatta a ogni fotogramma e
-  // la molla resterebbe indietro rispetto al dito. Si vedeva il
-  // riquadrino scivolare verso destra mentre cresceva - perché cresce
-  // dall'angolo in alto a sinistra - e tornare al suo posto solo
-  // mollandolo. Ricollocandolo subito, il bordo a cui è ancorato resta
-  // fermo e la crescita va verso l'interno.
+  // On a change of screen, shape or size of the little square, we go
+  // back to the CHOSEN position worked out on the new edges - the old
+  // one is not brought back inside, because it was expressed in the
+  // pixels of another picture. Without animation: while resizing, this
+  // fires at every frame and the spring would lag behind the finger.
+  // One could see the little square sliding to the right as it grew -
+  // because it grows from the top left corner - and going back into
+  // place only on release. Repositioning it at once, the edge it is
+  // anchored to stays put and the growth goes inwards.
   useEffect(() => {
-    // Non mentre il riquadrino non c'è: vedi qui sotto.
-    if (!pipVivo) return;
-    riposiziona(false);
-  }, [pipVivo, width, height, pipWidth, pipHeight, insetV, insetH, riposiziona]);
+    // Not while the little square is not there: see below.
+    if (!pipAlive) return;
+    reposition(false);
+  }, [pipAlive, width, height, pipWidth, pipHeight, insetV, insetH, reposition]);
 
   /**
-   * Ricomparendo, il riquadrino si rimette dove va.
+   * On reappearing, the little square puts itself where it belongs.
    *
-   * Un fotogramma dopo, non subito: la vista è appena nata, e il quadro
-   * in cui deve stare - bande nere, ingombro delle righe tecniche - si
-   * assesta insieme a lei.
+   * One frame later, not at once: the view has only just been born, and
+   * the frame it has to sit in - black bands, the room taken by the
+   * technical lines - settles along with it.
    */
   useEffect(() => {
-    if (!pipVivo) return;
-    const id = requestAnimationFrame(() => riposiziona(false));
+    if (!pipAlive) return;
+    const id = requestAnimationFrame(() => reposition(false));
     return () => cancelAnimationFrame(id);
-  }, [pipVivo, riposiziona]);
+  }, [pipAlive, reposition]);
 
-  // --- Trascinamento (e pizzico a due dita per ridimensionare) ------------
+  // --- Dragging (and a two-finger pinch to resize) ------------------------
   const pinchStart = useRef<{ dist: number; w: number } | null>(null);
-  const inizioTrascinamento = useRef({ x: 0, y: 0 });
+  const dragStart = useRef({ x: 0, y: 0 });
   /**
-   * Lo spostamento del dito al primo movimento del gesto.
+   * How far the finger had moved at the gesture's first movement.
    *
-   * Non è zero come ci si aspetterebbe. Il conteggio di React Native
-   * riparte da zero quando il gesto viene concesso, ma il segnalibro su
-   * quali movimenti ha già contato viene azzerato solo al rilascio: chi
-   * riceve il gesto al TOCCO - il riquadrino e la sua maniglia - al primo
-   * movimento si vede arrivare anche il residuo dei tocchi precedenti, e
-   * saltava di colpo altrove per poi seguire il dito regolarmente.
+   * It is not zero as one would expect. React Native's count starts
+   * again from zero when the gesture is granted, but the bookmark of
+   * which movements it has already counted is only cleared on release:
+   * whoever receives the gesture at the TOUCH - the little square and
+   * its handle - sees the leftovers of the previous touches arrive at
+   * the first movement, and it used to jump elsewhere all at once and
+   * then follow the finger properly.
    *
-   * Si prende quel primo valore come punto zero e si conta da lì.
+   * That first value is taken as the zero point and counted from
+   * there.
    */
-  const partenzaDito = useRef<{ dx: number; dy: number } | null>(null);
+  const fingerStart = useRef<{ dx: number; dy: number } | null>(null);
   /**
-   * Un dito è appoggiato sul riquadrino.
+   * A finger is resting on the little square.
    *
-   * Mentre lo si muove, la ricollocazione automatica non deve
-   * intervenire: l'ancoraggio nuovo viene registrato solo al rilascio,
-   * quindi riporterebbe il riquadrino a quello vecchio - e da fuori si
-   * vede saltare da solo sotto il dito.
+   * While it is moving, the automatic repositioning must not step in:
+   * the new anchor is recorded only on release, so it would take the
+   * little square back to the old one - and from outside one sees it
+   * jump by itself under the finger.
    */
-  const gestoInCorso = useRef(false);
+  const gestureUnderWay = useRef(false);
 
   const twoFingerDistance = (touches: any[]) => {
     const [a, b] = touches;
@@ -626,76 +635,76 @@ export default function VideoStage(props: Props) {
         onMoveShouldSetPanResponder: (_e, g) =>
           Math.abs(g.dx) > 3 || Math.abs(g.dy) > 3,
         onPanResponderGrant: () => {
-          gestoInCorso.current = true;
+          gestureUnderWay.current = true;
           dragged.current = false;
           pinchStart.current = null;
-          partenzaDito.current = null;
-          // Niente `extractOffset`: la posizione resta in coordinate
-          // assolute per tutta la durata del gesto. Con l'offset attivo
-          // la ricollocazione automatica - che scrive coordinate assolute
-          // - si SOMMAVA all'offset invece di sostituirlo, e durante un
-          // pizzico il riquadrino schizzava fuori dallo schermo per poi
-          // rientrare al rilascio.
-          inizioTrascinamento.current = { ...posRef.current };
+          fingerStart.current = null;
+          // No `extractOffset`: the position stays in absolute
+          // coordinates for the whole gesture. With the offset on, the
+          // automatic repositioning - which writes absolute coordinates
+          // - was ADDED to the offset instead of replacing it, and
+          // during a pinch the little square shot off the screen only
+          // to come back on release.
+          dragStart.current = { ...posRef.current };
         },
         onPanResponderMove: (e, g) => {
           const touches = e.nativeEvent.touches ?? [];
 
-          // Due dita: si ridimensiona, non si sposta.
+          // Two fingers: it resizes, it does not move.
           if (touches.length >= 2) {
             dragged.current = true;
-            // Tolto un dito si torna a trascinare: da qui, non da dove il
-            // trascinamento era cominciato prima del pizzico.
-            partenzaDito.current = null;
-            inizioTrascinamento.current = { ...posRef.current };
+            // With one finger lifted we go back to dragging: from
+            // here, not from where the drag began before the pinch.
+            fingerStart.current = null;
+            dragStart.current = { ...posRef.current };
             const dist = twoFingerDistance(touches);
             if (!pinchStart.current) {
               pinchStart.current = { dist, w: sizeRef.current.w };
             } else if (pinchStart.current.dist > 0) {
               const ratio = dist / pinchStart.current.dist;
-              applicaLarghezza(clampWidth(pinchStart.current.w * ratio));
-              // Crescendo, il riquadrino sfora dal bordo a cui è
-              // appoggiato: la ricollocazione automatica qui non entra,
-              // perché un gesto è in corso.
-              pan.setValue(dentro(posRef.current.x, posRef.current.y));
+              applyWidth(clampWidth(pinchStart.current.w * ratio));
+              // As it grows, the little square runs past the edge it
+              // rests against: the automatic repositioning does not
+              // step in here, because a gesture is under way.
+              pan.setValue(inside(posRef.current.x, posRef.current.y));
             }
             return;
           }
 
           pinchStart.current = null;
-          if (!partenzaDito.current) partenzaDito.current = { dx: g.dx, dy: g.dy };
-          const dx = g.dx - partenzaDito.current.dx;
-          const dy = g.dy - partenzaDito.current.dy;
+          if (!fingerStart.current) fingerStart.current = { dx: g.dx, dy: g.dy };
+          const dx = g.dx - fingerStart.current.dx;
+          const dy = g.dy - fingerStart.current.dy;
           if (Math.abs(dx) > 4 || Math.abs(dy) > 4) dragged.current = true;
-          pan.setValue(dentro(
-            inizioTrascinamento.current.x + dx,
-            inizioTrascinamento.current.y + dy,
+          pan.setValue(inside(
+            dragStart.current.x + dx,
+            dragStart.current.y + dy,
           ));
         },
         onPanResponderRelease: () => {
-          gestoInCorso.current = false;
+          gestureUnderWay.current = false;
           pinchStart.current = null;
           if (dragged.current) {
-            // clampIntoScreen registra da sé la posizione finale.
+            // clampIntoScreen records the final position itself.
             clampIntoScreen();
           } else {
-            // Tocco secco: scambia grande e piccolo.
+            // A sharp touch: it swaps big and small.
             setSelfBig((v) => !v);
           }
         },
         onPanResponderTerminate: () => {
-          gestoInCorso.current = false;
+          gestureUnderWay.current = false;
           pinchStart.current = null;
           clampIntoScreen();
         },
       }),
-    [pan, dentro, clampIntoScreen, clampWidth, applicaLarghezza],
+    [pan, inside, clampIntoScreen, clampWidth, applyWidth],
   );
 
-  // --- Maniglia d'angolo per ridimensionare con un dito -------------------
+  // --- A corner handle for resizing with one finger -----------------------
   const resizeStart = useRef(0);
-  /** punto zero del dito sulla maniglia, come `partenzaDito` */
-  const partenzaManiglia = useRef<number | null>(null);
+  /** the finger's zero point on the handle, like `fingerStart` */
+  const handleStart = useRef<number | null>(null);
   const resizeResponder = useMemo(
     () =>
       PanResponder.create({
@@ -703,25 +712,26 @@ export default function VideoStage(props: Props) {
         onMoveShouldSetPanResponder: () => true,
         onPanResponderGrant: () => {
           resizeStart.current = sizeRef.current.w;
-          partenzaManiglia.current = null;
+          handleStart.current = null;
         },
         onPanResponderMove: (_e, g) => {
-          // Come per il trascinamento: il primo movimento porta con sé un
-          // residuo, e senza il punto zero il riquadrino cambiava taglia
-          // di scatto appena si toccava la maniglia.
-          if (partenzaManiglia.current === null) partenzaManiglia.current = g.dx;
-          applicaLarghezza(clampWidth(resizeStart.current + g.dx - partenzaManiglia.current));
-          pan.setValue(dentro(posRef.current.x, posRef.current.y));
+          // As with the drag: the first movement carries leftovers
+          // with it, and without the zero point the little square
+          // changed size with a jerk as soon as the handle was
+          // touched.
+          if (handleStart.current === null) handleStart.current = g.dx;
+          applyWidth(clampWidth(resizeStart.current + g.dx - handleStart.current));
+          pan.setValue(inside(posRef.current.x, posRef.current.y));
         },
         onPanResponderRelease: () => clampIntoScreen(),
         onPanResponderTerminate: () => clampIntoScreen(),
       }),
-    [pan, dentro, clampWidth, clampIntoScreen, applicaLarghezza],
+    [pan, inside, clampWidth, clampIntoScreen, applyWidth],
   );
 
-  // --- Zoom sul video grande ----------------------------------------------
-  // Pizzico per ingrandire, trascinamento per spostarsi dentro
-  // l'ingrandimento, doppio tocco per tornare a schermo pieno.
+  // --- Zoom on the big video ----------------------------------------------
+  // A pinch to zoom in, a drag to move around inside the zoom, a double
+  // tap to go back to the full picture.
   const zoom = useRef(new Animated.Value(1)).current;
   const zoomRef = useRef(1);
   const shift = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
@@ -731,31 +741,31 @@ export default function VideoStage(props: Props) {
   const shiftStart = useRef({ x: 0, y: 0 });
   const lastTap = useRef(0);
   const movedInGesture = useRef(false);
-  /** attesa che distingue un tocco singolo dal primo di un doppio */
-  const attesaTocco = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** the wait that tells a single tap from the first of a double one */
+  const tapWait = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /**
-   * Quanto siamo ingranditi, secondo noi.
+   * How far we are zoomed in, according to us.
    *
-   * L'ingrandimento vero lo fa il motore nativo, che di quel numero non
-   * ci rende conto: gli ascoltatori qui sotto smettono di essere
-   * chiamati appena il valore passa al nativo, e la nostra copia resta
-   * ferma a 1 mentre lo schermo è a 2,5. Da lì tre guai in fila: il
-   * pizzico ripartiva dal 100%, il rilascio credeva che non avessi
-   * ingrandito e riportava tutto indietro come un elastico, e il doppio
-   * tocco non tornava mai a schermo pieno.
+   * The real zooming is done by the native engine, which does not
+   * account for that number to us: the listeners below stop being
+   * called as soon as the value moves to the native side, and our copy
+   * stays at 1 while the screen is at 2.5. From there, three troubles
+   * in a row: the pinch started again from 100%, the release believed
+   * you had not zoomed and pulled everything back like an elastic, and
+   * the double tap never returned to the full picture.
    *
-   * La copia va scritta da noi, nello stesso istante in cui muoviamo
-   * l'immagine: siamo noi a decidere quel numero, non c'è ragione di
-   * andarlo a chiedere a qualcuno che può non rispondere.
+   * The copy has to be written by us, in the same instant in which we
+   * move the picture: we are the ones deciding that number, there is no
+   * reason to go and ask somebody who may not answer.
    *
-   * Gli ascoltatori restano: quando il valore non è ancora passato al
-   * nativo funzionano, e due fonti concordi non fanno danno.
+   * The listeners stay: while the value has not yet moved to the native
+   * side they work, and two sources that agree do no harm.
    */
-  const segnaZoom = useCallback((z: number) => {
+  const noteZoom = useCallback((z: number) => {
     zoomRef.current = z;
   }, []);
-  const segnaShift = useCallback((x: number, y: number) => {
+  const noteShift = useCallback((x: number, y: number) => {
     shiftRef.current = { x, y };
   }, []);
 
@@ -766,26 +776,25 @@ export default function VideoStage(props: Props) {
   }, [zoom, shift]);
 
   const resetZoom = useCallback(() => {
-    segnaZoom(1);
-    segnaShift(0, 0);
+    noteZoom(1);
+    noteShift(0, 0);
     Animated.parallel([
       Animated.timing(zoom, { toValue: 1, duration: 180, useNativeDriver: true }),
       Animated.timing(shift, { toValue: { x: 0, y: 0 }, duration: 180, useNativeDriver: true }),
     ]).start();
-  }, [zoom, shift, segnaZoom, segnaShift]);
+  }, [zoom, shift, noteZoom, noteShift]);
 
   /**
-   * Cambiando CHI sta a schermo grande, l'ingrandimento non ha più senso:
-   * stavi guardando il dettaglio di un'altra immagine.
+   * When WHO is on the big screen changes, the zoom no longer makes
+   * sense: you were looking at a detail of another picture.
    *
-   * Non vale invece quando l'immagine dell'altro viene solo ricostruita
-   * - cosa che succede a ogni suo video che va e viene, e sulla rete
-   * mobile succede spesso: è la stessa persona, e chi stava guardando
-   * un dettaglio non ha chiesto di tornare indietro.
-   */
+   * It does not hold when their picture is merely rebuilt - which
+   * happens at every coming and going of their video, and on a mobile
+   * network that is often: it is the same person, and whoever was
+   * looking at a detail did not ask to go back.
   useEffect(() => { resetZoom(); }, [bigIsSelf, resetZoom]);
 
-  /** Non lasciare che l'immagine ingrandita esca dai bordi. */
+  /** Do not let the zoomed picture leave the edges. */
   const clampShift = useCallback(() => {
     const z = zoomRef.current;
     const maxX = Math.max(0, (width * (z - 1)) / 2);
@@ -829,7 +838,7 @@ export default function VideoStage(props: Props) {
               MAX_ZOOM,
             );
             zoom.setValue(next);
-            segnaZoom(next);
+            noteZoom(next);
             return;
           }
           if (zoomRef.current > 1.01) {
@@ -837,22 +846,22 @@ export default function VideoStage(props: Props) {
             const sx = shiftStart.current.x + g.dx;
             const sy = shiftStart.current.y + g.dy;
             shift.setValue({ x: sx, y: sy });
-            segnaShift(sx, sy);
+            noteShift(sx, sy);
           }
         },
         onPanResponderRelease: () => {
           if (!movedInGesture.current) {
-            // Doppio tocco: ingrandisce, o torna a schermo pieno.
+            // A double tap: it zooms in, or goes back to the full picture.
             const now = Date.now();
             if (now - lastTap.current < DOUBLE_TAP_MS) {
               lastTap.current = 0;
-              if (attesaTocco.current) {
-                clearTimeout(attesaTocco.current);
-                attesaTocco.current = null;
+              if (tapWait.current) {
+                clearTimeout(tapWait.current);
+                tapWait.current = null;
               }
               if (zoomRef.current > 1.01) resetZoom();
               else {
-                segnaZoom(TAP_ZOOM);
+                noteZoom(TAP_ZOOM);
                 Animated.timing(zoom, {
                   toValue: TAP_ZOOM, duration: 180, useNativeDriver: true,
                 }).start();
@@ -861,13 +870,13 @@ export default function VideoStage(props: Props) {
               return;
             }
             lastTap.current = now;
-            // Tocco singolo: mostra o nasconde i comandi, ma solo dopo
-            // aver escluso che sia il primo di un doppio tocco - che
-            // significa ingrandire, ed è un'altra cosa.
-            if (attesaTocco.current) clearTimeout(attesaTocco.current);
-            attesaTocco.current = setTimeout(() => {
-              attesaTocco.current = null;
-              onSfondo?.();
+            // A single tap: it shows or hides the controls, but only
+            // after ruling out that it is the first of a double tap -
+            // which means zooming, and is another thing.
+            if (tapWait.current) clearTimeout(tapWait.current);
+            tapWait.current = setTimeout(() => {
+              tapWait.current = null;
+              onBackground?.();
             }, DOUBLE_TAP_MS);
             return;
           }
@@ -877,7 +886,7 @@ export default function VideoStage(props: Props) {
         },
         onPanResponderTerminate: () => clampShift(),
       }),
-    [zoom, shift, resetZoom, clampShift, onSfondo, segnaZoom, segnaShift, onZoom],
+    [zoom, shift, resetZoom, clampShift, onBackground, noteZoom, noteShift, onZoom],
   );
 
   return (
@@ -900,20 +909,20 @@ export default function VideoStage(props: Props) {
             streamURL={bigStream.toURL()}
             style={styles.bigVideo}
             objectFit="contain"
-            mirror={bigIsSelf && specchia}
+            mirror={bigIsSelf && mirror}
             zOrder={0}
           />
         </Animated.View>
       ) : (
-        <View style={[styles.big, styles.placeholder]} onTouchStart={onSfondo}>
-          {/* Durante un'interruzione: nero, non il riepilogo.
-              Il video dell'altro sta per tornare, e rimettere la
-              schermata "l'altro è nel canale" a ogni cambio di rete la
-              trasforma in un lampeggio. Il nero non dice nulla, ed è
-              esattamente ciò che serve: non è successo nulla che valga la
-              pena raccontare.
-              Con un notice in sovrimpressione vale lo stesso: due
-              messaggi sovrapposti direbbero la stessa cosa. */}
+        <View style={[styles.big, styles.placeholder]} onTouchStart={onBackground}>
+          {/* During an interruption: black, not the summary.
+              Their video is about to come back, and putting the "they
+              are in the channel" screen up again at every change of
+              network turns it into a flicker. Black says nothing, and
+              that is exactly what is wanted: nothing has happened that
+              is worth telling.
+              With a notice laid over it the same holds: two overlapping
+              messages would say the same thing. */}
           {notice || awaitingRemote ? null : placeholder}
         </View>
       )}
@@ -935,15 +944,15 @@ export default function VideoStage(props: Props) {
               transform: [{ translateX: pan.x }, { translateY: pan.y }],
             },
           ]}>
-          {/* Anche qui "contain": il riquadrino ha già le proporzioni
-              giuste, quindi non c'è nulla da tagliare. */}
+          {/* "contain" here too: the little square already has the
+              right shape, so there is nothing to cut. */}
           {pipStream ? (
             <RTCView
               key={pipIsSelf ? 'pip-self' : `pip-remote-${remoteVideoKey ?? 0}`}
               streamURL={pipStream.toURL()}
               style={styles.pipVideo}
               objectFit="contain"
-              mirror={pipIsSelf && specchia}
+              mirror={pipIsSelf && mirror}
               zOrder={1}
             />
           ) : (
@@ -951,16 +960,19 @@ export default function VideoStage(props: Props) {
           )}
           <View style={styles.pipTag} pointerEvents="none">
             <Text style={styles.pipTagText}>
-              {pipStream ? (pipIsSelf ? 'Tu' : 'Non tu') : (emptyLabel || 'in attesa')}
+              {pipStream
+                ? (pipIsSelf ? t('channel.you') : t('channel.notYou'))
+                : (emptyLabel || t('channel.waiting'))}
             </Text>
             {pipIsSelf ? ownBadge : peerBadge}
           </View>
         </Animated.View>
       ) : null}
 
-      {/* La maniglia è SORELLA del riquadrino, non figlia: Android non
-          consegna i tocchi a un figlio che sta oltre i bordi del genitore,
-          e dentro sarebbe coperta dalla superficie del video. */}
+      {/* The handle is the little square's SISTER, not its child:
+          Android does not deliver touches to a child that lies past its
+          parent's edges, and inside it would be covered by the video's
+          surface. */}
       {(pipStream || pipEmpty) && !compact ? (
         <Animated.View
           {...resizeResponder.panHandlers}
@@ -988,14 +1000,14 @@ const styles = StyleSheet.create({
   pip: {
     position: 'absolute', top: 0, left: 0,
     /**
-     * Angoli vivi, di proposito.
+     * Sharp corners, on purpose.
      *
-     * RTCView è una SurfaceView: disegna in un level grafico proprio e
-     * nessun genitore può ritagliarla - né `overflow: hidden` né
-     * `borderRadius` la toccano. Con la cornice arrotondata i suoi angoli
-     * quadrati sbordavano, e l'unico rimedio era rimpicciolire il video
-     * dentro un margine. Meglio un rettangolo netto che un arrotondamento
-     * che il video non può rispettare.
+     * RTCView is a SurfaceView: it draws on a graphics layer of its own
+     * and no parent can clip it - neither `overflow: hidden` nor
+     * `borderRadius` touch it. With a rounded frame its square corners
+     * stuck out, and the only remedy was to shrink the video inside a
+     * margin. Better a clean rectangle than a rounding the video cannot
+     * respect.
      */
     backgroundColor: '#000',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
@@ -1014,11 +1026,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10, paddingHorizontal: 18, overflow: 'hidden',
   },
   /**
-   * Una pastiglia, non una fascia.
+   * A pill, not a band.
    *
-   * La striscia grigia da bordo a bordo copriva una fetta di immagine e
-   * non somigliava all'etichetta del video grande, che è la stessa cosa
-   * detta nello stesso momento.
+   * The grey strip from edge to edge covered a slice of picture and
+   * looked nothing like the big video's label, which is the same thing
+   * said at the same moment.
    */
   pipTag: {
     position: 'absolute', top: 5, left: 5,
@@ -1028,20 +1040,20 @@ const styles = StyleSheet.create({
   },
   pipTagText: { color: '#e6ebf1', fontSize: 10, fontWeight: '700' },
   /**
-   * La maniglia sta FUORI dall'angolo, non sopra il video.
+   * The handle sits OUTSIDE the corner, not over the video.
    *
-   * Il video del riquadrino usa `zOrder={1}`, cioè viene disegnato sopra
-   * le viste normali - serve, altrimenti finirebbe dietro al video
-   * grande, che è anch'esso una superficie nativa. Ma così copriva la
-   * maniglia: c'era ed era premibile, solo invisibile, e si finiva per
-   * trascinare il riquadrino invece di ridimensionarlo.
+   * The little square's video uses `zOrder={1}`, that is it is drawn
+   * above the ordinary views - it has to be, or it would end up behind
+   * the big video, which is a native surface as well. But that covered
+   * the handle: it was there and pressable, merely invisible, and one
+   * ended up dragging the little square instead of resizing it.
    */
   handle: {
     position: 'absolute', top: 0, left: 0,
     width: HANDLE, height: HANDLE,
     alignItems: 'center', justifyContent: 'center',
   },
-  /** Un bottoncino, non un angolo: fuori dal riquadro serve che si veda. */
+  /** A little button, not a corner: outside the frame it needs to be seen. */
   handleGrip: {
     width: 20, height: 20, borderRadius: 10,
     backgroundColor: 'rgba(20,22,28,0.92)',
