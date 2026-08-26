@@ -19,6 +19,7 @@ import {
   salvaImpostazioniNellaCoppia,
 } from './config';
 import { Signaling, PresenceStatus, Mode } from './signaling';
+import { useLanguage } from './i18n';
 import { VERSION } from './version';
 import { ChannelSession } from './webrtc';
 import type { VideoStats } from './webrtc';
@@ -27,9 +28,9 @@ import SetupScreen from './SetupScreen';
 import PairingScreen from './PairingScreen';
 import ChannelScreen from './ChannelScreen';
 import { caricaPosizionePip } from './VideoStage';
-import { useAudioRoute, CHIAVE_USCITA_VECCHIA } from './audioRoute';
+import { useAudioRoute } from './audioRoute';
 import {
-  stopListening, testoPresenza, fraseMorte, interfacciaAlComando,
+  stopListening, presenceLine, deathStory, interfaceInCharge,
 } from './presence';
 import { avatarFor, peerAvatar } from './avatar';
 
@@ -133,13 +134,6 @@ const GUADAGNO_PASSO = 0.25;
  */
 const GUADAGNO_MIN = 0.25;
 const GUADAGNO_MAX = 4;
-/**
- * La memoria di prima del volume, quando era una per tutta l'app.
- *
- * Si legge una volta all'avvio e si cancella subito dopo: adesso il
- * volume appartiene al collegamento. Vedi anche CHIAVE_USCITA_VECCHIA.
- */
-const CHIAVE_GUADAGNO = 'duetto.volume.altro';
 
 
 
@@ -282,6 +276,17 @@ async function requestAllPermissions(): Promise<{ mic: boolean; camera: boolean 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('loading');
   const [cfg, setCfg] = useState<DuoConfig | null>(null);
+
+  /**
+   * La lingua in uso, scelta prima di disegnare qualunque cosa.
+   *
+   * Si imposta qui, durante il disegno, e non dentro un effetto: gli
+   * effetti girano DOPO che i figli sono stati disegnati, e la prima
+   * schermata sarebbe uscita nella lingua di prima. Cambiando
+   * collegamento cambia `cfg`, quindi si ridisegna tutto e le parole
+   * seguono da sé.
+   */
+  useLanguage(cfg?.language);
 
   /**
    * Salva la configurazione, e con lei le impostazioni del collegamento.
@@ -513,8 +518,8 @@ export default function App() {
    * In un ref perché lo chiama `enterChannel`, che nasce prima e non
    * deve rifarsi ogni volta che cambia qualcosa dell'audio.
    */
-  const riapplicaUscitaRef = useRef<(() => void) | null>(null);
-  useEffect(() => { riapplicaUscitaRef.current = audio.riapplica; }, [audio.riapplica]);
+  const reapplyRouteRef = useRef<(() => void) | null>(null);
+  useEffect(() => { reapplyRouteRef.current = audio.reapply; }, [audio.reapply]);
 
   /**
    * L'altro deve sapere da dove stiamo ascoltando.
@@ -881,15 +886,15 @@ export default function App() {
     return () => clearTimeout(t);
   }, [status]);
 
-  const testoNotifica = React.useMemo(() => testoPresenza({
+  const testoNotifica = React.useMemo(() => presenceLine({
     inChannel,
     peerActive: status === 'together',
     peerPresent,
-    staccato: peerStaccato,
-    smontato: peerSmontato,
-    nome: shownName,
-    server: statusVisibile === 'offline' ? 'giu'
-      : statusVisibile === 'connecting' ? 'incorso' : 'ok',
+    detached: peerStaccato,
+    tornDown: peerSmontato,
+    name: shownName,
+    server: statusVisibile === 'offline' ? 'down'
+      : statusVisibile === 'connecting' ? 'connecting' : 'ok',
   }), [inChannel, statusVisibile, peerPresent, peerStaccato, peerSmontato, shownName]);
 
   /**
@@ -982,7 +987,7 @@ export default function App() {
       // Il conto riparte da adesso: rifare da capo è un tentativo, e se
       // non basta se ne farà un altro fra altrettanto tempo.
       senzaServerDa.current = Date.now();
-      signalingRef.current?.rifaiDaCapo();
+      signalingRef.current?.rebuild();
     }, CONTROLLO_SERVER_MS);
     return () => clearInterval(t);
   }, [status, disponibile]);
@@ -1058,7 +1063,7 @@ export default function App() {
         // Già senza server: non c'è niente da salvare, si rifà e basta.
         if (!sig.connected) {
           senzaServerDa.current = senzaServerDa.current || Date.now();
-          sig.rifaiDaCapo();
+          sig.rebuild();
           return;
         }
         /**
@@ -1073,12 +1078,12 @@ export default function App() {
          * sì che era morto.
          */
         fermaProvaRete();
-        sig.chiediPresenza();
+        sig.askPresence();
         provaRete.current = setTimeout(() => {
           provaRete.current = null;
           Diario.segna('rete:muto').catch(() => { /* noop */ });
           senzaServerDa.current = senzaServerDa.current || Date.now();
-          signalingRef.current?.rifaiDaCapo();
+          signalingRef.current?.rebuild();
         }, ATTESA_PROVA_MS);
       }, RESPIRO_RETE_MS);
     });
@@ -1130,7 +1135,7 @@ export default function App() {
           Diario.segna('rete:non-passa').catch(() => { /* noop */ });
           Rete.segnalaCheNonPassa().catch(() => { /* noop */ });
         }
-        sig.rifaiDaCapo();
+        sig.rebuild();
       };
       if (!sig.connected) { rifai('senza-socket'); return; }
       // La domanda di prima è rimasta senza risposta: il socket sembra
@@ -1141,7 +1146,7 @@ export default function App() {
       }
       battitiAvuoto.current = 0;
       provaMandata.current = Date.now();
-      sig.chiediPresenza();
+      sig.askPresence();
     });
   }, [disponibile]);
 
@@ -1174,7 +1179,7 @@ export default function App() {
     const inizio = Date.now();
     let timer: ReturnType<typeof setTimeout>;
     const giro = () => {
-      signalingRef.current?.chiediPresenza();
+      signalingRef.current?.askPresence();
       const atteso = Date.now() - inizio >= PRESENZA_PAZIENZA_MS
         ? PRESENZA_RADA_MS : PRESENZA_FITTA_MS;
       timer = setTimeout(giro, atteso);
@@ -1225,7 +1230,7 @@ export default function App() {
          * faceva leggere «il suo telefono gli ha chiuso l'app» subito
          * dopo un'uscita che aveva scelto lui. Vero, e fuorviante.
          */
-        interfacciaAlComando(false, inChannelRef.current);
+        interfaceInCharge(false, inChannelRef.current);
         Foreground.riprendiPresenza().catch(() => { /* noop */ });
       }
     };
@@ -1346,7 +1351,7 @@ export default function App() {
     const sig = signalingRef.current;
     if (!da || !sig?.connected) return;
     sig.sendSignal({
-      kind: 'morte', quando: da.quando, causa: da.causa, tornato: da.tornato,
+      kind: 'death', when: da.quando, cause: da.causa, back: da.tornato,
     });
     morteDaRaccontare.current = null;
     AsyncStorage.setItem(CHIAVE_MORTE_RACCONTATA, String(da.quando)).catch(() => {});
@@ -1384,9 +1389,9 @@ export default function App() {
       if (inviate > righe) inviate = 0;
       if (righe <= inviate) return;
 
-      const testo = await Diario.leggi(inviate);
-      if (!testo) return;
-      sig.sendSignal({ kind: 'diario', testo });
+      const text = await Diario.leggi(inviate);
+      if (!text) return;
+      sig.sendSignal({ kind: 'journal', text });
       await AsyncStorage.setItem(chiave, String(righe));
     } catch {
       /* il diario non vale un errore in faccia a nessuno */
@@ -1469,7 +1474,7 @@ export default function App() {
       // ore, e i conti alla rovescia dormono con lui. Chi riaccende lo
       // schermo guarda quella riga per prima cosa, e deve trovarla
       // fresca, non ferma a com'era prima della notte.
-      if (inChannelRef.current) signalingRef.current?.chiediPresenza();
+      if (inChannelRef.current) signalingRef.current?.askPresence();
       // Tornare in primo piano - da icona o toccando la notifica - vuol
       // dire voler stare nel canale: si rientra senza chiedere nulla.
       if (!wasActive && !inChannelRef.current && signalingRef.current) {
@@ -1513,61 +1518,6 @@ export default function App() {
       let c = await loadConfig();
       setCfg(c);
       leggiLaPropriaMorte();
-      /**
-       * Le due memorie di prima: volume dell'altro e uscita audio.
-       *
-       * Stavano fuori dalla configurazione, una per tutta l'app. Ora
-       * appartengono al collegamento, e quel che c'era diventa il valore
-       * del collegamento in uso: chi aveva già scelto non ricomincia da
-       * capo.
-       */
-      /**
-       * I moltiplicatori si azzerano una volta sola.
-       *
-       * Vedi `guadagniAzzerati`: quel numero ha cambiato significato
-       * diventando la parte alta e bassa di un prodotto, e traghettarlo
-       * ha lasciato un +25% fisso sopra ogni uscita - sulla cornetta,
-       * un vivavoce. Si riparte da 1 dappertutto, compresi i
-       * collegamenti che in questo momento non sono in uso.
-       */
-      if (!c.guadagniAzzerati) {
-        const pulita: DuoConfig = {
-          ...c,
-          guadagni: {},
-          guadagniAzzerati: true,
-          pairs: c.pairs.map((p) => (p.impostazioni
-            ? { ...p, impostazioni: { ...p.impostazioni, guadagni: {} } }
-            : p)),
-        };
-        c = pulita;
-        setCfg(salvaCfg(pulita));
-        Diario.segna('guadagni-azzerati').catch(() => { /* noop */ });
-      }
-
-      try {
-        const patch: Partial<DuoConfig> = {};
-        const g = Number(await AsyncStorage.getItem(CHIAVE_GUADAGNO));
-        if (g > 1 && g <= GUADAGNO_MAX && !Object.keys(c.guadagni ?? {}).length) {
-          patch.guadagni = {
-            SPEAKER_PHONE: g, EARPIECE: g, WIRED_HEADSET: g, BLUETOOTH: g,
-          };
-        }
-        const u = await AsyncStorage.getItem(CHIAVE_USCITA_VECCHIA);
-        if (u && c.uscitaAudio === 'SPEAKER_PHONE') patch.uscitaAudio = u;
-        if (Object.keys(patch).length) setCfg(salvaCfg({ ...c, ...patch }));
-        /**
-         * Le vecchie memorie si cancellano: la migrazione è una volta
-         * sola, e senza questo non lo era.
-         *
-         * Il travaso avviene quando il valore nuovo è quello di partenza
-         * - vivavoce, volume al 100% - perché quello vuol dire "nessuno
-         * ha ancora scelto". Ma è anche una scelta legittima: chi mette
-         * il vivavoce si ritrova il valore vecchio al riavvio dopo, e
-         * ogni aggiornamento dell'app è un riavvio. È così che il
-         * vivavoce tornava cornetta da solo.
-         */
-        await AsyncStorage.multiRemove([CHIAVE_GUADAGNO, CHIAVE_USCITA_VECCHIA]);
-      } catch { /* niente di grave */ }
       // Il canale di notifica va preparato prima che serva: nasce con
       // suono e vibrazione dentro, e crearlo al primo avviso vorrebbe
       // dire farlo mentre lo si sta già usando.
@@ -1849,7 +1799,7 @@ export default function App() {
             // Come la risoluzione: vale per tutti e due, e chi la riceve
             // non la rimanda indietro.
             if (msg.kind === 'audio') {
-              applyAudio(msg.migliore, false);
+              applyAudio(msg.richer, false);
               return;
             }
             // Il diario dei consumi dell'altro telefono, che finisce in
@@ -1859,37 +1809,37 @@ export default function App() {
             // L'altro è morto e ora è tornato: dirlo, senza far suonare
             // niente. È una notizia, non una chiamata.
             // "Non sono uscito io, mi hanno chiuso l'app."
-            if (msg.kind === 'smontata') {
+            if (msg.kind === 'tornDown') {
               setPeerSmontato(true);
               Diario.segna('altro-smontata').catch(() => {});
               return;
             }
 
-            if (msg.kind === 'morte') {
+            if (msg.kind === 'death') {
               // Questo racconto contiene già il ritorno: l'annuncio
               // generico non serve più.
               scordaRitorno();
-              const testo = fraseMorte(
-                Number(msg.quando), String(msg.causa), shownNameRef.current,
-                Number(msg.tornato) || 0,
+              const testo = deathStory(
+                Number(msg.when), String(msg.cause), shownNameRef.current,
+                Number(msg.back) || 0,
               );
               Foreground.nota(nomeAvvisoRef.current, testo).catch(() => {});
               setAvviso(testo);
-              Diario.segna(`morte-altrui:${msg.causa}`).catch(() => {});
+              Diario.segna(`morte-altrui:${msg.cause}`).catch(() => {});
               return;
             }
 
             // Un suono per svegliarci: lo suona questo telefono, forte,
             // dal volume della sveglia. Arriva solo da chi è nel canale
             // con noi, cioè da una persona sola al mondo.
-            if (msg.kind === 'sveglia') {
-              Sveglia.suona(String(msg.suono ?? '')).catch(() => {});
-              Diario.segna(`sveglia:${msg.suono}`).catch(() => {});
+            if (msg.kind === 'alarm') {
+              Sveglia.suona(String(msg.sound ?? '')).catch(() => {});
+              Diario.segna(`sveglia:${msg.sound}`).catch(() => {});
               return;
             }
 
-            if (msg.kind === 'diario') {
-              Diario.aggiungiAltro(String(msg.testo ?? ''), chiaveDiarioRef.current)
+            if (msg.kind === 'journal') {
+              Diario.aggiungiAltro(String(msg.text ?? ''), chiaveDiarioRef.current)
                 .catch(() => {});
               return;
             }
@@ -1938,7 +1888,7 @@ export default function App() {
       // Da qui in poi la connessione è nostra: l'ascolto senza
       // interfaccia deve saperlo, o se ne aprirebbe una seconda che
       // scalzerebbe questa.
-      interfacciaAlComando(true);
+      interfaceInCharge(true);
       sig.connect();
 
       // Ingresso automatico. setMode aggiorna lo stato dichiarato anche
@@ -1955,7 +1905,7 @@ export default function App() {
       // scelto di rendersi non disponibile o ha sciolto il collegamento.
       // Tutte le altre chiusure sono passaggi di mano, e l'altro non
       // deve leggere "si è staccato" per una connessione che si rifà.
-      interfacciaAlComando(false);
+      interfaceInCharge(false);
       const addio = salutiamo.current;
       salutiamo.current = false;
       signalingRef.current?.close(addio);
@@ -2197,7 +2147,7 @@ export default function App() {
     // Riaccendendo l'audio, InCallManager riporta l'uscita a quella
     // predefinita: la scelta di questo collegamento va rimessa adesso,
     // non prima.
-    riapplicaUscitaRef.current?.();
+    reapplyRouteRef.current?.();
 
     // I tasti del volume vanno detti a mano: senza, su certi telefoni
     // regolano il multimedia e non hanno effetto sulla voce dell'altro.
@@ -2493,7 +2443,7 @@ export default function App() {
     sessionRef.current?.setAudioOptions(migliore);
     Diario.segna(`${tell ? '' : 'altro-'}voce-ricca:${migliore ? 'si' : 'no'}`)
       .catch(() => {});
-    if (tell) signalingRef.current?.sendSignal({ kind: 'audio', migliore });
+    if (tell) signalingRef.current?.sendSignal({ kind: 'audio', richer: migliore });
   }, [salvaCfg]);
 
   const onSaveSettings = useCallback(async (scritta: DuoConfig) => {
@@ -2632,7 +2582,7 @@ export default function App() {
    * canale. Il server non sa nemmeno che è successo.
    */
   const onSveglia = useCallback((suono: string) => {
-    signalingRef.current?.sendSignal({ kind: 'sveglia', suono });
+    signalingRef.current?.sendSignal({ kind: 'alarm', sound: suono });
     // Lo si sente anche da questa parte: chi manda un suono deve sapere
     // cos'ha mandato, e sentire che è partito davvero. Qui però esce
     // piano e dalla via della conversazione, non dalla sveglia: al

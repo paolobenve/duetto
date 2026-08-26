@@ -29,6 +29,12 @@ declare module 'duetto-platform' {
     ascoltaSistema(cb: (valore: number) => void): () => void;
   };
 
+  /** La lingua a cui è impostato il telefono, in due lettere. */
+  export const Locale: {
+    language: string;
+    current(): Promise<string>;
+  };
+
   /** Quando qualcosa copre lo schermo: una tasca, una cover chiusa. */
   export const Prossimita: {
     get(): Promise<boolean>;

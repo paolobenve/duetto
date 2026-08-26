@@ -1,84 +1,74 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DeviceEventEmitter } from 'react-native';
 import InCallManager from 'react-native-incall-manager';
+import { t } from './i18n';
 
 /**
- * Uscita audio: vivavoce, altoparlantino del telefono, cuffie con filo,
- * Bluetooth.
- * Non ne esistono altre su un telefono.
+ * Audio outputs: speakerphone, the phone's own earpiece, wired
+ * headphones, Bluetooth. There are no others on a phone.
  *
- * L'elenco di quelle DISPONIBILI cambia da solo: il Bluetooth compare
- * quando accoppi le cuffie, le cuffie con filo quando le infili. Per
- * questo stiamo in ascolto dell'evento invece di indovinare.
+ * Which ones are AVAILABLE changes on its own: Bluetooth appears when
+ * you pair headphones, the wired one when you plug them in. That is why
+ * we listen for the event instead of guessing.
  *
- * L'uscita scelta viene ricordata: rientrando nel canale si torna a
- * quella impostata l'ultima volta, non a una decisa dall'app.
+ * The chosen output is remembered: coming back into the channel you get
+ * the one you set last time, not one the app decided for you.
  */
 export type AudioRoute = 'SPEAKER_PHONE' | 'EARPIECE' | 'WIRED_HEADSET' | 'BLUETOOTH';
 
-/** Ordine con cui il pulsante cicla. */
+/** The order the button cycles through. */
 const ORDER: AudioRoute[] = ['SPEAKER_PHONE', 'EARPIECE', 'WIRED_HEADSET', 'BLUETOOTH'];
 
-/**
- * La memoria di prima, quando l'uscita era una sola per tutta l'app.
- *
- * Non si scrive più: la legge App al primo avvio dopo l'aggiornamento -
- * per non far ricominciare da capo chi aveva già scelto - e subito dopo
- * la cancella, perché una migrazione che si ripete a ogni avvio non è
- * una migrazione, è un valore che torna indietro da solo. Adesso
- * l'uscita sta in `impostazioni` dentro PairInfo.
- */
-export const CHIAVE_USCITA_VECCHIA = 'duetto.audioRoute.v1';
-
-export const ROUTE_LABEL: Record<AudioRoute, string> = {
-  SPEAKER_PHONE: 'Vivavoce',
-  // "Auricolare" farebbe pensare alle cuffiette: qui è l'altoparlantino
-  // che si accosta all'orecchio.
-  EARPIECE: 'Telefono',
-  WIRED_HEADSET: 'Cuffie',
-  BLUETOOTH: 'Bluetooth',
-};
+/** What each output is called on screen. */
+export function routeLabel(route: AudioRoute): string {
+  return t(`audio.${{
+    SPEAKER_PHONE: 'speaker',
+    EARPIECE: 'earpiece',
+    WIRED_HEADSET: 'wired',
+    BLUETOOTH: 'bluetooth',
+  }[route]}`);
+}
 
 export const ROUTE_ICON: Record<AudioRoute, string> = {
-  SPEAKER_PHONE: '\u{1F50A}', // altoparlante
-  EARPIECE: '\u{1F4DE}',      // cornetta
-  WIRED_HEADSET: '\u{1F50C}', // spina
-  BLUETOOTH: '\u{1F3A7}',     // cuffie
+  SPEAKER_PHONE: '\u{1F50A}', // loudspeaker
+  EARPIECE: '\u{1F4DE}',      // handset
+  WIRED_HEADSET: '\u{1F50C}', // plug
+  BLUETOOTH: '\u{1F3A7}',     // headphones
 };
 
 const isRoute = (v: any): v is AudioRoute =>
   typeof v === 'string' && (ORDER as string[]).includes(v);
 
 /**
- * Tiene traccia dell'uscita attiva e di quelle disponibili.
+ * Keeps track of the output in use and of the ones available.
  *
- * @param enabled   attivo solo mentre si è nel canale
- * @param preferita l'uscita ricordata per QUESTO collegamento
- * @param ricorda   chiamata quando l'utente ne sceglie una
+ * @param enabled   only while we are in the channel
+ * @param preferred the output remembered for THIS connection
+ * @param remember  called when the user picks one
  *
- * L'uscita non è più una preferenza dell'app ma del collegamento: con
- * una persona si parla in vivavoce mentre si cucina, con un'altra
- * all'orecchio la sera. Per questo non se la ricorda più da sé - non
- * saprebbe di chi è - ma la riceve e la restituisce a chi tiene i
- * collegamenti.
+ * The output is not a setting of the app any more but of the
+ * connection: with one person you talk on speaker while cooking, with
+ * another one against your ear in the evening. So this hook no longer
+ * remembers it by itself - it would not know whose it is - it receives
+ * it and hands it back to whoever keeps the connections.
  */
 export function useAudioRoute(
   enabled: boolean,
-  preferita?: string,
-  ricorda?: (route: AudioRoute) => void,
+  preferred?: string,
+  remember?: (route: AudioRoute) => void,
 ) {
-  // Prima che arrivi il primo evento assumiamo il minimo garantito.
+  // Until the first event arrives, assume the bare minimum.
   const [available, setAvailable] = useState<AudioRoute[]>([
     'SPEAKER_PHONE',
     'EARPIECE',
   ]);
   const [current, setCurrent] = useState<AudioRoute>('SPEAKER_PHONE');
 
-  /** Ultima uscita scelta a mano, ripresa al rientro nel canale. */
-  const preferred = useRef<AudioRoute | null>(null);
+  /** The last output picked by hand, restored on coming back in. */
+  const wanted = useRef<AudioRoute | null>(null);
   const initialised = useRef(false);
 
-  /** Applica l'uscita, con ripiego se la libreria non espone la scelta. */
+  /** Applies an output, with a fallback if the library will not choose. */
   const applyRoute = useCallback((route: AudioRoute) => {
     const icm = InCallManager as any;
     try {
@@ -86,7 +76,7 @@ export function useAudioRoute(
         const res = icm.chooseAudioRoute(route);
         if (res && typeof res.catch === 'function') res.catch(() => { /* noop */ });
       } else {
-        // Ripiego minimo: almeno vivavoce acceso/spento.
+        // Bare fallback: at least speakerphone on and off.
         InCallManager.setForceSpeakerphoneOn(route === 'SPEAKER_PHONE');
       }
     } catch {
@@ -94,15 +84,15 @@ export function useAudioRoute(
     }
   }, []);
 
-  // La preferenza arriva dal collegamento in uso, e cambia con lui.
+  // The preference comes from the connection in use, and changes with it.
   useEffect(() => {
-    if (!isRoute(preferita)) return;
-    preferred.current = preferita;
-    setCurrent(preferita);
-    // Fuori dal canale non si applica: l'uscita si sceglie quando c'è
-    // un suono da mandare da qualche parte.
-    if (enabled) applyRoute(preferita);
-  }, [preferita, enabled, applyRoute]);
+    if (!isRoute(preferred)) return;
+    wanted.current = preferred;
+    setCurrent(preferred);
+    // Not applied outside the channel: an output is chosen when there is
+    // a sound to send somewhere.
+    if (enabled) applyRoute(preferred);
+  }, [preferred, enabled, applyRoute]);
 
   useEffect(() => {
     if (!enabled) {
@@ -127,19 +117,20 @@ export function useAudioRoute(
             setCurrent(data.selectedAudioDevice);
           }
 
-          // Al primo evento ripristiniamo l'ultima uscita scelta, se è
-          // ancora collegata. Altrimenti restiamo su quella di sistema:
-          // non forziamo nulla di nostra iniziativa.
+          // On the first event we restore the last output chosen, if it
+          // is still plugged in. Otherwise we stay on the system's own:
+          // we force nothing of our own accord.
           if (!initialised.current && routes.length > 0) {
             initialised.current = true;
-            const want = preferred.current;
+            const want = wanted.current;
             if (want && routes.includes(want) && want !== data?.selectedAudioDevice) {
               setCurrent(want);
               applyRoute(want);
             }
           }
         } catch {
-          // evento in un formato inatteso: meglio ignorarlo che rompere l'audio
+          // an event in an unexpected shape: better ignored than
+          // allowed to break the audio
         }
       },
     );
@@ -147,32 +138,33 @@ export function useAudioRoute(
     return () => sub.remove();
   }, [enabled, applyRoute]);
 
-  /** Passa all'uscita successiva fra quelle disponibili, e la ricorda. */
+  /** Moves to the next available output, and remembers it. */
   const cycle = useCallback(() => {
     const options = ORDER.filter((r) => available.includes(r));
     if (options.length < 2) return;
     const i = options.indexOf(current);
     const next = options[(i + 1) % options.length];
 
-    setCurrent(next); // ottimistico: l'evento confermera'
-    preferred.current = next;
+    setCurrent(next); // hopeful: the event will confirm it
+    wanted.current = next;
     applyRoute(next);
-    ricorda?.(next);
-  }, [available, current, applyRoute, ricorda]);
+    remember?.(next);
+  }, [available, current, applyRoute, remember]);
 
   /**
-   * Rimette l'uscita scelta, adesso.
+   * Puts the chosen output back, right now.
    *
-   * Serve dopo che qualcun altro ha rimesso mano all'audio: `start` di
-   * InCallManager riporta l'uscita a quella predefinita di sistema, e
-   * succede a ogni ingresso nel canale - anche quando l'ingresso è la
-   * conseguenza di un cambio di collegamento. Senza questo, la scelta
-   * veniva applicata a un audio appena spento e poi sovrascritta da chi
-   * lo riaccendeva: si salvava e non si vedeva.
+   * Needed after somebody else has had a hand in the audio:
+   * InCallManager's `start` takes the output back to the system default,
+   * and that happens on every entry into the channel - including the
+   * entry that follows a change of connection. Without this, the choice
+   * was applied to an audio path that had just been switched off, and
+   * then overwritten by whoever switched it back on: it was saved and
+   * never heard.
    */
-  const riapplica = useCallback(() => {
-    const want = preferred.current;
-    // Il prossimo elenco di dispositivi può ancora rimetterla a posto.
+  const reapply = useCallback(() => {
+    const want = wanted.current;
+    // The next device list can still put it right.
     initialised.current = false;
     if (want) {
       setCurrent(want);
@@ -180,21 +172,21 @@ export function useAudioRoute(
     }
   }, [applyRoute]);
 
-  /** Sceglie un'uscita precisa, e la ricorda. */
+  /** Picks one output in particular, and remembers it. */
   const select = useCallback((route: AudioRoute) => {
     if (route === current) return;
     setCurrent(route);
-    preferred.current = route;
+    wanted.current = route;
     applyRoute(route);
-    ricorda?.(route);
-  }, [current, applyRoute, ricorda]);
+    remember?.(route);
+  }, [current, applyRoute, remember]);
 
   return {
     route: current,
-    riapplica,
-    /** solo quelle davvero collegate, nell'ordine di presentazione */
+    reapply,
+    /** only the ones really plugged in, in the order they are shown */
     available: ORDER.filter((r) => available.includes(r)),
-    /** con una sola uscita non c'è nulla da scegliere */
+    /** with a single output there is nothing to choose */
     canCycle: ORDER.filter((r) => available.includes(r)).length > 1,
     cycle,
     select,

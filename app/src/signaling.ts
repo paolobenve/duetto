@@ -1,79 +1,81 @@
 import { SignalCrypto } from './crypto';
 
 /**
- * Connessione al signaling.
+ * The connection to the signalling server.
  *
- * La stessa connessione serve a due fasi:
+ * The same connection serves two phases:
  *
- *  - ACCOPPIAMENTO: si scambiano chiavi pubbliche in chiaro (messaggi
- *    `pair`). Non c'è nulla da nascondere: senza il codice, che al
- *    server non arriva mai, quelle chiavi non bastano a ricavare nulla.
+ *  - PAIRING: public keys are exchanged in the clear (`pair` messages).
+ *    There is nothing to hide: without the code, which never reaches
+ *    the server, those keys are not enough to work anything out.
  *
- *  - USO NORMALE: tutto il resto viaggia dentro `signal`, cifrato con la
- *    chiave stabilita all'accoppiamento. Il server inoltra buste opache.
+ *  - EVERYDAY USE: everything else travels inside `signal`, encrypted
+ *    with the key settled while pairing. The server forwards opaque
+ *    envelopes.
  *
- * Lo stato `mode` dice al server se siamo solo raggiungibili
- * (`listening`) o dentro il canale (`active`).
+ * The `mode` tells the server whether we are merely reachable
+ * (`listening`) or inside the channel (`active`).
  */
 
 export type SignalMessage =
   | { kind: 'desc'; type: 'offer' | 'answer'; sdp: string }
   | { kind: 'ice'; candidate: any }
-  // `watching`: l'app dell'altro sta davvero mostrando lo schermo.
-  // Assente nelle build vecchie, e allora si assume di sì: meglio
-  // trasmettere per niente che mostrare un riquadro nero.
-  // `uscita`: da dove esce il suono dall'altra parte - vivavoce,
-  // orecchio, cuffie, bluetooth. Dice come ti sta ascoltando, cosa
-  // che a voce si chiede di continuo ("sei in vivavoce?").
-  // `versione`: quale Duetto sta girando dall'altra parte. Serve a
-  // spiegare le stranezze - una cosa che qui c'e' e li' no - senza
-  // doverselo chiedere a voce. Assente nelle build vecchie, ed e' gia'
-  // una risposta: vuol dire che e' piu' vecchia di questo campo.
-  // `camera`: quale delle due sta riprendendo. Non cambia niente di
-  // quello che si vede - l'immagine e' la stessa - ma nel diario dice
-  // cos'ha fatto l'altro, e "ha girato la camera" spiega un'inquadratura
-  // che cambia di colpo.
-  // `volume`: quanto forte sto ascoltando TE. E' l'unico modo di sapere
-  // se l'altro ti sente piano: e' una sua impostazione, sul suo telefono,
-  // e senza dirsela si finisce a ripetere "mi senti?" senza mai scoprire
-  // che ti aveva a un quarto.
+  // `watching`: the other app is really showing something on screen.
+  // Missing in older builds, and then we assume it is: better to send
+  // for nothing than to show a black rectangle.
+  // `output`: where the sound comes out on the other side - speaker,
+  // earpiece, headphones, bluetooth. It says how they are listening to
+  // you, which is the thing people ask out loud all the time ("are you
+  // on speaker?").
+  // `version`: which Duetto is running over there. It explains the odd
+  // things - something here that is missing there - without having to
+  // ask. Missing in older builds, which is already an answer: it means
+  // older than this very field.
+  // `camera`: which of the two is filming. Nothing about the picture
+  // changes - it is the same image - but the journal can then say what
+  // the other person did, and "they turned the camera round" explains a
+  // shot that suddenly changes.
+  // `volume`: how loudly I am listening to YOU. It is the only way to
+  // know that the other person has you turned down: it is a setting of
+  // theirs, on their phone, and without telling each other you end up
+  // repeating "can you hear me?" and never finding out that you were at
+  // a quarter volume.
   | { kind: 'state'; audio: boolean; video: boolean; aspect?: number; watching?: boolean;
-      hwVp9?: boolean; uscita?: string; versione?: string; camera?: string;
+      hwVp9?: boolean; output?: string; version?: string; camera?: string;
       volume?: number }
-  // "Non sono uscito io: il telefono mi ha chiuso la finestra."
+  // "I did not leave: the phone closed the window on me."
   //
-  // Lo manda l'ascolto senza interfaccia quando prende il posto di
-  // un'app smontata senza che nessuno l'abbia chiesto. Dall'altra parte
-  // le due cose arrivavano identiche - "in attesa" - e chi guardava
-  // doveva immaginare quale delle due fosse.
-  | { kind: 'smontata' }
-  // Chi risponde non può offrire: se resta senza collegamento e l'altro
-  // non se ne accorge, l'unica via d'uscita è chiederglielo.
+  // Sent by the headless presence when it takes the place of an app
+  // that was torn down without anybody asking. On the other side the
+  // two arrived identical - "waiting" - and whoever read it had to
+  // guess which of the two it was.
+  | { kind: 'tornDown' }
+  // The answering side cannot offer: if it ends up without a link and
+  // the other one does not notice, the only way out is to ask.
   | { kind: 'renegotiate' }
-  // La qualità video vale per tutti e due: cambiarla da un telefono la
-  // cambia anche sull'altro. Chi la riceve non la rimanda indietro.
+  // Video quality belongs to both: changing it on one phone changes it
+  // on the other. Whoever receives it does not send it back.
   | { kind: 'quality'; value: string }
-  // Le opzioni audio valgono per la conversazione, non per un telefono:
-  // la voce più ricca ha senso se la alzano tutti e due.
-  | { kind: 'audio'; migliore: boolean }
-  // Il diario dei consumi, che ogni telefono manda all'altro ogni tanto:
-  // così, collegandone uno solo a un computer, si leggono tutti e due.
-  // L'altro telefono sta in mano a un'altra persona e a un cavo non ci
-  // arriva mai.
-  | { kind: 'diario'; testo: string }
-  // "Sono morta e sono tornata": chi ha visto sparire l'altro senza un
-  // perche' merita di saperlo, e il telefono che e' morto il perche' lo
-  // scopre riaccendendosi. Nessuno puo' mandarlo mentre muore.
-  // `tornato` e' l'ora in cui l'app e' ripartita, sul telefono che era
-  // morto. Senza, chi riceve puo' solo dire "adesso" - e se era
-  // scollegato, quel messaggio gli arriva quando si ricollega lui, cosi'
-  // l'avviso raccontava come ora del ritorno dell'altro l'ora del
-  // rientro proprio.
-  | { kind: 'morte'; quando: number; causa: string; tornato?: number }
-  // Un suono forte per richiamare chi e' nel canale ma non risponde:
-  // addormentato, o col telefono dall'altra parte della stanza. Lo
-  // sceglie chi lo manda, lo suona il telefono di chi lo riceve.
-  | { kind: 'sveglia'; suono: string };
+  // Audio options belong to the conversation, not to one phone: a
+  // richer voice makes sense when both of you turn it on.
+  | { kind: 'audio'; richer: boolean }
+  // The journal of what the phone is doing, which each phone sends to
+  // the other every so often: plug one of them into a computer and you
+  // can read both. The other phone is in somebody else's hands and a
+  // cable never reaches it.
+  | { kind: 'journal'; text: string }
+  // "I died and I am back": whoever watched the other one disappear
+  // with no explanation deserves to know, and the phone that died finds
+  // out why when it starts again. Nobody can send this while dying.
+  // `back` is the time the app started again, on the phone that had
+  // died. Without it the receiver can only say "now" - and if they were
+  // disconnected, that message reaches them when THEY come back, so the
+  // notice gave the time of the reader's own return.
+  | { kind: 'death'; when: number; cause: string; back?: number }
+  // A loud sound to call back somebody who is in the channel but not
+  // answering: asleep, or with the phone on the far side of the room.
+  // The sender picks it, the receiver's phone plays it.
+  | { kind: 'alarm'; sound: string };
 
 export type PairMessage =
   | { kind: 'pubkey'; pub: string; name: string }
@@ -81,7 +83,7 @@ export type PairMessage =
 
 export type Mode = 'listening' | 'active';
 
-/** Un server ICE (STUN o TURN) come lo descrive WebRTC. */
+/** An ICE server (STUN or TURN) as WebRTC describes it. */
 export type IceServer = {
   urls: string | string[];
   username?: string;
@@ -90,34 +92,35 @@ export type IceServer = {
 
 export type PresenceStatus =
   | 'connecting'
-  | 'alone'      // collegati, l'altro non è nel canale
-  | 'together'   // ci siamo entrambi nel canale
-  | 'offline';   // niente rete o server irraggiungibile
+  | 'alone'      // connected, the other one is not in the channel
+  | 'together'   // we are both in the channel
+  | 'offline';   // no network, or the server is out of reach
 
 export type SignalingEvents = {
   /**
-   * @param dettaglio con `offline`, il codice di chiusura del socket
+   * @param detail with `offline`, the socket's closing code
    *
-   * Il codice dice CHI ha chiuso: 1006 e' una caduta di rete, 1000 e
-   * 1001 una chiusura ordinata, 4xxx un rifiuto del server. Serve a chi
-   * legge il diario domani, non a chi guarda lo schermo adesso.
+   * The code says WHO closed: 1006 is a network drop, 1000 and 1001 an
+   * orderly close, 4xxx a refusal from the server. It is for whoever
+   * reads the journal tomorrow, not for whoever is looking at the
+   * screen now.
    */
-  onStatus?: (s: PresenceStatus, dettaglio?: string) => void;
+  onStatus?: (s: PresenceStatus, detail?: string) => void;
   onJoined?: (info: {
     polite: boolean;
     peerPresent: boolean;
     peerActive: boolean;
     peerName: string;
-    /** collegamento di riserva, configurato sul server */
+    /** the fallback relay, configured on the server */
     turn: IceServer | null;
   }) => void;
   onPeerJoined?: (name: string, mode: Mode) => void;
-  /** @param motivo 'bye' se è uscito lui, 'caduta' se è sparita la rete */
-  onPeerLeft?: (motivo: 'bye' | 'caduta') => void;
+  /** @param why 'bye' if they left, 'dropped' if the network went */
+  onPeerLeft?: (why: 'bye' | 'dropped') => void;
   onPeerMode?: (mode: Mode, name: string) => void;
-  /** risposta a `chiediPresenza`: com'e' messo l'altro adesso */
+  /** the answer to `askPresence`: how the other side is doing now */
   onPresence?: (info: { peerPresent: boolean; peerActive: boolean; peerName: string }) => void;
-  /** il server ci avvisa: l'altro è entrato, oppure ha bussato */
+  /** the server tells us: the other one came in, or knocked */
   onNotify?: (reason: 'peer-active' | 'knock', name: string) => void;
   onSignal?: (msg: SignalMessage) => void;
   onPair?: (msg: PairMessage) => void;
@@ -126,30 +129,31 @@ export type SignalingEvents = {
 };
 
 /**
- * Diagnostica della connessione al server.
+ * Diagnostics for the connection to the server.
  *
- * Le cadute avvengono qui, e finora non lasciavano traccia: si vedeva
- * solo l'effetto sul video. Si legge con:
+ * The drops happen here, and used to leave no trace: only the effect on
+ * the video was visible. Read them with:
  *
  *   adb logcat -s ReactNativeJS | grep duetto-sig
  */
 const log = (...args: any[]) => console.log('[duetto-sig]', ...args);
 
-// Attesa fra un tentativo e l'altro. Tenuta breve di proposito: qui la
-// riconnessione non è un dettaglio, è la differenza fra essere
-// raggiungibili o no. Il costo di un tentativo a vuoto è trascurabile.
+// The wait between one attempt and the next. Kept short on purpose:
+// reconnecting is not a detail here, it is the difference between being
+// reachable and not. A failed attempt costs next to nothing.
 const RECONNECT_MIN_MS = 500;
 const RECONNECT_MAX_MS = 4000;
 
 export type SignalingOptions = {
   serverUrl: string;
-  /** stanza = impronta del codice di accoppiamento */
+  /** the room = the fingerprint of the pairing code */
   room: string;
   displayName: string;
-  /** chiave della coppia; assente durante l'accoppiamento */
+  /** the pair's key; missing while pairing */
   key?: Uint8Array | string | null;
-  /** lato della coppia: identifica il dispositivo, così riagganciandosi
-   *  riprende il proprio posto invece di essere respinto */
+  /** which side of the pair: it identifies the device, so that on
+   *  reconnecting it takes its own seat back instead of being turned
+   *  away */
   side?: 'A' | 'B';
   mode?: Mode;
 };
@@ -168,10 +172,11 @@ export class Signaling {
   }
 
   /**
-   * Riprova subito, senza aspettare il tentativo programmato.
+   * Try again now, without waiting for the scheduled attempt.
    *
-   * Serve quando sappiamo che qualcosa è cambiato - l'app torna in
-   * primo piano, la rete è rientrata - e attendere sarebbe tempo perso.
+   * For when we know something has changed - the app is back in the
+   * foreground, the network has returned - and waiting would be wasted
+   * time.
    */
   reconnectNow() {
     if (this.closedByUser) return;
@@ -181,11 +186,11 @@ export class Signaling {
       this.reconnectTimer = null;
     }
     this.backoff = RECONNECT_MIN_MS;
-    log('riprovo subito');
+    log('trying again now');
     this.open();
   }
 
-  /** La chiave arriva solo a accoppiamento concluso. */
+  /** The key only arrives once pairing is done. */
   setKey(key: Uint8Array | string) {
     this.crypto = new SignalCrypto(key);
   }
@@ -205,56 +210,55 @@ export class Signaling {
       this.scheduleReconnect();
       return;
     }
-    // Il precedente si chiude sul serio: abbandonarlo e basta lo lascia
-    // vivo a consumare e a parlare quando non deve.
-    const vecchio = this.ws;
+    // The previous one gets properly closed: merely abandoning it
+    // leaves it alive, drawing power and speaking out of turn.
+    const previous = this.ws;
     this.ws = ws;
-    if (vecchio && vecchio !== ws) {
-      try { vecchio.close(); } catch { /* era gia' morto */ }
+    if (previous && previous !== ws) {
+      try { previous.close(); } catch { /* it was dead already */ }
     }
 
     /**
-     * Parla ancora il socket in uso?
+     * Is this still the socket in use?
      *
-     * Un socket abbandonato non tace: la sua chiusura puo' arrivare
-     * minuti dopo che ne abbiamo aperto un altro - sulle reti mobili
-     * succede a ogni cambio di cella, perche' la rete si accorge tardi
-     * che quella connessione non esiste piu'. Senza questo controllo
-     * quella chiusura tardiva dichiarava "senza collegamento al server"
-     * mentre il socket nuovo era vivo e funzionante, e da fuori si
-     * vedeva l'app perdere il server da sola dopo qualche minuto di
-     * calma.
+     * An abandoned socket does not go quiet: its close can arrive
+     * minutes after we opened another one - on mobile networks it
+     * happens at every change of cell, because the network is slow to
+     * notice that the connection is gone. Without this check that late
+     * close declared "no link to the server" while the new socket was
+     * alive and working, and from the outside the app appeared to lose
+     * the server by itself after a few calm minutes.
      */
-    const attuale = () => this.ws === ws;
+    const inUse = () => this.ws === ws;
 
     const openedAt = Date.now();
     ws.onopen = () => {
-      if (!attuale()) { try { ws.close(); } catch { /* noop */ } return; }
-      log('collegato al server');
+      if (!inUse()) { try { ws.close(); } catch { /* noop */ } return; }
+      log('connected to the server');
       this.backoff = RECONNECT_MIN_MS;
       this.rawSend({
         type: 'join',
         room: this.opts.room,
-        name: this.opts.displayName || 'Qualcuno',
+        name: this.opts.displayName || 'Someone',
         mode: this.mode,
         side: this.opts.side,
       });
     };
 
-    ws.onmessage = (ev) => { if (attuale()) this.handle(ev.data); };
+    ws.onmessage = (ev) => { if (inUse()) this.handle(ev.data); };
     ws.onerror = (e: any) => {
-      if (!attuale()) return;
-      log('errore di rete:', e?.message ?? '(senza dettagli)');
+      if (!inUse()) return;
+      log('network error:', e?.message ?? '(no details)');
     };
     ws.onclose = (e: any) => {
-      if (!attuale()) {
-        log('caduto un socket gia\' abbandonato: non ci riguarda piu\'');
+      if (!inUse()) {
+        log('a socket we had already abandoned went down: not our concern');
         return;
       }
-      // Il codice dice CHI ha chiuso e perché: 1006 è una caduta di
-      // rete, 1000/1001 una chiusura ordinata, 4xxx un rifiuto nostro.
-      log('caduto dopo', Math.round((Date.now() - openedAt) / 1000), 's',
-        '- codice', e?.code ?? '?', e?.reason ? `(${e.reason})` : '');
+      // The code says WHO closed and why: 1006 is a network drop,
+      // 1000/1001 an orderly close, 4xxx a refusal of ours.
+      log('down after', Math.round((Date.now() - openedAt) / 1000), 's',
+        '- code', e?.code ?? '?', e?.reason ? `(${e.reason})` : '');
       this.events.onStatus?.('offline', `${e?.code ?? '?'}${e?.reason ? `/${e.reason}` : ''}`);
       if (!this.closedByUser) this.scheduleReconnect();
     };
@@ -282,16 +286,18 @@ export class Signaling {
 
       case 'peer-joined':
         if (msg.mode === 'active') this.events.onStatus?.('together');
-        this.events.onPeerJoined?.(msg.name || 'Qualcuno', msg.mode === 'active' ? 'active' : 'listening');
+        this.events.onPeerJoined?.(
+          msg.name || 'Someone', msg.mode === 'active' ? 'active' : 'listening',
+        );
         break;
 
       case 'peer-left':
         this.events.onStatus?.('alone');
-        // "bye" = se n'è andato; "caduta" = gli è caduta la connessione,
-        // e con ogni probabilità torna. I server vecchi non lo dicono:
-        // senza motivo si tratta come una caduta, che è il caso in cui
-        // sbagliare costa meno.
-        this.events.onPeerLeft?.(msg.reason === 'bye' ? 'bye' : 'caduta');
+        // "bye" = they left; "dropped" = their connection went, and
+        // they will most likely be back. Older servers do not say
+        // which: with no reason given we treat it as a drop, which is
+        // the case where being wrong costs less.
+        this.events.onPeerLeft?.(msg.reason === 'bye' ? 'bye' : 'dropped');
         break;
 
       case 'presence':
@@ -308,15 +314,15 @@ export class Signaling {
         break;
 
       case 'notify':
-        this.events.onNotify?.(msg.reason, msg.name || 'Qualcuno');
+        this.events.onNotify?.(msg.reason, msg.name || 'Someone');
         break;
 
       case 'signal': {
         if (!this.crypto) return;
         const clear = this.crypto.open<SignalMessage>(msg.payload);
         if (!clear) {
-          // Busta non decifrabile: chiavi diverse fra i due telefoni,
-          // oppure qualcuno ha provato a manometterla lungo la strada.
+          // An envelope we cannot open: different keys on the two
+          // phones, or somebody tampered with it along the way.
           this.events.onError?.('decrypt-failed');
           return;
         }
@@ -338,18 +344,18 @@ export class Signaling {
     }
   }
 
-  /** Messaggio WebRTC/stato, cifrato. */
+  /** A WebRTC or state message, encrypted. */
   sendSignal(msg: SignalMessage) {
     if (!this.crypto) return;
     this.rawSend({ type: 'signal', payload: this.crypto.seal(msg) });
   }
 
-  /** Messaggio di accoppiamento, in chiaro (chiavi pubbliche). */
+  /** A pairing message, in the clear (public keys). */
   sendPair(msg: PairMessage) {
     this.rawSend({ type: 'pair', payload: msg });
   }
 
-  /** Entra o esce dal canale. È questo a far scattare la notifica all'altro. */
+  /** Enters or leaves the channel. This is what alerts the other side. */
   setMode(mode: Mode) {
     if (mode === this.mode) return;
     this.mode = mode;
@@ -361,19 +367,20 @@ export class Signaling {
   }
 
   /**
-   * Chiede al server com'e' messo l'altro in questo momento.
+   * Asks the server how the other side is doing right now.
    *
-   * Serve a chi sta aspettando: gli annunci dicono i cambiamenti, ma la
-   * caduta di chi sta solo in ascolto il server la scopre con comodo, e
-   * fino ad allora la riga "in ascolto" resta li' a dire una cosa che
-   * non e' piu' vera. Domandare la rinfresca, e fa anche verificare
-   * quella presenza dall'altra parte.
+   * This is for whoever is waiting: announcements tell you about
+   * changes, but the server takes its time noticing that somebody who
+   * was merely listening has dropped, and until then the "waiting" line
+   * sits there saying something that is no longer true. Asking
+   * refreshes it, and makes the server check that presence from its own
+   * side as well.
    */
-  chiediPresenza() {
+  askPresence() {
     this.rawSend({ type: 'presence' });
   }
 
-  /** Chiede al server di avvisare l'altro. */
+  /** Asks the server to alert the other side. */
   knock() {
     this.rawSend({ type: 'knock' });
   }
@@ -383,32 +390,32 @@ export class Signaling {
   }
 
   /**
-   * Butta via il socket in corso e ne apre uno nuovo, subito.
+   * Throws the current socket away and opens a new one, right now.
    *
-   * `reconnectNow` non basta quando il socket non e' ne' vivo ne' morto:
-   * per il sistema e' ancora "in apertura", nessun evento arriva piu' e
-   * l'attesa non scade mai. Qui lo si chiude a mano - la chiusura non
-   * conta come volontaria, quindi il riaggancio resta acceso - e si
-   * riparte.
+   * `reconnectNow` is not enough when the socket is neither alive nor
+   * dead: as far as the system is concerned it is still "opening", no
+   * event arrives any more and the wait never ends. Here we close it by
+   * hand - the close does not count as deliberate, so reconnecting
+   * stays on - and start over.
    */
-  rifaiDaCapo() {
+  rebuild() {
     if (this.closedByUser) return;
-    log('connessione rifatta da capo');
+    log('connection rebuilt from scratch');
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
-    const vecchio = this.ws;
+    const old = this.ws;
     this.ws = null;
-    if (vecchio) {
-      // Zittito prima di chiuderlo: il suo `onclose` arriverebbe dopo che
-      // il nuovo e' gia' in piedi, e lo dichiarerebbe caduto.
+    if (old) {
+      // Silenced before closing it: its `onclose` would arrive once the
+      // new one is already up, and would declare that one dead.
       try {
-        vecchio.onopen = null;
-        vecchio.onmessage = null;
-        vecchio.onerror = null;
-        vecchio.onclose = null;
-        vecchio.close();
+        old.onopen = null;
+        old.onmessage = null;
+        old.onerror = null;
+        old.onclose = null;
+        old.close();
       } catch { /* noop */ }
     }
     this.backoff = RECONNECT_MIN_MS;
@@ -420,18 +427,18 @@ export class Signaling {
       this.ws.send(JSON.stringify(obj));
       return;
     }
-    // Un messaggio scartato perché il server non è raggiungibile era
-    // finora invisibile: si vedeva solo l'effetto, cioè una negoziazione
-    // che non arrivava mai a destinazione.
+    // A message dropped because the server is out of reach used to be
+    // invisible: all you saw was the effect, a negotiation that never
+    // arrived.
     const kind = (obj as any)?.type ?? '?';
-    console.log('[duetto-sig]', 'scartato (server irraggiungibile):', kind);
+    console.log('[duetto-sig]', 'dropped (server out of reach):', kind);
   }
 
   private scheduleReconnect() {
     if (this.closedByUser || this.reconnectTimer) return;
     const delay = this.backoff;
     this.backoff = Math.min(this.backoff * 2, RECONNECT_MAX_MS);
-    log('riprovo fra', delay, 'ms');
+    log('trying again in', delay, 'ms');
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       this.open();
@@ -439,31 +446,31 @@ export class Signaling {
   }
 
   /**
-   * Chiude la connessione al server.
+   * Closes the connection to the server.
    *
-   * @param saluta dire all'altro che ce ne andiamo DAVVERO
+   * @param goodbye tell the other side we are REALLY leaving
    *
-   * Il saluto non è un dettaglio di cortesia: il server lo gira
-   * all'altro come "se n'è andato di proposito", e il suo telefono
-   * scrive "si è staccato". Va detto solo quando è vero.
+   * The goodbye is not a matter of manners: the server passes it on as
+   * "they left on purpose", and their phone writes "they
+   * disconnected". It must only be said when it is true.
    *
-   * Quasi tutte le chiusure non lo sono: si chiude per riaprire subito
-   * dopo - l'ascolto senza interfaccia che passa la mano all'app,
-   * un cambio di collegamento, la connessione che si rifà. Salutare in
-   * quei casi accusava di essersi staccato apposta chi non aveva fatto
-   * niente, e chi leggeva smetteva di aspettarlo.
+   * Almost every close is not: we close in order to reopen right away -
+   * the headless presence handing over to the app, a change of
+   * connection, the link being rebuilt. Saying goodbye in those cases
+   * accused somebody who had done nothing of disconnecting on purpose,
+   * and whoever read it stopped waiting for them.
    *
-   * Senza saluto il server vede cadere il socket e lo racconta per
-   * quello che è: una caduta, dopo la quale è normale tornare.
+   * With no goodbye the server sees the socket drop and tells it for
+   * what it is: a drop, after which coming back is the normal thing.
    */
-  close(saluta = false) {
+  close(goodbye = false) {
     this.closedByUser = true;
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
     if (this.ws) {
-      if (saluta) {
+      if (goodbye) {
         try { this.rawSend({ type: 'bye' }); } catch { /* noop */ }
       }
       try { this.ws.close(); } catch { /* noop */ }

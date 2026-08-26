@@ -2,318 +2,336 @@ import { AppState } from 'react-native';
 import { Foreground, Diario } from 'duetto-platform';
 import { loadConfig, isPaired, isServerConfigured, chiaveCoppia, nomeCoppia } from './config';
 import { Signaling } from './signaling';
+import { t } from './i18n';
 
 /**
- * Presenza senza interfaccia.
+ * Presence with no interface.
  *
- * Serve dopo il riavvio del telefono: un servizio nativo avvia il motore
- * JavaScript senza aprire l'app (vedi PresenceService.kt) ed esegue il
- * compito qui sotto, che rimette in piedi la connessione di ascolto.
- * Da quel momento sei di nuovo raggiungibile e ricevi la notifica quando
- * l'altro entra nel canale, senza aver toccato nulla.
+ * This is what runs after the phone reboots: a native service starts the
+ * JavaScript engine without opening the app (see PresenceService.kt) and
+ * runs the task at the bottom of this file, which brings the listening
+ * connection back up. From that moment you are reachable again and you
+ * get the notification when the other person enters the channel,
+ * without having touched anything.
  *
- * Non "apre l'app da sola": da Android 10 avviare un'interfaccia dal
- * secondo piano è vietato. L'app si apre quando tocchi la notifica.
+ * It does not "open the app by itself": since Android 10 starting an
+ * interface from the background is forbidden. The app opens when you
+ * touch the notification.
  */
 
-let sig: Signaling | null = null;
+let signaling: Signaling | null = null;
 
 /**
- * L'interfaccia ha una sua connessione aperta.
+ * The interface has a connection of its own.
  *
- * Serve a non averne due dallo stesso telefono: il server tiene un
- * posto per lato, e la seconda scalzerebbe la prima a vicenda, per
- * sempre. Lo dice l'app quando apre e quando chiude la sua.
+ * This is here so that one phone never holds two: the server keeps one
+ * seat per side, and the second connection would push the first out,
+ * back and forth, forever. The app says so when it opens its own and
+ * when it closes it.
  */
-let interfaccia = false;
+let uiInCharge = false;
 
 /**
- * L'interfaccia se n'è andata senza che nessuno l'abbia chiesta.
+ * The interface went away without anybody asking it to.
  *
- * Non è la stessa cosa di un'uscita: là c'è una scelta, qui c'è un
- * telefono che ha smontato l'app. Lo si ricorda per dirlo all'altro,
- * appena l'ascolto senza interfaccia riapre la connessione.
+ * Not the same thing as leaving: there, somebody chose; here, a phone
+ * tore the app down. We remember it so we can tell the other side, as
+ * soon as the headless presence reopens the connection.
  */
-let smontata = false;
+let tornDown = false;
 
-export function interfacciaAlComando(viva: boolean, chiusaDalTelefono = false) {
-  interfaccia = viva;
-  if (!viva && chiusaDalTelefono) smontata = true;
+export function interfaceInCharge(alive: boolean, closedByThePhone = false) {
+  uiInCharge = alive;
+  if (!alive && closedByThePhone) tornDown = true;
 }
 
 /**
- * Come dire a voce alta la causa di una morte.
+ * The placeholder name, in both languages.
  *
- * Sta qui perché la usano in due: l'app, e l'ascolto senza interfaccia
- * qui sotto. Un telefono che si è appena rialzato può trovare l'altro in
- * uno qualunque dei due stati, e il racconto dev'essere lo stesso.
+ * A phone that has never been given a name introduces itself with this,
+ * and the other side must not read it as a person's name. The Italian
+ * one is still around: it travelled to the other phone before this file
+ * spoke English, and it is stored there.
  */
-export function fraseMorte(
-  quando: number, causa: string, nome: string, tornato?: number,
+const NO_NAME = ['Someone', 'Qualcuno'];
+const named = (name: string) => !!name && !NO_NAME.includes(name);
+
+/**
+ * How to say out loud what killed the app.
+ *
+ * It lives here because two callers need it: the app, and the headless
+ * presence below. A phone that has just got back on its feet can find
+ * the other one in either state, and the story has to be the same.
+ */
+export function deathStory(
+  when: number, cause: string, name: string, back?: number,
 ): string {
-  const chi = nome && nome !== 'Qualcuno' ? nome : 'L\u2019altro';
-  const perche = (() => {
-    switch (causa) {
-      case 'memoria-finita': return 'il telefono era senza memoria';
-      case 'errore':
-      case 'errore-nativo': return 'l\u2019app \u00e8 andata in errore';
-      case 'bloccata': return 'l\u2019app si era bloccata';
-      case 'arresto-forzato': return 'l\u2019app \u00e8 stata fermata a mano';
-      case 'chiusa-dall-utente': return 'l\u2019app \u00e8 stata chiusa';
-      case 'troppe-risorse': return 'il telefono l\u2019ha chiusa per consumi';
-      case 'permessi-cambiati': return 'sono cambiati i permessi';
-      case 'congelata':
-      case 'segnale':
-      case 'altro': return 'il telefono l\u2019ha chiusa';
-      default: return 'non si sa perch\u00e9';
-    }
-  })();
-  const d = new Date(quando);
-  const ora = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  const quandoScritto = d.toDateString() === new Date().toDateString()
-    ? `alle ${ora}`
-    : `il ${d.toLocaleDateString()} alle ${ora}`;
+  const who = named(name) ? name : t('death.theOther');
+  const why = t(`death.${{
+    'memoria-finita': 'outOfMemory',
+    errore: 'crashed',
+    'errore-nativo': 'crashed',
+    bloccata: 'frozen',
+    'arresto-forzato': 'stoppedByHand',
+    'chiusa-dall-utente': 'closed',
+    'troppe-risorse': 'resources',
+    'permessi-cambiati': 'permissions',
+    congelata: 'phoneClosedIt',
+    segnale: 'phoneClosedIt',
+    altro: 'phoneClosedIt',
+  }[cause] ?? 'unknown'}`);
+
+  const died = new Date(when);
+  const time = died.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  const whenSaid = died.toDateString() === new Date().toDateString()
+    ? t('death.atTime', { time })
+    : t('death.onDayAtTime', { date: died.toLocaleDateString(), time });
+
   /**
-   * L'ora del ritorno, al secondo.
+   * The time of the return, down to the second.
    *
-   * La manda chi e' tornato, perche' e' l'unico a saperla: se noi in
-   * quel momento eravamo scollegati, il suo messaggio ci arriva quando
-   * ci ricolleghiamo, e "adesso" sarebbe l'ora del NOSTRO rientro. E'
-   * successo davvero: "e' sparito alle 17:00, adesso (19:32) e'
-   * tornato", con le 19:32 che erano l'ora in cui era tornato chi
-   * leggeva. Da un Duetto piu' vecchio quel dato non arriva, e allora
-   * si ripiega su adesso, che e' quello che si sapeva fare prima.
+   * It is sent by whoever came back, because they are the only ones who
+   * know it: if we were disconnected at that moment, their message
+   * reaches us when WE reconnect, and "now" would be the time of our own
+   * return. It happened: "disappeared at 17:00, now (19:32) it is back",
+   * where 19:32 was the moment the reader came back. An older Duetto
+   * does not send it, and then we fall back on now, which is what we
+   * used to do.
    */
-  const ritorno = new Date(tornato && tornato > 0 ? tornato : Date.now());
-  const oraRitorno = ritorno.toLocaleTimeString(undefined, {
-    hour: '2-digit', minute: '2-digit', second: '2-digit',
-  });
-  return `${chi} \u00e8 sparito ${quandoScritto}: ${perche}. \u00c8 tornato alle ${oraRitorno}.`;
+  const backAt = new Date(back && back > 0 ? back : Date.now())
+    .toLocaleTimeString(undefined, {
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+    });
+
+  return t('death.story', { who, when: whenSaid, why, back: backAt });
 }
 
 /**
- * Cosa dice la notifica fissa, in una riga.
+ * What the standing notification says, in one line.
  *
- * Sta qui perché la scrivono in due: l'app, che sa tutto, e l'ascolto
- * senza interfaccia qui sotto, che dopo un riavvio del telefono è
- * l'unica cosa che parla all'utente finché non apre l'app. Devono dire
- * le stesse parole, e sono le stesse della schermata di attesa:
+ * It lives here because two callers write it: the app, which knows
+ * everything, and the headless presence below, which after a reboot is
+ * the only thing that speaks to the user until they open the app. They
+ * have to say the same words, and those are the words of the waiting
+ * screen.
  *
- * Il nome del collegamento non si scrive qui: lo mette Android in testa
- * al testo, in corsivo, e vale per tutte le notifiche di Duetto - questa
- * riga dice come stanno le cose, il nome dice in quale stanza.
+ * The connection name is not written here: Android puts it in front of
+ * the text, in italics, and it does so for every Duetto notification -
+ * this line says how things are, the name says which room.
  *
- *  - "in attesa": collegato al server, l'avviso gli arriva;
- *  - "non raggiungibile": il suo telefono al server non è collegato, e
- *    l'avviso non ha dove andare.
+ *  - "waiting": connected to the server, an alert would reach them;
+ *  - "unreachable": their phone is not connected to the server, and an
+ *    alert has nowhere to go.
  */
-export function testoPresenza(o: {
-  /** siamo noi dentro al canale */
+export function presenceLine(o: {
+  /** we are in the channel */
   inChannel: boolean;
-  /** l'altro è nel canale */
+  /** the other person is in the channel */
   peerActive: boolean;
-  /** l'altro è almeno collegato al server */
+  /** the other person is at least connected to the server */
   peerPresent: boolean;
   /**
-   * Se n'è andato di proposito: ha staccato, non gli è caduta la linea.
+   * They left on purpose: they disconnected, the line did not drop.
    *
-   * Vale la pena distinguerlo: chi legge "non raggiungibile" aspetta
-   * che torni da un momento all'altro, chi legge "si è staccato" sa che
-   * dipende da lui.
+   * Worth telling apart: whoever reads "unreachable" expects them back
+   * any moment, whoever reads "disconnected" knows it is up to them.
    */
-  staccato?: boolean;
+  detached?: boolean;
   /**
-   * È in attesa perché il telefono gli ha chiuso l'app.
+   * They are waiting because their phone closed the app on them.
    *
-   * "In attesa" fa pensare a una scelta sua, e su certi telefoni non lo
-   * è affatto: l'app viene smontata da sola, anche di notte.
+   * "Waiting" suggests a choice of theirs, and on some phones it is
+   * nothing of the sort: the app gets torn down on its own, at night
+   * too.
    */
-  smontato?: boolean;
-  nome: string;
-  /** com'è messo il NOSTRO collegamento al server */
-  server?: 'ok' | 'giu' | 'incorso';
+  tornDown?: boolean;
+  name: string;
+  /** how OUR own link to the server is doing */
+  server?: 'ok' | 'down' | 'connecting';
 }): string {
-  const mio = (o.inChannel ? 'Sei nel canale' : 'In attesa');
-  const chi = o.nome && o.nome !== 'Qualcuno' ? o.nome : 'l\u2019altro';
-  if (o.server === 'giu') return `${mio} \u00b7 senza collegamento al server`;
-  if (o.server === 'incorso') return mio;
+  const ours = o.inChannel ? t('presence.inChannel') : t('presence.waiting');
+  const who = named(o.name) ? o.name : t('presence.theOther');
+  if (o.server === 'down') return t('presence.noServer', { ours });
+  if (o.server === 'connecting') return ours;
   if (o.peerActive) {
     return o.inChannel
-      ? `Nel canale con ${chi}`
-      : `${mio} \u00b7 ${chi} \u00e8 nel canale`;
+      ? t('presence.withPeer', { who })
+      : t('presence.peerInChannel', { ours, who });
   }
   if (!o.peerPresent) {
-    return `${mio} \u00b7 ${chi} ${o.staccato ? 'si \u00e8 staccato' : 'non raggiungibile'}`;
+    return o.detached
+      ? t('presence.peerDetached', { ours, who })
+      : t('presence.peerUnreachable', { ours, who });
   }
-  const come = o.smontato ? 'in attesa (app chiusa dal telefono)' : 'in attesa';
-  return o.inChannel ? `${mio} \u00b7 ${chi} ${come}` : 'In attesa tutti e due';
+  if (!o.inChannel) return t('presence.bothWaiting');
+  return o.tornDown
+    ? t('presence.peerWaitingTornDown', { ours, who })
+    : t('presence.peerWaiting', { ours, who });
 }
 
-const log = (...args: any[]) => console.log('[duetto-presenza]', ...args);
+const log = (...args: any[]) => console.log('[duetto-presence]', ...args);
 
-/** Attiva l'ascolto, se c'è una coppia configurata. */
+/** Starts listening, if a pair has been set up. */
 export async function startListening(): Promise<boolean> {
-  if (sig) return true;
-  if (interfaccia) {
-    log('l\'app ha gia\' la sua connessione: non ne apro un\'altra');
+  if (signaling) return true;
+  if (uiInCharge) {
+    log('the app already has its own connection: not opening another');
     return false;
   }
 
   const cfg = await loadConfig();
   if (!isPaired(cfg) || !isServerConfigured(cfg)) {
-    log('nessuna coppia configurata: non c\'e' + ' nulla da ascoltare');
+    log('no pair set up: there is nothing to listen for');
     return false;
   }
 
   const pair = cfg.pair!;
-  log('ascolto avviato');
+  log('listening');
 
   /**
-   * Su quale collegamento arrivano gli avvisi.
+   * Which connection the alerts arrive on.
    *
-   * Con più collegamenti configurati, "ti aspettano nel canale" non dice
-   * abbastanza: ti aspetta uno solo dei due o tre che conosci. Con un
-   * collegamento solo non c'è niente da distinguere.
+   * With more than one connection set up, "they are waiting for you in
+   * the channel" does not say enough: only one of the two or three you
+   * know is waiting. With a single connection there is nothing to tell
+   * apart.
    *
-   * Vale per tutte le notifiche, compresa quella fissa: il nome va in
-   * testa al testo, in corsivo, e lo compone Android.
+   * It goes for every notification, the standing one included: the name
+   * goes in front of the text, in italics, and Android puts it there.
    */
-  const nome0 = cfg.pairs.length > 1 ? nomeCoppia(pair) || '' : '';
+  const connectionName = cfg.pairs.length > 1 ? nomeCoppia(pair) || '' : '';
 
   /**
-   * Lo stato dell'altro, per la sola notifica.
+   * How the other side is doing, for the notification alone.
    *
-   * Qui non si chiede niente a nessuno: dopo un riavvio del telefono
-   * nessuno sta guardando uno schermo, e svegliare la radio ogni minuto
-   * per aggiornare una riga che nessuno legge sarebbe il contrario di
-   * quello che questa parte dell'app cerca di fare. Si ascolta quello
-   * che il server manda da sé.
+   * Nothing is asked of anybody here: after a reboot nobody is looking
+   * at a screen, and waking the radio every minute to refresh a line
+   * nobody reads would be the opposite of what this part of the app is
+   * for. We listen to what the server sends of its own accord.
    */
-  let presente = false;
-  let attivo = false;
-  let staccato = false;
-  let nome = pair.peerName || '';
-  const aggiorna = () => {
-    Foreground.setText(testoPresenza({
-      inChannel: false, peerActive: attivo, peerPresent: presente, nome,
-      staccato,
-    }), nome0).catch(() => { /* noop */ });
-    // Un avviso vecchio è peggio di nessun avviso: "ti aspetta nel
-    // canale" resta vero solo finché ci sta davvero.
-    if (!attivo) Foreground.clearNotification().catch(() => { /* noop */ });
+  let present = false;
+  let active = false;
+  let detached = false;
+  let name = pair.peerName || '';
+
+  const refresh = () => {
+    Foreground.setText(presenceLine({
+      inChannel: false, peerActive: active, peerPresent: present, name, detached,
+    }), connectionName).catch(() => { /* noop */ });
+    // A stale alert is worse than no alert: "waiting for you in the
+    // channel" is only true while they are actually in there.
+    if (!active) Foreground.clearNotification().catch(() => { /* noop */ });
   };
 
-  sig = new Signaling(
+  signaling = new Signaling(
     {
       serverUrl: cfg.serverUrl.trim(),
       room: pair.id,
-      displayName: cfg.displayName || 'Qualcuno',
+      displayName: cfg.displayName || NO_NAME[0],
       key: pair.key,
       side: pair.side,
       mode: 'listening',
     },
     {
       onJoined: ({ peerPresent, peerActive, peerName }) => {
-        // "Non sono uscito io": si dice una volta sola, appena si è
-        // collegati, e solo se c'è qualcuno che possa sentirlo.
-        if (smontata && peerPresent) {
-          smontata = false;
-          sig?.sendSignal({ kind: 'smontata' });
+        // "I did not leave": said once, as soon as we are connected, and
+        // only if there is somebody there to hear it.
+        if (tornDown && peerPresent) {
+          tornDown = false;
+          signaling?.sendSignal({ kind: 'tornDown' });
         }
-        presente = peerPresent;
-        if (peerPresent) staccato = false;
-        attivo = peerActive;
-        if (peerName) nome = peerName;
-        aggiorna();
+        present = peerPresent;
+        if (peerPresent) detached = false;
+        active = peerActive;
+        if (peerName) name = peerName;
+        refresh();
       },
-      onPeerJoined: (name, mode) => {
-        presente = true;
-        staccato = false;
-        attivo = mode === 'active';
-        if (name) nome = name;
-        aggiorna();
+      onPeerJoined: (peerName, mode) => {
+        present = true;
+        detached = false;
+        active = mode === 'active';
+        if (peerName) name = peerName;
+        refresh();
       },
-      onPeerLeft: (motivo) => {
-        presente = false;
-        attivo = false;
-        staccato = motivo === 'bye';
-        aggiorna();
+      onPeerLeft: (why) => {
+        present = false;
+        active = false;
+        detached = why === 'bye';
+        refresh();
       },
-      onPeerMode: (mode, name) => {
-        presente = true;
-        attivo = mode === 'active';
-        if (name) nome = name;
-        aggiorna();
+      onPeerMode: (mode, peerName) => {
+        present = true;
+        active = mode === 'active';
+        if (peerName) name = peerName;
+        refresh();
       },
       /**
-       * Anche senza interfaccia si raccoglie quello che l'altro manda.
+       * Even with no interface, what the other side sends is kept.
        *
-       * Senza questo, un diario spedito a un telefono che sta ascoltando
-       * senza app aperta - dopo un riavvio, o dopo che il sistema ci ha
-       * uccisi - arrivava a un JavaScript che non lo guardava, e chi
-       * l'aveva mandato aveva gia' segnato quelle righe come spedite:
-       * perse per sempre. Sono proprio le righe che raccontano perche'
-       * quel telefono era morto.
+       * Without this, a journal sent to a phone that is listening with
+       * no app open - after a reboot, or after the system killed us -
+       * reached a JavaScript that was not looking at it, while the
+       * sender had already marked those lines as sent: lost for good.
+       * And they are exactly the lines that tell why that phone died.
        */
       onSignal: (msg) => {
-        if (msg.kind === 'diario') {
-          Diario.aggiungiAltro(String(msg.testo ?? ''), chiaveCoppia(pair))
+        if (msg.kind === 'journal') {
+          Diario.aggiungiAltro(String(msg.text ?? ''), chiaveCoppia(pair))
             .catch(() => { /* noop */ });
           return;
         }
-        if (msg.kind === 'morte') {
+        if (msg.kind === 'death') {
           Foreground.nota(
-            nome0,
-            fraseMorte(
-              Number(msg.quando), String(msg.causa), nome, Number(msg.tornato) || 0,
+            connectionName,
+            deathStory(
+              Number(msg.when), String(msg.cause), name, Number(msg.back) || 0,
             ),
           ).catch(() => { /* noop */ });
         }
       },
 
-      onNotify: (reason, name) => {
-        const named = name && name !== 'Qualcuno';
+      onNotify: (reason, peerName) => {
+        const who = peerName;
         const text = reason === 'knock'
-          ? (named ? `${name} ti aspetta nel canale` : 'Ti aspettano nel canale')
-          : (named ? `${name} è nel canale` : 'C’è qualcuno nel canale');
-        log('avviso:', text);
-        Foreground.notify(nome0, text).catch(() => { /* noop */ });
+          ? (named(who) ? t('alert.knockFrom', { who }) : t('alert.knock'))
+          : (named(who) ? t('alert.joinedNamed', { who }) : t('alert.joined'));
+        log('alert:', text);
+        Foreground.notify(connectionName, text).catch(() => { /* noop */ });
       },
     },
   );
-  sig.connect();
+  signaling.connect();
   return true;
 }
 
-/** Cede il posto: l'interfaccia si occupera' della connessione. */
+/** Steps aside: the interface will take the connection over. */
 export function stopListening() {
-  if (!sig) return;
-  log('ascolto ceduto all\'app');
-  // Senza saluto: non ce ne stiamo andando, stiamo passando la mano
-  // all'app che si è appena aperta. Salutare qui faceva scrivere
-  // all'altro "si è staccato" ogni volta che questo telefono veniva
-  // ripreso in mano.
-  sig.close(false);
-  sig = null;
+  if (!signaling) return;
+  log('connection handed over to the app');
+  // No goodbye: we are not leaving, we are handing over to the app that
+  // has just opened. Saying goodbye here made the other side write
+  // "they disconnected" every time this phone was picked up.
+  signaling.close(false);
+  signaling = null;
 }
 
 export function isListening(): boolean {
-  return sig !== null;
+  return signaling !== null;
 }
 
 /**
- * Il compito eseguito dal servizio senza interfaccia.
+ * The task the headless service runs.
  *
- * Di proposito non si conclude mai: finché vive, vive la connessione.
- * Se l'app viene aperta, `stopListening` la chiude e il compito resta
- * inerte in attesa che l'app la ceda di nuovo.
+ * It never finishes, on purpose: as long as it lives, the connection
+ * lives. If the app opens, `stopListening` closes the connection and the
+ * task sits idle until the app hands it back.
  */
 export async function presenceTask(): Promise<void> {
-  // Se l'app è già in primo piano, è lei ad avere il comando.
+  // If the app is already in the foreground, it is the one in charge.
   if (AppState.currentState === 'active') {
-    log('app gia\' aperta: lascio fare a lei');
+    log('app already open: leaving it to it');
   } else {
     await startListening();
   }
-  return new Promise<void>(() => { /* mai risolto: deve restare vivo */ });
+  return new Promise<void>(() => { /* never resolved: it has to stay alive */ });
 }

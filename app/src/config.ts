@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { LanguageChoice } from './i18n';
 
 /**
  * Configurazione dell'app.
@@ -83,6 +84,8 @@ export type ImpostazioniCoppia = {
   avvisoSuono: 'predefinito' | 'nessuno' | 'scelto';
   avvisoSuonoUri: string;
   avvisoSuonoNome: string;
+  /** in che lingua parla l'app: 'auto' segue il telefono */
+  language: LanguageChoice;
   /** da dove esce il suono: 'SPEAKER_PHONE', 'EARPIECE', ... */
   uscitaAudio: string;
   /** quanto alzare la voce dell'altro OLTRE il massimo del telefono, per uscita */
@@ -95,7 +98,7 @@ export type ImpostazioniCoppia = {
 const CAMPI_COPPIA: (keyof ImpostazioniCoppia)[] = [
   'displayName', 'videoQuality', 'audioMigliore', 'mostraDiagnostica', 'comandi',
   'videoCodec', 'avvisoVibra', 'avvisoSuono', 'avvisoSuonoUri', 'avvisoSuonoNome',
-  'uscitaAudio', 'guadagni', 'cameraFrontale',
+  'uscitaAudio', 'guadagni', 'cameraFrontale', 'language',
 ];
 
 /** Le impostazioni in uso, prese dalla configurazione. */
@@ -243,6 +246,16 @@ export type DuoConfig = {
   uscitaAudio: string;
 
   /**
+   * In che lingua parla l'app.
+   *
+   * Sta fra le impostazioni del collegamento come le altre: con una
+   * persona ci si scrive in inglese, con un'altra in italiano, e lo
+   * stesso telefono può fare tutte e due le cose. 'auto' vuol dire
+   * seguire la lingua del telefono.
+   */
+  language: LanguageChoice;
+
+  /**
    * Quanto si alza la voce dell'altro OLTRE il massimo del telefono.
    *
    * Uno per ogni uscita, perché il livello giusto all'orecchio non è
@@ -298,6 +311,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   avvisoSuonoUri: '',
   avvisoSuonoNome: '',
   uscitaAudio: 'SPEAKER_PHONE',
+  language: 'auto',
   guadagni: {},
   guadagniAzzerati: false,
   cameraFrontale: true,

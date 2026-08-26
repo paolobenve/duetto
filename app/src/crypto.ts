@@ -2,20 +2,21 @@ import nacl from 'tweetnacl';
 import { decodeUTF8, encodeUTF8, encodeBase64, decodeBase64 } from 'tweetnacl-util';
 
 /**
- * Cifratura simmetrica autenticata dei messaggi di signaling.
+ * Authenticated symmetric encryption of the signalling messages.
  *
- * Usiamo NaCl secretbox (XSalsa20-Poly1305):
- *  - chiave a 32 byte, quella stabilita durante l'accoppiamento
- *  - nonce casuale a 24 byte per ogni messaggio
- *  - il ciphertext è anche AUTENTICATO: se il server (o chiunque)
- *    modifica un solo byte, la decifratura fallisce.
+ * NaCl secretbox (XSalsa20-Poly1305):
+ *  - a 32-byte key, the one settled during pairing;
+ *  - a random 24-byte nonce for every message;
+ *  - the ciphertext is AUTHENTICATED as well: if the server - or
+ *    anybody else - changes a single byte, decryption fails.
  *
- * Così il server è un semplice inoltratore di buste opache e non può
- * fare man-in-the-middle sui parametri WebRTC (fingerprint DTLS).
+ * This way the server is a plain forwarder of opaque envelopes, and
+ * cannot sit in the middle of the WebRTC parameters (the DTLS
+ * fingerprints).
  *
- * La chiave NON deriva da una passphrase digitata: nasce dallo scambio
- * Diffie-Hellman fatto all'accoppiamento (vedi pairing.ts), quindi è
- * casuale a 256 bit e non attaccabile per tentativi.
+ * The key does NOT come from a typed passphrase: it comes out of the
+ * Diffie-Hellman exchange done while pairing (see pairing.ts), so it is
+ * 256 random bits and cannot be guessed by trying.
  */
 export class SignalCrypto {
   private readonly key: Uint8Array;
@@ -23,12 +24,12 @@ export class SignalCrypto {
   constructor(key: Uint8Array | string) {
     const k = typeof key === 'string' ? decodeBase64(key) : key;
     if (k.length !== nacl.secretbox.keyLength) {
-      throw new Error(`chiave di lunghezza errata: ${k.length}`);
+      throw new Error(`wrong key length: ${k.length}`);
     }
     this.key = k;
   }
 
-  /** Cifra un oggetto JSON -> stringa base64 (nonce || ciphertext). */
+  /** Encrypts a JSON object -> base64 string (nonce || ciphertext). */
   seal(obj: unknown): string {
     const plain = decodeUTF8(JSON.stringify(obj));
     const nonce = nacl.randomBytes(nacl.secretbox.nonceLength);
@@ -39,7 +40,7 @@ export class SignalCrypto {
     return encodeBase64(out);
   }
 
-  /** Decifra base64 -> oggetto JSON. Null se l'autenticazione fallisce. */
+  /** Decrypts base64 -> JSON object. Null when authentication fails. */
   open<T = unknown>(b64: string): T | null {
     try {
       const data = decodeBase64(b64);

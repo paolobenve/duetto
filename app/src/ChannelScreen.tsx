@@ -8,7 +8,7 @@ import { MediaStream } from 'react-native-webrtc';
 import { Diario, Prossimita } from 'duetto-platform';
 import type { PresenceStatus } from './signaling';
 import VideoStage from './VideoStage';
-import { AudioRoute, ROUTE_LABEL } from './audioRoute';
+import { AudioRoute, routeLabel } from './audioRoute';
 import { VERSION_LABEL } from './version';
 import ChangelogModal from './ChangelogModal';
 import type { Avatar } from './avatar';
@@ -1232,7 +1232,7 @@ export default function ChannelScreen(props: Props) {
                 onPress={() => { onSelectRoute(r); setRouteMenu(false); }}>
                 {React.createElement(ICONA_USCITA[r], { size: 22, color: '#e6ebf1' })}
                 <Text style={[styles.sheetLabel, r === audioRoute && styles.sheetLabelOn]}>
-                  {ROUTE_LABEL[r]}
+                  {routeLabel(r)}
                 </Text>
                 {r === audioRoute ? <Text style={styles.sheetCheck}>{'\u2713'}</Text> : null}
               </TouchableOpacity>

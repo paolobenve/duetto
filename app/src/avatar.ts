@@ -2,25 +2,26 @@ import nacl from 'tweetnacl';
 import { decodeUTF8 } from 'tweetnacl-util';
 
 /**
- * Un'immagine per chi non ha un nome.
+ * A picture for somebody who has no name yet.
  *
- * Senza, restava un punto interrogativo, che sembra un errore più che
- * un segnaposto.
+ * Without one there was a question mark, which looks like an error
+ * rather than a placeholder.
  *
- * NON è casuale: nasce dall'identificativo della coppia e dal lato, quindi
- *  - resta sempre la stessa, e diventa riconoscibile;
- *  - i due telefoni ne hanno una diversa l'uno dall'altro;
- *  - e ognuno vede per l'altro esattamente ciò che l'altro vede per sé,
- *    perché entrambi partono dagli stessi dati.
+ * It is NOT random: it comes from the pair's identifier and from the
+ * side, so that
+ *  - it always stays the same, and becomes recognisable;
+ *  - the two phones get a different one from each other;
+ *  - and each of them sees, for the other person, exactly what that
+ *    person sees for themselves, because both start from the same data.
  */
 
-/** Toni scelti per stare bene sul fondo scuro. */
+/** Shades picked to sit well on a dark background. */
 const COLORS = [
   '#c9556b', '#c97a2b', '#b39320', '#5e9e3a', '#2f9e77',
   '#2b8fb3', '#3f77d0', '#7a5fd0', '#b04fb0', '#8a6a4a',
 ];
 
-/** Simboli neutri e distinguibili anche in piccolo. */
+/** Symbols that stay neutral and legible even when small. */
 const SYMBOLS = [
   '\u{1F98A}', '\u{1F422}', '\u{1F989}', '\u{1F98B}', '\u{1F41D}',
   '\u{1F42C}', '\u{1F994}', '\u{1F99C}', '\u{1F438}', '\u{1F980}',
@@ -38,7 +39,7 @@ export function avatarFor(seed: string): Avatar {
   };
 }
 
-/** L'immagine dell'ALTRO: stesso identificativo, lato opposto al nostro. */
+/** The OTHER side's picture: same identifier, the side that is not ours. */
 export function peerAvatar(pairId: string, mySide: 'A' | 'B'): Avatar {
   return avatarFor(`${pairId}|${mySide === 'A' ? 'B' : 'A'}`);
 }

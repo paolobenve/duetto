@@ -630,8 +630,8 @@ export class ChannelSession {
         video: msg.video,
         aspect: msg.aspect,
         hwVp9: this.peerVp9,
-        uscita: msg.uscita,
-        versione: msg.versione,
+        uscita: msg.output,
+        versione: msg.version,
         camera: msg.camera,
         volume: msg.volume,
       });
@@ -1416,8 +1416,8 @@ export class ChannelSession {
     this.signaling.sendSignal({
       kind: 'state',
       audio: this.isAudioEnabled(),
-      uscita: this.uscitaLocale,
-      versione: VERSION,
+      output: this.uscitaLocale,
+      version: VERSION,
       camera: this.isCameraFrontale() ? 'frontale' : 'posteriore',
       volume: this.livelloUdito,
       video: this.isVideoEnabled(),

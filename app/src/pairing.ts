@@ -2,56 +2,58 @@ import nacl from 'tweetnacl';
 import { decodeUTF8, encodeBase64, decodeBase64 } from 'tweetnacl-util';
 
 /**
- * Accoppiamento fra i due telefoni.
+ * Pairing the two phones.
  *
- * Chi crea la coppia riceve un CODICE NUMERICO di 8 cifre. L'altro lo
- * digita. Da quel momento i due sono accoppiati per sempre e il codice
- * non serve più.
+ * Whoever creates the pair gets an eight-digit NUMERIC CODE. The other
+ * one types it in. From that moment the two are paired for good and the
+ * code is of no further use.
  *
- * Il codice NON viene mai inviato al server: al server arriva solo
- * `pairId`, un'impronta del codice, che serve a farvi incontrare nella
- * stessa stanza.
+ * The code is NEVER sent to the server: all the server sees is
+ * `pairId`, a fingerprint of the code, which is what brings the two of
+ * you into the same room.
  *
- * La chiave non si ricava dal codice: i due telefoni fanno uno scambio
- * Diffie-Hellman (X25519) e mescolano il codice nel risultato. Quindi:
- *  - chi ascolta non può calcolare la chiave (non ha i segreti privati);
- *  - chi volesse mettersi in mezzo dovrebbe conoscere il codice, e la
- *    verifica finale lo smaschererebbe;
- *  - finito l'accoppiamento la chiave è a 256 bit e la debolezza del
- *    codice non conta più nulla.
+ * The key is not derived from the code: the two phones do a
+ * Diffie-Hellman exchange (X25519) and stir the code into the result.
+ * So:
+ *  - a listener cannot work out the key (they do not have the private
+ *    halves);
+ *  - anybody wanting to sit in the middle would have to know the code,
+ *    and the final check would give them away;
+ *  - once pairing is done the key is 256 bits and the weakness of the
+ *    code no longer matters at all.
  *
- * COSTO DEL CALCOLO DI pairId
- * Otto cifre sono solo 100 milioni di combinazioni: chi vede pairId
- * potrebbe provarle tutte e risalire al codice. Rendere il calcolo lento
- * alza quel costo, ma lo alza anche per noi, e un'attesa di dieci secondi
- * a ogni accoppiamento non è accettabile.
+ * THE COST OF COMPUTING pairId
+ * Eight digits are only a hundred million combinations: whoever sees
+ * pairId could try them all and get back to the code. Making the
+ * computation slow raises that cost, but it raises ours too, and ten
+ * seconds of waiting at every pairing is not acceptable.
  *
- * Il compromesso scelto: poche migliaia di giri, circa un terzo di
- * secondo sul telefono, che moltiplicano comunque per qualche migliaio il
- * costo di chi tenta. La difesa contro chi prova codici a tappeto sta
- * altrove, ed è più efficace: il server limita il numero di tentativi
- * nel tempo, e l'app impone un'attesa prima di riprovare.
+ * The compromise: a few thousand rounds, about a third of a second on
+ * the phone, which still multiply the attacker's cost by some
+ * thousands. The defence against somebody trying codes wholesale lives
+ * elsewhere, and works better: the server limits how many attempts fit
+ * in a given time, and the app makes you wait before trying again.
  *
- * Resta un limite dichiarato: un server ostile, che vede pairId, potrebbe
- * risalire al codice con abbastanza potenza di calcolo e inserirsi
- * DURANTE l'accoppiamento. Dopo, la chiave è a 256 bit e non serve più a
- * nulla. Se questo dovesse preoccupare, la contromisura è allungare il
- * codice, non rallentare il calcolo.
+ * One limit stays, and is stated rather than hidden: a hostile server,
+ * which sees pairId, could get back to the code with enough computing
+ * power and slip in DURING pairing. Afterwards the key is 256 bits and
+ * the code is worthless. If that ever became a worry, the answer is a
+ * longer code, not a slower computation.
  */
 
 const CODE_DIGITS = 8;
 
-/** Quanto rendere costoso risalire al codice da pairId (vedi sopra). */
+/** How costly it should be to get back to the code from pairId (see above). */
 const KDF_ROUNDS = 6_000;
-/** Ogni quanti giri cedere il controllo, per non congelare l'interfaccia. */
+/** How often to yield, so the interface does not freeze. */
 const KDF_CHUNK = 1_000;
 
-/** Genera un codice numerico, uniforme (niente modulo sbilanciato). */
+/** Makes a numeric code, evenly spread (no lopsided modulo). */
 export function generateCode(): string {
   let out = '';
   while (out.length < CODE_DIGITS) {
     for (const b of nacl.randomBytes(CODE_DIGITS)) {
-      // Scarta 250-255: userebbero le cifre 0-5 più spesso delle altre.
+      // Throw 250-255 away: they would use the digits 0-5 more often.
       if (b >= 250) continue;
       out += String(b % 10);
       if (out.length === CODE_DIGITS) break;
@@ -60,7 +62,7 @@ export function generateCode(): string {
   return out;
 }
 
-/** Tiene solo le cifre di quello che l'utente ha digitato. */
+/** Keeps only the digits of whatever was typed. */
 export function normalizeCode(raw: string): string {
   return (raw || '').replace(/\D/g, '').slice(0, CODE_DIGITS);
 }
@@ -69,7 +71,7 @@ export function isCodeComplete(raw: string): boolean {
   return normalizeCode(raw).length === CODE_DIGITS;
 }
 
-/** Come mostrarlo: "12345678" -> "1234 5678", più facile da dettare. */
+/** How to show it: "12345678" -> "1234 5678", easier to read out. */
 export function formatCode(raw: string): string {
   const c = normalizeCode(raw);
   return c.length > 4 ? `${c.slice(0, 4)} ${c.slice(4)}` : c;
@@ -87,23 +89,24 @@ const sha512 = (...parts: Uint8Array[]) => nacl.hash(concat(...parts));
 const label = (s: string) => decodeUTF8(s);
 
 /**
- * Identificativo della coppia: l'unica cosa che il server vede.
- * Il calcolo è reso un po' costoso di proposito (vedi sopra).
- * Asincrono per non bloccare l'interfaccia mentre gira.
+ * The pair's identifier: the only thing the server gets to see.
+ *
+ * The computation is made somewhat costly on purpose (see above), and
+ * is asynchronous so the interface does not freeze while it runs.
  */
 export async function pairIdFromCode(code: string): Promise<string> {
   const clean = normalizeCode(code);
   let h = sha512(label('duetto-pair-id|'), label(clean));
   for (let i = 0; i < KDF_ROUNDS; i++) {
     h = nacl.hash(h);
-    // Ogni tanto restituiamo il controllo al ciclo di eventi, così
-    // l'indicatore di attesa continua ad animarsi.
+    // Every so often hand control back to the event loop, so the
+    // spinner keeps turning.
     if (i % KDF_CHUNK === 0) await new Promise<void>((r) => setTimeout(() => r(), 0));
   }
   return encodeBase64(h.slice(0, 16)).replace(/[+/=]/g, '');
 }
 
-// --- Scambio di chiavi ------------------------------------------------------
+// --- Key exchange -----------------------------------------------------------
 
 export type PairKeys = {
   publicKey: Uint8Array;
@@ -116,9 +119,10 @@ export function newKeyPair(): PairKeys {
 }
 
 /**
- * Chiave condivisa = KDF(segreto Diffie-Hellman, codice).
- * Qui non serve rallentare nulla: il segreto Diffie-Hellman è già
- * casuale a 256 bit, e senza di quello il codice non basta.
+ * Shared key = KDF(Diffie-Hellman secret, code).
+ *
+ * Nothing needs slowing down here: the Diffie-Hellman secret is already
+ * 256 random bits, and without it the code is not enough.
  */
 export function deriveSharedKey(
   mySecret: Uint8Array,
@@ -131,9 +135,9 @@ export function deriveSharedKey(
 }
 
 /**
- * Prova di possesso della chiave, diversa per i due lati così nessuno
- * può rimandare indietro quella dell'altro. Se non combacia, il codice
- * digitato è sbagliato (o qualcuno sta provando a intromettersi).
+ * Proof that the key is held, different for the two sides so that
+ * neither can echo the other's back. If it does not match, the typed
+ * code is wrong - or somebody is trying to get in between.
  */
 export function confirmationFor(key: Uint8Array, side: 'A' | 'B'): string {
   return encodeBase64(sha512(label(`duetto-confirm|${side}|`), key).slice(0, 16));

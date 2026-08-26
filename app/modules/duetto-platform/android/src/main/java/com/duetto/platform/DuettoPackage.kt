@@ -23,6 +23,7 @@ class DuettoPackage : ReactPackage {
         ReteModule(reactContext),
         BattitoModule(reactContext),
         ProssimitaModule(reactContext),
+        LocaleModule(reactContext),
         CodecsModule(reactContext),
         AudioModule(reactContext),
         AvvisiModule(reactContext),

@@ -7,6 +7,7 @@ const NativeVisibility = NativeModules.DuettoVisibility;
 const NativeRete = NativeModules.DuettoRete;
 const NativeBattito = NativeModules.DuettoBattito;
 const NativeProssimita = NativeModules.DuettoProssimita;
+const NativeLocale = NativeModules.DuettoLocale;
 const NativeCodecs = NativeModules.DuettoCodecs;
 const NativeAudio = NativeModules.DuettoAudio;
 const NativeAvvisi = NativeModules.DuettoAvvisi;
@@ -268,6 +269,19 @@ export const Audio = isAndroid && NativeAudio
  * finestrella è ben visibile. Qui contano onStart/onStop, che in PiP non
  * scattano.
  */
+/**
+ * La lingua a cui è impostato il telefono, in due lettere.
+ *
+ * Arriva già pronta all'avvio, senza aspettare una risposta: la prima
+ * schermata deve poter essere scritta subito. Vedi LocaleModule.
+ */
+export const Locale = isAndroid && NativeLocale
+  ? {
+      language: String(NativeLocale.language || 'en').toLowerCase(),
+      current: () => call(NativeLocale, 'current'),
+    }
+  : { language: 'en', current: () => Promise.resolve('en') };
+
 /**
  * Quando qualcosa copre lo schermo: una tasca, una cover chiusa.
  *
