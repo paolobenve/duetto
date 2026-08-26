@@ -183,6 +183,8 @@ class ChannelForegroundService : Service() {
         // chiamata, e il diario si riempirebbe di righe gemelle.
         if (!diarioAvviato) {
             diarioAvviato = true
+            // Prima di ogni lettura: i nomi in memoria sono cambiati.
+            Ponte.migra(applicationContext)
             Diario.quandoScrive { riprogrammaDiario() }
             // Come e' finita l'ultima volta: se il processo di prima e'
             // morto, qui si scopre perche'.

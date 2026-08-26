@@ -35,9 +35,9 @@ import android.util.Log
  */
 object Avvisi {
 
-    private const val PREFS = "duetto_avvisi"
-    private const val CHIAVE_VIBRA = "vibra"
-    private const val CHIAVE_SUONO = "suono"
+    private const val PREFS = "duetto_alerts"
+    private const val CHIAVE_VIBRA = "vibration"
+    private const val CHIAVE_SUONO = "sound"
     private const val CHIAVE_URI = "uri"
 
     private const val PREFISSO_CANALE = "duetto_alerts"

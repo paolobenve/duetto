@@ -158,7 +158,7 @@ object Notifier {
     }
 
     /** Dove teniamo l'ultimo titolo, per ritrovarlo dopo un riavvio. */
-    private const val CHIAVE_TITOLO = "titolo-notifica"
+    const val CHIAVE_TITOLO = "notification-title"
 
     /** Ricorda come si chiama il collegamento in uso. */
     fun ricordaNome(ctx: Context, titolo: String) {

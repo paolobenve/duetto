@@ -16,6 +16,8 @@ import androidx.core.content.ContextCompat
 class BootReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
+        // I nomi in memoria sono cambiati: si passa di qui per primi.
+        Ponte.migra(context)
         val action = intent.action ?: return
         if (action != Intent.ACTION_BOOT_COMPLETED &&
             action != Intent.ACTION_LOCKED_BOOT_COMPLETED &&
@@ -50,7 +52,19 @@ class BootReceiver : BroadcastReceiver() {
     }
 
     companion object {
-        const val PREFS = "duetto_avvio"
-        const val ULTIMO_AVVIO = "ultimo_avvio_automatico"
+        const val PREFS = "duetto_boot"
+        const val ULTIMO_AVVIO = "last_auto_start"
+
+        /**
+         * I nomi di prima, in italiano: si leggono una volta e si
+         * riscrivono con i nuovi.
+         *
+         * Il progetto passa all'inglese per essere pubblicato, e con il
+         * resto cambiano anche i nomi con cui le cose stanno scritte
+         * nella memoria del telefono. Chi ha gia' l'app non deve
+         * accorgersene. Questo ponte si toglie alla prossima versione.
+         */
+        const val PREFS_VECCHIE = "duetto_avvio"
+        const val ULTIMO_AVVIO_VECCHIO = "ultimo_avvio_automatico"
     }
 }

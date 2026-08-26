@@ -45,12 +45,12 @@ import java.util.Locale
 object Diario {
 
     private const val TAG = "Duetto"
-    private const val CARTELLA = "diario"
-    private const val MIO = "mio.log"
-    private const val ALTRO = "altro.log"
+    const val CARTELLA = "journal"
+    const val MIO = "mine.log"
+    const val ALTRO = "other.log"
 
     /** L'ultima morte gia' scritta nel diario: le altre sono vecchie. */
-    private const val ULTIMA_MORTE = "ultima_morte_registrata"
+    const val ULTIMA_MORTE = "last_recorded_death"
 
     /** Oltre questa taglia il file viene ruotato: uno indietro e basta. */
     private const val TAGLIA_MAX = 512L * 1024L
@@ -133,6 +133,10 @@ object Diario {
     }
 
     private fun cartella(ctx: Context): File? {
+        // Prima di toccare qualunque file: i nomi sono cambiati, e la
+        // prima riga scritta creerebbe la cartella nuova sotto il naso
+        // del ponte. Costa un booleano dopo la prima volta.
+        Ponte.migra(ctx)
         val base = ctx.getExternalFilesDir(null) ?: ctx.filesDir
         val dir = File(base, CARTELLA)
         return if (dir.exists() || dir.mkdirs()) dir else null
@@ -158,7 +162,7 @@ object Diario {
             .joinToString("")
             .trim('-')
             .take(40)
-        return File(cartella, if (pulito.isEmpty()) ALTRO else "altro-$pulito.log")
+        return File(cartella, if (pulito.isEmpty()) ALTRO else "other-$pulito.log")
     }
 
     /** Percentuale, carica residua in microampere-ora, corrente istantanea. */

@@ -71,11 +71,41 @@ const SCAMBIO_DIARIO_MS = 5 * 60 * 1000;
  * senza, il primo scambio dopo l'aggiornamento rimanderebbe da capo
  * mesi di righe che l'altro ha già.
  */
-const CHIAVE_DIARIO_INVIATE = 'duetto.diario.inviate';
-const chiaveInviate = (id: string) => `${CHIAVE_DIARIO_INVIATE}.${id}`;
+const CHIAVE_INVIATE = 'duetto.journal.sent';
+const chiaveInviate = (id: string) => `${CHIAVE_INVIATE}.${id}`;
 
 /** L'ultima morte già raccontata all'altro telefono: non si ripete. */
-const CHIAVE_MORTE_RACCONTATA = 'duetto.morte.raccontata';
+const CHIAVE_MORTE_RACCONTATA = 'duetto.death.told';
+
+/**
+ * I nomi di prima, in italiano, letti una volta sola.
+ *
+ * Il progetto sta passando all'inglese per essere pubblicato, e i nomi
+ * con cui le cose sono scritte nella memoria del telefono cambiano con
+ * il resto. Chi ha già l'app non deve accorgersene: la prima lettura
+ * cerca il nome nuovo, e se non c'è prende quello vecchio e lo riscrive
+ * con il nome nuovo. Questo ponte si toglie alla prossima versione.
+ */
+const VECCHIE = {
+  inviate: 'duetto.diario.inviate',
+  morte: 'duetto.morte.raccontata',
+};
+
+/**
+ * Legge una cosa dalla memoria, accettando anche il nome vecchio.
+ *
+ * Trovandola con il nome vecchio la riscrive subito con quello nuovo e
+ * cancella il vecchio: al secondo avvio il ponte non serve più.
+ */
+async function leggiConPonte(nuova: string, vecchia: string): Promise<string | null> {
+  const suo = await AsyncStorage.getItem(nuova);
+  if (suo !== null) return suo;
+  const prima = await AsyncStorage.getItem(vecchia);
+  if (prima === null) return null;
+  await AsyncStorage.setItem(nuova, prima).catch(() => { /* noop */ });
+  await AsyncStorage.removeItem(vecchia).catch(() => { /* noop */ });
+  return prima;
+}
 
 /**
  * Quanto alzare la voce dell'altro quando il telefono non ubbidisce.
@@ -1302,7 +1332,7 @@ export default function App() {
       // cui un'app viene sostituita, e annunciarlo sarebbe un allarme
       // per una cosa voluta.
       if (/installPackage|PackageUpdate/i.test(m.descrizione || '')) return;
-      const grezzo = await AsyncStorage.getItem(CHIAVE_MORTE_RACCONTATA);
+      const grezzo = await leggiConPonte(CHIAVE_MORTE_RACCONTATA, VECCHIE.morte);
       if (Number(grezzo) >= m.quando) return;
       // L'ora del ritorno è adesso: l'app sta ripartendo proprio ora, e
       // questo è l'unico telefono che possa saperla.
@@ -1343,9 +1373,12 @@ export default function App() {
     const chiave = chiaveInviate(cfg?.pair?.id ?? '');
     try {
       const righe = await Diario.righe();
-      const suo = await AsyncStorage.getItem(chiave);
+      const suo = await leggiConPonte(chiave, `${VECCHIE.inviate}.${cfg?.pair?.id ?? ''}`);
+      // La chiave unica di prima fa da punto di partenza per chi c'era
+      // già: senza, il primo scambio dopo l'aggiornamento rimanderebbe
+      // da capo mesi di righe che l'altro ha già.
       const vecchio = suo === null
-        ? await AsyncStorage.getItem(CHIAVE_DIARIO_INVIATE)
+        ? await AsyncStorage.getItem(VECCHIE.inviate)
         : null;
       let inviate = Number(suo ?? vecchio) || 0;
       if (inviate > righe) inviate = 0;
