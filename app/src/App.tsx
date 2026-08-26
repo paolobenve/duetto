@@ -27,230 +27,209 @@ import SettingsScreen from './SettingsScreen';
 import SetupScreen from './SetupScreen';
 import PairingScreen from './PairingScreen';
 import ChannelScreen from './ChannelScreen';
-import { caricaPosizionePip } from './VideoStage';
+import { loadPipPosition } from './VideoStage';
 import { useAudioRoute } from './audioRoute';
 import {
   stopListening, presenceLine, deathStory, interfaceInCharge,
 } from './presence';
 import { avatarFor, peerAvatar } from './avatar';
 
-// Nessuna schermata intermedia: o si configura, o ci si accoppia, o si è
-// nel canale. Aprire l'app - da icona o da notifica - significa entrarci.
+// No screen in between: either you are setting things up, or pairing,
+// or in the channel. Opening the app - from the icon or from a
+// notification - means going in.
 type Screen = 'loading' | 'settings' | 'pairing' | 'setup' | 'channel';
 
 /**
- * Quanto si tiene il posto all'altro quando gli cade la rete.
+ * How long the other person's seat is kept when their network drops.
  *
- * Sparire e ricomparire in pochi secondi è il caso normale di un cambio
- * di rete: smontargli il posto addosso vuol dire rimontarlo un attimo
- * dopo, e chi guarda vede il proprio video salire a schermo intero e
- * tornare indietro per niente. Se invece è uscito lui, non si aspetta
- * nulla: quello lo dice il server, che distingue il saluto dalla caduta.
+ * Disappearing and coming back within a few seconds is what a change of
+ * network normally looks like: taking their seat apart means putting it
+ * back a moment later, and whoever is watching sees their own video
+ * rise to full screen and come back down for nothing. If they left,
+ * though, nobody waits: the server says which it was, telling a
+ * goodbye from a drop.
  */
-const ATTESA_RITORNO_MS = 6000;
+const RETURN_WAIT_MS = 6000;
 
 /**
- * Ogni quanto il proprio diario dei consumi va all'altro telefono.
+ * How often our own journal goes to the other phone.
  *
- * Cinque minuti, cioè il passo con cui le righe si scrivono: ne parte
- * una alla volta, un paio di centinaia di byte. Costava poco anche a
- * ogni ora, ma un diario che arriva subito serve a capire cos'è appena
- * successo dall'altra parte - un'app sparita, per esempio - mentre uno
- * che arriva con un'ora di ritardo racconta una storia già vecchia. E
- * parte solo mentre si è collegati, cioè quando la rete è già in uso.
+ * Five minutes, which is the pace at which the lines are written: one
+ * at a time, a couple of hundred bytes. Hourly would have cost little
+ * too, but a journal that arrives at once helps to understand what has
+ * just happened over there - an app that vanished, say - while one that
+ * arrives an hour late tells an old story. And it only goes out while
+ * connected, that is, when the network is already in use.
  */
-const SCAMBIO_DIARIO_MS = 5 * 60 * 1000;
+const JOURNAL_SWAP_MS = 5 * 60 * 1000;
 
 /**
- * Quante righe di diario sono già state mandate, per collegamento.
+ * How many journal lines have already been sent, per connection.
  *
- * Il conto non può essere uno solo: con più collegamenti, le righe
- * spedite a uno risulterebbero spedite anche all'altro, che non le
- * riceverebbe mai. Ognuno ha il suo segnaposto.
- *
- * La chiave vecchia, unica, fa da punto di partenza per chi c'era già:
- * senza, il primo scambio dopo l'aggiornamento rimanderebbe da capo
- * mesi di righe che l'altro ha già.
+ * There cannot be a single count: with several connections, the lines
+ * sent to one would count as sent to the other, which would never
+ * receive them. Each has its own bookmark.
  */
-const CHIAVE_INVIATE = 'duetto.journal.sent';
-const chiaveInviate = (id: string) => `${CHIAVE_INVIATE}.${id}`;
+const SENT_KEY = 'duetto.journal.sent';
+const sentKeyFor = (id: string) => `${SENT_KEY}.${id}`;
 
-/** L'ultima morte già raccontata all'altro telefono: non si ripete. */
-const CHIAVE_MORTE_RACCONTATA = 'duetto.death.told';
+/** The last death already told to the other phone: it is not repeated. */
+const DEATH_TOLD_KEY = 'duetto.death.told';
 
 /**
- * I nomi di prima, in italiano, letti una volta sola.
+ * TEMPORARY. The names things used to be stored under, in Italian.
  *
- * Il progetto sta passando all'inglese per essere pubblicato, e i nomi
- * con cui le cose sono scritte nella memoria del telefono cambiano con
- * il resto. Chi ha già l'app non deve accorgersene: la prima lettura
- * cerca il nome nuovo, e se non c'è prende quello vecchio e lo riscrive
- * con il nome nuovo. Questo ponte si toglie alla prossima versione.
+ * The project is moving to English to be published, and the names under
+ * which things are written in the phone's memory move with the rest.
+ * Whoever already has the app must not notice: the first read looks for
+ * the new name and, failing that, takes the old one and writes it back
+ * under the new. To be REMOVED once every phone has been through here.
  */
-const VECCHIE = {
-  inviate: 'duetto.diario.inviate',
-  morte: 'duetto.morte.raccontata',
+const OLD_KEYS = {
+  sent: 'duetto.diario.inviate',
+  death: 'duetto.morte.raccontata',
 };
 
 /**
- * Legge una cosa dalla memoria, accettando anche il nome vecchio.
+ * Reads something from storage, accepting the old name as well.
  *
- * Trovandola con il nome vecchio la riscrive subito con quello nuovo e
- * cancella il vecchio: al secondo avvio il ponte non serve più.
+ * Finding it under the old name it writes it back under the new one and
+ * deletes the old: at the second start the bridge is no longer needed.
  */
-async function leggiConPonte(nuova: string, vecchia: string): Promise<string | null> {
-  const suo = await AsyncStorage.getItem(nuova);
-  if (suo !== null) return suo;
-  const prima = await AsyncStorage.getItem(vecchia);
-  if (prima === null) return null;
-  await AsyncStorage.setItem(nuova, prima).catch(() => { /* noop */ });
-  await AsyncStorage.removeItem(vecchia).catch(() => { /* noop */ });
-  return prima;
+async function readWithBridge(fresh: string, old: string): Promise<string | null> {
+  const mine = await AsyncStorage.getItem(fresh);
+  if (mine !== null) return mine;
+  const before = await AsyncStorage.getItem(old);
+  if (before === null) return null;
+  await AsyncStorage.setItem(fresh, before).catch(() => { /* noop */ });
+  await AsyncStorage.removeItem(old).catch(() => { /* noop */ });
+  return before;
 }
 
 /**
- * Quanto alzare la voce dell'altro quando il telefono non ubbidisce.
+ * How far to lift the other voice when the phone will not obey.
  *
- * Su parecchi modelli il volume di chiamata in vivavoce è inchiodato al
- * massimo dal produttore: i tasti sembrano rotti e la voce resta
- * assordante. Allora ci pensa WebRTC, moltiplicando il segnale prima
- * che esca.
+ * On plenty of models the call volume on speaker is nailed to the top
+ * by the manufacturer: the keys look broken and the voice stays
+ * deafening. WebRTC then does the work, multiplying the signal before
+ * it goes out.
  *
- * Il passo è di un quarto: dieci pressioni per dimezzare o raddoppiare,
- * che è la sensibilità di una manopola vera. Sotto un quarto non si
- * scende - a quel punto è più onesto spegnere il microfono - e sopra il
- * quadruplo non si sale, che è già oltre il punto in cui la voce
- * comincia a distorcere.
+ * The step is a quarter: ten presses to halve or to double, which is
+ * about the sensitivity of a real knob. It does not go below a quarter
+ * - past that it is more honest to mute the microphone - nor above four
+ * times, which is beyond the point where a voice starts to distort.
  */
-const GUADAGNO_PASSO = 0.25;
+const GAIN_STEP = 0.25;
 /**
- * Il nostro moltiplicatore lavora ai due estremi.
+ * Our multiplier works at the two extremes.
  *
- * In mezzo comanda la manopola del telefono, che è più fine e non tocca
- * il suono. Ma il telefono ha due limiti: sopra, il massimo che non
- * basta mai in vivavoce con una voce piano; e sotto, il primo scalino,
- * che su certi telefoni - un Motorola recente, in vivavoce - è ancora
- * fortissimo. Il guadagno copre tutti e due i fuori-scala.
+ * In between, the phone's own knob is in charge, which is finer and
+ * does not touch the sound. But the phone has two limits: above, a top
+ * that is never enough on speaker with a quiet voice; and below, a
+ * first step which on some phones - a recent Motorola, on speaker - is
+ * still very loud. The gain covers both ends.
  */
-const GUADAGNO_MIN = 0.25;
-const GUADAGNO_MAX = 4;
+const GAIN_MIN = 0.25;
+const GAIN_MAX = 4;
 
 
-
-/**
- * Ogni quanto si torna a chiedere se l'altro c'è, mentre lo si aspetta.
- *
- * Il server annuncia i cambiamenti, ma la caduta di chi sta soltanto in
- * ascolto la scopre con comodo - il suo battito è di quattro minuti, ed
- * è così apposta, per non tenere sveglia la radio tutta la notte. Fino
- * ad allora la riga direbbe "in ascolto" di qualcuno che non c'è più.
- *
- * Fitto all'inizio, quando si è appena entrati e si sta guardando lo
- * schermo aspettando; rado dopo un quarto d'ora, quando l'attesa è
- * diventata un sottofondo e nessuno sta più fissando quella riga. Una
- * domanda ogni cinque minuti costa quanto un battito: è il risveglio
- * della radio a costare, non i venti byte.
- */
-/**
- * Quanto si sopporta prima di rifare la connessione da zero.
- *
- * Due attese, perché i due stati vogliono dire cose diverse.
- *
- * «Senza collegamento» dura poco per costruzione: il riaggancio riprova
- * dopo mezzo secondo, poi 1, 2, 4, e da lì ogni quattro - e a ogni
- * tentativo lo stato passa a «mi collego». Restarci fermi otto secondi
- * vuol dire che nessuno sta più riprovando.
- *
- * «Mi collego» invece è lo stato in cui si nasconde il socket che non è
- * né vivo né morto: abbiamo chiesto di aprire, nessuno risponde, nessun
- * evento arriva più e nessuna attesa scade. Aprire una connessione, anche
- * su rete mobile lenta, prende un secondo o due: quindici vuol dire che
- * la risposta non arriverà mai.
- *
- * Sbagliare per eccesso costa quasi nulla - rifare da zero è ciò che il
- * riaggancio fa già, solo partendo pulito - e sbagliare per difetto
- * costa una conversazione.
- */
-/**
- * Dopo quanto si ritenta una riga di notifica che non è stata scritta.
- *
- * Succede quando il sistema rifiuta di avviare il servizio: qualche
- * secondo dopo, di solito, l'app è tornata in una condizione in cui può.
- */
-const RITENTO_NOTIFICA_MS = 5_000;
 
 /**
- * Quanto si aspetta, dopo un cambio di rete, prima di rifare la
- * connessione: gli eventi arrivano a raffica e uno basta.
+ * How often we ask again whether the other person is there, while
+ * waiting for them.
+ *
+ * The server announces changes, but it takes its time noticing that
+ * somebody who is merely listening has dropped - its heartbeat is four
+ * minutes, and that is on purpose, so as not to keep the radio awake
+ * all night. Until then the line would say "waiting" about somebody who
+ * is no longer there.
+ *
+ * Often at first, when you have just come in and are watching the
+ * screen; sparsely after a quarter of an hour, when the wait has become
+ * a background and nobody is staring at that line any more. A question
+ * every five minutes costs about as much as a heartbeat: it is waking
+ * the radio that costs, not the twenty bytes.
  */
-const RESPIRO_RETE_MS = 700;
+/**
+ * How long before a notification line that was not written is retried.
+ *
+ * It happens when the system refuses to start the service: a few
+ * seconds later, usually, the app is back in a state where it can.
+ */
+const NOTICE_RETRY_MS = 5_000;
 
 /**
- * Quanto si tace prima di dire che il server non c'è.
- *
- * Cinque secondi: un cambio di cella si risolve in uno o due, e non
- * merita un allarme; un guasto vero dura molto di più e si vede lo
- * stesso.
+ * How long to wait, after a change of network, before rebuilding the
+ * connection: the events arrive in a volley and one is enough.
  */
-const GRAZIA_SERVER_MS = 5_000;
+const NETWORK_SETTLE_MS = 700;
 
 /**
- * Quanto si aspetta la risposta del server prima di dare per morto il
- * collegamento, dopo che la rete è cambiata sotto i piedi.
+ * How long we keep quiet before saying the server is gone.
+ *
+ * Five seconds: a change of cell sorts itself out in one or two and
+ * does not deserve an alarm; a real fault lasts far longer and will be
+ * seen anyway.
  */
-const ATTESA_PROVA_MS = 3_000;
-
-/** Entro quanto l'annuncio di un cambio di volume è l'eco del nostro. */
-const ATTESA_ECO_VOLUME_MS = 2_000;
+const SERVER_GRACE_MS = 5_000;
 
 /**
- * Entro quanto un rientro conta come continuazione e non come nuovo
- * ingresso. Due attese diverse, perché le due cose non pesano uguale.
- *
- * Il microfono cinque minuti: è il tempo di una parentesi - una porta,
- * una chiamata, un'occhiata a un'altra app - e ritrovarlo com'era non
- * mostra niente a nessuno.
- *
- * La camera un minuto: riaccendersi da sola è un'altra cosa, perché
- * riprende una stanza e una faccia. Dentro il minuto è chiaramente la
- * stessa scena di prima; più in là si sta ricominciando, e si riparte
- * spenti.
+ * How long the server's answer is waited for before the link is given
+ * up for dead, after the network has changed under our feet.
  */
-const RIPRESA_MICROFONO_MS = 5 * 60_000;
-const RIPRESA_VIDEO_MS = 60_000;
+const PROBE_WAIT_MS = 3_000;
 
-/** Ogni quanto si guarda se siamo ancora senza server. */
-const CONTROLLO_SERVER_MS = 3_000;
+/** Within this, an announced volume change is the echo of our own. */
+const VOLUME_ECHO_MS = 2_000;
 
 /**
- * Il tetto di durata del riscontro sonoro di chi bussa.
+ * Within this, coming back counts as carrying on rather than as a fresh
+ * entry. Two different waits, because the two do not weigh the same.
  *
- * I due colpi durano mezzo secondo e finiscono da soli: il tetto resta
- * come rete, perché un suono di riscontro che continua mentre si sta già
- * facendo altro è la cosa che si voleva togliere.
+ * The microphone, five minutes: the length of an interruption - a door,
+ * a phone call, a glance at another app - and finding it as it was
+ * shows nothing to anybody.
+ *
+ * The camera, one minute: switching itself back on is another matter,
+ * because it films a room and a face. Within the minute it is plainly
+ * the same scene as before; beyond it you are starting again, and you
+ * start with it off.
  */
-const ECO_BUSSATA_MS = 2_000;
+const RESUME_MIC_MS = 5 * 60_000;
+const RESUME_VIDEO_MS = 60_000;
+
+/** How often we look to see whether we are still without a server. */
+const SERVER_CHECK_MS = 3_000;
 
 /**
- * Da quanto si può restare senza server prima di rifare tutto da capo.
+ * The cap on how long the knocker's own sound may last.
  *
- * Si misura dall'ultima connessione funzionante: dieci secondi senza
- * server sono dieci secondi, che ci si sia riprovato tre volte o
- * trenta.
+ * The two knocks last half a second and end by themselves: the cap
+ * stays as a net, because a confirming sound that carries on while you
+ * are already doing something else is the thing we set out to remove.
  */
-const ATTESA_SENZA_SERVER_MS = 10 * 1000;
-
-const PRESENZA_FITTA_MS = 60 * 1000;
-const PRESENZA_RADA_MS = 5 * 60 * 1000;
-const PRESENZA_PAZIENZA_MS = 15 * 60 * 1000;
+const KNOCK_ECHO_MS = 2_000;
 
 /**
- * Chiede TUTTI i permessi in un colpo solo, al primo avvio.
+ * How long one may stay without a server before rebuilding everything.
  *
- * Nota: da Android 6 microfono, camera e notifiche sono "runtime
- * permissions" e il sistema NON permette di concederle al momento
- * dell'installazione. Chiederle tutte insieme è la cosa più vicina:
- * dopo la prima volta Android non le richiede più.
+ * Measured from the last working connection: ten seconds without a
+ * server are ten seconds, whether three attempts were made in between
+ * or thirty.
+ */
+const NO_SERVER_WAIT_MS = 10 * 1000;
+
+const PRESENCE_OFTEN_MS = 60 * 1000;
+const PRESENCE_SPARSE_MS = 5 * 60 * 1000;
+const PRESENCE_PATIENCE_MS = 15 * 60 * 1000;
+
+/**
+ * Asks for ALL the permissions at once, at the first start.
+ *
+ * Note: since Android 6, microphone, camera and notifications are
+ * runtime permissions and the system does NOT allow granting them at
+ * install time. Asking for them together is the nearest thing: after
+ * the first time Android does not ask again.
  */
 async function requestAllPermissions(): Promise<{ mic: boolean; camera: boolean }> {
   if (Platform.OS !== 'android') return { mic: true, camera: true };
@@ -278,113 +257,107 @@ export default function App() {
   const [cfg, setCfg] = useState<DuoConfig | null>(null);
 
   /**
-   * La lingua in uso, scelta prima di disegnare qualunque cosa.
+   * The language in use, chosen before anything is drawn.
    *
-   * Si imposta qui, durante il disegno, e non dentro un effetto: gli
-   * effetti girano DOPO che i figli sono stati disegnati, e la prima
-   * schermata sarebbe uscita nella lingua di prima. Cambiando
-   * collegamento cambia `cfg`, quindi si ridisegna tutto e le parole
-   * seguono da sé.
+   * Set here, during the render, and not inside an effect: effects run
+   * AFTER the children have been drawn, and the first screen would have
+   * come out in the previous language. Changing connection changes
+   * `cfg`, so everything is redrawn and the words follow by themselves.
    */
   useLanguage(cfg?.language);
 
   /**
-   * Salva la configurazione, e con lei le impostazioni del collegamento.
+   * Saves the configuration, and the connection's settings with it.
    *
-   * Ogni scelta che si fa vale per la persona con cui si sta parlando:
-   * scriverla solo "nell'app" vorrebbe dire ritrovarsela addosso
-   * passando a un altro collegamento. Qui si scrive nei due posti in un
-   * colpo solo, così non ci si può dimenticare di farlo.
+   * Every choice one makes belongs to the person one is talking to:
+   * writing it "in the app" alone would mean finding it on top of you
+   * when moving to another connection. Here it is written in both
+   * places at once, so it cannot be forgotten.
    */
-  const salvaCfg = useCallback((next: DuoConfig) => {
+  const saveCfg = useCallback((next: DuoConfig) => {
     const con = storeSettingsInPair(next);
     saveConfig(con).catch(() => { /* noop */ });
     return con;
   }, []);
 
   const [inChannel, setInChannel] = useState(false);
-  /** dove tornare chiudendo la schermata delle impostazioni di sistema */
-  const [setupFrom, setSetupFrom] = useState<'avvio' | 'impostazioni'>('avvio');
+  /** where to go back to when the system-settings screen is closed */
+  const [setupFrom, setSetupFrom] = useState<'start' | 'settings'>('start');
 
   const [status, setStatus] = useState<PresenceStatus>('connecting');
   const [peerPresent, setPeerPresent] = useState(false);
   /**
-   * Raggiungibili o staccati del tutto.
+   * Reachable, or detached altogether.
    *
-   * Uscendo dal canale si resta normalmente in ascolto: è il senso
-   * dell'app, esserci senza tenere lo schermo acceso. Ma qualche volta
-   * si vuole proprio non esserci - e allora non basta uscire, bisogna
-   * togliere la presenza: niente connessione, niente notifica fissa,
-   * niente avvisi, e all'altro si risulta non raggiungibile, che è la
-   * verità.
+   * Leaving the channel one normally stays listening: that is the point
+   * of the app, being there without keeping the screen on. But
+   * sometimes one really wants not to be there - and then leaving is
+   * not enough, the presence has to go: no connection, no standing
+   * notification, no alerts, and to the other side you are unreachable,
+   * which is the truth.
    *
-   * Dura finché non si riapre l'app: riaprirla è già dire "ci sono".
+   * It lasts until the app is opened again: opening it is already
+   * saying "I am here".
    */
-  const [disponibile, setDisponibile] = useState(true);
+  const [available, setAvailable] = useState(true);
   /**
-   * La prossima chiusura è un addio, non un passaggio di mano.
+   * The next close is a goodbye, not a handover.
    *
-   * Lo alza chi se ne va di proposito - "renditi non disponibile", o lo
-   * scioglimento di un collegamento - e lo abbassa la chiusura stessa.
+   * Raised by whoever leaves on purpose - "make yourself unavailable",
+   * or breaking a connection - and lowered by the close itself.
    */
-  const salutiamo = useRef(false);
+  const sayGoodbye = useRef(false);
   /**
-   * L'ultima notizia da mostrare dentro l'app.
+   * The latest piece of news to show inside the app.
    *
-   * Fuori c'è la notifica silenziosa, ma chi sta guardando questa
-   * schermata la tendina non la apre: la stessa frase va messa anche
-   * qui, dove l'occhio è già.
+   * Outside there is the silent notification, but whoever is looking at
+   * this screen does not pull the shade down: the same sentence has to
+   * be here too, where the eye already is.
    */
-  const [avviso, setAvviso] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   /**
-   * L'uscita è in corso: si sta svuotando il diario.
+   * Leaving is under way: the journal is being flushed.
    *
-   * Dura qualche decimo di secondo, ma senza dirlo sembrerebbe che il
-   * pulsante non abbia fatto niente - e chi non vede reazione preme di
-   * nuovo.
+   * It lasts a few tenths of a second, but without saying so the button
+   * would look as though it had done nothing - and whoever sees no
+   * reaction presses again.
    */
-  const [uscendo, setUscendo] = useState(false);
+  const [leaving, setLeaving] = useState(false);
 
   /**
    * Quanto stiamo alzando la voce dell'altro, 1 = com'è arrivata.
    *
-   * Sta nella configurazione, e da lì nel collegamento: dipende da
-   * com'è registrato il microfono di quella persona, quindi cambiando
-   * collegamento deve cambiare anche questo.
-   */
   /**
-   * Il volume di chiamata del telefono, letto da Android.
+   * The phone's call volume, read from Android.
    *
-   * È metà di quello che si sente, e non è nostra: ha una manopola per
-   * ogni uscita, la muovono anche le altre app, e finora l'app non la
-   * guardava - mostrava il proprio numero come se fosse tutta la
-   * verità.
+   * It is half of what one hears, and it is not ours: it has a knob per
+   * output, other apps move it too, and until now the app did not look
+   * at it - it showed its own number as if that were the whole truth.
    */
-  const [sistema, setSistema] = useState({ volume: 0, max: 0 });
+  const [systemVolume, setSystemVolume] = useState({ volume: 0, max: 0 });
 
-
-  /** mostrato per un attimo mentre si preme: sennò non si vede l'effetto */
-  const [guadagnoVisibile, setGuadagnoVisibile] = useState(false);
-  const timerGuadagno = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** shown for a moment while pressing: otherwise the effect is invisible */
+  const [levelShowing, setLevelShowing] = useState(false);
+  const levelTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /**
-   * L'altro se n'è andato di proposito, non gli è caduta la linea.
+   * They left on purpose; their line did not drop.
    *
-   * Il server distingue le due cose - chi saluta e chi sparisce - e la
-   * differenza conta per chi resta: da un tunnel si esce, da una scelta
-   * no. "Non raggiungibile" per uno che ha staccato apposta suonerebbe
-   * come un guasto da aspettare.
+   * The server tells the two apart - whoever says goodbye and whoever
+   * disappears - and the difference matters to the one left behind: you
+   * come out of a tunnel, you do not come out of a decision.
+   * "Unreachable" about somebody who disconnected deliberately would
+   * sound like a fault worth waiting out.
    */
-  const [peerStaccato, setPeerStaccato] = useState(false);
+  const [peerDetached, setPeerDetached] = useState(false);
   /**
-   * L'altro è in attesa perché il suo telefono gli ha chiuso l'app.
+   * They are waiting because their phone closed the app on them.
    *
-   * Vale la pena distinguerlo: "in attesa" fa pensare a una sua scelta,
-   * e su certi telefoni - un Motorola recente, per dirne uno - l'app
-   * viene smontata di notte senza che nessuno l'abbia toccata. Chi
-   * legge merita di sapere che dall'altra parte non è stato deciso
-   * niente.
+   * Worth telling apart: "waiting" suggests a choice of theirs, and on
+   * some phones - a recent Motorola, to name one - the app gets torn
+   * down at night with nobody touching it. Whoever reads it deserves to
+   * know that nothing was decided on the other side.
    */
-  const [peerSmontato, setPeerSmontato] = useState(false);
+  const [peerTornDown, setPeerTornDown] = useState(false);
   const [peerName, setPeerName] = useState('');
   const [connState, setConnState] = useState('new');
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -392,44 +365,43 @@ export default function App() {
   const [audioOn, setAudioOn] = useState(true);
   const [videoOn, setVideoOn] = useState(false);
   const [localAspect, setLocalAspect] = useState<number | undefined>(undefined);
-  /** la camera si accende sempre frontale: da lì in poi lo si segue */
   /**
-   * Quale camera mostra il pulsante "Gira".
+   * Which camera the "Turn" button shows.
    *
-   * La verità sta nella sessione, ma la sessione nasce dopo di noi: il
-   * valore di partenza è quello del collegamento in uso, e cambiando
-   * collegamento cambia con lui.
+   * The truth lives in the session, but the session is born after us:
+   * the starting value is the one of the connection in use, and it
+   * changes with the connection.
    */
-  const [frontCamera, setCameraFrontale] = useState(true);
+  const [frontCamera, setFrontCamera] = useState(true);
   const [peerState, setPeerState] = useState<{
     audio: boolean; video: boolean; aspect?: number;
-    /** da dove esce il suono dall'altra parte: lo dichiara lui */
+    /** where the sound comes out over there: they say so */
     output?: string;
     /** which Duetto they have; missing if older than this field */
     version?: string;
-    /** quanto forte sta ascoltando noi: 1 = come glielo mandiamo */
+    /** how loudly they are hearing us: 1 = as we send it */
     volume?: number;
   }>({ audio: true, video: false });
   /**
-   * Se l'altro ci ha già detto come sta.
+   * Whether they have told us how they are yet.
    *
-   * Prima che arrivi il suo primo stato non si sa niente di lui, e
-   * l'assenza della versione non vuol dire "ha una build vecchia": vuol
-   * dire solo che non ha ancora parlato.
+   * Before their first state arrives we know nothing about them, and a
+   * missing version does not mean "they have an old build": it only
+   * means they have not spoken yet.
    */
-  const [peerVisto, setPeerVisto] = useState(false);
-  /** VP9 in hardware: nostro e dell'altro. L'opzione si mostra solo con entrambi. */
+  const [peerSeen, setPeerSeen] = useState(false);
+  /** VP9 in hardware: ours and theirs. The option shows only with both. */
   const [localVp9, setLocalVp9] = useState(false);
   const [peerVp9, setPeerVp9] = useState(false);
-  /** risoluzione e banda effettive, mostrate sotto ai comandi */
+  /** the real resolution and bandwidth, shown under the controls */
   const [videoStats, setVideoStats] = useState<VideoStats>({});
   const [knockPending, setKnockPending] = useState(false);
-  /** traccia video dell'altro effettivamente in arrivo (non solo annunciata) */
+  /** their video track really arriving, not merely announced */
   const [remoteHasVideo, setRemoteHasVideo] = useState(false);
   /**
-   * Cambia a ogni ripartenza del video dell'altro. Serve come chiave di
-   * React: costringe a ricreare il visualizzatore invece di riagganciarlo
-   * a una superficie vecchia, che resterebbe nera.
+   * Bumped every time their video starts again. It serves as a React
+   * key: it forces the viewer to be recreated instead of reattached to
+   * an old surface, which would stay black.
    */
   const [remoteVideoKey, setRemoteVideoKey] = useState(0);
 
@@ -440,29 +412,29 @@ export default function App() {
   const cameraGranted = useRef(false);
   const inChannelRef = useRef(false);
   const appStateRef = useRef(AppState.currentState);
-  /** enterChannel serve dentro un effetto che nasce prima di lei */
+  /** enterChannel is needed inside an effect that is born before it */
   const enterChannelRef = useRef<(() => void) | null>(null);
-  /** relay comunicato dal server, valido finché dura la connessione */
+  /** the relay announced by the server, valid while the connection lasts */
   const serverTurnRef = useRef<any[]>([]);
-  /** attesa prima di ricostruire un collegamento caduto */
-  /** attesa prima della riparazione leggera del collegamento */
+  /** the wait before the light repair of a fallen link */
   const softTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /** attesa prima di ricostruirlo del tutto, se la leggera non basta */
+  /** the wait before rebuilding it entirely, if the light one is not enough */
   const hardTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /** stato corrente del collegamento, leggibile dentro i timer */
+  /** the link's current state, readable inside the timers */
   const connStateRef = useRef('new');
   /**
-   * La connessione al server è caduta da quando eravamo collegati.
+   * The connection to the server has dropped since we were connected.
    *
-   * Serve perché un'offerta mandata mentre il server è irraggiungibile
-   * viene scartata in silenzio: al ritorno va rifatta, anche se dal
-   * nostro lato la connessione sembrasse appena creata e quindi sana.
+   * It matters because an offer sent while the server is out of reach
+   * is dropped in silence: on coming back it has to be made again, even
+   * if from our side the connection looked freshly built and therefore
+   * healthy.
    */
   const signalingWasDown = useRef(false);
-  /** il video dell'altro c'era già: serve a non ricrearne la vista invano */
-  const avevaVideoRemoto = useRef(false);
-  /** si è già ritentata una strada migliore su questo collegamento */
-  const relayRiprovato = useRef(false);
+  /** their video was already there: so the view is not recreated for nothing */
+  const hadRemoteVideo = useRef(false);
+  /** a better road has already been tried on this link */
+  const relayRetried = useRef(false);
 
   const clearRecovery = useCallback(() => {
     if (softTimer.current) { clearTimeout(softTimer.current); softTimer.current = null; }
@@ -470,378 +442,359 @@ export default function App() {
   }, []);
 
   /**
-   * L'uscita audio la ricorda il collegamento, non l'app.
+   * L'uscita audio la ricorda il connectionName, non l'app.
    *
    * Il gancio non se la salva più da sé: la riceve da qui e ci
-   * restituisce le scelte, che finiscono nel collegamento in uso.
+   * restituisce le scelte, che finiscono nel connectionName in uso.
    */
-  const ricordaUscita = useCallback((route: string) => {
+  const rememberOutput = useCallback((route: string) => {
     setCfg((prev) => (prev && prev.audioOutput !== route
-      ? salvaCfg({ ...prev, audioOutput: route })
+      ? saveCfg({ ...prev, audioOutput: route })
       : prev));
-  }, [salvaCfg]);
+  }, [saveCfg]);
 
-  const audio = useAudioRoute(inChannel, cfg?.audioOutput, ricordaUscita);
+  const audio = useAudioRoute(inChannel, cfg?.audioOutput, rememberOutput);
 
   /**
-   * Quanto si alza la voce dell'altro OLTRE il massimo del telefono.
+   * How far the other voice is lifted ABOVE the phone's own top.
    *
-   * Uno per uscita: il livello giusto all'orecchio non è quello giusto
-   * in vivavoce. Vale 1 finché non si chiede più del massimo.
+   * One per output: the right level against the ear is not the right
+   * level on speaker. It is 1 until more than the top is asked for.
    */
-  const guadagno = cfg?.gains?.[audio.route] ?? 1;
+  const gain = cfg?.gains?.[audio.route] ?? 1;
 
   /**
-   * Le copie per i gestori, che nascono una volta sola e non vedrebbero
-   * mai un valore cambiato dopo.
+   * Copies for the handlers, which are born once and would never see a
+   * value that changed afterwards.
    */
-  const audioRef = useRef(audio.route);
-  useEffect(() => { audioRef.current = audio.route; }, [audio.route]);
-  const sistemaRef = useRef(sistema);
-  useEffect(() => { sistemaRef.current = sistema; }, [sistema]);
+  const audioRouteRef = useRef(audio.route);
+  useEffect(() => { audioRouteRef.current = audio.route; }, [audio.route]);
+  const systemVolumeRef = useRef(systemVolume);
+  useEffect(() => { systemVolumeRef.current = systemVolume; }, [systemVolume]);
 
   /**
-   * Il livello: quello che si sente davvero, e l'unico numero mostrato.
+   * The level: what is really heard, and the only number shown.
    *
-   * È il prodotto delle due metà - la manopola del telefono e il nostro
-   * guadagno - perché è quello il volume a cui stai ascoltando. Il
-   * numero di prima era solo la nostra metà, e mentiva ogni volta che
-   * qualcuno muoveva l'altra: si è visto il diario di un telefono con il
-   * volume di chiamata a uno su otto e il nostro 100% sopra, e nessuno
-   * dei due numeri, da solo, spiegava il "non ti sento".
+   * It is the product of the two halves - the phone's knob and our gain
+   * - because that is the volume you are listening at. The old number
+   * was our half alone, and it lied every time somebody moved the
+   * other: a journal was seen with a phone's call volume at one of
+   * eight and our 100% on top, and neither number, on its own,
+   * explained the "I cannot hear you".
    */
-  const livello = sistema.max > 0
-    ? Math.round((sistema.volume / sistema.max) * guadagno * 100) / 100
-    : guadagno;
+  const level = systemVolume.max > 0
+    ? Math.round((systemVolume.volume / systemVolume.max) * gain * 100) / 100
+    : gain;
 
   /**
-   * In un ref perché lo chiama `enterChannel`, che nasce prima e non
-   * deve rifarsi ogni volta che cambia qualcosa dell'audio.
+   * In a ref because `enterChannel` calls it, and that is born earlier
+   * and must not be rebuilt every time something about the audio
+   * changes.
    */
   const reapplyRouteRef = useRef<(() => void) | null>(null);
   useEffect(() => { reapplyRouteRef.current = audio.reapply; }, [audio.reapply]);
 
   /**
-   * L'altro deve sapere da dove stiamo ascoltando.
+   * The other side should know where we are listening from.
    *
-   * È l'informazione che a voce ci si chiede di continuo - "sei in
-   * vivavoce?" - e il telefono la sa già. Si manda a ogni cambio, e non
-   * costa nulla: è un campo in più nel messaggio di stato che parte
-   * comunque.
+   * It is the thing people ask each other out loud all the time - "are
+   * you on speaker?" - and the phone knows it already. It is sent at
+   * every change, and costs nothing: one more field in a state message
+   * that goes out anyway.
    */
   useEffect(() => {
     sessionRef.current?.setOutput(audio.route);
   }, [audio.route, inChannel]);
 
   /**
-   * Come si chiama l'altro: come si è chiamato lui, o niente.
+   * What the other person is called: whatever they called themselves,
+   * or nothing.
    *
-   * Il nome del collegamento non c'entra - quello è il nome del filo,
-   * non della persona - e infatti non compare qui: se l'altro un nome
-   * non se l'è dato, resta "l'altro", e a dire in quale collegamento
-   * siete ci pensa l'etichetta, per conto suo.
+   * The connection's name has nothing to do with it - that is the name
+   * of the thread, not of the person - and indeed it does not appear
+   * here: if they never gave themselves a name they stay "the other",
+   * and which connection you are in is said by the label, on its own
+   * account.
    */
-  const shownName =
-    peerName && peerName !== 'Qualcuno'
-      ? peerName
-      : cfg?.pair?.peerName && cfg.pair.peerName !== 'Qualcuno'
-        ? cfg.pair.peerName
-        : '';
+  const isRealName = (n?: string | null) =>
+    !!n && n !== 'Qualcuno' && n !== 'Someone';
+  const shownName = isRealName(peerName)
+    ? peerName
+    : isRealName(cfg?.pair?.peerName) ? cfg!.pair!.peerName : '';
 
   /**
-   * Due Duetto diversi ai capi dello stesso canale.
+   * The other side's last state, so we can notice what CHANGES.
    *
-   * È la spiegazione di metà delle stranezze - una cosa che qui c'è e lì
-   * no, un pulsante che si comporta in due modi - e finora bisognava
-   * chiederselo a voce. Si dice solo quando c'è qualcosa da dire: con le
-   * versioni uguali, silenzio.
-   *
-   * Una build più vecchia del campo stesso non lo manda: allora non si
-   * sa quale sia, ma si sa che è più vecchia di questa, ed è già la
-   * cosa che conta.
+   * The state message arrives even when nothing has changed: without a
+   * comparison, the journal would fill up with lines saying the same
+   * thing.
    */
-  /**
-   * Che versione ha l'altro, scritta nel diario una volta per sessione.
-   *
-   * Serve quando qualcosa non torna sul telefono lontano: metà delle
-   * volte la spiegazione è che lì gira una versione di due settimane fa,
-   * e senza questa riga bisogna chiederlo a voce e fidarsi della
-   * risposta. Va nel diario nostro, che a un cavo ci arriva.
-   */
-  /**
-   * L'ultimo stato dell'altro, per accorgersi di cosa CAMBIA.
-   *
-   * Il messaggio di stato arriva anche quando non è cambiato nulla:
-   * senza un confronto, il diario si riempirebbe di righe che dicono la
-   * stessa cosa.
-   */
-  const statoAltroRef = useRef<{
+  const peerStateRef = useRef<{
     audio?: boolean; video?: boolean; camera?: string; output?: string;
   }>({});
 
-  const versioneAltroVista = useRef('');
+  /**
+   * Which version they have, written to the journal once per session.
+   *
+   * It matters when something does not add up on the far phone: half
+   * the time the explanation is that a two-week-old version is running
+   * over there, and without this line one has to ask out loud and trust
+   * the answer. It goes into our own journal, which a cable can reach.
+   */
+  const peerVersionSeen = useRef('');
   useEffect(() => {
     const v = peerState.version;
-    if (!v || v === versioneAltroVista.current) return;
-    versioneAltroVista.current = v;
-    Diario.segna(`altro-versione:${v}`).catch(() => { /* noop */ });
+    if (!v || v === peerVersionSeen.current) return;
+    peerVersionSeen.current = v;
+    Diario.segna(`peer-version:${v}`).catch(() => { /* noop */ });
   }, [peerState.version]);
 
-  const avvisoVersione = React.useMemo(() => {
-    if (!peerVisto) return null;
+  const versionWarning = React.useMemo(() => {
+    if (!peerSeen) return null;
     const sua = peerState.version;
     if (!sua) return `Versioni diverse: qui ${VERSION}, di là una più vecchia`;
     if (sua === VERSION) return null;
     return `Versioni diverse: qui ${VERSION}, di là ${sua}`;
-  }, [peerVisto, peerState.version]);
+  }, [peerSeen, peerState.version]);
 
   /**
-   * Il volume di chiamata si rilegge quando può essere cambiato.
+   * The call volume is read again whenever it may have changed.
    *
-   * All'ingresso nel canale e al cambio di uscita, perché ogni uscita ha
-   * la sua manopola; e a ogni annuncio del sistema, che arriva anche
-   * quando a muoverla è un'altra app. Senza, il livello mostrato
-   * resterebbe fermo su un valore che non è più vero.
+   * On entering the channel and at a change of output, because each
+   * output has its own knob; and at every announcement from the system,
+   * which arrives when another app moves it too. Without this, the
+   * level shown would sit on a value that is no longer true.
    */
   useEffect(() => {
-    let vivo = true;
-    const rileggi = () => {
+    let alive = true;
+    const reread = () => {
       Volume.leggi().then((v) => {
-        if (vivo && v && v.max > 0) setSistema({ volume: v.volume, max: v.max });
+        if (alive && v && v.max > 0) setSystemVolume({ volume: v.volume, max: v.max });
       }).catch(() => { /* noop */ });
     };
-    rileggi();
+    reread();
     /**
-     * Se il volume lo muove qualcun altro, il nostro guadagno se ne va.
+     * If somebody else moves the volume, our gain goes away.
      *
-     * Chi regola il volume da un'altra app - o dal pannello di sistema -
-     * sta dicendo quanto vuole sentire, adesso. Il nostro
-     * moltiplicatore è un residuo di una scelta di prima, e lasciarlo lì
-     * a moltiplicare la scelta nuova la falsa: si mette la voce a metà e
-     * ci si ritrova al settantacinque per cento, senza capire perché.
-     * Azzerandolo, il livello di Duetto torna a essere esattamente
-     * quello del telefono.
+     * Whoever adjusts the volume from another app - or from the system
+     * panel - is saying how loudly they want to hear, right now. Our
+     * multiplier is the leftover of an earlier choice, and leaving it
+     * there to multiply the new one falsifies it: you set the voice to
+     * half and find yourself at three quarters, with no way of seeing
+     * why. Cleared, Duetto's level goes back to being exactly the
+     * phone's.
      *
-     * Il cambio nostro non conta: quando siamo noi a spostare la
-     * manopola ce ne ricordiamo per un attimo, e quell'annuncio lo
-     * lasciamo passare.
+     * Our own change does not count: when it is us moving the knob we
+     * remember it for a moment, and let that announcement through.
      */
-    const stop = Volume.ascoltaSistema((valore) => {
-      rileggi();
-      const nostro = nostroSet.current;
-      const daNoi = nostro
-        && Math.abs(nostro.v - valore) < 0.5
-        && Date.now() - nostro.t < ATTESA_ECO_VOLUME_MS;
-      if (daNoi) return;
+    const stop = Volume.ascoltaSistema((value) => {
+      reread();
+      const ours = ourOwnSet.current;
+      const fromUs = ours
+        && Math.abs(ours.v - value) < 0.5
+        && Date.now() - ours.t < VOLUME_ECHO_MS;
+      if (fromUs) return;
       setCfg((prev) => {
         if (!prev) return prev;
-        const uscita = audioRef.current;
-        const adesso = prev.gains?.[uscita] ?? 1;
-        if (adesso === 1) return prev;
+        const output = audioRouteRef.current;
+        const now = prev.gains?.[output] ?? 1;
+        if (now === 1) return prev;
         /**
-         * Il muto non lo toglie nessun altro.
+         * Nobody else lifts the mute.
          *
-         * Azzerare il guadagno vuol dire tornare al volume del telefono,
-         * e per chi ha zittito l'altro sarebbe farlo parlare di nuovo
-         * per mano di un'app qualsiasi. Il muto lo si toglie da Duetto,
-         * e allora si riparte dal volume che il telefono ha in quel
-         * momento.
+         * Clearing the gain means going back to the phone's volume, and
+         * for somebody who has silenced the other person that would be
+         * making them speak again by the hand of any app at all. The
+         * mute is lifted from Duetto, and then one starts again from
+         * whatever volume the phone has at that moment.
          */
-        if (adesso === 0) return prev;
-        Diario.segna('guadagno-azzerato:volume-da-fuori').catch(() => { /* noop */ });
-        return salvaCfg({
+        if (now === 0) return prev;
+        Diario.segna('gain-cleared:volume-from-outside').catch(() => { /* noop */ });
+        return saveCfg({
           ...prev,
-          gains: { ...(prev.gains ?? {}), [uscita]: 1 },
+          gains: { ...(prev.gains ?? {}), [output]: 1 },
         });
       });
     });
-    return () => { vivo = false; stop(); };
-  }, [inChannel, audio.route, salvaCfg]);
+    return () => { alive = false; stop(); };
+  }, [inChannel, audio.route, saveCfg]);
 
   /**
-   * Il guadagno si riapplica a ogni cambiamento e a ogni rientro nel
-   * canale: la sessione può essere nata dopo che il valore era già lì.
+   * The gain is applied again at every change and at every re-entry
+   * into the channel: the session can have been born after the value
+   * was already there.
    */
   useEffect(() => {
-    sessionRef.current?.setRemoteGain(guadagno);
-  }, [guadagno, inChannel]);
+    sessionRef.current?.setRemoteGain(gain);
+  }, [gain, inChannel]);
 
   /**
-   * All'altro si dichiara il LIVELLO, non il guadagno.
+   * What is declared to the other side is the LEVEL, not the gain.
    *
-   * A lui serve sapere a che volume lo stai sentendo, e quel volume è il
-   * prodotto delle due metà: il nostro moltiplicatore da solo non gli
-   * direbbe niente di utile, perché non sa a che punto sta la manopola
-   * del tuo telefono.
+   * They need to know how loudly you are hearing them, and that volume
+   * is the product of the two halves: our multiplier on its own would
+   * tell them nothing useful, because they cannot know where the knob
+   * on your phone stands.
    */
   useEffect(() => {
-    sessionRef.current?.setHeardLevel(livello);
-  }, [livello, inChannel]);
+    sessionRef.current?.setHeardLevel(level);
+  }, [level, inChannel]);
 
   /**
-   * I tasti del volume che il sistema non ha saputo muovere.
+   * Turns the LEVEL up or down, sharing the work between the two
+   * halves.
    *
-   * Arrivano solo in quel caso - il volume di chiamata al suo limite - e
-   * allora la voce dell'altro la alza l'app. L'indicatore si mostra
-   * perché senza, premendo, non succederebbe niente di visibile e i
-   * tasti sembrerebbero rotti lo stesso.
+   * Going up: first the phone's call volume is taken to its top, since
+   * that is the real knob - Android remembers it per output, other apps
+   * see it, and it does not touch the sound - and only when that is
+   * finished does our own multiplier start, which is there for the
+   * phones where the top is not enough.
+   *
+   * Going down it is the other way round: ours comes off first, then
+   * theirs comes down. That way the multiplier, which is the part that
+   * can distort, is used as little as possible.
+   *
+   * Two callers: the volume keys, when the phone will not obey them,
+   * and the audio menu, which is there for whoever cannot see those
+   * keys move anything at all - some phones slide the call volume index
+   * without anything changing at the ear, and from outside that case
+   * cannot be told from a working one.
    */
-  /**
-   * Alza o abbassa la voce dell'altro di un passo.
-   *
-   * La chiamano in due: i tasti del volume, quando il telefono non li
-   * ubbidisce, e il menu dell'audio, dove c'è per chi quei tasti non li
-   * vede muovere niente comunque - certi telefoni fanno scorrere
-   * l'indice del volume di chiamata senza che all'orecchio cambi nulla,
-   * e da fuori quel caso è indistinguibile da uno che funziona.
-   */
-  /**
-   * Alza o abbassa il LIVELLO, dividendo il lavoro fra le due metà.
-   *
-   * Salendo: prima si porta al massimo il volume di chiamata del
-   * telefono, che è la manopola vera - la ricorda Android per ogni
-   * uscita, la vedono le altre app, e non tocca il suono - e solo
-   * quando è finito si comincia a moltiplicare con il nostro guadagno,
-   * che serve per i telefoni dove il massimo non basta.
-   *
-   * Scendendo si fa il contrario: prima si toglie il nostro, poi si
-   * abbassa il suo. Così il moltiplicatore, che è la parte che può
-   * distorcere, viene usato il meno possibile.
-   */
-  const cambiaLivello = useCallback((direzione: number) => {
-    if (!direzione) return;
-    const mostra = () => {
-      setGuadagnoVisibile(true);
-      if (timerGuadagno.current) clearTimeout(timerGuadagno.current);
-      timerGuadagno.current = setTimeout(() => setGuadagnoVisibile(false), 1800);
+  const changeLevel = useCallback((direction: number) => {
+    if (!direction) return;
+    const show = () => {
+      setLevelShowing(true);
+      if (levelTimer.current) clearTimeout(levelTimer.current);
+      levelTimer.current = setTimeout(() => setLevelShowing(false), 1800);
     };
-    const uscita = audioRef.current;
-    const suo = sistemaRef.current;
-    const mio = cfgRef.current?.gains?.[uscita] ?? 1;
+    const output = audioRouteRef.current;
+    const phone = systemVolumeRef.current;
+    const ours = cfgRef.current?.gains?.[output] ?? 1;
 
-    const cambiaMio = (nuovo: number) => {
+    const changeOurGain = (value: number) => {
       setCfg((prev) => {
         if (!prev) return prev;
-        // Lo zero è un valore vero: è il silenzio, e lo facciamo noi
-        // perché il telefono non ci arriva.
-        const quanto = nuovo <= 0
+        // Zero is a real value: it is silence, and we make it ourselves
+        // because the phone does not get there.
+        const amount = value <= 0
           ? 0
-          : Math.min(GUADAGNO_MAX, Math.max(GUADAGNO_MIN, nuovo));
-        if (quanto === (prev.gains?.[uscita] ?? 1)) return prev;
-        return salvaCfg({
+          : Math.min(GAIN_MAX, Math.max(GAIN_MIN, value));
+        if (amount === (prev.gains?.[output] ?? 1)) return prev;
+        return saveCfg({
           ...prev,
-          gains: { ...(prev.gains ?? {}), [uscita]: quanto },
+          gains: { ...(prev.gains ?? {}), [output]: amount },
         });
       });
     };
 
-    const muoviSuo = (v: number) => {
-      // Ce lo si ricorda: l'annuncio che il sistema manderà è l'eco di
-      // questo, non la scelta di qualcun altro.
-      nostroSet.current = { v, t: Date.now() };
-      setSistema({ ...suo, volume: v });
+    const movePhoneVolume = (v: number) => {
+      // We remember it: the announcement the system will send is the
+      // echo of this, not somebody else's choice.
+      ourOwnSet.current = { v, t: Date.now() };
+      setSystemVolume({ ...phone, volume: v });
       Volume.metti(v).catch(() => { /* noop */ });
     };
 
-    const piu = Math.round((mio + GUADAGNO_PASSO) * 100) / 100;
-    const meno = Math.round((mio - GUADAGNO_PASSO) * 100) / 100;
+    const up = Math.round((ours + GAIN_STEP) * 100) / 100;
+    const down = Math.round((ours - GAIN_STEP) * 100) / 100;
 
-    if (direzione > 0) {
-      // Salendo: dal silenzio si torna al minimo del telefono, poi si
-      // smette di attenuare, poi si alza il telefono, e solo quando è
-      // al massimo si moltiplica.
-      if (mio === 0) cambiaMio(1);
-      else if (suo.max > 0 && suo.volume === 0) muoviSuo(1);
-      else if (mio < 1) cambiaMio(piu);
-      else if (suo.max > 0 && suo.volume < suo.max) muoviSuo(suo.volume + 1);
-      else cambiaMio(piu);
-    } else if (mio === 0) {
-      // Già muto: non c'è niente sotto.
-    } else if (mio > 1) {
-      cambiaMio(meno);
-    } else if (suo.max > 0 && suo.volume > 1) {
-      muoviSuo(suo.volume - 1);
-    } else if (mio > GUADAGNO_MIN) {
-      // Il telefono è al primo scalino e si vuole ancora più piano: da
-      // qui in giù attenuiamo noi, perché sotto quello scalino il
-      // telefono non sa andare - e su certi telefoni, in vivavoce,
-      // quello scalino è ancora fortissimo.
-      cambiaMio(meno);
+    if (direction > 0) {
+      // Going up: from silence back to the phone's lowest step, then we
+      // stop attenuating, then the phone comes up, and only when it is
+      // at its top do we multiply.
+      if (ours === 0) changeOurGain(1);
+      else if (phone.max > 0 && phone.volume === 0) movePhoneVolume(1);
+      else if (ours < 1) changeOurGain(up);
+      else if (phone.max > 0 && phone.volume < phone.max) movePhoneVolume(phone.volume + 1);
+      else changeOurGain(up);
+    } else if (ours === 0) {
+      // Already muted: there is nothing below.
+    } else if (ours > 1) {
+      changeOurGain(down);
+    } else if (phone.max > 0 && phone.volume > 1) {
+      movePhoneVolume(phone.volume - 1);
+    } else if (ours > GAIN_MIN) {
+      // The phone is at its lowest step and quieter is wanted: from
+      // here down we attenuate, because below that step the phone
+      // cannot go - and on some phones, on speaker, that step is still
+      // very loud.
+      changeOurGain(down);
     } else {
       /**
-       * L'ultimo scalino in giù è il silenzio, e lo facciamo noi.
+       * The last step down is silence, and we make it ourselves.
        *
-       * Android il volume di chiamata a zero non lo porta: chiedendogli
-       * zero lo tiene al primo scalino, che resta perfettamente udibile.
-       * Il silenzio vero si ottiene solo azzerando il moltiplicatore,
-       * cioè non suonando ciò che arriva.
+       * Android will not take the call volume to zero: ask it for zero
+       * and it holds the lowest step, which is perfectly audible. Real
+       * silence is only had by clearing the multiplier, that is, by not
+       * playing what arrives.
        */
-      cambiaMio(0);
+      changeOurGain(0);
     }
-    mostra();
-  }, [salvaCfg]);
+    show();
+  }, [saveCfg]);
 
   useEffect(() => {
     if (!inChannel) return;
     Volume.prendiTasti(true).catch(() => {});
-    const stop = Volume.subscribe(cambiaLivello);
+    const stop = Volume.subscribe(changeLevel);
     return () => {
       stop();
       Volume.prendiTasti(false).catch(() => {});
     };
-  }, [inChannel, cambiaLivello]);
+  }, [inChannel, changeLevel]);
 
   /**
-   * Il nome serve anche dentro i gestori della connessione, che nascono
-   * una volta sola e non vedrebbero mai un nome arrivato dopo.
+   * The name is needed inside the connection handlers too, and those
+   * are born once and would never see a name that arrived later.
    */
   const shownNameRef = useRef(shownName);
   useEffect(() => { shownNameRef.current = shownName; }, [shownName]);
 
   /**
-   * Sotto che nome archiviare il diario che arriva.
+   * Under which name to file the journal that arrives.
    *
-   * In un ref perché lo legge il gestore dei messaggi, che nasce una
-   * volta sola: cambiando il nome del collegamento, senza questo
-   * continuerebbe a scrivere sotto quello vecchio fino al prossimo
-   * riaggancio.
+   * In a ref because the message handler reads it, and that is born
+   * once: on renaming the connection, without this it would keep
+   * writing under the old name until the next reconnection.
    */
-  const chiaveDiarioRef = useRef('');
-  useEffect(() => { chiaveDiarioRef.current = pairFileKey(cfg?.pair); }, [cfg?.pair]);
+  const journalKeyRef = useRef('');
+  useEffect(() => { journalKeyRef.current = pairFileKey(cfg?.pair); }, [cfg?.pair]);
 
   /**
-   * Il titolo degli avvisi: dice su quale collegamento sono arrivati.
+   * The name that goes in front of the alerts: which connection they
+   * arrived on.
    *
-   * Con un collegamento solo non c'è niente da distinguere e resta
-   * "Duetto". Con più di uno diventa "Duetto · Casa": senza, un avviso
-   * nella barra di stato dice che qualcuno ti cerca ma non quale dei due
-   * o tre che conosci, e per scoprirlo devi aprire l'app.
+   * With a single connection there is nothing to tell apart and it
+   * stays empty. With more than one it becomes "Home": without it, an
+   * alert in the status bar says somebody is looking for you but not
+   * which of the two or three you know, and to find out you have to
+   * open the app.
    *
-   * In un ref perché lo legge il gestore dei messaggi, che nasce una
-   * volta sola e non vedrebbe mai un nome cambiato dopo.
+   * In a ref because the message handler reads it, and that is born
+   * once and would never see a name changed afterwards.
    */
-  const nomeAvviso = React.useMemo(
+  const alertName = React.useMemo(
     () => (cfg && cfg.pairs.length > 1 ? pairName(cfg.pair) || '' : ''),
     [cfg],
   );
-  const nomeAvvisoRef = useRef(nomeAvviso);
-  useEffect(() => { nomeAvvisoRef.current = nomeAvviso; }, [nomeAvviso]);
+  const alertNameRef = useRef(alertName);
+  useEffect(() => { alertNameRef.current = alertName; }, [alertName]);
 
   /**
-   * Il nome di questo collegamento, se gliene ho dato uno.
+   * The name of this connection, if I gave it one.
    *
-   * Si mostra dov'è utile sapere in quale collegamento si sta: sulla
-   * pastiglia in alto, al posto del nome dell'app, e in testa alla
-   * notifica fissa. Senza nome non compare niente: chi ha un
-   * collegamento solo non ha nulla da distinguere.
+   * It is shown where knowing which connection you are in is useful: on
+   * the badge at the top, in place of the app's name, and in front of
+   * the standing notification. With no name nothing appears: whoever
+   * has a single connection has nothing to tell apart.
    */
-  const collegamento = cfg?.pair?.label || '';
+  const connectionName = cfg?.pair?.label || '';
 
   /**
-   * L'immagine da mostrare al posto del video dell'altro.
+   * The picture to show in place of the other person's video.
    *
-   * Dipende solo dalla pairStat, quindi non cambia mai; prima del primo
-   * accoppiamento non serve a nulla, ma un valore deve esserci.
+   * It depends on the pair alone, so it never changes; before the first
+   * pairing it is of no use, but a value has to be there.
    */
   const face = React.useMemo(
     () => (cfg?.pair ? peerAvatar(cfg.pair.id, cfg.pair.side) : avatarFor('duetto')),
@@ -851,146 +804,135 @@ export default function App() {
   useEffect(() => { inChannelRef.current = inChannel; }, [inChannel]);
 
   /**
-   * Cosa dice la notifica fissa.
+   * The status to SHOW, which is not always the true one.
    *
-   * Serve a chi guarda la barra senza aprire l'app, e finora diceva solo
-   * come stava questo telefono. Ma la domanda vera è sull'altro: se è
-   * in attesa basta bussargli, se non è raggiungibile non c'è niente da
-   * fare se non aspettare. Stesse parole della schermata di attesa.
+   * Losing the server for a second is normal life for a phone that
+   * moves: changing cell changes the address, and with it every open
+   * connection dies - it happens to every app, only in the others there
+   * is nothing visible hanging off that socket. Saying it at once
+   * raises an alarm about something that sorts itself out in a couple
+   * of seconds.
+   *
+   * So the bad news waits a few seconds before going on screen: if the
+   * link comes back in the meantime, nothing is said. It is the same
+   * breath the video's own notice already takes.
+   *
+   * It applies to what is SEEN - the card in the middle and the
+   * notification - not to what is done: whoever decides to rebuild the
+   * connection looks at the true status, which is the only one that
+   * knows how things really stand.
    */
-  /**
-   * Lo stato da MOSTRARE, che non è sempre quello vero.
-   *
-   * Perdere il server per un secondo è la normalità di un telefono che
-   * si muove: cambiando cella l'indirizzo cambia, e con lui muore ogni
-   * connessione aperta - succede a tutte le app, solo che nelle altre
-   * non c'è niente di visibile appeso a quel socket. Dirlo subito
-   * mette in allarme per una cosa che si sistema da sé in un paio di
-   * secondi.
-   *
-   * Quindi la brutta notizia aspetta qualche secondo prima di andare a
-   * schermo: se nel frattempo il collegamento torna, non se ne parla
-   * più. È lo stesso respiro che l'avviso sul video si prende già.
-   *
-   * Vale per quello che si vede - riquadro al centro e notifica - non
-   * per quello che si fa: chi decide di rifare la connessione guarda lo
-   * stato vero, che è il solo a sapere com'è messa davvero.
-   */
-  const [statusVisibile, setStatusVisibile] = useState<PresenceStatus>(status);
+  const [shownStatus, setShownStatus] = useState<PresenceStatus>(status);
   useEffect(() => {
     if (status !== 'offline' && status !== 'connecting') {
-      setStatusVisibile(status);
+      setShownStatus(status);
       return;
     }
-    const t = setTimeout(() => setStatusVisibile(status), GRAZIA_SERVER_MS);
+    const t = setTimeout(() => setShownStatus(status), SERVER_GRACE_MS);
     return () => clearTimeout(t);
   }, [status]);
 
-  const testoNotifica = React.useMemo(() => presenceLine({
+  const noticeText = React.useMemo(() => presenceLine({
     inChannel,
     peerActive: status === 'together',
     peerPresent,
-    detached: peerStaccato,
-    tornDown: peerSmontato,
+    detached: peerDetached,
+    tornDown: peerTornDown,
     name: shownName,
-    server: statusVisibile === 'offline' ? 'down'
-      : statusVisibile === 'connecting' ? 'connecting' : 'ok',
-  }), [inChannel, statusVisibile, peerPresent, peerStaccato, peerSmontato, shownName]);
+    server: shownStatus === 'offline' ? 'down'
+      : shownStatus === 'connecting' ? 'connecting' : 'ok',
+  }), [inChannel, shownStatus, peerPresent, peerDetached, peerTornDown, shownName]);
 
   /**
-   * Il testo serve anche a chi accende il servizio, che parte prima che
-   * ci sia qualcosa da dire: senza questo, la prima riga sarebbe quella
-   * di partenza e resterebbe finché non cambia qualcos'altro.
-   */
-  /**
-   * Da quando siamo senza server, o 0 se ce l'abbiamo.
+   * Since when we have been without a server, or 0 when we have one.
    *
-   * Un solo numero al posto dello stato precedente: dice sia quando
-   * scrivere le righe del diario, sia da quanto tempo dura - che è
-   * l'unica misura buona per decidere di rifare tutto da capo.
+   * A single number instead of the previous state: it says both when to
+   * write the journal lines and how long it has lasted - which is the
+   * only good measure for deciding to rebuild everything.
    */
-  const senzaServerDa = useRef(0);
+  const noServerSince = useRef(0);
 
-  const testoNotificaRef = useRef(testoNotifica);
+  const noticeTextRef = useRef(noticeText);
   /**
-   * Scrivere la riga solo quando la presenza c'è davvero.
+   * The line is only written when the presence is really there.
    *
-   * `setText` non si limita a cambiare il testo: passa da
-   * `startForegroundService`, e un servizio spento lo riaccende. Senza
-   * questo controllo, dichiararsi non disponibili avrebbe fatto
-   * ricomparire la notifica un istante dopo averla tolta - e prima
-   * ancora di accoppiarsi ne sarebbe comparsa una per una presenza che
-   * non esiste.
+   * `setText` does not merely change the text: it goes through
+   * `startForegroundService`, and a stopped service is started again by
+   * it. Without this check, making yourself unavailable would have
+   * brought the notification back a moment after it was taken away -
+   * and before pairing at all, one would have appeared for a presence
+   * that does not exist.
    */
-  const presenzaViva = !!cfg && isPaired(cfg) && isServerConfigured(cfg) && disponibile;
+  const presenceLive = !!cfg && isPaired(cfg) && isServerConfigured(cfg) && available;
   useEffect(() => {
-    testoNotificaRef.current = testoNotifica;
-    if (!presenzaViva) return;
-    let vivo = true;
-    let ritento: ReturnType<typeof setTimeout> | null = null;
+    noticeTextRef.current = noticeText;
+    if (!presenceLive) return;
+    let alive = true;
+    let retry: ReturnType<typeof setTimeout> | null = null;
     /**
-     * Se la scrittura non riesce, si ritenta - ma non si riscrive mai
-     * una riga uguale a quella che c'è già.
+     * If the write does not succeed it is tried again - but a line
+     * identical to the one already there is never rewritten.
      *
-     * Prima si riscriveva ogni minuto comunque, per rimediare a un
-     * aggiornamento perso: ma una notifica riscritta è una notifica che
-     * RINASCE, e chi l'aveva scacciata via se la ritrovava lì un minuto
-     * dopo. Il caso da coprire era solo quello della scrittura fallita -
-     * il sistema può rifiutare di avviare il servizio con l'app in
-     * secondo piano - e quello si riconosce da sé, senza disturbare
-     * tutti gli altri.
+     * It used to be rewritten every minute regardless, to make up for a
+     * lost update: but a rewritten notification is a notification that
+     * is BORN AGAIN, and whoever had swept it away found it back a
+     * minute later. The only case worth covering was the failed write -
+     * the system can refuse to start the service with the app in the
+     * background - and that one announces itself, without disturbing
+     * everybody else.
      */
-    const scrivi = (quante: number) => {
-      Foreground.setText(testoNotifica, nomeAvviso).catch(() => {
-        if (!vivo || quante <= 0) return;
-        ritento = setTimeout(() => scrivi(quante - 1), RITENTO_NOTIFICA_MS);
+    const write = (left: number) => {
+      Foreground.setText(noticeText, alertName).catch(() => {
+        if (!alive || left <= 0) return;
+        retry = setTimeout(() => write(left - 1), NOTICE_RETRY_MS);
       });
     };
-    scrivi(3);
+    write(3);
     return () => {
-      vivo = false;
-      if (ritento) clearTimeout(ritento);
+      alive = false;
+      if (retry) clearTimeout(retry);
     };
-  }, [testoNotifica, nomeAvviso, presenzaViva]);
+  }, [noticeText, alertName, presenceLive]);
 
   /**
-   * Se restiamo senza server troppo a lungo, si rifà da capo.
+   * If we stay without a server too long, everything is rebuilt.
    *
-   * Il riaggancio normale riprova ogni mezzo secondo fino a quattro, e
-   * quasi sempre basta. Non basta quando il socket non è né vivo né
-   * morto: per il sistema è ancora in apertura, non arriva più nessun
-   * evento, e l'attesa non scade mai - l'app resta a dire «senza
-   * collegamento al server» con il telefono perfettamente in rete.
+   * The ordinary reconnection tries again every half second up to four,
+   * and nearly always that is enough. It is not enough when the socket
+   * is neither alive nor dead: to the system it is still opening, no
+   * event arrives any more, and the wait never ends - the app sits
+   * there saying "no link to the server" with the phone perfectly
+   * online.
    *
-   * Si conta dall'ultima connessione FUNZIONANTE, non da quanto dura lo
-   * stato attuale. Contando lo stato, questa rete non è mai scattata
-   * nemmeno una volta - nel diario, zero righe in giorni: un tentativo
-   * fallito cambia stato ogni due secondi, `offline → in apertura →
-   * offline`, e il conto alla rovescia ripartiva da capo ogni volta
-   * senza arrivare mai in fondo. Chi è senza server da mezzo minuto lo è
-   * comunque, per quante volte ci abbia riprovato in mezzo.
+   * It is counted from the last WORKING connection, not from how long
+   * the current state has lasted. Counting the state, this net never
+   * fired once - zero lines in days of journal: a failed attempt
+   * changes state every couple of seconds, `offline -> opening ->
+   * offline`, and the countdown started again every time without ever
+   * reaching the end. Somebody who has been without a server for half a
+   * minute has been, however many times they tried in between.
    */
   useEffect(() => {
-    if (!disponibile) return;
+    if (!available) return;
     if (status !== 'offline' && status !== 'connecting') return;
     const t = setInterval(() => {
       // Se non stiamo già contando, si comincia adesso: siamo qui
-      // perché il collegamento non c'è, e il caso peggiore - il socket
+      // perché il connectionName non c'è, e il caso peggiore - il socket
       // che resta "in apertura" per sempre, senza mai una caduta da
       // segnare - è proprio quello che non farebbe partire nessun
       // conto.
-      const da = senzaServerDa.current || (senzaServerDa.current = Date.now());
+      const da = noServerSince.current || (noServerSince.current = Date.now());
       const fermo = Date.now() - da;
-      if (fermo < ATTESA_SENZA_SERVER_MS) return;
+      if (fermo < NO_SERVER_WAIT_MS) return;
       Diario.segna(`server:rifaccio:${Math.round(fermo / 1000)}s`)
         .catch(() => { /* noop */ });
       // Il conto riparte da adesso: rifare da capo è un tentativo, e se
       // non basta se ne farà un altro fra altrettanto tempo.
-      senzaServerDa.current = Date.now();
+      noServerSince.current = Date.now();
       signalingRef.current?.rebuild();
-    }, CONTROLLO_SERVER_MS);
+    }, SERVER_CHECK_MS);
     return () => clearInterval(t);
-  }, [status, disponibile]);
+  }, [status, available]);
 
   /**
    * L'ultima domanda mandata al server e l'ultima risposta ricevuta.
@@ -1000,8 +942,8 @@ export default function App() {
    * Confrontandoli a ogni battito si sa se quello di prima è rimasto
    * senza risposta, e una domanda senza risposta è un socket morto.
    */
-  const provaMandata = useRef(0);
-  const rispostaVista = useRef(0);
+  const probeSent = useRef(0);
+  const answerSeen = useRef(0);
 
   /**
    * "Gli hanno chiuso l'app" vale finché resta in attesa.
@@ -1010,31 +952,31 @@ export default function App() {
    * spiegazione non racconta più il presente.
    */
   useEffect(() => {
-    if (!peerPresent || status === 'together') setPeerSmontato(false);
+    if (!peerPresent || status === 'together') setPeerTornDown(false);
   }, [peerPresent, status]);
 
   /**
-   * L'ultimo volume di sistema messo da noi, con l'ora.
+   * L'ultimo volume di systemVolume messo da noi, con l'ora.
    *
-   * Serve a riconoscere l'eco: il sistema annuncia ogni cambio, compresi
+   * Serve a riconoscere l'eco: il systemVolume annuncia ogni cambio, compresi
    * i nostri, e senza questo confronto ogni tocco dei tasti sembrerebbe
    * la scelta di un'altra app.
    */
-  const nostroSet = useRef<{ v: number; t: number } | null>(null);
+  const ourOwnSet = useRef<{ v: number; t: number } | null>(null);
 
   /** Battiti di fila finiti male: al secondo si chiama in causa la rete. */
-  const battitiAvuoto = useRef(0);
+  const emptyBeats = useRef(0);
 
   /** La prova in corso dopo un cambio di rete, se ce n'è una. */
-  const provaRete = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const fermaProvaRete = useCallback(() => {
-    if (!provaRete.current) return;
-    clearTimeout(provaRete.current);
-    provaRete.current = null;
+  const networkProbe = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stopNetworkProbe = useCallback(() => {
+    if (!networkProbe.current) return;
+    clearTimeout(networkProbe.current);
+    networkProbe.current = null;
   }, []);
 
   /**
-   * La rete è cambiata: si controlla che il collegamento sia ancora vivo.
+   * La rete è cambiata: si controlla che il connectionName sia ancora vivo.
    *
    * Nessuna connessione TCP sopravvive a un cambio di indirizzo, e
    * cambiando cella l'indirizzo cambia sempre: il socket verso il
@@ -1050,7 +992,7 @@ export default function App() {
    * volte non serve a niente.
    */
   useEffect(() => {
-    if (!disponibile) return;
+    if (!available) return;
     let quando: ReturnType<typeof setTimeout> | null = null;
     const stop = Rete.subscribe((cosa) => {
       if (cosa === 'persa') return;
@@ -1062,7 +1004,7 @@ export default function App() {
         if (!sig) return;
         // Già senza server: non c'è niente da salvare, si rifà e basta.
         if (!sig.connected) {
-          senzaServerDa.current = senzaServerDa.current || Date.now();
+          noServerSince.current = noServerSince.current || Date.now();
           sig.rebuild();
           return;
         }
@@ -1077,27 +1019,27 @@ export default function App() {
          * il socket è vivo: se non arriva entro qualche secondo, allora
          * sì che era morto.
          */
-        fermaProvaRete();
+        stopNetworkProbe();
         sig.askPresence();
-        provaRete.current = setTimeout(() => {
-          provaRete.current = null;
+        networkProbe.current = setTimeout(() => {
+          networkProbe.current = null;
           Diario.segna('rete:muto').catch(() => { /* noop */ });
-          senzaServerDa.current = senzaServerDa.current || Date.now();
+          noServerSince.current = noServerSince.current || Date.now();
           signalingRef.current?.rebuild();
-        }, ATTESA_PROVA_MS);
-      }, RESPIRO_RETE_MS);
+        }, PROBE_WAIT_MS);
+      }, NETWORK_SETTLE_MS);
     });
     return () => {
       if (quando) clearTimeout(quando);
-      fermaProvaRete();
+      stopNetworkProbe();
       stop();
     };
-  }, [disponibile, fermaProvaRete]);
+  }, [available, stopNetworkProbe]);
 
   /**
    * Il battito nativo: l'unica sveglia che suona a schermo spento.
    *
-   * A ogni battito si guarda il collegamento. Se il socket è già
+   * A ogni battito si guarda il connectionName. Se il socket è già
    * dichiarato morto si rifà e basta. Se sembra vivo gli si fa una
    * domanda, e la risposta si controlla al battito DOPO: un cronometro
    * qui non servirebbe a niente, perché i cronometri di JavaScript a
@@ -1109,29 +1051,29 @@ export default function App() {
    * connessioni ferme.
    */
   useEffect(() => {
-    if (!disponibile) return;
-    provaMandata.current = 0;
-    rispostaVista.current = Date.now();
+    if (!available) return;
+    probeSent.current = 0;
+    answerSeen.current = Date.now();
     return Battito.subscribe(() => {
       const sig = signalingRef.current;
       if (!sig) return;
       const rifai = (perche: string) => {
         Diario.segna(`battito:${perche}`).catch(() => { /* noop */ });
-        senzaServerDa.current = senzaServerDa.current || Date.now();
-        provaMandata.current = 0;
-        battitiAvuoto.current += 1;
+        noServerSince.current = noServerSince.current || Date.now();
+        probeSent.current = 0;
+        emptyBeats.current += 1;
         /**
          * Due battiti a vuoto: si dice ad Android di guardare la rete.
          *
          * È il caso di chi esce di casa: il wifi, che funziona
          * benissimo, diventa debole e smette di far passare dati, ma il
          * telefono ci resta agganciato - a schermo spento anche per
-         * mezzo minuto buono. Noi lo sappiamo prima del sistema, perché
+         * mezzo minuto buono. Noi lo sappiamo prima del systemVolume, perché
          * i nostri tentativi falliscono uno dopo l'altro: glielo
          * diciamo, la verifica la fa lui, e se quella rete non porta a
          * internet sposta il traffico da sé.
          */
-        if (battitiAvuoto.current === 2) {
+        if (emptyBeats.current === 2) {
           Diario.segna('rete:non-passa').catch(() => { /* noop */ });
           Rete.segnalaCheNonPassa().catch(() => { /* noop */ });
         }
@@ -1140,15 +1082,15 @@ export default function App() {
       if (!sig.connected) { rifai('senza-socket'); return; }
       // La domanda di prima è rimasta senza risposta: il socket sembra
       // vivo ma non porta più niente.
-      if (provaMandata.current && rispostaVista.current < provaMandata.current) {
+      if (probeSent.current && answerSeen.current < probeSent.current) {
         rifai('muto');
         return;
       }
-      battitiAvuoto.current = 0;
-      provaMandata.current = Date.now();
+      emptyBeats.current = 0;
+      probeSent.current = Date.now();
       sig.askPresence();
     });
-  }, [disponibile]);
+  }, [available]);
 
   /**
    * Il battito si infittisce mentre siamo senza server.
@@ -1159,8 +1101,8 @@ export default function App() {
    */
   useEffect(() => {
     const senza = status === 'offline' || status === 'connecting';
-    Battito.fitto(disponibile && senza).catch(() => { /* noop */ });
-  }, [status, disponibile]);
+    Battito.fitto(available && senza).catch(() => { /* noop */ });
+  }, [status, available]);
 
   /**
    * Ogni tanto si torna a chiedere al server se l'altro c'è.
@@ -1180,14 +1122,14 @@ export default function App() {
     let timer: ReturnType<typeof setTimeout>;
     const giro = () => {
       signalingRef.current?.askPresence();
-      const atteso = Date.now() - inizio >= PRESENZA_PAZIENZA_MS
-        ? PRESENZA_RADA_MS : PRESENZA_FITTA_MS;
+      const atteso = Date.now() - inizio >= PRESENCE_PATIENCE_MS
+        ? PRESENCE_SPARSE_MS : PRESENCE_OFTEN_MS;
       timer = setTimeout(giro, atteso);
     };
     // Non subito: entrando nel canale la risposta del server è appena
     // arrivata, e richiederla nello stesso istante sarebbe chiederla due
     // volte.
-    timer = setTimeout(giro, PRESENZA_FITTA_MS);
+    timer = setTimeout(giro, PRESENCE_OFTEN_MS);
     return () => clearTimeout(timer);
   }, [inChannel, status]);
 
@@ -1217,7 +1159,7 @@ export default function App() {
       // Il servizio in primo piano non basta: quello tiene vivo il
       // processo, non la connessione. Sono due cose diverse, e all'altro
       // ne serve una sola per vederti sparire.
-      if (!salutiamo.current) {
+      if (!sayGoodbye.current) {
         /**
          * Il perché lo si dice solo se contava.
          *
@@ -1252,7 +1194,7 @@ export default function App() {
   /**
    * "Sono morta, ed ecco perché."
    *
-   * Nessuno può avvisare mentre muore: un processo ucciso dal sistema
+   * Nessuno può avvisare mentre muore: un processo ucciso dal systemVolume
    * non riceve nessun preavviso. Ma riaccendendosi il telefono si
    * ricorda com'è andata, e allora lo si dice all'altro - che intanto
    * ha visto sparire una persona e non aveva modo di sapere se fosse un
@@ -1261,7 +1203,7 @@ export default function App() {
    * Si racconta una volta sola: la stessa morte raccontata a ogni
    * riconnessione diventerebbe un ritornello.
    */
-  const morteDaRaccontare =
+  const deathToTell =
     useRef<{ quando: number; causa: string; tornato: number } | null>(null);
 
   /**
@@ -1277,30 +1219,30 @@ export default function App() {
    * quello dice già tutto: due notizie per lo stesso fatto sono una di
    * troppo.
    */
-  const assenteDa = useRef(0);
-  const ritornoInArrivo = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const ASSENZA_DA_DIRE_MS = 60_000;
-  const ATTESA_RACCONTO_MS = 6_000;
+  const awaySince = useRef(0);
+  const returnDue = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ABSENCE_WORTH_TELLING_MS = 60_000;
+  const TELLING_DELAY_MS = 6_000;
 
-  const scordaRitorno = useCallback(() => {
-    if (ritornoInArrivo.current) {
-      clearTimeout(ritornoInArrivo.current);
-      ritornoInArrivo.current = null;
+  const forgetReturn = useCallback(() => {
+    if (returnDue.current) {
+      clearTimeout(returnDue.current);
+      returnDue.current = null;
     }
   }, []);
 
   useEffect(() => {
     if (!peerPresent) {
-      if (assenteDa.current === 0) assenteDa.current = Date.now();
-      scordaRitorno();
+      if (awaySince.current === 0) awaySince.current = Date.now();
+      forgetReturn();
       return;
     }
-    const via = assenteDa.current;
-    assenteDa.current = 0;
-    if (!via || Date.now() - via < ASSENZA_DA_DIRE_MS) return;
-    scordaRitorno();
-    ritornoInArrivo.current = setTimeout(() => {
-      ritornoInArrivo.current = null;
+    const via = awaySince.current;
+    awaySince.current = 0;
+    if (!via || Date.now() - via < ABSENCE_WORTH_TELLING_MS) return;
+    forgetReturn();
+    returnDue.current = setTimeout(() => {
+      returnDue.current = null;
       const chi = shownNameRef.current || 'L’altro';
       // Con l'ora al secondo: una notifica trovata dopo, senza, non dice
       // se è tornato un minuto fa o stamattina.
@@ -1308,14 +1250,14 @@ export default function App() {
         hour: '2-digit', minute: '2-digit', second: '2-digit',
       });
       const testo = `${chi} è di nuovo raggiungibile (${adesso}).`;
-      // Il titolo dice su quale collegamento, come per gli avvisi: con
+      // Il titolo dice su quale connectionName, come per gli avvisi: con
       // più di uno configurato, "è di nuovo raggiungibile" da solo non
       // dice chi.
       // Solo in tendina: dentro l'app comparirebbe la stessa frase due
       // volte, una nel riquadro e una nella notifica dietro.
-      Foreground.nota(nomeAvvisoRef.current, testo).catch(() => {});
-    }, ATTESA_RACCONTO_MS);
-  }, [peerPresent, scordaRitorno]);
+      Foreground.nota(alertNameRef.current, testo).catch(() => {});
+    }, TELLING_DELAY_MS);
+  }, [peerPresent, forgetReturn]);
 
   /**
    * «È di nuovo raggiungibile» smette di valere quando risparisce.
@@ -1329,7 +1271,7 @@ export default function App() {
     Foreground.togliNota().catch(() => { /* noop */ });
   }, [peerPresent]);
 
-  const leggiLaPropriaMorte = useCallback(async () => {
+  const readOwnDeath = useCallback(async () => {
     try {
       const m = await Diario.ultimaMorte();
       if (!m || !m.quando) return;
@@ -1337,24 +1279,24 @@ export default function App() {
       // cui un'app viene sostituita, e annunciarlo sarebbe un allarme
       // per una cosa voluta.
       if (/installPackage|PackageUpdate/i.test(m.descrizione || '')) return;
-      const grezzo = await leggiConPonte(CHIAVE_MORTE_RACCONTATA, VECCHIE.morte);
+      const grezzo = await readWithBridge(DEATH_TOLD_KEY, OLD_KEYS.death);
       if (Number(grezzo) >= m.quando) return;
       // L'ora del ritorno è adesso: l'app sta ripartendo proprio ora, e
       // questo è l'unico telefono che possa saperla.
-      morteDaRaccontare.current = { quando: m.quando, causa: m.causa, tornato: Date.now() };
+      deathToTell.current = { quando: m.quando, causa: m.causa, tornato: Date.now() };
     } catch { /* se il telefono non lo sa, non lo sa */ }
   }, []);
 
   useEffect(() => {
     if (!peerPresent) return;
-    const da = morteDaRaccontare.current;
+    const da = deathToTell.current;
     const sig = signalingRef.current;
     if (!da || !sig?.connected) return;
     sig.sendSignal({
       kind: 'death', when: da.quando, cause: da.causa, back: da.tornato,
     });
-    morteDaRaccontare.current = null;
-    AsyncStorage.setItem(CHIAVE_MORTE_RACCONTATA, String(da.quando)).catch(() => {});
+    deathToTell.current = null;
+    AsyncStorage.setItem(DEATH_TOLD_KEY, String(da.quando)).catch(() => {});
   }, [peerPresent, status]);
 
   /**
@@ -1372,18 +1314,18 @@ export default function App() {
    * lì è l'ultimo momento utile, la connessione è ancora aperta e da lì
    * a poco non lo sarà più.
    */
-  const mandaDiario = useCallback(async () => {
+  const sendJournal = useCallback(async () => {
     const sig = signalingRef.current;
     if (!sig?.connected) return;
-    const chiave = chiaveInviate(cfg?.pair?.id ?? '');
+    const chiave = sentKeyFor(cfg?.pair?.id ?? '');
     try {
       const righe = await Diario.righe();
-      const suo = await leggiConPonte(chiave, `${VECCHIE.inviate}.${cfg?.pair?.id ?? ''}`);
+      const suo = await readWithBridge(chiave, `${OLD_KEYS.sent}.${cfg?.pair?.id ?? ''}`);
       // La chiave unica di prima fa da punto di partenza per chi c'era
       // già: senza, il primo scambio dopo l'aggiornamento rimanderebbe
       // da capo mesi di righe che l'altro ha già.
       const vecchio = suo === null
-        ? await AsyncStorage.getItem(VECCHIE.inviate)
+        ? await AsyncStorage.getItem(OLD_KEYS.sent)
         : null;
       let inviate = Number(suo ?? vecchio) || 0;
       if (inviate > righe) inviate = 0;
@@ -1402,7 +1344,7 @@ export default function App() {
     if (!peerPresent) return;
     let vivo = true;
 
-    const manda = () => { if (vivo) mandaDiario(); };
+    const manda = () => { if (vivo) sendJournal(); };
 
     // Il primo giro DIECI SECONDI dopo essersi trovati, non un minuto.
     //
@@ -1416,33 +1358,33 @@ export default function App() {
     // Basta che l'altro sia COLLEGATO, non che siate nel canale: i
     // diari si scambiano anche mentre state solo in attesa.
     const primo = setTimeout(manda, 10_000);
-    const timer = setInterval(manda, SCAMBIO_DIARIO_MS);
+    const timer = setInterval(manda, JOURNAL_SWAP_MS);
     return () => { vivo = false; clearTimeout(primo); clearInterval(timer); };
-  }, [peerPresent, mandaDiario]);
+  }, [peerPresent, sendJournal]);
 
   /**
    * Se stiamo passando dal relay, si tenta una volta la strada diretta.
    *
    * ICE non torna indietro da solo: scelta una strada che funziona, non
    * la riconsidera più, nemmeno quando ne ricompare una molto migliore -
-   * tornando sul wifi il collegamento continuava a rimbalzare dal server
+   * tornando sul wifi il connectionName continuava a rimbalzare dal server
    * all'infinito. Una rinegoziazione rifà la raccolta dei candidatesById e fa
    * rivalutare le coppie: se la locale c'è, vince per priorità.
    *
-   * Una volta sola per collegamento: se anche così resta il relay, vuol
+   * Una volta sola per connectionName: se anche così resta il relay, vuol
    * dire che di meglio non c'è, e insistere costerebbe interruzioni.
    */
   useEffect(() => {
     // Il contrassegno NON si azzera qui. Azzerandolo a ogni uscita da
     // "connected" si innescava un ciclo: il tentativo interrompe la
     // connessione, l'interruzione riabilita il tentativo, e da fuori si
-    // vedeva "collegamento interrotto" ogni dieci secondi per sempre.
+    // vedeva "connectionName interrotto" ogni dieci secondi per sempre.
     // Si riprova solo dopo un vero cambio di rete - vedi `onJoined`.
     if (connState !== 'connected') return;
-    if (videoStats.path !== 'relay' || relayRiprovato.current) return;
+    if (videoStats.path !== 'relay' || relayRetried.current) return;
     const t = setTimeout(() => {
       if (!inChannelRef.current || !peerActiveRef.current) return;
-      relayRiprovato.current = true;
+      relayRetried.current = true;
       console.log('[duetto-rtc]', 'passiamo dal relay: provo a cercare una strada diretta');
       if (politeRef.current) signalingRef.current?.sendSignal({ kind: 'renegotiate' });
       else sessionRef.current?.restartIce();
@@ -1466,7 +1408,7 @@ export default function App() {
       Foreground.clearNotification().catch(() => {});
       // Riaprire l'app è già dire "ci sono": se ci si era staccati, la
       // presenza torna da sé. Chi vuole restare invisibile non riapre.
-      setDisponibile(true);
+      setAvailable(true);
       // Tornando in primo piano non ha senso aspettare il prossimo
       // tentativo programmato: si riprova subito.
       signalingRef.current?.reconnectNow();
@@ -1514,17 +1456,17 @@ export default function App() {
     (async () => {
       // Prima della configurazione: se arrivasse dopo, il riquadrino
       // comparirebbe al suo posto di nascita e poi salterebbe.
-      await caricaPosizionePip();
+      await loadPipPosition();
       let c = await loadConfig();
       setCfg(c);
-      leggiLaPropriaMorte();
+      readOwnDeath();
       // Il canale di notifica va preparato prima che serva: nasce con
-      // suono e vibrazione dentro, e crearlo al primo avviso vorrebbe
+      // suono e vibrazione dentro, e crearlo al primo notice vorrebbe
       // dire farlo mentre lo si sta già usando.
       Avvisi.configura(c.alertVibration, c.alertSound, c.alertSoundUri).catch(() => {});
       if (!isServerConfigured(c)) setScreen('settings');
       else if (!isPaired(c)) setScreen('pairing');
-      // Le impostazioni di sistema si propongono una volta sola, appena
+      // Le impostazioni di systemVolume si propongono una volta sola, appena
       // c'è una pairStat: prima non avrebbe senso spiegarle.
       else if (!c.setupShown) setScreen('setup');
       // Aprire l'app significa voler entrare nel canale: niente pulsanti
@@ -1539,7 +1481,7 @@ export default function App() {
    * Prima l'effetto dipendeva da `cfg` intero: cambiare la qualità video
    * - che è solo un parametro dell'encoder - abbatteva signaling e
    * sessione e li ricostruiva. Si vedeva il proprio video spegnersi,
-   * l'altro leggeva "collegamento interrotto", e le preferenze si
+   * l'altro leggeva "connectionName interrotto", e le preferenze si
    * chiudevano da sole perché rientrare nel canale cambia schermata.
    */
   const connKey = cfg
@@ -1550,7 +1492,7 @@ export default function App() {
     : '';
 
   /**
-   * Il nome vero dell'altro, ricordato nel collegamento.
+   * Il nome vero dell'altro, ricordato nel connectionName.
    *
    * All'accoppiamento il nome può mancare - è facoltativo - o essere
    * cambiato dopo. Con più collegamenti in elenco è l'unica cosa che li
@@ -1558,21 +1500,21 @@ export default function App() {
    * scrive solo quando cambia davvero, quindi non costa nulla farlo a
    * ogni ingresso.
    */
-  const segnaNome = useCallback((n: string) => {
+  const noteName = useCallback((n: string) => {
     setPeerName(n);
     setCfg((prev) => {
       if (!prev?.pair) return prev;
       const next = rememberPeerName(prev, prev.pair.id, n);
       if (!next) return prev;
-      return salvaCfg(next);
+      return saveCfg(next);
     });
-  }, [salvaCfg]);
+  }, [saveCfg]);
 
   // --- connessione persistente --------------------------------------------
   // Vive finché c'è una pairStat: passare da "in ascolto" a "nel canale"
   // non riconnette nulla, cambia solo lo stato dichiarato al server.
   useEffect(() => {
-    if (!cfg || !isPaired(cfg) || !isServerConfigured(cfg) || !disponibile) return;
+    if (!cfg || !isPaired(cfg) || !isServerConfigured(cfg) || !available) return;
     const pair = cfg.pair!;
 
     // Se la presenza era tenuta viva dal servizio senza interfaccia
@@ -1591,7 +1533,7 @@ export default function App() {
       }
       if (cancelled) return;
 
-      Foreground.start(testoNotificaRef.current, false).catch(() => {});
+      Foreground.start(noticeTextRef.current, false).catch(() => {});
 
       const sig = new Signaling(
         {
@@ -1607,7 +1549,7 @@ export default function App() {
             setStatus(st);
             if (st === 'offline') signalingWasDown.current = true;
             /**
-             * Le cadute del collegamento al server, nel diario.
+             * Le cadute del connectionName al server, nel diario.
              *
              * Era l'unica cosa che non registravamo: cosa fai tu, cosa fa
              * lui, quando muore l'app, quando cade lui - e non quando il
@@ -1624,18 +1566,18 @@ export default function App() {
              * salto diretto da "offline" a "collegato" - ma si passa
              * sempre da "in apertura", quindi quella riga non si è
              * scritta mai, e il diario non sapeva dire quando il
-             * collegamento fosse tornato. Che è esattamente la domanda
+             * connectionName fosse tornato. Che è esattamente la domanda
              * per cui il diario esiste.
              */
             if (st === 'offline') {
-              if (!senzaServerDa.current) {
-                senzaServerDa.current = Date.now();
+              if (!noServerSince.current) {
+                noServerSince.current = Date.now();
                 Diario.segna(`server:giu:${dettaglio ?? '?'}`).catch(() => {});
               }
-            } else if (st !== 'connecting' && senzaServerDa.current) {
-              const quanto = Math.round((Date.now() - senzaServerDa.current) / 1000);
-              senzaServerDa.current = 0;
-              battitiAvuoto.current = 0;
+            } else if (st !== 'connecting' && noServerSince.current) {
+              const quanto = Math.round((Date.now() - noServerSince.current) / 1000);
+              noServerSince.current = 0;
+              emptyBeats.current = 0;
               Diario.segna(`server:ok:dopo ${quanto}s`).catch(() => {});
             }
           },
@@ -1643,7 +1585,7 @@ export default function App() {
           onJoined: ({ peerPresent: present, peerActive, peerName: n, turn }) => {
             // Ritrovandolo collegato, qualunque cosa avesse fatto prima
             // non conta più.
-            if (present) setPeerStaccato(false);
+            if (present) setPeerDetached(false);
             // Il relay lo configura il server: sui telefoni non si digita nulla.
             serverTurnRef.current = turn ? [turn] : [];
             sessionRef.current?.setServerIceServers(serverTurnRef.current);
@@ -1654,7 +1596,7 @@ export default function App() {
             // Solo un vero cambio di rete rende sensato ricercare una
             // strada diretta: è l'unico momento in cui può esserne
             // comparsa una che prima non c'era.
-            if (afterOutage) relayRiprovato.current = false;
+            if (afterOutage) relayRetried.current = false;
             // Il ruolo NON può dipendere da chi entra per primo: la
             // connessione si riaggancia a ogni cambio di rete, e chi era
             // "primo" può ritrovarsi secondo. Sono bastate due
@@ -1666,7 +1608,7 @@ export default function App() {
             politeRef.current = pair.side === 'A';
             peerActiveRef.current = peerActive;
             setPeerPresent(present);
-            if (n) segnaNome(n);
+            if (n) noteName(n);
             if (peerActive && inChannelRef.current) {
               if (afterOutage) riprendiDopoCaduta(); else attachPeer();
             }
@@ -1676,10 +1618,10 @@ export default function App() {
             Diario.segna(`altro-torna:${mode === 'active' ? 'canale' : 'attesa'}`)
               .catch(() => { /* noop */ });
             setPeerPresent(true);
-            setPeerStaccato(false);
-            segnaNome(n);
+            setPeerDetached(false);
+            noteName(n);
             // È tornato: l'attesa che stava per dimenticarlo si annulla.
-            fermaAttesa();
+            stopWaiting();
             peerActiveRef.current = mode === 'active';
             if (mode === 'active' && inChannelRef.current) attachPeer(true);
           },
@@ -1692,13 +1634,13 @@ export default function App() {
             // si legge senza aspettare nessuno scambio.
             Diario.segna(`altro-via:${motivo}`).catch(() => { /* noop */ });
             setPeerPresent(false);
-            setPeerVisto(false);
-            setPeerStaccato(motivo === 'bye');
+            setPeerSeen(false);
+            setPeerDetached(motivo === 'bye');
             peerActiveRef.current = false;
             sessionRef.current?.detachPeer();
             // Se ha salutato è uscito davvero; se è caduto gli si tiene il
             // posto qualche secondo, che è il tempo di un cambio di rete.
-            scordaAltro(motivo === 'bye');
+            forgetPeer(motivo === 'bye');
             setConnState('new');
           },
 
@@ -1715,44 +1657,44 @@ export default function App() {
             // Il server ha risposto: qualunque dubbio avessimo sul
             // socket, è vivo. Vale per la prova dopo un cambio di rete
             // e per quella del battito.
-            fermaProvaRete();
-            rispostaVista.current = Date.now();
+            stopNetworkProbe();
+            answerSeen.current = Date.now();
             setPeerPresent(present);
-            if (present) setPeerStaccato(false);
-            if (n) segnaNome(n);
+            if (present) setPeerDetached(false);
+            if (n) noteName(n);
             peerActiveRef.current = peerActive;
             if (peerActive) {
-              fermaAttesa();
+              stopWaiting();
               setStatus('together');
               if (inChannelRef.current) attachPeer();
             }
           },
 
           onPeerMode: (mode, n) => {
-            if (n) segnaNome(n);
+            if (n) noteName(n);
             peerActiveRef.current = mode === 'active';
             if (mode === 'active') {
-              fermaAttesa();
+              stopWaiting();
               if (inChannelRef.current) attachPeer();
             } else {
               sessionRef.current?.detachPeer();
               // Uscita voluta: ha premuto "Esci" ed è tornato in ascolto.
-              scordaAltro(true);
+              forgetPeer(true);
               setConnState('new');
             }
           },
 
           onNotify: (reason, n) => {
             Diario.segna(reason === 'knock' ? 'altro-avvisa' : 'altro-entra').catch(() => {});
-            segnaNome(n);
+            noteName(n);
             setKnockPending(false);
             // Il nome è facoltativo: senza, si evita di scrivere "Qualcuno".
             const named = n && n !== 'Qualcuno';
             // Con più collegamenti configurati, "ti stanno chiamando" non
             // basta: chiama uno solo dei due o tre che conosci, e sapere
-            // quale è metà dell'informazione. Con un collegamento solo il
+            // quale è metà dell'informazione. Con un connectionName solo il
             // titolo resta "Duetto", che non ha niente da disambiguare.
-            const titolo = nomeAvvisoRef.current;
+            const titolo = alertNameRef.current;
 
             if (reason === 'knock') {
               // Un richiamo esplicito passa sempre, anche con l'app aperta:
@@ -1782,7 +1724,7 @@ export default function App() {
           onSignal: async (msg) => {
             const sess = sessionRef.current;
             if (!sess) return;
-            // L'altro è rimasto senza collegamento e ci chiede di
+            // L'altro è rimasto senza connectionName e ci chiede di
             // rifare l'offerta: tocca a noi, che siamo quelli che offrono.
             if (msg.kind === 'renegotiate') {
               if (!politeRef.current && inChannelRef.current) attachPeer(true);
@@ -1810,7 +1752,7 @@ export default function App() {
             // niente. È una notizia, non una chiamata.
             // "Non sono uscito io, mi hanno chiuso l'app."
             if (msg.kind === 'tornDown') {
-              setPeerSmontato(true);
+              setPeerTornDown(true);
               Diario.segna('altro-smontata').catch(() => {});
               return;
             }
@@ -1818,13 +1760,13 @@ export default function App() {
             if (msg.kind === 'death') {
               // Questo racconto contiene già il ritorno: l'annuncio
               // generico non serve più.
-              scordaRitorno();
+              forgetReturn();
               const testo = deathStory(
                 Number(msg.when), String(msg.cause), shownNameRef.current,
                 Number(msg.back) || 0,
               );
-              Foreground.nota(nomeAvvisoRef.current, testo).catch(() => {});
-              setAvviso(testo);
+              Foreground.nota(alertNameRef.current, testo).catch(() => {});
+              setNotice(testo);
               Diario.segna(`morte-altrui:${msg.cause}`).catch(() => {});
               return;
             }
@@ -1839,7 +1781,7 @@ export default function App() {
             }
 
             if (msg.kind === 'journal') {
-              Diario.aggiungiAltro(String(msg.text ?? ''), chiaveDiarioRef.current)
+              Diario.aggiungiAltro(String(msg.text ?? ''), journalKeyRef.current)
                 .catch(() => {});
               return;
             }
@@ -1856,7 +1798,7 @@ export default function App() {
             if (ok) {
               // Solo una conferma a schermo: il pulsante resta premibile,
               // perché insistere è precisamente ciò che si vuole fare
-              // quando il primo avviso non ha ottenuto risposta.
+              // quando il primo notice non ha ottenuto risposta.
               setKnockPending(true);
               setTimeout(() => setKnockPending(false), 2000);
             }
@@ -1871,7 +1813,7 @@ export default function App() {
             if (code === 'room-full' || code === 'replaced') {
               // Quasi sempre transitorio: la connessione precedente non è
               // ancora stata dichiarata morta, o il telefono si è riagganciato
-              // altrove. Il riaggancio automatico ci pensa da solo: un avviso
+              // altrove. Il riaggancio automatico ci pensa da solo: un notice
               // qui sarebbe solo allarmismo.
             }
             else if (code === 'decrypt-failed') {
@@ -1902,12 +1844,12 @@ export default function App() {
       sessionRef.current?.leaveChannel();
       sessionRef.current = null;
       // Si saluta solo se ce ne andiamo davvero, cioè se qualcuno ha
-      // scelto di rendersi non disponibile o ha sciolto il collegamento.
+      // scelto di rendersi non available o ha sciolto il connectionName.
       // Tutte le altre chiusure sono passaggi di mano, e l'altro non
       // deve leggere "si è staccato" per una connessione che si rifà.
       interfaceInCharge(false);
-      const addio = salutiamo.current;
-      salutiamo.current = false;
+      const addio = sayGoodbye.current;
+      sayGoodbye.current = false;
       signalingRef.current?.close(addio);
       signalingRef.current = null;
       /**
@@ -1929,10 +1871,10 @@ export default function App() {
     // attachPeer è stabile: usa solo ref. `cfg` si legge dalla chiusura
     // ma non è una dipendenza: solo connKey deve far rifare tutto.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connKey, disponibile]);
+  }, [connKey, available]);
 
   /**
-   * Assicura un collegamento diretto vivo, quando siamo entrambi nel canale.
+   * Assicura un connectionName diretto vivo, quando siamo entrambi nel canale.
    *
    * `force` serve quando l'altro si è appena ricollegato: la sua
    * connessione è nuova per definizione, quindi la nostra è comunque da
@@ -1945,7 +1887,7 @@ export default function App() {
    */
   const timerAssenza = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fermaAttesa = useCallback(() => {
+  const stopWaiting = useCallback(() => {
     if (timerAssenza.current) {
       clearTimeout(timerAssenza.current);
       timerAssenza.current = null;
@@ -1961,24 +1903,24 @@ export default function App() {
    *
    * @param subito vero se se n'è andato lui, falso se è caduta la rete
    */
-  const scordaAltro = useCallback((subito: boolean) => {
-    fermaAttesa();
+  const forgetPeer = useCallback((subito: boolean) => {
+    stopWaiting();
     const spegni = () => {
       setPeerState({ audio: true, video: false });
       // Anche "l'ho visto": senza, restava vero mentre il suo stato era
       // vuoto, e siccome un Duetto vecchio si riconosce proprio dal non
       // dichiarare la versione, uscito dal canale gli veniva attribuita
       // una versione vecchia che non ha mai avuto.
-      setPeerVisto(false);
+      setPeerSeen(false);
     };
     if (subito) { spegni(); return; }
     timerAssenza.current = setTimeout(() => {
       timerAssenza.current = null;
       spegni();
-    }, ATTESA_RITORNO_MS);
-  }, [fermaAttesa]);
+    }, RETURN_WAIT_MS);
+  }, [stopWaiting]);
 
-  useEffect(() => fermaAttesa, [fermaAttesa]);
+  useEffect(() => stopWaiting, [stopWaiting]);
 
   const attachPeer = useCallback(async (force = false) => {
     const sig = signalingRef.current;
@@ -2004,7 +1946,7 @@ export default function App() {
       console.log('[duetto-rtc]', 'attachPeer fallita:', String(e?.message ?? e));
       // Solo se è mancato il microfono. Le altre cadute di attachPeer
       // capitano durante le riconnessioni e si risolvono da sole: un
-      // avviso a ogni tentativo sarebbe rumore, e coprirebbe questo.
+      // notice a ogni tentativo sarebbe rumore, e coprirebbe questo.
       if (!s.hasMic()) Alert.alert('Errore microfono', String(e?.message ?? e));
     }
   }, []);
@@ -2091,11 +2033,11 @@ export default function App() {
         },
         onVideoStats: setVideoStats,
         onPeerState: (st) => {
-          setPeerVisto(true);
+          setPeerSeen(true);
           // Solo i cambiamenti: lo stato arriva anche quando non è
           // cambiato niente, e una riga per ogni messaggio sarebbe un
           // diario che racconta il silenzio.
-          const prima = statoAltroRef.current;
+          const prima = peerStateRef.current;
           if (prima.audio !== st.audio) {
             Diario.segna(`altro-audio:${st.audio ? 'on' : 'off'}`).catch(() => {});
           }
@@ -2108,13 +2050,13 @@ export default function App() {
           if (st.output && prima.output !== st.output) {
             Diario.segna(`altro-uscita-audio:${st.output}`).catch(() => {});
           }
-          statoAltroRef.current = {
+          peerStateRef.current = {
             audio: st.audio, video: st.video, camera: st.camera, output: st.output,
           };
           // Se ci manda il suo stato è tornato, qualunque cosa dicesse il
           // conto alla rovescia: senza fermarlo, poco dopo spegnerebbe uno
           // stato appena arrivato.
-          fermaAttesa();
+          stopWaiting();
           setPeerState(st);
           setPeerVp9(st.hwVp9 === true);
         },
@@ -2128,10 +2070,10 @@ export default function App() {
           // risoluzione, quando l'encoder scende o risale - distruggeva e
           // ricostruiva l'immagine di continuo: un lampo che sembra un
           // ricollegamento, e non lo è.
-          if (present && !avevaVideoRemoto.current) {
+          if (present && !hadRemoteVideo.current) {
             setRemoteVideoKey((k) => k + 1);
           }
-          avevaVideoRemoto.current = present;
+          hadRemoteVideo.current = present;
         },
       });
     }
@@ -2145,7 +2087,7 @@ export default function App() {
       InCallManager.start({ media: 'audio' });
     } catch { /* noop */ }
     // Riaccendendo l'audio, InCallManager riporta l'uscita a quella
-    // predefinita: la scelta di questo collegamento va rimessa adesso,
+    // predefinita: la scelta di questo connectionName va rimessa adesso,
     // non prima.
     reapplyRouteRef.current?.();
 
@@ -2167,23 +2109,23 @@ export default function App() {
      * accenderla richiede il permesso e il servizio con il tipo giusto,
      * e in questo istante la sessione sta ancora prendendo posto.
      */
-    const prima = comEra.current;
-    comEra.current = null;
+    const prima = howItWas.current;
+    howItWas.current = null;
     if (prima) {
       const fermo = Date.now() - prima.quando;
-      if (!prima.audio && fermo < RIPRESA_MICROFONO_MS) {
+      if (!prima.audio && fermo < RESUME_MIC_MS) {
         Diario.segna(`riprendo-microfono:dopo ${Math.round(fermo / 1000)}s`)
           .catch(() => { /* noop */ });
         const acceso = sessionRef.current?.toggleAudio();
         if (acceso !== undefined) setAudioOn(acceso);
       }
-      if (prima.video && fermo < RIPRESA_VIDEO_MS) {
+      if (prima.video && fermo < RESUME_VIDEO_MS) {
         Diario.segna(`riprendo-video:dopo ${Math.round(fermo / 1000)}s`)
           .catch(() => { /* noop */ });
-        setTimeout(() => { riaccendiVideoRef.current?.(); }, 300);
+        setTimeout(() => { turnVideoBackOnRef.current?.(); }, 300);
       }
     }
-  }, [cfg, attachPeer, fermaAttesa]);
+  }, [cfg, attachPeer, stopWaiting]);
 
   useEffect(() => { enterChannelRef.current = enterChannel; }, [enterChannel]);
 
@@ -2193,7 +2135,7 @@ export default function App() {
    * Sta in un riferimento perché chi lo chiama - l'ingresso nel canale -
    * nasce prima della funzione che accende il video.
    */
-  const riaccendiVideoRef = useRef<(() => void) | null>(null);
+  const turnVideoBackOnRef = useRef<(() => void) | null>(null);
 
   /**
    * Quanto si aspetta al massimo prima di uscire comunque.
@@ -2201,7 +2143,7 @@ export default function App() {
    * Con la rete lenta o assente, il diario non parte: "attendi un
    * momento" non deve mai diventare "l'app non esce".
    */
-  const ATTESA_USCITA_MS = 2000;
+  const LEAVING_CAP_MS = 2000;
   /**
    * Un respiro fra l'invio e la chiusura del socket.
    *
@@ -2209,7 +2151,7 @@ export default function App() {
    * chiudere prima che sia partito davvero: quello che si guadagna
    * scrivendolo si perderebbe nel non spedirlo.
    */
-  const RESPIRO_MS = 250;
+  const BREATH_MS = 250;
 
   /**
    * Uscire dal canale, dopo aver messo al sicuro il diario.
@@ -2228,36 +2170,36 @@ export default function App() {
    * scelta - metto giù un momento, torno - ritrovarsi il video spento e
    * da riaccendere a mano è una seccatura. Si riprende com'era, con
    * due attese diverse per il microfono e per la camera: vedi
-   * RIPRESA_MICROFONO_MS.
+   * RESUME_MIC_MS.
    */
-  const comEra = useRef<{ quando: number; video: boolean; audio: boolean } | null>(null);
+  const howItWas = useRef<{ quando: number; video: boolean; audio: boolean } | null>(null);
 
   const leaveChannel = useCallback(async (restaDisponibile = true) => {
     // La riga dell'uscita si scrive PRIMA di mandare, altrimenti parte
     // tutto tranne la cosa che si sta facendo.
-    await Diario.segna(restaDisponibile ? 'uscita-canale' : 'non-disponibile')
+    await Diario.segna(restaDisponibile ? 'uscita-canale' : 'non-available')
       .catch(() => { /* noop */ });
 
     // Prima di smontare tutto: com'era, per poterlo rimettere se si
     // rientra subito.
-    comEra.current = {
+    howItWas.current = {
       quando: Date.now(),
       video: sessionRef.current?.isVideoEnabled() === true,
       audio: sessionRef.current?.isAudioEnabled() !== false,
     };
 
-    setUscendo(true);
+    setLeaving(true);
     try {
       const attendi = (ms: number) => new Promise<void>((r) => { setTimeout(r, ms); });
       await Promise.race([
         (async () => {
-          await mandaDiario();
-          await attendi(RESPIRO_MS);
+          await sendJournal();
+          await attendi(BREATH_MS);
         })(),
-        attendi(ATTESA_USCITA_MS),
+        attendi(LEAVING_CAP_MS),
       ]);
     } finally {
-      setUscendo(false);
+      setLeaving(false);
     }
 
     const sig = signalingRef.current;
@@ -2280,8 +2222,8 @@ export default function App() {
     // sessione, signaling, servizio in primo piano - come fa a ogni
     // cambio di pairStat.
     if (!restaDisponibile) {
-      salutiamo.current = true;
-      setDisponibile(false);
+      sayGoodbye.current = true;
+      setAvailable(false);
     }
 
     // Uscire dal canale è uscire dall'app: la finestra sparisce. Il
@@ -2289,15 +2231,15 @@ export default function App() {
     // ricevi la notifica quando l'altro entra. Riaprendo l'app si rientra
     // direttamente nel canale.
     AppWindow.minimize().catch(() => {});
-  }, [mandaDiario]);
+  }, [sendJournal]);
 
   /**
-   * Rete di sicurezza contro il collegamento che non riparte.
+   * Rete di sicurezza contro il connectionName che non riparte.
    *
    * Chi risponde non può offrire: se resta senza connessione e l'altro
    * non se ne accorge - perché dal suo lato sembra tutto a posto -
    * aspetterebbe all'infinito. Ogni pochi secondi, chi si trova senza
-   * collegamento mentre entrambi sono nel canale se ne occupa: chi offre
+   * connectionName mentre entrambi sono nel canale se ne occupa: chi offre
    * ricostruisce, chi risponde lo chiede.
    */
   useEffect(() => {
@@ -2337,7 +2279,7 @@ export default function App() {
       // Dall'accoppiamento si torna sempre alle impostazioni: da lì si
       // rientra nel canale, o si cambia server. Senza questo, il tasto
       // Indietro sulla schermata «Collega i due telefoni» chiudeva
-      // l'app - e chi ci era arrivato per aggiungere un collegamento non
+      // l'app - e chi ci era arrivato per aggiungere un connectionName non
       // aveva nessun modo di tornare da dove era venuto.
       if (screen === 'pairing') {
         setScreen('settings');
@@ -2386,7 +2328,7 @@ export default function App() {
       setLocalAspect(s.getLocalVideoAspect());
       // La camera si apre su quella scelta, che può essere stata cambiata
       // a video spento: qui si allinea solo l'icona.
-      setCameraFrontale(s.isFrontCamera());
+      setFrontCamera(s.isFrontCamera());
     } catch (e: any) {
       Foreground.setCameraActive(false).catch(() => {});
       Alert.alert('Errore camera', String(e?.message ?? e));
@@ -2400,7 +2342,7 @@ export default function App() {
    * di questa funzione e non potrebbe nominarla.
    */
   useEffect(() => {
-    riaccendiVideoRef.current = () => {
+    turnVideoBackOnRef.current = () => {
       if (sessionRef.current?.isVideoEnabled()) return;
       onToggleVideo();
     };
@@ -2419,13 +2361,13 @@ export default function App() {
     (q: DuoConfig['videoQuality'], tell: boolean) => {
       setCfg((prev) => {
         if (!prev || prev.videoQuality === q) return prev;
-        return salvaCfg({ ...prev, videoQuality: q });
+        return saveCfg({ ...prev, videoQuality: q });
       });
       sessionRef.current?.setVideoQuality(q);
       Diario.segna(`${tell ? '' : 'altro-'}qualita:${q}`).catch(() => {});
       if (tell) signalingRef.current?.sendSignal({ kind: 'quality', value: q });
     },
-    [salvaCfg],
+    [saveCfg],
   );
 
   /**
@@ -2438,21 +2380,21 @@ export default function App() {
   const applyAudio = useCallback((migliore: boolean, tell: boolean) => {
     setCfg((prev) => {
       if (!prev || prev.richerAudio === migliore) return prev;
-      return salvaCfg({ ...prev, richerAudio: migliore });
+      return saveCfg({ ...prev, richerAudio: migliore });
     });
     sessionRef.current?.setAudioOptions(migliore);
     Diario.segna(`${tell ? '' : 'altro-'}voce-ricca:${migliore ? 'si' : 'no'}`)
       .catch(() => {});
     if (tell) signalingRef.current?.sendSignal({ kind: 'audio', richer: migliore });
-  }, [salvaCfg]);
+  }, [saveCfg]);
 
   const onSaveSettings = useCallback(async (scritta: DuoConfig) => {
     Diario.segna('impostazioni-salvate').catch(() => { /* noop */ });
     // Il server appena scritto è il server di questa pairStat: se resta
-    // solo nell'app, tornando qui da un altro collegamento si
+    // solo nell'app, tornando qui da un altro connectionName si
     // riporterebbe dietro l'indirizzo vecchio.
     const next = alignPairServer(scritta);
-    setCfg(salvaCfg(next));
+    setCfg(saveCfg(next));
     // La qualità è già stata applicata al tocco, ma applicarla di nuovo
     // non costa nulla e copre il caso di una config arrivata da altrove.
     applyQuality(next.videoQuality, true);
@@ -2461,17 +2403,17 @@ export default function App() {
 
   const onPaired = useCallback(async (pair: PairInfo) => {
     if (!cfg) return;
-    // Non sostituisce il collegamento di prima: gli si affianca, e passa
+    // Non sostituisce il connectionName di prima: gli si affianca, e passa
     // in testa. Chi si accoppia con qualcun altro non sta dicendo di
     // volersi dimenticare del primo.
     const next = addPair(cfg, pair);
-    setCfg(salvaCfg(next));
+    setCfg(saveCfg(next));
     setPeerName(pair.peerName);
     setScreen(next.setupShown ? 'channel' : 'setup');
   }, [cfg]);
 
   /**
-   * Passa a un altro collegamento già configurato.
+   * Passa a un altro connectionName già configurato.
    *
    * Non c'è niente da smontare a mano: cambiando la pairStat cambia
    * `connKey`, e l'effetto della connessione si rifà da capo - chiude il
@@ -2482,7 +2424,7 @@ export default function App() {
   /**
    * Riporta i comandi allo stato di una connessione appena aperta.
    *
-   * Cambiando collegamento la sessione si rifà da capo: microfono
+   * Cambiando connectionName la sessione si rifà da capo: microfono
    * acceso, camera spenta, niente immagini. I pulsanti però restavano
    * come li avevi lasciati con l'altra persona, e un pulsante "video"
    * acceso sopra a un video che non c'è non è una svista grafica: è il
@@ -2490,21 +2432,21 @@ export default function App() {
    * accesa.
    */
   /**
-   * Con che impostazioni è partito questo collegamento.
+   * Con che impostazioni è partito questo connectionName.
    *
-   * Una riga sola, quando si comincia e a ogni cambio di collegamento.
+   * Una riga sola, quando si comincia e a ogni cambio di connectionName.
    * Le azioni le racconta il diario riga per riga, ma senza sapere da
    * dove si parte non si capisce cosa vuol dire non averle cambiate: se
    * la camera resta la posteriore per tutta la sera, la riga che lo
    * spiega non c'è, perché nessuno l'ha girata.
    *
-   * Solo al cambio di collegamento: scriverla a ogni ritocco sarebbe
+   * Solo al cambio di connectionName: scriverla a ogni ritocco sarebbe
    * ripetere quello che la riga dell'azione ha appena detto.
    */
   const cfgRef = useRef<DuoConfig | null>(null);
   useEffect(() => { cfgRef.current = cfg; }, [cfg]);
-  const livelloRef = useRef(livello);
-  useEffect(() => { livelloRef.current = livello; }, [livello]);
+  const levelRef = useRef(level);
+  useEffect(() => { levelRef.current = level; }, [level]);
   useEffect(() => {
     const c = cfgRef.current;
     if (!c?.pair) return;
@@ -2513,8 +2455,8 @@ export default function App() {
       `uscita=${c.audioOutput}`,
       `qualita=${c.videoQuality}`,
       `voce-ricca=${c.richerAudio ? 'si' : 'no'}`,
-      `volume=${Math.round(livelloRef.current * 100)}%`,
-      `avviso=${c.alertSound}`,
+      `volume=${Math.round(levelRef.current * 100)}%`,
+      `notice=${c.alertSound}`,
       `vibra=${c.alertVibration}`,
       `controls=${c.controls}`,
       `diagnostica=${c.showDiagnostics ? 'si' : 'no'}`,
@@ -2523,19 +2465,19 @@ export default function App() {
   }, [cfg?.pair?.id]);
 
   /**
-   * Il pulsante della camera segue il collegamento in uso.
+   * Il pulsante della camera segue il connectionName in uso.
    *
    * Non basta darlo alla sessione: il pulsante lo si guarda anche a
    * video spento, ed è lì che dice con quale camera si aprirà.
    */
   useEffect(() => {
-    if (cfg) setCameraFrontale(cfg.frontCamera !== false);
+    if (cfg) setFrontCamera(cfg.frontCamera !== false);
   }, [cfg?.frontCamera, cfg?.pair?.id]);
 
-  const azzeraComandi = useCallback(() => {
+  const resetPeerMemory = useCallback(() => {
     // Anche la memoria di com'era l'altro: è un'altra persona, e i suoi
     // primi messaggi non sono "cambiamenti" rispetto al precedente.
-    statoAltroRef.current = {};
+    peerStateRef.current = {};
     setVideoOn(false);
     setAudioOn(true);
     setLocalStream(null);
@@ -2543,7 +2485,7 @@ export default function App() {
     setRemoteStream(null);
     setRemoteHasVideo(false);
     setPeerState({ audio: true, video: false });
-    setPeerVisto(false);
+    setPeerSeen(false);
     setPeerVp9(false);
     setConnState('new');
   }, []);
@@ -2552,17 +2494,17 @@ export default function App() {
     if (!cfg) return;
     const next = switchToPair(cfg, id);
     if (next === cfg) return;
-    setCfg(salvaCfg(next));
+    setCfg(saveCfg(next));
     setPeerName(next.pair?.peerName || '');
     setPeerPresent(false);
     peerActiveRef.current = false;
-    azzeraComandi();
-    fermaAttesa();
+    resetPeerMemory();
+    stopWaiting();
     setScreen('channel');
-  }, [cfg, fermaAttesa, azzeraComandi]);
+  }, [cfg, stopWaiting, resetPeerMemory]);
 
   /**
-   * Il nome che do io a un collegamento.
+   * Il nome che do io a un connectionName.
    *
    * Non viaggia da nessuna parte: l'altro non lo vede e non lo saprà
    * mai. Serve qui, dove i collegamenti stanno in fila e senza un nome
@@ -2571,13 +2513,13 @@ export default function App() {
   const onRenamePair = useCallback(async (id: string, nome: string) => {
     if (!cfg) return;
     const next = renamePair(cfg, id, nome);
-    setCfg(salvaCfg(next));
+    setCfg(saveCfg(next));
   }, [cfg]);
 
   /**
    * Manda all'altro un suono che lo svegli.
    *
-   * Non passa dal server come l'avviso: viaggia dentro la busta cifrata
+   * Non passa dal server come l'notice: viaggia dentro la busta cifrata
    * della conversazione, che c'è già perché siete tutti e due nel
    * canale. Il server non sa nemmeno che è successo.
    */
@@ -2594,21 +2536,21 @@ export default function App() {
 
   const onForgetPair = useCallback(async (id: string) => {
     if (!cfg) return;
-    // Sciogliere un collegamento è un addio vero: chi resta dall'altra
+    // Sciogliere un connectionName è un addio vero: chi resta dall'altra
     // parte deve sapere che non si tratta di una caduta.
-    if (cfg.pair?.id === id) salutiamo.current = true;
+    if (cfg.pair?.id === id) sayGoodbye.current = true;
     const next = forgetPair(cfg, id);
-    setCfg(salvaCfg(next));
+    setCfg(saveCfg(next));
     if (cfg.pair?.id === id) {
       setPeerName(next.pair?.peerName || '');
       setPeerPresent(false);
       peerActiveRef.current = false;
-      azzeraComandi();
+      resetPeerMemory();
       // Sciogliendo l'ultimo non resta nulla a cui collegarsi; se invece
       // ne resta un altro si è già passati a quello.
       setScreen(isPaired(next) ? 'channel' : 'pairing');
     }
-  }, [cfg, azzeraComandi]);
+  }, [cfg, resetPeerMemory]);
 
   // --- resa ----------------------------------------------------------------
   if (screen === 'loading' || !cfg) {
@@ -2630,19 +2572,19 @@ export default function App() {
           onForgetPair={onForgetPair}
           onSwitchPair={onSwitchPair}
           onRenamePair={onRenamePair}
-          // Non si tocca nessun collegamento esistente: quello nuovo si
+          // Non si tocca nessun connectionName esistente: quello nuovo si
           // aggiunge, se e quando riesce.
           onRepair={() => setScreen('pairing')}
           onClose={isPaired(cfg) ? () => setScreen('channel') : undefined}
-          onOpenSetup={() => { setSetupFrom('impostazioni'); setScreen('setup'); }}
+          onOpenSetup={() => { setSetupFrom('settings'); setScreen('setup'); }}
           onQualityChange={(q) => applyQuality(q, true)}
           onLive={(patch) => setCfg((prev) => {
             if (!prev) return prev;
-            const next = salvaCfg({ ...prev, ...patch });
+            const next = saveCfg({ ...prev, ...patch });
             // Le opzioni audio vanno anche applicate: il tetto a caldo,
             // le elaborazioni riaprendo il microfono.
             if ('richerAudio' in patch) applyAudio(next.richerAudio, true);
-            // Suono e vibrazione dell'avviso stanno nel canale di
+            // Suono e vibrazione dell'notice stanno nel canale di
             // notifica, che va rifatto da capo a ogni cambiamento.
             if ('alertVibration' in patch || 'alertSound' in patch || 'alertSoundUri' in patch) {
               Avvisi.configura(next.alertVibration, next.alertSound, next.alertSoundUri)
@@ -2668,9 +2610,9 @@ export default function App() {
               // volta nella vita del telefono - ma il salvataggio passa
               // di lì lo stesso, così le impostazioni della pairStat
               // restano allineate.
-              setCfg(salvaCfg({ ...cfg, setupShown: true }));
+              setCfg(saveCfg({ ...cfg, setupShown: true }));
             }
-            setScreen(setupFrom === 'impostazioni' ? 'settings' : 'channel');
+            setScreen(setupFrom === 'settings' ? 'settings' : 'channel');
           }}
         />
       </View>
@@ -2694,32 +2636,32 @@ export default function App() {
     <View style={styles.safe}>
       <StatusBar barStyle="light-content" />
       <ChannelScreen
-        collegamento={collegamento}
+        connectionName={connectionName}
         peerName={shownName}
         peerAvatar={face}
         peerPresent={peerPresent}
-        peerStaccato={peerStaccato}
-        peerSmontato={peerSmontato}
+        peerDetached={peerDetached}
+        peerTornDown={peerTornDown}
         videoStats={videoStats}
         qualityLabel={t(`quality.${(VIDEO_PROFILES[cfg.videoQuality] ?? VIDEO_PROFILES.standard).key}`)}
         showStats={cfg.showDiagnostics}
         controls={cfg.controls}
-        avviso={avviso}
-        onAvvisoLetto={() => setAvviso(null)}
-        // Alla schermata va il LIVELLO, non il guadagno: è il numero
+        news={notice}
+        onNewsRead={() => setNotice(null)}
+        // Alla schermata va il LIVELLO, non il gain: è il numero
         // che dice a che volume stai sentendo l'altro.
-        guadagno={guadagnoVisibile ? livello : null}
-        peerGain={livello}
-        volumeSistema={sistema}
-        onGuadagno={cambiaLivello}
-        avvisoVersione={avvisoVersione}
+        gain={levelShowing ? level : null}
+        peerGain={level}
+        volumeSistema={systemVolume}
+        onGuadagno={changeLevel}
+        versionWarning={versionWarning}
         frontCamera={frontCamera}
         quality={cfg.videoQuality}
         onSelectQuality={(q) => applyQuality(q, true)}
         localStream={localStream}
         remoteStream={remoteStream}
-        // Quello da mostrare, non quello vero: vedi statusVisibile.
-        status={statusVisibile}
+        // Quello da mostrare, non quello vero: vedi shownStatus.
+        status={shownStatus}
         connectionState={connState}
         audioOn={audioOn}
         videoOn={videoOn}
@@ -2743,24 +2685,24 @@ export default function App() {
           // La verità sta nella sessione, anche a video spento: è lei che
           // ricorda con quale camera si aprirà.
           const frontale = s.switchCamera();
-          setCameraFrontale(frontale);
+          setFrontCamera(frontale);
           // Se la scelta non si scrive, la sessione dopo riparte dalla
           // frontale e la si deve rigirare ogni volta.
-          setCfg((prev) => (prev ? salvaCfg({ ...prev, frontCamera: frontale }) : prev));
+          setCfg((prev) => (prev ? saveCfg({ ...prev, frontCamera: frontale }) : prev));
           Diario.segna(`camera:${frontale ? 'frontale' : 'posteriore'}`).catch(() => {});
         }}
         onSelectRoute={audio.select}
         onKnock={() => {
           signalingRef.current?.knock();
           // Due colpi su una porta, piano, anche da questa parte:
-          // l'avviso parte verso un telefono lontano e da qui non si
+          // l'notice parte verso un telefono lontano e da qui non si
           // sentirebbe niente - il pulsante lampeggia e basta. Sapere
           // che è partito vale quanto mandarlo.
-          Sveglia.suona('bussata', true, ECO_BUSSATA_MS).catch(() => {});
+          Sveglia.suona('bussata', true, KNOCK_ECHO_MS).catch(() => {});
           Diario.segna('avvisa').catch(() => {});
         }}
         onLeave={leaveChannel}
-        uscendo={uscendo}
+        leaving={leaving}
         onSveglia={onSveglia}
         /**
          * L'ingrandimento resta di qua: cambia come guardo io, non cosa

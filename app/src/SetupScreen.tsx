@@ -16,7 +16,7 @@ type Props = {
  * non arrivano più - un guasto che sembra dell'app ma non lo è.
  *
  * Nessuna delle due si può concedere da codice: la prima ha una finestra
- * di sistema, la seconda è una schermata dei produttori che possiamo
+ * di systemVolume, la seconda è una schermata dei produttori che possiamo
  * solo aprire.
  */
 export default function SetupScreen({ onDone }: Props) {
@@ -31,7 +31,7 @@ export default function SetupScreen({ onDone }: Props) {
    * solo perché avevi aperto quella schermata, anche senza toccare
    * niente. Diceva "a posto" senza saperlo.
    *
-   * Questo invece è il fatto: al riavvio il sistema ci ha svegliati
+   * Questo invece è il fatto: al riavvio il systemVolume ci ha svegliati
    * oppure no.
    */
   const [avviatoDaSolo, setAvviatoDaSolo] = useState<boolean | null>(null);
@@ -60,7 +60,7 @@ export default function SetupScreen({ onDone }: Props) {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  // Al ritorno da una schermata di sistema, ricontrolliamo.
+  // Al ritorno da una schermata di systemVolume, ricontrolliamo.
   useEffect(() => {
     const sub = AppState.addEventListener('change', (st) => {
       if (st === 'active') refresh();
@@ -74,7 +74,7 @@ export default function SetupScreen({ onDone }: Props) {
       <Text style={styles.title}>Due cose, e poi non ci pensi più</Text>
       <Text style={styles.body}>
         Senza queste, il telefono chiude Duetto quando gli pare e smetti di
-        ricevere gli avvisi. Sembra un difetto dell’app, ma è il sistema.
+        ricevere gli avvisi. Sembra un difetto dell’app, ma è il systemVolume.
       </Text>
 
       <Step
@@ -109,7 +109,7 @@ export default function SetupScreen({ onDone }: Props) {
               ? 'Funziona: dopo l’ultimo riavvio del telefono Duetto è ripartita da ' +
                 'sola, senza che tu la aprissi.'
               : 'Il tuo telefono blocca le app dopo un riavvio finché non le autorizzi. ' +
-                'Si apre la schermata di sistema: cerca Duetto e attivalo.\n\n' +
+                'Si apre la schermata di systemVolume: cerca Duetto e attivalo.\n\n' +
                 'Se l’hai già fatto, si saprà al prossimo riavvio: è l’unico modo di ' +
                 'verificarlo, perché quell’autorizzazione nessuna app può leggerla.'
           }

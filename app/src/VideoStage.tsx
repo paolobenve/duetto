@@ -52,7 +52,7 @@ type Ancoraggio = {
 };
 
 let posizioneScelta: Ancoraggio | null = null;
-const CHIAVE_PIP = 'duetto.pip.v2';
+const PIP_KEY = 'duetto.pip.v2';
 
 /** Scrittura pigra: trascinando si salverebbe a ogni fotogramma. */
 let salvaTimer: ReturnType<typeof setTimeout> | null = null;
@@ -60,15 +60,15 @@ function salvaPosizione() {
   if (salvaTimer) clearTimeout(salvaTimer);
   salvaTimer = setTimeout(() => {
     if (posizioneScelta) {
-      AsyncStorage.setItem(CHIAVE_PIP, JSON.stringify(posizioneScelta)).catch(() => {});
+      AsyncStorage.setItem(PIP_KEY, JSON.stringify(posizioneScelta)).catch(() => {});
     }
   }, 600);
 }
 
 /** Rilettura all'avvio: la posizione è una preferenza, non uno stato. */
-export async function caricaPosizionePip(): Promise<void> {
+export async function loadPipPosition(): Promise<void> {
   try {
-    const raw = await AsyncStorage.getItem(CHIAVE_PIP);
+    const raw = await AsyncStorage.getItem(PIP_KEY);
     if (!raw) return;
     const v = JSON.parse(raw);
     if (typeof v?.ox === 'number' && typeof v?.oy === 'number') posizioneScelta = v;
@@ -115,7 +115,7 @@ type Props = {
    * non si vede prima il proprio ingrandirsi e poi rimpicciolirsi.
    */
   awaitingRemote?: boolean;
-  /** avviso da sovrapporre al video, es. durante un'interruzione */
+  /** notice da sovrapporre al video, es. durante un'interruzione */
   notice?: string;
   /** in Picture-in-Picture: solo il video grande, senza riquadrino */
   compact?: boolean;
@@ -123,7 +123,7 @@ type Props = {
    * La propria immagine va rovesciata come uno specchio.
    *
    * Vale per la camera frontale e solo per quella: chi si guarda si
-   * aspetta lo specchio, ed è così che ci si sistema i capelli. Con la
+   * aspetta lo specchio, ed è così che ci si systemVolume i capelli. Con la
    * camera dietro si sta inquadrando il mondo, e il mondo rovesciato è
    * sbagliato e basta: le scritte si leggono al contrario e ci si
    * muove dalla parte opposta a quella che si vede. L'altro riceve
@@ -255,7 +255,7 @@ export default function VideoStage(props: Props) {
       bigIsSelf = true;
       pipEmpty = true;
     } else {
-      // Il posto grande resta dell'altro, vuoto con l'avviso sopra:
+      // Il posto grande resta dell'altro, vuoto con l'notice sopra:
       // promuovere il proprio farebbe vedere il proprio ingrandirsi e
       // poi rimpicciolirsi appena l'altro torna.
       pipStream = localStream;
@@ -912,7 +912,7 @@ export default function VideoStage(props: Props) {
               trasforma in un lampeggio. Il nero non dice nulla, ed è
               esattamente ciò che serve: non è successo nulla che valga la
               pena raccontare.
-              Con un avviso in sovrimpressione vale lo stesso: due
+              Con un notice in sovrimpressione vale lo stesso: due
               messaggi sovrapposti direbbero la stessa cosa. */}
           {notice || awaitingRemote ? null : placeholder}
         </View>
@@ -990,7 +990,7 @@ const styles = StyleSheet.create({
     /**
      * Angoli vivi, di proposito.
      *
-     * RTCView è una SurfaceView: disegna in un livello grafico proprio e
+     * RTCView è una SurfaceView: disegna in un level grafico proprio e
      * nessun genitore può ritagliarla - né `overflow: hidden` né
      * `borderRadius` la toccano. Con la cornice arrotondata i suoi angoli
      * quadrati sbordavano, e l'unico rimedio era rimpicciolire il video

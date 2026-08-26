@@ -14,11 +14,11 @@ import { VERSION_FULL } from './version';
 import { Avvisi } from 'duetto-platform';
 
 /**
- * Le scelte per la vibrazione dell'avviso.
+ * Le scelte per la vibrazione dell'notice.
  *
  * "Predefinito" non è pigrizia: Android sa cose che l'app non sa - se sei
  * in silenzioso, in "non disturbare", con le cuffie - e lasciandogli la
- * decisione l'avviso si comporta come tutte le altre notifiche del
+ * decisione l'notice si comporta come tutte le altre notifiche del
  * telefono. Le altre due la forzano, in un senso o nell'altro.
  */
 const VIBRAZIONI: {
@@ -83,11 +83,11 @@ const COMANDI: {
 type Props = {
   initial: DuoConfig;
   onSave: (cfg: DuoConfig) => void;
-  /** dimentica un collegamento, in uso o no */
+  /** dimentica un connectionName, in uso o no */
   onForgetPair: (id: string) => void;
-  /** mette in uso un collegamento già configurato */
+  /** mette in uso un connectionName già configurato */
   onSwitchPair: (id: string) => void;
-  /** il nome che do io a un collegamento; vuoto = torna al suo */
+  /** il nome che do io a un connectionName; vuoto = torna al suo */
   onRenamePair: (id: string, nome: string) => void;
   /**
    * Aggiunge un accoppiamento senza toccare quelli che ci sono: serve
@@ -97,7 +97,7 @@ type Props = {
   onRepair: () => void;
   /** torna indietro senza salvare; assente se non c'è dove tornare */
   onClose?: () => void;
-  /** riapre la schermata delle impostazioni di sistema */
+  /** riapre la schermata delle impostazioni di systemVolume */
   onOpenSetup: () => void;
   /**
    * VP9 in hardware, sui due telefoni separatamente.
@@ -170,7 +170,7 @@ export default function SettingsScreen({
 
   const nomeDi = (p: PairInfo) => pairName(p) || 'Senza nome';
 
-  /** il collegamento a cui si sta dando un nome, e il nome in corso */
+  /** il connectionName a cui si sta dando un nome, e il nome in corso */
   const [battezzo, setBattezzo] = useState<PairInfo | null>(null);
   const [nomeScritto, setNomeScritto] = useState('');
   const apriBattesimo = (p: PairInfo) => {
@@ -189,10 +189,10 @@ export default function SettingsScreen({
       ? `\n\nPasserai a ${nomeDi(rimasti[0])}.`
       : '';
     Alert.alert(
-      `Sciogliere il collegamento con ${nomeDi(p)}?`,
+      `Sciogliere il connectionName con ${nomeDi(p)}?`,
       'Per riaverlo dovrete rifare l’accoppiamento con un codice nuovo.\n\n' +
       'Non serve sciogliere anche sull’altro telefono: da lì basta ' +
-      '«Aggiungi un collegamento».' + dopo,
+      '«Aggiungi un connectionName».' + dopo,
       [
         { text: 'Annulla', style: 'cancel' },
         { text: 'Sciogli', style: 'destructive', onPress: () => onForgetPair(p.id) },
@@ -290,7 +290,7 @@ export default function SettingsScreen({
                     </View>
                     <View style={styles.pairWho}>
                       <Text style={styles.pairName}>{nomeDi(p)}</Text>
-                      {/* Col nome del collegamento in testa, chi ci sta
+                      {/* Col nome del connectionName in testa, chi ci sta
                           dall'altra parte va detto lo stesso: sono due
                           cose diverse, e il nome se l'è dato lui. */}
                       {p.label && p.peerName && p.peerName !== 'Qualcuno' ? (
@@ -300,7 +300,7 @@ export default function SettingsScreen({
                         {attivo ? 'In uso · dal ' : 'Dal '}
                         {p.pairedAt ? new Date(p.pairedAt).toLocaleDateString() : '—'}
                       </Text>
-                      {/* Il server fa parte dell'identità del collegamento:
+                      {/* Il server fa parte dell'identità del connectionName:
                           la stanza sta lì, e passando a un altro ci si
                           sposta anche di server. Chi ne ha uno solo legge
                           sempre la stessa riga e non ci pensa più. */}
@@ -323,7 +323,7 @@ export default function SettingsScreen({
               );
             })}
             <TouchableOpacity style={styles.secondary} onPress={onRepair}>
-              <Text style={styles.secondaryText}>Aggiungi un collegamento</Text>
+              <Text style={styles.secondaryText}>Aggiungi un connectionName</Text>
             </TouchableOpacity>
             <Text style={styles.sectionHint}>
               Mostra un codice nuovo, o digita quello dell’altro. Quelli che
@@ -451,7 +451,7 @@ export default function SettingsScreen({
                 onLive?.({ alertSound: s.valore });
                 return;
               }
-              // La scelta la fa una schermata di sistema: se si annulla,
+              // La scelta la fa una schermata di systemVolume: se si annulla,
               // non si cambia nulla - nemmeno la voce selezionata, che
               // altrimenti direbbe "scelto" senza che si sia scelto.
               const scelto = await Avvisi.scegliSuono(cfg.alertSoundUri).catch(() => null);
@@ -489,7 +489,7 @@ export default function SettingsScreen({
             <Text style={styles.choiceLabel}>Mostra i dettagli tecnici</Text>
             <Text style={styles.choiceNote}>
               Sotto ai pulsanti: risoluzione, fotogrammi, banda e da dove passa
-              il collegamento. Servono a capire perché una chiamata va male.
+              il connectionName. Servono a capire perché una chiamata va male.
             </Text>
           </View>
         </TouchableOpacity>
@@ -540,12 +540,12 @@ export default function SettingsScreen({
 
         <Text style={styles.section}>Restare raggiungibili</Text>
         <Text style={styles.sectionHint}>
-          Due impostazioni di sistema, senza le quali il telefono chiude Duetto
+          Due impostazioni di systemVolume, senza le quali il telefono chiude Duetto
           e smetti di ricevere gli avvisi. Si perdono reinstallando l’app o
           cambiando telefono.
         </Text>
         <TouchableOpacity style={styles.rowButton} onPress={onOpenSetup}>
-          <Text style={styles.rowButtonText}>Rivedi le impostazioni di sistema</Text>
+          <Text style={styles.rowButtonText}>Rivedi le impostazioni di systemVolume</Text>
           <Text style={styles.rowButtonArrow}>{'\u203A'}</Text>
         </TouchableOpacity>
 
@@ -587,7 +587,7 @@ export default function SettingsScreen({
         <Text style={styles.version}>{VERSION_FULL}</Text>
       </ScrollView>
 
-      {/* Il nome da dare a un collegamento: si apre dalla matita. */}
+      {/* Il nome da dare a un connectionName: si apre dalla matita. */}
       <Modal
         visible={!!battezzo}
         transparent
@@ -597,7 +597,7 @@ export default function SettingsScreen({
           {/* Il tocco dentro al riquadro non deve chiuderlo: si sta
               scrivendo. */}
           <Pressable style={styles.sheet} onPress={() => { /* trattieni */ }}>
-            <Text style={styles.sheetTitle}>Nome del collegamento</Text>
+            <Text style={styles.sheetTitle}>Nome del connectionName</Text>
             <TextInput
               style={styles.input}
               value={nomeScritto}
@@ -610,7 +610,7 @@ export default function SettingsScreen({
               onSubmitEditing={() => chiudiBattesimo(true)}
             />
             <Text style={styles.hint}>
-              È il nome del collegamento, non della persona: serve a te per
+              È il nome del connectionName, non della persona: serve a te per
               sapere in quale dei tuoi collegamenti stai. Compare sulla
               pastiglia in alto e nella notifica. Resta su questo telefono:
               l’altro non lo vede e non lo saprà mai.

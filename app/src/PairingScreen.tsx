@@ -292,7 +292,7 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
       </Text>
       <Primary label="Crea il codice" onPress={startCreate} />
       <Primary label="Ho un codice" outline onPress={() => setStep('join')} />
-      {/* Chi è già accoppiato è qui per aggiungere un collegamento, non
+      {/* Chi è già accoppiato è qui per aggiungere un connectionName, non
           perché deve: deve poter cambiare idea. Chi non lo è ancora non
           ha nessun posto dove tornare, e il pulsante non compare. */}
       {isPaired(cfg) ? <Secondary label="Annulla" onPress={onBack} /> : null}

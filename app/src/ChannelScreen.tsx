@@ -135,13 +135,13 @@ const SVEGLIE: { nome: string; label: string; nota: string }[] = [
 
 type Props = {
   /**
-   * Il nome dato a questo collegamento, se ne ha uno.
+   * Il nome dato a questo connectionName, se ne ha uno.
    *
    * Prende il posto del nome dell'app sulla pastiglia in alto: con più
    * collegamenti configurati, sapere in quale si sta vale più che
    * rileggere "Duetto".
    */
-  collegamento: string;
+  connectionName: string;
   peerName: string;
   /** immagine dell'altro, quando non ha un nome */
   peerAvatar: Avatar;
@@ -150,7 +150,7 @@ type Props = {
    *
    * È la differenza fra aspettare qualcuno che può arrivare da un
    * momento all'altro e aspettare qualcuno che in questo momento non ha
-   * nemmeno il telefono acceso: nel primo caso l'avviso arriva, nel
+   * nemmeno il telefono acceso: nel primo caso l'notice arriva, nel
    * secondo no.
    */
   peerPresent: boolean;
@@ -160,7 +160,7 @@ type Props = {
    * Il server distingue chi saluta da chi sparisce, e per chi resta la
    * differenza è tutta: da un tunnel si esce, da una scelta no.
    */
-  peerStaccato: boolean;
+  peerDetached: boolean;
   /**
    * È in attesa perché il suo telefono gli ha chiuso l'app.
    *
@@ -168,7 +168,7 @@ type Props = {
    * lascia immaginare: certi telefoni smontano l'app da soli, anche di
    * notte, e chi legge merita di saperlo.
    */
-  peerSmontato?: boolean;
+  peerTornDown?: boolean;
   /** risoluzione e banda effettive, in uscita e in entrata */
   videoStats: VideoStats;
   /** profilo scelto: senza, non si capisce da cosa dipendano quei numeri */
@@ -186,8 +186,8 @@ type Props = {
    * però è nella tendina - cioè in un posto dove chi sta guardando
    * questa schermata non guarda. Qui sta davanti, e va via toccandola.
    */
-  avviso?: string | null;
-  onAvvisoLetto?: () => void;
+  news?: string | null;
+  onNewsRead?: () => void;
   /**
    * A che volume si sta sentendo l'altro, mentre si preme.
    *
@@ -196,9 +196,9 @@ type Props = {
    * secondi che seguono la pressione. Senza, premere non produrrebbe
    * nulla di visibile e i tasti sembrerebbero rotti lo stesso.
    */
-  guadagno?: number | null;
+  gain?: number | null;
   /**
-   * Il livello in questo momento, per il menu dell'audio.
+   * Il level in questo momento, per il menu dell'audio.
    *
    * Lì c'è un comando a mano perché i tasti non bastano dappertutto: su
    * certi telefoni l'indice del volume di chiamata scorre e all'orecchio
@@ -206,13 +206,13 @@ type Props = {
    * funziona.
    *
    * È il prodotto delle due metà: il volume di chiamata del telefono e
-   * il guadagno di Duetto. Vedi `volumeSistema`.
+   * il gain di Duetto. Vedi `volumeSistema`.
    */
   peerGain?: number;
   /**
    * Il volume di chiamata del telefono e il suo massimo.
    *
-   * Si mostra fra le righe tecniche, perché è l'altra metà del livello:
+   * Si mostra fra le righe tecniche, perché è l'altra metà del level:
    * sapere che il telefono sta a 3 su 12 spiega da solo un "non ti
    * sento" che nessuna percentuale, da sola, spiegherebbe.
    */
@@ -226,7 +226,7 @@ type Props = {
    * cosa che qui c'è e lì no - e va detto dove si va a guardare quando
    * qualcosa non torna: fra le righe tecniche.
    */
-  avvisoVersione?: string | null;
+  versionWarning?: string | null;
   /** quale camera sta riprendendo: lo dice l'icona di "Gira" */
   frontCamera: boolean;
   /** profilo in uso e come cambiarlo: si apre tenendo premuto "Video" */
@@ -263,23 +263,23 @@ type Props = {
   /**
    * Esce dal canale.
    *
-   * `disponibile` dice se restare raggiungibili: uscendo si continua a
-   * ricevere l'avviso dell'altro, a meno che non si scelga di staccarsi
+   * `available` dice se restare raggiungibili: leaving si continua a
+   * ricevere l'notice dell'altro, a meno che non si scelga di staccarsi
    * del tutto.
    */
-  onLeave: (disponibile: boolean) => void;
+  onLeave: (available: boolean) => void;
   /**
    * L'uscita è in corso: si sta mettendo al sicuro il diario.
    *
    * Dura qualche decimo di secondo. Senza dirlo, il pulsante sembra non
    * aver fatto niente, e chi non vede reazione preme di nuovo.
    */
-  uscendo?: boolean;
+  leaving?: boolean;
   /**
    * Manda all'altro un suono forte per richiamarlo.
    *
    * Ha senso solo mentre siete tutti e due nel canale: se non c'è, il
-   * suono non ha dove suonare, e per quello serve l'avviso.
+   * suono non ha dove suonare, e per quello serve l'notice.
    */
   onSveglia: (suono: string) => void;
   /** quanto si è ingrandito il video grande, a gesto finito */
@@ -293,11 +293,11 @@ type Props = {
  */
 export default function ChannelScreen(props: Props) {
   const {
-    collegamento, peerName, peerAvatar, peerPresent, peerStaccato, peerSmontato, videoStats, qualityLabel, showStats, controls, avviso, onAvvisoLetto, guadagno, peerGain, volumeSistema, onGuadagno,
-    avvisoVersione, frontCamera, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
+    connectionName, peerName, peerAvatar, peerPresent, peerDetached, peerTornDown, videoStats, qualityLabel, showStats, controls, news, onNewsRead, gain, peerGain, volumeSistema, onGuadagno,
+    versionWarning, frontCamera, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes,
-    onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, uscendo,
+    onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, leaving,
     onSveglia, onIngrandimento, onOpenSettings,
   } = props;
 
@@ -352,7 +352,7 @@ export default function ChannelScreen(props: Props) {
   const linked = connectionState === 'connected';
 
   /**
-   * Interruzione in corso: l'altro c'è ma il collegamento diretto no.
+   * Interruzione in corso: l'altro c'è ma il connectionName diretto no.
    * Non è un "non c'è nessuno": è un'attesa, e va detto invece di
    * lasciare uno schermo nero senza spiegazione.
    */
@@ -360,7 +360,7 @@ export default function ChannelScreen(props: Props) {
 
   /**
    * Non siamo collegati: caduto il server, oppure l'altro c'è ma il
-   * collegamento diretto no - compreso mentre si sta ristabilendo.
+   * connectionName diretto no - compreso mentre si sta ristabilendo.
    *
    * Includere il ristabilimento è il punto: prima la fase "connecting"
    * non contava come interruzione, e in quell'istante il posto grande
@@ -373,8 +373,8 @@ export default function ChannelScreen(props: Props) {
    * Rinegoziare - cambio di risoluzione, ricerca di una strada diretta,
    * cambio di cella - porta la connessione in "connecting" per qualche
    * secondo senza che nulla si sia rotto: i fotogrammi riprendono da
-   * soli. Contare quello stato come interruzione mostrava "collegamento
-   * interrotto" proprio mentre il collegamento stava lavorando.
+   * soli. Contare quello stato come interruzione mostrava "connectionName
+   * interrotto" proprio mentre il connectionName stava lavorando.
    *
    * Sono interruzioni solo "failed" e "disconnected", che è ciò che ICE
    * dice quando i pacchetti non arrivano davvero.
@@ -385,8 +385,8 @@ export default function ChannelScreen(props: Props) {
   /**
    * Un'interruzione si dichiara solo se dura.
    *
-   * Il ritardo vale sia per l'avviso sia per la DISPOSIZIONE dei
-   * riquadri, ed è la seconda a contare di più: prima l'avviso aspettava
+   * Il ritardo vale sia per l'notice sia per la DISPOSIZIONE dei
+   * riquadri, ed è la seconda a contare di più: prima l'notice aspettava
    * ma il layout si riordinava subito, quindi il riquadrino saltava a
    * schermo intero e tornava indietro a ogni rinegoziazione - la ricerca
    * di una strada diretta, un cambio di risoluzione - senza che nulla
@@ -406,7 +406,7 @@ export default function ChannelScreen(props: Props) {
   /**
    * Il posto grande resta dell'altro finché lui dichiara di trasmettere.
    *
-   * Questo NON aspetta i tre secondi dell'avviso: l'attesa vale per il
+   * Questo NON aspetta i tre secondi dell'notice: l'attesa vale per il
    * messaggio, che è un allarme, non per la disposizione. Ritardandola
    * anche qui restava una finestra in cui il proprio video saliva a
    * schermo intero per poi tornare indietro all'arrivo dell'altro - il
@@ -418,10 +418,10 @@ export default function ChannelScreen(props: Props) {
   const interrupted = peerState.video && !remoteHasVideo;
 
   /**
-   * L'avviso ha dove arrivare.
+   * L'notice ha dove arrivare.
    *
    * Basta che il suo telefono sia collegato al server: nel canale o in
-   * attesa non fa differenza, l'avviso passa di lì in tutti e due i
+   * attesa non fa differenza, l'notice passa di lì in tutti e due i
    * casi. Se invece non è collegato - staccato di proposito, o senza
    * rete - non c'è nessuno a cui bussare.
    */
@@ -454,7 +454,7 @@ export default function ChannelScreen(props: Props) {
    */
   const notiziaOpacita = useRef(new Animated.Value(1)).current;
   useEffect(() => {
-    if (!avviso) return;
+    if (!news) return;
     notiziaOpacita.setValue(1);
     const anim = Animated.timing(notiziaOpacita, {
       toValue: 0,
@@ -462,9 +462,9 @@ export default function ChannelScreen(props: Props) {
       duration: 700,
       useNativeDriver: true,
     });
-    anim.start(({ finished }) => { if (finished) onAvvisoLetto?.(); });
+    anim.start(({ finished }) => { if (finished) onNewsRead?.(); });
     return () => anim.stop();
-  }, [avviso, notiziaOpacita, onAvvisoLetto]);
+  }, [news, notiziaOpacita, onNewsRead]);
 
   // I pulsanti restano SEMPRE sullo schermo: non spariscono mai, si
   // attenuano soltanto, e tornano pieni al primo tocco.
@@ -691,7 +691,7 @@ export default function ChannelScreen(props: Props) {
    * riceve tocchi che non sono scelte di nessuno - nel diario sono
    * comparse uscite dal canale con contatti di quaranta millisecondi,
    * mentre l'altro usciva di casa con il telefono in tasca e il
-   * vivavoce acceso, che è la condizione in cui il sistema non spegne
+   * vivavoce acceso, che è la condizione in cui il systemVolume non spegne
    * lo schermo.
    *
    * In un riferimento oltre che in uno stato: lo leggono i gestori dei
@@ -767,7 +767,7 @@ export default function ChannelScreen(props: Props) {
         // andato a schermo intero - è l'unica cosa rimasta a dire dov'è
         // l'altro: che dica quello vero, non un "in attesa" buono per
         // tutte le stagioni.
-        etichettaVuoto={parolaAltro(status, peerName, peerPresent, peerStaccato)}
+        etichettaVuoto={parolaAltro(status, peerName, peerPresent, peerDetached)}
         localAspect={localAspect}
         remoteAspect={remoteAspect}
         compact={compact}
@@ -775,7 +775,7 @@ export default function ChannelScreen(props: Props) {
         onBigAspect={setBigAspect}
         insetV={compact ? 0 : inset.v}
         insetH={compact ? 0 : inset.h}
-        insetBasso={!compact && showStats ? (avvisoVersione ? 54 : 36) : 0}
+        insetBasso={!compact && showStats ? (versionWarning ? 54 : 36) : 0}
         onSfondo={tocco}
         onSoloGrande={setSoloGrande}
         onIngrandimento={onIngrandimento}
@@ -791,11 +791,11 @@ export default function ChannelScreen(props: Props) {
             peerName={peerName}
             peerAvatar={peerAvatar}
             peerPresent={peerPresent}
-            peerStaccato={peerStaccato}
+            peerDetached={peerDetached}
           />
         ) : (
           <PresenceCard
-            collegamento={collegamento}
+            connectionName={connectionName}
             segno={
               <View style={styles.cardSegnoRiga}>
                 {segno(17, '#0b0e14')}
@@ -820,8 +820,8 @@ export default function ChannelScreen(props: Props) {
               </View>
             }
             peerPresent={peerPresent}
-            peerStaccato={peerStaccato}
-            peerSmontato={peerSmontato}
+            peerDetached={peerDetached}
+            peerTornDown={peerTornDown}
             status={status}
             linked={linked}
             connectionState={connectionState}
@@ -847,14 +847,14 @@ export default function ChannelScreen(props: Props) {
         <Animated.View style={[styles.attesaSopra, { opacity }]} pointerEvents="none">
           <Text style={styles.attesaTesto}>
             Sei nel canale.{'\n'}
-            {comeSta(peerName, peerPresent, peerStaccato)}
+            {comeSta(peerName, peerPresent, peerDetached)}
             {peerPresent ? (
               <>
                 {': tocca '}
                 <Text style={styles.bold}>Avvisa</Text>
                 {' per farglielo sapere.'}
               </>
-            ) : peerStaccato ? (
+            ) : peerDetached ? (
               ': ha staccato Duetto di proposito.'
             ) : (
               ': il suo telefono non è collegato.'
@@ -866,38 +866,38 @@ export default function ChannelScreen(props: Props) {
       {/* La notizia sta sopra a tutto e non si attenua con i comandi:
           non è un comando, è una cosa da leggere una volta. Sotto la
           barra in alto, per non coprire l'ingranaggio. */}
-      {!compact && avviso ? (
+      {!compact && news ? (
         <Animated.View
           style={[
             styles.notiziaSopra,
             { top: 62 + inset.v, left: 14 + inset.h, right: 14 + inset.h },
             { opacity: notiziaOpacita },
           ]}>
-          <TouchableOpacity activeOpacity={0.85} onPress={onAvvisoLetto}>
-            <Text style={styles.notiziaTesto}>{avviso}</Text>
+          <TouchableOpacity activeOpacity={0.85} onPress={onNewsRead}>
+            <Text style={styles.notiziaTesto}>{news}</Text>
             <Text style={styles.notiziaVia}>tocca per togliere</Text>
           </TouchableOpacity>
         </Animated.View>
       ) : null}
 
-      {/* "Sto uscendo": copre lo schermo e ferma i tocchi, così nessuno
+      {/* "Sto leaving": copre lo schermo e ferma i tocchi, così nessuno
           preme altro mentre il diario sta partendo. */}
-      {uscendo ? (
+      {leaving ? (
         <View style={styles.uscendoSopra}>
           <Text style={styles.uscendoTesto}>
-            Sto uscendo, un momento…
+            Sto leaving, un momento…
           </Text>
         </View>
       ) : null}
 
       {/* Il volume dell'altro, mentre lo si sta cambiando. Sta al centro
           e non si tocca: è un riscontro, non un comando. */}
-      {!compact && guadagno != null ? (
+      {!compact && gain != null ? (
         <View style={styles.volumeSopra} pointerEvents="none">
           <Text style={styles.volumeTesto}>
             Voce dell’altro{'  '}
             <Text style={styles.volumeCifra}>
-              {guadagno === 0 ? 'muto' : `${Math.round(guadagno * 100)}%`}
+              {gain === 0 ? 'muto' : `${Math.round(gain * 100)}%`}
             </Text>
           </Text>
         </View>
@@ -959,8 +959,8 @@ export default function ChannelScreen(props: Props) {
           {/* In corsivo quando è un nome dato da te: così si distingue
               da una parola dell'app, ed è la stessa forma che ha in
               testa alle notifiche. */}
-          <Text style={[styles.badgeText, collegamento ? styles.badgeNome : null]}>
-            {collegamento || 'Duetto'}
+          <Text style={[styles.badgeText, connectionName ? styles.badgeNome : null]}>
+            {connectionName || 'Duetto'}
           </Text>
           <Text style={styles.version}>  {VERSION_LABEL}</Text>
         </TouchableOpacity>
@@ -1023,11 +1023,11 @@ export default function ChannelScreen(props: Props) {
           coperto={coperto}
           label={knockPending ? 'Avvisato' : 'Avvisa'}
           // Per i due secondi che seguono la pressione la campanella suona:
-          // è il segno che l'avviso è partito. La sola scritta cambiava
+          // è il segno che l'notice è partito. La sola scritta cambiava
           // troppo poco per accorgersene.
           icon={appenaBussato || knockPending ? <IconaAvvisato /> : <IconaAvvisa />}
           /**
-           * Acceso finché l'avviso ha dove andare.
+           * Acceso finché l'notice ha dove andare.
            *
            * Prima si spegneva quando eravate tutti e due nel canale, con
            * l'idea che lì non ci fosse nulla da avvisare. Ma il pulsante
@@ -1036,19 +1036,19 @@ export default function ChannelScreen(props: Props) {
            * faceva sembrare guasto un pulsante che funzionava.
            *
            * Si spegne invece quando il suo telefono al server non è
-           * collegato: lì l'avviso non ha dove arrivare, e un pulsante
+           * collegato: lì l'notice non ha dove arrivare, e un pulsante
            * blu che promette di chiamarlo promette una cosa che non
            * succede.
            */
           highlight={!appenaBussato && raggiungibile}
           // Premibile finché è raggiungibile: può essere nel canale ma
           // distratto, e insistere è proprio ciò che si vuole fare
-          // quando il primo avviso non ha ottenuto risposta.
+          // quando il primo notice non ha ottenuto risposta.
           disabled={!raggiungibile}
           onPress={press(bussa)}
           // Tenendolo premuto, i suoni per richiamarlo. Solo mentre
           // siete tutti e due nel canale: fuori di lì non c'è nessun
-          // telefono acceso su cui potrebbero suonare, e l'avviso -
+          // telefono acceso su cui potrebbero suonare, e l'notice -
           // quello sì - passa dal server.
           onLongPress={together ? press(() => setMenuSveglia(true)) : undefined}
         />
@@ -1080,13 +1080,13 @@ export default function ChannelScreen(props: Props) {
           // Altezza fissa: comparendo la seconda riga solo quando il
           // path è noto, il pannello cresceva sotto le dita e i
           // pulsanti si spostavano.
-          <View style={[styles.statsBox, avvisoVersione ? styles.statsBoxTre : null]}>
+          <View style={[styles.statsBox, versionWarning ? styles.statsBoxTre : null]}>
             <StatsLine
               stats={videoStats}
               quality={qualityLabel}
               mostraSu={localHasVideo}
               mostraGiu={remoteHasVideo}
-              versioni={avvisoVersione}
+              versioni={versionWarning}
             />
           </View>
         ) : null}
@@ -1182,9 +1182,9 @@ export default function ChannelScreen(props: Props) {
                 onLeave(true);
               }}>
               <View style={styles.sheetText}>
-                <Text style={styles.sheetLabel}>Esci e resta disponibile</Text>
+                <Text style={styles.sheetLabel}>Esci e resta available</Text>
                 <Text style={styles.sheetNota}>
-                  Il canale si chiude, ma resti raggiungibile e il suo avviso
+                  Il canale si chiude, ma resti raggiungibile e il suo notice
                   ti arriva.
                 </Text>
               </View>
@@ -1198,7 +1198,7 @@ export default function ChannelScreen(props: Props) {
                 onLeave(false);
               }}>
               <View style={styles.sheetText}>
-                <Text style={styles.sheetLabel}>Esci e renditi non disponibile</Text>
+                <Text style={styles.sheetLabel}>Esci e renditi non available</Text>
                 <Text style={styles.sheetNota}>
                   Duetto si stacca del tutto: niente avvisi, niente notifica,
                   e all’altro risulti non raggiungibile. Finché non riapri
@@ -1300,8 +1300,8 @@ export default function ChannelScreen(props: Props) {
  * Come sta l'altro mentre lo si aspetta, in una riga.
  *
  * "In attesa" vuol dire collegato al server e raggiungibile
- * dall'avviso; "non raggiungibile" vuol dire che il suo telefono al
- * server non è collegato, e allora l'avviso non ha dove andare. Sono le
+ * dall'notice; "non raggiungibile" vuol dire che il suo telefono al
+ * server non è collegato, e allora l'notice non ha dove andare. Sono le
  * stesse parole della notifica, di proposito: sono la stessa cosa.
  */
 function comeSta(nome: string, presente: boolean, staccato = false): string {
@@ -1327,12 +1327,12 @@ function comeSta(nome: string, presente: boolean, staccato = false): string {
  * due cose da imparare invece di una.
  */
 function parolaAltro(
-  status: PresenceStatus, peerName: string, peerPresent: boolean, peerStaccato: boolean,
+  status: PresenceStatus, peerName: string, peerPresent: boolean, peerDetached: boolean,
 ): string {
   return status === 'connecting' ? 'mi collego\u2026'
     : status === 'offline' ? 'senza server'
       : status === 'together' ? (peerName || 'c\u2019\u00e8')
-        : peerStaccato ? 'si \u00e8 staccato'
+        : peerDetached ? 'si \u00e8 staccato'
           : peerPresent ? 'in attesa' : 'non raggiungibile';
 }
 
@@ -1341,10 +1341,10 @@ function PresenceMini(props: {
   peerName: string;
   peerAvatar: Avatar;
   peerPresent: boolean;
-  peerStaccato: boolean;
+  peerDetached: boolean;
 }) {
-  const { status, peerName, peerAvatar, peerPresent, peerStaccato } = props;
-  const testo = parolaAltro(status, peerName, peerPresent, peerStaccato);
+  const { status, peerName, peerAvatar, peerPresent, peerDetached } = props;
+  const testo = parolaAltro(status, peerName, peerPresent, peerDetached);
   const iniziale = peerName.trim().charAt(0).toUpperCase();
   return (
     <View style={styles.miniCard}>
@@ -1368,17 +1368,17 @@ function PresenceCard(props: {
   peerAvatar: Avatar;
   peerAudio: boolean;
   peerPresent: boolean;
-  peerStaccato: boolean;
+  peerDetached: boolean;
   /** è in attesa perché il telefono gli ha chiuso l'app, non per scelta */
-  peerSmontato?: boolean;
+  peerTornDown?: boolean;
   /** il segno dell'uscita audio dell'altro, alla misura del riepilogo */
   segno: React.ReactNode;
-  /** il nome dato a questo collegamento, se ce n'è più di uno */
-  collegamento?: string;
+  /** il nome dato a questo connectionName, se ce n'è più di uno */
+  connectionName?: string;
 }) {
   const {
     status, linked, connectionState, peerName, peerAvatar, peerAudio, peerPresent,
-    peerStaccato, peerSmontato, segno, collegamento,
+    peerDetached, peerTornDown, segno, connectionName,
   } = props;
 
   if (status === 'connecting') {
@@ -1406,27 +1406,27 @@ function PresenceCard(props: {
         <PeerFace name={peerName} avatar={peerAvatar} live={false} />
         <Text style={styles.cardTitle}>
           Sei nel canale
-          {collegamento ? (
-            <Text style={styles.cardNome}>{'  '}{collegamento}</Text>
+          {connectionName ? (
+            <Text style={styles.cardNome}>{'  '}{connectionName}</Text>
           ) : null}
         </Text>
         <Text style={styles.cardSub}>
-          {comeSta(peerName, peerPresent, peerStaccato)}
-          {peerPresent && peerSmontato ? (
+          {comeSta(peerName, peerPresent, peerDetached)}
+          {peerPresent && peerTornDown ? (
             // Non è una sua scelta: certi telefoni smontano l'app da
             // soli, anche di notte, e dirlo evita di attribuirgli una
             // decisione che non ha preso.
             <>
               {': il suo telefono gli ha chiuso l’app.'}
-              {'\n'}L’avviso gli arriva lo stesso. Tocca{' '}
+              {'\n'}L’notice gli arriva lo stesso. Tocca{' '}
               <Text style={styles.bold}>Avvisa</Text> per farglielo sapere.
             </>
           ) : peerPresent ? (
             <>
-              {': non è nel canale, ma l’avviso gli arriva.'}
+              {': non è nel canale, ma l’notice gli arriva.'}
               {'\n'}Tocca <Text style={styles.bold}>Avvisa</Text> per farglielo sapere.
             </>
-          ) : peerStaccato ? (
+          ) : peerDetached ? (
             <>
               {': ha staccato Duetto di proposito.'}
               {'\n'}Tornerà raggiungibile quando riaprirà l’app.
@@ -1434,7 +1434,7 @@ function PresenceCard(props: {
           ) : (
             <>
               {': il suo telefono non è collegato.'}
-              {'\n'}Finché non torna, l’avviso non può raggiungerlo.
+              {'\n'}Finché non torna, l’notice non può raggiungerlo.
             </>
           )}
         </Text>
@@ -1487,7 +1487,7 @@ function StatsLine({ stats, quality, mostraSu, mostraGiu, versioni }: {
   /** camere davvero accese: le statistiche restano indietro di un campione */
   mostraSu: boolean;
   mostraGiu: boolean;
-  /** avviso sulle versioni diverse, o `null` se sono uguali */
+  /** notice sulle versioni diverse, o `null` se sono uguali */
   versioni?: string | null;
 }) {
   const fmt = (v?: { w: number; h: number; fps: number; kbps: number | null }) => {
@@ -1677,7 +1677,7 @@ const styles = StyleSheet.create({
   avatarText: { color: '#e6ebf1', fontSize: 42, fontWeight: '700' },
   avatarSymbol: { fontSize: 52 },
   statsBox: { height: 36, justifyContent: 'center' },
-  /** con l'avviso sulle versioni le righe diventano tre */
+  /** con l'notice sulle versioni le righe diventano tre */
   statsBoxTre: { height: 54 },
   /**
    * Le righe tecniche devono restare leggibili anche attenuate.
@@ -1695,13 +1695,13 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
-  /** giallo da avviso: è l'unica riga tecnica che chiede di essere letta */
+  /** giallo da notice: è l'unica riga tecnica che chiede di essere letta */
   statsAvviso: { color: '#e8b33a', fontWeight: '700' },
   avatarGhost: { fontSize: 54, marginBottom: 16 },
   cardTitle: { color: '#e6ebf1', fontSize: 21, fontWeight: '700', textAlign: 'center' },
   cardSub: { color: '#8892a0', fontSize: 15, textAlign: 'center', marginTop: 10, lineHeight: 22 },
   bold: { color: '#c9d2de', fontWeight: '700' },
-  // Come l'avviso di VideoStage: una pastiglia al centro, non una fascia,
+  // Come l'notice di VideoStage: una pastiglia al centro, non una fascia,
   // così sotto resta visibile il più possibile dell'immagine.
   uscendoSopra: {
     ...StyleSheet.absoluteFillObject,
@@ -1762,11 +1762,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 5,
   },
   chiText: { color: '#e6ebf1', fontSize: 12.5, fontWeight: '700' },
-  /** il nome del collegamento: è un nome, non una parola dell'app */
+  /** il nome del connectionName: è un nome, non una parola dell'app */
   badgeNome: { fontStyle: 'italic' },
   /** lo stesso nome, nel riepilogo al centro */
   cardNome: { fontStyle: 'italic', fontWeight: '400', color: '#9fb4c8' },
-  /** le due metà del livello, sotto al numero, con le righe tecniche */
+  /** le due metà del level, sotto al numero, con le righe tecniche */
   sheetMeta: {
     color: '#7d8794', fontSize: 12.5, textAlign: 'center', marginTop: 2,
   },
