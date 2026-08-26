@@ -2,293 +2,290 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { LanguageChoice } from './i18n';
 
 /**
- * Configurazione dell'app.
+ * The app's configuration.
  *
- * Due parti ben distinte:
- *  - `server`: dove sta il signaling. Uguale sui due telefoni, si digita
- *    una volta sola.
- *  - `pair`: nasce dall'accoppiamento a codice e non si digita mai. Una
- *    volta stabilito resta per sempre: il codice non serve più.
+ * Two clearly separate parts:
+ *  - `server`: where the signalling lives. The same on both phones,
+ *    typed in once.
+ *  - `pair`: comes out of the code pairing and is never typed. Once
+ *    settled it stays for good: the code is of no further use.
  */
 
 export type PairInfo = {
-  /** impronta del codice: l'unica cosa che il server vede */
+  /** the code's fingerprint: the only thing the server gets to see */
   id: string;
-  /** chiave a 256 bit dallo scambio Diffie-Hellman, in base64 */
+  /** the 256-bit key from the Diffie-Hellman exchange, in base64 */
   key: string;
-  /** quale dei due lati siamo: serve solo a distinguere le conferme */
+  /** which of the two sides we are: only used to tell the proofs apart */
   side: 'A' | 'B';
-  /** come si chiama l'altro, per mostrarlo nelle notifiche */
+  /** what the other person is called, to show it in the notifications */
   peerName: string;
   /**
-   * Il nome del COLLEGAMENTO, non della persona.
+   * The name of the CONNECTION, not of the person.
    *
-   * L'altro si chiama come si è chiamato lui, o non si chiama affatto;
-   * questo è il nome del filo che vi unisce - "Casa", "Ufficio" - e
-   * serve solo da questa parte, per sapere in quale dei collegamenti si
-   * sta. Non viaggia da nessuna parte: l'altro non lo vede e non lo
-   * saprà mai.
+   * The other person is called whatever they called themselves, or
+   * nothing at all; this is the name of the thread between you -
+   * "Home", "Office" - and it is only for this side, to know which of
+   * the connections you are in. It travels nowhere: the other side
+   * never sees it and will never know it.
    */
-  etichetta?: string;
-  /** quando è stato fatto l'accoppiamento (ISO) */
+  label?: string;
+  /** when the pairing was done (ISO) */
   pairedAt: string;
   /**
-   * Il server su cui questo accoppiamento è nato.
+   * The server this pairing was born on.
    *
-   * Una coppia vive dentro un server: la stanza sta lì, e cercarla
-   * altrove è cercarla dove non c'è. Finché il server è uno solo non
-   * cambia nulla; con più collegamenti su server diversi, passare
-   * dall'uno all'altro porta con sé anche il suo indirizzo, che
-   * altrimenti resterebbe quello di prima e il collegamento non
-   * ripartirebbe mai, senza che si capisca perché.
+   * A pair lives inside a server: the room is there, and looking for it
+   * elsewhere is looking where it is not. While there is a single
+   * server nothing changes; with several connections on different
+   * servers, moving from one to the other carries its address along,
+   * which would otherwise stay the previous one and the connection
+   * would never come up, with no way to see why.
    *
-   * Assente nelle configurazioni scritte prima: allora vale quello
-   * dell'app, che era l'unico che ci fosse.
+   * Missing in configurations written before this existed: then the
+   * app's own is used, which was the only one there was.
    */
   serverUrl?: string;
   /**
-   * Le impostazioni di QUESTO collegamento.
+   * The settings of THIS connection.
    *
-   * Quasi tutto quello che si sceglie riguarda una persona in
-   * particolare, non l'app: la qualità del video dipende dalla rete che
-   * ha lei, il suono dell'avviso serve a riconoscerla senza guardare, il
-   * volume della sua voce dipende da com'è registrato il suo microfono,
-   * e l'uscita audio da come si sta insieme - in vivavoce mentre si
-   * cucina, all'orecchio la sera.
+   * Nearly everything one chooses is about a particular person rather
+   * than about the app: video quality depends on the network they have,
+   * the alert sound is how you recognise them without looking, the
+   * volume of their voice depends on how their microphone is recorded,
+   * and the audio output on how the two of you are together - on
+   * speaker while cooking, against the ear in the evening.
    *
-   * Tenendole una sola volta per l'app, cambiando collegamento ci si
-   * portava dietro le scelte fatte per un'altra persona. Qui viaggiano
-   * con lei.
+   * Kept once for the whole app, changing connection dragged along the
+   * choices made for somebody else. Here they travel with them.
    *
-   * Assente per i collegamenti nati prima: allora valgono quelle in uso,
-   * che diventano le sue al primo salvataggio.
+   * Missing for connections born before this existed: then the ones in
+   * use apply, and become theirs at the first save.
    */
-  impostazioni?: ImpostazioniCoppia;
+  settings?: PairSettings;
 };
 
 /**
- * Cosa appartiene al collegamento e non all'app.
+ * What belongs to the connection rather than to the app.
  *
- * Fuori restano solo tre cose, e per una ragione: le coppie
- * (`pair`/`pairs`), che sono l'elenco stesso, e `setupShown`, che
- * ricorda una schermata mostrata una volta nella vita del telefono.
+ * Only three things stay outside, and for a reason: the pairs
+ * (`pair`/`pairs`), which are the list itself, and `setupShown`, which
+ * remembers a screen shown once in the life of the phone.
  */
-export type ImpostazioniCoppia = {
+export type PairSettings = {
   displayName: string;
   videoQuality: VideoQuality;
-  audioMigliore: boolean;
-  mostraDiagnostica: boolean;
-  comandi: 'poco' | 'molto' | 'nascondi';
+  richerAudio: boolean;
+  showDiagnostics: boolean;
+  controls: 'dim' | 'faint' | 'hidden';
   videoCodec: 'auto' | 'vp9';
-  avvisoVibra: 'predefinito' | 'sempre' | 'mai';
-  avvisoSuono: 'predefinito' | 'nessuno' | 'scelto';
-  avvisoSuonoUri: string;
-  avvisoSuonoNome: string;
-  /** in che lingua parla l'app: 'auto' segue il telefono */
+  alertVibration: 'default' | 'always' | 'never';
+  alertSound: 'default' | 'none' | 'chosen';
+  alertSoundUri: string;
+  alertSoundName: string;
+  /** which language the app speaks: 'auto' follows the phone */
   language: LanguageChoice;
-  /** da dove esce il suono: 'SPEAKER_PHONE', 'EARPIECE', ... */
-  uscitaAudio: string;
-  /** quanto alzare la voce dell'altro OLTRE il massimo del telefono, per uscita */
-  guadagni: Record<string, number>;
-  /** con quale camera si riprende */
-  cameraFrontale: boolean;
+  /** where the sound comes out: 'SPEAKER_PHONE', 'EARPIECE', ... */
+  audioOutput: string;
+  /** how much to lift the other voice ABOVE the phone's own top, per output */
+  gains: Record<string, number>;
+  /** which camera films */
+  frontCamera: boolean;
 };
 
-/** I campi che viaggiano con il collegamento, in un posto solo. */
-const CAMPI_COPPIA: (keyof ImpostazioniCoppia)[] = [
-  'displayName', 'videoQuality', 'audioMigliore', 'mostraDiagnostica', 'comandi',
-  'videoCodec', 'avvisoVibra', 'avvisoSuono', 'avvisoSuonoUri', 'avvisoSuonoNome',
-  'uscitaAudio', 'guadagni', 'cameraFrontale', 'language',
+/** The fields that travel with the connection, in one place. */
+const PAIR_FIELDS: (keyof PairSettings)[] = [
+  'displayName', 'videoQuality', 'richerAudio', 'showDiagnostics', 'controls',
+  'videoCodec', 'alertVibration', 'alertSound', 'alertSoundUri', 'alertSoundName',
+  'audioOutput', 'gains', 'frontCamera', 'language',
 ];
 
-/** Le impostazioni in uso, prese dalla configurazione. */
-export function impostazioniInUso(cfg: DuoConfig): ImpostazioniCoppia {
-  const out = {} as ImpostazioniCoppia;
-  for (const k of CAMPI_COPPIA) (out as any)[k] = (cfg as any)[k];
+/** The settings in use, taken from the configuration. */
+export function settingsInUse(cfg: DuoConfig): PairSettings {
+  const out = {} as PairSettings;
+  for (const k of PAIR_FIELDS) (out as any)[k] = (cfg as any)[k];
   return out;
 }
 
 /**
- * Scrive le impostazioni in uso dentro al collegamento in uso.
+ * Writes the settings in use into the connection in use.
  *
- * Si chiama a ogni salvataggio: così il collegamento ha sempre l'ultima
- * parola detta mentre era lui a essere in uso, e ritrovandolo domani si
- * ritrova com'era.
+ * Called at every save: this way the connection always holds the last
+ * word said while it was the one in use, and finding it again tomorrow
+ * means finding it as it was.
  */
-export function salvaImpostazioniNellaCoppia(cfg: DuoConfig): DuoConfig {
+export function storeSettingsInPair(cfg: DuoConfig): DuoConfig {
   if (!cfg.pair) return cfg;
-  const pair: PairInfo = { ...cfg.pair, impostazioni: impostazioniInUso(cfg) };
+  const pair: PairInfo = { ...cfg.pair, settings: settingsInUse(cfg) };
   return { ...cfg, pair, pairs: cfg.pairs.map((p) => (p.id === pair.id ? pair : p)) };
 }
 
 /**
- * Rimette in uso le impostazioni di un collegamento.
+ * Puts a connection's settings back in use.
  *
- * Quelle che non ha - perché è nato prima, o perché è appena stato
- * creato - restano quelle correnti: meglio ereditare che azzerare.
+ * The ones it does not have - because it was born earlier, or because
+ * it has just been created - stay as they are: better to inherit than
+ * to wipe.
  */
-function applicaImpostazioni(cfg: DuoConfig, p: PairInfo): DuoConfig {
-  const sue = p.impostazioni;
-  if (!sue) return cfg;
+function applySettings(cfg: DuoConfig, p: PairInfo): DuoConfig {
+  const theirs = p.settings;
+  if (!theirs) return cfg;
   const out = { ...cfg };
-  for (const k of CAMPI_COPPIA) {
-    const v = (sue as any)[k];
+  for (const k of PAIR_FIELDS) {
+    const v = (theirs as any)[k];
     if (v !== undefined) (out as any)[k] = v;
   }
   return out;
 }
 
 /**
- * Quanto spendere per il video.
+ * How much to spend on video.
  *
- * Ogni profilo ha la sua risoluzione di RIPRESA, e cambiarlo riapre la
- * camera.
+ * Each profile has its own CAPTURE resolution, and changing it reopens
+ * the camera.
  *
- * La via indolore sarebbe scalare l'uscita dell'encoder
- * (`scaleResolutionDownBy`), e su alcuni telefoni funziona. Su altri no:
- * il MediaTek del POCO registra la scala richiesta - la rilettura dei
- * parametri lo conferma - e poi produce comunque a piena risoluzione. È
- * l'encoder, e dal lato del codice non c'è modo di convincerlo.
+ * The painless way would be to scale the encoder's output
+ * (`scaleResolutionDownBy`), and on some phones it works. On others it
+ * does not: the MediaTek in the POCO records the requested scale -
+ * reading the parameters back confirms it - and then produces full
+ * resolution anyway. It is the encoder, and from the code's side there
+ * is no way to talk it round.
  *
- * La risoluzione di ripresa invece nessun encoder può ignorarla. Il
- * prezzo è un attimo di nero al cambio, mentre la camera si riapre.
+ * The capture resolution, on the other hand, no encoder can ignore. The
+ * price is a moment of black at the change, while the camera reopens.
  *
- * Restano fuori dal cambio a caldo i fotogrammi e `degradationPreference`:
- * toccarli su un encoder acceso è ciò che lo faceva smettere di produrre.
+ * Frame rate and `degradationPreference` stay out of the hot change:
+ * touching those on a running encoder is what made it stop producing
+ * anything at all.
  */
-export type VideoQuality = 'risparmio' | 'standard' | 'migliore' | 'massima';
+export type VideoQuality = 'saver' | 'standard' | 'better' | 'best';
 
 export type DuoConfig = {
-  /** wss://TUO_DOMINIO/duetto/ws */
+  /** wss://YOUR_DOMAIN/duetto/ws */
   serverUrl: string;
-  /** come mi vede l'altro */
+  /** how the other person sees me */
   displayName: string;
-  /** il collegamento in uso; null finché non ci si è accoppiati */
+  /** the connection in use; null until a pairing has been made */
   pair: PairInfo | null;
   /**
-   * Tutti i collegamenti che questo telefono conosce, quello in uso per
-   * primo.
+   * Every connection this phone knows, the one in use first.
    *
-   * Un accoppiamento costa: bisogna essere in due, con i telefoni in
-   * mano, e dettarsi un codice a voce. Buttarlo via per parlare con
-   * qualcun altro, e rifarlo da capo per tornare indietro, è un prezzo
-   * che non c'è motivo di pagare: le chiavi occupano trenta byte e
-   * restano valide finché l'altro non scioglie dalla sua parte.
+   * A pairing costs something: two people, phones in hand, reading a
+   * code out to each other. Throwing it away to talk to somebody else,
+   * and doing it again to come back, is a price there is no reason to
+   * pay: the keys take thirty bytes and stay valid until the other side
+   * breaks the pair.
    *
-   * Normalmente si riprende il primo della lista, che è l'ultimo usato.
+   * Normally the first of the list is picked up again, which is the one
+   * used last.
    */
   pairs: PairInfo[];
-  /** le impostazioni di sistema sono già state proposte una volta */
+  /** the system settings have already been offered once */
   setupShown: boolean;
-  /** quanto spendere per il video: banda e batteria */
+  /** how much to spend on video: bandwidth and battery */
   videoQuality: VideoQuality;
   /**
-   * Le due righe di diagnostica sotto ai pulsanti.
+   * Lifts the audio ceiling from ~32 to 64 kbit/s.
    *
-   * Spente: servono a capire perché una chiamata va male, non a
-   * guardarsi in faccia. Chi ne ha bisogno sa dove trovarle.
+   * With Opus you can hear the difference: the voice stops sounding
+   * "telephone-like". It costs 4 kB/s more per direction, nothing next
+   * to the video. Off by default, because the default is enough for
+   * talking.
    */
+  richerAudio: boolean;
   /**
-   * Alza il tetto dell'audio da ~32 a 64 kbit/s.
+   * The two diagnostic lines under the buttons.
    *
-   * Su Opus la differenza si sente: la voce smette di suonare
-   * "telefonica". Costa 4 kB/s in più per direzione, niente rispetto al
-   * video. Spento di default perché il predefinito basta per parlare.
+   * Off: they are there to work out why a call is going badly, not to
+   * look each other in the face. Whoever needs them knows where they
+   * are.
    */
-  audioMigliore: boolean;
-  mostraDiagnostica: boolean;
+  showDiagnostics: boolean;
   /**
-   * I comandi spariscono del tutto invece di attenuarsi.
+   * How far the controls step aside while a video is playing.
    *
-   * Restano premibili anche invisibili, e un tocco ovunque li richiama:
-   * chi guarda un video a lungo preferisce l'immagine pulita.
+   * "dim" keeps them legible (40%), "faint" reduces them to a shadow
+   * (15%), "hidden" takes them away entirely. In all three cases they
+   * can still be pressed, and a touch anywhere brings them back: all
+   * that changes is how much of the picture they leave you.
    */
+  controls: 'dim' | 'faint' | 'hidden';
   /**
-   * Quanto si fanno da parte i comandi mentre si guarda un video.
-   *
-   * "poco" li lascia leggibili (40%), "molto" li riduce a un'ombra
-   * (15%), "nascondi" li toglie del tutto. In tutti e tre i casi
-   * restano premibili, e un tocco ovunque li richiama: quello che
-   * cambia è solo quanta immagine lasciano vedere.
-   */
-  comandi: 'poco' | 'molto' | 'nascondi';
-  /**
-   * `vp9` solo se entrambi i telefoni lo encodano in hardware; altrimenti
-   * l'impostazione resta scritta ma non ha effetto, e nell'interfaccia
-   * l'opzione non compare nemmeno.
+   * `vp9` only if both phones encode it in hardware; otherwise the
+   * setting stays written but has no effect, and the option does not
+   * even appear in the interface.
    */
   videoCodec: 'auto' | 'vp9';
 
   /**
-   * Come deve farsi sentire l'avviso dell'altro.
+   * How the other person's alert should make itself heard.
    *
-   * "Predefinito" lascia decidere ad Android, che sa già cosa fai in
-   * questo momento - modalità silenziosa, non disturbare, auricolari.
-   * Le altre due scelte lo forzano: chi tiene il telefono in tasca vuole
-   * la vibrazione anche in silenzioso, chi lo tiene sul tavolo di notte
-   * non vuole niente.
+   * "default" lets Android decide, since it already knows what you are
+   * doing right now - silent mode, do not disturb, headphones. The
+   * other two choices force it: somebody with the phone in a pocket
+   * wants the vibration even on silent, somebody with it on the
+   * bedside table at night wants nothing at all.
    */
-  avvisoVibra: 'predefinito' | 'sempre' | 'mai';
-  avvisoSuono: 'predefinito' | 'nessuno' | 'scelto';
-  /** Suono scelto fra quelli del telefono: indirizzo di sistema. */
-  avvisoSuonoUri: string;
-  /** Il suo nome, per poterlo mostrare senza doverlo richiedere. */
-  avvisoSuonoNome: string;
+  alertVibration: 'default' | 'always' | 'never';
+  alertSound: 'default' | 'none' | 'chosen';
+  /** A sound picked from the phone's own: a system address. */
+  alertSoundUri: string;
+  /** Its name, so it can be shown without having to ask for it again. */
+  alertSoundName: string;
 
   /**
-   * Da dove esce il suono, e quanto forte è la voce dell'altro.
+   * Where the sound comes out.
    *
-   * Stavano in due memorie separate, fuori di qui: ci sono rientrate
-   * quando le impostazioni sono diventate di ogni collegamento, perché
-   * sono fra le più legate alla persona - il suo microfono, il modo in
-   * cui state insieme.
+   * It used to live in a memory of its own, outside here: it came back
+   * in when the settings became the connection's, because it is among
+   * the most personal of them - their microphone, the way the two of
+   * you are together.
    */
-  uscitaAudio: string;
+  audioOutput: string;
 
   /**
-   * In che lingua parla l'app.
+   * Which language the app speaks.
    *
-   * Sta fra le impostazioni del collegamento come le altre: con una
-   * persona ci si scrive in inglese, con un'altra in italiano, e lo
-   * stesso telefono può fare tutte e due le cose. 'auto' vuol dire
-   * seguire la lingua del telefono.
+   * It sits among the connection's settings like the others: with one
+   * person you write in English, with another in Italian, and the same
+   * phone can do both. 'auto' means following the phone's own language.
    */
   language: LanguageChoice;
 
   /**
-   * Quanto si alza la voce dell'altro OLTRE il massimo del telefono.
+   * How far the other voice is lifted ABOVE the phone's own top.
    *
-   * Uno per ogni uscita, perché il livello giusto all'orecchio non è
-   * quello giusto in vivavoce. Sotto il massimo del telefono non serve:
-   * lì comanda il volume di chiamata, che Android ricorda già separato
-   * per ogni uscita. Questo è solo la parte che sta sopra, e vale 1
-   * finché non si chiede di più.
+   * One per output, because the right level against the ear is not the
+   * right level on speaker. Below the phone's top it is not needed:
+   * there the call volume is in charge, and Android already remembers
+   * that separately for each output. This is only the part above, and
+   * it is 1 until somebody asks for more.
    */
-  guadagni: Record<string, number>;
+  gains: Record<string, number>;
 
   /**
-   * I moltiplicatori sono già stati azzerati una volta.
+   * The multipliers have already been reset once.
    *
-   * Il volume di Duetto è nato come un moltiplicatore unico, applicato
-   * sopra a un volume di chiamata che nessuno guardava. Diventando il
-   * prodotto delle due metà, quel numero ha cambiato significato: 125%
-   * non voleva più dire "un po' più forte del telefono" ma "un quarto
-   * in più sopra qualunque cosa", su ogni uscita - e sulla cornetta
-   * suonava come un vivavoce. Traghettarlo è stato un errore: si azzera
-   * una volta sola, e da lì in poi il lavoro lo fa la manopola del
-   * telefono, che ha già una memoria per ogni uscita.
+   * Duetto's volume started life as a single multiplier, applied on top
+   * of a call volume nobody was looking at. When it became the product
+   * of the two halves that number changed meaning: 125% no longer said
+   * "a little louder than the phone" but "a quarter more on top of
+   * whatever", on every output - and against the ear it sounded like a
+   * speakerphone. Carrying it over was a mistake: it is reset once, and
+   * from then on the work is done by the phone's own knob, which
+   * already has a memory for each output.
    */
-  guadagniAzzerati: boolean;
+  gainsReset: boolean;
 
   /**
-   * Con quale camera si riprende: davanti o dietro.
+   * Which camera films: front or back.
    *
-   * Non era ricordata da nessuna parte - ogni sessione ripartiva dalla
-   * frontale - e invece è una scelta che dura: con una persona ci si
-   * guarda in faccia, con un'altra si inquadra quello che si sta
-   * facendo.
+   * It used to be remembered nowhere - every session started from the
+   * front one - and yet it is a lasting choice: with one person you
+   * look each other in the face, with another you point at what you are
+   * doing.
    */
-  cameraFrontale: boolean;
+  frontCamera: boolean;
 };
 
 export const DEFAULT_CONFIG: DuoConfig = {
@@ -297,24 +294,24 @@ export const DEFAULT_CONFIG: DuoConfig = {
   pair: null,
   pairs: [],
   setupShown: false,
-  // Si parte dal profilo alto: è un tetto, non una pretesa, e con
-  // "balanced" una rete scarsa lo fa scendere da sé. Partire basso
-  // avrebbe lasciato in definizione ridotta chi non apre mai le
-  // impostazioni, anche avendo una rete ottima.
-  videoQuality: 'migliore',
-  audioMigliore: false,
-  mostraDiagnostica: false,
-  comandi: 'poco',
+  // We start from the high profile: it is a ceiling, not a demand, and
+  // with "balanced" a poor network brings it down by itself. Starting
+  // low would have left anybody who never opens the settings in reduced
+  // definition, however good their network.
+  videoQuality: 'better',
+  richerAudio: false,
+  showDiagnostics: false,
+  controls: 'dim',
   videoCodec: 'auto',
-  avvisoVibra: 'predefinito',
-  avvisoSuono: 'predefinito',
-  avvisoSuonoUri: '',
-  avvisoSuonoNome: '',
-  uscitaAudio: 'SPEAKER_PHONE',
+  alertVibration: 'default',
+  alertSound: 'default',
+  alertSoundUri: '',
+  alertSoundName: '',
+  audioOutput: 'SPEAKER_PHONE',
   language: 'auto',
-  guadagni: {},
-  guadagniAzzerati: false,
-  cameraFrontale: true,
+  gains: {},
+  gainsReset: false,
+  frontCamera: true,
 };
 
 const STORAGE_KEY = 'duetto.config.v3';
@@ -323,185 +320,193 @@ export async function loadConfig(): Promise<DuoConfig> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_CONFIG;
-    return normalizzaComandi(normalizzaCoppie({ ...DEFAULT_CONFIG, ...JSON.parse(raw) }));
+    return fromItalian(tidyPairs({ ...DEFAULT_CONFIG, ...JSON.parse(raw) }));
   } catch {
     return DEFAULT_CONFIG;
   }
 }
 
 /**
- * L'elenco dei collegamenti, anche per chi arriva da prima che ce ne
- * fosse uno.
+ * TEMPORARY. The Italian words that used to be written in the stored
+ * settings.
  *
- * Chi aveva già una coppia se la ritrova come primo - e unico - elemento
- * dell'archivio, senza doversi riaccoppiare: la coppia è la stessa, è
- * solo scritta in un posto in più.
+ * The project is moving to English to be published, and the values
+ * saved on the phone move with it. Whoever already has the app must not
+ * notice: what is read gets translated on the way in, once, and is
+ * written back in English at the first save. To be REMOVED once all the
+ * phones have been through here.
  */
-/**
- * Da "nascondi sì/no" alle tre sfumature.
- *
- * Chi aveva l'interruttore acceso voleva i comandi via, e li ritrova
- * via; chi lo aveva spento ritrova il 40% di prima. Nessuno deve
- * riscegliere qualcosa che aveva già scelto.
- */
-function normalizzaComandi(cfg: DuoConfig): DuoConfig {
-  const vecchio = (cfg as unknown as { nascondiComandi?: boolean }).nascondiComandi;
-  if (cfg.comandi === 'poco' && typeof vecchio === 'boolean' && vecchio) {
-    return { ...cfg, comandi: 'nascondi' };
-  }
-  return cfg;
+function fromItalian(cfg: DuoConfig): DuoConfig {
+  const was = <T extends string>(v: any, table: Record<string, T>, fallback: T): T =>
+    (typeof v === 'string' && table[v]) || (typeof v === 'string' && (Object.values(table) as string[]).includes(v) ? v as T : fallback);
+  return {
+    ...cfg,
+    videoQuality: was<VideoQuality>(cfg.videoQuality, {
+      risparmio: 'saver', standard: 'standard', migliore: 'better', massima: 'best',
+    }, 'better'),
+    controls: was(cfg.controls, {
+      poco: 'dim', molto: 'faint', nascondi: 'hidden',
+    } as Record<string, DuoConfig['controls']>, 'dim'),
+    alertVibration: was(cfg.alertVibration, {
+      predefinito: 'default', sempre: 'always', mai: 'never',
+    } as Record<string, DuoConfig['alertVibration']>, 'default'),
+    alertSound: was(cfg.alertSound, {
+      predefinito: 'default', nessuno: 'none', scelto: 'chosen',
+    } as Record<string, DuoConfig['alertSound']>, 'default'),
+  };
 }
 
-function normalizzaCoppie(cfg: DuoConfig): DuoConfig {
-  const lista = Array.isArray(cfg.pairs) ? cfg.pairs.filter((p) => p && p.id && p.key) : [];
-  const attiva = cfg.pair && cfg.pair.id && cfg.pair.key ? cfg.pair : null;
-  if (!attiva) return { ...cfg, pairs: lista };
-  // In testa ci sta sempre quella in uso, e una sola volta: è da lì che
-  // l'interfaccia legge "l'ultimo usato".
-  const altre = lista.filter((p) => p.id !== attiva.id);
-  return { ...cfg, pair: attiva, pairs: [attiva, ...altre] };
+function tidyPairs(cfg: DuoConfig): DuoConfig {
+  const list = Array.isArray(cfg.pairs) ? cfg.pairs.filter((p) => p && p.id && p.key) : [];
+  const active = cfg.pair && cfg.pair.id && cfg.pair.key ? cfg.pair : null;
+  if (!active) return { ...cfg, pairs: list };
+  // The one in use is always at the head, and appears once: that is
+  // where the interface reads "the one used last" from.
+  const others = list.filter((p) => p.id !== active.id);
+  return { ...cfg, pair: active, pairs: [active, ...others] };
 }
 
 /**
- * Aggiunge un accoppiamento appena fatto e lo mette in uso.
+ * Adds a pairing just made and puts it in use.
  *
- * Se rifà un collegamento con la stessa stanza - può succedere solo
- * ripetendo lo stesso codice - sostituisce il vecchio invece di
- * affiancarlo.
+ * If it remakes a connection to the same room - which can only happen
+ * by repeating the same code - it replaces the old one instead of
+ * sitting next to it.
  */
-export function registraCoppia(cfg: DuoConfig, pair: PairInfo): DuoConfig {
-  // Nasce con le impostazioni che hai adesso: sono l'unica cosa
-  // ragionevole da dargli, e da lì in poi sono sue.
-  const nuova: PairInfo = {
+export function addPair(cfg: DuoConfig, pair: PairInfo): DuoConfig {
+  // It is born with the settings you have right now: they are the only
+  // reasonable thing to give it, and from then on they are its own.
+  const fresh: PairInfo = {
     serverUrl: cfg.serverUrl,
-    impostazioni: impostazioniInUso(cfg),
+    settings: settingsInUse(cfg),
     ...pair,
   };
   return {
     ...cfg,
-    pair: nuova,
-    pairs: [nuova, ...cfg.pairs.filter((p) => p.id !== nuova.id)],
+    pair: fresh,
+    pairs: [fresh, ...cfg.pairs.filter((p) => p.id !== fresh.id)],
   };
 }
 
 /**
- * Passa a un collegamento già configurato.
+ * Moves to a connection already set up.
  *
- * Porta con sé il server su cui quella coppia era nata: è lì che sta la
- * sua stanza.
+ * It carries along the server that pair was born on: that is where its
+ * room is.
  */
-export function passaACoppia(cfg: DuoConfig, id: string): DuoConfig {
-  const scelta = cfg.pairs.find((p) => p.id === id);
-  if (!scelta || scelta.id === cfg.pair?.id) return cfg;
-  // Prima si mettono al sicuro quelle di chi si sta lasciando, poi si
-  // ripescano le sue: senza il primo passo, le ultime scelte fatte con
-  // l'una finirebbero addosso all'altra.
-  const salvato = salvaImpostazioniNellaCoppia(cfg);
-  const dopo: DuoConfig = {
-    ...salvato,
-    serverUrl: scelta.serverUrl || salvato.serverUrl,
-    pair: scelta,
-    pairs: [scelta, ...salvato.pairs.filter((p) => p.id !== id)],
+export function switchToPair(cfg: DuoConfig, id: string): DuoConfig {
+  const chosen = cfg.pairs.find((p) => p.id === id);
+  if (!chosen || chosen.id === cfg.pair?.id) return cfg;
+  // First the settings of the one being left are put away, then the
+  // new one's are fetched: without that first step, the last choices
+  // made with one would land on the other.
+  const stored = storeSettingsInPair(cfg);
+  const after: DuoConfig = {
+    ...stored,
+    serverUrl: chosen.serverUrl || stored.serverUrl,
+    pair: chosen,
+    pairs: [chosen, ...stored.pairs.filter((p) => p.id !== id)],
   };
-  return applicaImpostazioni(dopo, scelta);
+  return applySettings(after, chosen);
 }
 
 /**
- * Dimentica un collegamento.
+ * Forgets a connection.
  *
- * Sciogliendo quello in uso si passa al più recente fra quelli rimasti:
- * chiedere un accoppiamento nuovo a chi ne ha altri pronti sarebbe
- * chiedere di rifare una cosa già fatta.
+ * Breaking the one in use moves to the most recent of those left:
+ * asking for a fresh pairing from somebody who has others ready would
+ * be asking them to redo something already done.
  */
-export function dimenticaCoppia(cfg: DuoConfig, id: string): DuoConfig {
-  const restano = cfg.pairs.filter((p) => p.id !== id);
-  if (cfg.pair?.id !== id) return { ...cfg, pairs: restano };
-  const prossima = restano[0] ?? null;
-  const dopo: DuoConfig = {
+export function forgetPair(cfg: DuoConfig, id: string): DuoConfig {
+  const left = cfg.pairs.filter((p) => p.id !== id);
+  if (cfg.pair?.id !== id) return { ...cfg, pairs: left };
+  const next = left[0] ?? null;
+  const after: DuoConfig = {
     ...cfg,
-    serverUrl: prossima?.serverUrl || cfg.serverUrl,
-    pair: prossima,
-    pairs: restano,
+    serverUrl: next?.serverUrl || cfg.serverUrl,
+    pair: next,
+    pairs: left,
   };
-  return prossima ? applicaImpostazioni(dopo, prossima) : dopo;
+  return next ? applySettings(after, next) : after;
 }
 
 /**
- * Segna come si chiama davvero l'altro.
+ * Writes down what the other person is really called.
  *
- * Al momento dell'accoppiamento il nome può mancare o essere quello
- * generico: quello vero arriva a ogni ingresso nel canale. Con più
- * collegamenti in elenco, il nome è l'unica cosa che li distingue -
- * l'impronta della stanza non dice niente a nessuno - quindi vale la
- * pena tenerlo aggiornato.
+ * At pairing time the name can be missing, or be the placeholder one:
+ * the real one arrives at every entry into the channel. With several
+ * connections in the list the name is the only thing that tells them
+ * apart - the room's fingerprint means nothing to anybody - so it is
+ * worth keeping up to date.
  *
- * Torna `null` se non c'è niente da cambiare: così chi chiama non
- * riscrive la configurazione per nulla.
+ * Returns `null` when there is nothing to change, so the caller does
+ * not rewrite the configuration for nothing.
  */
-export function ricordaNomeCoppia(cfg: DuoConfig, id: string, nome: string): DuoConfig | null {
-  if (!nome || nome === 'Qualcuno') return null;
-  const bersaglio = cfg.pairs.find((p) => p.id === id);
-  if (!bersaglio || bersaglio.peerName === nome) return null;
-  const pairs = cfg.pairs.map((p) => (p.id === id ? { ...p, peerName: nome } : p));
+export function rememberPeerName(cfg: DuoConfig, id: string, name: string): DuoConfig | null {
+  if (!name || name === 'Qualcuno' || name === 'Someone') return null;
+  const target = cfg.pairs.find((p) => p.id === id);
+  if (!target || target.peerName === name) return null;
+  const pairs = cfg.pairs.map((p) => (p.id === id ? { ...p, peerName: name } : p));
   return {
     ...cfg,
-    pair: cfg.pair?.id === id ? { ...cfg.pair, peerName: nome } : cfg.pair,
+    pair: cfg.pair?.id === id ? { ...cfg.pair, peerName: name } : cfg.pair,
     pairs,
   };
 }
 
 /**
- * Come chiamare un collegamento in un elenco.
+ * What to call a connection in a list.
  *
- * Prima il nome che gli ho dato io, poi - non avendone dato nessuno -
- * quello di chi ci sta dall'altra parte, che è pur sempre il modo più
- * naturale di distinguerlo. Se non c'è né l'uno né l'altro, niente: chi
- * chiama decide cosa mettere al posto del niente.
+ * First the name I gave it, then - having given it none - the name of
+ * whoever is at the other end, which is still the most natural way of
+ * telling it apart. If there is neither, nothing: the caller decides
+ * what to put in place of nothing.
  */
-export function nomeCoppia(p: PairInfo | null | undefined): string {
+export function pairName(p: PairInfo | null | undefined): string {
   if (!p) return '';
-  if (p.etichetta) return p.etichetta;
-  return p.peerName && p.peerName !== 'Qualcuno' ? p.peerName : '';
+  if (p.label) return p.label;
+  const n = p.peerName;
+  return n && n !== 'Qualcuno' && n !== 'Someone' ? n : '';
 }
 
 /**
- * Come si chiama questo collegamento nei nomi dei file.
+ * What this connection is called inside file names.
  *
- * Serve al diario, che ne tiene uno per collegamento: dentro c'è il
- * nome che gli hai dato - così chi scarica i file capisce di chi sono -
- * e un pezzo dell'impronta della stanza, che li distingue anche quando
- * i nomi si somigliano o non ci sono.
+ * The journal needs it, since it keeps one file per connection: inside
+ * there is the name you gave it - so whoever downloads the files can
+ * tell whose they are - and a piece of the room's fingerprint, which
+ * tells them apart even when the names look alike or are missing.
  */
-export function chiaveCoppia(p: PairInfo | null | undefined): string {
+export function pairFileKey(p: PairInfo | null | undefined): string {
   if (!p) return '';
-  const nome = (p.etichetta || p.peerName || '')
+  const name = (p.label || p.peerName || '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 24);
-  const impronta = (p.id || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 8).toLowerCase();
-  return nome ? `${nome}-${impronta}` : impronta;
+  const fingerprint = (p.id || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 8).toLowerCase();
+  return name ? `${name}-${fingerprint}` : fingerprint;
 }
 
-/** Cambia il nome del collegamento. Vuoto = non ne ha nessuno. */
-export function rinominaCoppia(cfg: DuoConfig, id: string, etichetta: string): DuoConfig {
-  const pulita = etichetta.trim().slice(0, 32);
-  const tocca = (p: PairInfo) => (p.id === id ? { ...p, etichetta: pulita || undefined } : p);
+/** Renames the connection. Empty = it has no name. */
+export function renamePair(cfg: DuoConfig, id: string, label: string): DuoConfig {
+  const clean = label.trim().slice(0, 32);
+  const touch = (p: PairInfo) => (p.id === id ? { ...p, label: clean || undefined } : p);
   return {
     ...cfg,
-    pair: cfg.pair ? tocca(cfg.pair) : cfg.pair,
-    pairs: cfg.pairs.map(tocca),
+    pair: cfg.pair ? touch(cfg.pair) : cfg.pair,
+    pairs: cfg.pairs.map(touch),
   };
 }
 
 /**
- * Il server appena scritto vale anche per la coppia in uso.
+ * A server just typed in applies to the pair in use as well.
  *
- * Senza questo, cambiare server nelle impostazioni lo cambierebbe solo
- * per l'app: al primo passaggio a un altro collegamento e ritorno, la
- * coppia si riporterebbe dietro il vecchio indirizzo.
+ * Without this, changing the server in the settings would change it for
+ * the app alone: at the first move to another connection and back, the
+ * pair would drag its old address along.
  */
-export function allineaServerCoppia(cfg: DuoConfig): DuoConfig {
+export function alignPairServer(cfg: DuoConfig): DuoConfig {
   if (!cfg.pair || cfg.pair.serverUrl === cfg.serverUrl) return cfg;
   const pair = { ...cfg.pair, serverUrl: cfg.serverUrl };
   return {
@@ -516,14 +521,14 @@ export async function saveConfig(cfg: DuoConfig): Promise<void> {
 }
 
 /**
- * Dal nome del server all'indirizzo completo.
+ * From the server's name to the full address.
  *
- * All'utente chiediamo solo "cathopedia.org": il resto lo mettiamo noi,
- * accettando comunque un indirizzo completo se qualcuno lo scrive.
+ * We only ask for "example.org": the rest we add ourselves, while
+ * still accepting a full address if somebody types one.
  *
- *   cathopedia.org                  -> wss://cathopedia.org/duetto/ws
- *   https://cathopedia.org          -> wss://cathopedia.org/duetto/ws
- *   wss://cathopedia.org/altro/ws   -> lasciato com'e'
+ *   example.org                  -> wss://example.org/duetto/ws
+ *   https://example.org          -> wss://example.org/duetto/ws
+ *   wss://example.org/other/ws   -> left as it is
  */
 export function normalizeServerUrl(raw: string): string {
   let s = (raw || '').trim();
@@ -537,103 +542,100 @@ export function normalizeServerUrl(raw: string): string {
 }
 
 /**
- * Come rimostrarlo nelle impostazioni.
+ * How to show it again in the settings.
  *
- * All'utente si chiede il dominio, ma si salva l'indirizzo completo:
- * riaprendo le impostazioni si ritrovava "wss://tuoserver.org/duetto/ws"
- * in un campo che chiede "tuoserver.org". Se l'indirizzo è quello
- * standard si mostra il solo dominio; se qualcuno ha scritto un percorso
- * suo, resta intero, perché lì il dominio da solo non basterebbe.
+ * We ask for the domain but save the full address: reopening the
+ * settings you used to find "wss://yourserver.org/duetto/ws" in a field
+ * that asks for "yourserver.org". If the address is the standard one we
+ * show the domain alone; if somebody typed a path of their own it stays
+ * whole, because there the domain would not be enough.
  */
 export function displayServer(url: string): string {
   const m = (url || '').match(/^wss?:\/\/([^/]+)\/duetto\/ws$/i);
   return m ? m[1] : (url || '');
 }
 
-/** Il minimo per potersi collegare al server e accoppiarsi. */
+/** The least that is needed to reach the server and pair. */
 export function isServerConfigured(cfg: DuoConfig): boolean {
   const url = normalizeServerUrl(cfg.serverUrl);
   return /^wss?:\/\/[^/]+\/.+/.test(url);
 }
 
-/** Vero quando c'è già una coppia: si va dritti nel canale. */
+/** True when a pair already exists: straight into the channel. */
 export function isPaired(cfg: DuoConfig): boolean {
   return !!cfg.pair && !!cfg.pair.id && !!cfg.pair.key;
 }
 
 /**
- * I quattro profili, in cifre.
+ * The four profiles, in figures.
  *
- * `degradation` è "balanced" su tutti: quando la banda non basta,
- * l'encoder può scendere di risoluzione invece di limitarsi a buttare
- * fotogrammi. Con "maintain-resolution" un profilo alto su una rete
- * cattiva non dava un'immagine un po' peggiore, dava una diapositiva
- * nitida - misurato: 1920x1072 a UN fotogramma al secondo.
+ * `degradation` is "balanced" in all of them: when there is not enough
+ * bandwidth, the encoder may come down in resolution instead of merely
+ * throwing frames away. With "maintain-resolution" a high profile on a
+ * bad network did not give a slightly worse picture, it gave a sharp
+ * slide show - measured: 1920x1072 at ONE frame per second.
  *
- * Così il profilo è davvero un tetto: si prende il meglio che la rete
- * concede, e si scende con grazia quando non concede.
+ * This way the profile really is a ceiling: you take the best the
+ * network allows, and come down gracefully when it does not.
  *
- * Le proporzioni restano 16:9 in tutti e quattro, così l'inquadratura non
- * cambia passando dall'uno all'altro: cambia la definizione, non cosa
- * entra nel quadro.
+ * All four stay 16:9, so the framing does not change moving from one to
+ * another: what changes is the definition, not what fits in the shot.
  */
 export const VIDEO_PROFILES: Record<VideoQuality, {
-  /** come riprende la camera: è l'unica leva che nessun encoder ignora */
+  /** how the camera films: the one lever no encoder ignores */
   capture: { width: number; height: number };
   maxBitrate: number;
   degradation: string;
-  etichetta: string;
-  nota: string;
+  /** the key of its name and of its note in the dictionaries */
+  key: string;
 }> = {
-  risparmio: {
+  saver: {
     capture: { width: 640, height: 360 },
     maxBitrate: 300_000,
     degradation: 'balanced',
-    etichetta: 'Risparmio',
-    nota: 'fino a 640×360 · tetto 300 kbit/s',
+    key: 'saver',
   },
   standard: {
     capture: { width: 960, height: 540 },
     maxBitrate: 1_200_000,
     degradation: 'balanced',
-    etichetta: 'Standard',
-    nota: 'fino a 960×540 · tetto 1,2 Mbit/s',
+    key: 'standard',
   },
-  migliore: {
+  better: {
     capture: { width: 1280, height: 720 },
     maxBitrate: 2_500_000,
     degradation: 'balanced',
-    etichetta: 'Migliore',
-    nota: 'fino a 1280×720 · tetto 2,5 Mbit/s',
+    key: 'better',
   },
-  massima: {
+  best: {
     capture: { width: 1920, height: 1080 },
     maxBitrate: 4_000_000,
-    // 'balanced' e non 'maintain-resolution': all'accensione la stima di
-    // banda parte bassa, e obbligare l'encoder a produrre subito 1080p
-    // significa un primo fotogramma chiave che spesso non passa - da cui
-    // il video che all'altro non compare finché non lo si riaccende.
-    // Scalare l'uscita non cambia l'inquadratura, solo la nitidezza,
-    // finché la banda non sale.
+    // 'balanced' rather than 'maintain-resolution': at switch-on the
+    // bandwidth estimate starts low, and forcing the encoder to produce
+    // 1080p straight away means a first key frame that often does not
+    // get through - hence the video that never appeared on the other
+    // side until you switched it off and on. Scaling the output does
+    // not change the framing, only the sharpness, until the bandwidth
+    // comes up.
     degradation: 'balanced',
-    etichetta: 'Massima',
-    nota: 'fino a 1920×1080 · tetto 4 Mbit/s',
+    key: 'best',
   },
 };
 
-/** Fotogrammi chiesti alla camera, uguali per tutti i profili. */
+/** Frames asked of the camera, the same for every profile. */
 export const CAPTURE_FPS = 30;
 
 type RTCIceServer = { urls: string; username?: string; credential?: string };
 
 /**
- * Da dove si parte per trovare la strada verso l'altro.
+ * Where the search for a way to the other side begins.
  *
- * Qui c'è solo lo STUN pubblico, che serve a scoprire il proprio
- * indirizzo visto da fuori. Il relay - che entra in gioco quando la
- * strada diretta non si apre - lo comunica il server nel messaggio di
- * ingresso, insieme alle credenziali: così resta una cosa sola da
- * mantenere, e cambiando la password non si deve toccare nessun telefono.
+ * Only the public STUN is here, which is what tells a phone its own
+ * address as seen from outside. The relay - which comes into play when
+ * the direct road does not open - is announced by the server in the
+ * joining message, credentials included: that way there is a single
+ * thing to maintain, and changing the password means touching no phone
+ * at all.
  */
 export function iceServers(): RTCIceServer[] {
   return [{ urls: 'stun:stun.l.google.com:19302' }];

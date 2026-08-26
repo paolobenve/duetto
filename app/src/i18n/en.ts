@@ -12,6 +12,17 @@
  * use; the same holes must appear in every translation.
  */
 export const en = {
+  quality: {
+    saver: 'Saver',
+    saverNote: 'up to 640×360 · 300 kbit/s ceiling',
+    standard: 'Standard',
+    standardNote: 'up to 960×540 · 1.2 Mbit/s ceiling',
+    better: 'Better',
+    betterNote: 'up to 1280×720 · 2.5 Mbit/s ceiling',
+    best: 'Best',
+    bestNote: 'up to 1920×1080 · 4 Mbit/s ceiling',
+  },
+
   audio: {
     speaker: 'Speaker',
     // "Earpiece" would suggest headphones: this is the little speaker

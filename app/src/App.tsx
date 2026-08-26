@@ -14,12 +14,12 @@ import {
 import {
   DuoConfig, PairInfo, loadConfig, saveConfig,
   isServerConfigured, isPaired, VIDEO_PROFILES,
-  registraCoppia, passaACoppia, dimenticaCoppia, ricordaNomeCoppia,
-  allineaServerCoppia, rinominaCoppia, chiaveCoppia, nomeCoppia,
-  salvaImpostazioniNellaCoppia,
+  addPair, switchToPair, forgetPair, rememberPeerName,
+  alignPairServer, renamePair, pairFileKey, pairName,
+  storeSettingsInPair,
 } from './config';
 import { Signaling, PresenceStatus, Mode } from './signaling';
-import { useLanguage } from './i18n';
+import { useLanguage, t } from './i18n';
 import { VERSION } from './version';
 import { ChannelSession } from './webrtc';
 import type { VideoStats } from './webrtc';
@@ -297,7 +297,7 @@ export default function App() {
    * colpo solo, così non ci si può dimenticare di farlo.
    */
   const salvaCfg = useCallback((next: DuoConfig) => {
-    const con = salvaImpostazioniNellaCoppia(next);
+    const con = storeSettingsInPair(next);
     saveConfig(con).catch(() => { /* noop */ });
     return con;
   }, []);
@@ -400,7 +400,7 @@ export default function App() {
    * valore di partenza è quello del collegamento in uso, e cambiando
    * collegamento cambia con lui.
    */
-  const [cameraFrontale, setCameraFrontale] = useState(true);
+  const [frontCamera, setCameraFrontale] = useState(true);
   const [peerState, setPeerState] = useState<{
     audio: boolean; video: boolean; aspect?: number;
     /** da dove esce il suono dall'altra parte: lo dichiara lui */
@@ -476,12 +476,12 @@ export default function App() {
    * restituisce le scelte, che finiscono nel collegamento in uso.
    */
   const ricordaUscita = useCallback((route: string) => {
-    setCfg((prev) => (prev && prev.uscitaAudio !== route
-      ? salvaCfg({ ...prev, uscitaAudio: route })
+    setCfg((prev) => (prev && prev.audioOutput !== route
+      ? salvaCfg({ ...prev, audioOutput: route })
       : prev));
   }, [salvaCfg]);
 
-  const audio = useAudioRoute(inChannel, cfg?.uscitaAudio, ricordaUscita);
+  const audio = useAudioRoute(inChannel, cfg?.audioOutput, ricordaUscita);
 
   /**
    * Quanto si alza la voce dell'altro OLTRE il massimo del telefono.
@@ -489,7 +489,7 @@ export default function App() {
    * Uno per uscita: il livello giusto all'orecchio non è quello giusto
    * in vivavoce. Vale 1 finché non si chiede più del massimo.
    */
-  const guadagno = cfg?.guadagni?.[audio.route] ?? 1;
+  const guadagno = cfg?.gains?.[audio.route] ?? 1;
 
   /**
    * Le copie per i gestori, che nascono una volta sola e non vedrebbero
@@ -636,7 +636,7 @@ export default function App() {
       setCfg((prev) => {
         if (!prev) return prev;
         const uscita = audioRef.current;
-        const adesso = prev.guadagni?.[uscita] ?? 1;
+        const adesso = prev.gains?.[uscita] ?? 1;
         if (adesso === 1) return prev;
         /**
          * Il muto non lo toglie nessun altro.
@@ -651,7 +651,7 @@ export default function App() {
         Diario.segna('guadagno-azzerato:volume-da-fuori').catch(() => { /* noop */ });
         return salvaCfg({
           ...prev,
-          guadagni: { ...(prev.guadagni ?? {}), [uscita]: 1 },
+          gains: { ...(prev.gains ?? {}), [uscita]: 1 },
         });
       });
     });
@@ -717,7 +717,7 @@ export default function App() {
     };
     const uscita = audioRef.current;
     const suo = sistemaRef.current;
-    const mio = cfgRef.current?.guadagni?.[uscita] ?? 1;
+    const mio = cfgRef.current?.gains?.[uscita] ?? 1;
 
     const cambiaMio = (nuovo: number) => {
       setCfg((prev) => {
@@ -727,10 +727,10 @@ export default function App() {
         const quanto = nuovo <= 0
           ? 0
           : Math.min(GUADAGNO_MAX, Math.max(GUADAGNO_MIN, nuovo));
-        if (quanto === (prev.guadagni?.[uscita] ?? 1)) return prev;
+        if (quanto === (prev.gains?.[uscita] ?? 1)) return prev;
         return salvaCfg({
           ...prev,
-          guadagni: { ...(prev.guadagni ?? {}), [uscita]: quanto },
+          gains: { ...(prev.gains ?? {}), [uscita]: quanto },
         });
       });
     };
@@ -807,7 +807,7 @@ export default function App() {
    * riaggancio.
    */
   const chiaveDiarioRef = useRef('');
-  useEffect(() => { chiaveDiarioRef.current = chiaveCoppia(cfg?.pair); }, [cfg?.pair]);
+  useEffect(() => { chiaveDiarioRef.current = pairFileKey(cfg?.pair); }, [cfg?.pair]);
 
   /**
    * Il titolo degli avvisi: dice su quale collegamento sono arrivati.
@@ -821,7 +821,7 @@ export default function App() {
    * volta sola e non vedrebbe mai un nome cambiato dopo.
    */
   const nomeAvviso = React.useMemo(
-    () => (cfg && cfg.pairs.length > 1 ? nomeCoppia(cfg.pair) || '' : ''),
+    () => (cfg && cfg.pairs.length > 1 ? pairName(cfg.pair) || '' : ''),
     [cfg],
   );
   const nomeAvvisoRef = useRef(nomeAvviso);
@@ -835,7 +835,7 @@ export default function App() {
    * notifica fissa. Senza nome non compare niente: chi ha un
    * collegamento solo non ha nulla da distinguere.
    */
-  const collegamento = cfg?.pair?.etichetta || '';
+  const collegamento = cfg?.pair?.label || '';
 
   /**
    * L'immagine da mostrare al posto del video dell'altro.
@@ -1521,7 +1521,7 @@ export default function App() {
       // Il canale di notifica va preparato prima che serva: nasce con
       // suono e vibrazione dentro, e crearlo al primo avviso vorrebbe
       // dire farlo mentre lo si sta già usando.
-      Avvisi.configura(c.avvisoVibra, c.avvisoSuono, c.avvisoSuonoUri).catch(() => {});
+      Avvisi.configura(c.alertVibration, c.alertSound, c.alertSoundUri).catch(() => {});
       if (!isServerConfigured(c)) setScreen('settings');
       else if (!isPaired(c)) setScreen('pairing');
       // Le impostazioni di sistema si propongono una volta sola, appena
@@ -1562,7 +1562,7 @@ export default function App() {
     setPeerName(n);
     setCfg((prev) => {
       if (!prev?.pair) return prev;
-      const next = ricordaNomeCoppia(prev, prev.pair.id, n);
+      const next = rememberPeerName(prev, prev.pair.id, n);
       if (!next) return prev;
       return salvaCfg(next);
     });
@@ -2437,8 +2437,8 @@ export default function App() {
    */
   const applyAudio = useCallback((migliore: boolean, tell: boolean) => {
     setCfg((prev) => {
-      if (!prev || prev.audioMigliore === migliore) return prev;
-      return salvaCfg({ ...prev, audioMigliore: migliore });
+      if (!prev || prev.richerAudio === migliore) return prev;
+      return salvaCfg({ ...prev, richerAudio: migliore });
     });
     sessionRef.current?.setAudioOptions(migliore);
     Diario.segna(`${tell ? '' : 'altro-'}voce-ricca:${migliore ? 'si' : 'no'}`)
@@ -2451,7 +2451,7 @@ export default function App() {
     // Il server appena scritto è il server di questa coppia: se resta
     // solo nell'app, tornando qui da un altro collegamento si
     // riporterebbe dietro l'indirizzo vecchio.
-    const next = allineaServerCoppia(scritta);
+    const next = alignPairServer(scritta);
     setCfg(salvaCfg(next));
     // La qualità è già stata applicata al tocco, ma applicarla di nuovo
     // non costa nulla e copre il caso di una config arrivata da altrove.
@@ -2464,7 +2464,7 @@ export default function App() {
     // Non sostituisce il collegamento di prima: gli si affianca, e passa
     // in testa. Chi si accoppia con qualcun altro non sta dicendo di
     // volersi dimenticare del primo.
-    const next = registraCoppia(cfg, pair);
+    const next = addPair(cfg, pair);
     setCfg(salvaCfg(next));
     setPeerName(pair.peerName);
     setScreen(next.setupShown ? 'channel' : 'setup');
@@ -2509,15 +2509,15 @@ export default function App() {
     const c = cfgRef.current;
     if (!c?.pair) return;
     const pezzi = [
-      `camera=${c.cameraFrontale !== false ? 'frontale' : 'posteriore'}`,
-      `uscita=${c.uscitaAudio}`,
+      `camera=${c.frontCamera !== false ? 'frontale' : 'posteriore'}`,
+      `uscita=${c.audioOutput}`,
       `qualita=${c.videoQuality}`,
-      `voce-ricca=${c.audioMigliore ? 'si' : 'no'}`,
+      `voce-ricca=${c.richerAudio ? 'si' : 'no'}`,
       `volume=${Math.round(livelloRef.current * 100)}%`,
-      `avviso=${c.avvisoSuono}`,
-      `vibra=${c.avvisoVibra}`,
-      `comandi=${c.comandi}`,
-      `diagnostica=${c.mostraDiagnostica ? 'si' : 'no'}`,
+      `avviso=${c.alertSound}`,
+      `vibra=${c.alertVibration}`,
+      `controls=${c.controls}`,
+      `diagnostica=${c.showDiagnostics ? 'si' : 'no'}`,
     ];
     Diario.segna(`impostazioni:${pezzi.join(',')}`).catch(() => { /* noop */ });
   }, [cfg?.pair?.id]);
@@ -2529,8 +2529,8 @@ export default function App() {
    * video spento, ed è lì che dice con quale camera si aprirà.
    */
   useEffect(() => {
-    if (cfg) setCameraFrontale(cfg.cameraFrontale !== false);
-  }, [cfg?.cameraFrontale, cfg?.pair?.id]);
+    if (cfg) setCameraFrontale(cfg.frontCamera !== false);
+  }, [cfg?.frontCamera, cfg?.pair?.id]);
 
   const azzeraComandi = useCallback(() => {
     // Anche la memoria di com'era l'altro: è un'altra persona, e i suoi
@@ -2550,7 +2550,7 @@ export default function App() {
 
   const onSwitchPair = useCallback(async (id: string) => {
     if (!cfg) return;
-    const next = passaACoppia(cfg, id);
+    const next = switchToPair(cfg, id);
     if (next === cfg) return;
     setCfg(salvaCfg(next));
     setPeerName(next.pair?.peerName || '');
@@ -2570,7 +2570,7 @@ export default function App() {
    */
   const onRenamePair = useCallback(async (id: string, nome: string) => {
     if (!cfg) return;
-    const next = rinominaCoppia(cfg, id, nome);
+    const next = renamePair(cfg, id, nome);
     setCfg(salvaCfg(next));
   }, [cfg]);
 
@@ -2597,7 +2597,7 @@ export default function App() {
     // Sciogliere un collegamento è un addio vero: chi resta dall'altra
     // parte deve sapere che non si tratta di una caduta.
     if (cfg.pair?.id === id) salutiamo.current = true;
-    const next = dimenticaCoppia(cfg, id);
+    const next = forgetPair(cfg, id);
     setCfg(salvaCfg(next));
     if (cfg.pair?.id === id) {
       setPeerName(next.pair?.peerName || '');
@@ -2641,11 +2641,11 @@ export default function App() {
             const next = salvaCfg({ ...prev, ...patch });
             // Le opzioni audio vanno anche applicate: il tetto a caldo,
             // le elaborazioni riaprendo il microfono.
-            if ('audioMigliore' in patch) applyAudio(next.audioMigliore, true);
+            if ('richerAudio' in patch) applyAudio(next.richerAudio, true);
             // Suono e vibrazione dell'avviso stanno nel canale di
             // notifica, che va rifatto da capo a ogni cambiamento.
-            if ('avvisoVibra' in patch || 'avvisoSuono' in patch || 'avvisoSuonoUri' in patch) {
-              Avvisi.configura(next.avvisoVibra, next.avvisoSuono, next.avvisoSuonoUri)
+            if ('alertVibration' in patch || 'alertSound' in patch || 'alertSoundUri' in patch) {
+              Avvisi.configura(next.alertVibration, next.alertSound, next.alertSoundUri)
                 .catch(() => {});
             }
             return next;
@@ -2701,9 +2701,9 @@ export default function App() {
         peerStaccato={peerStaccato}
         peerSmontato={peerSmontato}
         videoStats={videoStats}
-        qualityLabel={(VIDEO_PROFILES[cfg.videoQuality] ?? VIDEO_PROFILES.standard).etichetta}
-        showStats={cfg.mostraDiagnostica}
-        comandi={cfg.comandi}
+        qualityLabel={t(`quality.${(VIDEO_PROFILES[cfg.videoQuality] ?? VIDEO_PROFILES.standard).key}`)}
+        showStats={cfg.showDiagnostics}
+        controls={cfg.controls}
         avviso={avviso}
         onAvvisoLetto={() => setAvviso(null)}
         // Alla schermata va il LIVELLO, non il guadagno: è il numero
@@ -2713,7 +2713,7 @@ export default function App() {
         volumeSistema={sistema}
         onGuadagno={cambiaLivello}
         avvisoVersione={avvisoVersione}
-        cameraFrontale={cameraFrontale}
+        frontCamera={frontCamera}
         quality={cfg.videoQuality}
         onSelectQuality={(q) => applyQuality(q, true)}
         localStream={localStream}
@@ -2746,7 +2746,7 @@ export default function App() {
           setCameraFrontale(frontale);
           // Se la scelta non si scrive, la sessione dopo riparte dalla
           // frontale e la si deve rigirare ogni volta.
-          setCfg((prev) => (prev ? salvaCfg({ ...prev, cameraFrontale: frontale }) : prev));
+          setCfg((prev) => (prev ? salvaCfg({ ...prev, frontCamera: frontale }) : prev));
           Diario.segna(`camera:${frontale ? 'frontale' : 'posteriore'}`).catch(() => {});
         }}
         onSelectRoute={audio.select}

@@ -55,11 +55,11 @@ object Avvisi {
 
     private fun vibra(ctx: Context) =
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString(CHIAVE_VIBRA, "predefinito") ?: "predefinito"
+            .getString(CHIAVE_VIBRA, "default") ?: "default"
 
     private fun suono(ctx: Context) =
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString(CHIAVE_SUONO, "predefinito") ?: "predefinito"
+            .getString(CHIAVE_SUONO, "default") ?: "default"
 
     private fun uri(ctx: Context) =
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -67,19 +67,19 @@ object Avvisi {
 
     /** Il suono da usare, o null se non se ne deve sentire nessuno. */
     fun suonoScelto(ctx: Context): Uri? = when (suono(ctx)) {
-        "nessuno" -> null
-        "scelto" -> uri(ctx).takeIf { it.isNotEmpty() }?.let { Uri.parse(it) }
+        "none" -> null
+        "chosen" -> uri(ctx).takeIf { it.isNotEmpty() }?.let { Uri.parse(it) }
             ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
         else -> RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
     }
 
     /**
      * Il ritmo per i telefoni prima di Android 8, dove la vibrazione si
-     * mette sulla notifica. Con "sempre" resta null perche' a vibrare ci
+     * mette sulla notifica. Con "always" resta null perche' a vibrare ci
      * pensa avvisaOra(), su tutte le versioni.
      */
     fun ritmoScelto(ctx: Context): LongArray? = when (vibra(ctx)) {
-        "predefinito" -> RITMO
+        "default" -> RITMO
         else -> null
     }
 
@@ -110,9 +110,9 @@ object Avvisi {
     }
 
     private fun vibraOra(ctx: Context) {
-        // "predefinito" vuol dire lasciar decidere al sistema, e li' il
-        // canale fa gia' il suo; "mai" vuol dire mai.
-        if (vibra(ctx) != "sempre") return
+        // "default" vuol dire lasciar decidere al sistema, e li' il
+        // canale fa gia' il suo; "never" vuol dire mai.
+        if (vibra(ctx) != "always") return
         try {
             val vibratore = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 (ctx.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)
@@ -150,7 +150,7 @@ object Avvisi {
     }
 
     private fun suonaSeInConversazione(ctx: Context) {
-        if (suono(ctx) == "nessuno") return
+        if (suono(ctx) == "none") return
         val am = ctx.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
         // Fuori dalla conversazione ci pensa la notifica, e suonare due
         // volte sarebbe peggio che non suonare.
@@ -178,8 +178,8 @@ object Avvisi {
      */
     private fun idCanale(ctx: Context): String {
         val s = when (suono(ctx)) {
-            "nessuno" -> "muto"
-            "scelto" -> "s" + Integer.toHexString(uri(ctx).hashCode())
+            "none" -> "muto"
+            "chosen" -> "s" + Integer.toHexString(uri(ctx).hashCode())
             else -> "predef"
         }
         return "${PREFISSO_CANALE}_${vibra(ctx)}_$s"
@@ -220,22 +220,22 @@ object Avvisi {
             description = "Quando l'altra persona entra nel canale o ti chiama"
             setShowBadge(true)
 
-            // "predefinito" vuol dire non toccare niente: il canale nasce
+            // "default" vuol dire non toccare niente: il canale nasce
             // come Android ritiene giusto, ed e' il sistema a decidere
             // sapendo cose che noi non sappiamo (silenzioso, non
             // disturbare, cuffie collegate).
             when (vibra(ctx)) {
-                // Con "sempre" la vibrazione la facciamo noi in
+                // Con "always" la vibrazione la facciamo noi in
                 // avvisaOra(), perche' quella del canale la puo'
                 // sopprimere un'impostazione di sistema. Qui va spenta,
                 // se no chi ha la vibrazione di sistema accesa la
                 // sentirebbe due volte.
-                "sempre", "mai" -> enableVibration(false)
+                "always", "never" -> enableVibration(false)
             }
 
             when (suono(ctx)) {
-                "nessuno" -> setSound(null, null)
-                "scelto" -> {
+                "none" -> setSound(null, null)
+                "chosen" -> {
                     val u = uri(ctx)
                     if (u.isNotEmpty()) {
                         setSound(

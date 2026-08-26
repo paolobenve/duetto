@@ -1,6 +1,6 @@
 import { AppState } from 'react-native';
 import { Foreground, Diario } from 'duetto-platform';
-import { loadConfig, isPaired, isServerConfigured, chiaveCoppia, nomeCoppia } from './config';
+import { loadConfig, isPaired, isServerConfigured, pairFileKey, pairName } from './config';
 import { Signaling } from './signaling';
 import { t } from './i18n';
 
@@ -199,7 +199,7 @@ export async function startListening(): Promise<boolean> {
    * It goes for every notification, the standing one included: the name
    * goes in front of the text, in italics, and Android puts it there.
    */
-  const connectionName = cfg.pairs.length > 1 ? nomeCoppia(pair) || '' : '';
+  const connectionName = cfg.pairs.length > 1 ? pairName(pair) || '' : '';
 
   /**
    * How the other side is doing, for the notification alone.
@@ -276,7 +276,7 @@ export async function startListening(): Promise<boolean> {
        */
       onSignal: (msg) => {
         if (msg.kind === 'journal') {
-          Diario.aggiungiAltro(String(msg.text ?? ''), chiaveCoppia(pair))
+          Diario.aggiungiAltro(String(msg.text ?? ''), pairFileKey(pair))
             .catch(() => { /* noop */ });
           return;
         }

@@ -4,9 +4,10 @@ import {
   KeyboardAvoidingView, Platform, Alert, Modal, Pressable,
 } from 'react-native';
 import type { DuoConfig, PairInfo, VideoQuality } from './config';
+import { t } from './i18n';
 import {
   isServerConfigured, isPaired, normalizeServerUrl, displayServer, VIDEO_PROFILES,
-  nomeCoppia,
+  pairName,
 } from './config';
 import { peerAvatar } from './avatar';
 import { VERSION_FULL } from './version';
@@ -21,33 +22,33 @@ import { Avvisi } from 'duetto-platform';
  * telefono. Le altre due la forzano, in un senso o nell'altro.
  */
 const VIBRAZIONI: {
-  valore: DuoConfig['avvisoVibra']; etichetta: string; nota: string;
+  valore: DuoConfig['alertVibration']; label: string; nota: string;
 }[] = [
   {
-    valore: 'predefinito',
-    etichetta: 'Come decide il telefono',
+    valore: 'default',
+    label: 'Come decide il telefono',
     nota: 'Segue le regole di Android: silenzioso, non disturbare, e quello che hai impostato per le notifiche.',
   },
   {
-    valore: 'sempre',
-    etichetta: 'Sempre',
+    valore: 'always',
+    label: 'Sempre',
     nota: 'Due colpi staccati, diversi da una notifica qualunque.',
   },
-  { valore: 'mai', etichetta: 'Mai', nota: 'Solo la notifica, muta e ferma.' },
+  { valore: 'never', label: 'Mai', nota: 'Solo la notifica, muta e ferma.' },
 ];
 
 const SUONI: {
-  valore: DuoConfig['avvisoSuono']; etichetta: string; nota: string;
+  valore: DuoConfig['alertSound']; label: string; nota: string;
 }[] = [
   {
-    valore: 'predefinito',
-    etichetta: 'Suono di notifica del telefono',
+    valore: 'default',
+    label: 'Suono di notifica del telefono',
     nota: 'Quello che senti per i messaggi.',
   },
-  { valore: 'nessuno', etichetta: 'Nessuno', nota: 'Silenzioso.' },
+  { valore: 'none', label: 'Nessuno', nota: 'Silenzioso.' },
   {
-    valore: 'scelto',
-    etichetta: 'Scegli un suono…',
+    valore: 'chosen',
+    label: 'Scegli un suono…',
     nota: 'Fra quelli del telefono. Un suono diverso dagli altri fa capire chi è senza guardare.',
   },
 ];
@@ -60,21 +61,21 @@ const SUONI: {
  * numero non sa se sarà un'ombra o un ricordo.
  */
 const COMANDI: {
-  valore: DuoConfig['comandi']; etichetta: string; nota: string;
+  valore: DuoConfig['controls']; label: string; nota: string;
 }[] = [
   {
-    valore: 'poco',
-    etichetta: 'Poco sfumati',
+    valore: 'dim',
+    label: 'Poco sfumati',
     nota: 'Restano leggibili, al 40%. È il modo di sempre.',
   },
   {
-    valore: 'molto',
-    etichetta: 'Molto sfumati',
+    valore: 'faint',
+    label: 'Molto sfumati',
     nota: 'Un’ombra, al 15%: si intuisce dove sono senza che coprano niente.',
   },
   {
-    valore: 'nascondi',
-    etichetta: 'Nascosti',
+    valore: 'hidden',
+    label: 'Nascosti',
     nota: 'Spariscono del tutto, immagine pulita.',
   },
 ];
@@ -167,13 +168,13 @@ export default function SettingsScreen({
   const collegamenti = initial.pairs;
   const inUso = initial.pair?.id;
 
-  const nomeDi = (p: PairInfo) => nomeCoppia(p) || 'Senza nome';
+  const nomeDi = (p: PairInfo) => pairName(p) || 'Senza nome';
 
   /** il collegamento a cui si sta dando un nome, e il nome in corso */
   const [battezzo, setBattezzo] = useState<PairInfo | null>(null);
   const [nomeScritto, setNomeScritto] = useState('');
   const apriBattesimo = (p: PairInfo) => {
-    setNomeScritto(p.etichetta || '');
+    setNomeScritto(p.label || '');
     setBattezzo(p);
   };
   const chiudiBattesimo = (salva: boolean) => {
@@ -292,7 +293,7 @@ export default function SettingsScreen({
                       {/* Col nome del collegamento in testa, chi ci sta
                           dall'altra parte va detto lo stesso: sono due
                           cose diverse, e il nome se l'è dato lui. */}
-                      {p.etichetta && p.peerName && p.peerName !== 'Qualcuno' ? (
+                      {p.label && p.peerName && p.peerName !== 'Qualcuno' ? (
                         <Text style={styles.pairMeta}>con {p.peerName}</Text>
                       ) : null}
                       <Text style={styles.pairMeta}>
@@ -355,8 +356,8 @@ export default function SettingsScreen({
             }}>
             <View style={[styles.radio, cfg.videoQuality === q && styles.radioPicked]} />
             <View style={styles.choiceText}>
-              <Text style={styles.choiceLabel}>{VIDEO_PROFILES[q].etichetta}</Text>
-              <Text style={styles.choiceNote}>{VIDEO_PROFILES[q].nota}</Text>
+              <Text style={styles.choiceLabel}>{t(`quality.${VIDEO_PROFILES[q].key}`)}</Text>
+              <Text style={styles.choiceNote}>{t(`quality.${VIDEO_PROFILES[q].key}Note`)}</Text>
             </View>
           </TouchableOpacity>
         ))}
@@ -394,13 +395,13 @@ export default function SettingsScreen({
 
         <Text style={styles.subsection}>Audio</Text>
         <TouchableOpacity
-          style={[styles.choice, cfg.audioMigliore && styles.choicePicked]}
+          style={[styles.choice, cfg.richerAudio && styles.choicePicked]}
           onPress={() => {
-            const v = !cfg.audioMigliore;
-            setCfg({ ...cfg, audioMigliore: v });
-            onLive?.({ audioMigliore: v });
+            const v = !cfg.richerAudio;
+            setCfg({ ...cfg, richerAudio: v });
+            onLive?.({ richerAudio: v });
           }}>
-          <View style={[styles.radio, cfg.audioMigliore && styles.radioPicked]} />
+          <View style={[styles.radio, cfg.richerAudio && styles.radioPicked]} />
           <View style={styles.choiceText}>
             <Text style={styles.choiceLabel}>Voce più ricca</Text>
             <Text style={styles.choiceNote}>
@@ -426,14 +427,14 @@ export default function SettingsScreen({
         {VIBRAZIONI.map((v) => (
           <TouchableOpacity
             key={v.valore}
-            style={[styles.choice, cfg.avvisoVibra === v.valore && styles.choicePicked]}
+            style={[styles.choice, cfg.alertVibration === v.valore && styles.choicePicked]}
             onPress={() => {
-              setCfg({ ...cfg, avvisoVibra: v.valore });
-              onLive?.({ avvisoVibra: v.valore });
+              setCfg({ ...cfg, alertVibration: v.valore });
+              onLive?.({ alertVibration: v.valore });
             }}>
-            <View style={[styles.radio, cfg.avvisoVibra === v.valore && styles.radioPicked]} />
+            <View style={[styles.radio, cfg.alertVibration === v.valore && styles.radioPicked]} />
             <View style={styles.choiceText}>
-              <Text style={styles.choiceLabel}>{v.etichetta}</Text>
+              <Text style={styles.choiceLabel}>{v.label}</Text>
               <Text style={styles.choiceNote}>{v.nota}</Text>
             </View>
           </TouchableOpacity>
@@ -443,32 +444,32 @@ export default function SettingsScreen({
         {SUONI.map((s) => (
           <TouchableOpacity
             key={s.valore}
-            style={[styles.choice, cfg.avvisoSuono === s.valore && styles.choicePicked]}
+            style={[styles.choice, cfg.alertSound === s.valore && styles.choicePicked]}
             onPress={async () => {
-              if (s.valore !== 'scelto') {
-                setCfg({ ...cfg, avvisoSuono: s.valore });
-                onLive?.({ avvisoSuono: s.valore });
+              if (s.valore !== 'chosen') {
+                setCfg({ ...cfg, alertSound: s.valore });
+                onLive?.({ alertSound: s.valore });
                 return;
               }
               // La scelta la fa una schermata di sistema: se si annulla,
               // non si cambia nulla - nemmeno la voce selezionata, che
               // altrimenti direbbe "scelto" senza che si sia scelto.
-              const scelto = await Avvisi.scegliSuono(cfg.avvisoSuonoUri).catch(() => null);
+              const scelto = await Avvisi.scegliSuono(cfg.alertSoundUri).catch(() => null);
               if (!scelto) return;
               const patch = {
-                avvisoSuono: 'scelto' as const,
-                avvisoSuonoUri: scelto.uri,
-                avvisoSuonoNome: scelto.nome,
+                alertSound: 'chosen' as const,
+                alertSoundUri: scelto.uri,
+                alertSoundName: scelto.nome,
               };
               setCfg({ ...cfg, ...patch });
               onLive?.(patch);
             }}>
-            <View style={[styles.radio, cfg.avvisoSuono === s.valore && styles.radioPicked]} />
+            <View style={[styles.radio, cfg.alertSound === s.valore && styles.radioPicked]} />
             <View style={styles.choiceText}>
               <Text style={styles.choiceLabel}>
-                {s.valore === 'scelto' && cfg.avvisoSuonoNome
-                  ? cfg.avvisoSuonoNome
-                  : s.etichetta}
+                {s.valore === 'chosen' && cfg.alertSoundName
+                  ? cfg.alertSoundName
+                  : s.label}
               </Text>
               <Text style={styles.choiceNote}>{s.nota}</Text>
             </View>
@@ -477,13 +478,13 @@ export default function SettingsScreen({
 
         <Text style={styles.subsection}>Schermata</Text>
         <TouchableOpacity
-          style={[styles.choice, cfg.mostraDiagnostica && styles.choicePicked]}
+          style={[styles.choice, cfg.showDiagnostics && styles.choicePicked]}
           onPress={() => {
-            const v = !cfg.mostraDiagnostica;
-            setCfg({ ...cfg, mostraDiagnostica: v });
-            onLive?.({ mostraDiagnostica: v });
+            const v = !cfg.showDiagnostics;
+            setCfg({ ...cfg, showDiagnostics: v });
+            onLive?.({ showDiagnostics: v });
           }}>
-          <View style={[styles.radio, cfg.mostraDiagnostica && styles.radioPicked]} />
+          <View style={[styles.radio, cfg.showDiagnostics && styles.radioPicked]} />
           <View style={styles.choiceText}>
             <Text style={styles.choiceLabel}>Mostra i dettagli tecnici</Text>
             <Text style={styles.choiceNote}>
@@ -502,14 +503,14 @@ export default function SettingsScreen({
         {COMANDI.map((c) => (
           <TouchableOpacity
             key={c.valore}
-            style={[styles.choice, cfg.comandi === c.valore && styles.choicePicked]}
+            style={[styles.choice, cfg.controls === c.valore && styles.choicePicked]}
             onPress={() => {
-              setCfg({ ...cfg, comandi: c.valore });
-              onLive?.({ comandi: c.valore });
+              setCfg({ ...cfg, controls: c.valore });
+              onLive?.({ controls: c.valore });
             }}>
-            <View style={[styles.radio, cfg.comandi === c.valore && styles.radioPicked]} />
+            <View style={[styles.radio, cfg.controls === c.valore && styles.radioPicked]} />
             <View style={styles.choiceText}>
-              <Text style={styles.choiceLabel}>{c.etichetta}</Text>
+              <Text style={styles.choiceLabel}>{c.label}</Text>
               <Text style={styles.choiceNote}>{c.nota}</Text>
             </View>
           </TouchableOpacity>
@@ -530,7 +531,7 @@ export default function SettingsScreen({
               label="Il tuo nome"
               value={cfg.displayName}
               onChange={set('displayName')}
-              placeholder="Paolo"
+              placeholder="Anna"
               hint="Se lo metti, compare nelle notifiche dell’altro."
             />
           </View>

@@ -24,6 +24,9 @@ object Ponte {
 
     private const val FATTO = "migrato-in-inglese-2"
 
+    /** Il secondo passo: non i nomi, ma i VALORI scritti dentro. */
+    private const val VALORI = "valori-in-inglese"
+
     /**
      * Vero mentre stiamo attraversando: il diario chiama di qui, e
      * scrivendo chiamerebbe di nuovo il diario.
@@ -33,6 +36,10 @@ object Ponte {
     fun migra(ctx: Context) {
         if (inCorso) return
         val nuove = ctx.getSharedPreferences(BootReceiver.PREFS, Context.MODE_PRIVATE)
+        if (!nuove.getBoolean(VALORI, false)) {
+            valoriInInglese(ctx)
+            nuove.edit().putBoolean(VALORI, true).apply()
+        }
         if (nuove.getBoolean(FATTO, false)) return
         inCorso = true
         try {
@@ -43,6 +50,29 @@ object Ponte {
         }
         nuove.edit().putBoolean(FATTO, true).apply()
         inCorso = false
+    }
+
+    /**
+     * Le parole scritte DENTRO le preferenze, non i loro nomi.
+     *
+     * Come deve farsi sentire l'avviso era scritto in italiano -
+     * "predefinito", "sempre", "nessuno" - e passando all'inglese quelle
+     * parole non le riconoscerebbe piu' nessuno: chi aveva scelto "mai"
+     * si ritroverebbe la vibrazione, che e' il contrario di quello che
+     * aveva chiesto.
+     */
+    private fun valoriInInglese(ctx: Context) {
+        val p = ctx.getSharedPreferences("duetto_alerts", Context.MODE_PRIVATE)
+        val tradotto = mapOf(
+            "predefinito" to "default", "sempre" to "always", "mai" to "never",
+            "nessuno" to "none", "scelto" to "chosen",
+        )
+        val e = p.edit()
+        for (chiave in listOf("vibration", "sound")) {
+            val valore = p.getString(chiave, null) ?: continue
+            tradotto[valore]?.let { e.putString(chiave, it) }
+        }
+        e.apply()
     }
 
     private fun preferenze(ctx: Context, nuove: android.content.SharedPreferences) {
@@ -57,12 +87,15 @@ object Ponte {
 
         val avvisiVecchi = ctx.getSharedPreferences("duetto_avvisi", Context.MODE_PRIVATE)
         if (avvisiVecchi.contains("vibra") || avvisiVecchi.contains("suono")) {
-            Avvisi.salva(
-                ctx,
-                avvisiVecchi.getString("vibra", "predefinito") ?: "predefinito",
-                avvisiVecchi.getString("suono", "predefinito") ?: "predefinito",
-                avvisiVecchi.getString("uri", "") ?: "",
+            val tradotto = mapOf(
+                "predefinito" to "default", "sempre" to "always", "mai" to "never",
+                "nessuno" to "none", "scelto" to "chosen",
             )
+            val come = { chiave: String ->
+                val v = avvisiVecchi.getString(chiave, "predefinito") ?: "predefinito"
+                tradotto[v] ?: v
+            }
+            Avvisi.salva(ctx, come("vibra"), come("suono"), avvisiVecchi.getString("uri", "") ?: "")
         }
     }
 

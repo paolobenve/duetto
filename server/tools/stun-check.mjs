@@ -4,7 +4,13 @@
 import dgram from 'node:dgram';
 import { randomBytes } from 'node:crypto';
 
-const HOST = process.argv[2] || 'cathopedia.org';
+// Il dominio si passa sulla riga di comando: qui non ci va nessun
+// indirizzo vero, questo file finisce in un repository pubblico.
+const HOST = process.argv[2];
+if (!HOST) {
+  console.error('uso: node stun-check.mjs DOMINIO [PORTA]');
+  process.exit(1);
+}
 const PORT = parseInt(process.argv[3] || '3478', 10);
 const MAGIC = 0x2112a442;
 

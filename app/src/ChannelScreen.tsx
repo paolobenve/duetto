@@ -6,6 +6,7 @@ import {
 import type { GestureResponderEvent } from 'react-native';
 import { MediaStream } from 'react-native-webrtc';
 import { Diario, Prossimita } from 'duetto-platform';
+import { t } from './i18n';
 import type { PresenceStatus } from './signaling';
 import VideoStage from './VideoStage';
 import { AudioRoute, routeLabel } from './audioRoute';
@@ -40,28 +41,28 @@ const DURATA_NOTIZIA_MS = 10_000;
 const FADE_MS = 10000;
 
 /**
- * Dopo quanto i comandi si addormentano.
+ * Dopo quanto i controls si addormentano.
  *
  * Attenuati e non toccati da un minuto: da lì in poi il primo tocco li
  * risveglia soltanto, senza premere niente. È la stessa regola dei
- * comandi invisibili, estesa a quelli sbiaditi: un telefono lasciato
+ * controls invisibili, estesa a quelli sbiaditi: un telefono lasciato
  * acceso con Duetto davanti non deve poter uscire dal canale perché
  * qualcosa gli si è appoggiato sopra.
  */
 const SONNO_MS = 60000;
 
 /**
- * Quanto restano visibili i comandi quando il calo è finito.
+ * Quanto restano visibili i controls quando il calo è finito.
  *
  * Quaranta per cento è quello di sempre: si leggono, ma non pesano.
  * Quindici li riduce a un'ombra, per chi guarda l'immagine e non vuole
  * niente sopra ma nemmeno un buio in cui cercare i pulsanti a memoria.
  * Zero li toglie del tutto.
  */
-const OPACITA_COMANDI: Record<'poco' | 'molto' | 'nascondi', number> = {
-  poco: 0.4,
-  molto: 0.15,
-  nascondi: 0,
+const CONTROLS_OPACITY: Record<'dim' | 'faint' | 'hidden', number> = {
+  dim: 0.4,
+  faint: 0.15,
+  hidden: 0,
 };
 
 /**
@@ -74,7 +75,7 @@ const DIM_ETICHETTA = 0.4;
 
 /**
  * Sotto questa larghezza siamo nella finestrella Picture-in-Picture:
- * lì comandi e badge non ci starebbero, mostriamo solo il video.
+ * lì controls e badge non ci starebbero, mostriamo solo il video.
  */
 const COMPACT_WIDTH = 340;
 
@@ -104,30 +105,30 @@ const ICONA_USCITA: Record<
  * doverli riascoltare uno per uno. Il nome tecnico lo conosce anche il
  * telefono dall'altra parte, che è quello che poi lo suona.
  */
-const SVEGLIE: { nome: string; etichetta: string; nota: string }[] = [
+const SVEGLIE: { nome: string; label: string; nota: string }[] = [
   {
     nome: 'tamburi',
-    etichetta: 'Tamburi',
+    label: 'Tamburi',
     nota: 'Un giro di batteria secco, due volte. Difficile ignorarlo.',
   },
   {
     nome: 'batteria',
-    etichetta: 'Batteria',
+    label: 'Batteria',
     nota: 'Due giri di batteria. Più musica che allarme, ma non si ignora.',
   },
   {
     nome: 'fanfara',
-    etichetta: 'Fanfara',
+    label: 'Fanfara',
     nota: 'Trombe, «ta-daaa». Chi si sveglia così non se la prende.',
   },
   {
     nome: 'strombazzata',
-    etichetta: 'Strombazzata',
+    label: 'Strombazzata',
     nota: 'Il clacson di un’automobile. Sveglia chiunque, e infastidisce.',
   },
   {
     nome: 'gallo',
-    etichetta: 'Canto del gallo',
+    label: 'Canto del gallo',
     nota: 'Chicchirichì. Fa sorridere chi si stava addormentando.',
   },
 ];
@@ -174,9 +175,9 @@ type Props = {
   qualityLabel: string;
   /** le due righe tecniche sotto ai pulsanti, spente per impostazione */
   showStats: boolean;
-  /** i comandi spariscono del tutto invece di attenuarsi */
-  /** quanto si fanno da parte i comandi: 'poco' | 'molto' | 'nascondi' */
-  comandi: 'poco' | 'molto' | 'nascondi';
+  /** i controls spariscono del tutto invece di attenuarsi */
+  /** how far the controls step aside: 'dim' | 'faint' | 'hidden' */
+  controls: 'dim' | 'faint' | 'hidden';
   /**
    * Una notizia da leggere: l'app dell'altro è morta ed è tornata, o è
    * tornato dopo una lunga assenza.
@@ -227,7 +228,7 @@ type Props = {
    */
   avvisoVersione?: string | null;
   /** quale camera sta riprendendo: lo dice l'icona di "Gira" */
-  cameraFrontale: boolean;
+  frontCamera: boolean;
   /** profilo in uso e come cambiarlo: si apre tenendo premuto "Video" */
   quality: VideoQuality;
   onSelectQuality: (q: VideoQuality) => void;
@@ -292,15 +293,15 @@ type Props = {
  */
 export default function ChannelScreen(props: Props) {
   const {
-    collegamento, peerName, peerAvatar, peerPresent, peerStaccato, peerSmontato, videoStats, qualityLabel, showStats, comandi, avviso, onAvvisoLetto, guadagno, guadagnoAltro, volumeSistema, onGuadagno,
-    avvisoVersione, cameraFrontale, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
+    collegamento, peerName, peerAvatar, peerPresent, peerStaccato, peerSmontato, videoStats, qualityLabel, showStats, controls, avviso, onAvvisoLetto, guadagno, guadagnoAltro, volumeSistema, onGuadagno,
+    avvisoVersione, frontCamera, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes,
     onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, uscendo,
     onSveglia, onIngrandimento, onOpenSettings,
   } = props;
 
-  // In Picture-in-Picture la finestra è minuscola: niente comandi.
+  // In Picture-in-Picture la finestra è minuscola: niente controls.
   const { width: winWidth, height: winHeight } = useWindowDimensions();
   const compact = winWidth < COMPACT_WIDTH;
 
@@ -308,7 +309,7 @@ export default function ChannelScreen(props: Props) {
    * Il rettangolo che il video occupa davvero.
    *
    * Il video sta "dentro" lo schermo senza essere tagliato, quindi lascia
-   * due bande nere. Appoggiando i comandi ai bordi dello SCHERMO finivano
+   * due bande nere. Appoggiando i controls ai bordi dello SCHERMO finivano
    * a metà sull'immagine e metà sul nero: appoggiandoli ai bordi del
    * VIDEO stanno tutti dentro, come si intende una sovrapposizione.
    *
@@ -320,7 +321,7 @@ export default function ChannelScreen(props: Props) {
    * L'ultimo rientro conosciuto, tenuto anche senza video.
    *
    * Spegnendo l'ultima camera il rettangolo del video sparisce e il
-   * rientro andrebbe a zero: i comandi scivolavano in fondo allo schermo
+   * rientro andrebbe a zero: i controls scivolavano in fondo allo schermo
    * e il riquadrino cambiava zona, per un cambiamento che dal punto di
    * vista di chi guarda non c'è stato. Restano dove sono, in attesa che
    * l'immagine torni.
@@ -473,14 +474,14 @@ export default function ChannelScreen(props: Props) {
   /**
    * Quando il calo in corso arriverà in fondo.
    *
-   * Serve a interpretare il tocco sull'immagine: finché i comandi stanno
+   * Serve a interpretare il tocco sull'immagine: finché i controls stanno
    * ancora calando si vedono, e chi tocca li vuole via; una volta in
    * fondo non si vedono più, e chi tocca li vuole indietro.
    *
    * Un semplice "sono pieni sì/no" non bastava: diventava "no" appena
    * partito il calo, cioè dopo un decimo di secondo, e da lì in avanti il
    * tocco li richiamava invece di toglierli - che è il difetto che si
-   * vedeva, comandi che non se ne andavano più.
+   * vedeva, controls che non se ne andavano più.
    */
   const finCalo = useRef(0);
 
@@ -502,7 +503,7 @@ export default function ChannelScreen(props: Props) {
   const attenua = useCallback((durata = FADE_MS) => {
     if (idleTimer.current) clearTimeout(idleTimer.current);
     finCalo.current = Date.now() + durata;
-    const meta = OPACITA_COMANDI[comandi] ?? OPACITA_COMANDI.poco;
+    const meta = CONTROLS_OPACITY[controls] ?? CONTROLS_OPACITY.dim;
     Animated.timing(opacity, {
       toValue: meta,
       duration: durata,
@@ -511,12 +512,12 @@ export default function ChannelScreen(props: Props) {
       // Solo a calo finito: durante la discesa si vedono ancora.
       if (finished && meta === 0) setSpariti(true);
     });
-  }, [opacity, comandi]);
+  }, [opacity, controls]);
 
   /**
-   * C'è qualcosa da guardare sotto ai comandi.
+   * C'è qualcosa da guardare sotto ai controls.
    *
-   * Senza nessun video i comandi non coprono niente, e attenuarli
+   * Senza nessun video i controls non coprono niente, e attenuarli
    * lascerebbe uno schermo scuro con sopra dei pulsanti sbiaditi: si
    * nascondono per lasciar vedere un'immagine, e se l'immagine non c'è
    * non c'è ragione.
@@ -537,7 +538,7 @@ export default function ChannelScreen(props: Props) {
   }, [opacity, attenua, daVedere]);
 
   /**
-   * Un tocco sull'immagine: se i comandi si vedono, li toglie di mezzo.
+   * Un tocco sull'immagine: se i controls si vedono, li toglie di mezzo.
    *
    * Aspettare i nove secondi dell'attenuazione automatica, quando si
    * vuole guardare l'immagine e basta, è una piccola prigionia.
@@ -545,7 +546,7 @@ export default function ChannelScreen(props: Props) {
   /**
    * L'etichetta segue l'attenuazione degli altri, ma non oltre.
    *
-   * Con "Nascondi i comandi" gli altri vanno a zero; questa no, perché
+   * Con "Nascondi i controls" gli altri vanno a zero; questa no, perché
    * l'unica informazione che non si ricava guardando lo schermo è
    * proprio chi si sta guardando.
    */
@@ -561,7 +562,7 @@ export default function ChannelScreen(props: Props) {
     // dopo un lungo silenzio vale la pena saperlo: è il gemello buono
     // del tocco che nessuno ha voluto.
     if (fermo > SONNO_MS) {
-      Diario.segna(`comandi-risvegliati:fermi ${Math.round(fermo / 1000)}s`)
+      Diario.segna(`controls-risvegliati:fermi ${Math.round(fermo / 1000)}s`)
         .catch(() => { /* noop */ });
     }
     // Chiedere di toglierli è diverso dal lasciarli calare: qui si vuole
@@ -570,7 +571,7 @@ export default function ChannelScreen(props: Props) {
   }, [attenua, wake]);
 
   // `wake` cambia quando cambia `daVedere`: spegnendo l'ultima camera i
-  // comandi tornano pieni e ci restano.
+  // controls tornano pieni e ci restano.
   useEffect(() => {
     wake();
     return () => { if (idleTimer.current) clearTimeout(idleTimer.current); };
@@ -587,7 +588,7 @@ export default function ChannelScreen(props: Props) {
    * Serve contro il tocco che nessuno ha voluto: una notte, sul
    * telefono dell'altro, è comparsa un'uscita dal canale alle 4:46 che
    * nessuno aveva premuto, e il pulsante Esci fa il suo lavoro al primo
-   * tocco senza chiedere niente. Con i comandi sbiaditi e fermi da un
+   * tocco senza chiedere niente. Con i controls sbiaditi e fermi da un
    * minuto, quel tocco adesso non preme: accende.
    */
   const press = useCallback(
@@ -600,17 +601,17 @@ export default function ChannelScreen(props: Props) {
       }
       const fermo = Date.now() - ultimoTocco.current;
       ultimoTocco.current = Date.now();
-      const attenuati = daVedere && (OPACITA_COMANDI[comandi] ?? 0.4) < 1;
+      const attenuati = daVedere && (CONTROLS_OPACITY[controls] ?? 0.4) < 1;
       if (attenuati && fermo > SONNO_MS) {
         wake();
-        Diario.segna(`comandi-risvegliati:fermi ${Math.round(fermo / 1000)}s`)
+        Diario.segna(`controls-risvegliati:fermi ${Math.round(fermo / 1000)}s`)
           .catch(() => { /* noop */ });
         return;
       }
       wake();
       action();
     },
-    [wake, daVedere, comandi],
+    [wake, daVedere, controls],
   );
 
   /**
@@ -686,7 +687,7 @@ export default function ChannelScreen(props: Props) {
   /**
    * Qualcosa copre lo schermo: una tasca, una cover chiusa.
    *
-   * Finché è coperto i comandi non si premono. Un telefono in tasca
+   * Finché è coperto i controls non si premono. Un telefono in tasca
    * riceve tocchi che non sono scelte di nessuno - nel diario sono
    * comparse uscite dal canale con contatti di quaranta millisecondi,
    * mentre l'altro usciva di casa con il telefono in tasca e il
@@ -752,7 +753,7 @@ export default function ChannelScreen(props: Props) {
   return (
     // Il tocco si raccoglie dentro VideoStage, sulla sola immagine
     // grande: sul riquadrino significa già scambiare i due video, e sui
-    // comandi significa premerli.
+    // controls significa premerli.
     <View style={styles.root}>
       <VideoStage
         localStream={localStream}
@@ -770,7 +771,7 @@ export default function ChannelScreen(props: Props) {
         localAspect={localAspect}
         remoteAspect={remoteAspect}
         compact={compact}
-        specchia={cameraFrontale}
+        specchia={frontCamera}
         onBigAspect={setBigAspect}
         insetV={compact ? 0 : inset.v}
         insetH={compact ? 0 : inset.h}
@@ -909,7 +910,7 @@ export default function ChannelScreen(props: Props) {
       {/* Anche la barra in alto sta dentro il video: fuori, sulla banda
           nera, sembra staccata dall'immagine a cui appartiene. Il
           riquadrino le lascia il posto scendendo, non lei salendo. */}
-      {/* "Tu/Non tu" si attenua con gli altri comandi ma non sparisce
+      {/* "Tu/Non tu" si attenua con gli altri controls ma non sparisce
           mai: dice CHI si sta guardando a schermo intero, e con un tocco
           sul riquadrino i due si scambiano - è facile perdere il conto.
           Anche al minimo resta leggibile, che è quanto basta. */}
@@ -1010,8 +1011,8 @@ export default function ChannelScreen(props: Props) {
           // Pastiglia bianca con la frontale, spenta con la posteriore:
           // la sola differenza fra le due sagome - una persona o più -
           // si coglie leggendola, mentre il pieno o il vuoto si vede.
-          icon={cameraFrontale ? <IconaFrontale {...SU_CHIARO} /> : <IconaPosteriore />}
-          active={cameraFrontale}
+          icon={frontCamera ? <IconaFrontale {...SU_CHIARO} /> : <IconaPosteriore />}
+          active={frontCamera}
           // Premibile anche a video spento: lì non gira niente, sceglie
           // con quale camera si accenderà. Serve a inquadrare qualcosa
           // senza mostrare prima, per un istante, la propria faccia.
@@ -1112,9 +1113,11 @@ export default function ChannelScreen(props: Props) {
                 onPress={() => { onSelectQuality(q); setMenuQualita(false); }}>
                 <View style={styles.sheetText}>
                   <Text style={[styles.sheetLabel, q === quality && styles.sheetLabelOn]}>
-                    {VIDEO_PROFILES[q].etichetta}
+                    {t(`quality.${VIDEO_PROFILES[q].key}`)}
                   </Text>
-                  <Text style={styles.sheetNota}>{VIDEO_PROFILES[q].nota}</Text>
+                  <Text style={styles.sheetNota}>
+                    {t(`quality.${VIDEO_PROFILES[q].key}Note`)}
+                  </Text>
                 </View>
                 {q === quality ? <Text style={styles.sheetCheck}>{'\u2713'}</Text> : null}
               </TouchableOpacity>
@@ -1148,7 +1151,7 @@ export default function ChannelScreen(props: Props) {
                   onSveglia(sv.nome);
                 }}>
                 <View style={styles.sheetText}>
-                  <Text style={styles.sheetLabel}>{sv.etichetta}</Text>
+                  <Text style={styles.sheetLabel}>{sv.label}</Text>
                   <Text style={styles.sheetNota}>{sv.nota}</Text>
                 </View>
               </TouchableOpacity>
@@ -1471,7 +1474,7 @@ function PresenceCard(props: {
  * Il nome, se c'è, vince: l'iniziale dice più di un disegno.
  */
 /**
- * Risoluzione e banda davvero in gioco, sotto ai comandi.
+ * Risoluzione e banda davvero in gioco, sotto ai controls.
  *
  * Il profilo scelto è un tetto, non una promessa: quanto passa davvero
  * dipende dalla rete e dalla scena, e sapere che si sta mandando 1080p
@@ -1680,7 +1683,7 @@ const styles = StyleSheet.create({
    * Le righe tecniche devono restare leggibili anche attenuate.
    *
    * Erano di un grigio da nota a piè di pagina: giusto a pieno schermo,
-   * illeggibile appena i comandi cominciano a farsi da parte, perché
+   * illeggibile appena i controls cominciano a farsi da parte, perché
    * l'attenuazione moltiplica quel poco contrasto che c'era. Ora sono
    * di un grigio chiaro, con un'ombra scura sotto che le stacca anche
    * quando il pannello dietro è quasi sparito.

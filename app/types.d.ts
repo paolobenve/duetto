@@ -113,8 +113,8 @@ declare module 'duetto-platform' {
   /** Vibrazione e suono dell'avviso. */
   export const Avvisi: {
     configura(
-      vibra: 'predefinito' | 'sempre' | 'mai',
-      suono: 'predefinito' | 'nessuno' | 'scelto',
+      vibra: 'default' | 'always' | 'never',
+      suono: 'default' | 'none' | 'chosen',
       uri?: string,
     ): Promise<boolean | string>;
     scegliSuono(uriCorrente?: string): Promise<{ uri: string; nome: string } | null>;

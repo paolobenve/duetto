@@ -172,7 +172,7 @@ export class ChannelSession {
    * prima ogni sessione ripartiva dalla frontale, e chi inquadrava
    * qualcos'altro doveva rigirarla ogni volta.
    */
-  private cameraFrontale: boolean;
+  private frontCamera: boolean;
 
   /**
    * Microfono acceso o muto, come lo vuole chi usa l'app. Vale anche
@@ -220,7 +220,7 @@ export class ChannelSession {
     private signaling: Signaling,
     private events: ChannelEvents,
   ) {
-    this.cameraFrontale = cfg.cameraFrontale !== false;
+    this.frontCamera = cfg.frontCamera !== false;
     /**
      * Il guadagno parte da quello salvato per l'uscita in uso.
      *
@@ -229,7 +229,7 @@ export class ChannelSession {
      * che questo telefono non sta usando, e la correzione è un messaggio
      * in più che può perdersi.
      */
-    this.guadagnoAltro = cfg.guadagni?.[cfg.uscitaAudio] ?? 1;
+    this.guadagnoAltro = cfg.gains?.[cfg.audioOutput] ?? 1;
     this.livelloUdito = this.guadagnoAltro;
   }
 
@@ -307,7 +307,7 @@ export class ChannelSession {
       params.encodings[0].maxBitrate = ricco ? AUDIO_RICCO : AUDIO_BASE;
       await sender.setParameters(params);
       log('audio:', ricco ? 'tetto 64 kbit/s' : 'tetto 32 kbit/s',
-        !this.cfg.audioMigliore && ricco ? '(per via del video)' : '');
+        !this.cfg.richerAudio && ricco ? '(per via del video)' : '');
     } catch (e) {
       log('non riesco ad applicare la qualità audio:', String(e));
     }
@@ -331,11 +331,11 @@ export class ChannelSession {
    * mai togliere.
    */
   private audioRicco(): boolean {
-    return this.cfg.audioMigliore || this.videoAbbondante;
+    return this.cfg.richerAudio || this.videoAbbondante;
   }
 
   async setAudioOptions(migliore: boolean) {
-    this.cfg = { ...this.cfg, audioMigliore: migliore };
+    this.cfg = { ...this.cfg, richerAudio: migliore };
     await this.applyAudioQuality();
   }
 
@@ -1050,7 +1050,7 @@ export class ChannelSession {
         // La camera scelta, non sempre la frontale: cambiando risoluzione
         // si riapre la camera, e ripartire da 'user' riportava la ripresa
         // sulla propria faccia senza che nessuno l'avesse chiesto.
-        facingMode: this.cameraFrontale ? 'user' : 'environment',
+        facingMode: this.frontCamera ? 'user' : 'environment',
         // La risoluzione viene dal profilo: è l'unica leva che nessun
         // encoder può ignorare. Scalare l'uscita sarebbe indolore, ma su
         // alcuni telefoni la richiesta viene registrata e poi disattesa.
@@ -1371,15 +1371,15 @@ export class ChannelSession {
    * @returns true se d'ora in poi si riprende con la frontale
    */
   switchCamera(): boolean {
-    this.cameraFrontale = !this.cameraFrontale;
+    this.frontCamera = !this.frontCamera;
     const track = this.localStream?.getVideoTracks()[0] as any;
     if (track && typeof track._switchCamera === 'function') track._switchCamera();
-    return this.cameraFrontale;
+    return this.frontCamera;
   }
 
   /** Con quale camera si riprende (o si riprenderà). */
   isCameraFrontale(): boolean {
-    return this.cameraFrontale;
+    return this.frontCamera;
   }
 
   /**

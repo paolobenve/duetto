@@ -2,6 +2,17 @@ import type { Dictionary } from './en';
 
 /** Le parole italiane. La struttura la detta `en`, che è il riferimento. */
 export const it: Dictionary = {
+  quality: {
+    saver: 'Risparmio',
+    saverNote: 'fino a 640\u00d7360 \u00b7 tetto 300 kbit/s',
+    standard: 'Standard',
+    standardNote: 'fino a 960\u00d7540 \u00b7 tetto 1,2 Mbit/s',
+    better: 'Migliore',
+    betterNote: 'fino a 1280\u00d7720 \u00b7 tetto 2,5 Mbit/s',
+    best: 'Massima',
+    bestNote: 'fino a 1920\u00d71080 \u00b7 tetto 4 Mbit/s',
+  },
+
   audio: {
     speaker: 'Vivavoce',
     earpiece: 'Telefono',
