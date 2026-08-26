@@ -176,6 +176,9 @@ const GRAZIA_SERVER_MS = 5_000;
  */
 const ATTESA_PROVA_MS = 3_000;
 
+/** Entro quanto l'annuncio di un cambio di volume è l'eco del nostro. */
+const ATTESA_ECO_VOLUME_MS = 2_000;
+
 /**
  * Entro quanto un rientro conta come continuazione e non come nuovo
  * ingresso. Due attese diverse, perché le due cose non pesano uguale.
@@ -573,9 +576,52 @@ export default function App() {
       }).catch(() => { /* noop */ });
     };
     rileggi();
-    const stop = Volume.ascoltaSistema(rileggi);
+    /**
+     * Se il volume lo muove qualcun altro, il nostro guadagno se ne va.
+     *
+     * Chi regola il volume da un'altra app - o dal pannello di sistema -
+     * sta dicendo quanto vuole sentire, adesso. Il nostro
+     * moltiplicatore è un residuo di una scelta di prima, e lasciarlo lì
+     * a moltiplicare la scelta nuova la falsa: si mette la voce a metà e
+     * ci si ritrova al settantacinque per cento, senza capire perché.
+     * Azzerandolo, il livello di Duetto torna a essere esattamente
+     * quello del telefono.
+     *
+     * Il cambio nostro non conta: quando siamo noi a spostare la
+     * manopola ce ne ricordiamo per un attimo, e quell'annuncio lo
+     * lasciamo passare.
+     */
+    const stop = Volume.ascoltaSistema((valore) => {
+      rileggi();
+      const nostro = nostroSet.current;
+      const daNoi = nostro
+        && Math.abs(nostro.v - valore) < 0.5
+        && Date.now() - nostro.t < ATTESA_ECO_VOLUME_MS;
+      if (daNoi) return;
+      setCfg((prev) => {
+        if (!prev) return prev;
+        const uscita = audioRef.current;
+        const adesso = prev.guadagni?.[uscita] ?? 1;
+        if (adesso === 1) return prev;
+        /**
+         * Il muto non lo toglie nessun altro.
+         *
+         * Azzerare il guadagno vuol dire tornare al volume del telefono,
+         * e per chi ha zittito l'altro sarebbe farlo parlare di nuovo
+         * per mano di un'app qualsiasi. Il muto lo si toglie da Duetto,
+         * e allora si riparte dal volume che il telefono ha in quel
+         * momento.
+         */
+        if (adesso === 0) return prev;
+        Diario.segna('guadagno-azzerato:volume-da-fuori').catch(() => { /* noop */ });
+        return salvaCfg({
+          ...prev,
+          guadagni: { ...(prev.guadagni ?? {}), [uscita]: 1 },
+        });
+      });
+    });
     return () => { vivo = false; stop(); };
-  }, [inChannel, audio.route]);
+  }, [inChannel, audio.route, salvaCfg]);
 
   /**
    * Il guadagno si riapplica a ogni cambiamento e a ogni rientro nel
@@ -655,6 +701,9 @@ export default function App() {
     };
 
     const muoviSuo = (v: number) => {
+      // Ce lo si ricorda: l'annuncio che il sistema manderà è l'eco di
+      // questo, non la scelta di qualcun altro.
+      nostroSet.current = { v, t: Date.now() };
       setSistema({ ...suo, volume: v });
       Volume.metti(v).catch(() => { /* noop */ });
     };
@@ -929,6 +978,15 @@ export default function App() {
     if (!peerPresent || status === 'together') setPeerSmontato(false);
   }, [peerPresent, status]);
 
+  /**
+   * L'ultimo volume di sistema messo da noi, con l'ora.
+   *
+   * Serve a riconoscere l'eco: il sistema annuncia ogni cambio, compresi
+   * i nostri, e senza questo confronto ogni tocco dei tasti sembrerebbe
+   * la scelta di un'altra app.
+   */
+  const nostroSet = useRef<{ v: number; t: number } | null>(null);
+
   /** Battiti di fila finiti male: al secondo si chiama in causa la rete. */
   const battitiAvuoto = useRef(0);
 
@@ -1125,11 +1183,19 @@ export default function App() {
       // processo, non la connessione. Sono due cose diverse, e all'altro
       // ne serve una sola per vederti sparire.
       if (!salutiamo.current) {
-        // Con il perché: nessuno ha chiesto di uscire, è il telefono che
-        // ha chiuso la finestra. L'ascolto senza interfaccia lo dirà
-        // all'altro, che altrimenti legge "in attesa" e pensa a una tua
-        // scelta.
-        interfacciaAlComando(false, true);
+        /**
+         * Il perché lo si dice solo se contava.
+         *
+         * Se la finestra viene smontata mentre si è NEL CANALE, l'altro
+         * ti vede sparire senza spiegazione e merita di sapere che non
+         * sei stato tu: è la condizione per cui questo messaggio esiste.
+         * Se invece eri già uscito e l'app stava in secondo piano,
+         * essere smontata è ordinaria amministrazione - su certi
+         * telefoni succede pochi secondi dopo ogni uscita - e dirlo
+         * faceva leggere «il suo telefono gli ha chiuso l'app» subito
+         * dopo un'uscita che aveva scelto lui. Vero, e fuorviante.
+         */
+        interfacciaAlComando(false, inChannelRef.current);
         Foreground.riprendiPresenza().catch(() => { /* noop */ });
       }
     };

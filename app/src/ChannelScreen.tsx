@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated,
   useWindowDimensions, Modal, Pressable,
 } from 'react-native';
+import type { GestureResponderEvent } from 'react-native';
 import { MediaStream } from 'react-native-webrtc';
 import { Diario } from 'duetto-platform';
 import type { PresenceStatus } from './signaling';
@@ -676,6 +677,21 @@ export default function ChannelScreen(props: Props) {
     );
   }, [segnoUscitaMia, showStats, guadagnoAltro]);
 
+  /**
+   * La firma di un tocco su una riga del pannello.
+   *
+   * I pulsanti rotondi la scrivono da sé; le righe dei pannelli no, e
+   * proprio l'uscita - che è la cosa su cui stiamo indagando - passava
+   * di lì senza lasciare traccia. Qui non c'è la durata del contatto,
+   * perché una riga di pannello non ha il tocco iniziale separato: c'è
+   * il punto, che è già qualcosa.
+   */
+  const firmaTocco = useCallback((che: string, e: GestureResponderEvent) => {
+    const x = Math.round(e?.nativeEvent?.pageX ?? -1);
+    const y = Math.round(e?.nativeEvent?.pageY ?? -1);
+    Diario.segna(`comando:${che} ${x},${y}`).catch(() => { /* noop */ });
+  }, []);
+
   /** Il lampo della campanella: dice che qualcosa è partito davvero. */
   const bussata = useCallback(() => {
     setAppenaBussato(true);
@@ -1106,7 +1122,11 @@ export default function ChannelScreen(props: Props) {
             <Text style={styles.sheetTitle}>Uscire dal canale?</Text>
             <TouchableOpacity
               style={styles.sheetRow}
-              onPress={() => { setMenuUscita(false); onLeave(true); }}>
+              onPress={(e) => {
+                firmaTocco('esci-resto', e);
+                setMenuUscita(false);
+                onLeave(true);
+              }}>
               <View style={styles.sheetText}>
                 <Text style={styles.sheetLabel}>Esci e resta disponibile</Text>
                 <Text style={styles.sheetNota}>
@@ -1117,7 +1137,11 @@ export default function ChannelScreen(props: Props) {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.sheetRow}
-              onPress={() => { setMenuUscita(false); onLeave(false); }}>
+              onPress={(e) => {
+                firmaTocco('esci-staccato', e);
+                setMenuUscita(false);
+                onLeave(false);
+              }}>
               <View style={styles.sheetText}>
                 <Text style={styles.sheetLabel}>Esci e renditi non disponibile</Text>
                 <Text style={styles.sheetNota}>
@@ -1132,7 +1156,7 @@ export default function ChannelScreen(props: Props) {
                 davanti questa domanda senza averla chiesta non la sa. */}
             <TouchableOpacity
               style={styles.sheetRow}
-              onPress={() => setMenuUscita(false)}>
+              onPress={(e) => { firmaTocco('esci-annulla', e); setMenuUscita(false); }}>
               <View style={styles.sheetText}>
                 <Text style={styles.sheetLabel}>Resta nel canale</Text>
               </View>

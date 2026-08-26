@@ -8,6 +8,17 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.1.121
+
+**Il volume regolato da un'altra app diventa quello di Duetto.** Se muovi il volume di chiamata da
+fuori, l'amplificazione di Duetto torna a 1: mettendolo a metà ti ritrovi a metà, non a tre
+quarti. Il muto invece resiste: lo si toglie da Duetto, e allora si riparte dal volume che il
+telefono ha in quel momento.
+
+**«Il suo telefono gli ha chiuso l'app» solo quando conta.** Su certi telefoni la finestra viene
+smontata pochi secondi dopo ogni uscita: dirlo anche allora faceva leggere quella frase - vera, ma
+fuorviante - subito dopo un'uscita che l'altro aveva scelto.
+
 ## 1.1.120
 
 **Uscendo di casa si torna in linea prima.** Il wifi che si allontana smette di far passare dati

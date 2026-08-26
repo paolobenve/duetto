@@ -7,6 +7,19 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.1.121",
+    "paragrafi": [
+      {
+        "forte": "Il volume regolato da un'altra app diventa quello di Duetto.",
+        "testo": "Se muovi il volume di chiamata da fuori, l'amplificazione di Duetto torna a 1: mettendolo a metà ti ritrovi a metà, non a tre quarti. Il muto invece resiste: lo si toglie da Duetto, e allora si riparte dal volume che il telefono ha in quel momento."
+      },
+      {
+        "forte": "«Il suo telefono gli ha chiuso l'app» solo quando conta.",
+        "testo": "Su certi telefoni la finestra viene smontata pochi secondi dopo ogni uscita: dirlo anche allora faceva leggere quella frase - vera, ma fuorviante - subito dopo un'uscita che l'altro aveva scelto."
+      }
+    ]
+  },
+  {
     "versione": "1.1.120",
     "paragrafi": [
       {
