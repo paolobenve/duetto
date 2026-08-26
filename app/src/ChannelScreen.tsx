@@ -206,7 +206,7 @@ type Props = {
    * funziona.
    *
    * È il prodotto delle due metà: il volume di chiamata del telefono e
-   * il gain di Duetto. Vedi `volumeSistema`.
+   * il gain di Duetto. Vedi `systemVolume`.
    */
   peerGain?: number;
   /**
@@ -216,8 +216,8 @@ type Props = {
    * sapere che il telefono sta a 3 su 12 spiega da solo un "non ti
    * sento" che nessuna percentuale, da sola, spiegherebbe.
    */
-  volumeSistema?: { volume: number; max: number };
-  onGuadagno?: (direzione: number) => void;
+  systemVolume?: { volume: number; max: number };
+  onChangeLevel?: (direzione: number) => void;
   /**
    * Le due parti hanno versioni diverse di Duetto.
    *
@@ -281,9 +281,9 @@ type Props = {
    * Ha senso solo mentre siete tutti e due nel canale: se non c'è, il
    * suono non ha dove suonare, e per quello serve l'notice.
    */
-  onSveglia: (suono: string) => void;
+  onAlarm: (suono: string) => void;
   /** quanto si è ingrandito il video grande, a gesto finito */
-  onIngrandimento?: (zoom: number) => void;
+  onZoom?: (zoom: number) => void;
   onOpenSettings: () => void;
 };
 
@@ -293,12 +293,12 @@ type Props = {
  */
 export default function ChannelScreen(props: Props) {
   const {
-    connectionName, peerName, peerAvatar, peerPresent, peerDetached, peerTornDown, videoStats, qualityLabel, showStats, controls, news, onNewsRead, gain, peerGain, volumeSistema, onGuadagno,
+    connectionName, peerName, peerAvatar, peerPresent, peerDetached, peerTornDown, videoStats, qualityLabel, showStats, controls, news, onNewsRead, gain, peerGain, systemVolume, onChangeLevel,
     versionWarning, frontCamera, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes,
     onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, leaving,
-    onSveglia, onIngrandimento, onOpenSettings,
+    onAlarm, onZoom, onOpenSettings,
   } = props;
 
   // In Picture-in-Picture la finestra è minuscola: niente controls.
@@ -778,7 +778,7 @@ export default function ChannelScreen(props: Props) {
         insetBasso={!compact && showStats ? (versionWarning ? 54 : 36) : 0}
         onSfondo={tocco}
         onSoloGrande={setSoloGrande}
-        onIngrandimento={onIngrandimento}
+        onZoom={onZoom}
         segnoAltro={segnoAltro}
         segnoMio={segnoMio}
         placeholder={compact ? (
@@ -1148,7 +1148,7 @@ export default function ChannelScreen(props: Props) {
                   // Lo stesso lampo della campanella: il suono suona di
                   // là, e da qui non si sente nulla.
                   bussata();
-                  onSveglia(sv.nome);
+                  onAlarm(sv.nome);
                 }}>
                 <View style={styles.sheetText}>
                   <Text style={styles.sheetLabel}>{sv.label}</Text>
@@ -1258,7 +1258,7 @@ export default function ChannelScreen(props: Props) {
             <View style={styles.sheetRow}>
               <TouchableOpacity
                 style={styles.passo}
-                onPress={() => onGuadagno?.(-1)}>
+                onPress={() => onChangeLevel?.(-1)}>
                 <Text style={styles.passoSegno}>−</Text>
               </TouchableOpacity>
               <Text style={styles.passoValore}>
@@ -1268,17 +1268,17 @@ export default function ChannelScreen(props: Props) {
               </Text>
               <TouchableOpacity
                 style={styles.passo}
-                onPress={() => onGuadagno?.(+1)}>
+                onPress={() => onChangeLevel?.(+1)}>
                 <Text style={styles.passoSegno}>+</Text>
               </TouchableOpacity>
             </View>
-            {showStats && volumeSistema && volumeSistema.max > 0 ? (
+            {showStats && systemVolume && systemVolume.max > 0 ? (
               // Le due metà, per chi guarda i numeri: il volume di
               // chiamata del telefono e quanto Duetto ci moltiplica
               // sopra. Il totale è la percentuale qui sopra.
               <Text style={styles.sheetMeta}>
-                telefono {volumeSistema.volume}/{volumeSistema.max}
-                {volumeSistema.volume >= volumeSistema.max && (peerGain ?? 1) > 1
+                telefono {systemVolume.volume}/{systemVolume.max}
+                {systemVolume.volume >= systemVolume.max && (peerGain ?? 1) > 1
                   ? `  ·  Duetto ×${(peerGain ?? 1).toFixed(2).replace(/0$/, '')}`
                   : ''}
               </Text>

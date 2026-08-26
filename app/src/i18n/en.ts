@@ -12,6 +12,22 @@
  * use; the same holes must appear in every translation.
  */
 export const en = {
+  errors: {
+    permissionDenied: 'Permission denied',
+    noMicrophone: 'Without a microphone you cannot use the channel.',
+    noCamera: 'The camera permission is needed to switch the video on.',
+    cameraError: 'Camera error',
+    micError: 'Microphone error',
+    differentKeys: 'Different keys',
+    differentKeysBody: 'The two phones do not share the same key: pair them again.',
+  },
+
+  news: {
+    reachableAgain: '{who} is reachable again ({at}).',
+    versionsDiffer: 'Different versions: {here} here, {there} over there',
+    versionsDifferOlder: 'Different versions: {here} here, an older one over there',
+  },
+
   quality: {
     saver: 'Saver',
     saverNote: 'up to 640×360 · 300 kbit/s ceiling',
@@ -65,6 +81,8 @@ export const en = {
   alert: {
     knockFrom: '{who} is waiting for you in the channel',
     knock: 'Someone is waiting for you in the channel',
+    callingYouFrom: '{who} is calling you',
+    callingYou: 'Somebody is calling you',
     joinedNamed: '{who} is in the channel',
     joined: 'Someone is in the channel',
   },

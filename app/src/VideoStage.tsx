@@ -140,7 +140,7 @@ type Props = {
    * secondo, e cento righe non raccontano niente. Quella che conta è
    * dove si è deciso di restare.
    */
-  onIngrandimento?: (zoom: number) => void;
+  onZoom?: (zoom: number) => void;
   /**
    * Segno da mettere accanto a "Non tu": lo stato audio dell'altro.
    * Solo per il suo video, ovviamente: sul proprio non direbbe nulla che
@@ -201,7 +201,7 @@ export default function VideoStage(props: Props) {
   const {
     localStream, remoteStream, localHasVideo, remoteHasVideo,
     localAspect, remoteAspect, remoteVideoKey, compact, placeholder, segnoAltro, segnoMio,
-    specchia = true, onIngrandimento, etichettaVuoto,
+    specchia = true, onZoom, etichettaVuoto,
     awaitingRemote, notice,
   } = props;
   const { width, height } = useWindowDimensions();
@@ -857,7 +857,7 @@ export default function VideoStage(props: Props) {
                   toValue: TAP_ZOOM, duration: 180, useNativeDriver: true,
                 }).start();
               }
-              onIngrandimento?.(zoomRef.current);
+              onZoom?.(zoomRef.current);
               return;
             }
             lastTap.current = now;
@@ -873,11 +873,11 @@ export default function VideoStage(props: Props) {
           }
           if (zoomRef.current <= 1.01) resetZoom();
           else clampShift();
-          onIngrandimento?.(zoomRef.current);
+          onZoom?.(zoomRef.current);
         },
         onPanResponderTerminate: () => clampShift(),
       }),
-    [zoom, shift, resetZoom, clampShift, onSfondo, segnaZoom, segnaShift, onIngrandimento],
+    [zoom, shift, resetZoom, clampShift, onSfondo, segnaZoom, segnaShift, onZoom],
   );
 
   return (
