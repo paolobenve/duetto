@@ -1,33 +1,33 @@
 #!/usr/bin/env node
 /**
- * Mette l'icona di Duetto dentro android/.
+ * Puts Duetto's icon inside android/.
  *
- * PERCHE' UNO SCRIPT
- * La cartella android/ non sta nel repository: la rigenera bootstrap.sh
- * con la CLI di React Native, e con lei tornerebbero le icone del
- * modello - il robottino verde. Tutto ciò che deve sopravvivere a quella
- * rigenerazione va rimesso da qui, come per il manifest, gli abi e il
- * tema.
+ * WHY A SCRIPT
+ * The android/ folder is not in the repository: bootstrap.sh generates
+ * it again with React Native's CLI, and the template's icons - the
+ * little green robot - would come back with it. Everything that has to
+ * survive that regeneration is put back from here, as for the manifest,
+ * the ABIs and the theme.
  *
- * DA DOVE VIENE L'ICONA
- * assets/icona.png: due cornette di telefono, una blu e una verde, una
- * di fronte all'altra e unite dal filo attorcigliato. È un disegno, non
- * un vettoriale, quindi qui non si traduce niente: si ritaglia, si
- * ridimensiona e si scrive nelle misure che Android si aspetta.
+ * WHERE THE ICON COMES FROM
+ * assets/icon.png: two telephone handsets, one blue and one green,
+ * facing each other and joined by the twisted cord. It is a drawing,
+ * not a vector, so nothing is translated here: it is cropped, resized
+ * and written in the sizes Android expects.
  *
- * COSA SCRIVE
- *  - l'icona adattiva (Android 8+): fondo bianco a tinta unita e primo
- *    piano con le sole cornette, che il telefono ritaglia con la
- *    maschera che preferisce - tonda, quadrata, a goccia. Il primo piano
- *    tiene le cornette dentro alla zona sicura, altrimenti su un
- *    telefono con la maschera tonda il filo verrebbe tagliato;
- *  - la versione monocromatica, che Android 13+ usa per le icone
- *    intonate allo sfondo: la sagoma, senza colori;
- *  - le immagini per i telefoni prima di Android 8, nelle cinque
- *    misure, quadrate e tonde.
+ * WHAT IT WRITES
+ *  - the adaptive icon (Android 8+): a plain white background and a
+ *    foreground with the handsets alone, which the phone crops with
+ *    whatever mask it likes - round, square, teardrop. The foreground
+ *    keeps the handsets inside the safe area, or on a phone with a
+ *    round mask the cord would be cut off;
+ *  - the monochrome version, which Android 13+ uses for icons tinted to
+ *    match the wallpaper: the silhouette, without colours;
+ *  - the images for phones before Android 8, in the five sizes, square
+ *    and round.
  *
- * Serve ImageMagick. Senza, le icone restano quelle che ci sono e lo
- * script lo dice invece di fallire.
+ * It needs ImageMagick. Without it the icons stay as they are and the
+ * script says so instead of failing.
  */
 const fs = require('fs');
 const path = require('path');
@@ -35,30 +35,30 @@ const { execFileSync } = require('child_process');
 
 const appDir = path.join(__dirname, '..');
 const res = path.join(appDir, 'android', 'app', 'src', 'main', 'res');
-const sorgente = path.join(appDir, 'assets', 'icona.png');
+const source = path.join(appDir, 'assets', 'icon.png');
 
-/** Il bianco del fondo: quello del disegno, arrotondato. */
-const SFONDO = '#FFFFFF';
+/** The white of the background: the drawing's own, rounded off. */
+const BACKGROUND = '#FFFFFF';
 
-/** Le cinque misure che Android si aspetta per le icone vecchie. */
-const MISURE = { mdpi: 48, hdpi: 72, xhdpi: 96, xxhdpi: 144, xxxhdpi: 192 };
+/** The five sizes Android expects for the old icons. */
+const SIZES = { mdpi: 48, hdpi: 72, xhdpi: 96, xxhdpi: 144, xxxhdpi: 192 };
 
 /**
- * Quanto della tela occupano le cornette nell'icona adattiva.
+ * How much of the canvas the handsets take in the adaptive icon.
  *
- * La tela dell'icona adattiva è 108, ma il telefono ne mostra al più 72,
- * e con la maschera tonda garantisce solo il cerchio da 66: quello che
- * esce da lì può essere tagliato. Le cornette stanno dentro a 66 su 108,
- * cioè al 61%, con un margine di sicurezza.
+ * The adaptive icon's canvas is 108, but the phone shows at most 72 of
+ * it, and with a round mask it only guarantees the circle of 66:
+ * whatever falls outside that can be cut. The handsets sit inside 66 out
+ * of 108, that is 61%, with a margin of safety.
  */
-const QUOTA_SICURA = 0.62;
+const SAFE_SHARE = 0.62;
 
 if (!fs.existsSync(res)) {
-  console.log("icone: android/ non c'è ancora, salto.");
+  console.log('icons: android/ is not there yet, skipping.');
   process.exit(0);
 }
-if (!fs.existsSync(sorgente)) {
-  console.log('icone: manca assets/icona.png, salto.');
+if (!fs.existsSync(source)) {
+  console.log('icons: assets/icon.png is missing, skipping.');
   process.exit(0);
 }
 
@@ -69,137 +69,137 @@ function magick(args) {
 try {
   execFileSync('convert', ['-version'], { stdio: 'pipe' });
 } catch {
-  console.log('icone: ImageMagick non installato, lascio quelle che ci sono.');
+  console.log('icons: ImageMagick is not installed, leaving the ones there are.');
   process.exit(0);
 }
 
-const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'duetto-icone-'));
-const dentro = (n) => path.join(tmp, n);
+const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'duetto-icons-'));
+const inTmp = (n) => path.join(tmp, n);
 
-// --- 1) Gli angoli --------------------------------------------------------
-// Il disegno è un quadrato bianco ad angoli tondi su fondo NERO: quel
-// nero non è parte dell'icona, è il vuoto attorno. Si riempie partendo
-// dai quattro angoli, così il colore si spande solo lì e non tocca le
-// parti scure dentro alle cornette - gli altoparlanti sono neri anche
-// loro, ma non comunicano con il bordo.
-const LATO = 1254;
-const angoli = ['0,0', `${LATO - 1},0`, `0,${LATO - 1}`, `${LATO - 1},${LATO - 1}`];
-const riempi = (colore, uscita) => magick([
-  sorgente,
+// --- 1) The corners -------------------------------------------------------
+// The drawing is a white square with round corners on a BLACK ground:
+// that black is not part of the icon, it is the emptiness around it. It
+// is filled starting from the four corners, so that the colour spreads
+// only there and does not touch the dark parts inside the handsets -
+// the speakers are black too, but they do not reach the edge.
+const SIDE = 1254;
+const corners = ['0,0', `${SIDE - 1},0`, `0,${SIDE - 1}`, `${SIDE - 1},${SIDE - 1}`];
+const fill = (colour, out) => magick([
+  source,
   '-alpha', 'set',
-  // Fuzz largo: fra il nero di fuori e il bianco di dentro c'è una
-  // sfumatura di grigi - il bordo ammorbidito del disegno - e lasciarla
-  // fuori vorrebbe dire un filo grigio attorno all'icona, che sul fondo
-  // bianco si vede benissimo. Il bianco di dentro resta fuori dal conto:
-  // è troppo lontano dal nero perché questa tolleranza lo prenda.
-  '-fill', colore, '-fuzz', '48%',
-  ...angoli.flatMap((p) => ['-draw', `color ${p} floodfill`]),
-  uscita,
+  // A wide fuzz: between the black outside and the white inside there is
+  // a gradient of greys - the drawing's softened edge - and leaving it
+  // out would mean a grey thread around the icon, which shows plainly on
+  // a white ground. The white inside stays out of the reckoning: it is
+  // too far from black for this tolerance to take it.
+  '-fill', colour, '-fuzz', '48%',
+  ...corners.flatMap((p) => ['-draw', `color ${p} floodfill`]),
+  out,
 ]);
 
-// Per il primo piano dell'icona adattiva il vuoto diventa bianco: sotto
-// c'è il fondo bianco, e non si vede nessun bordo.
-riempi(SFONDO, dentro('piena.png'));
-// Per le icone vecchie diventa trasparente: lì la forma tonda del
-// quadrato è l'icona stessa, e riempirla di bianco la farebbe sembrare
-// un francobollo.
-riempi('none', dentro('ritagliata.png'));
+// For the adaptive icon's foreground the emptiness becomes white:
+// underneath is the white background, and no edge shows.
+fill(BACKGROUND, inTmp('full.png'));
+// For the old icons it becomes transparent: there the rounded square is
+// the icon itself, and filling it with white would make it look like a
+// postage stamp.
+fill('none', inTmp('cropped.png'));
 
-// --- 2) Il primo piano ----------------------------------------------------
-// Le cornette occupano 933 pixel su 1254, cioè il 74% del disegno.
-// Portarle al 62% della tela vuol dire allargare la tela attorno, non
-// rimpicciolire il disegno: si aggiunge bianco tutt'intorno.
-const CORNETTE = 933;
-const TELA = Math.round(CORNETTE / QUOTA_SICURA);
+// --- 2) The foreground ----------------------------------------------------
+// The handsets take 933 pixels out of 1254, that is 74% of the drawing.
+// Bringing them to 62% of the canvas means widening the canvas around
+// them, not shrinking the drawing: white is added all around.
+const HANDSETS = 933;
+const CANVAS = Math.round(HANDSETS / SAFE_SHARE);
 magick([
-  dentro('piena.png'),
-  '-background', SFONDO, '-gravity', 'center',
-  '-extent', `${TELA}x${TELA}`,
-  dentro('primo-piano.png'),
+  inTmp('full.png'),
+  '-background', BACKGROUND, '-gravity', 'center',
+  '-extent', `${CANVAS}x${CANVAS}`,
+  inTmp('foreground.png'),
 ]);
 
-// --- 3) La sagoma, per le icone intonate ----------------------------------
-// Tutto ciò che non è bianco diventa nero pieno; il bianco sparisce.
-// Non è un disegno nuovo: è la stessa immagine vista in controluce.
-// Nero pieno dove il disegno è scuro, trasparente dove è bianco: la
-// sagoma va consegnata così, perché è il telefono a colorarla con la
-// tinta del suo sfondo. Un'immagine senza trasparenza diventerebbe un
-// quadratone di tinta unita.
+// --- 3) The silhouette, for the tinted icons ------------------------------
+// Everything that is not white becomes solid black; the white
+// disappears. It is not a new drawing: it is the same image seen against
+// the light. Solid black where the drawing is dark, transparent where it
+// is white: the silhouette has to be handed over like that, because it
+// is the phone that colours it with its wallpaper's tint. An image
+// without transparency would become a big square of solid colour.
 magick([
-  '(', '-size', `${TELA}x${TELA}`, 'xc:black', ')',
-  '(', dentro('primo-piano.png'), '-colorspace', 'gray', '-threshold', '88%', '-negate', ')',
+  '(', '-size', `${CANVAS}x${CANVAS}`, 'xc:black', ')',
+  '(', inTmp('foreground.png'), '-colorspace', 'gray', '-threshold', '88%', '-negate', ')',
   '-alpha', 'off', '-compose', 'copy_opacity', '-composite',
-  dentro('sagoma.png'),
+  inTmp('silhouette.png'),
 ]);
 
-// --- 4) Le misure ---------------------------------------------------------
-let scritti = 0;
-for (const [dpi, lato] of Object.entries(MISURE)) {
-  const cartella = path.join(res, `mipmap-${dpi}`);
-  fs.mkdirSync(cartella, { recursive: true });
+// --- 4) The sizes ---------------------------------------------------------
+let written = 0;
+for (const [dpi, side] of Object.entries(SIZES)) {
+  const folder = path.join(res, `mipmap-${dpi}`);
+  fs.mkdirSync(folder, { recursive: true });
 
-  // Icona classica: il quadrato ad angoli tondi, come nel disegno.
+  // The classic icon: the square with round corners, as in the drawing.
   magick([
-    dentro('ritagliata.png'), '-resize', `${lato}x${lato}`,
-    path.join(cartella, 'ic_launcher.png'),
+    inTmp('cropped.png'), '-resize', `${side}x${side}`,
+    path.join(folder, 'ic_launcher.png'),
   ]);
 
-  // Tonda: la stessa, ritagliata in cerchio.
-  const r = lato / 2;
+  // Round: the same one, cropped to a circle.
+  const r = side / 2;
   magick([
-    dentro('piena.png'), '-resize', `${lato}x${lato}`,
+    inTmp('full.png'), '-resize', `${side}x${side}`,
     '(', '+clone', '-alpha', 'transparent', '-fill', 'white',
     '-draw', `circle ${r},${r} ${r},0`, ')',
     '-compose', 'copyopacity', '-composite',
-    path.join(cartella, 'ic_launcher_round.png'),
+    path.join(folder, 'ic_launcher_round.png'),
   ]);
 
-  // Adattiva: tela 108, cioè 2.25 volte l'icona classica.
-  const tela = Math.round(lato * 2.25);
+  // Adaptive: a canvas of 108, that is 2.25 times the classic icon.
+  const canvas = Math.round(side * 2.25);
   magick([
-    dentro('primo-piano.png'), '-resize', `${tela}x${tela}`,
-    path.join(cartella, 'ic_launcher_foreground.png'),
+    inTmp('foreground.png'), '-resize', `${canvas}x${canvas}`,
+    path.join(folder, 'ic_launcher_foreground.png'),
   ]);
   magick([
-    dentro('sagoma.png'), '-resize', `${tela}x${tela}`,
-    path.join(cartella, 'ic_launcher_monochrome.png'),
+    inTmp('silhouette.png'), '-resize', `${canvas}x${canvas}`,
+    path.join(folder, 'ic_launcher_monochrome.png'),
   ]);
-  scritti += 4;
+  written += 4;
 }
 
-// --- 5) L'icona delle notifiche -------------------------------------------
-// Android la disegna in bianco su fondo trasparente, dentro un quadrato
-// piccolissimo: dei colori non resta niente, conta solo la sagoma. Si
-// ritaglia stretta attorno alle cornette, perché in 24 punti il margine
-// bianco della tela adattiva la ridurrebbe a un puntino.
+// --- 5) The notification icon ---------------------------------------------
+// Android draws it in white on a transparent ground, inside a very small
+// square: nothing is left of the colours, only the outline counts. It is
+// cropped tight around the handsets, because at 24 points the white
+// margin of the adaptive canvas would reduce it to a dot.
 //
-// Va nelle risorse del modulo, non in android/: lì c'è il codice che la
-// usa, e quella cartella non viene rigenerata da nessuno.
-const resModulo = path.join(
+// It goes into the module's resources, not into android/: the code that
+// uses it is there, and that folder is regenerated by nobody.
+const moduleRes = path.join(
   appDir, 'modules', 'duetto-platform', 'android', 'src', 'main', 'res',
 );
-const MISURE_NOTIFICA = { mdpi: 24, hdpi: 36, xhdpi: 48, xxhdpi: 72, xxxhdpi: 96 };
+const NOTIFICATION_SIZES = { mdpi: 24, hdpi: 36, xhdpi: 48, xxhdpi: 72, xxxhdpi: 96 };
 magick([
-  dentro('sagoma.png'),
+  inTmp('silhouette.png'),
   '-trim', '+repage',
   '-bordercolor', 'none', '-border', '6%',
-  dentro('sagoma-stretta.png'),
+  inTmp('silhouette-tight.png'),
 ]);
-for (const [dpi, lato] of Object.entries(MISURE_NOTIFICA)) {
-  const cartella = path.join(resModulo, `drawable-${dpi}`);
-  fs.mkdirSync(cartella, { recursive: true });
+for (const [dpi, side] of Object.entries(NOTIFICATION_SIZES)) {
+  const folder = path.join(moduleRes, `drawable-${dpi}`);
+  fs.mkdirSync(folder, { recursive: true });
   magick([
-    dentro('sagoma-stretta.png'),
-    '-resize', `${lato}x${lato}`,
-    '-background', 'none', '-gravity', 'center', '-extent', `${lato}x${lato}`,
-    path.join(cartella, 'ic_notifica.png'),
+    inTmp('silhouette-tight.png'),
+    '-resize', `${side}x${side}`,
+    '-background', 'none', '-gravity', 'center', '-extent', `${side}x${side}`,
+    path.join(folder, 'ic_notification.png'),
   ]);
-  scritti += 1;
+  written += 1;
 }
 
-// --- 6) Le descrizioni ----------------------------------------------------
-const adattiva = `<?xml version="1.0" encoding="utf-8"?>
-<!-- Generata da scripts/patch-android-icon.js: non modificare a mano. -->
+// --- 6) The descriptions --------------------------------------------------
+const adaptive = `<?xml version="1.0" encoding="utf-8"?>
+<!-- Written by scripts/patch-android-icon.js: do not edit by hand. -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@color/ic_launcher_background" />
     <foreground android:drawable="@mipmap/ic_launcher_foreground" />
@@ -208,19 +208,19 @@ const adattiva = `<?xml version="1.0" encoding="utf-8"?>
 `;
 const anydpi = path.join(res, 'mipmap-anydpi-v26');
 fs.mkdirSync(anydpi, { recursive: true });
-fs.writeFileSync(path.join(anydpi, 'ic_launcher.xml'), adattiva);
-fs.writeFileSync(path.join(anydpi, 'ic_launcher_round.xml'), adattiva);
+fs.writeFileSync(path.join(anydpi, 'ic_launcher.xml'), adaptive);
+fs.writeFileSync(path.join(anydpi, 'ic_launcher_round.xml'), adaptive);
 
 fs.mkdirSync(path.join(res, 'values'), { recursive: true });
 fs.writeFileSync(
   path.join(res, 'values', 'ic_launcher_background.xml'),
   `<?xml version="1.0" encoding="utf-8"?>
-<!-- Generata da scripts/patch-android-icon.js: non modificare a mano. -->
+<!-- Written by scripts/patch-android-icon.js: do not edit by hand. -->
 <resources>
-    <color name="ic_launcher_background">${SFONDO}</color>
+    <color name="ic_launcher_background">${BACKGROUND}</color>
 </resources>
 `,
 );
 
 fs.rmSync(tmp, { recursive: true, force: true });
-console.log(`icone: ${scritti} immagini e 3 descrizioni, dalle cornette di assets/icona.png`);
+console.log(`icons: ${written} images and 3 descriptions, from the handsets of assets/icon.png`);

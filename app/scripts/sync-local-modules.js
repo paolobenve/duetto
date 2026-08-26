@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 /**
- * Allinea i moduli locali di modules/ dentro node_modules/.
+ * Brings the local modules in modules/ into line inside node_modules/.
  *
- * PERCHE' SERVE
- * I moduli dichiarati con "file:modules/..." vengono COPIATI da npm in
- * node_modules, non collegati. Le modifiche ai sorgenti quindi non si
- * vedono finché non si rilancia "npm install", e nel frattempo Gradle e
- * Metro compilano la versione vecchia senza dare alcun errore: il build
- * riesce, ma l'app contiene codice obsoleto. È un errore silenzioso e
- * molto difficile da riconoscere dall'esterno.
+ * WHY IT IS NEEDED
+ * Modules declared with "file:modules/..." are COPIED by npm into
+ * node_modules, not linked. Changes to the sources therefore go unseen
+ * until "npm install" is run again, and in the meantime Gradle and
+ * Metro build the old version without any error at all: the build
+ * succeeds, but the app contains stale code. It is a silent mistake and
+ * very hard to recognise from outside.
  *
- * Questo script viene eseguito prima di ogni build (vedi package.json).
+ * This script runs before every build (see package.json).
  */
 const fs = require('fs');
 const path = require('path');
@@ -19,7 +19,7 @@ const appDir = path.join(__dirname, '..');
 const modulesDir = path.join(appDir, 'modules');
 const nodeModulesDir = path.join(appDir, 'node_modules');
 
-/** Roba che non ha senso copiare: la rigenera il build. */
+/** Things there is no sense in copying: the build makes them again. */
 const SKIP = new Set(['build', '.gradle', 'node_modules', '.cxx']);
 
 function copyDir(from, to) {
@@ -34,7 +34,7 @@ function copyDir(from, to) {
 }
 
 if (!fs.existsSync(modulesDir)) {
-  console.log('Nessun modulo locale da allineare.');
+  console.log('No local module to bring into line.');
   process.exit(0);
 }
 
@@ -44,16 +44,16 @@ for (const entry of fs.readdirSync(modulesDir, { withFileTypes: true })) {
   const src = path.join(modulesDir, entry.name);
   const dst = path.join(nodeModulesDir, entry.name);
 
-  // Se npm ha fatto un collegamento simbolico va già bene: non toccarlo.
+  // If npm made a symbolic link that is fine already: leave it alone.
   if (fs.existsSync(dst) && fs.lstatSync(dst).isSymbolicLink()) {
-    console.log(`${entry.name}: collegato, niente da fare`);
+    console.log(`${entry.name}: linked, nothing to do`);
     continue;
   }
 
   fs.rmSync(dst, { recursive: true, force: true });
   copyDir(src, dst);
-  console.log(`${entry.name}: allineato`);
+  console.log(`${entry.name}: brought into line`);
   synced++;
 }
 
-console.log(synced > 0 ? `${synced} modulo/i locale/i aggiornato/i.` : 'Tutto gia\' allineato.');
+console.log(synced > 0 ? `${synced} local module(s) updated.` : 'All in line already.');

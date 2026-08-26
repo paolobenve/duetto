@@ -1,20 +1,20 @@
 #!/usr/bin/env node
 /**
- * Le barre di sistema, sopra e sotto, dello stesso colore dell'app.
+ * The system bars, top and bottom, the same colour as the app.
  *
- * Il tema che React Native genera è "DayNight": su un telefono in tema
- * chiaro la barra di stato diventa grigia e quella dei tasti bianca con
- * i tasti scuri. Duetto invece è scuro sempre - una videochiamata si
- * guarda al buio, non c'è un tema chiaro che abbia senso - e quelle due
- * fasce chiare ai bordi spezzano l'immagine proprio dove dovrebbe
- * continuare.
+ * The theme React Native generates is "DayNight": on a phone in a light
+ * theme the status bar turns grey and the navigation bar white with
+ * dark buttons. Duetto, on the other hand, is dark always - a video
+ * call is watched in the dark, there is no light theme that would make
+ * sense - and those two light strips at the edges break the picture
+ * exactly where it ought to carry on.
  *
- * Qui si fissa: fondo nero come lo sfondo dell'app, simboli chiari
- * sopra e sotto, e nessun velo di contrasto messo dal sistema (da
- * Android 10 il sistema schiarisce da sé le barre trasparenti, e quel
- * velo si vedeva come una banda grigia).
+ * Here it is settled: a black ground like the app's background, light
+ * symbols top and bottom, and no contrast veil laid on by the system
+ * (since Android 10 the system lightens transparent bars by itself, and
+ * that veil showed as a grey band).
  *
- * Idempotente: riscrive il file solo se non è già a posto.
+ * Idempotent: it rewrites the file only if it is not right already.
  */
 const fs = require('fs');
 const path = require('path');
@@ -24,57 +24,57 @@ const stylesPath = path.join(
 );
 
 if (!fs.existsSync(stylesPath)) {
-  console.log('styles.xml non trovato: esegui prima bootstrap.sh');
+  console.log('styles.xml not found: run bootstrap.sh first');
   process.exit(0);
 }
 
-/** Lo stesso nero dello sfondo delle schermate (styles.root in JS). */
-const SFONDO = '#0b0e14';
+/** The same black as the screens' background (styles.root in JS). */
+const BACKGROUND = '#0b0e14';
 
-const voci = [
-  ['android:statusBarColor', SFONDO],
-  ['android:navigationBarColor', SFONDO],
-  // false = simboli CHIARI. Il nome dice il contrario di quello che fa:
-  // descrive la barra, non i simboli.
+const items = [
+  ['android:statusBarColor', BACKGROUND],
+  ['android:navigationBarColor', BACKGROUND],
+  // false = LIGHT symbols. The name says the opposite of what it does:
+  // it describes the bar, not the symbols.
   ['android:windowLightStatusBar', 'false'],
   ['android:windowLightNavigationBar', 'false'],
   ['android:enforceStatusBarContrast', 'false'],
   ['android:enforceNavigationBarContrast', 'false'],
-  ['android:windowBackground', SFONDO],
+  ['android:windowBackground', BACKGROUND],
 ];
 
 let xml = fs.readFileSync(stylesPath, 'utf8');
-let cambi = 0;
+let changes = 0;
 
-for (const [nome, valore] of voci) {
-  const riga = `        <item name="${nome}">${valore}</item>`;
-  const esiste = new RegExp(`<item name="${nome}">[^<]*</item>`);
-  if (esiste.test(xml)) {
-    const prima = xml;
-    xml = xml.replace(esiste, `<item name="${nome}">${valore}</item>`);
-    if (xml !== prima) cambi += 1;
+for (const [name, value] of items) {
+  const line = `        <item name="${name}">${value}</item>`;
+  const exists = new RegExp(`<item name="${name}">[^<]*</item>`);
+  if (exists.test(xml)) {
+    const before = xml;
+    xml = xml.replace(exists, `<item name="${name}">${value}</item>`);
+    if (xml !== before) changes += 1;
     continue;
   }
   xml = xml.replace(
     /(<style name="AppTheme"[^>]*>)/,
-    `$1\n${riga}`,
+    `$1\n${line}`,
   );
-  cambi += 1;
+  changes += 1;
 }
 
-// Il tema chiaro non serve a niente: l'app è scura e basta.
+// The light theme is of no use: the app is dark and that is all.
 if (xml.includes('Theme.AppCompat.DayNight.NoActionBar')) {
   xml = xml.replace(
     'Theme.AppCompat.DayNight.NoActionBar',
     'Theme.AppCompat.NoActionBar',
   );
-  cambi += 1;
+  changes += 1;
 }
 
-if (cambi === 0) {
-  console.log('tema: già a posto');
+if (changes === 0) {
+  console.log('theme: already in place');
   process.exit(0);
 }
 
 fs.writeFileSync(stylesPath, xml);
-console.log(`tema: ${cambi} voci sistemate (barre scure, simboli chiari)`);
+console.log(`theme: ${changes} items sorted (dark bars, light symbols)`);
