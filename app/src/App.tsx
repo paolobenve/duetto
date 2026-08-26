@@ -30,7 +30,7 @@ import ChannelScreen from './ChannelScreen';
 import { loadPipPosition } from './VideoStage';
 import { useAudioRoute } from './audioRoute';
 import {
-  stopListening, presenceLine, deathStory, interfaceInCharge,
+  stopListening, presenceLine, deathStory, interfaceInCharge, isRealName,
 } from './presence';
 import { avatarFor, peerAvatar } from './avatar';
 
@@ -516,8 +516,6 @@ export default function App() {
    * and which connection you are in is said by the label, on its own
    * account.
    */
-  const isRealName = (n?: string | null) =>
-    !!n && n !== 'Qualcuno' && n !== 'Someone';
   const shownName = isRealName(peerName)
     ? peerName
     : isRealName(cfg?.pair?.peerName) ? cfg!.pair!.peerName : '';

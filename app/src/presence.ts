@@ -54,7 +54,9 @@ export function interfaceInCharge(alive: boolean, closedByThePhone = false) {
  * spoke English, and it is stored there.
  */
 const NO_NAME = ['Someone', 'Qualcuno'];
-const named = (name: string) => !!name && !NO_NAME.includes(name);
+export const isRealName = (name?: string | null): boolean =>
+  !!name && !NO_NAME.includes(name);
+const named = (name: string) => isRealName(name);
 
 /**
  * How to say out loud what killed the app.
