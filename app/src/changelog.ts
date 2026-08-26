@@ -7,6 +7,15 @@ export type NotaVersione = {
 
 export const CHANGELOG: NotaVersione[] = [
   {
+    "versione": "1.1.122",
+    "paragrafi": [
+      {
+        "forte": "Un telefono in tasca non preme più niente.",
+        "testo": "Finché qualcosa copre lo schermo - una tasca, una cover chiusa - i comandi non rispondono. Con il vivavoce acceso il sistema non spegne il display, e tutto quello che tocca il vetro arrivava ai pulsanti: è così che sono comparse uscite dal canale che nessuno aveva premuto."
+      }
+    ]
+  },
+  {
     "versione": "1.1.121",
     "paragrafi": [
       {

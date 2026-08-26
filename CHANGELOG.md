@@ -8,6 +8,13 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 1.1.122
+
+**Un telefono in tasca non preme più niente.** Finché qualcosa copre lo schermo - una tasca, una
+cover chiusa - i comandi non rispondono. Con il vivavoce acceso il sistema non spegne il display,
+e tutto quello che tocca il vetro arrivava ai pulsanti: è così che sono comparse uscite dal canale
+che nessuno aveva premuto.
+
 ## 1.1.121
 
 **Il volume regolato da un'altra app diventa quello di Duetto.** Se muovi il volume di chiamata da
