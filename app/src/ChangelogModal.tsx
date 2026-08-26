@@ -33,7 +33,7 @@ export default function ChangelogModal({ visible, onClose }: {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       {/* Nessuno, qui dentro, si contende il gesto con la lista.
-          Chiudere toccando lo sfondo costringeva il foglio a candidarsi
+          Chiudere toccando lo background costringeva il foglio a candidarsi
           a gestire il tocco per non chiudersi da solo, e quel candidato
           ogni tanto vinceva: la lista non scorreva, e cedeva solo dopo
           qualche secondo di insistenza. Si chiude col pulsante e col

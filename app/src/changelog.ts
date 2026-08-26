@@ -755,7 +755,7 @@ export const CHANGELOG: NotaVersione[] = [
     "paragrafi": [
       {
         "forte": "Le note di rilascio scorrono",
-        "testo": "e stanno dentro lo schermo. Non si chiudono più toccando lo sfondo — era proprio quella comodità a contendere il gesto allo scorrimento, che infatti funzionava solo a tratti."
+        "testo": "e stanno dentro lo schermo. Non si chiudono più toccando lo background — era proprio quella comodità a contendere il gesto allo scorrimento, che infatti funzionava solo a tratti."
       }
     ]
   },

@@ -2,46 +2,47 @@ import React from 'react';
 import Svg, { Path, Circle, Line, Rect, G } from 'react-native-svg';
 
 /**
- * Le icone dei comandi, disegnate invece che prese dalle emoji.
+ * The icons of the controls, drawn rather than taken from the emoji.
  *
- * Le emoji hanno colori propri e una forma decisa dal produttore del
- * telefono: sul pannello scuro restavano poco leggibili e somigliavano
- * troppo l'una all'altra - una videocamera e un microfono, in piccolo e
- * a colori spenti, si distinguono male.
+ * Emoji have colours of their own and a shape decided by the maker of
+ * the phone: on the dark panel they stayed hard to read and looked far
+ * too much like one another - a video camera and a microphone, small
+ * and in dull colours, are poorly told apart.
  *
- * Qui il tratto è bianco e spesso, la forma è la stessa su ogni
- * telefono, e ogni funzione ha una sagoma diversa dalle altre anche a
- * colpo d'occhio. Quando una funzione è spenta, sopra il simbolo passa
- * una barra: si capisce senza doverne leggere il colore.
+ * Here the stroke is white and thick, the shape is the same on every
+ * phone, and each function has an outline unlike all the others at a
+ * glance. When a function is off, a bar crosses the symbol: it is
+ * understood without having to read its colour.
  */
 
 type Props = {
   size?: number;
   color?: string;
-  /** barra diagonale: la funzione c'è ma è spenta */
+  /** a diagonal bar: the function is there but switched off */
   off?: boolean;
   /**
-   * Il colore su cui l'icona è appoggiata.
+   * The colour the icon rests on.
    *
-   * Serve alla barra: per staccarsi dal disegno sotto deve avere attorno
-   * un filo del colore di FONDO. Sbagliarlo si vede subito - con un alone
-   * scuro su un pulsante chiaro la barra diventa la cosa più visibile e
-   * l'icona sparisce.
+   * The bar needs it: to stand apart from the drawing underneath it
+   * must have a thread of the BACKGROUND colour around it. Getting it
+   * wrong shows at once - with a dark halo on a light button the bar
+   * becomes the most visible thing and the icon disappears.
    */
-  sfondo?: string;
+  background?: string;
 };
 
 const STROKE = 2.1;
 
-function Barra({ color, sfondo }: { color: string; sfondo: string }) {
+function Bar({ color, background }: { color: string; background: string }) {
   return (
     <>
-      {/* Un filo del colore di fondo stacca la barra dal disegno sotto:
-          appena accennato, perché con un alone spesso la barra pesa più
-          dell'icona e si legge la sbarra invece di ciò che è sbarrato. */}
+      {/* A thread of the background colour sets the bar apart from the
+          drawing underneath: barely there, because with a thick halo
+          the bar weighs more than the icon and one reads the crossing
+          out instead of what is crossed out. */}
       <Line
         x1={4.5} y1={19.5} x2={19.5} y2={4.5}
-        stroke={sfondo} strokeWidth={STROKE + 1.6} strokeLinecap="round"
+        stroke={background} strokeWidth={STROKE + 1.6} strokeLinecap="round"
       />
       <Line
         x1={4.5} y1={19.5} x2={19.5} y2={4.5}
@@ -51,27 +52,27 @@ function Barra({ color, sfondo }: { color: string; sfondo: string }) {
   );
 }
 
-function Base({ size = 26, color = '#fff', sfondo = '#12141a', off, children }: Props & {
+function Base({ size = 26, color = '#fff', background = '#12141a', off, children }: Props & {
   children: React.ReactNode;
 }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       {children}
-      {off ? <Barra color={color} sfondo={sfondo} /> : null}
+      {off ? <Bar color={color} background={background} /> : null}
     </Svg>
   );
 }
 
 /**
- * Videocamera: corpo e obiettivo sporgente.
+ * Video camera: body and jutting lens.
  *
- * Gli angoli del corpo sono tondi quanto quelli del pulsante che la
- * ospita. Erano appena smussati, e a video acceso - dove il disegno è
- * scuro su una pastiglia chiara e riempie quasi tutto - quel rettangolo
- * quasi retto si leggeva come se fosse il pulsante ad avere gli spigoli
- * vivi, diverso da tutti gli altri della fila.
+ * The corners of the body are as round as those of the button that
+ * holds it. They used to be barely bevelled, and with the video on -
+ * where the drawing is dark on a light pill and fills nearly all of it
+ * - that almost square rectangle read as if the button itself had sharp
+ * corners, unlike all the others in the row.
  */
-export function IconaVideo(p: Props) {
+export function VideoIcon(p: Props) {
   const c = p.color ?? '#fff';
   return (
     <Base {...p}>
@@ -87,8 +88,8 @@ export function IconaVideo(p: Props) {
   );
 }
 
-/** Microfono: capsula, arco di sostegno e piedino. */
-export function IconaMicrofono(p: Props) {
+/** Microphone: capsule, supporting arc and little foot. */
+export function MicrophoneIcon(p: Props) {
   const c = p.color ?? '#fff';
   return (
     <Base {...p}>
@@ -105,8 +106,8 @@ export function IconaMicrofono(p: Props) {
   );
 }
 
-/** Cambio camera: due frecce che si rincorrono attorno a un obiettivo. */
-export function IconaGira(p: Props) {
+/** Camera change: two arrows chasing each other around a lens. */
+export function FlipIcon(p: Props) {
   const c = p.color ?? '#fff';
   return (
     <Base {...p}>
@@ -122,13 +123,13 @@ export function IconaGira(p: Props) {
 }
 
 /**
- * Camera frontale: una persona sola.
+ * Front camera: a single person.
  *
- * L'icona dice quale camera è ACCESA, non cosa farà il pulsante: una
- * freccia circolare diceva solo "si gira", e per sapere da che parte si
- * era bisognava guardare l'immagine.
+ * The icon says which camera is ON, not what the button will do: a
+ * circular arrow only said "it turns round", and to know which way you
+ * were facing you had to look at the picture.
  */
-export function IconaFrontale(p: Props) {
+export function FrontCameraIcon(p: Props) {
   const c = p.color ?? '#fff';
   return (
     <Base {...p}>
@@ -141,8 +142,8 @@ export function IconaFrontale(p: Props) {
   );
 }
 
-/** Camera posteriore: più persone, cioè quello che si inquadra girandola. */
-export function IconaPosteriore(p: Props) {
+/** Back camera: several people, that is what you frame by turning it. */
+export function BackCameraIcon(p: Props) {
   const c = p.color ?? '#fff';
   return (
     <Base {...p}>
@@ -160,13 +161,13 @@ export function IconaPosteriore(p: Props) {
 }
 
 /**
- * Le quattro uscite audio, in piccolo.
+ * The four audio outputs, small.
  *
- * Erano emoji su una pastiglia scura: a dieci pixel diventavano una
- * macchia grigia illeggibile. Disegnate a tratto bianco si distinguono
- * anche in un angolo di pulsante.
+ * They used to be emoji on a dark pill: at ten pixels they became an
+ * unreadable grey smudge. Drawn in white strokes they can be told apart
+ * even in the corner of a button.
  */
-export function IconaVivavoce(p: Props) {
+export function SpeakerIcon(p: Props) {
   const c = p.color ?? '#fff';
   return (
     <Base {...p}>
@@ -177,7 +178,7 @@ export function IconaVivavoce(p: Props) {
   );
 }
 
-export function IconaTelefono(p: Props) {
+export function EarpieceIcon(p: Props) {
   const c = p.color ?? '#fff';
   return (
     <Base {...p}>
@@ -187,7 +188,7 @@ export function IconaTelefono(p: Props) {
   );
 }
 
-export function IconaCuffie(p: Props) {
+export function HeadphonesIcon(p: Props) {
   const c = p.color ?? '#fff';
   return (
     <Base {...p}>
@@ -198,7 +199,7 @@ export function IconaCuffie(p: Props) {
   );
 }
 
-export function IconaBluetooth(p: Props) {
+export function BluetoothIcon(p: Props) {
   const c = p.color ?? '#fff';
   return (
     <Base {...p}>
@@ -210,8 +211,8 @@ export function IconaBluetooth(p: Props) {
   );
 }
 
-/** Campanello: la sagoma più riconoscibile fra tutte, anche in piccolo. */
-export function IconaAvvisa(p: Props) {
+/** A bell: the most recognisable outline of them all, even small. */
+export function BellIcon(p: Props) {
   const c = p.color ?? '#fff';
   return (
     <Base {...p}>
@@ -225,15 +226,16 @@ export function IconaAvvisa(p: Props) {
 }
 
 /**
- * La stessa campanella mentre suona: inclinata, con le onde ai lati.
+ * The same bell while it rings: tilted, with waves at its sides.
  *
- * Si mostra per l'istante che segue la pressione, al posto di quella
- * ferma. Il pulsante "Avvisa" si può premere sempre, anche quando l'altro
- * è già nel canale, e senza un segno non si capiva se la pressione fosse
- * stata raccolta: cambiando la sola scritta si notava poco, perché si
- * sta guardando il dito, non l'etichetta.
+ * It is shown for the instant that follows the press, in place of the
+ * still one. The Call button can always be pressed, even when the other
+ * person is already in the channel, and without a sign there was no
+ * telling whether the press had been taken: changing the wording alone
+ * was hardly noticed, because one is looking at one's finger, not at
+ * the label.
  */
-export function IconaAvvisato(p: Props) {
+export function BellRingingIcon(p: Props) {
   const c = p.color ?? '#fff';
   return (
     <Base {...p}>
@@ -244,15 +246,15 @@ export function IconaAvvisato(p: Props) {
         />
         <Path d="M9.8 20a2.4 2.4 0 004.4 0" stroke={c} strokeWidth={STROKE} strokeLinecap="round" />
       </G>
-      {/* Le onde: corte, staccate dalla campana, una per lato. */}
+      {/* The waves: short, clear of the bell, one on each side. */}
       <Path d="M2.6 7.2c.5-1.4 1.4-2.6 2.6-3.4" stroke={c} strokeWidth={STROKE} strokeLinecap="round" />
       <Path d="M21.4 7.2c-.5-1.4-1.4-2.6-2.6-3.4" stroke={c} strokeWidth={STROKE} strokeLinecap="round" />
     </Base>
   );
 }
 
-/** Uscita: una porta con la freccia che ne esce. */
-export function IconaEsci(p: Props) {
+/** Exit: a door with the arrow coming out of it. */
+export function LeaveIcon(p: Props) {
   const c = p.color ?? '#fff';
   return (
     <Base {...p}>
@@ -267,22 +269,22 @@ export function IconaEsci(p: Props) {
 }
 
 /**
- * Impostazioni: tre cursori, non un ingranaggio.
+ * Settings: three sliders, not a cogwheel.
  *
- * L'ingranaggio a raggi, in piccolo, si leggeva come un sole: i denti
- * partono dal centro e sembrano raggi luminosi. I cursori dicono la
- * stessa cosa - qualcosa da regolare - e non somigliano a nient'altro.
+ * The spoked cogwheel, small, read as a sun: the teeth come out of the
+ * centre and look like rays of light. The sliders say the same thing -
+ * something to adjust - and look like nothing else.
  */
-export function IconaImpostazioni(p: Props) {
+export function SettingsIcon(p: Props) {
   const c = p.color ?? '#fff';
   return (
     <Base {...p}>
       <Line x1={3} y1={7} x2={21} y2={7} stroke={c} strokeWidth={STROKE} strokeLinecap="round" />
       <Line x1={3} y1={12} x2={21} y2={12} stroke={c} strokeWidth={STROKE} strokeLinecap="round" />
       <Line x1={3} y1={17} x2={21} y2={17} stroke={c} strokeWidth={STROKE} strokeLinecap="round" />
-      <Circle cx={8.5} cy={7} r={2.4} fill={p.sfondo ?? "#12141a"} stroke={c} strokeWidth={STROKE} />
-      <Circle cx={15.5} cy={12} r={2.4} fill={p.sfondo ?? "#12141a"} stroke={c} strokeWidth={STROKE} />
-      <Circle cx={9.5} cy={17} r={2.4} fill={p.sfondo ?? "#12141a"} stroke={c} strokeWidth={STROKE} />
+      <Circle cx={8.5} cy={7} r={2.4} fill={p.background ?? "#12141a"} stroke={c} strokeWidth={STROKE} />
+      <Circle cx={15.5} cy={12} r={2.4} fill={p.background ?? "#12141a"} stroke={c} strokeWidth={STROKE} />
+      <Circle cx={9.5} cy={17} r={2.4} fill={p.background ?? "#12141a"} stroke={c} strokeWidth={STROKE} />
     </Base>
   );
 }

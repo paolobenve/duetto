@@ -17,47 +17,49 @@ import { VIDEO_PROFILES } from './config';
 import type { VideoQuality } from './config';
 import type { VideoStats } from './webrtc';
 import {
-  IconaVideo, IconaMicrofono, IconaAvvisa, IconaAvvisato, IconaEsci,
-  IconaImpostazioni, IconaFrontale, IconaPosteriore,
-  IconaVivavoce, IconaTelefono, IconaCuffie, IconaBluetooth,
+  VideoIcon, MicrophoneIcon, BellIcon, BellRingingIcon, LeaveIcon,
+  SettingsIcon, FrontCameraIcon, BackCameraIcon,
+  SpeakerIcon, EarpieceIcon, HeadphonesIcon, BluetoothIcon,
 } from './Icons';
 
 /**
- * Come si spengono i pulsanti: subito, ma piano.
+ * How long a piece of news stays on screen before fading.
  *
- * Prima restavano fermi qualche secondo e poi calavano di colpo: un
- * salto che attira l'occhio proprio mentre si vuole guardare altro. Un
- * calo continuo di dieci secondi non ha un istante in cui succede
- * qualcosa, e quando ci si accorge che sono sbiaditi lo sono già da un
- * pezzo.
+ * Ten seconds: long enough to read it without having to clear it by
+ * hand.
  */
-/**
- * Quanto resta a schermo una notizia prima di sbiadire.
- *
- * Dieci secondi: il tempo di leggerla senza doverla togliere a mano.
- */
-const DURATA_NOTIZIA_MS = 10_000;
+const NEWS_MS = 10_000;
 
+/**
+ * How the buttons go out: at once, but slowly.
+ *
+ * They used to stand still for a few seconds and then drop all at once:
+ * a jump that catches the eye exactly when one wants to look at
+ * something else. A continuous ten-second fade has no instant at which
+ * something happens, and by the time you notice they are dim they have
+ * been dim for a while.
+ */
 const FADE_MS = 10000;
 
 /**
- * Dopo quanto i controls si addormentano.
+ * After how long the controls fall asleep.
  *
- * Attenuati e non toccati da un minuto: da lì in poi il primo tocco li
- * risveglia soltanto, senza premere niente. È la stessa regola dei
- * controls invisibili, estesa a quelli sbiaditi: un telefono lasciato
- * acceso con Duetto davanti non deve poter uscire dal canale perché
- * qualcosa gli si è appoggiato sopra.
+ * Faded and untouched for a minute: from there on the first touch only
+ * wakes them, without pressing anything. It is the same rule as for the
+ * invisible controls, extended to the faded ones: a phone left on with
+ * Duetto in front must not be able to leave the channel because
+ * something came to rest on it.
  */
-const SONNO_MS = 60000;
+const SLEEP_MS = 60000;
 
 /**
- * Quanto restano visibili i controls quando il calo è finito.
+ * How visible the controls stay once the fade is over.
  *
- * Quaranta per cento è quello di sempre: si leggono, ma non pesano.
- * Quindici li riduce a un'ombra, per chi guarda l'immagine e non vuole
- * niente sopra ma nemmeno un buio in cui cercare i pulsanti a memoria.
- * Zero li toglie del tutto.
+ * Forty per cent is the usual one: they can be read, but they do not
+ * weigh. Fifteen reduces them to a shadow, for whoever is watching the
+ * picture and wants nothing on top of it but not a darkness in which
+ * the buttons have to be found from memory. Zero removes them
+ * altogether.
  */
 const CONTROLS_OPACITY: Record<'dim' | 'faint' | 'hidden', number> = {
   dim: 0.4,
@@ -66,170 +68,156 @@ const CONTROLS_OPACITY: Record<'dim' | 'faint' | 'hidden', number> = {
 };
 
 /**
- * L'etichetta "Tu"/"Non tu" non scende sotto questa soglia.
+ * The "You"/"Not you" label never goes below this.
  *
- * Chi si sta guardando è l'unica cosa che dallo schermo non si ricava,
- * quindi resta leggibile anche quando tutto il resto se n'è andato.
+ * Who one is looking at is the one thing the screen itself does not
+ * tell, so it stays legible even when everything else has gone.
  */
-const DIM_ETICHETTA = 0.4;
+const LABEL_DIM = 0.4;
 
 /**
- * Sotto questa larghezza siamo nella finestrella Picture-in-Picture:
- * lì controls e badge non ci starebbero, mostriamo solo il video.
+ * Below this width we are in the Picture-in-Picture window: controls
+ * and badges would not fit there, so we show the video alone.
  */
 const COMPACT_WIDTH = 340;
 
 /**
- * Icona su pastiglia chiara: disegno scuro.
+ * An icon on a light pill: a dark drawing.
  *
- * Il colore di fondo serve anche alla barra dello sbarramento, che si
- * stacca dal disegno con un filo dello stesso colore su cui poggia.
+ * The background colour is needed by the crossing-out bar as well,
+ * which stands apart from the drawing thanks to a thread of the same
+ * colour it rests on.
  */
-const SU_CHIARO = { color: '#1e1f22', sfondo: 'rgb(243,243,243)' } as const;
+const ON_LIGHT = { color: '#1e1f22', background: 'rgb(243,243,243)' } as const;
 
-/** Il disegno di ogni uscita audio, per la pastiglia e per il menu. */
-const ICONA_USCITA: Record<
+/** The drawing for each audio output, for the pill and for the menu. */
+const OUTPUT_ICON: Record<
   AudioRoute,
-  (p: { size?: number; color?: string; off?: boolean; sfondo?: string }) => JSX.Element
+  (p: { size?: number; color?: string; off?: boolean; background?: string }) => JSX.Element
 > = {
-  SPEAKER_PHONE: IconaVivavoce,
-  EARPIECE: IconaTelefono,
-  WIRED_HEADSET: IconaCuffie,
-  BLUETOOTH: IconaBluetooth,
+  SPEAKER_PHONE: SpeakerIcon,
+  EARPIECE: EarpieceIcon,
+  WIRED_HEADSET: HeadphonesIcon,
+  BLUETOOTH: BluetoothIcon,
 };
 
 /**
- * I suoni per richiamare chi è nel canale ma non risponde.
+ * The sounds for calling back somebody who is in the channel but does
+ * not answer.
  *
- * Tre soli, e ben diversi fra loro: si sceglie a colpo sicuro, senza
- * doverli riascoltare uno per uno. Il nome tecnico lo conosce anche il
- * telefono dall'altra parte, che è quello che poi lo suona.
+ * A handful, and quite unlike one another: you choose without having to
+ * listen to them one by one. The technical name is known to the phone
+ * on the other side too, which is the one that plays it.
  */
-const SVEGLIE: { nome: string; label: string; nota: string }[] = [
-  {
-    nome: 'tamburi',
-    label: 'Tamburi',
-    nota: 'Un giro di batteria secco, due volte. Difficile ignorarlo.',
-  },
-  {
-    nome: 'batteria',
-    label: 'Batteria',
-    nota: 'Due giri di batteria. Più musica che allarme, ma non si ignora.',
-  },
-  {
-    nome: 'fanfara',
-    label: 'Fanfara',
-    nota: 'Trombe, «ta-daaa». Chi si sveglia così non se la prende.',
-  },
-  {
-    nome: 'strombazzata',
-    label: 'Strombazzata',
-    nota: 'Il clacson di un’automobile. Sveglia chiunque, e infastidisce.',
-  },
-  {
-    nome: 'gallo',
-    label: 'Canto del gallo',
-    nota: 'Chicchirichì. Fa sorridere chi si stava addormentando.',
-  },
+const ALARMS: { name: string; label: string; note: string }[] = [
+  { name: 'tamburi', label: t('alarms.drums'), note: t('alarms.drumsNote') },
+  { name: 'batteria', label: t('alarms.kit'), note: t('alarms.kitNote') },
+  { name: 'fanfara', label: t('alarms.fanfare'), note: t('alarms.fanfareNote') },
+  { name: 'strombazzata', label: t('alarms.horn'), note: t('alarms.hornNote') },
+  { name: 'gallo', label: t('alarms.rooster'), note: t('alarms.roosterNote') },
 ];
 
 type Props = {
   /**
-   * Il nome dato a questo connectionName, se ne ha uno.
+   * The name given to this connection, if it has one.
    *
-   * Prende il posto del nome dell'app sulla pastiglia in alto: con più
-   * collegamenti configurati, sapere in quale si sta vale più che
-   * rileggere "Duetto".
+   * It takes the place of the app's name on the pill at the top: with
+   * several connections set up, knowing which one you are in is worth
+   * more than reading "Duetto" again.
    */
   connectionName: string;
   peerName: string;
-  /** immagine dell'altro, quando non ha un nome */
+  /** the other person's picture, when they have no name */
   peerAvatar: Avatar;
   /**
-   * L'altro è collegato al server, anche se non è nel canale.
+   * They are connected to the server, even if not in the channel.
    *
-   * È la differenza fra aspettare qualcuno che può arrivare da un
-   * momento all'altro e aspettare qualcuno che in questo momento non ha
-   * nemmeno il telefono acceso: nel primo caso l'notice arriva, nel
-   * secondo no.
+   * It is the difference between waiting for somebody who may turn up
+   * at any moment and waiting for somebody whose phone is not even on:
+   * in the first case the call reaches them, in the second it does not.
    */
   peerPresent: boolean;
   /**
-   * Non c'è perché ha staccato lui, non perché è caduta la linea.
+   * They are not there because they disconnected, not because the line
+   * dropped.
    *
-   * Il server distingue chi saluta da chi sparisce, e per chi resta la
-   * differenza è tutta: da un tunnel si esce, da una scelta no.
+   * The server tells whoever says goodbye from whoever disappears, and
+   * for whoever is left the difference is everything: you come out of a
+   * tunnel, you do not come out of a decision.
    */
   peerDetached: boolean;
   /**
-   * È in attesa perché il suo telefono gli ha chiuso l'app.
+   * They are waiting because their phone closed the app on them.
    *
-   * Non è una sua scelta, ed è il contrario di quello che "in attesa"
-   * lascia immaginare: certi telefoni smontano l'app da soli, anche di
-   * notte, e chi legge merita di saperlo.
+   * It is not their choice, and it is the opposite of what "waiting"
+   * suggests: some phones tear the app down by themselves, at night
+   * too, and whoever reads it deserves to know.
    */
   peerTornDown?: boolean;
-  /** risoluzione e banda effettive, in uscita e in entrata */
+  /** the real resolution and bandwidth, outgoing and incoming */
   videoStats: VideoStats;
-  /** profilo scelto: senza, non si capisce da cosa dipendano quei numeri */
+  /** the chosen profile: without it those numbers depend on nothing */
   qualityLabel: string;
-  /** le due righe tecniche sotto ai pulsanti, spente per impostazione */
+  /** the two technical lines under the buttons, off by default */
   showStats: boolean;
-  /** i controls spariscono del tutto invece di attenuarsi */
   /** how far the controls step aside: 'dim' | 'faint' | 'hidden' */
   controls: 'dim' | 'faint' | 'hidden';
   /**
-   * Una notizia da leggere: l'app dell'altro è morta ed è tornata, o è
-   * tornato dopo una lunga assenza.
+   * A piece of news to read: their app died and came back, or they are
+   * back after a long absence.
    *
-   * Fuori dall'app la stessa cosa la dice una notifica silenziosa, che
-   * però è nella tendina - cioè in un posto dove chi sta guardando
-   * questa schermata non guarda. Qui sta davanti, e va via toccandola.
+   * Outside the app the same thing is said by a silent notification,
+   * which however lives in the shade - that is, in a place whoever is
+   * looking at this screen does not look. Here it stands in front, and
+   * goes away when touched.
    */
   news?: string | null;
   onNewsRead?: () => void;
   /**
-   * A che volume si sta sentendo l'altro, mentre si preme.
+   * How loud the other person is being heard, while pressing.
    *
-   * `null` quasi sempre: si mostra solo nei telefoni dove il volume di
-   * chiamata non si muove e ci pensa l'app, e solo per il paio di
-   * secondi che seguono la pressione. Senza, premere non produrrebbe
-   * nulla di visibile e i tasti sembrerebbero rotti lo stesso.
+   * `null` nearly always: it is shown only on phones where the call
+   * volume does not move and the app takes care of it, and only for the
+   * couple of seconds that follow the press. Without it, pressing would
+   * produce nothing visible and the keys would look broken all the
+   * same.
    */
   gain?: number | null;
   /**
-   * Il level in questo momento, per il menu dell'audio.
+   * The level right now, for the audio menu.
    *
-   * Lì c'è un comando a mano perché i tasti non bastano dappertutto: su
-   * certi telefoni l'indice del volume di chiamata scorre e all'orecchio
-   * non cambia niente, e da fuori quel caso è indistinguibile da uno che
-   * funziona.
+   * There is a control by hand there because the keys are not enough
+   * everywhere: on some phones the call volume index moves and nothing
+   * changes to the ear, and from outside that case cannot be told from
+   * one that works.
    *
-   * È il prodotto delle due metà: il volume di chiamata del telefono e
-   * il gain di Duetto. Vedi `systemVolume`.
+   * It is the product of the two halves: the phone's call volume and
+   * Duetto's gain. See `systemVolume`.
    */
   peerGain?: number;
   /**
-   * Il volume di chiamata del telefono e il suo massimo.
+   * The phone's call volume and its maximum.
    *
-   * Si mostra fra le righe tecniche, perché è l'altra metà del level:
-   * sapere che il telefono sta a 3 su 12 spiega da solo un "non ti
-   * sento" che nessuna percentuale, da sola, spiegherebbe.
+   * It is shown among the technical lines, because it is the other half
+   * of the level: knowing that the phone sits at 3 out of 12 explains
+   * on its own an "I cannot hear you" that no percentage, alone, would
+   * explain.
    */
   systemVolume?: { volume: number; max: number };
-  onChangeLevel?: (direzione: number) => void;
+  onChangeLevel?: (direction: number) => void;
   /**
-   * Le due parti hanno versioni diverse di Duetto.
+   * The two sides have different versions of Duetto.
    *
-   * `null` quando sono uguali, che è il caso normale e non merita una
-   * riga. Quando non lo sono, spiega da solo metà delle stranezze - una
-   * cosa che qui c'è e lì no - e va detto dove si va a guardare quando
-   * qualcosa non torna: fra le righe tecniche.
+   * `null` when they are the same, which is the normal case and does
+   * not deserve a line. When they are not, it explains half the
+   * oddities on its own - something that is here and not there - and it
+   * belongs where one goes to look when something does not add up:
+   * among the technical lines.
    */
   versionWarning?: string | null;
-  /** quale camera sta riprendendo: lo dice l'icona di "Gira" */
+  /** which camera is filming: the "Flip" icon says so */
   frontCamera: boolean;
-  /** profilo in uso e come cambiarlo: si apre tenendo premuto "Video" */
+  /** profile in use and how to change it: opens by holding "Video" */
   quality: VideoQuality;
   onSelectQuality: (q: VideoQuality) => void;
   localStream: MediaStream | null;
@@ -238,22 +226,22 @@ type Props = {
   connectionState: string;
   audioOn: boolean;
   videoOn: boolean;
-  /** `uscita`: da dove esce il suono dall'altra parte, se lo dichiara */
+  /** `output`: where the sound comes out over there, if they say so */
   peerState: {
-    audio: boolean; video: boolean; aspect?: number; uscita?: string;
-    /** a che volume l'altro sta ascoltando NOI: 1 = come glielo mandiamo */
+    audio: boolean; video: boolean; aspect?: number; output?: string;
+    /** how loud they are hearing US: 1 = as we send it */
     volume?: number;
   };
-  /** traccia video dell'altro davvero in arrivo */
+  /** the other person's video track really arriving */
   remoteHasVideo: boolean;
-  /** cambia a ogni ripartenza del video remoto, per ricreare il visualizzatore */
+  /** changes at every restart of the remote video, to rebuild the view */
   remoteVideoKey: number;
-  /** proporzioni dei due video, per la forma del riquadrino */
+  /** the shape of the two videos, for the shape of the little square */
   localAspect?: number;
   remoteAspect?: number;
   knockPending: boolean;
   audioRoute: AudioRoute;
-  /** uscite audio davvero collegate in questo momento */
+  /** the audio outputs really connected right now */
   audioRoutes: AudioRoute[];
   onToggleAudio: () => void;
   onToggleVideo: () => void;
@@ -261,35 +249,38 @@ type Props = {
   onSelectRoute: (r: AudioRoute) => void;
   onKnock: () => void;
   /**
-   * Esce dal canale.
+   * Leaves the channel.
    *
-   * `available` dice se restare raggiungibili: leaving si continua a
-   * ricevere l'notice dell'altro, a meno che non si scelga di staccarsi
-   * del tutto.
+   * `available` says whether to stay reachable: leaving, one keeps
+   * receiving the other person's call, unless one chooses to disconnect
+   * altogether.
    */
   onLeave: (available: boolean) => void;
   /**
-   * L'uscita è in corso: si sta mettendo al sicuro il diario.
+   * The exit is under way: the journal is being put in a safe place.
    *
-   * Dura qualche decimo di secondo. Senza dirlo, il pulsante sembra non
-   * aver fatto niente, e chi non vede reazione preme di nuovo.
+   * It lasts a few tenths of a second. Without saying so, the button
+   * looks as though it had done nothing, and whoever sees no reaction
+   * presses again.
    */
   leaving?: boolean;
   /**
-   * Manda all'altro un suono forte per richiamarlo.
+   * Sends the other person a loud sound to call them back.
    *
-   * Ha senso solo mentre siete tutti e due nel canale: se non c'è, il
-   * suono non ha dove suonare, e per quello serve l'notice.
+   * It only makes sense while you are both in the channel: if they are
+   * not, the sound has nowhere to play, and that is what the call is
+   * for.
    */
-  onAlarm: (suono: string) => void;
-  /** quanto si è ingrandito il video grande, a gesto finito */
+  onAlarm: (sound: string) => void;
+  /** how far the big video was zoomed, once the gesture is over */
   onZoom?: (zoom: number) => void;
   onOpenSettings: () => void;
 };
 
 /**
- * La schermata del canale. Non c'è nulla da "chiamare": sei dentro,
- * e vedi se c'è anche l'altro. Se non c'è, puoi avvisarlo.
+ * The channel screen. There is nothing to "call": you are inside, and
+ * you see whether the other person is inside too. If they are not, you
+ * can call them.
  */
 export default function ChannelScreen(props: Props) {
   const {
@@ -301,100 +292,93 @@ export default function ChannelScreen(props: Props) {
     onAlarm, onZoom, onOpenSettings,
   } = props;
 
-  // In Picture-in-Picture la finestra è minuscola: niente controls.
+  // In Picture-in-Picture the window is tiny: no controls.
   const { width: winWidth, height: winHeight } = useWindowDimensions();
   const compact = winWidth < COMPACT_WIDTH;
 
   /**
-   * Il rettangolo che il video occupa davvero.
+   * The rectangle the video really takes up.
    *
-   * Il video sta "dentro" lo schermo senza essere tagliato, quindi lascia
-   * due bande nere. Appoggiando i controls ai bordi dello SCHERMO finivano
-   * a metà sull'immagine e metà sul nero: appoggiandoli ai bordi del
-   * VIDEO stanno tutti dentro, come si intende una sovrapposizione.
+   * The video sits "inside" the screen without being cut, so it leaves
+   * two black bands. Resting the controls against the edges of the
+   * SCREEN put them half on the picture and half on the black: resting
+   * them against the edges of the VIDEO keeps them all inside, which is
+   * what an overlay is meant to be.
    *
-   * Senza nessun video il rettangolo è tutto lo schermo, ed è giusto:
-   * lì non c'è nessun bordo a cui allinearsi.
+   * With no video at all the rectangle is the whole screen, and rightly
+   * so: there is no edge there to line up with.
    */
   const [bigAspect, setBigAspect] = useState<number | null>(null);
   /**
-   * L'ultimo rientro conosciuto, tenuto anche senza video.
+   * The last known inset, kept even with no video.
    *
-   * Spegnendo l'ultima camera il rettangolo del video sparisce e il
-   * rientro andrebbe a zero: i controls scivolavano in fondo allo schermo
-   * e il riquadrino cambiava zona, per un cambiamento che dal punto di
-   * vista di chi guarda non c'è stato. Restano dove sono, in attesa che
-   * l'immagine torni.
+   * Switching the last camera off makes the video's rectangle disappear
+   * and the inset would go to zero: the controls slid to the bottom of
+   * the screen and the little square changed area, for a change that
+   * from the watcher's point of view never happened. They stay where
+   * they are, waiting for the picture to come back.
    */
-  const ultimoInset = useRef({ v: 0, h: 0 });
+  const lastInset = useRef({ v: 0, h: 0 });
   const inset = React.useMemo(() => {
-    if (winWidth <= 0 || winHeight <= 0) return ultimoInset.current;
-    if (!bigAspect) return ultimoInset.current;
+    if (winWidth <= 0 || winHeight <= 0) return lastInset.current;
+    if (!bigAspect) return lastInset.current;
     const screen = winWidth / winHeight;
     const v = bigAspect > screen
       ? { v: Math.round((winHeight - winWidth / bigAspect) / 2), h: 0 }
       : { v: 0, h: Math.round((winWidth - winHeight * bigAspect) / 2) };
-    ultimoInset.current = v;
+    lastInset.current = v;
     return v;
   }, [bigAspect, winWidth, winHeight]);
 
   const [routeMenu, setRouteMenu] = useState(false);
-  const [novita, setNovita] = useState(false);
-  const [menuQualita, setMenuQualita] = useState(false);
-  /** le due uscite, tenendo premuto "Esci" */
-  const [menuUscita, setMenuUscita] = useState(false);
-  /** i suoni per richiamare l'altro, tenendo premuto "Avvisa" */
-  const [menuSveglia, setMenuSveglia] = useState(false);
-  /** chi occupa lo schermo quando c'è un video solo: 'tu', 'altro', o niente */
-  const [soloGrande, setSoloGrande] = useState<'tu' | 'altro' | null>(null);
+  const [changelogOpen, setChangelogOpen] = useState(false);
+  const [qualityMenu, setQualityMenu] = useState(false);
+  /** the two ways out, by holding "Leave" */
+  const [leaveMenu, setLeaveMenu] = useState(false);
+  /** the sounds for calling the other person back, by holding "Call" */
+  const [alarmMenu, setAlarmMenu] = useState(false);
+  /** who fills the screen when there is only one video: 'you', 'peer', or nothing */
+  const [onlyBig, setOnlyBig] = useState<'you' | 'peer' | null>(null);
 
   const together = status === 'together';
   const linked = connectionState === 'connected';
 
   /**
-   * Interruzione in corso: l'altro c'è ma il connectionName diretto no.
-   * Non è un "non c'è nessuno": è un'attesa, e va detto invece di
-   * lasciare uno schermo nero senza spiegazione.
+   * An interruption under way: they are there but the direct connection
+   * is not. It is not a "nobody is here": it is a wait, and it should
+   * be said instead of leaving a black screen with no explanation.
    */
   const serverLost = status === 'offline';
 
   /**
-   * Non siamo collegati: caduto il server, oppure l'altro c'è ma il
-   * connectionName diretto no - compreso mentre si sta ristabilendo.
+   * A REAL interruption, not a renegotiation.
    *
-   * Includere il ristabilimento è il punto: prima la fase "connecting"
-   * non contava come interruzione, e in quell'istante il posto grande
-   * veniva dato al proprio video. Si vedeva il proprio a schermo intero
-   * per un attimo e poi rimpicciolirsi, a ogni riconnessione.
+   * Renegotiating - a change of resolution, the search for a direct
+   * road, a change of cell - takes the connection into "connecting" for
+   * a few seconds without anything having broken: the frames come back
+   * by themselves. Counting that state as an interruption showed
+   * "connection interrupted" precisely while the connection was
+   * working.
+   *
+   * Only "failed" and "disconnected" are interruptions, which is what
+   * ICE says when the packets really are not arriving.
    */
-  /**
-   * Interruzione VERA, non una rinegoziazione.
-   *
-   * Rinegoziare - cambio di risoluzione, ricerca di una strada diretta,
-   * cambio di cella - porta la connessione in "connecting" per qualche
-   * secondo senza che nulla si sia rotto: i fotogrammi riprendono da
-   * soli. Contare quello stato come interruzione mostrava "connectionName
-   * interrotto" proprio mentre il connectionName stava lavorando.
-   *
-   * Sono interruzioni solo "failed" e "disconnected", che è ciò che ICE
-   * dice quando i pacchetti non arrivano davvero.
-   */
-  const rotto = connectionState === 'failed' || connectionState === 'disconnected';
-  const notConnected = serverLost || (together && rotto);
+  const broken = connectionState === 'failed' || connectionState === 'disconnected';
+  const notConnected = serverLost || (together && broken);
 
   /**
-   * Un'interruzione si dichiara solo se dura.
+   * An interruption is declared only if it lasts.
    *
-   * Il ritardo vale sia per l'notice sia per la DISPOSIZIONE dei
-   * riquadri, ed è la seconda a contare di più: prima l'notice aspettava
-   * ma il layout si riordinava subito, quindi il riquadrino saltava a
-   * schermo intero e tornava indietro a ogni rinegoziazione - la ricerca
-   * di una strada diretta, un cambio di risoluzione - senza che nulla
-   * fosse davvero successo.
+   * The delay holds both for the notice and for the LAYOUT of the
+   * squares, and the second matters more: the notice used to wait while
+   * the layout rearranged itself at once, so the little square jumped
+   * to full screen and came back at every renegotiation - the search
+   * for a direct road, a change of resolution - without anything having
+   * really happened.
    *
-   * Tre secondi: sotto quella soglia le interruzioni si richiudono da
-   * sole, e l'unica cosa peggiore di un video che si ferma un attimo è
-   * un'interfaccia che si riordina due volte per dirlo.
+   * Three seconds: below that, interruptions close up by themselves,
+   * and the only thing worse than a video that stops for a moment is an
+   * interface that rearranges itself twice to say so.
    */
   const [showNotice, setShowNotice] = useState(false);
   useEffect(() => {
@@ -404,356 +388,362 @@ export default function ChannelScreen(props: Props) {
   }, [notConnected]);
 
   /**
-   * Il posto grande resta dell'altro finché lui dichiara di trasmettere.
+   * The big place stays theirs as long as they declare they are
+   * sending.
    *
-   * Questo NON aspetta i tre secondi dell'notice: l'attesa vale per il
-   * messaggio, che è un allarme, non per la disposizione. Ritardandola
-   * anche qui restava una finestra in cui il proprio video saliva a
-   * schermo intero per poi tornare indietro all'arrivo dell'altro - il
-   * ballo che si voleva evitare, spostato di tre secondi.
+   * This does NOT wait the notice's three seconds: the wait is for the
+   * message, which is an alarm, not for the layout. Delaying it here
+   * too left a window in which one's own video rose to full screen only
+   * to come back down when the other's arrived - the very dance one
+   * wanted to avoid, moved three seconds later.
    *
-   * Se invece la camera dell'altro è spenta, il proprio a schermo intero
-   * è la cosa giusta: lì non stiamo aspettando nulla.
+   * If their camera is off, on the other hand, one's own at full screen
+   * is the right thing: there we are waiting for nothing.
    */
   const interrupted = peerState.video && !remoteHasVideo;
 
   /**
-   * L'notice ha dove arrivare.
+   * The call has somewhere to land.
    *
-   * Basta che il suo telefono sia collegato al server: nel canale o in
-   * attesa non fa differenza, l'notice passa di lì in tutti e due i
-   * casi. Se invece non è collegato - staccato di proposito, o senza
-   * rete - non c'è nessuno a cui bussare.
+   * It is enough that their phone be connected to the server: in the
+   * channel or waiting makes no difference, the call goes through in
+   * both cases. If they are not connected - disconnected on purpose, or
+   * without a network - there is nobody to knock for.
    */
-  const raggiungibile = peerPresent || status === 'together';
+  const reachable = peerPresent || status === 'together';
 
-  // Senza questo, perdendo il server restava uno schermo nero muto: il
-  // video dell'altro è ancora lì ma non ci arriva più nessun
-  // fotogramma, e nulla lo spiegava.
+  // Without this, losing the server left a mute black screen: their
+  // video is still there but no frame arrives any more, and nothing
+  // explained it.
   const notice = !showNotice
     ? undefined
     : serverLost
-      ? 'Connessione persa, mi sto ricollegando…'
+      ? t('channel.connectionLost')
       : (connectionState === 'failed'
-          ? 'Collegamento perso, sto ricollegando…'
-          : 'Collegamento interrotto, in attesa…');
-  // remoteHasVideo arriva come prop: è un evento esplicito della sessione,
-  // perché le tracce entrano dentro lo stesso MediaStream e React non se
-  // ne accorgerebbe guardando il riferimento.
+          ? t('channel.linkLost')
+          : t('channel.linkInterrupted'));
+  // remoteHasVideo arrives as a prop: it is an explicit event of the
+  // session, because the tracks come into the same MediaStream and
+  // React would not notice by looking at the reference.
   const localHasVideo =
     !!localStream && videoOn && localStream.getVideoTracks().length > 0;
 
   /**
-   * La notizia si legge e se ne va: dieci secondi, poi sbiadisce.
+   * The news is read and goes: ten seconds, then it fades.
    *
-   * Prima restava lì finché non la si toccava, e siccome le notizie
-   * invecchiano in fretta - «è di nuovo raggiungibile» mentre intanto è
-   * uscito di nuovo - il riquadro finiva per dire cose non più vere
-   * proprio nel punto dove l'occhio va per prima cosa. Si può ancora
-   * toccarla per toglierla subito.
+   * It used to stay until touched, and since news ages fast - "reachable
+   * again" while meanwhile they have gone out again - the box ended up
+   * saying things that were no longer true in the very place the eye
+   * goes first. It can still be touched to clear it at once.
    */
-  const notiziaOpacita = useRef(new Animated.Value(1)).current;
+  const newsOpacity = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     if (!news) return;
-    notiziaOpacita.setValue(1);
-    const anim = Animated.timing(notiziaOpacita, {
+    newsOpacity.setValue(1);
+    const anim = Animated.timing(newsOpacity, {
       toValue: 0,
-      delay: DURATA_NOTIZIA_MS,
+      delay: NEWS_MS,
       duration: 700,
       useNativeDriver: true,
     });
     anim.start(({ finished }) => { if (finished) onNewsRead?.(); });
     return () => anim.stop();
-  }, [news, notiziaOpacita, onNewsRead]);
+  }, [news, newsOpacity, onNewsRead]);
 
-  // I pulsanti restano SEMPRE sullo schermo: non spariscono mai, si
-  // attenuano soltanto, e tornano pieni al primo tocco.
+  // The buttons ALWAYS stay on the screen: they never disappear, they
+  // only fade, and they come back full at the first touch.
   const opacity = useRef(new Animated.Value(1)).current;
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /**
-   * Quando il calo in corso arriverà in fondo.
+   * When the fade under way will reach the bottom.
    *
-   * Serve a interpretare il tocco sull'immagine: finché i controls stanno
-   * ancora calando si vedono, e chi tocca li vuole via; una volta in
-   * fondo non si vedono più, e chi tocca li vuole indietro.
+   * It is needed to read a touch on the picture: while the controls are
+   * still fading they can be seen, and whoever touches wants them gone;
+   * once at the bottom they cannot be seen, and whoever touches wants
+   * them back.
    *
-   * Un semplice "sono pieni sì/no" non bastava: diventava "no" appena
-   * partito il calo, cioè dopo un decimo di secondo, e da lì in avanti il
-   * tocco li richiamava invece di toglierli - che è il difetto che si
-   * vedeva, controls che non se ne andavano più.
+   * A plain "are they full yes/no" was not enough: it became "no" as
+   * soon as the fade started, that is after a tenth of a second, and
+   * from there on a touch called them back instead of clearing them -
+   * which is the fault one could see, controls that would not go away.
    */
-  const finCalo = useRef(0);
+  const fadeEnd = useRef(0);
 
   /**
-   * Comandi spariti del tutto: da lì in poi non si premono.
+   * Controls gone altogether: from there on they cannot be pressed.
    *
-   * Con "nascosti" restavano premibili anche invisibili, e un dito
-   * appoggiato dove prima c'era un pulsante spegneva il video o usciva
-   * dal canale senza che niente lo annunciasse. Un comando che non si
-   * vede non è un comando: il primo tocco li richiama, e da lì si
-   * decide guardando.
+   * With "hidden" they stayed pressable even while invisible, and a
+   * finger resting where a button used to be switched the video off or
+   * left the channel with nothing to announce it. A control that cannot
+   * be seen is not a control: the first touch calls them back, and from
+   * there one decides by looking.
    *
-   * Vale solo per lo zero assoluto: sbiaditi al 15% si vedono ancora, e
-   * chi sa dove sono ha diritto di premerli senza due tocchi.
+   * It holds only for absolute zero: faded to 15% they can still be
+   * seen, and whoever knows where they are has the right to press them
+   * without two touches.
    */
-  const [spariti, setSpariti] = useState(false);
+  const [gone, setGone] = useState(false);
 
-  /** Il calo: parte subito e dura dieci secondi. */
-  const attenua = useCallback((durata = FADE_MS) => {
+  /** The fade: it starts at once and lasts ten seconds. */
+  const fade = useCallback((duration = FADE_MS) => {
     if (idleTimer.current) clearTimeout(idleTimer.current);
-    finCalo.current = Date.now() + durata;
-    const meta = CONTROLS_OPACITY[controls] ?? CONTROLS_OPACITY.dim;
+    fadeEnd.current = Date.now() + duration;
+    const target = CONTROLS_OPACITY[controls] ?? CONTROLS_OPACITY.dim;
     Animated.timing(opacity, {
-      toValue: meta,
-      duration: durata,
+      toValue: target,
+      duration,
       useNativeDriver: true,
     }).start(({ finished }) => {
-      // Solo a calo finito: durante la discesa si vedono ancora.
-      if (finished && meta === 0) setSpariti(true);
+      // Only once the fade is over: on the way down they can still be seen.
+      if (finished && target === 0) setGone(true);
     });
   }, [opacity, controls]);
 
   /**
-   * C'è qualcosa da guardare sotto ai controls.
+   * There is something to look at under the controls.
    *
-   * Senza nessun video i controls non coprono niente, e attenuarli
-   * lascerebbe uno schermo scuro con sopra dei pulsanti sbiaditi: si
-   * nascondono per lasciar vedere un'immagine, e se l'immagine non c'è
-   * non c'è ragione.
+   * With no video the controls cover nothing, and fading them would
+   * leave a dark screen with faded buttons on it: they step aside to
+   * let a picture be seen, and if there is no picture there is no
+   * reason.
    */
-  const daVedere = localHasVideo || remoteHasVideo;
+  const toWatch = localHasVideo || remoteHasVideo;
 
   const wake = useCallback(() => {
-    setSpariti(false);
-    finCalo.current = 0;
+    setGone(false);
+    fadeEnd.current = 0;
     if (idleTimer.current) clearTimeout(idleTimer.current);
     Animated.timing(opacity, {
       toValue: 1, duration: 120, useNativeDriver: true,
     }).start(({ finished }) => {
-      // Il calo riparte appena finito di tornare pieni: nessuna attesa
-      // ferma, e quindi nessun istante in cui "scattano" via.
-      if (finished && daVedere) attenua();
+      // The fade starts again as soon as they are full: no standing
+      // wait, and so no instant at which they "snap" away.
+      if (finished && toWatch) fade();
     });
-  }, [opacity, attenua, daVedere]);
+  }, [opacity, fade, toWatch]);
 
   /**
-   * Un tocco sull'immagine: se i controls si vedono, li toglie di mezzo.
+   * The label follows the others as they fade, but no further.
    *
-   * Aspettare i nove secondi dell'attenuazione automatica, quando si
-   * vuole guardare l'immagine e basta, è una piccola prigionia.
+   * With "Hide the controls" the others go to zero; this one does not,
+   * because the one piece of information the screen itself does not
+   * give is precisely who one is looking at.
    */
-  /**
-   * L'etichetta segue l'attenuazione degli altri, ma non oltre.
-   *
-   * Con "Nascondi i controls" gli altri vanno a zero; questa no, perché
-   * l'unica informazione che non si ricava guardando lo schermo è
-   * proprio chi si sta guardando.
-   */
-  const opacitaEtichetta = opacity.interpolate({
+  const labelOpacity = opacity.interpolate({
     inputRange: [0, 1],
-    outputRange: [DIM_ETICHETTA, 1],
+    outputRange: [LABEL_DIM, 1],
   });
 
-  const tocco = useCallback(() => {
-    const fermo = Date.now() - ultimoTocco.current;
-    ultimoTocco.current = Date.now();
-    // Anche il tocco sull'immagine conta come risveglio, e se veniva
-    // dopo un lungo silenzio vale la pena saperlo: è il gemello buono
-    // del tocco che nessuno ha voluto.
-    if (fermo > SONNO_MS) {
-      Diario.segna(`controls-risvegliati:fermi ${Math.round(fermo / 1000)}s`)
+  /**
+   * A touch on the picture: if the controls can be seen, it clears them
+   * out of the way.
+   *
+   * Waiting the ten seconds of the automatic fade, when all one wants
+   * is to look at the picture, is a small imprisonment.
+   */
+  const touch = useCallback(() => {
+    const still = Date.now() - lastTouch.current;
+    lastTouch.current = Date.now();
+    // A touch on the picture counts as a waking too, and if it came
+    // after a long silence it is worth knowing: it is the good twin of
+    // the touch nobody meant.
+    if (still > SLEEP_MS) {
+      Diario.segna(`controls-woken:still ${Math.round(still / 1000)}s`)
         .catch(() => { /* noop */ });
     }
-    // Chiedere di toglierli è diverso dal lasciarli calare: qui si vuole
-    // vedere l'immagine adesso.
-    if (Date.now() < finCalo.current) attenua(400); else wake();
-  }, [attenua, wake]);
+    // Asking for them to go is not the same as letting them fade: here
+    // one wants to see the picture now.
+    if (Date.now() < fadeEnd.current) fade(400); else wake();
+  }, [fade, wake]);
 
-  // `wake` cambia quando cambia `daVedere`: spegnendo l'ultima camera i
-  // controls tornano pieni e ci restano.
+  // `wake` changes when `toWatch` changes: switching the last camera
+  // off brings the controls back to full and there they stay.
   useEffect(() => {
     wake();
     return () => { if (idleTimer.current) clearTimeout(idleTimer.current); };
   }, [wake]);
 
-  /** Quando lo schermo è stato toccato l'ultima volta. */
-  const ultimoTocco = useRef(Date.now());
+  /** When the screen was last touched. */
+  const lastTouch = useRef(Date.now());
 
   /**
-   * Ogni pressione riporta i pulsanti in evidenza e poi fa il suo
-   * lavoro - tranne la prima dopo un lungo silenzio, che li risveglia e
-   * basta.
+   * Every press brings the buttons back to the front and then does its
+   * work - except the first after a long silence, which only wakes
+   * them.
    *
-   * Serve contro il tocco che nessuno ha voluto: una notte, sul
-   * telefono dell'altro, è comparsa un'uscita dal canale alle 4:46 che
-   * nessuno aveva premuto, e il pulsante Esci fa il suo lavoro al primo
-   * tocco senza chiedere niente. Con i controls sbiaditi e fermi da un
-   * minuto, quel tocco adesso non preme: accende.
+   * It guards against the touch nobody meant: one night, on the other
+   * phone, an exit from the channel appeared at 4:46 that nobody had
+   * pressed, and the Leave button does its work at the first touch
+   * without asking anything. With the controls faded and untouched for
+   * a minute, that touch now does not press: it lights.
    */
   const press = useCallback(
     (action: () => void) => () => {
-      // Schermo coperto: qualunque cosa abbia toccato il vetro, non è
-      // una scelta di nessuno.
-      if (copertoRef.current) {
-        Diario.segna('comando:ignorato-schermo-coperto').catch(() => { /* noop */ });
+      // The screen is covered: whatever touched the glass, it is
+      // nobody's choice.
+      if (coveredRef.current) {
+        Diario.segna('command:ignored-screen-covered').catch(() => { /* noop */ });
         return;
       }
-      const fermo = Date.now() - ultimoTocco.current;
-      ultimoTocco.current = Date.now();
-      const attenuati = daVedere && (CONTROLS_OPACITY[controls] ?? 0.4) < 1;
-      if (attenuati && fermo > SONNO_MS) {
+      const still = Date.now() - lastTouch.current;
+      lastTouch.current = Date.now();
+      const faded = toWatch && (CONTROLS_OPACITY[controls] ?? 0.4) < 1;
+      if (faded && still > SLEEP_MS) {
         wake();
-        Diario.segna(`controls-risvegliati:fermi ${Math.round(fermo / 1000)}s`)
+        Diario.segna(`controls-woken:still ${Math.round(still / 1000)}s`)
           .catch(() => { /* noop */ });
         return;
       }
       wake();
       action();
     },
-    [wake, daVedere, controls],
+    [wake, toWatch, controls],
   );
 
   /**
-   * Campanella che suona subito alla pressione di "Avvisa".
+   * A bell that rings the instant "Call" is pressed.
    *
-   * `knockPending` arriva dal server, e con la rete lenta può tardare:
-   * il dito resterebbe senza risposta proprio nel momento in cui la si
-   * aspetta. Questo è solo il ritorno al tocco; la conferma vera resta
-   * quella del server, che tiene poi la campanella accesa per i suoi due
-   * secondi.
+   * `knockPending` comes from the server, and with a slow network it
+   * can be late: the finger would be left without an answer at the very
+   * moment one waits for it. This is only the reply to the touch; the
+   * real confirmation is still the server's, which then keeps the bell
+   * ringing for its two seconds.
    */
-  const [appenaBussato, setAppenaBussato] = useState(false);
-  const timerBussata = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [justKnocked, setJustKnocked] = useState(false);
+  const knockTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => {
-    if (timerBussata.current) clearTimeout(timerBussata.current);
+    if (knockTimer.current) clearTimeout(knockTimer.current);
   }, []);
   /**
-   * Come sta ascoltando l'altro, da mettere accanto a "Non tu".
+   * How the other person is listening, to put beside "Not you".
    *
-   * L'icona dice da dove gli esce il suono - vivavoce, orecchio, cuffie,
-   * bluetooth - ed è barrata quando ha il microfono spento. Sono le due
-   * cose che durante una conversazione si chiedono a voce ("mi senti?",
-   * "sei in vivavoce?") e che il telefono sa già.
+   * The icon says where their sound comes out - speaker, ear,
+   * headphones, bluetooth - and is crossed out when their microphone is
+   * off. They are the two things one asks aloud during a conversation
+   * ("can you hear me?", "are you on speaker?") and that the phone
+   * already knows.
    *
-   * Se l'altro ha una versione che non le dichiara, `uscita` non arriva
-   * e si mostra il vivavoce, che è il caso normale entrando nel canale.
+   * If they have a version that does not declare them, `output` does
+   * not arrive and the speaker is shown, which is the normal case on
+   * coming into the channel.
    */
-  const segno = React.useCallback((size: number, sfondo: string) => {
-    const dove = (peerState.uscita as AudioRoute) ?? 'SPEAKER_PHONE';
-    const Icona = ICONA_USCITA[dove] ?? ICONA_USCITA.SPEAKER_PHONE;
-    // Lo sfondo serve alla barra dello sbarramento per staccarsi dal
-    // disegno: cambia con ciò su cui il segno è appoggiato.
-    return <Icona size={size} color="#e6ebf1" off={!peerState.audio} sfondo={sfondo} />;
-  }, [peerState.uscita, peerState.audio]);
+  const peerMark = React.useCallback((size: number, background: string) => {
+    const where = (peerState.output as AudioRoute) ?? 'SPEAKER_PHONE';
+    const Icon = OUTPUT_ICON[where] ?? OUTPUT_ICON.SPEAKER_PHONE;
+    // The background is what lets the crossing-out bar stand apart from
+    // the drawing: it changes with whatever the mark rests on.
+    return <Icon size={size} color="#e6ebf1" off={!peerState.audio} background={background} />;
+  }, [peerState.output, peerState.audio]);
   /**
-   * Le due pastiglie dicono chi si sta guardando; con le righe tecniche
-   * accese dicono anche come suona quel telefono lì.
+   * The two pills say who one is looking at; with the technical lines
+   * on they also say how that phone over there sounds.
    *
-   * Ognuna descrive il suo: da dove esce il suono e a che volume lo sta
-   * ascoltando chi ce l'ha in mano. Su «Non tu» quindi c'è la sua
-   * uscita e il suo volume - cioè quanto forte sente TE - che è l'unica
-   * delle quattro cose che non potresti sapere in nessun altro modo, e
-   * la sola che spieghi «non ti sento» senza doverselo chiedere a voce.
+   * Each describes its own: where the sound comes out and how loud
+   * whoever holds it is hearing. On "Not you", then, there is their
+   * output and their volume - that is, how loud they hear YOU - which
+   * is the only one of the four things you could not know in any other
+   * way, and the only one that explains "I cannot hear you" without
+   * having to ask aloud.
    */
-  const percento = (v?: number) => `${Math.round((v ?? 1) * 100)}%`;
+  const percent = (v?: number) => `${Math.round((v ?? 1) * 100)}%`;
 
-  const segnoAltro = React.useMemo(() => (
+  const peerBadge = React.useMemo(() => (
     <>
-      {segno(13, '#1b1d21')}
+      {peerMark(13, '#1b1d21')}
       {showStats && peerState.volume != null ? (
-        <Text style={styles.pastigliaVolume}>{percento(peerState.volume)}</Text>
+        <Text style={styles.pillVolume}>{percent(peerState.volume)}</Text>
       ) : null}
     </>
-  ), [segno, showStats, peerState.volume]);
+  ), [peerMark, showStats, peerState.volume]);
 
-  /** Da dove esce il suono QUI, come `segno` fa per il suo. */
-  const segnoUscitaMia = React.useCallback((size: number, sfondo: string) => {
-    const Icona = ICONA_USCITA[audioRoute] ?? ICONA_USCITA.SPEAKER_PHONE;
-    return <Icona size={size} color="#e6ebf1" off={!audioOn} sfondo={sfondo} />;
+  /** Where the sound comes out HERE, as `peerMark` does for theirs. */
+  const ownOutputMark = React.useCallback((size: number, background: string) => {
+    const Icon = OUTPUT_ICON[audioRoute] ?? OUTPUT_ICON.SPEAKER_PHONE;
+    return <Icon size={size} color="#e6ebf1" off={!audioOn} background={background} />;
   }, [audioRoute, audioOn]);
 
-  const segnoMio = React.useMemo(() => {
+  const ownBadge = React.useMemo(() => {
     return (
       <>
-        {segnoUscitaMia(13, '#1b1d21')}
+        {ownOutputMark(13, '#1b1d21')}
         {showStats ? (
-          <Text style={styles.pastigliaVolume}>{percento(peerGain)}</Text>
+          <Text style={styles.pillVolume}>{percent(peerGain)}</Text>
         ) : null}
       </>
     );
-  }, [segnoUscitaMia, showStats, peerGain]);
+  }, [ownOutputMark, showStats, peerGain]);
 
   /**
-   * Qualcosa copre lo schermo: una tasca, una cover chiusa.
+   * Something is covering the screen: a pocket, a closed cover.
    *
-   * Finché è coperto i controls non si premono. Un telefono in tasca
-   * riceve tocchi che non sono scelte di nessuno - nel diario sono
-   * comparse uscite dal canale con contatti di quaranta millisecondi,
-   * mentre l'altro usciva di casa con il telefono in tasca e il
-   * vivavoce acceso, che è la condizione in cui il systemVolume non spegne
-   * lo schermo.
+   * While it is covered the controls cannot be pressed. A phone in a
+   * pocket receives touches that are nobody's choices - the journal
+   * showed exits from the channel with contacts of forty milliseconds,
+   * while the other person was leaving home with the phone in a pocket
+   * and the speaker on, which is the state in which the system does not
+   * switch the screen off.
    *
-   * In un riferimento oltre che in uno stato: lo leggono i gestori dei
-   * tocchi, che nascono una volta sola.
+   * In a reference as well as in a state: the touch handlers read it,
+   * and they are born once only.
    */
-  const [coperto, setCoperto] = useState(false);
-  const copertoRef = useRef(false);
+  const [covered, setCovered] = useState(false);
+  const coveredRef = useRef(false);
   useEffect(() => {
     if (compact) return;
-    let vivo = true;
+    let alive = true;
     Prossimita.get().then((v) => {
-      if (!vivo) return;
-      copertoRef.current = !!v;
-      setCoperto(!!v);
+      if (!alive) return;
+      coveredRef.current = !!v;
+      setCovered(!!v);
     }).catch(() => { /* noop */ });
     const stop = Prossimita.subscribe((v) => {
-      copertoRef.current = v;
-      setCoperto(v);
+      coveredRef.current = v;
+      setCovered(v);
     });
-    return () => { vivo = false; stop(); };
+    return () => { alive = false; stop(); };
   }, [compact]);
 
   /**
-   * La firma di un tocco su una riga del pannello.
+   * The signature of a touch on a panel row.
    *
-   * I pulsanti rotondi la scrivono da sé; le righe dei pannelli no, e
-   * proprio l'uscita - che è la cosa su cui stiamo indagando - passava
-   * di lì senza lasciare traccia. Qui non c'è la durata del contatto,
-   * perché una riga di pannello non ha il tocco iniziale separato: c'è
-   * il punto, che è già qualcosa.
+   * The round buttons write it themselves; the panel rows did not, and
+   * the exit - the very thing under investigation - went through there
+   * leaving no trace. There is no contact duration here, because a
+   * panel row has no separate initial touch: there is the point, which
+   * is already something.
    */
-  const firmaTocco = useCallback((che: string, e: GestureResponderEvent) => {
+  const signTouch = useCallback((what: string, e: GestureResponderEvent) => {
     const x = Math.round(e?.nativeEvent?.pageX ?? -1);
     const y = Math.round(e?.nativeEvent?.pageY ?? -1);
     Diario.segna(
-      `comando:${che} ${x},${y} coperto=${copertoRef.current ? 'si' : 'no'}`,
+      `command:${what} ${x},${y} covered=${coveredRef.current ? 'yes' : 'no'}`,
     ).catch(() => { /* noop */ });
   }, []);
 
-  /** Vero se il tocco va lasciato cadere: lo schermo è coperto. */
-  const daIgnorare = useCallback(() => {
-    if (!copertoRef.current) return false;
-    Diario.segna('comando:ignorato-schermo-coperto').catch(() => { /* noop */ });
+  /** True if the touch is to be dropped: the screen is covered. */
+  const toIgnore = useCallback(() => {
+    if (!coveredRef.current) return false;
+    Diario.segna('command:ignored-screen-covered').catch(() => { /* noop */ });
     return true;
   }, []);
 
-  /** Il lampo della campanella: dice che qualcosa è partito davvero. */
-  const bussata = useCallback(() => {
-    setAppenaBussato(true);
-    if (timerBussata.current) clearTimeout(timerBussata.current);
-    timerBussata.current = setTimeout(() => setAppenaBussato(false), 700);
+  /** The flash of the bell: it says something really left. */
+  const knockFlash = useCallback(() => {
+    setJustKnocked(true);
+    if (knockTimer.current) clearTimeout(knockTimer.current);
+    knockTimer.current = setTimeout(() => setJustKnocked(false), 700);
   }, []);
 
-  const bussa = useCallback(() => {
-    bussata();
+  const knock = useCallback(() => {
+    knockFlash();
     onKnock();
-  }, [bussata, onKnock]);
+  }, [knockFlash, onKnock]);
 
   return (
-    // Il tocco si raccoglie dentro VideoStage, sulla sola immagine
-    // grande: sul riquadrino significa già scambiare i due video, e sui
-    // controls significa premerli.
+    // The touch is gathered inside VideoStage, on the big picture
+    // alone: on the little square it already means swapping the two
+    // videos, and on the controls it means pressing them.
     <View style={styles.root}>
       <VideoStage
         localStream={localStream}
@@ -763,11 +753,11 @@ export default function ChannelScreen(props: Props) {
         remoteVideoKey={remoteVideoKey}
         awaitingRemote={interrupted}
         notice={notice}
-        // Il riquadrino vuoto - quando la camera ce l'hai solo tu e sei
-        // andato a schermo intero - è l'unica cosa rimasta a dire dov'è
-        // l'altro: che dica quello vero, non un "in attesa" buono per
-        // tutte le stagioni.
-        etichettaVuoto={parolaAltro(status, peerName, peerPresent, peerDetached)}
+        // The empty little square - when you are the only one with a
+        // camera and you have gone full screen - is the one thing left
+        // to say where the other person is: let it say the true thing,
+        // not a "waiting" good for all seasons.
+        emptyLabel={peerWord(status, peerName, peerPresent, peerDetached)}
         localAspect={localAspect}
         remoteAspect={remoteAspect}
         compact={compact}
@@ -776,16 +766,16 @@ export default function ChannelScreen(props: Props) {
         insetV={compact ? 0 : inset.v}
         insetH={compact ? 0 : inset.h}
         insetBasso={!compact && showStats ? (versionWarning ? 54 : 36) : 0}
-        onSfondo={tocco}
-        onSoloGrande={setSoloGrande}
+        onSfondo={touch}
+        onOnlyBig={setOnlyBig}
         onZoom={onZoom}
-        segnoAltro={segnoAltro}
-        segnoMio={segnoMio}
+        peerBadge={peerBadge}
+        ownBadge={ownBadge}
         placeholder={compact ? (
-          /* Nella finestrella di Picture-in-Picture il riepilogo grande
-             non ci sta: esce dai bordi e si legge mezza parola. Lì basta
-             la faccia e una parola sola, che è tutto quello che si
-             riesce a leggere in un rettangolo grande come un pollice. */
+          /* In the Picture-in-Picture window the big summary does not
+             fit: it runs past the edges and half a word can be read.
+             There the face and a single word are enough, which is all
+             one can read in a rectangle the size of a thumb. */
           <PresenceMini
             status={status}
             peerName={peerName}
@@ -796,25 +786,26 @@ export default function ChannelScreen(props: Props) {
         ) : (
           <PresenceCard
             connectionName={connectionName}
-            segno={
-              <View style={styles.cardSegnoRiga}>
-                {segno(17, '#0b0e14')}
+            peerMark={
+              <View style={styles.cardMarkRow}>
+                {peerMark(17, '#0b0e14')}
                 {showStats ? (
                   <>
                     {peerState.volume != null ? (
                       <Text style={styles.cardVolume}>
-                        ti sente {percento(peerState.volume)}
+                        {t('channel.hearsYou', { pct: percent(peerState.volume) })}
                       </Text>
                     ) : null}
                     <Text style={styles.cardVolume}>
                       {peerState.volume != null ? '· ' : ''}
-                      lo senti {percento(peerGain)}
+                      {t('channel.youHear', { pct: percent(peerGain) })}
                     </Text>
-                    {/* Il segno dell'uscita sta accanto al numero di
-                        chi ascolta: il suo davanti al suo, il mio dopo
-                        il mio. Prima ce n'era uno solo, in testa, e
-                        sembrava valere per tutta la riga. */}
-                    {segnoUscitaMia(17, '#0b0e14')}
+                    {/* The output's mark stands beside the number of
+                        whoever is listening: theirs before theirs, mine
+                        after mine. There used to be a single one, at
+                        the head, and it looked as though it held for
+                        the whole line. */}
+                    {ownOutputMark(17, '#0b0e14')}
                   </>
                 ) : null}
               </View>
@@ -833,260 +824,270 @@ export default function ChannelScreen(props: Props) {
       />
 
       {/*
-        Il promemoria dell'attesa anche sopra il video.
-        Senza video lo dice il riepilogo al centro dello schermo; con la
-        camera accesa quel riepilogo non c'è più, e restava solo la
-        propria immagine, senza niente che spiegasse perché non succede
-        nulla. Qui non ci va la faccia dell'altro: sopra l'immagine
-        peserebbe, e chi guarda sa già chi aspetta.
-        Si attenua insieme ai comandi: è un promemoria, non un allarme, e
-        chi resta a lungo in attesa vuole vedere l'immagine, non la
-        scritta.
+        The reminder of the wait, over the video too.
+        With no video the summary in the middle of the screen says it;
+        with the camera on that summary is gone, and only one's own
+        picture was left, with nothing to explain why nothing is
+        happening. The other person's face does not belong here: over
+        the picture it would weigh, and whoever is watching already
+        knows who they are waiting for.
+        It fades along with the controls: it is a reminder, not an
+        alarm, and whoever waits a long time wants to see the picture,
+        not the words.
       */}
-      {!compact && soloGrande && status === 'alone' && !notice ? (
-        <Animated.View style={[styles.attesaSopra, { opacity }]} pointerEvents="none">
-          <Text style={styles.attesaTesto}>
-            Sei nel canale.{'\n'}
-            {comeSta(peerName, peerPresent, peerDetached)}
+      {!compact && onlyBig && status === 'alone' && !notice ? (
+        <Animated.View style={[styles.waitOver, { opacity }]} pointerEvents="none">
+          <Text style={styles.waitText}>
+            {t('channel.youAreInChannel')}{'\n'}
+            {peerStatusLine(peerName, peerPresent, peerDetached)}
             {peerPresent ? (
               <>
-                {': tocca '}
-                <Text style={styles.bold}>Avvisa</Text>
-                {' per farglielo sapere.'}
+                {t('channel.touchPrefix')}
+                <Text style={styles.bold}>{t('buttons.call')}</Text>
+                {t('channel.touchSuffix')}
               </>
             ) : peerDetached ? (
-              ': ha staccato Duetto di proposito.'
+              t('channel.detachedOnPurpose')
             ) : (
-              ': il suo telefono non è collegato.'
+              t('channel.phoneNotConnected')
             )}
           </Text>
         </Animated.View>
       ) : null}
 
-      {/* La notizia sta sopra a tutto e non si attenua con i comandi:
-          non è un comando, è una cosa da leggere una volta. Sotto la
-          barra in alto, per non coprire l'ingranaggio. */}
+      {/* The news stands above everything and does not fade with the
+          controls: it is not a control, it is something to read once.
+          Under the top bar, so as not to cover the settings. */}
       {!compact && news ? (
         <Animated.View
           style={[
-            styles.notiziaSopra,
+            styles.newsOver,
             { top: 62 + inset.v, left: 14 + inset.h, right: 14 + inset.h },
-            { opacity: notiziaOpacita },
+            { opacity: newsOpacity },
           ]}>
           <TouchableOpacity activeOpacity={0.85} onPress={onNewsRead}>
-            <Text style={styles.notiziaTesto}>{news}</Text>
-            <Text style={styles.notiziaVia}>tocca per togliere</Text>
+            <Text style={styles.newsText}>{news}</Text>
+            <Text style={styles.newsDismiss}>{t('channel.tapToDismiss')}</Text>
           </TouchableOpacity>
         </Animated.View>
       ) : null}
 
-      {/* "Sto leaving": copre lo schermo e ferma i tocchi, così nessuno
-          preme altro mentre il diario sta partendo. */}
+      {/* "Leaving": it covers the screen and stops the touches, so
+          that nobody presses anything else while the journal is on its
+          way. */}
       {leaving ? (
-        <View style={styles.uscendoSopra}>
-          <Text style={styles.uscendoTesto}>
-            Sto leaving, un momento…
+        <View style={styles.leavingOver}>
+          <Text style={styles.leavingText}>
+            {t('channel.leaving')}
           </Text>
         </View>
       ) : null}
 
-      {/* Il volume dell'altro, mentre lo si sta cambiando. Sta al centro
-          e non si tocca: è un riscontro, non un comando. */}
+      {/* The other person's volume, while it is being changed. It sits
+          in the middle and cannot be touched: it is a reply, not a
+          control. */}
       {!compact && gain != null ? (
-        <View style={styles.volumeSopra} pointerEvents="none">
-          <Text style={styles.volumeTesto}>
-            Voce dell’altro{'  '}
-            <Text style={styles.volumeCifra}>
-              {gain === 0 ? 'muto' : `${Math.round(gain * 100)}%`}
+        <View style={styles.volumeOver} pointerEvents="none">
+          <Text style={styles.volumeText}>
+            {t('channel.peerVoice')}{'  '}
+            <Text style={styles.volumeFigure}>
+              {gain === 0 ? t('channel.muted') : `${Math.round(gain * 100)}%`}
             </Text>
           </Text>
         </View>
       ) : null}
 
-      {/* In PiP finisce qui: la finestrella mostra solo il video. */}
+      {/* In PiP it ends here: the little window shows the video alone. */}
       {compact ? null : (
         <>
-      {/* Barra in alto: canale + stato */}
-      {/* Anche la barra in alto sta dentro il video: fuori, sulla banda
-          nera, sembra staccata dall'immagine a cui appartiene. Il
-          riquadrino le lascia il posto scendendo, non lei salendo. */}
-      {/* "Tu/Non tu" si attenua con gli altri controls ma non sparisce
-          mai: dice CHI si sta guardando a schermo intero, e con un tocco
-          sul riquadrino i due si scambiano - è facile perdere il conto.
-          Anche al minimo resta leggibile, che è quanto basta. */}
-      {soloGrande ? (
+      {/* The top bar: connection + state. It sits inside the video
+          too: outside, on the black band, it looks detached from the
+          picture it belongs to. The little square makes room for it by
+          moving down, not the bar by moving up. */}
+      {/* "You/Not you" fades with the other controls but never
+          disappears: it says WHO is being watched full screen, and a
+          touch on the little square swaps the two - it is easy to lose
+          track. Even at its faintest it stays legible, which is all
+          that is needed. */}
+      {onlyBig ? (
         <Animated.View
           style={[
-            styles.chiRiga,
-            { top: 14 + inset.v, left: 14 + inset.h, opacity: opacitaEtichetta },
+            styles.whoRow,
+            { top: 14 + inset.v, left: 14 + inset.h, opacity: labelOpacity },
           ]}
           pointerEvents="none">
-          <View style={styles.chiBadge}>
-            <Text style={styles.chiText}>{soloGrande === 'tu' ? 'Tu' : 'Non tu'}</Text>
-            {soloGrande === 'altro' ? segnoAltro : segnoMio}
+          <View style={styles.whoBadge}>
+            <Text style={styles.whoText}>
+              {onlyBig === 'you' ? t('channel.you') : t('channel.notYou')}
+            </Text>
+            {onlyBig === 'peer' ? peerBadge : ownBadge}
           </View>
-          {/* Niente pastiglia "Non tu" quando di suo non c'è nessuna
-              immagine: queste etichette dicono CHI si sta guardando, e
-              una che nomina un video inesistente sembra un secondo video
-              che non arriva.
+          {/* No "Not you" pill when there is no picture of theirs at
+              all: these labels say WHO is being watched, and one that
+              names a video which does not exist looks like a second
+              video that never arrives.
 
-              Con le righe tecniche accese però una pastiglia in più ci
-              vuole: se ha il video solo lui, il riquadrino non c'è, e
-              con il riquadrino sparivano le uniche due cose che dicono
-              come stai sentendo e come ti sente - le altre volte le
-              dice il riepilogo al centro, che qui è coperto dal suo
-              video. Questa non promette nessun video: porta il nome e
-              i due segni dell'audio, e basta. */}
-          {showStats && soloGrande === 'altro' && !localHasVideo ? (
-            <View style={[styles.chiBadge, styles.chiBadgeAudio]}>
-              <Text style={styles.chiTextTenue}>Tu</Text>
-              {segnoMio}
+              With the technical lines on, though, one more pill is
+              needed: if only they have video, the little square is not
+              there, and with the little square went the only two things
+              that say how you are hearing and how they hear you - the
+              rest of the time the summary in the middle says it, and
+              here that is covered by their video. This one promises no
+              video: it carries the name and the two audio marks, and
+              nothing else. */}
+          {showStats && onlyBig === 'peer' && !localHasVideo ? (
+            <View style={[styles.whoBadge, styles.whoBadgeAudio]}>
+              <Text style={styles.whoTextFaint}>{t('channel.you')}</Text>
+              {ownBadge}
             </View>
           ) : null}
         </Animated.View>
       ) : null}
 
       <Animated.View
-        pointerEvents={spariti ? 'none' : 'auto'}
+        pointerEvents={gone ? 'none' : 'auto'}
         style={[styles.topBar, { opacity, top: 14 + inset.v, left: 14 + inset.h, right: 14 + inset.h }]}>
         <View style={styles.spacer} pointerEvents="none" />
         <TouchableOpacity
           style={styles.badge}
-          // Il nome dichiara già la versione: è lì che uno va a cercare
-          // perché qualcosa è cambiato.
-          onPress={press(() => setNovita(true))}>
+          // The name already carries the version: that is where one
+          // goes to look for why something has changed.
+          onPress={press(() => setChangelogOpen(true))}>
           <View style={[styles.dot, together ? styles.dotGreen : styles.dotGrey]} />
-          {/* In corsivo quando è un nome dato da te: così si distingue
-              da una parola dell'app, ed è la stessa forma che ha in
-              testa alle notifiche. */}
-          <Text style={[styles.badgeText, connectionName ? styles.badgeNome : null]}>
+          {/* In italics when it is a name you gave: that tells it from
+              a word of the app's, and it is the same shape it has at
+              the head of the notifications. */}
+          <Text style={[styles.badgeText, connectionName ? styles.badgeName : null]}>
             {connectionName || 'Duetto'}
           </Text>
           <Text style={styles.version}>  {VERSION_LABEL}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.gear} onPress={press(onOpenSettings)}>
-          <IconaImpostazioni size={21} color="#e6ebf1" />
+          <SettingsIcon size={21} color="#e6ebf1" />
         </TouchableOpacity>
       </Animated.View>
 
-      {/* Controlli: sempre presenti, in basso, dentro un pannello scuro */}
+      {/* The controls: always there, at the bottom, inside a dark panel */}
       <Animated.View
-        pointerEvents={spariti ? 'none' : 'auto'}
+        pointerEvents={gone ? 'none' : 'auto'}
         style={[
           styles.panel,
           { opacity, bottom: 8 + inset.v, left: 12 + inset.h, right: 12 + inset.h },
         ]}>
         <View style={styles.controls}>
         <CircleButton
-          coperto={coperto}
-          label="Video"
-          // Acceso il pulsante è una pastiglia bianca, e allora il
-          // disegno va in scuro: è ciò che sta funzionando a doversi
-          // vedere di più, non ciò che è spento.
-          icon={<IconaVideo off={!videoOn} {...(videoOn ? SU_CHIARO : {})} />}
+          covered={covered}
+          label={t('buttons.video')}
+          // Switched on, the button is a white pill, and then the
+          // drawing goes dark: what is working is what has to be seen
+          // most, not what is off.
+          icon={<VideoIcon off={!videoOn} {...(videoOn ? ON_LIGHT : {})} />}
           active={videoOn}
           onPress={press(onToggleVideo)}
-          // Come per l'audio: il tocco accende e spegne, la pressione
-          // prolungata apre le scelte. La qualità si giudica guardando,
-          // e andarla a cercare nelle impostazioni fa perdere di vista
-          // proprio ciò che si sta valutando.
-          onLongPress={press(() => setMenuQualita(true))}
+          // As with the audio: a touch switches on and off, a long
+          // press opens the choices. Quality is judged by looking, and
+          // going to fetch it in the settings loses sight of the very
+          // thing being judged.
+          onLongPress={press(() => setQualityMenu(true))}
         />
         <CircleButton
-          coperto={coperto}
-          // Tocco: muto/non muto. Pressione prolungata: da dove esce l'audio.
-          label={audioOn ? 'Audio' : 'Muto'}
-          icon={<IconaMicrofono off={!audioOn} {...(audioOn ? SU_CHIARO : {})} />}
+          covered={covered}
+          // Touch: muted/unmuted. Long press: where the audio comes out.
+          label={audioOn ? t('buttons.audio') : t('buttons.muted')}
+          icon={<MicrophoneIcon off={!audioOn} {...(audioOn ? ON_LIGHT : {})} />}
           active={audioOn}
           onPress={press(onToggleAudio)}
           onLongPress={press(() => setRouteMenu(true))}
-          badge={ICONA_USCITA[audioRoute]}
+          badge={OUTPUT_ICON[audioRoute]}
         />
         <CircleButton
-          coperto={coperto}
-          label="Gira"
-          // L'icona dice quale camera è accesa: una persona sola per la
-          // frontale, più persone per quella dietro, che è ciò che di
-          // solito ci si trova a inquadrare.
-          // Pastiglia bianca con la frontale, spenta con la posteriore:
-          // la sola differenza fra le due sagome - una persona o più -
-          // si coglie leggendola, mentre il pieno o il vuoto si vede.
-          icon={frontCamera ? <IconaFrontale {...SU_CHIARO} /> : <IconaPosteriore />}
+          covered={covered}
+          label={t('buttons.flip')}
+          // The icon says which camera is on: a single person for the
+          // front one, several people for the back one, which is what
+          // one usually finds oneself framing with it.
+          // A white pill with the front camera, dim with the back one:
+          // the only difference between the two outlines - one person
+          // or several - has to be read, while full or empty is seen.
+          icon={frontCamera ? <FrontCameraIcon {...ON_LIGHT} /> : <BackCameraIcon />}
           active={frontCamera}
-          // Premibile anche a video spento: lì non gira niente, sceglie
-          // con quale camera si accenderà. Serve a inquadrare qualcosa
-          // senza mostrare prima, per un istante, la propria faccia.
+          // Pressable with the video off too: there it turns nothing,
+          // it chooses which camera will open. It is for framing
+          // something without first showing, for an instant, one's own
+          // face.
           disabled={false}
           onPress={press(onSwitchCamera)}
         />
         <CircleButton
-          coperto={coperto}
-          label={knockPending ? 'Avvisato' : 'Avvisa'}
-          // Per i due secondi che seguono la pressione la campanella suona:
-          // è il segno che l'notice è partito. La sola scritta cambiava
-          // troppo poco per accorgersene.
-          icon={appenaBussato || knockPending ? <IconaAvvisato /> : <IconaAvvisa />}
+          covered={covered}
+          label={knockPending ? t('buttons.called') : t('buttons.call')}
+          // For the two seconds that follow the press the bell rings:
+          // it is the sign that the call has left. The wording alone
+          // changed too little to be noticed.
+          icon={justKnocked || knockPending ? <BellRingingIcon /> : <BellIcon />}
           /**
-           * Acceso finché l'notice ha dove andare.
+           * Lit as long as the call has somewhere to go.
            *
-           * Prima si spegneva quando eravate tutti e due nel canale, con
-           * l'idea che lì non ci fosse nulla da avvisare. Ma il pulsante
-           * resta premibile proprio per quel caso - l'altro c'è e non
-           * risponde - quindi lo spegnimento non diceva niente di vero, e
-           * faceva sembrare guasto un pulsante che funzionava.
+           * It used to go out when you were both in the channel, on the
+           * idea that there was nothing to call about there. But the
+           * button stays pressable precisely for that case - they are
+           * there and do not answer - so going out said nothing true,
+           * and made a working button look broken.
            *
-           * Si spegne invece quando il suo telefono al server non è
-           * collegato: lì l'notice non ha dove arrivare, e un pulsante
-           * blu che promette di chiamarlo promette una cosa che non
-           * succede.
+           * It goes out instead when their phone is not connected to
+           * the server: there the call has nowhere to land, and a blue
+           * button promising to call them promises something that does
+           * not happen.
            */
-          highlight={!appenaBussato && raggiungibile}
-          // Premibile finché è raggiungibile: può essere nel canale ma
-          // distratto, e insistere è proprio ciò che si vuole fare
-          // quando il primo notice non ha ottenuto risposta.
-          disabled={!raggiungibile}
-          onPress={press(bussa)}
-          // Tenendolo premuto, i suoni per richiamarlo. Solo mentre
-          // siete tutti e due nel canale: fuori di lì non c'è nessun
-          // telefono acceso su cui potrebbero suonare, e l'notice -
-          // quello sì - passa dal server.
-          onLongPress={together ? press(() => setMenuSveglia(true)) : undefined}
+          highlight={!justKnocked && reachable}
+          // Pressable as long as they are reachable: they may be in the
+          // channel but distracted, and insisting is exactly what one
+          // wants to do when the first call got no answer.
+          disabled={!reachable}
+          onPress={press(knock)}
+          // Held down, the sounds for calling them back. Only while you
+          // are both in the channel: outside it there is no phone on
+          // which they could play, and the call - that one, yes - goes
+          // through the server.
+          onLongPress={together ? press(() => setAlarmMenu(true)) : undefined}
         />
         <CircleButton
-          coperto={coperto}
-          label="Esci"
-          icon={<IconaEsci sfondo="#da373c" />}
+          covered={covered}
+          label={t('buttons.leave')}
+          icon={<LeaveIcon background="#da373c" />}
           danger
           /**
-           * Il tocco non esce: apre le due uscite, in mezzo allo schermo.
+           * A touch does not leave: it opens the two ways out, in the
+           * middle of the screen.
            *
-           * Uscire dal canale era l'unica cosa distruttiva che questa
-           * schermata sapesse fare, con un tocco solo, in un angolo dove
-           * i tocchi capitano: sono comparse uscite che nessuno aveva
-           * premuto, di notte e in pieno giorno. Prima avevo provato con
-           * l'etichetta che diventava «Sicuro?», ma è una scritta
-           * piccola sotto un'icona, e non la si vede.
+           * Leaving the channel was the one destructive thing this
+           * screen could do, with a single touch, in a corner where
+           * touches happen: exits appeared that nobody had pressed, at
+           * night and in broad daylight. I had first tried with the
+           * label turning into "Sure?", but that is small writing under
+           * an icon, and it goes unseen.
            *
-           * Adesso il tocco apre lo stesso pannello della pressione
-           * lunga: una domanda grande in mezzo allo schermo, con le due
-           * uscite scritte per esteso, e si esce toccando quella che si
-           * vuole. Un tocco solo non porta più fuori da nessuna parte.
+           * Now a touch opens the same panel as the long press: a big
+           * question in the middle of the screen, with the two ways out
+           * written in full, and one leaves by touching the one one
+           * wants. A single touch no longer takes anybody out of
+           * anywhere.
            */
-          onPress={press(() => setMenuUscita(true))}
-          onLongPress={press(() => setMenuUscita(true))}
+          onPress={press(() => setLeaveMenu(true))}
+          onLongPress={press(() => setLeaveMenu(true))}
         />
         </View>
         {showStats ? (
-          // Altezza fissa: comparendo la seconda riga solo quando il
-          // path è noto, il pannello cresceva sotto le dita e i
-          // pulsanti si spostavano.
-          <View style={[styles.statsBox, versionWarning ? styles.statsBoxTre : null]}>
+          // A fixed height: with the second line appearing only once
+          // the path is known, the panel grew under one's fingers and
+          // the buttons moved.
+          <View style={[styles.statsBox, versionWarning ? styles.statsBoxThree : null]}>
             <StatsLine
               stats={videoStats}
               quality={qualityLabel}
-              mostraSu={localHasVideo}
-              mostraGiu={remoteHasVideo}
-              versioni={versionWarning}
+              showUp={localHasVideo}
+              showDown={remoteHasVideo}
+              versions={versionWarning}
             />
           </View>
         ) : null}
@@ -1094,126 +1095,113 @@ export default function ChannelScreen(props: Props) {
         </>
       )}
 
-      {/* Uscita audio: si apre tenendo premuto il pulsante Audio. */}
-      <ChangelogModal visible={novita} onClose={() => setNovita(false)} />
+      <ChangelogModal visible={changelogOpen} onClose={() => setChangelogOpen(false)} />
 
-      {/* Risoluzione: si apre tenendo premuto il pulsante Video. */}
+      {/* Resolution: it opens by holding the Video button down. */}
       <Modal
-        visible={menuQualita}
+        visible={qualityMenu}
         transparent
         animationType="fade"
-        onRequestClose={() => setMenuQualita(false)}>
-        <Pressable style={styles.sheetBack} onPress={() => setMenuQualita(false)}>
+        onRequestClose={() => setQualityMenu(false)}>
+        <Pressable style={styles.sheetBack} onPress={() => setQualityMenu(false)}>
           <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>Risoluzione</Text>
+            <Text style={styles.sheetTitle}>{t('channel.resolution')}</Text>
             {(Object.keys(VIDEO_PROFILES) as VideoQuality[]).map((q) => (
               <TouchableOpacity
                 key={q}
                 style={styles.sheetRow}
-                onPress={() => { onSelectQuality(q); setMenuQualita(false); }}>
+                onPress={() => { onSelectQuality(q); setQualityMenu(false); }}>
                 <View style={styles.sheetText}>
                   <Text style={[styles.sheetLabel, q === quality && styles.sheetLabelOn]}>
                     {t(`quality.${VIDEO_PROFILES[q].key}`)}
                   </Text>
-                  <Text style={styles.sheetNota}>
+                  <Text style={styles.sheetNote}>
                     {t(`quality.${VIDEO_PROFILES[q].key}Note`)}
                   </Text>
                 </View>
                 {q === quality ? <Text style={styles.sheetCheck}>{'\u2713'}</Text> : null}
               </TouchableOpacity>
             ))}
-            <Text style={styles.sheetHint}>
-              Vale per tutti e due i telefoni: cambiandola qui cambia anche
-              all’altro.
-            </Text>
+            <Text style={styles.sheetHint}>{t('channel.resolutionHint')}</Text>
           </View>
         </Pressable>
       </Modal>
 
-      {/* I suoni per richiamare: si apre tenendo premuto "Avvisa". */}
+      {/* The sounds for calling back: opens by holding "Call" down. */}
       <Modal
-        visible={menuSveglia}
+        visible={alarmMenu}
         transparent
         animationType="fade"
-        onRequestClose={() => setMenuSveglia(false)}>
-        <Pressable style={styles.sheetBack} onPress={() => setMenuSveglia(false)}>
+        onRequestClose={() => setAlarmMenu(false)}>
+        <Pressable style={styles.sheetBack} onPress={() => setAlarmMenu(false)}>
           <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>Richiamalo</Text>
-            {SVEGLIE.map((sv) => (
+            <Text style={styles.sheetTitle}>{t('channel.callThem')}</Text>
+            {ALARMS.map((sv) => (
               <TouchableOpacity
-                key={sv.nome}
+                key={sv.name}
                 style={styles.sheetRow}
                 onPress={() => {
-                  setMenuSveglia(false);
-                  // Lo stesso lampo della campanella: il suono suona di
-                  // là, e da qui non si sente nulla.
-                  bussata();
-                  onAlarm(sv.nome);
+                  setAlarmMenu(false);
+                  // The same flash of the bell: the sound plays over
+                  // there, and from here nothing is heard.
+                  knockFlash();
+                  onAlarm(sv.name);
                 }}>
                 <View style={styles.sheetText}>
                   <Text style={styles.sheetLabel}>{sv.label}</Text>
-                  <Text style={styles.sheetNota}>{sv.nota}</Text>
+                  <Text style={styles.sheetNote}>{sv.note}</Text>
                 </View>
               </TouchableOpacity>
             ))}
-            <Text style={styles.sheetHint}>
-              Suona sul suo telefono, al volume della sveglia: si sente anche
-              con la suoneria bassa e il telefono lontano.
-            </Text>
+            <Text style={styles.sheetHint}>{t('channel.alarmHint')}</Text>
           </View>
         </Pressable>
       </Modal>
 
-      {/* Le due uscite: si apre tenendo premuto "Esci". */}
+      {/* The two ways out: opens by holding "Leave" down. */}
       <Modal
-        visible={menuUscita}
+        visible={leaveMenu}
         transparent
         animationType="fade"
-        onRequestClose={() => setMenuUscita(false)}>
-        <Pressable style={styles.sheetBack} onPress={() => setMenuUscita(false)}>
+        onRequestClose={() => setLeaveMenu(false)}>
+        <Pressable style={styles.sheetBack} onPress={() => setLeaveMenu(false)}>
           <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>Uscire dal canale?</Text>
+            <Text style={styles.sheetTitle}>{t('channel.leaveTitle')}</Text>
             <TouchableOpacity
               style={styles.sheetRow}
               onPress={(e) => {
-                firmaTocco('esci-resto', e);
-                if (daIgnorare()) return;
-                setMenuUscita(false);
+                signTouch('leave-stay', e);
+                if (toIgnore()) return;
+                setLeaveMenu(false);
                 onLeave(true);
               }}>
               <View style={styles.sheetText}>
-                <Text style={styles.sheetLabel}>Esci e resta available</Text>
-                <Text style={styles.sheetNota}>
-                  Il canale si chiude, ma resti raggiungibile e il suo notice
-                  ti arriva.
-                </Text>
+                <Text style={styles.sheetLabel}>{t('channel.leaveStay')}</Text>
+                <Text style={styles.sheetNote}>{t('channel.leaveStayNote')}</Text>
               </View>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.sheetRow}
               onPress={(e) => {
-                firmaTocco('esci-staccato', e);
-                if (daIgnorare()) return;
-                setMenuUscita(false);
+                signTouch('leave-detach', e);
+                if (toIgnore()) return;
+                setLeaveMenu(false);
                 onLeave(false);
               }}>
               <View style={styles.sheetText}>
-                <Text style={styles.sheetLabel}>Esci e renditi non available</Text>
-                <Text style={styles.sheetNota}>
-                  Duetto si stacca del tutto: niente avvisi, niente notifica,
-                  e all’altro risulti non raggiungibile. Finché non riapri
-                  l’app.
-                </Text>
+                <Text style={styles.sheetLabel}>{t('channel.leaveDetach')}</Text>
+                <Text style={styles.sheetNote}>{t('channel.leaveDetachNote')}</Text>
               </View>
             </TouchableOpacity>
-            {/* Esplicita, per chi ci è finito senza volerlo: toccare
-                fuori funziona, ma è una cosa da sapere, e chi si trova
-                davanti questa domanda senza averla chiesta non la sa. */}
+            {/* Spelled out, for whoever ended up here without meaning
+                to: touching outside works, but that is something one
+                has to know, and whoever finds this question in front of
+                them without having asked for it does not. */}
             <TouchableOpacity
               style={styles.sheetRow}
-              onPress={(e) => { firmaTocco('esci-annulla', e); setMenuUscita(false); }}>
+              onPress={(e) => { signTouch('leave-cancel', e); setLeaveMenu(false); }}>
               <View style={styles.sheetText}>
-                <Text style={styles.sheetLabel}>Resta nel canale</Text>
+                <Text style={styles.sheetLabel}>{t('channel.stayInChannel')}</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -1227,13 +1215,13 @@ export default function ChannelScreen(props: Props) {
         onRequestClose={() => setRouteMenu(false)}>
         <Pressable style={styles.sheetBack} onPress={() => setRouteMenu(false)}>
           <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>Uscita audio</Text>
+            <Text style={styles.sheetTitle}>{t('channel.audioOutput')}</Text>
             {audioRoutes.map((r) => (
               <TouchableOpacity
                 key={r}
                 style={styles.sheetRow}
                 onPress={() => { onSelectRoute(r); setRouteMenu(false); }}>
-                {React.createElement(ICONA_USCITA[r], { size: 22, color: '#e6ebf1' })}
+                {React.createElement(OUTPUT_ICON[r], { size: 22, color: '#e6ebf1' })}
                 <Text style={[styles.sheetLabel, r === audioRoute && styles.sheetLabelOn]}>
                   {routeLabel(r)}
                 </Text>
@@ -1241,54 +1229,47 @@ export default function ChannelScreen(props: Props) {
               </TouchableOpacity>
             ))}
             {audioRoutes.length < 2 ? (
-              <Text style={styles.sheetHint}>
-                Collega cuffie o un dispositivo Bluetooth per avere altre scelte.
-              </Text>
+              <Text style={styles.sheetHint}>{t('channel.moreOutputsHint')}</Text>
             ) : null}
 
-            {/* Il volume della voce dell'altro, dentro l'app.
-                I tasti laterali fanno la stessa cosa; questo serve
-                quando si vuole vedere dove si è, e per i telefoni dove
-                i tasti sembrano non fare niente.
+            {/* The volume of the other person's voice, inside the app.
+                The side keys do the same thing; this is for when one
+                wants to see where one stands, and for the phones where
+                the keys seem to do nothing.
 
-                Attenzione a non confonderlo con la percentuale sulla
-                pastiglia «Non tu», che è l'altra metà: lì c'è il volume
-                a cui LUI sente TE. Questo è quanto tu senti lui. */}
-            <Text style={styles.sheetTitle}>Voce dell’altro</Text>
+                Not to be confused with the percentage on the "Not you"
+                pill, which is the other half: that one is the volume at
+                which THEY hear YOU. This is how loud you hear them. */}
+            <Text style={styles.sheetTitle}>{t('channel.peerVoice')}</Text>
             <View style={styles.sheetRow}>
               <TouchableOpacity
-                style={styles.passo}
+                style={styles.step}
                 onPress={() => onChangeLevel?.(-1)}>
-                <Text style={styles.passoSegno}>−</Text>
+                <Text style={styles.stepSign}>−</Text>
               </TouchableOpacity>
-              <Text style={styles.passoValore}>
+              <Text style={styles.stepValue}>
                 {peerGain === 0
-                  ? 'muto'
+                  ? t('channel.muted')
                   : `${Math.round((peerGain ?? 1) * 100)}%`}
               </Text>
               <TouchableOpacity
-                style={styles.passo}
+                style={styles.step}
                 onPress={() => onChangeLevel?.(+1)}>
-                <Text style={styles.passoSegno}>+</Text>
+                <Text style={styles.stepSign}>+</Text>
               </TouchableOpacity>
             </View>
             {showStats && systemVolume && systemVolume.max > 0 ? (
-              // Le due metà, per chi guarda i numeri: il volume di
-              // chiamata del telefono e quanto Duetto ci moltiplica
-              // sopra. Il totale è la percentuale qui sopra.
+              // The two halves, for whoever looks at the numbers: the
+              // phone's call volume and how much Duetto multiplies on
+              // top of it. The total is the percentage above.
               <Text style={styles.sheetMeta}>
-                telefono {systemVolume.volume}/{systemVolume.max}
+                {t('channel.phoneVolume', { volume: systemVolume.volume, max: systemVolume.max })}
                 {systemVolume.volume >= systemVolume.max && (peerGain ?? 1) > 1
                   ? `  ·  Duetto ×${(peerGain ?? 1).toFixed(2).replace(/0$/, '')}`
                   : ''}
               </Text>
             ) : null}
-            <Text style={styles.sheetHint}>
-              È il volume a cui stai sentendo l’altro: il volume di chiamata del
-              telefono, e quando quello è al massimo Duetto continua ad alzare
-              per conto suo. Funziona anche dove i tasti del volume non cambiano
-              niente.
-            </Text>
+            <Text style={styles.sheetHint}>{t('channel.voiceHint')}</Text>
           </View>
         </Pressable>
       </Modal>
@@ -1297,45 +1278,45 @@ export default function ChannelScreen(props: Props) {
 }
 
 /**
- * Come sta l'altro mentre lo si aspetta, in una riga.
+ * How the other person is while one waits for them, in one line.
  *
- * "In attesa" vuol dire collegato al server e raggiungibile
- * dall'notice; "non raggiungibile" vuol dire che il suo telefono al
- * server non è collegato, e allora l'notice non ha dove andare. Sono le
- * stesse parole della notifica, di proposito: sono la stessa cosa.
+ * "Waiting" means connected to the server and reachable by a call;
+ * "unreachable" means their phone is not connected to the server, and
+ * then the call has nowhere to go. They are the notification's own
+ * words, on purpose: they are the same thing.
  */
-function comeSta(nome: string, presente: boolean, staccato = false): string {
-  const chi = nome || 'L’altro';
-  if (presente) return `${chi} è in attesa`;
-  return staccato
-    ? `${chi} si è reso non raggiungibile`
-    : `${chi} non è raggiungibile`;
+function peerStatusLine(name: string, present: boolean, detached = false): string {
+  const who = name || t('channel.theOther');
+  if (present) return t('channel.peerIsWaiting', { who });
+  return detached
+    ? t('channel.peerMadeUnreachable', { who })
+    : t('channel.peerUnreachable', { who });
 }
 
 /**
- * Lo stesso riepilogo, ridotto a quello che sta in un pollice.
+ * How the other person is, in a couple of words.
  *
- * Serve in Picture-in-Picture: chi ha premuto Indietro non sta
- * leggendo, sta tenendo d'occhio. Una faccia e una parola.
+ * It lives outside the components because two of them use it: the
+ * little summary of the window mode and the label of the empty little
+ * square. Two vocabularies for the same thing, on the same screen,
+ * would be two things to learn instead of one.
  */
-/**
- * Come sta l'altro, in due parole.
- *
- * Sta fuori dai componenti perché la usano in due: il riquadro piccolo
- * della modalità finestrella e l'etichetta del riquadrino vuoto. Due
- * vocabolari diversi per la stessa cosa, nello stesso schermo, sarebbero
- * due cose da imparare invece di una.
- */
-function parolaAltro(
+function peerWord(
   status: PresenceStatus, peerName: string, peerPresent: boolean, peerDetached: boolean,
 ): string {
-  return status === 'connecting' ? 'mi collego\u2026'
-    : status === 'offline' ? 'senza server'
-      : status === 'together' ? (peerName || 'c\u2019\u00e8')
-        : peerDetached ? 'si \u00e8 staccato'
-          : peerPresent ? 'in attesa' : 'non raggiungibile';
+  return status === 'connecting' ? t('channel.connecting')
+    : status === 'offline' ? t('channel.noServer')
+      : status === 'together' ? (peerName || t('channel.here'))
+        : peerDetached ? t('channel.disconnected')
+          : peerPresent ? t('channel.waiting') : t('channel.unreachable');
 }
 
+/**
+ * The same summary, cut down to what fits in a thumb.
+ *
+ * It is for Picture-in-Picture: whoever pressed Back is not reading,
+ * they are keeping an eye. A face and a word.
+ */
 function PresenceMini(props: {
   status: PresenceStatus;
   peerName: string;
@@ -1344,18 +1325,18 @@ function PresenceMini(props: {
   peerDetached: boolean;
 }) {
   const { status, peerName, peerAvatar, peerPresent, peerDetached } = props;
-  const testo = parolaAltro(status, peerName, peerPresent, peerDetached);
-  const iniziale = peerName.trim().charAt(0).toUpperCase();
+  const text = peerWord(status, peerName, peerPresent, peerDetached);
+  const initial = peerName.trim().charAt(0).toUpperCase();
   return (
     <View style={styles.miniCard}>
       <View
         style={[
-          styles.miniFaccia,
+          styles.miniFace,
           { backgroundColor: peerAvatar.color + '33', borderColor: peerAvatar.color },
         ]}>
-        <Text style={styles.miniSimbolo}>{iniziale || peerAvatar.symbol}</Text>
+        <Text style={styles.miniSymbol}>{initial || peerAvatar.symbol}</Text>
       </View>
-      <Text style={styles.miniTesto} numberOfLines={1}>{testo}</Text>
+      <Text style={styles.miniText} numberOfLines={1}>{text}</Text>
     </View>
   );
 }
@@ -1369,23 +1350,23 @@ function PresenceCard(props: {
   peerAudio: boolean;
   peerPresent: boolean;
   peerDetached: boolean;
-  /** è in attesa perché il telefono gli ha chiuso l'app, non per scelta */
+  /** waiting because the phone closed the app on them, not by choice */
   peerTornDown?: boolean;
-  /** il segno dell'uscita audio dell'altro, alla misura del riepilogo */
-  segno: React.ReactNode;
-  /** il nome dato a questo connectionName, se ce n'è più di uno */
+  /** the mark of their audio output, at the summary's size */
+  peerMark: React.ReactNode;
+  /** the name given to this connection, if there is more than one */
   connectionName?: string;
 }) {
   const {
     status, linked, connectionState, peerName, peerAvatar, peerAudio, peerPresent,
-    peerDetached, peerTornDown, segno, connectionName,
+    peerDetached, peerTornDown, peerMark, connectionName,
   } = props;
 
   if (status === 'connecting') {
     return (
       <View style={styles.card}>
         <ActivityIndicator size="large" color="#2f7cf6" />
-        <Text style={styles.cardTitle}>Mi collego al canale...</Text>
+        <Text style={styles.cardTitle}>{t('channel.connectingToChannel')}</Text>
       </View>
     );
   }
@@ -1394,8 +1375,8 @@ function PresenceCard(props: {
     return (
       <View style={styles.card}>
         <Text style={styles.avatarGhost}>{'\u{1F4F6}'}</Text>
-        <Text style={styles.cardTitle}>Server irraggiungibile</Text>
-        <Text style={styles.cardSub}>Riprovo automaticamente...</Text>
+        <Text style={styles.cardTitle}>{t('channel.serverUnreachable')}</Text>
+        <Text style={styles.cardSub}>{t('channel.retryingAutomatically')}</Text>
       </View>
     );
   }
@@ -1405,36 +1386,39 @@ function PresenceCard(props: {
       <View style={styles.card}>
         <PeerFace name={peerName} avatar={peerAvatar} live={false} />
         <Text style={styles.cardTitle}>
-          Sei nel canale
+          {t('channel.youAreInChannelShort')}
           {connectionName ? (
-            <Text style={styles.cardNome}>{'  '}{connectionName}</Text>
+            <Text style={styles.cardName}>{'  '}{connectionName}</Text>
           ) : null}
         </Text>
         <Text style={styles.cardSub}>
-          {comeSta(peerName, peerPresent, peerDetached)}
+          {peerStatusLine(peerName, peerPresent, peerDetached)}
           {peerPresent && peerTornDown ? (
-            // Non è una sua scelta: certi telefoni smontano l'app da
-            // soli, anche di notte, e dirlo evita di attribuirgli una
-            // decisione che non ha preso.
+            // It is not their choice: some phones tear the app down by
+            // themselves, at night too, and saying so keeps us from
+            // crediting them with a decision they never took.
             <>
-              {': il suo telefono gli ha chiuso l’app.'}
-              {'\n'}L’notice gli arriva lo stesso. Tocca{' '}
-              <Text style={styles.bold}>Avvisa</Text> per farglielo sapere.
+              {t('channel.phoneClosedApp')}
+              {'\n'}{t('channel.callArrivesAnyway')}
+              <Text style={styles.bold}>{t('buttons.call')}</Text>
+              {t('channel.touchSuffix')}
             </>
           ) : peerPresent ? (
             <>
-              {': non è nel canale, ma l’notice gli arriva.'}
-              {'\n'}Tocca <Text style={styles.bold}>Avvisa</Text> per farglielo sapere.
+              {t('channel.notInChannelButCall')}
+              {'\n'}{t('channel.touchWord')}
+              <Text style={styles.bold}>{t('buttons.call')}</Text>
+              {t('channel.touchSuffix')}
             </>
           ) : peerDetached ? (
             <>
-              {': ha staccato Duetto di proposito.'}
-              {'\n'}Tornerà raggiungibile quando riaprirà l’app.
+              {t('channel.detachedOnPurpose')}
+              {'\n'}{t('channel.backWhenReopened')}
             </>
           ) : (
             <>
-              {': il suo telefono non è collegato.'}
-              {'\n'}Finché non torna, l’notice non può raggiungerlo.
+              {t('channel.phoneNotConnected')}
+              {'\n'}{t('channel.untilBackNoCall')}
             </>
           )}
         </Text>
@@ -1445,82 +1429,79 @@ function PresenceCard(props: {
   return (
     <View style={styles.card}>
       <PeerFace name={peerName} avatar={peerAvatar} live />
-      <Text style={styles.cardTitle}>{peerName || 'L’altro'} è nel canale</Text>
-      {/* La riga qui sotto dice già se ha il microfono muto, ma non da
-          dove gli esce il suono: il segno lo aggiunge senza allungarla. */}
-      {linked ? <View style={styles.cardSegno}>{segno}</View> : null}
+      <Text style={styles.cardTitle}>
+        {t('channel.peerInChannel', { who: peerName || t('channel.theOther') })}
+      </Text>
+      {/* The line below already says whether their microphone is muted,
+          but not where their sound comes out: the mark adds it without
+          making the line longer. */}
+      {linked ? <View style={styles.cardMark}>{peerMark}</View> : null}
       <Text style={styles.cardSub}>
         {linked
-          ? (peerAudio ? 'Audio collegato · video non attivo' : 'Ha il microfono muto')
+          ? (peerAudio ? t('channel.audioLinkedNoVideo') : t('channel.micMuted'))
           : connectionState === 'failed'
-            ? 'Collegamento diretto non riuscito.\nSenza un server TURN certe reti lo impediscono.'
-            : 'Sto stabilendo la connessione diretta…'}
+            ? t('channel.directFailed')
+            : t('channel.establishingDirect')}
       </Text>
-      {/* Lo stato grezzo aiuta a capire dove si è fermato. */}
+      {/* The raw state helps to see where it stopped. */}
       {linked ? null : (
-        <Text style={styles.cardTiny}>stato: {connectionState}</Text>
+        <Text style={styles.cardTiny}>{t('channel.state', { state: connectionState })}</Text>
       )}
     </View>
   );
 }
 
 /**
- * La faccia dell'altro quando non c'è il suo video.
+ * The resolution and bandwidth really in play, under the controls.
  *
- * Chi non ha messo un nome prima vedeva un punto interrogativo, che sembra
- * un errore. Al suo posto un'immagine generata dalla pairStat: sempre la
- * stessa, quindi diventa "lui" invece di essere un segnaposto.
- *
- * Il nome, se c'è, vince: l'iniziale dice più di un disegno.
+ * The chosen profile is a ceiling, not a promise: how much really goes
+ * through depends on the network and on the scene, and knowing that one
+ * is sending 1080p while receiving 640x352 explains at a glance why the
+ * other person's picture is poor - without having to read a log.
  */
-/**
- * Risoluzione e banda davvero in gioco, sotto ai controls.
- *
- * Il profilo scelto è un tetto, non una promessa: quanto passa davvero
- * dipende dalla rete e dalla scena, e sapere che si sta mandando 1080p
- * mentre si riceve 640x352 spiega in un colpo d'occhio perché l'immagine
- * dell'altro è brutta - senza dover leggere un log.
- */
-function StatsLine({ stats, quality, mostraSu, mostraGiu, versioni }: {
+function StatsLine({ stats, quality, showUp, showDown, versions }: {
   stats: VideoStats;
   quality: string;
-  /** camere davvero accese: le statistiche restano indietro di un campione */
-  mostraSu: boolean;
-  mostraGiu: boolean;
-  /** notice sulle versioni diverse, o `null` se sono uguali */
-  versioni?: string | null;
+  /** cameras really on: the statistics lag by one sample */
+  showUp: boolean;
+  showDown: boolean;
+  /** the warning about different versions, or `null` if they match */
+  versions?: string | null;
 }) {
   const fmt = (v?: { w: number; h: number; fps: number; kbps: number | null }) => {
     if (!v || !v.w || !v.h) return null;
-    // In byte al secondo: è l'unità con cui si guarda il consumo di dati,
-    // ed è anche più corta da leggere di sfuggita sotto ai pulsanti.
+    // In bytes per second: it is the unit one watches data use in, and
+    // it is also shorter to read in passing under the buttons.
     const kBs = v.kbps === null ? null : v.kbps / 8;
-    const banda = kBs === null ? '' :
+    const band = kBs === null ? '' :
       kBs >= 1000 ? `·${(kBs / 1000).toFixed(1)}MB/s` : `·${Math.round(kBs)}kB/s`;
-    return `${v.w}×${v.h}·${v.fps}fps${banda}`;
+    return `${v.w}×${v.h}·${v.fps}fps${band}`;
   };
-  // Spegnendo una camera il suo flusso RTP resta fra le statistiche con
-  // le ultime dimensioni viste: senza questo filtro la riga continuerebbe
-  // a dichiarare una risoluzione che non sta più passando.
-  const su = mostraSu ? fmt(stats.out) : null;
-  const giu = mostraGiu ? fmt(stats.in) : null;
-  // Il profilo si mostra sempre, anche a video spento: è la scelta che
-  // spiega i numeri accanto, e senza sembrerebbero venire dal nulla.
+  // Switching a camera off leaves its RTP stream among the statistics
+  // with the last sizes seen: without this filter the line would go on
+  // declaring a resolution that is no longer going anywhere.
+  const up = showUp ? fmt(stats.out) : null;
+  const down = showDown ? fmt(stats.in) : null;
   /**
-   * Da dove passa il traffico.
+   * Which way the traffic goes.
    *
-   * Con i due telefoni su reti diverse è il dato che spiega tutto il
-   * resto: se la banda è asimmetrica o l'immagine è brutta, "relay" dice
-   * subito che è la strada e non il telefono. Leggerlo dal log a casa
-   * dell'altra persona non è praticabile.
+   * With the two phones on different networks it is the figure that
+   * explains all the rest: if the bandwidth is lopsided or the picture
+   * is poor, "relay" says at once that it is the road and not the
+   * phone. Reading it from a log in the other person's house is not
+   * practicable.
+   *
+   * The latency holds without video too: it is shown along with the
+   * path. The profile is always shown, with the video off as well: it
+   * is the choice that explains the numbers beside it, which would
+   * otherwise seem to come from nowhere.
    */
-  // La latency vale anche senza video: si mostra insieme al path.
-  const strada = stats.path === 'local'
-    ? 'diretto, stessa rete'
+  const path = stats.path === 'local'
+    ? t('channel.pathLocal')
     : stats.path === 'direct'
-      ? 'diretto tra i telefoni'
+      ? t('channel.pathDirect')
       : stats.path === 'relay'
-        ? 'passa dal server'
+        ? t('channel.pathRelay')
         : null;
 
   return (
@@ -1528,38 +1509,48 @@ function StatsLine({ stats, quality, mostraSu, mostraGiu, versioni }: {
       <Text
         style={styles.stats}
         numberOfLines={1}
-        // Con due video accesi la riga può non starci: meglio
-        // rimpicciolirla che vederla tagliata a metà parola.
+        // With two videos on the line may not fit: better to shrink it
+        // than to see it cut in the middle of a word.
         adjustsFontSizeToFit
         minimumFontScale={0.6}>
-        {`Risoluzione: ${quality.toLowerCase()}`}
-        {su ? `  \u2191${su}` : ''}
-        {giu ? `  \u2193${giu}` : ''}
+        {t('channel.resolutionLabel', { quality: quality.toLowerCase() })}
+        {up ? `  \u2191${up}` : ''}
+        {down ? `  \u2193${down}` : ''}
       </Text>
-      {versioni ? (
-        <Text style={[styles.stats, styles.statsAvviso]} numberOfLines={1}>
-          {versioni}
+      {versions ? (
+        <Text style={[styles.stats, styles.statsWarning]} numberOfLines={1}>
+          {versions}
         </Text>
       ) : null}
-      {strada || stats.audioKbps != null || stats.latency != null ? (
-        // Come la riga sopra: con la latency in coda finiva fuori dallo
-        // schermo, e una riga tagliata a metà numero non dice niente.
+      {path || stats.audioKbps != null || stats.latency != null ? (
+        // Like the line above: with the latency at its end it went off
+        // the screen, and a line cut in the middle of a number says
+        // nothing.
         <Text
           style={styles.stats}
           numberOfLines={1}
           adjustsFontSizeToFit
           minimumFontScale={0.6}>
-          {strada ? `Collegamento: ${strada}` : ''}
+          {path ? t('channel.linkLabel', { path }) : ''}
           {stats.audioKbps != null
-            ? `${strada ? '   ' : ''}audio ${stats.audioKbps} kbit/s`
+            ? `${path ? '   ' : ''}${t('channel.audioRate', { kbps: stats.audioKbps })}`
             : ''}
-          {stats.latency != null ? `   latency a/r ${stats.latency} ms` : ''}
+          {stats.latency != null ? `   ${t('channel.latency', { ms: stats.latency })}` : ''}
         </Text>
       ) : null}
     </>
   );
 }
 
+/**
+ * The other person's face when their video is not there.
+ *
+ * Whoever had not set a name used to see a question mark, which looks
+ * like an error. In its place a picture made from the pair: always the
+ * same one, so it becomes "them" instead of being a placeholder.
+ *
+ * The name, if there is one, wins: an initial says more than a drawing.
+ */
 function PeerFace({ name, avatar, live }: { name: string; avatar: Avatar; live: boolean }) {
   const initial = name.trim().charAt(0).toUpperCase();
   return (
@@ -1577,39 +1568,40 @@ function PeerFace({ name, avatar, live }: { name: string; avatar: Avatar; live: 
 }
 
 /**
- * Un comando rotondo, e la firma del tocco che lo ha premuto.
+ * A round control, and the signature of the touch that pressed it.
  *
- * Il diario registra ogni pressione con il punto dello schermo e quanto
- * e' durato il contatto, perche' su un telefono lontano e' l'unico modo
- * di sapere COSA e' arrivato all'app. Serve a una domanda precisa: da
- * giorni compaiono uscite dal canale che nessuno ha premuto, e nel
- * codice quella riga ha una sorgente sola, il tocco su questo pulsante.
- * Un dito lascia una firma riconoscibile - coordinate un po' diverse
- * ogni volta, contatto di decine o centinaia di millisecondi - che un
- * tocco sintetico o un fantasma del digitalizzatore non hanno.
+ * The journal records every press with the point on the screen and how
+ * long the contact lasted, because on a distant phone that is the only
+ * way of knowing WHAT reached the app. It serves one precise question:
+ * for days exits from the channel have been appearing that nobody
+ * pressed, and in the code that line has a single source, a touch on
+ * this button. A finger leaves a recognisable signature - slightly
+ * different coordinates every time, a contact of tens or hundreds of
+ * milliseconds - which a synthetic touch or a ghost of the digitiser
+ * do not have.
  */
 function CircleButton(props: {
   label: string;
   icon: React.ReactNode;
-  /** lo schermo è coperto: si segna accanto al tocco */
-  coperto?: boolean;
+  /** the screen is covered: it is noted beside the touch */
+  covered?: boolean;
   onPress: () => void;
   onLongPress?: () => void;
-  /** piccolo simbolo d'angolo: usato per l'uscita audio attiva */
+  /** a small corner symbol: used for the audio output in use */
   badge?: (p: { size?: number; color?: string }) => JSX.Element;
   active?: boolean;
   highlight?: boolean;
   danger?: boolean;
   disabled?: boolean;
 }) {
-  const giu = useRef<{ t: number; x: number; y: number } | null>(null);
-  const firma = (che: string) => {
-    const g = giu.current;
+  const down = useRef<{ t: number; x: number; y: number } | null>(null);
+  const sign = (what: string) => {
+    const g = down.current;
     const x = Math.round(g?.x ?? -1);
     const y = Math.round(g?.y ?? -1);
-    const durata = g ? Date.now() - g.t : -1;
+    const held = g ? Date.now() - g.t : -1;
     Diario.segna(
-      `comando:${che} ${x},${y} dopo ${durata}ms coperto=${props.coperto ? 'si' : 'no'}`,
+      `command:${what} ${x},${y} after ${held}ms covered=${props.covered ? 'yes' : 'no'}`,
     ).catch(() => { /* noop */ });
   };
 
@@ -1617,31 +1609,32 @@ function CircleButton(props: {
     <TouchableOpacity
       style={styles.ctrlItem}
       onPressIn={(e) => {
-        giu.current = {
+        down.current = {
           t: Date.now(),
           x: e.nativeEvent.pageX,
           y: e.nativeEvent.pageY,
         };
       }}
       onPress={() => {
-        firma(props.label.toLowerCase());
+        sign(props.label.toLowerCase());
         props.onPress();
       }}
       onLongPress={props.onLongPress
-        ? () => { firma(`${props.label.toLowerCase()}-lungo`); props.onLongPress?.(); }
+        ? () => { sign(`${props.label.toLowerCase()}-long`); props.onLongPress?.(); }
         : undefined}
       delayLongPress={350}
       disabled={props.disabled}
       activeOpacity={0.6}>
-      {/* Il simbolo d'angolo sta FUORI dalla pastiglia, che ritaglia
-          quello che contiene: dentro, sporgendo, verrebbe tagliato a
-          metà. La scatola tiene i due insieme. */}
+      {/* The corner symbol lives OUTSIDE the pill, which clips what it
+          contains: inside, jutting out, it would be cut in half. The
+          box holds the two together. */}
       <View style={styles.circleBox}>
         <View
           style={[
             styles.circle,
-            // Come su Discord: l'icona sta nuda sul pannello, e prende uno
-            // sfondo solo quando la funzione è spenta o va evidenziata.
+            // As on Discord: the icon sits bare on the panel, and takes
+            // a background only when the function is off or is to be
+            // brought forward.
             props.danger
               ? styles.circleDanger
               : props.highlight
@@ -1672,21 +1665,21 @@ const styles = StyleSheet.create({
     width: 108, height: 108, borderRadius: 54,
     alignItems: 'center', justifyContent: 'center', marginBottom: 20, borderWidth: 3,
   },
-  /** il colore proprio resta: dentro il canale cambia solo l'anello */
+  /** its own colour stays: inside the channel only the ring changes */
   avatarLive: { borderColor: '#38d16a' },
   avatarText: { color: '#e6ebf1', fontSize: 42, fontWeight: '700' },
   avatarSymbol: { fontSize: 52 },
   statsBox: { height: 36, justifyContent: 'center' },
-  /** con l'notice sulle versioni le righe diventano tre */
-  statsBoxTre: { height: 54 },
+  /** with the warning about versions the lines become three */
+  statsBoxThree: { height: 54 },
   /**
-   * Le righe tecniche devono restare leggibili anche attenuate.
+   * The technical lines have to stay legible even when faded.
    *
-   * Erano di un grigio da nota a piè di pagina: giusto a pieno schermo,
-   * illeggibile appena i controls cominciano a farsi da parte, perché
-   * l'attenuazione moltiplica quel poco contrasto che c'era. Ora sono
-   * di un grigio chiaro, con un'ombra scura sotto che le stacca anche
-   * quando il pannello dietro è quasi sparito.
+   * They used to be a footnote grey: right at full brightness,
+   * unreadable as soon as the controls begin to step aside, because
+   * fading multiplies what little contrast there was. Now they are a
+   * light grey, with a dark shadow under them that sets them apart even
+   * when the panel behind has all but gone.
    */
   stats: {
     color: '#c9d2de', fontSize: 11, textAlign: 'center',
@@ -1695,87 +1688,87 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
-  /** giallo da notice: è l'unica riga tecnica che chiede di essere letta */
-  statsAvviso: { color: '#e8b33a', fontWeight: '700' },
+  /** warning yellow: the one technical line that asks to be read */
+  statsWarning: { color: '#e8b33a', fontWeight: '700' },
   avatarGhost: { fontSize: 54, marginBottom: 16 },
   cardTitle: { color: '#e6ebf1', fontSize: 21, fontWeight: '700', textAlign: 'center' },
   cardSub: { color: '#8892a0', fontSize: 15, textAlign: 'center', marginTop: 10, lineHeight: 22 },
   bold: { color: '#c9d2de', fontWeight: '700' },
-  // Come l'notice di VideoStage: una pastiglia al centro, non una fascia,
-  // così sotto resta visibile il più possibile dell'immagine.
-  uscendoSopra: {
+  // Like VideoStage's notice: a pill in the middle, not a band, so
+  // that as much of the picture as possible stays visible under it.
+  leavingOver: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(11,14,20,0.82)',
     alignItems: 'center', justifyContent: 'center',
     zIndex: 10,
   },
-  uscendoTesto: {
+  leavingText: {
     color: '#e6ebf1', fontSize: 16, fontWeight: '600',
   },
-  volumeSopra: {
+  volumeOver: {
     position: 'absolute', left: 0, right: 0, top: '46%', alignItems: 'center',
   },
-  volumeTesto: {
+  volumeText: {
     color: '#e6ebf1', fontSize: 15, fontWeight: '600',
     backgroundColor: 'rgba(0,0,0,0.72)', borderRadius: 18, overflow: 'hidden',
     paddingVertical: 10, paddingHorizontal: 20,
   },
-  volumeCifra: { color: '#7cc4ff', fontWeight: '800' },
-  notiziaSopra: {
+  volumeFigure: { color: '#7cc4ff', fontWeight: '800' },
+  newsOver: {
     position: 'absolute',
     backgroundColor: 'rgba(20,26,36,0.94)', borderRadius: 14,
     paddingVertical: 12, paddingHorizontal: 16,
     borderWidth: 1, borderColor: '#2f7cf6',
   },
-  notiziaTesto: { color: '#e6ebf1', fontSize: 14.5, lineHeight: 20 },
-  notiziaVia: { color: '#6b7686', fontSize: 12, marginTop: 6 },
-  attesaSopra: {
+  newsText: { color: '#e6ebf1', fontSize: 14.5, lineHeight: 20 },
+  newsDismiss: { color: '#6b7686', fontSize: 12, marginTop: 6 },
+  waitOver: {
     position: 'absolute', left: 0, right: 0, top: '42%',
     alignItems: 'center', paddingHorizontal: 24,
   },
-  attesaTesto: {
+  waitText: {
     color: '#e6ebf1', fontSize: 15, textAlign: 'center', lineHeight: 21,
     backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 20,
     paddingVertical: 10, paddingHorizontal: 18, overflow: 'hidden',
   },
   cardTiny: { color: '#4a5462', fontSize: 12, marginTop: 10 },
-  cardSegno: { marginTop: 12 },
-  cardSegnoRiga: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  cardMark: { marginTop: 12 },
+  cardMarkRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   cardVolume: { color: '#7d8794', fontSize: 13 },
 
   miniCard: { alignItems: 'center', paddingHorizontal: 10 },
-  miniFaccia: {
+  miniFace: {
     width: 34, height: 34, borderRadius: 17, borderWidth: 2,
     alignItems: 'center', justifyContent: 'center', marginBottom: 6,
   },
-  miniSimbolo: { color: '#e6ebf1', fontSize: 15, fontWeight: '700' },
-  miniTesto: { color: '#c9d2de', fontSize: 11, fontWeight: '600' },
+  miniSymbol: { color: '#e6ebf1', fontSize: 15, fontWeight: '700' },
+  miniText: { color: '#c9d2de', fontSize: 11, fontWeight: '600' },
 
   topBar: {
     position: 'absolute', top: 14, left: 14, right: 14,
     flexDirection: 'row', alignItems: 'center', gap: 8,
   },
-  chiRiga: { position: 'absolute', flexDirection: 'row', alignItems: 'center', gap: 8 },
-  chiBadge: {
+  whoRow: { position: 'absolute', flexDirection: 'row', alignItems: 'center', gap: 8 },
+  whoBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 14,
     paddingHorizontal: 10, paddingVertical: 5,
   },
-  chiText: { color: '#e6ebf1', fontSize: 12.5, fontWeight: '700' },
-  /** il nome del connectionName: è un nome, non una parola dell'app */
-  badgeNome: { fontStyle: 'italic' },
-  /** lo stesso nome, nel riepilogo al centro */
-  cardNome: { fontStyle: 'italic', fontWeight: '400', color: '#9fb4c8' },
-  /** le due metà del level, sotto al numero, con le righe tecniche */
+  whoText: { color: '#e6ebf1', fontSize: 12.5, fontWeight: '700' },
+  /** the connection's name: it is a name, not a word of the app's */
+  badgeName: { fontStyle: 'italic' },
+  /** the same name, in the summary in the middle */
+  cardName: { fontStyle: 'italic', fontWeight: '400', color: '#9fb4c8' },
+  /** the two halves of the level, under the number, with the technical lines */
   sheetMeta: {
     color: '#7d8794', fontSize: 12.5, textAlign: 'center', marginTop: 2,
   },
-  /** la pastiglia dell'audio proprio: c'è ma non compete con la prima */
-  chiBadgeAudio: { backgroundColor: 'rgba(0,0,0,0.42)' },
-  chiTextTenue: { color: '#9fb4c8', fontSize: 12, fontWeight: '600' },
-  /** la percentuale accanto al segno dell'uscita, quando le righe
-   *  tecniche sono accese */
-  pastigliaVolume: { color: '#9fb4c8', fontSize: 11, fontWeight: '700' },
+  /** one's own audio pill: it is there but does not compete with the first */
+  whoBadgeAudio: { backgroundColor: 'rgba(0,0,0,0.42)' },
+  whoTextFaint: { color: '#9fb4c8', fontSize: 12, fontWeight: '600' },
+  /** the percentage beside the output's mark, when the technical lines
+   *  are on */
+  pillVolume: { color: '#9fb4c8', fontSize: 11, fontWeight: '700' },
   badge: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 18,
@@ -1816,16 +1809,16 @@ const styles = StyleSheet.create({
   sheetIcon: { fontSize: 20 },
   sheetLabel: { color: '#c9d2de', fontSize: 17, flex: 1 },
   sheetText: { flex: 1 },
-  sheetNota: { color: '#6b7686', fontSize: 12.5, marginTop: 2 },
+  sheetNote: { color: '#6b7686', fontSize: 12.5, marginTop: 2 },
   sheetLabelOn: { color: '#7cc4ff', fontWeight: '700' },
   sheetCheck: { color: '#7cc4ff', fontSize: 18, fontWeight: '700' },
-  passo: {
+  step: {
     width: 52, height: 44, borderRadius: 12,
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#1e2531', borderWidth: 1, borderColor: '#2f3846',
   },
-  passoSegno: { color: '#e6ebf1', fontSize: 22, fontWeight: '700' },
-  passoValore: {
+  stepSign: { color: '#e6ebf1', fontSize: 22, fontWeight: '700' },
+  stepValue: {
     flex: 1, textAlign: 'center',
     color: '#7cc4ff', fontSize: 19, fontWeight: '800',
   },
@@ -1839,21 +1832,19 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     paddingTop: 14, paddingBottom: 14, paddingHorizontal: 4,
   },
-  // La linguetta in cima, come nei pannelli che si trascinano.
-
   controls: {
     flexDirection: 'row', justifyContent: 'space-evenly', alignItems: 'flex-start',
   },
   ctrlItem: { alignItems: 'center', flex: 1 },
   /**
-   * La pastiglia di ogni comando.
+   * Each control's pill.
    *
-   * I quattro angoli sono dichiarati uno per uno, e la pastiglia ritaglia
-   * quello che contiene. Con il solo `borderRadius` il pulsante del video
-   * si vedeva quadrato quando si accendeva - solo quello, solo acceso -
-   * e su Android succede: il fondo viene ridisegnato mentre la camera si
-   * apre, e in quel ridisegno il raggio si perde. Dichiararli tutti e
-   * quattro e ritagliare toglie di mezzo la strada che lo perdeva.
+   * The four corners are declared one by one, and the pill clips what
+   * it contains. With `borderRadius` alone the video button showed up
+   * square when it was switched on - that one only, and only when on -
+   * and on Android that happens: the background is redrawn while the
+   * camera opens, and in that redraw the radius is lost. Declaring all
+   * four and clipping takes the road that lost it out of the way.
    */
   circleBox: { width: 48, height: 48 },
   circle: {
@@ -1866,7 +1857,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     alignItems: 'center', justifyContent: 'center',
   },
-  // Spento: sfondo chiaro, come Discord segnala il microfono in muto.
+  // Off: a light background, the way Discord shows a muted microphone.
   circleOn: { backgroundColor: 'rgba(255,255,255,0.92)' },
   circleHighlight: { backgroundColor: '#2f7cf6' },
   circleDanger: { backgroundColor: '#da373c' },

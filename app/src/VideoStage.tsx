@@ -146,9 +146,9 @@ type Props = {
    * Solo per il suo video, ovviamente: sul proprio non direbbe nulla che
    * non si sappia già dai pulsanti.
    */
-  segnoAltro?: React.ReactNode;
+  peerBadge?: React.ReactNode;
   /** lo stesso, per la propria immagine: uscita e volume con cui l'altro ci sente */
-  segnoMio?: React.ReactNode;
+  ownBadge?: React.ReactNode;
   /**
    * Proporzioni del video a schermo intero, `null` se non ce n'è nessuno.
    *
@@ -171,7 +171,7 @@ type Props = {
   /**
    * Tocco sull'immagine grande, riquadrino escluso.
    *
-   * Serve a chi disegna i comandi sopra: un tocco sullo sfondo li mostra
+   * Serve a chi disegna i comandi sopra: un tocco sullo background li mostra
    * o li nasconde. Il riquadrino ne resta fuori perché lì il tocco ha già
    * un significato suo - scambia grande e piccolo.
    */
@@ -184,7 +184,7 @@ type Props = {
    * i due video con un tocco è facile perdere il conto di chi si sta
    * guardando, e il riquadrino da solo non lo dice.
    */
-  onSoloGrande?: (chi: 'tu' | 'altro' | null) => void;
+  onOnlyBig?: (who: 'you' | 'peer' | null) => void;
   /**
    * Cosa scrivere nel riquadrino quando dentro non c'è nessuna immagine.
    *
@@ -194,18 +194,18 @@ type Props = {
    * tornare, ma non quando è nel canale con la camera spenta o non è
    * raggiungibile affatto.
    */
-  etichettaVuoto?: string;
+  emptyLabel?: string;
 };
 
 export default function VideoStage(props: Props) {
   const {
     localStream, remoteStream, localHasVideo, remoteHasVideo,
-    localAspect, remoteAspect, remoteVideoKey, compact, placeholder, segnoAltro, segnoMio,
-    specchia = true, onZoom, etichettaVuoto,
+    localAspect, remoteAspect, remoteVideoKey, compact, placeholder, peerBadge, ownBadge,
+    specchia = true, onZoom, emptyLabel,
     awaitingRemote, notice,
   } = props;
   const { width, height } = useWindowDimensions();
-  const { onBigAspect, insetV = 0, insetH = 0, insetBasso = 0, onSfondo, onSoloGrande } = props;
+  const { onBigAspect, insetV = 0, insetH = 0, insetBasso = 0, onSfondo, onOnlyBig } = props;
 
   // false = l'altro è grande (default), true = sono io ad essere grande
   const [selfBig, setSelfBig] = useState(false);
@@ -303,9 +303,9 @@ export default function VideoStage(props: Props) {
   useEffect(() => { onBigAspect?.(bigAspect); }, [bigAspect, onBigAspect]);
 
   const soloGrande = bigStream
-    ? (bigIsSelf ? 'tu' : 'altro') as 'tu' | 'altro'
+    ? (bigIsSelf ? 'you' : 'peer') as 'you' | 'peer'
     : null;
-  useEffect(() => { onSoloGrande?.(soloGrande); }, [soloGrande, onSoloGrande]);
+  useEffect(() => { onOnlyBig?.(soloGrande); }, [soloGrande, onOnlyBig]);
 
   // Le proporzioni sono SEMPRE quelle della camera che il riquadrino mostra.
   const pipAspect =
@@ -951,9 +951,9 @@ export default function VideoStage(props: Props) {
           )}
           <View style={styles.pipTag} pointerEvents="none">
             <Text style={styles.pipTagText}>
-              {pipStream ? (pipIsSelf ? 'Tu' : 'Non tu') : (etichettaVuoto || 'in attesa')}
+              {pipStream ? (pipIsSelf ? 'Tu' : 'Non tu') : (emptyLabel || 'in attesa')}
             </Text>
-            {pipIsSelf ? segnoMio : segnoAltro}
+            {pipIsSelf ? ownBadge : peerBadge}
           </View>
         </Animated.View>
       ) : null}
