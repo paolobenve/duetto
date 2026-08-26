@@ -13,107 +13,110 @@ import type { Signaling, SignalMessage } from './signaling';
 import { VERSION } from './version';
 
 /**
- * Sessione del canale: audio sempre, video a richiesta.
+ * The channel session: audio always, video on request.
  *
- * Entrando nel canale si apre SOLO il microfono. La camera viene accesa
- * solo quando la chiedi: così non resta occupata (e l'indicatore privacy
- * di Android non resta acceso) mentre stai nel canale solo per esserci.
+ * Entering the channel opens the microphone ONLY. The camera comes on
+ * when you ask for it: this way it does not stay busy - and Android's
+ * privacy indicator does not stay lit - while you are in the channel
+ * merely to be there.
  *
- * Il canale video verso l'altro viene però aperto SUBITO, anche se
- * vuoto: accendere e spegnere la camera si limita a mettere o togliere
- * la traccia al suo interno, senza rinegoziare nulla. È la differenza
- * fra un video che si riaccende sempre e uno che dopo il primo giro
- * mostra uno schermo nero.
+ * The video channel towards the other side, however, is opened AT ONCE,
+ * empty: switching the camera on and off then merely puts a track in or
+ * takes it out, with nothing to renegotiate. It is the difference
+ * between a video that always comes back and one that shows a black
+ * screen after the first round.
  *
- * La "perfect negotiation" resta per le rinegoziazioni che possono
- * comunque capitare: se i due si accavallano, il polite (chi era già
- * nel canale) cede e annulla la propria offerta.
+ * "Perfect negotiation" stays for the renegotiations that can happen
+ * anyway: if two of them cross, the polite side - the one that was
+ * already in the channel - gives way and rolls its own offer back.
  */
 
 export type ChannelEvents = {
   onLocalStream?: (s: MediaStream | null) => void;
   onRemoteStream?: (s: MediaStream | null) => void;
   onConnectionState?: (state: string) => void;
-  /** stato di mic/camera dell'altra persona, con le proporzioni del suo video */
+  /** the other person's mic and camera, with the shape of their video */
   onPeerState?: (st: {
     audio: boolean; video: boolean; aspect?: number; hwVp9?: boolean;
-    /** da dove esce il suono dall'altra parte, se lo dichiara */
-    uscita?: string;
-    /** quale Duetto sta girando di là; assente se è più vecchio di questo campo */
-    versione?: string;
-    /** con quale camera sta riprendendo: 'frontale' o 'posteriore' */
+    /** where the sound comes out over there, if they say so */
+    output?: string;
+    /** which Duetto is running there; missing if older than this field */
+    version?: string;
+    /** which camera is filming: 'front' or 'back' */
     camera?: string;
-    /** quanto forte sta ascoltando NOI: 1 = come glielo mandiamo */
+    /** how loudly they are listening to US: 1 = as we send it */
     volume?: number;
   }) => void;
   /**
-   * Se stiamo ricevendo una traccia video.
+   * Whether we are receiving a video track.
    *
-   * Serve un evento esplicito: le tracce vengono aggiunte DENTRO lo
-   * stesso oggetto MediaStream, quindi rinotificare lo stream non
-   * cambierebbe il riferimento e React non ridisegnerebbe nulla.
+   * An explicit event is needed: tracks are added INSIDE the same
+   * MediaStream object, so notifying the stream again would not change
+   * the reference and React would redraw nothing.
    */
   onRemoteVideo?: (present: boolean) => void;
-  /** cosa sta davvero uscendo ed entrando, per mostrarlo sotto ai comandi */
+  /** what is really going out and coming in, to show under the controls */
   onVideoStats?: (st: VideoStats) => void;
 };
 
 export type VideoStats = {
   /**
-   * Quanto ci mette un pacchetto ad andare e tornare, in millesimi.
+   * How long a packet takes to go and come back, in milliseconds.
    *
-   * È il numero che spiega le conversazioni in cui ci si accavalla: sotto
-   * i 100 non si nota, sopra i 300 si comincia a parlarsi addosso. Lo
-   * misura ICE sulla strada che sta davvero usando, quindi dice anche se
-   * quella strada è buona - un relay dall'altra parte del mondo si vede
-   * qui prima che nell'immagine.
+   * This is the number that explains the conversations where you talk
+   * over each other: under 100 nobody notices, over 300 you start
+   * treading on each other's words. ICE measures it on the road it is
+   * actually using, so it also says whether that road is a good one - a
+   * relay on the other side of the world shows up here before it shows
+   * up in the picture.
    */
-  latenza?: number | null;
+  latency?: number | null;
   out?: { w: number; h: number; fps: number; kbps: number | null };
   in?: { w: number; h: number; fps: number; kbps: number | null };
-  /** quanto sta uscendo di audio: l'unico modo di verificare il tetto */
+  /** how much audio is going out: the only way to check the ceiling */
   audioKbps?: number | null;
-  /** da dove sta passando il traffico, ricalcolato a ogni campione */
-  percorso?: 'locale' | 'diretto' | 'relay';
+  /** which way the traffic is going, worked out at every sample */
+  path?: 'local' | 'direct' | 'relay';
 };
 
-/** Proporzioni di ripiego: anteprima verticale 9:16, il caso più comune. */
+/** Fallback shape: a 9:16 upright preview, the commonest case. */
 export const DEFAULT_ASPECT = 9 / 16;
 
 /**
- * Diagnostica del collegamento.
+ * Diagnostics for the link.
  *
- * Quando la connessione non si stabilisce, dall'esterno si vede solo
- * "sto stabilendo la connessione". Serve sapere DOVE si ferma: se i
- * candidati vengono raccolti, di che tipo sono (host = stessa rete,
- * srflx = visto da fuori tramite STUN, relay = passa dal TURN), e a che
- * punto si blocca lo stato di ICE. Si legge con:
+ * When the connection will not come up, all you see from outside is
+ * "connecting". What is needed is WHERE it stops: whether candidates
+ * are gathered at all, of what kind (host = same network, srflx = seen
+ * from outside through STUN, relay = going through the TURN), and where
+ * the ICE state gets stuck. Read it with:
  *
  *   adb logcat -s ReactNativeJS | grep duetto
  */
 const log = (...args: any[]) => console.log('[duetto-rtc]', ...args);
 
 /**
- * I due tetti della voce, e quando il video li decide da sé.
+ * The two ceilings for the voice, and when the video decides for them.
  *
- * Trentadue kbit/s è il valore attorno a cui Opus manda la voce per
- * impostazione predefinita; sessantaquattro è "voce più ricca", e la
- * differenza si sente. Il di più costa 32 kbit/s.
+ * Thirty-two kbit/s is roughly what Opus sends a voice at by default;
+ * sixty-four is the "richer voice", and you can hear the difference.
+ * The extra costs 32 kbit/s.
  *
- * Le soglie sono quel di più moltiplicato: sopra dieci volte tanto di
- * video - trecentoventi kbit/s - i 32 in più sono il tre per cento del
- * traffico, e tenerli fuori per risparmiare non ha senso. Si torna
- * all'impostazione dell'utente sotto cinque volte tanto, dove il
- * risparmio ricomincia a contare; in mezzo non si cambia nulla, così un
- * video che ondeggia attorno alla soglia non fa rimbalzare il tetto.
+ * The thresholds are that extra, multiplied: above ten times as much
+ * video - three hundred and twenty kbit/s - those extra 32 are three
+ * per cent of the traffic, and holding them back to save something
+ * makes no sense. We go back to the user's setting below five times as
+ * much, where saving starts to count again; in between nothing changes,
+ * so a video wobbling around the threshold does not make the ceiling
+ * bounce.
  */
-const AUDIO_BASE = 32000;
-const AUDIO_RICCO = 64000;
-const AUDIO_EXTRA_KBPS = (AUDIO_RICCO - AUDIO_BASE) / 1000;
-const VIDEO_TANTO = AUDIO_EXTRA_KBPS * 10;
-const VIDEO_POCO = AUDIO_EXTRA_KBPS * 5;
+const AUDIO_PLAIN = 32000;
+const AUDIO_RICH = 64000;
+const AUDIO_EXTRA_KBPS = (AUDIO_RICH - AUDIO_PLAIN) / 1000;
+const VIDEO_HEAVY = AUDIO_EXTRA_KBPS * 10;
+const VIDEO_LIGHT = AUDIO_EXTRA_KBPS * 5;
 
-/** host / srflx / prflx / relay: dice che strada sta tentando ICE. */
+/** host / srflx / prflx / relay: which road ICE is trying. */
 function candidateType(candidate: string): string {
   const m = /(?:^| )typ ([a-z]+)/.exec(candidate || '');
   return m ? m[1] : '?';
@@ -124,79 +127,76 @@ export class ChannelSession {
   private localStream: MediaStream | null = null;
   private remoteStream: MediaStream | null = null;
   private videoSender: any = null;
-  /** noi stiamo guardando lo schermo: lo diciamo all'altro */
+  /** we are looking at the screen: we tell the other side */
   private localWatching = true;
   /**
-   * L'altro sta guardando. Si parte da `true` e si scende solo su
-   * comunicazione esplicita: una build vecchia, o un messaggio perso,
-   * devono lasciare il video acceso, non spegnerlo per sempre.
+   * The other side is looking. It starts at `true` and only comes down
+   * on an explicit message: an older build, or a message lost on the
+   * way, must leave the video on rather than switch it off for good.
    */
   private peerWatching = true;
-  /** `degradationPreference` si scrive una volta sola, mai a caldo */
+  /** `degradationPreference` is written once, never while running */
   private degradationSet = false;
-  /** ultimi campioni per calcolare il bitrate reale fra due letture */
+  /** the last samples, to work out the real bitrate between two reads */
   private lastOutbound: { ts: number; bytes: number } | null = null;
   private lastInbound: { ts: number; bytes: number } | null = null;
   private lastAudioOut: { ts: number; bytes: number } | null = null;
-  /** una riga nel log ogni tanto, ma il pannello si aggiorna spesso */
+  /** a line in the log now and then, while the panel refreshes often */
   private statsTicks = 0;
 
   /**
-   * Il video in corso sposta molti più dati della voce.
+   * The video running moves far more data than the voice.
    *
-   * Quando è così, il tetto basso dell'audio non fa risparmiare niente
-   * di apprezzabile - trentadue kbit/s in più accanto a mezzo megabit di
-   * video sono rumore di fondo - e in cambio la voce suona peggio, che è
-   * la cosa per cui si è aperto il canale. Allora si alza da sé, senza
-   * toccare l'impostazione: quella resta com'è, e torna a comandare
-   * appena il video si spegne o si riduce a un filo.
+   * When it does, the low audio ceiling saves nothing worth having -
+   * thirty-two kbit/s next to half a megabit of video is background
+   * noise - and in exchange the voice sounds worse, which is the thing
+   * the channel was opened for. So it lifts itself, without touching
+   * the setting: that stays as it is, and takes charge again as soon as
+   * the video goes off or thins out.
    *
-   * Con isteresi larga: un video che oscilla attorno alla soglia
-   * cambierebbe il tetto avanti e indietro, e ogni cambio è una
-   * rinegoziazione dei parametri dell'encoder.
+   * With wide hysteresis: a video swinging around the threshold would
+   * push the ceiling back and forth, and every change is a
+   * renegotiation of the encoder's parameters.
    */
-  private videoAbbondante = false;
+  private heavyVideo = false;
   private statsTimer: ReturnType<typeof setInterval> | null = null;
-  /** l'altro dichiara la camera accesa: lo dice il messaggio `state` */
+  /** the other side says its camera is on: the `state` message tells us */
   private peerVideoDeclared = false;
 
   /**
-   * Quale camera si usa. Vale anche a video spento, così si può
-   * sceglierla prima di accendere, e sopravvive a una riapertura della
-   * camera (cambio di risoluzione).
-   */
-  /**
-   * Con quale camera si riprende.
+   * Which camera films.
    *
-   * Il valore di partenza viene dalle impostazioni del collegamento:
-   * prima ogni sessione ripartiva dalla frontale, e chi inquadrava
-   * qualcos'altro doveva rigirarla ogni volta.
+   * The starting value comes from the connection's settings: every
+   * session used to start from the front one, and whoever was pointing
+   * at something else had to turn it round every time. It holds with
+   * the video off too, so you can pick before switching on, and it
+   * survives the camera being reopened at a change of resolution.
    */
   private frontCamera: boolean;
 
   /**
-   * Microfono acceso o muto, come lo vuole chi usa l'app. Vale anche
-   * prima che il microfono venga aperto: aspettando l'altro la traccia
-   * non c'è ancora, ma la scelta sì.
+   * Microphone on or muted, as whoever uses the app wants it. It holds
+   * before the microphone is even opened: while waiting for the other
+   * person there is no track yet, but there is a choice.
    */
   private audioDesired = true;
 
   /**
-   * Da dove esce il suono da questa parte: vivavoce, orecchio, cuffie,
-   * bluetooth. Serve solo per dirlo all'altro, che altrimenti lo deve
-   * chiedere a voce.
+   * Where the sound comes out on this side: speaker, earpiece,
+   * headphones, bluetooth. Only used to tell the other person, who
+   * would otherwise have to ask out loud.
    */
-  private uscitaLocale = 'SPEAKER_PHONE';
+  private ourOutput = 'SPEAKER_PHONE';
 
-  /** Creazione della connessione in corso: chi arriva dopo aspetta questa. */
-  private inCreazione: Promise<void> | null = null;
+  /** A connection is being built: whoever arrives later waits for this. */
+  private creating: Promise<void> | null = null;
 
   /**
-   * Avanza a ogni smontaggio. Una creazione cominciata prima e finita
-   * dopo è roba vecchia: senza questo numero rimetterebbe in piedi la
-   * connessione che qualcuno aveva appena deciso di buttare.
+   * Bumped at every teardown. A build started before and finished after
+   * is stale goods: without this number it would put back up the
+   * connection somebody had just decided to throw away.
    */
-  private generazione = 0;
+  private generation = 0;
   /** questo telefono sa encodare VP9 in hardware */
   private localVp9 = false;
   /** lo sa fare anche l'altro: VP9 ha senso solo se entrambi */
@@ -222,37 +222,38 @@ export class ChannelSession {
   ) {
     this.frontCamera = cfg.frontCamera !== false;
     /**
-     * Il guadagno parte da quello salvato per l'uscita in uso.
+     * The gain starts from the one saved for the output in use.
      *
-     * Serve perché la prima dichiarazione di stato parte prima che l'app
-     * abbia avuto tempo di riapplicarlo: senza, annuncerebbe un livello
-     * che questo telefono non sta usando, e la correzione è un messaggio
-     * in più che può perdersi.
+     * It matters because the first state message goes out before the
+     * app has had time to apply it again: without this it would
+     * announce a level this phone is not using, and the correction is
+     * one more message that can get lost.
      */
-    this.guadagnoAltro = cfg.gains?.[cfg.audioOutput] ?? 1;
-    this.livelloUdito = this.guadagnoAltro;
+    this.peerGain = cfg.gains?.[cfg.audioOutput] ?? 1;
+    this.heardLevel = this.peerGain;
   }
 
   // --- Ingresso nel canale -------------------------------------------------
 
   /**
-   * Apre il microfono, se non è già aperto.
+   * Opens the microphone, if it is not open already.
    *
-   * Non si apre entrando nel canale ma quando serve davvero, cioè
-   * quando dall'altra parte c'è qualcuno con cui parlare. Chi entra per
-   * primo può aspettare a lungo, e in quell'attesa il percorso audio del
-   * telefono resterebbe acceso a registrare per nessuno: corrente
-   * consumata, e l'indicatore di ascolto di Android acceso senza che
-   * nessuno stia ascoltando.
+   * It is not opened on entering the channel but when it is really
+   * needed, that is, when there is somebody on the other side to talk
+   * to. Whoever comes in first may wait a long time, and through that
+   * wait the phone's audio path would stay on, recording for nobody:
+   * current spent, and Android's listening indicator lit with nobody
+   * listening.
    *
-   * La chiamano attachPeer (l'altro è arrivato) e enableVideo.
+   * Called by attachPeer - the other person has arrived - and by
+   * enableVideo.
    */
   private async ensureMic(): Promise<void> {
     if (this.localStream) return;
     const stream = await mediaDevices.getUserMedia({ audio: true, video: false });
-    // Il microfono può nascere già muto: si può premere "Muto" mentre si
-    // aspetta, e quella scelta deve valere anche per la traccia che
-    // ancora non esisteva.
+    // The microphone can be born muted: "Mute" can be pressed while
+    // waiting, and that choice has to hold for the track that did not
+    // exist yet.
     const track = stream.getAudioTracks()[0];
     if (track) track.enabled = this.audioDesired;
     this.localStream = stream;
@@ -260,26 +261,27 @@ export class ChannelSession {
   }
 
   /**
-   * Quanto alzare la voce dell'altro dentro WebRTC.
+   * How far to lift the other voice inside WebRTC.
    *
-   * Serve dove il volume di chiamata del telefono non si muove - in
-   * vivavoce, su parecchi modelli, e' inchiodato al massimo dal
-   * produttore. Questo guadagno non chiede niente al telefono: moltiplica
-   * il segnale prima che esca. 1 = com'e' arrivato.
+   * It is needed where the phone's call volume does not move - on
+   * speaker, on plenty of models, it is nailed to the top by the
+   * manufacturer. This gain asks the phone for nothing: it multiplies
+   * the signal before it goes out. 1 = as it arrived.
    */
-  private guadagnoAltro = 1;
+  private peerGain = 1;
 
   /**
-   * Il livello a cui stiamo sentendo l'altro, da dichiarare a lui.
+   * The level at which we are hearing the other side, to be declared to
+   * them.
    *
-   * Non è il guadagno: è il prodotto fra il volume di chiamata del
-   * telefono e il guadagno, cioè quello che si sente davvero. A lui
-   * serve quello - il nostro moltiplicatore da solo non gli direbbe
-   * niente, perché non sa a che punto sta la manopola di qua.
+   * Not the gain: the product of the phone's call volume and the gain,
+   * which is what is really heard. That is what they need - our
+   * multiplier on its own would tell them nothing, because they cannot
+   * know where the knob stands over here.
    */
-  private livelloUdito = 1;
+  private heardLevel = 1;
 
-  /** Il sender audio della connessione viva. */
+  /** The audio sender of the live connection. */
   private liveAudioSender(): any {
     const pc: any = this.pc;
     try {
@@ -288,12 +290,12 @@ export class ChannelSession {
   }
 
   /**
-   * Il tetto dell'audio: 32 kbit/s, oppure 64 con "voce più ricca".
+   * The audio ceiling: 32 kbit/s, or 64 with "richer voice".
    *
-   * Spegnendo l'opzione si SCRIVE il valore basso invece di togliere il
-   * limite: togliere un tetto non fa scendere nessuno, e Opus restava
-   * dov'era arrivato - l'opzione sembrava senza ritorno. Trentadue è il
-   * valore attorno a cui la voce viaggia per impostazione predefinita.
+   * Switching the option off WRITES the low value instead of removing
+   * the limit: removing a ceiling brings nobody down, and Opus stayed
+   * where it had got to - the option looked like a one-way street.
+   * Thirty-two is roughly where a voice travels by default.
    */
   private async applyAudioQuality() {
     const sender: any = this.liveAudioSender();
@@ -303,87 +305,85 @@ export class ChannelSession {
       if (!Array.isArray(params.encodings) || params.encodings.length === 0) {
         params.encodings = [{}];
       }
-      const ricco = this.audioRicco();
-      params.encodings[0].maxBitrate = ricco ? AUDIO_RICCO : AUDIO_BASE;
+      const rich = this.richAudio();
+      params.encodings[0].maxBitrate = rich ? AUDIO_RICH : AUDIO_PLAIN;
       await sender.setParameters(params);
-      log('audio:', ricco ? 'tetto 64 kbit/s' : 'tetto 32 kbit/s',
-        !this.cfg.richerAudio && ricco ? '(per via del video)' : '');
+      log('audio:', rich ? '64 kbit/s ceiling' : '32 kbit/s ceiling',
+        !this.cfg.richerAudio && rich ? '(because of the video)' : '');
     } catch (e) {
-      log('non riesco ad applicare la qualità audio:', String(e));
+      log('cannot apply the audio quality:', String(e));
     }
   }
 
   /**
-   * Cambia il tetto dell'audio.
+   * Whether the voice should go out rich right now.
    *
-   * Le elaborazioni - soppressione del rumore, livellamento - non sono
-   * qui perché non si possono cambiare da qui: in react-native-webrtc si
-   * configurano alla creazione della fabbrica di connessioni, una volta
-   * per tutta l'app, e i vincoli passati a getUserMedia su Android
-   * vengono ignorati. L'opzione che riapriva il microfono con gli stessi
-   * identici parametri è stata tolta invece di restare a fingere.
-   */
-  /**
-   * Se in questo momento la voce va mandata ricca.
+   * The user's setting always wins upwards: whoever turned it on wants
+   * it with the video off too. The video can only add, never take away.
    *
-   * L'impostazione dell'utente vince sempre verso l'alto: chi l'ha
-   * accesa la vuole anche a video spento. Il video può solo aggiungere,
-   * mai togliere.
+   * The processing - noise suppression, levelling - is not here because
+   * it cannot be changed from here: in react-native-webrtc it is
+   * configured when the connection factory is created, once for the
+   * whole app, and the constraints passed to getUserMedia are ignored
+   * on Android. The option that reopened the microphone with exactly
+   * the same parameters was removed rather than left there pretending.
    */
-  private audioRicco(): boolean {
-    return this.cfg.richerAudio || this.videoAbbondante;
+  private richAudio(): boolean {
+    return this.cfg.richerAudio || this.heavyVideo;
   }
 
-  async setAudioOptions(migliore: boolean) {
-    this.cfg = { ...this.cfg, richerAudio: migliore };
+  async setAudioOptions(richer: boolean) {
+    this.cfg = { ...this.cfg, richerAudio: richer };
     await this.applyAudioQuality();
   }
 
   /**
-   * Crea la connessione con l'altro. Chiamata quando entrambi siamo presenti.
+   * Builds the connection to the other side. Called when both of us are
+   * present.
    *
-   * ATTENZIONE alla finestra fra la guardia e `this.pc = pc`: in mezzo
-   * c'è un `await` (l'apertura del microfono), e chiamate ravvicinate ne
-   * creavano DUE. Ne arrivano facilmente: una dal cambio di stato
-   * dell'altro, e una per ogni messaggio di segnalazione che trova la
-   * connessione non ancora pronta. La seconda vinceva, la prima restava
-   * viva a ricevere pacchetti che nessuno guardava più - e il video non
-   * compariva finché non si chiudeva e riapriva l'app.
+   * MIND the window between the guard and `this.pc = pc`: there is an
+   * `await` in between - opening the microphone - and calls close
+   * together used to create TWO of them. They arrive easily: one from
+   * the other side's change of state, and one for every signalling
+   * message that finds the connection not ready yet. The second won,
+   * the first stayed alive receiving packets nobody was looking at any
+   * more - and the video did not appear until the app was closed and
+   * reopened.
    *
-   * Finché il microfono si apriva entrando nel canale quell'attesa non
-   * c'era, e la guardia bastava: è il microfono tardivo ad aver aperto la
-   * finestra.
+   * While the microphone was opened on entering the channel that wait
+   * did not exist, and the guard was enough: it is the late microphone
+   * that opened the window.
    */
   attachPeer(polite: boolean): Promise<void> {
     if (this.pc) return Promise.resolve();
-    // Chi arriva mentre la creazione è già in corso aspetta QUELLA, non
-    // ne comincia un'altra. Vedi il commento qui sopra: è tutta la
-    // differenza fra una connessione e due.
-    if (!this.inCreazione) {
-      const mia = this.generazione;
-      this.inCreazione = this.creaPeer(polite, mia)
-        .finally(() => { this.inCreazione = null; });
+    // Whoever arrives while a build is already under way waits for THAT
+    // one instead of starting another. See the comment above: it is the
+    // whole difference between one connection and two.
+    if (!this.creating) {
+      const mine = this.generation;
+      this.creating = this.buildPeer(polite, mine)
+        .finally(() => { this.creating = null; });
     }
-    return this.inCreazione;
+    return this.creating;
   }
 
-  private async creaPeer(polite: boolean, mia: number) {
+  private async buildPeer(polite: boolean, mine: number) {
     await this.ensureMic();
-    // Nel frattempo può averla creata qualcun altro, o qualcuno può aver
-    // smontato tutto: in entrambi i casi questa creazione è superata.
-    if (this.pc || mia !== this.generazione) return;
+    // Somebody else may have built it in the meantime, or somebody may
+    // have torn everything down: either way this build is out of date.
+    if (this.pc || mine !== this.generation) return;
 
     this.polite = polite;
     const servers = [...iceServers(), ...this.extraIce];
-    log('collego il peer - offre l\'altro:', polite, '| ICE server:',
+    log('connecting the peer - they offer:', polite, '| ICE servers:',
       servers.map((s2) => s2.urls).join(', '));
     const pc = new RTCPeerConnection({ iceServers: servers });
     this.pc = pc;
 
     this.remoteStream = new MediaStream();
 
-    // Le misure seguono la connessione, non la nostra camera: anche con
-    // il solo video dell'altro acceso c'è qualcosa da mostrare.
+    // The measurements follow the connection, not our camera: with the
+    // other side's video alone there is still something to show.
     this.lastOutbound = null;
     this.lastInbound = null;
     if (!this.statsTimer) {
@@ -391,39 +391,39 @@ export class ChannelSession {
     }
 
     /**
-     * Vero solo finché questa è LA connessione in uso.
+     * True only while this is THE connection in use.
      *
-     * Ricostruendo il collegamento nascono più RTCPeerConnection nel giro
-     * di pochi secondi, e quelle vecchie continuano a emettere eventi per
-     * un po'. Le loro closure leggono `this.remoteStream`, che intanto è
-     * stato sostituito: senza questo controllo una connessione già morta
-     * infila la propria traccia nello stream nuovo, che si ritrova due
-     * video vivi e ne disegna quello sbagliato - lo schermo nero visto
-     * dopo un cambio di rete. Vale anche per gli stati: un 'failed' in
-     * ritardo da una connessione superata farebbe ripartire la riparazione
-     * di una connessione sana.
+     * Rebuilding the link creates several RTCPeerConnections within a
+     * few seconds, and the old ones keep emitting events for a while.
+     * Their closures read `this.remoteStream`, which has meanwhile been
+     * replaced: without this check a connection that is already dead
+     * pushes its own track into the new stream, which then holds two
+     * live videos and draws the wrong one - the black screen seen after
+     * a change of network. It goes for states as well: a late 'failed'
+     * from a superseded connection would set the repair of a healthy
+     * connection going.
      */
     const isCurrent = () => this.pc === pc;
 
-    // @ts-ignore evento di react-native-webrtc
+    // @ts-ignore react-native-webrtc event
     pc.addEventListener('track', (event: any) => {
       const stream = this.remoteStream;
       if (!stream) return;
       const incoming: any = event.track;
       if (!isCurrent()) {
-        log('traccia da una connessione superata: ignorata', incoming?.kind);
+        log('track from a superseded connection: ignored', incoming?.kind);
         return;
       }
-      log('traccia in arrivo:', incoming?.kind, 'id', incoming?.id);
+      log('incoming track:', incoming?.kind, 'id', incoming?.id);
 
       if (incoming) {
-        // Una sola traccia per tipo: è quello che il protocollo prevede.
-        // Se ne restasse una vecchia, il renderer disegnerebbe la prima
-        // della lista - cioè quella morta - e si vedrebbe nero.
+        // One track per kind: that is what the protocol calls for.
+        // If an old one stayed, the renderer would draw the first of
+        // the list - the dead one - and the screen would go black.
         stream.getTracks()
           .filter((x: any) => x.kind === incoming.kind && x.id !== incoming.id)
           .forEach((x: any) => {
-            log('tolgo traccia superata:', x.kind, x.id, x.readyState);
+            log('removing superseded track:', x.kind, x.id, x.readyState);
             try { stream.removeTrack(x); } catch { /* noop */ }
           });
         if (!stream.getTracks().find((x: any) => x.id === incoming.id)) {
@@ -433,23 +433,23 @@ export class ChannelSession {
 
       this.events.onRemoteStream?.(stream);
       this.reportRemoteVideo();
-      // La traccia nuova nasce a volume pieno: se l'utente aveva
-      // abbassato la voce dell'altro, senza questo tornerebbe
-      // assordante da sola a ogni riconnessione.
-      if (incoming?.kind === 'audio') this.applicaGuadagno();
+      // A new track is born at full volume: if the user had turned the
+      // other voice down, without this it would come back deafening by
+      // itself at every reconnection.
+      if (incoming?.kind === 'audio') this.applyGain();
 
       incoming?.addEventListener?.('ended', () => {
-        log('traccia terminata:', incoming.kind, incoming.id);
+        log('track ended:', incoming.kind, incoming.id);
         try { stream.removeTrack(incoming); } catch { /* noop */ }
         this.events.onRemoteStream?.(stream);
         this.reportRemoteVideo();
       });
       incoming?.addEventListener?.('mute', () => {
-        log('traccia sospesa:', incoming.kind);
+        log('track suspended:', incoming.kind);
         this.reportRemoteVideo();
       });
       incoming?.addEventListener?.('unmute', () => {
-        log('traccia ripresa:', incoming.kind);
+        log('track resumed:', incoming.kind);
         this.reportRemoteVideo();
       });
     });
@@ -458,20 +458,21 @@ export class ChannelSession {
     pc.addEventListener('icecandidate', (event: any) => {
       if (!isCurrent()) return;
       if (event.candidate) {
-        // L'indirizzo serve: se è un nome ".local" (mDNS) l'altro non lo
-        // risolve e la strada diretta non nasce nemmeno.
-        log('candidato locale', candidateType(event.candidate.candidate),
+        // The address matters: if it is a ".local" name (mDNS) the
+        // other side cannot resolve it and the direct road never opens.
+        log('local candidate', candidateType(event.candidate.candidate),
           (event.candidate.candidate || '').split(' ')[4] ?? '?');
         this.signaling.sendSignal({ kind: 'ice', candidate: event.candidate });
       } else {
-        log('raccolta candidati locali conclusa');
+        log('local candidate gathering finished');
       }
     });
 
     // @ts-ignore
     pc.addEventListener('icecandidateerror', (e: any) => {
-      // Tipico se STUN/TURN non risponde o le credenziali sono sbagliate.
-      log('errore su candidato:', e?.errorCode, e?.errorText, e?.url);
+      // Typical when STUN/TURN does not answer, or the credentials are
+      // wrong.
+      log('candidate error:', e?.errorCode, e?.errorText, e?.url);
     });
 
     // @ts-ignore
@@ -482,38 +483,37 @@ export class ChannelSession {
 
     // @ts-ignore
     pc.addEventListener('icegatheringstatechange', () => {
-      log('raccolta candidati:', pc.iceGatheringState);
+      log('candidate gathering:', pc.iceGatheringState);
     });
 
     // @ts-ignore
     pc.addEventListener('connectionstatechange', () => {
       if (!isCurrent()) return;
-      log('connessione:', pc.connectionState);
+      log('connection:', pc.connectionState);
       this.events.onConnectionState?.(pc.connectionState);
       if (pc.connectionState === 'connected') {
         this.logSelectedPath(pc);
         /**
-         * Il percorso si rilegge subito, e poi ancora dopo un secondo.
+         * The path is read at once, and again a second later.
          *
-         * Nell'istante in cui la connessione si dichiara pronta la coppia
-         * di candidati scelta spesso non è ancora leggibile - nel log
-         * compare "non ancora determinato" - e aspettando il campione
-         * successivo l'indicazione a schermo resta indietro di secondi
-         * proprio quando è appena cambiata.
+         * At the moment the connection declares itself ready, the chosen
+         * candidate pair is often not readable yet - the log says "not
+         * settled yet" - and waiting for the next sample leaves what is
+         * on screen seconds behind, just when it has changed.
          */
         this.lastOutbound = null;
         this.lastInbound = null;
         this.logOutboundVideo();
         setTimeout(() => this.logOutboundVideo(), 1000);
-        /**
-         * Appena collegati si ridichiara il proprio stato.
+         /**
+         * As soon as we are connected we declare our state again.
          *
-         * Chi accende il video PRIMA che l'altro arrivi manda il suo
-         * `state` quando non c'è nessuno ad ascoltarlo: entrando, il
-         * secondo telefono non sa che il primo ha la camera accesa, e
-         * poiché quel messaggio è uno dei due segnali con cui si decide
-         * se c'è video, non lo mostrava. Ridirlo al collegamento non
-         * costa nulla e chiude il buco da entrambi i lati.
+         * Whoever switches the video on BEFORE the other arrives sends
+         * their `state` when there is nobody listening: on entering, the
+         * second phone does not know the first has its camera on, and
+         * since that message is one of the two signals that decide
+         * whether there is video, it did not show it. Saying it again on
+         * connecting costs nothing and closes the hole from both sides.
          */
         this.broadcastState();
       }
@@ -521,64 +521,66 @@ export class ChannelSession {
 
     // @ts-ignore
     pc.addEventListener('negotiationneeded', async () => {
-      // Offre SEMPRE e SOLO una delle due parti.
+      // ALWAYS and ONLY one of the two sides offers.
       //
-      // Aprire il canale video scatena questo evento su entrambi i
-      // telefoni: se offrissero tutti e due, le offerte si scontrerebbero
-      // e la risoluzione dipenderebbe dal rollback, che in
-      // react-native-webrtc non è affidabile. Era la causa del
-      // "a volte funziona, a volte no".
+      // Opening the video channel fires this event on both phones: if
+      // both offered, the offers would collide and the outcome would
+      // depend on rollback, which is not dependable in
+      // react-native-webrtc. It was the cause of the "sometimes it
+      // works, sometimes it does not".
       if (this.polite) {
-        log('rinegoziazione richiesta, ma tocca all\'altro: lascio fare');
+        log('renegotiation wanted, but it is their turn: leaving it to them');
         return;
       }
       await this.negotiate();
     });
 
-    // --- Solo ORA le tracce -------------------------------------------
-    // I gestori vanno registrati PRIMA di toccare tracce e canali.
-    // Qui sotto c'è un await (replaceTrack, quando la camera è già
-    // accesa): durante quell'attesa scatta la richiesta di negoziazione,
-    // e se il gestore non fosse ancora registrato andrebbe persa. Era
-    // esattamente il caso del riaggancio a camera accesa: la connessione
-    // veniva ricostruita ma l'offerta non partiva mai.
-    // Audio: c'è sempre.
+    // --- Only NOW the tracks ------------------------------------------
+    // The handlers have to be registered BEFORE touching tracks and
+    // channels. There is an await below (replaceTrack, when the camera
+    // is already on): during that wait the negotiation request fires,
+    // and if the handler were not registered yet it would be lost. That
+    // was exactly the case of reconnecting with the camera on: the
+    // connection was rebuilt but the offer never went out.
+    // Audio: always there.
     const audioTrack = this.localStream!.getAudioTracks()[0];
     if (audioTrack) {
       pc.addTrack(audioTrack, this.localStream as MediaStream);
-      // Il tetto va rimesso a ogni connessione nuova: i parametri
-      // vivono sul sender, che nasce insieme a lei.
+      // The ceiling has to be set again on every new connection: the
+      // parameters live on the sender, which is born with it.
       setTimeout(() => this.applyAudioQuality(), 0);
     }
 
-    // Video: il canale viene aperto SUBITO, anche senza traccia dentro.
+    // Video: the channel is opened AT ONCE, even with no track inside.
     //
-    // È la scelta che rende affidabile l'accensione e lo spegnimento.
-    // Aggiungendo e togliendo la traccia ogni volta si rinegozia, si
-    // creano tracce nuove che si accavallano alle vecchie, e dall'altra
-    // parte si finisce per disegnare quella morta (schermo nero). Con il
-    // canale sempre aperto basta sostituire la traccia al suo interno:
-    // niente rinegoziazione e niente tracce che si accumulano.
-    // Lo dichiara UNA SOLA delle due parti: quella che fa l'offerta.
-    // Dichiarandolo entrambi, la dichiarazione di chi risponde rischia di
-    // restare orfana - non entra nella negoziazione - e quel telefono non
-    // riesce più a inviare il proprio video pur ricevendo quello altrui.
-    // Chi risponde se lo prende dalla negoziazione (captureVideoSender).
+    // This is the choice that makes switching on and off dependable.
+    // Adding and removing the track every time means renegotiating,
+    // creating new tracks that overlap the old ones, and on the other
+    // side drawing the dead one (black screen). With the channel always
+    // open it is enough to replace the track inside it: no
+    // renegotiation and no tracks piling up.
+    // ONE of the two sides declares it: the one that makes the offer.
+    // With both declaring, the answering side's declaration risks being
+    // orphaned - it does not enter the negotiation - and that phone
+    // stops being able to send its own video while still receiving the
+    // other's. The answering side picks it up from the negotiation
+    // (captureVideoSender).
     if (!polite) {
       try {
         const vt: any = (pc as any).addTransceiver('video', { direction: 'sendrecv' });
         this.preferVp9(vt);
         this.videoSender = vt?.sender ?? null;
-        log('canale video dichiarato da noi:', !!this.videoSender);
+        log('video channel declared by us:', !!this.videoSender);
       } catch (e) {
-        log('addTransceiver non disponibile, ripiego su addTrack:', String(e));
+        log('addTransceiver not available, falling back to addTrack:', String(e));
         this.videoSender = null;
       }
     } else {
-      log('canale video: lo dichiara l\'altro, lo prendo a negoziazione fatta');
+      log('video channel: they declare it, we take it once negotiated');
     }
 
-    // Se il video era già acceso, la traccia entra nel canale appena aperto.
+    // If the video was already on, the track goes into the channel just
+    // opened.
     const existingVideo = this.localStream!.getVideoTracks()[0];
     if (existingVideo) {
       if (this.videoSender) {
@@ -589,19 +591,19 @@ export class ChannelSession {
     }
 
 
-    // E la negoziazione la avviamo comunque noi, invece di sperare
-    // nell'evento: se è già partita, il controllo dentro negotiate()
-    // la lascia proseguire senza sovrapporsi.
+    // And we start the negotiation ourselves rather than hoping for the
+    // event: if one is already under way, the check inside negotiate()
+    // lets it carry on without overlapping.
     if (!polite) await this.negotiate();
   }
 
   private async negotiate() {
     const pc = this.pc;
     if (!pc) return;
-    // Una negoziazione alla volta: due offerte in parallelo si
-    // annullerebbero a vicenda.
+    // One negotiation at a time: two offers in parallel would cancel
+    // each other out.
     if (this.makingOffer || pc.signalingState !== 'stable') {
-      log('negoziazione gia\' in corso o stato non stabile:', pc.signalingState);
+      log('negotiation already under way, or state not stable:', pc.signalingState);
       return;
     }
     try {
@@ -609,17 +611,17 @@ export class ChannelSession {
       const offer = await pc.createOffer({});
       await pc.setLocalDescription(offer);
       const desc = pc.localDescription!;
-      log('offerta inviata');
+      log('offer sent');
       this.signaling.sendSignal({ kind: 'desc', type: 'offer', sdp: desc.sdp });
     } catch (e) {
-      log('negoziazione fallita:', String(e));
-      // se la negoziazione fallisce ci riprovera' il prossimo evento
+      log('negotiation failed:', String(e));
+      // if a negotiation fails, the next event will try again
     } finally {
       this.makingOffer = false;
     }
   }
 
-  // --- Messaggi dall'altro peer -------------------------------------------
+  // --- Messages from the other peer ---------------------------------------
 
   async onSignal(msg: SignalMessage) {
     if (msg.kind === 'state') {
@@ -630,38 +632,38 @@ export class ChannelSession {
         video: msg.video,
         aspect: msg.aspect,
         hwVp9: this.peerVp9,
-        uscita: msg.output,
-        versione: msg.version,
+        output: msg.output,
+        version: msg.version,
         camera: msg.camera,
         volume: msg.volume,
       });
       this.setPeerWatching(msg.watching !== false);
-      // Ciò che l'altro dichiara entra nel giudizio su "c'è il suo
-      // video": cambiandolo, va rifatto.
+      // What the other side declares goes into the judgement on
+      // "is their video there": when it changes, that has to be redone.
       this.reportRemoteVideo();
       return;
     }
 
-    if (msg.kind === 'renegotiate') return; // gestito da chi conosce il ruolo
+    if (msg.kind === 'renegotiate') return; // handled by whoever knows the role
 
     const pc = this.pc;
     if (!pc) return;
 
     if (msg.kind === 'desc') {
-      log('ricevuto', msg.type, '- stato:', pc.signalingState);
+      log('received', msg.type, '- state:', pc.signalingState);
       const collision =
         msg.type === 'offer' && (this.makingOffer || pc.signalingState !== 'stable');
 
-      // Impolite: in caso di collisione ignora l'offerta dell'altro.
+      // Impolite: on a collision, ignore the other side's offer.
       this.ignoreOffer = !this.polite && collision;
-      if (this.ignoreOffer) { log('offerta ignorata (collisione, siamo impolite)'); return; }
+      if (this.ignoreOffer) { log('offer ignored (collision, we are impolite)'); return; }
 
       if (collision) {
-        // Polite: annulla la propria offerta e accetta quella dell'altro.
+        // Polite: roll our own offer back and take theirs.
         try {
           await pc.setLocalDescription({ type: 'rollback' } as any);
         } catch {
-          // se il rollback non è supportato proseguiamo comunque
+          // if rollback is not supported we carry on anyway
         }
       }
 
@@ -674,7 +676,7 @@ export class ChannelSession {
       if (msg.type === 'offer') {
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-        log('risposta inviata - direzioni:',
+        log('answer sent - directions:',
           ((pc as any).getTransceivers?.() ?? [])
             .map((t: any) => `${t?.receiver?.track?.kind ?? '?'}:${t?.direction}`)
             .join(' '));
@@ -688,8 +690,8 @@ export class ChannelSession {
     }
 
     if (msg.kind === 'ice') {
-      if (this.ignoreOffer) { log('offerta ignorata (collisione, siamo impolite)'); return; }
-      // Se la remote description non c'è ancora, il candidate va in coda.
+      if (this.ignoreOffer) { log('candidate ignored (collision, we are impolite)'); return; }
+      // If there is no remote description yet, the candidate queues up.
       if (!pc.remoteDescription) {
         this.pendingCandidates.push(msg.candidate);
         return;
@@ -697,17 +699,17 @@ export class ChannelSession {
       try {
         await pc.addIceCandidate(new RTCIceCandidate(msg.candidate));
       } catch {
-        // candidate duplicato o fuori ordine: ignorabile
+        // a duplicate or out-of-order candidate: safe to ignore
       }
     }
   }
 
   /**
-   * Individua il canale video dopo la negoziazione.
+   * Finds the video channel after the negotiation.
    *
-   * Serve a chi non lo ha dichiarato: il canale esiste perché lo ha
-   * aperto l'altro, e da qui in poi possiamo usarlo anche noi per
-   * inviare, mettendoci semplicemente dentro la traccia.
+   * This is for the side that did not declare it: the channel exists
+   * because the other one opened it, and from here on we can use it to
+   * send as well, simply by putting our track inside.
    */
   private async captureVideoSender() {
     if (this.videoSender || !this.pc) return;
@@ -716,49 +718,51 @@ export class ChannelSession {
       (t) => t?.receiver?.track?.kind === 'video' || t?.sender?.track?.kind === 'video',
     );
     if (!video?.sender) {
-      log('canale video non ancora individuabile');
+      log('video channel not findable yet');
       return;
     }
 
-    // IMPORTANTE: un canale creato applicando l'offerta dell'altro nasce in
-    // sola ricezione. Così com'e' potremmo vedere il video altrui ma non
-    // inviare il nostro, e il difetto sarebbe asimmetrico - proprio quello
-    // che si vedeva. Lo portiamo a bidirezionale ORA, prima di preparare la
-    // risposta, così viaggia in questa stessa negoziazione senza doverne
-    // aprire un'altra (cosa che a noi, che non offriamo, è preclusa).
+    // IMPORTANT: a channel created by applying the other side's offer is
+    // born receive-only. Left like that we could see their video but not
+    // send ours, and the fault would be one-sided - which is exactly
+    // what was happening. We turn it two-way NOW, before preparing the
+    // answer, so that it travels in this same negotiation without having
+    // to open another one - which we, as the side that does not offer,
+    // cannot do.
     try {
       if (video.direction !== 'sendrecv') {
-        log('canale video era', video.direction, '-> lo porto a sendrecv');
+        log('video channel was', video.direction, '-> turning it to sendrecv');
         video.direction = 'sendrecv';
       }
     } catch (e) {
-      log('non riesco a cambiare direzione del canale video:', String(e));
+      log('cannot change the video channel direction:', String(e));
     }
 
     this.videoSender = video.sender;
-    log('canale video individuato, direzione', video.direction);
+    log('video channel found, direction', video.direction);
 
-    // Se nel frattempo la camera era già accesa, la traccia entra ora.
+    // If the camera was already on in the meantime, the track goes in now.
     const localVideo = this.localStream?.getVideoTracks()[0];
     if (localVideo) {
       try {
         await this.videoSender.replaceTrack(localVideo);
         await this.applyVideoQuality();
-        log('traccia locale inserita nel canale appena individuato');
+        log('local track put into the channel just found');
       } catch (e) {
-        log('inserimento traccia fallito:', String(e));
+        log('putting the track in failed:', String(e));
       }
     }
   }
 
   /**
-   * Riparazione leggera: rifa' solo la ricerca del percorso di rete,
-   * tenendo in piedi connessione e tracce.
+   * Light repair: redoes only the search for a network path, leaving
+   * the connection and the tracks standing.
    *
-   * È la prima cosa da provare quando il collegamento cede: demolire e
-   * ricostruire interrompe audio e video per un paio di secondi, mentre
-   * un riavvio di ICE spesso li ripristina senza che si noti nulla.
-   * Può farlo solo chi offre; all'altro resta il chiederlo.
+   * It is the first thing to try when the link gives way: tearing
+   * everything down and rebuilding interrupts audio and video for a
+   * couple of seconds, while an ICE restart often puts them right with
+   * nobody noticing. Only the offering side can do it; the other one
+   * can only ask.
    */
   async restartIce(): Promise<boolean> {
     const pc: any = this.pc;
@@ -766,33 +770,33 @@ export class ChannelSession {
     try {
       if (typeof pc.restartIce === 'function') {
         pc.restartIce();
-        log('ICE riavviato');
+        log('ICE restarted');
         return true;
       }
-      // Versioni più vecchie: si ottiene lo stesso con un'offerta.
+      // Older versions: the same thing, with an offer.
       const offer = await pc.createOffer({ iceRestart: true });
       await pc.setLocalDescription(offer);
       this.signaling.sendSignal({
         kind: 'desc', type: 'offer', sdp: pc.localDescription.sdp,
       });
-      log('ICE riavviato con una nuova offerta');
+      log('ICE restarted with a fresh offer');
       return true;
     } catch (e) {
-      log('riavvio di ICE fallito:', String(e));
+      log('ICE restart failed:', String(e));
       return false;
     }
   }
 
-  /** Esiste una connessione con l'altro, buona o meno che sia. */
+  /** There is a connection to the other side, good or otherwise. */
   hasPeer(): boolean {
     return !!this.pc;
   }
 
   /**
-   * Il collegamento diretto è ancora buono?
+   * Is the direct link still good?
    *
-   * Dopo un'interruzione di rete la connessione resta lì ma è morta
-   * ("failed" o "disconnected"): va ricostruita, non riusata.
+   * After a network break the connection sits there but is dead
+   * ("failed" or "disconnected"): it wants rebuilding, not reusing.
    */
   isPeerHealthy(): boolean {
     const st = this.pc?.connectionState;
@@ -801,45 +805,47 @@ export class ChannelSession {
   }
 
   /**
-   * C'è una traccia video dall'altro, non ancora chiusa.
+   * There is a video track from the other side, not yet closed.
    *
-   * Di proposito NON guardiamo "muted": la semantica varia fra versioni
-   * e piattaforme. Se il video sia effettivamente acceso lo dice l'altro
-   * col messaggio di stato; qui rispondiamo solo se il canale video
-   * esiste. Le due informazioni vengono combinate nell'interfaccia.
+   * We deliberately do NOT look at "muted" alone: what it means varies
+   * between versions and platforms. Whether the video is really on is
+   * something the other side says in its state message; here we only
+   * answer whether the video channel exists. The interface puts the two
+   * together.
    */
   hasRemoteVideo(): boolean {
     const t: any = this.remoteStream?.getVideoTracks()[0];
     if (!t || t.readyState === 'ended') return false;
-    // Una traccia il cui mittente ha smesso di trasmettere resta `live` e
-    // diventa `muted`: guardare solo readyState faceva credere che
-    // l'altro avesse la camera accesa appena aperta l'app, e il proprio
-    // video finiva nel riquadrino invece che a schermo intero.
+    // A track whose sender has stopped transmitting stays `live` and
+    // becomes `muted`: looking at readyState alone made us believe the
+    // other side had its camera on the moment the app opened, and our
+    // own video ended up in the thumbnail instead of full screen.
     //
-    // Il muto da solo però non basta: durante un'interruzione di rete la
-    // traccia ammutolisce pur avendo l'altro la camera accesa, e togliere
-    // il video lì farebbe ballare la disposizione a ogni caduta. Perciò
-    // conta anche cosa l'altro dichiara.
+    // But muted alone is not enough either: during a network break the
+    // track goes quiet even with their camera on, and dropping the video
+    // there would make the layout dance at every drop. So what the other
+    // side declares counts too.
     return !t.muted || this.peerVideoDeclared;
   }
 
   private reportRemoteVideo() {
     const tracks: any[] = this.remoteStream?.getVideoTracks() ?? [];
     const present = this.hasRemoteVideo();
-    log('video remoto:', present ? 'presente' : 'assente',
-      '- tracce video nello stream:', tracks.length,
+    log('remote video:', present ? 'there' : 'not there',
+      '- video tracks in the stream:', tracks.length,
       tracks.map((t) => `${t.id}:${t.readyState}`).join(' '));
     this.events.onRemoteVideo?.(present);
   }
 
   /**
-   * Per dove sta davvero passando l'audio/video, una volta collegati.
+   * Which way the audio and video are really going, once connected.
    *
-   * I candidati raccolti non lo dicono: si raccolgono sempre tutti, e
-   * poi ne vince uno. La differenza conta, perché i percorsi hanno
-   * fragilità diverse - host è la rete locale, srflx attraversa due NAT,
-   * relay passa dal nostro coturn - e senza questo dato non si può
-   * dire se una caduta dipenda dal percorso o da altro.
+   * The candidates gathered do not say: they are all gathered anyway,
+   * and then one wins. The difference matters, because the paths break
+   * in different ways - host is the local network, srflx crosses two
+   * NATs, relay goes through our own coturn - and without this figure
+   * there is no telling whether a drop is the path's fault or something
+   * else's.
    */
   private async logSelectedPath(pc: any) {
     try {
@@ -850,49 +856,50 @@ export class ChannelSession {
         if (r.type === 'local-candidate' || r.type === 'remote-candidate') {
           candidates.set(r.id, r);
         }
-        // "selected" su alcune implementazioni, "nominated+succeeded" su altre
+        // "selected" in some implementations, "nominated+succeeded" in others
         if (r.type === 'candidate-pair' && (r.selected || r.nominated) && r.state === 'succeeded') {
           pair = r;
         }
       });
-      if (!pair) { log('percorso: non ancora determinato'); return; }
+      if (!pair) { log('path: not settled yet'); return; }
 
-      // Tutte le strade tentate, non solo quella vinta: se il traffico
-      // passa dal relay pur essendo i due telefoni sulla stessa rete, la
-      // risposta sta in quale coppia locale è fallita, o non è mai nata.
-      const descrivi = (c: any) =>
+      // Every road tried, not only the winning one: if the traffic goes
+      // through the relay while the two phones are on the same network,
+      // the answer lies in which local pair failed, or was never born.
+      const describe = (c: any) =>
         c ? `${c.candidateType}/${c.address ?? c.ip ?? '?'}` : '?';
       stats.forEach((r: any) => {
         if (r.type !== 'candidate-pair') return;
-        log('  strada:',
-          descrivi(candidates.get(r.localCandidateId)),
-          '->', descrivi(candidates.get(r.remoteCandidateId)),
+        log('  road:',
+          describe(candidates.get(r.localCandidateId)),
+          '->', describe(candidates.get(r.remoteCandidateId)),
           '-', r.state,
-          r.nominated ? '(scelta)' : '');
+          r.nominated ? '(chosen)' : '');
       });
       const local = candidates.get(pair.localCandidateId);
       const remote = candidates.get(pair.remoteCandidateId);
       const kind = local?.candidateType === 'relay' || remote?.candidateType === 'relay'
-        ? 'RELAY (passa dal server)'
+        ? 'RELAY (through the server)'
         : local?.candidateType === 'host' && remote?.candidateType === 'host'
-          ? 'LOCALE (stessa rete)'
-          : 'DIRETTO attraverso NAT';
-      log('percorso:', kind,
+          ? 'LOCAL (same network)'
+          : 'DIRECT through NAT';
+      log('path:', kind,
         '-', `${local?.candidateType ?? '?'}/${local?.protocol ?? '?'}`,
         '->', `${remote?.candidateType ?? '?'}/${remote?.protocol ?? '?'}`);
     } catch (e: any) {
-      log('percorso non leggibile:', e?.message ?? e);
+      log('path not readable:', e?.message ?? e);
     }
   }
 
   /**
-   * Cosa sta davvero uscendo, e perché non di più.
+   * What is really going out, and why not more.
    *
-   * Il tetto di bitrate è un limite, non un obiettivo: quanto si consuma
-   * lo decidono la stima di banda, la complessità della scena e - con
-   * "balanced" - di quanto l'encoder ha scalato l'uscita. Senza leggerlo
-   * si finisce a ipotizzare; `qualityLimitationReason` lo dice in una
-   * parola: "bandwidth", "cpu", oppure "none" (cioè: tanto basta).
+   * The bitrate ceiling is a limit, not a target: how much is spent is
+   * decided by the bandwidth estimate, by how busy the scene is and -
+   * with "balanced" - by how far the encoder has scaled the output
+   * down. Without reading it one ends up guessing;
+   * `qualityLimitationReason` says it in a word: "bandwidth", "cpu", or
+   * "none" - meaning: this is enough.
    */
   private async logOutboundVideo() {
     const pc: any = this.pc;
@@ -900,46 +907,43 @@ export class ChannelSession {
     try {
       const stats = await pc.getStats();
       const out: VideoStats = {};
-      let limite = '?';
+      let limit = '?';
 
       /**
-       * Il percorso si rilegge a ogni campione, non solo al collegamento.
+       * The path is read again at every sample, not only on connecting.
        *
-       * ICE può cambiare strada in corsa - passando dal wifi alla rete
-       * mobile la diretta cade e subentra il relay - e un'indicazione
-       * ferma al momento della connessione direbbe il falso proprio
-       * quando serve sapere la verità.
+       * ICE can change road mid-course - moving from wifi to mobile the
+       * direct one falls and the relay takes over - and a reading frozen
+       * at the moment of connection would tell a lie exactly when the
+       * truth is wanted.
        */
-      const candidati = new Map<string, any>();
-      let coppia: any = null;
+      const candidatesById = new Map<string, any>();
+      let pairStat: any = null;
       stats.forEach((r: any) => {
         if (r.type === 'local-candidate' || r.type === 'remote-candidate') {
-          candidati.set(r.id, r);
+          candidatesById.set(r.id, r);
         }
         if (r.type === 'candidate-pair' && (r.selected || r.nominated)
             && r.state === 'succeeded') {
-          coppia = r;
+          pairStat = r;
         }
       });
-      if (coppia) {
-        const giroCompleto = coppia.currentRoundTripTime;
-        out.latenza = typeof giroCompleto === 'number'
-          ? Math.round(giroCompleto * 1000)
+      if (pairStat) {
+        const roundTrip = pairStat.currentRoundTripTime;
+        out.latency = typeof roundTrip === 'number'
+          ? Math.round(roundTrip * 1000)
           : null;
-        const l = candidati.get(coppia.localCandidateId);
-        const rr = candidati.get(coppia.remoteCandidateId);
-        out.percorso =
+        const l = candidatesById.get(pairStat.localCandidateId);
+        const rr = candidatesById.get(pairStat.remoteCandidateId);
+        out.path =
           l?.candidateType === 'relay' || rr?.candidateType === 'relay' ? 'relay'
-            : l?.candidateType === 'host' && rr?.candidateType === 'host' ? 'locale'
-              : 'diretto';
+            : l?.candidateType === 'host' && rr?.candidateType === 'host' ? 'local'
+              : 'direct';
       }
 
-      // Ciò che non compare fra le statistiche non c'è: lasciare il
-      // valore precedente mostrerebbe una risoluzione che non esiste più.
-      let fpsOut = 0;
-
-      /** Ricostruendo la connessione i contatori ripartono da zero: la
-       *  differenza diventa negativa, e mostrarla è peggio che tacere. */
+      /** Rebuilding the connection restarts the counters from zero: the
+       *  difference goes negative, and showing that is worse than
+       *  saying nothing. */
       const rate = (prev: { ts: number; bytes: number } | null, ts: number, bytes: number) => {
         const dt = prev ? (ts - prev.ts) / 1000 : 0;
         const delta = prev ? bytes - prev.bytes : -1;
@@ -963,7 +967,7 @@ export class ChannelSession {
             kbps: rate(this.lastOutbound, r.timestamp, r.bytesSent),
           };
           this.lastOutbound = { ts: r.timestamp, bytes: r.bytesSent };
-          limite = r.qualityLimitationReason ?? '?';
+          limit = r.qualityLimitationReason ?? '?';
         } else if (r.type === 'inbound-rtp') {
           out.in = {
             w: r.frameWidth ?? 0,
@@ -976,30 +980,32 @@ export class ChannelSession {
       });
 
       this.events.onVideoStats?.(out);
-      this.pesaIlVideo((out.out?.kbps ?? 0) + (out.in?.kbps ?? 0));
+      this.weighVideo((out.out?.kbps ?? 0) + (out.in?.kbps ?? 0));
 
-      // Nel log basta una riga ogni tanto: sotto ai comandi c'è il resto.
+      // One line in the log now and then is enough: the rest is under
+      // the controls.
       this.statsTicks += 1;
       if (out.out && this.statsTicks % 8 === 0) {
-        log('in uscita:', `${out.out.w}x${out.out.h}`, `@${out.out.fps}fps`,
+        log('going out:', `${out.out.w}x${out.out.h}`, `@${out.out.fps}fps`,
           out.out.kbps !== null ? `- ${out.out.kbps} kbit/s` : '',
-          '- limite:', limite);
+          '- limited by:', limit);
       }
-    } catch { /* la diagnostica non deve mai disturbare */ }
+    } catch { /* diagnostics must never get in the way */ }
   }
 
   /**
-   * Guarda quanto video sta passando e decide il tetto della voce.
+   * Looks at how much video is going through and decides the voice
+   * ceiling.
    *
-   * Si contano tutte e due le direzioni: il video è la cosa grossa che
-   * sta attraversando questa connessione, e se c'è, i pochi kbit in più
-   * della voce non si notano da nessuna parte.
+   * Both directions are counted: the video is the big thing crossing
+   * this connection, and while it is there, the voice's extra few kbits
+   * are noticed nowhere.
    */
-  private pesaIlVideo(videoKbps: number) {
-    const prima = this.videoAbbondante;
-    if (!this.videoAbbondante && videoKbps >= VIDEO_TANTO) this.videoAbbondante = true;
-    else if (this.videoAbbondante && videoKbps < VIDEO_POCO) this.videoAbbondante = false;
-    if (this.videoAbbondante !== prima) this.applyAudioQuality();
+  private weighVideo(videoKbps: number) {
+    const before = this.heavyVideo;
+    if (!this.heavyVideo && videoKbps >= VIDEO_HEAVY) this.heavyVideo = true;
+    else if (this.heavyVideo && videoKbps < VIDEO_LIGHT) this.heavyVideo = false;
+    if (this.heavyVideo !== before) this.applyAudioQuality();
   }
 
   private async flushCandidates() {
@@ -1012,23 +1018,23 @@ export class ChannelSession {
     }
   }
 
-  // --- Controlli -----------------------------------------------------------
+  // --- Controls ------------------------------------------------------------
 
-  /** Accende/spegne il microfono. Ritorna il nuovo stato. */
   /**
-   * Muto: si silenzia la traccia, senza rilasciare il microfono.
+   * Mute: the track is silenced, the microphone is not released.
+   * Returns the new state.
    *
-   * Rilasciarlo davvero era stato provato - lo lascia usare alle altre
-   * app, e spegne l'indicatore di registrazione - ma riprendendolo il
-   * sistema non ci restituisce la precedenza: da lì in poi anche la
-   * dettatura della tastiera se lo prendeva, a microfono acceso. Su
-   * Android l'esclusiva non si può imporre, e una presa continua è
-   * l'unica cosa che le somiglia.
+   * Really releasing it was tried - it lets other apps use it, and
+   * turns the recording indicator off - but on taking it back the
+   * system does not give us precedence again: from then on even the
+   * keyboard's dictation would grab it while our microphone was on. On
+   * Android exclusivity cannot be demanded, and holding on is the only
+   * thing that resembles it.
    */
   toggleAudio(): boolean {
-    // Si ragiona sulla volontà, non sulla traccia: aspettando l'altro il
-    // microfono non è ancora aperto, ma il pulsante deve funzionare lo
-    // stesso e la scelta valere per quando lo sarà.
+    // We reason about the intent, not the track: while waiting for the
+    // other person the microphone is not open yet, but the button has to
+    // work anyway and the choice has to hold for when it is.
     this.audioDesired = !this.audioDesired;
     const track = this.localStream?.getAudioTracks()[0];
     if (track) track.enabled = this.audioDesired;
@@ -1036,31 +1042,32 @@ export class ChannelSession {
     return this.audioDesired;
   }
 
-  /** Accende la camera: mette la traccia nel canale già aperto. */
+  /** Switches the camera on: puts the track into the open channel. */
   async enableVideo(): Promise<boolean> {
-    // Il flusso locale deve esistere: la traccia video si aggiunge lì.
-    // Accendere la camera aspettando l'altro apre quindi anche il
-    // microfono - la camera costa comunque molto di più, e tenere i due
-    // separati complicherebbe il resto senza guadagno.
+    // The local stream has to exist: the video track is added to it.
+    // Switching the camera on while waiting for the other person
+    // therefore opens the microphone too - the camera costs far more
+    // anyway, and keeping the two apart would complicate the rest for
+    // no gain.
     await this.ensureMic();
     if (this.localStream!.getVideoTracks().length > 0) return true;
     const profile = VIDEO_PROFILES[this.cfg.videoQuality] ?? VIDEO_PROFILES.standard;
     const cam = await mediaDevices.getUserMedia({
       video: {
-        // La camera scelta, non sempre la frontale: cambiando risoluzione
-        // si riapre la camera, e ripartire da 'user' riportava la ripresa
-        // sulla propria faccia senza che nessuno l'avesse chiesto.
+        // The chosen camera, not always the front one: changing
+        // resolution reopens the camera, and starting from 'user' again
+        // turned the shot back on one's own face with nobody asking.
         facingMode: this.frontCamera ? 'user' : 'environment',
-        // La risoluzione viene dal profilo: è l'unica leva che nessun
-        // encoder può ignorare. Scalare l'uscita sarebbe indolore, ma su
-        // alcuni telefoni la richiesta viene registrata e poi disattesa.
+        // The resolution comes from the profile: it is the one lever no
+        // encoder can ignore. Scaling the output would be painless, but
+        // on some phones the request is recorded and then disregarded.
         width: { ideal: profile.capture.width },
         height: { ideal: profile.capture.height },
         frameRate: { ideal: CAPTURE_FPS },
-        // Proporzioni dichiarate esplicitamente: senza, il sensore può
-        // scegliere un formato diverso (4:3 invece di 16:9) e con esso
-        // cambia l'angolo di ripresa, quindi cosa resta dentro
-        // l'inquadratura.
+        // The shape is stated explicitly: without it the sensor can
+        // pick a different format (4:3 instead of 16:9) and with it the
+        // angle of view changes, so what stays inside the frame changes
+        // too.
         aspectRatio: { ideal: 16 / 9 },
       },
     } as any);
@@ -1068,53 +1075,53 @@ export class ChannelSession {
     if (!track) return false;
 
     /**
-     * Il formato chiesto può non esistere sul sensore.
+     * The requested format may not exist on the sensor.
      *
-     * `aspectRatio` è un desiderio, non un obbligo: chiedendo 640x360 a
-     * un telefono che non ce l'ha, quello ripiega sul 4:3 più vicino. Si
-     * accetta: scendere davvero di risoluzione vale più di proporzioni
-     * costanti, e il riquadrino segue la forma della sua camera. Resta
-     * solo scritto nel log, perché spiega un'inquadratura diversa fra i
-     * due telefoni senza doverla indovinare.
+     * `aspectRatio` is a wish, not an obligation: ask a phone that does
+     * not have 640x360 for it, and it falls back on the nearest 4:3. We
+     * accept that: really coming down in resolution is worth more than a
+     * constant shape, and the thumbnail follows the shape of its camera.
+     * It only goes into the log, because it explains a different framing
+     * on the two phones without anybody having to guess.
      */
     try {
       const st: any = (track as any).getSettings?.() ?? {};
       if (st.width && st.height && Math.abs(st.width / st.height - 16 / 9) > 0.05) {
-        log('formato non 16:9:', `${st.width}x${st.height}`,
-          '- il sensore non ha quello chiesto');
+        log('not a 16:9 format:', `${st.width}x${st.height}`,
+          '- the sensor does not have the one asked for');
       }
     } catch { /* noop */ }
 
-    // Preso una volta sola: dopo un `await` il compilatore non può più
-    // sapere che il campo sia ancora pieno, e ha ragione.
-    const locale = this.localStream!;
-    locale.addTrack(track);                    // anteprima locale
+    // Taken once: after an `await` the compiler can no longer know the
+    // field is still filled, and it is right.
+    const local = this.localStream!;
+    local.addTrack(track);                    // the local preview
     try {
       const st: any = (track as any).getSettings?.() ?? {};
-      log('camera accesa:', `${st.width ?? '?'}x${st.height ?? '?'}`,
-        st.frameRate ? `@${Math.round(st.frameRate)}fps` : '', '- traccia', track.id);
+      log('camera on:', `${st.width ?? '?'}x${st.height ?? '?'}`,
+        st.frameRate ? `@${Math.round(st.frameRate)}fps` : '', '- track', track.id);
     } catch {
-      log('camera accesa, traccia', track.id);
+      log('camera on, track', track.id);
     }
 
     const senderOn: any = this.liveVideoSender();
     if (senderOn) {
-      // Nessuna rinegoziazione: l'altro vede semplicemente ripartire i
-      // fotogrammi sulla traccia che già aveva.
+      // No renegotiation: the other side simply sees the frames start
+      // again on the track it already had.
       try {
         this.videoSender = senderOn;
         await senderOn.replaceTrack(track);
         await this.applyVideoQuality();
       } catch (e) {
-        log('replaceTrack fallita:', String(e));
+        log('replaceTrack failed:', String(e));
       }
     } else if (this.pc) {
-      // Ripiego, se il canale video non era stato aperto in anticipo.
-      this.videoSender = this.pc.addTrack(track, locale);
+      // Fallback, if the video channel had not been opened in advance.
+      this.videoSender = this.pc.addTrack(track, local);
     }
 
-    // Se nel frattempo l'altro non sta guardando, la camera resta accesa
-    // per l'anteprima ma dal canale non esce nulla.
+    // If the other side is not watching in the meantime, the camera
+    // stays on for the preview but nothing goes out of the channel.
     if (!this.peerWatching) await this.applyPeerWatching();
 
     this.lastOutbound = null;
@@ -1125,50 +1132,43 @@ export class ChannelSession {
   }
 
   /**
-   * Chiede di non ridurre la risoluzione quando la banda scarseggia.
+   * The video sender of the LIVE connection, not the one we remember.
    *
-   * Il comportamento predefinito è l'opposto: WebRTC abbassa la
-   * risoluzione, e molti sensori cambiando formato cambiano anche
-   * l'angolo di ripresa. Dall'altra parte si vede l'inquadratura
-   * allargarsi e restringersi da sola. Meglio perdere fotogrammi che
-   * cambiare cosa si inquadra.
-   */
-  /**
-   * Applica il profilo video scelto.
-   *
-   * La banda di un video non dipende dal codec ma da tre numeri:
-   * risoluzione, fotogrammi al secondo e tetto di bitrate. Il codec
-   * cambia quanto bene sfrutta quel tetto, non quanto se ne consuma.
-   *
-   * A ripresa in corso si tocca solo il tetto: cambiare scala o fotogrammi
-   * su un encoder acceso lo fa smettere di produrre, e all'altro il video
-   * sparisce mentre la nostra anteprima continua a funzionare.
-   */
-  /**
-   * Il sender video della connessione VIVA, non quello che ci ricordiamo.
-   *
-   * `this.videoSender` viene catturato durante la negoziazione e, dopo
-   * una ricostruzione, può riferirsi a una connessione superata:
-   * scriverci i parametri riesce senza errori e non produce alcun
-   * effetto. È così che un telefono continuava a mandare 1080p con il
-   * profilo "risparmio" attivo, buttando fotogrammi invece di
-   * rimpicciolire, mentre l'altro obbediva.
+   * `this.videoSender` is captured during the negotiation and, after a
+   * rebuild, can refer to a superseded connection: writing parameters
+   * to it succeeds without error and has no effect whatever. That is
+   * how one phone kept sending 1080p with the "saver" profile on,
+   * throwing frames away instead of getting smaller, while the other
+   * one obeyed.
    */
   private liveVideoSender(): any {
     const pc: any = this.pc;
     if (!pc) return this.videoSender;
     try {
-      const conTraccia = pc.getSenders?.()
+      const withTrack = pc.getSenders?.()
         ?.find((x: any) => x.track?.kind === 'video');
-      if (conTraccia) return conTraccia;
-      // Camera spenta: la traccia non c'è, ma il canale sì.
+      if (withTrack) return withTrack;
+      // Camera off: there is no track, but there is a channel.
       const tv = pc.getTransceivers?.()
         ?.find((t: any) => t.receiver?.track?.kind === 'video');
       if (tv?.sender) return tv.sender;
-    } catch { /* si ripiega su quello ricordato */ }
+    } catch { /* fall back on the remembered one */ }
     return this.videoSender;
   }
 
+  /**
+   * Applies the chosen video profile.
+   *
+   * A video's bandwidth does not depend on the codec but on three
+   * numbers: resolution, frames per second and bitrate ceiling. The
+   * codec changes how well that ceiling is used, not how much of it is
+   * spent.
+   *
+   * While filming, only the ceiling is touched: changing the scale or
+   * the frame rate on a running encoder makes it stop producing, and
+   * the video disappears on the other side while our own preview keeps
+   * working.
+   */
   private async applyVideoQuality() {
     const sender: any = this.liveVideoSender();
     if (!sender?.getParameters) return;
@@ -1178,81 +1178,81 @@ export class ChannelSession {
       if (!Array.isArray(params.encodings) || params.encodings.length === 0) {
         params.encodings = [{}];
       }
-      // `degradationPreference` si fissa UNA VOLTA, alla prima
-      // applicazione: cambiarlo a encoder acceso è fra le cose che
-      // sospetto lo facciano smettere di produrre, e non serve
-      // cambiarlo per cambiare profilo.
+      // `degradationPreference` is set ONCE, at the first application:
+      // changing it on a running encoder is among the things I suspect
+      // of making it stop producing, and it does not need changing to
+      // change profile.
       if (!this.degradationSet) {
         params.degradationPreference = profile.degradation;
         this.degradationSet = true;
       }
-      // Né i fotogrammi né la scala: la risoluzione la decide la
-      // ripresa, e su questo lato resta il solo tetto di banda.
+      // Neither the frame rate nor the scale: the resolution is decided
+      // by the capture, and on this side only the bandwidth ceiling is
+      // left.
       params.encodings[0].scaleResolutionDownBy = 1;
       params.encodings[0].maxBitrate = profile.maxBitrate;
       await sender.setParameters(params);
       if (sender !== this.videoSender) {
-        log('parametri scritti sul sender vivo, non su quello ricordato');
+        log('parameters written on the live sender, not the remembered one');
         this.videoSender = sender;
       }
-      // Rilettura: distingue "l'encoder ha rifiutato la scala" da
-      // "l'ha accettata e poi la ignora". Sono due guasti diversi e
-      // dall'esterno sembrano lo stesso.
-      log('qualità video:', this.cfg.videoQuality,
-        `- tetto ${Math.round(profile.maxBitrate / 1000)} kbit/s,`,
+      log('video quality:', this.cfg.videoQuality,
+        `- ceiling ${Math.round(profile.maxBitrate / 1000)} kbit/s,`,
         profile.degradation);
     } catch (e) {
-      log('non riesco ad applicare la qualità video:', String(e));
+      log('cannot apply the video quality:', String(e));
     }
   }
 
   /**
-   * Cambia profilo.
+   * Changes profile.
    *
-   * Bitrate e fotogrammi si cambiano al volo. Il formato di acquisizione
-   * no: va chiesto alla camera all'accensione, quindi se cambia e la
-   * camera è accesa bisogna riaprirla. Si vede un lampo, ma è l'unico
-   * modo: `applyConstraints` su react-native-webrtc non riformatta la
-   * ripresa in corso.
+   * Bitrate and frame rate change on the fly. The capture format does
+   * not: it has to be asked of the camera when it is switched on, so if
+   * it changes while the camera is on, the camera must be reopened.
+   * There is a flash of black, but it is the only way:
+   * `applyConstraints` in react-native-webrtc does not reformat a
+   * capture in progress.
    */
   async setVideoQuality(q: DuoConfig['videoQuality']) {
     if (this.cfg.videoQuality === q) return;
-    const dopo = VIDEO_PROFILES[q] ?? VIDEO_PROFILES.standard;
+    const after = VIDEO_PROFILES[q] ?? VIDEO_PROFILES.standard;
     this.cfg = { ...this.cfg, videoQuality: q };
 
-    const traccia: any = this.localStream?.getVideoTracks()[0];
-    if (!traccia) { await this.applyVideoQuality(); return; }
+    const track: any = this.localStream?.getVideoTracks()[0];
+    if (!track) { await this.applyVideoQuality(); return; }
 
-    const st = traccia.getSettings?.() ?? {};
-    const larghezzaRipresa = st.width ?? 0;
-    if (larghezzaRipresa === dopo.capture.width) {
+    const st = track.getSettings?.() ?? {};
+    const captureWidth = st.width ?? 0;
+    if (captureWidth === after.capture.width) {
       await this.applyVideoQuality();
       return;
     }
 
     /**
-     * Cambiare risoluzione significa riaprire la camera, e mezzo secondo
-     * di nero.
+     * Changing resolution means reopening the camera, and half a second
+     * of black.
      *
-     * Ridurre solo ciò che esce dall'encoder sarebbe indolore, ed era
-     * stato tentato: ma non tutti gli encoder onorano la richiesta, e
-     * distinguere quelli che lo fanno richiede una misura che si è
-     * rivelata inaffidabile - dava per sordo anche un telefono che
-     * ubbidiva. Un meccanismo che non si attiva mai e non lo dice è
-     * peggio del mezzo secondo di nero che voleva evitare.
+     * Shrinking only what comes out of the encoder would be painless,
+     * and was tried: but not every encoder honours the request, and
+     * telling the ones that do from the ones that do not needs a
+     * measurement that turned out to be undependable - it called a
+     * phone deaf that was in fact obeying. A mechanism that never fires
+     * and does not say so is worse than the half second of black it was
+     * meant to avoid.
      */
-    log('nuova risoluzione di ripresa:',
-      `${larghezzaRipresa} -> ${dopo.capture.width}`, '- riapro la camera');
+    log('new capture resolution:',
+      `${captureWidth} -> ${after.capture.width}`, '- reopening the camera');
     await this.disableVideo();
     await this.enableVideo();
-    // Il campione riparte da qui: altrimenti la prima banda mostrata dopo
-    // il cambio sarebbe una media a cavallo del cambio stesso.
+    // The sample starts again from here: otherwise the first bandwidth
+    // shown after the change would be an average straddling it.
     this.lastOutbound = null;
     this.lastInbound = null;
     this.logOutboundVideo();
   }
 
-  /** Cosa sa fare questo telefono: lo scopre il modulo nativo. */
+  /** What this phone can do: the native module finds out. */
   setLocalVp9(supported: boolean) {
     if (this.localVp9 === supported) return;
     this.localVp9 = supported;
@@ -1260,68 +1260,68 @@ export class ChannelSession {
   }
 
   /**
-   * VP9 conviene solo se ENTRAMBI lo encodano in hardware.
+   * VP9 is only worth it if BOTH encode it in hardware.
    *
-   * Le preferenze di codec valgono per tutta la sessione, non per una
-   * direzione sola: preferendo VP9 perché lo so fare io, costringerei
-   * l'altro a encodarlo via software - più calore e più batteria di
-   * quanta banda si risparmi.
+   * Codec preferences apply to the whole session, not to one direction:
+   * preferring VP9 because I can do it would force the other side to
+   * encode it in software - more heat and more battery than the
+   * bandwidth saved.
    */
   vp9Usable(): boolean {
     return this.localVp9 && this.peerVp9;
   }
 
   /**
-   * Mette VP9 davanti nella lista dei codec, se si può e si vuole.
+   * Puts VP9 at the head of the codec list, if we can and want to.
    *
-   * Va fatto sul transceiver PRIMA di negoziare: dopo, cambiare codec
-   * richiederebbe una rinegoziazione completa.
+   * It has to be done on the transceiver BEFORE negotiating: afterwards
+   * changing codec would need a full renegotiation.
    */
   private preferVp9(transceiver: any) {
     if (this.cfg.videoCodec !== 'vp9' || !this.vp9Usable()) return;
     try {
       const caps = (RTCRtpReceiver as any)?.getCapabilities?.('video');
       if (!caps?.codecs || typeof transceiver?.setCodecPreferences !== 'function') {
-        log('preferenze codec non disponibili su questa versione: resto su VP8');
+        log('codec preferences not available in this version: staying on VP8');
         return;
       }
       const vp9 = caps.codecs.filter((c: any) => /vp9/i.test(c.mimeType));
-      const resto = caps.codecs.filter((c: any) => !/vp9/i.test(c.mimeType));
-      if (vp9.length === 0) { log('nessun VP9 fra i codec disponibili'); return; }
-      transceiver.setCodecPreferences([...vp9, ...resto]);
-      log('codec preferito: VP9 (hardware su entrambi i telefoni)');
+      const rest = caps.codecs.filter((c: any) => !/vp9/i.test(c.mimeType));
+      if (vp9.length === 0) { log('no VP9 among the available codecs'); return; }
+      transceiver.setCodecPreferences([...vp9, ...rest]);
+      log('preferred codec: VP9 (hardware on both phones)');
     } catch (e) {
-      log('non riesco a preferire VP9:', String(e));
+      log('cannot prefer VP9:', String(e));
     }
   }
 
   /**
-   * Diciamo all'altro se stiamo guardando, così può smettere di spedirci
-   * video che nessuno vede.
+   * We tell the other side whether we are watching, so they can stop
+   * sending video nobody is looking at.
    */
   setLocalWatching(watching: boolean) {
     if (this.localWatching === watching) return;
     this.localWatching = watching;
-    log(watching ? 'torniamo a guardare' : 'non guardiamo più');
+    log(watching ? 'watching again' : 'not watching any more');
     this.broadcastState();
   }
 
   /**
-   * L'altro non guarda: smettiamo di trasmettere il video.
+   * The other side is not watching: we stop sending the video.
    *
-   * La camera resta accesa e l'anteprima locale continua a funzionare -
-   * si stacca solo la traccia dal canale, come già si fa per spegnere il
-   * video. Il canale resta aperto, quindi riprendere non costa una
-   * rinegoziazione.
+   * The camera stays on and the local preview keeps working - only the
+   * track is taken out of the channel, as it already is for switching
+   * the video off. The channel stays open, so resuming does not cost a
+   * renegotiation.
    */
   private setPeerWatching(watching: boolean) {
     if (this.peerWatching === watching) return;
     this.peerWatching = watching;
-    log(watching ? "l'altro guarda di nuovo" : "l'altro non guarda: sospendo il video");
+    log(watching ? 'they are watching again' : 'they are not watching: video paused');
     this.applyPeerWatching();
   }
 
-  /** Allinea ciò che esce dal canale a `peerWatching`. */
+  /** Lines up what leaves the channel with `peerWatching`. */
   private async applyPeerWatching() {
     const sender = this.liveVideoSender();
     if (!sender) return;
@@ -1329,28 +1329,28 @@ export class ChannelSession {
     try {
       await sender.replaceTrack(this.peerWatching ? track : null);
     } catch (e) {
-      log('non riesco a cambiare la trasmissione del video:', String(e));
+      log('cannot change what the video channel is sending:', String(e));
     }
   }
 
-  /** Spegne la camera: svuota il canale e rilascia davvero la camera. */
+  /** Switches the camera off: empties the channel and really releases it. */
   async disableVideo(): Promise<boolean> {
     const track = this.localStream?.getVideoTracks()[0];
 
     const senderOff: any = this.liveVideoSender();
     if (senderOff) {
-      // Il canale resta aperto e pronto per la prossima accensione.
+      // The channel stays open and ready for the next switch-on.
       try {
         await senderOff.replaceTrack(null);
       } catch (e) {
-        log('replaceTrack(null) fallita:', String(e));
+        log('replaceTrack(null) failed:', String(e));
       }
     }
 
     if (track && this.localStream) {
       this.localStream.removeTrack(track);
-      track.stop(); // libera la camera e spegne l'indicatore di Android
-      log('camera spenta, traccia', track.id);
+      track.stop(); // frees the camera and turns Android's indicator off
+      log('camera off, track', track.id);
     }
 
     this.lastOutbound = null;
@@ -1361,14 +1361,14 @@ export class ChannelSession {
   }
 
   /**
-   * Passa da camera frontale a posteriore.
+   * Turns from the front camera to the back one.
    *
-   * Funziona anche a video spento: in quel caso non c'è nulla da girare
-   * ora, ma la scelta resta e vale per quando lo si accende. È il modo di
-   * inquadrare qualcosa senza mostrare prima, per un istante, la propria
-   * faccia.
+   * It works with the video off too: there is nothing to turn round
+   * then, but the choice holds and applies when it is switched on. It
+   * is the way to point at something without showing your own face
+   * first, even for a moment.
    *
-   * @returns true se d'ora in poi si riprende con la frontale
+   * @returns true if from now on the front camera films
    */
   switchCamera(): boolean {
     this.frontCamera = !this.frontCamera;
@@ -1377,17 +1377,17 @@ export class ChannelSession {
     return this.frontCamera;
   }
 
-  /** Con quale camera si riprende (o si riprenderà). */
-  isCameraFrontale(): boolean {
+  /** Which camera films (or will film). */
+  isFrontCamera(): boolean {
     return this.frontCamera;
   }
 
   /**
-   * Proporzioni con cui il MIO video viene mostrato (larghezza/altezza).
+   * The shape MY video is shown in (width over height).
    *
-   * La camera consegna sempre un fotogramma orizzontale (es. 1280x720) e
-   * viene ruotato in base a come tieni il telefono: quindi il lato lungo
-   * segue l'orientamento dello schermo.
+   * The camera always hands over a landscape frame (1280x720, say) and
+   * it is rotated according to how you are holding the phone: so the
+   * long side follows the orientation of the screen.
    */
   getLocalVideoAspect(): number | undefined {
     const track: any = this.localStream?.getVideoTracks()[0];
@@ -1400,7 +1400,7 @@ export class ChannelSession {
       w = s?.width;
       h = s?.height;
     } catch {
-      /* alcune versioni non espongono getSettings */
+      /* some versions do not expose getSettings */
     }
     if (!w || !h) return undefined;
 
@@ -1411,15 +1411,15 @@ export class ChannelSession {
     return portrait ? shortSide / longSide : longSide / shortSide;
   }
 
-  /** Comunica all'altro lo stato di mic/camera e le proporzioni (cifrato). */
+  /** Tells the other side about mic, camera and shape (encrypted). */
   broadcastState() {
     this.signaling.sendSignal({
       kind: 'state',
       audio: this.isAudioEnabled(),
-      output: this.uscitaLocale,
+      output: this.ourOutput,
       version: VERSION,
-      camera: this.isCameraFrontale() ? 'frontale' : 'posteriore',
-      volume: this.livelloUdito,
+      camera: this.isFrontCamera() ? 'front' : 'back',
+      volume: this.heardLevel,
       video: this.isVideoEnabled(),
       aspect: this.getLocalVideoAspect(),
       watching: this.localWatching,
@@ -1427,56 +1427,57 @@ export class ChannelSession {
     });
   }
 
-  /** Cambia l'uscita audio dichiarata e lo fa sapere all'altro. */
-  setUscita(uscita: string) {
-    if (uscita === this.uscitaLocale) return;
-    this.uscitaLocale = uscita;
+  /** Changes the declared audio output and lets the other side know. */
+  setOutput(output: string) {
+    if (output === this.ourOutput) return;
+    this.ourOutput = output;
     this.broadcastState();
   }
 
   /**
-   * Alza o abbassa la voce dell'altro, dentro di noi.
+   * Turns the other voice up or down, on our side.
    *
-   * Si riapplica a ogni traccia nuova: una connessione rifatta porta una
-   * traccia nuova, che nasce a volume pieno e senza questo tornerebbe
-   * assordante da sola.
+   * It is applied again to every new track: a rebuilt connection brings
+   * a new one, which is born at full volume and without this would come
+   * back deafening by itself.
    */
   setRemoteGain(g: number) {
-    if (g === this.guadagnoAltro) return;
-    this.guadagnoAltro = g;
-    this.applicaGuadagno();
-    // Glielo si dice: è l'unico modo che ha di sapere se lo stai
-    // sentendo piano, e a voce quella domanda non si risolve mai.
+    if (g === this.peerGain) return;
+    this.peerGain = g;
+    this.applyGain();
+    // We tell them: it is the only way they have of knowing you are
+    // hearing them faintly, and out loud that question never gets
+    // settled.
     this.broadcastState();
   }
 
-  /** Il livello dichiarato all'altro; non tocca il suono, solo il racconto. */
-  setLivelloUdito(l: number) {
-    // Lo zero è un valore come gli altri: vuol dire che non lo si sente
-    // affatto, ed è proprio quello che l'altro ha bisogno di sapere.
-    if (!(l >= 0) || l === this.livelloUdito) return;
-    this.livelloUdito = l;
+  /** The level declared to the other side; it changes the telling, not the sound. */
+  setHeardLevel(l: number) {
+    // Zero is a value like any other: it means they are not heard at
+    // all, and that is precisely what the other side needs to know.
+    if (!(l >= 0) || l === this.heardLevel) return;
+    this.heardLevel = l;
     this.broadcastState();
   }
 
-  private applicaGuadagno() {
-    const tracce = this.remoteStream?.getAudioTracks?.() ?? [];
-    for (const t of tracce) {
+  private applyGain() {
+    const tracks = this.remoteStream?.getAudioTracks?.() ?? [];
+    for (const t of tracks) {
       try {
-        (t as any)._setVolume?.(this.guadagnoAltro);
-      } catch { /* una voce non regolata non vale un errore */ }
+        (t as any)._setVolume?.(this.peerGain);
+      } catch { /* an unadjusted voice is not worth an error */ }
     }
   }
 
-  /** Se il microfono è stato aperto. Falso mentre si aspetta l'altro. */
+  /** Whether the microphone has been opened. False while waiting. */
   hasMic(): boolean {
     return !!this.localStream;
   }
 
   isAudioEnabled(): boolean {
-    // Prima che il microfono venga aperto vale l'intenzione: per l'altro
-    // "acceso" significa che sarai sentito, non che l'apparecchio è già
-    // in funzione.
+    // Before the microphone is opened, the intent is what counts: to
+    // the other side "on" means you will be heard, not that the device
+    // is already running.
     return this.audioDesired;
   }
 
@@ -1485,17 +1486,17 @@ export class ChannelSession {
     return !!t && t.enabled;
   }
 
-  /** Chiude la connessione con l'altro ma resta nel canale. */
+  /** Closes the connection to the other side but stays in the channel. */
   detachPeer() {
-    // Da qui in poi ogni creazione cominciata prima è roba vecchia.
-    this.generazione += 1;
-    this.inCreazione = null;
+    // From here on, every build started earlier is stale goods.
+    this.generation += 1;
+    this.creating = null;
     if (this.statsTimer) { clearInterval(this.statsTimer); this.statsTimer = null; }
     this.lastOutbound = null;
     this.lastInbound = null;
-    // Senza connessione non c'è nessun video che paghi la voce ricca: la
-    // prossima ricomincia dall'impostazione dell'utente.
-    this.videoAbbondante = false;
+    // With no connection there is no video paying for the rich voice:
+    // the next one starts again from the user's setting.
+    this.heavyVideo = false;
     this.events.onVideoStats?.({});
     this.remoteStream?.getTracks().forEach((t) => t.stop());
     this.remoteStream = null;
@@ -1511,7 +1512,7 @@ export class ChannelSession {
     }
   }
 
-  /** Esce dal canale e rilascia microfono e camera. */
+  /** Leaves the channel and releases microphone and camera. */
   leaveChannel() {
     this.detachPeer();
     this.localStream?.getTracks().forEach((t) => t.stop());

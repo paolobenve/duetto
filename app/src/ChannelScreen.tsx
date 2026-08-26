@@ -208,7 +208,7 @@ type Props = {
    * È il prodotto delle due metà: il volume di chiamata del telefono e
    * il guadagno di Duetto. Vedi `volumeSistema`.
    */
-  guadagnoAltro?: number;
+  peerGain?: number;
   /**
    * Il volume di chiamata del telefono e il suo massimo.
    *
@@ -293,7 +293,7 @@ type Props = {
  */
 export default function ChannelScreen(props: Props) {
   const {
-    collegamento, peerName, peerAvatar, peerPresent, peerStaccato, peerSmontato, videoStats, qualityLabel, showStats, controls, avviso, onAvvisoLetto, guadagno, guadagnoAltro, volumeSistema, onGuadagno,
+    collegamento, peerName, peerAvatar, peerPresent, peerStaccato, peerSmontato, videoStats, qualityLabel, showStats, controls, avviso, onAvvisoLetto, guadagno, peerGain, volumeSistema, onGuadagno,
     avvisoVersione, frontCamera, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes,
@@ -678,11 +678,11 @@ export default function ChannelScreen(props: Props) {
       <>
         {segnoUscitaMia(13, '#1b1d21')}
         {showStats ? (
-          <Text style={styles.pastigliaVolume}>{percento(guadagnoAltro)}</Text>
+          <Text style={styles.pastigliaVolume}>{percento(peerGain)}</Text>
         ) : null}
       </>
     );
-  }, [segnoUscitaMia, showStats, guadagnoAltro]);
+  }, [segnoUscitaMia, showStats, peerGain]);
 
   /**
    * Qualcosa copre lo schermo: una tasca, una cover chiusa.
@@ -808,7 +808,7 @@ export default function ChannelScreen(props: Props) {
                     ) : null}
                     <Text style={styles.cardVolume}>
                       {peerState.volume != null ? '· ' : ''}
-                      lo senti {percento(guadagnoAltro)}
+                      lo senti {percento(peerGain)}
                     </Text>
                     {/* Il segno dell'uscita sta accanto al numero di
                         chi ascolta: il suo davanti al suo, il mio dopo
@@ -1078,7 +1078,7 @@ export default function ChannelScreen(props: Props) {
         </View>
         {showStats ? (
           // Altezza fissa: comparendo la seconda riga solo quando il
-          // percorso è noto, il pannello cresceva sotto le dita e i
+          // path è noto, il pannello cresceva sotto le dita e i
           // pulsanti si spostavano.
           <View style={[styles.statsBox, avvisoVersione ? styles.statsBoxTre : null]}>
             <StatsLine
@@ -1262,9 +1262,9 @@ export default function ChannelScreen(props: Props) {
                 <Text style={styles.passoSegno}>−</Text>
               </TouchableOpacity>
               <Text style={styles.passoValore}>
-                {guadagnoAltro === 0
+                {peerGain === 0
                   ? 'muto'
-                  : `${Math.round((guadagnoAltro ?? 1) * 100)}%`}
+                  : `${Math.round((peerGain ?? 1) * 100)}%`}
               </Text>
               <TouchableOpacity
                 style={styles.passo}
@@ -1278,8 +1278,8 @@ export default function ChannelScreen(props: Props) {
               // sopra. Il totale è la percentuale qui sopra.
               <Text style={styles.sheetMeta}>
                 telefono {volumeSistema.volume}/{volumeSistema.max}
-                {volumeSistema.volume >= volumeSistema.max && (guadagnoAltro ?? 1) > 1
-                  ? `  ·  Duetto ×${(guadagnoAltro ?? 1).toFixed(2).replace(/0$/, '')}`
+                {volumeSistema.volume >= volumeSistema.max && (peerGain ?? 1) > 1
+                  ? `  ·  Duetto ×${(peerGain ?? 1).toFixed(2).replace(/0$/, '')}`
                   : ''}
               </Text>
             ) : null}
@@ -1468,7 +1468,7 @@ function PresenceCard(props: {
  * La faccia dell'altro quando non c'è il suo video.
  *
  * Chi non ha messo un nome prima vedeva un punto interrogativo, che sembra
- * un errore. Al suo posto un'immagine generata dalla coppia: sempre la
+ * un errore. Al suo posto un'immagine generata dalla pairStat: sempre la
  * stessa, quindi diventa "lui" invece di essere un segnaposto.
  *
  * Il nome, se c'è, vince: l'iniziale dice più di un disegno.
@@ -1514,12 +1514,12 @@ function StatsLine({ stats, quality, mostraSu, mostraGiu, versioni }: {
    * subito che è la strada e non il telefono. Leggerlo dal log a casa
    * dell'altra persona non è praticabile.
    */
-  // La latenza vale anche senza video: si mostra insieme al percorso.
-  const strada = stats.percorso === 'locale'
+  // La latency vale anche senza video: si mostra insieme al path.
+  const strada = stats.path === 'local'
     ? 'diretto, stessa rete'
-    : stats.percorso === 'diretto'
+    : stats.path === 'direct'
       ? 'diretto tra i telefoni'
-      : stats.percorso === 'relay'
+      : stats.path === 'relay'
         ? 'passa dal server'
         : null;
 
@@ -1541,8 +1541,8 @@ function StatsLine({ stats, quality, mostraSu, mostraGiu, versioni }: {
           {versioni}
         </Text>
       ) : null}
-      {strada || stats.audioKbps != null || stats.latenza != null ? (
-        // Come la riga sopra: con la latenza in coda finiva fuori dallo
+      {strada || stats.audioKbps != null || stats.latency != null ? (
+        // Come la riga sopra: con la latency in coda finiva fuori dallo
         // schermo, e una riga tagliata a metà numero non dice niente.
         <Text
           style={styles.stats}
@@ -1553,7 +1553,7 @@ function StatsLine({ stats, quality, mostraSu, mostraGiu, versioni }: {
           {stats.audioKbps != null
             ? `${strada ? '   ' : ''}audio ${stats.audioKbps} kbit/s`
             : ''}
-          {stats.latenza != null ? `   latenza a/r ${stats.latenza} ms` : ''}
+          {stats.latency != null ? `   latency a/r ${stats.latency} ms` : ''}
         </Text>
       ) : null}
     </>

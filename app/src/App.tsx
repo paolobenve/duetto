@@ -404,9 +404,9 @@ export default function App() {
   const [peerState, setPeerState] = useState<{
     audio: boolean; video: boolean; aspect?: number;
     /** da dove esce il suono dall'altra parte: lo dichiara lui */
-    uscita?: string;
-    /** quale Duetto ha di là; assente se è più vecchio di questo campo */
-    versione?: string;
+    output?: string;
+    /** which Duetto they have; missing if older than this field */
+    version?: string;
     /** quanto forte sta ascoltando noi: 1 = come glielo mandiamo */
     volume?: number;
   }>({ audio: true, video: false });
@@ -530,7 +530,7 @@ export default function App() {
    * comunque.
    */
   useEffect(() => {
-    sessionRef.current?.setUscita(audio.route);
+    sessionRef.current?.setOutput(audio.route);
   }, [audio.route, inChannel]);
 
   /**
@@ -576,24 +576,24 @@ export default function App() {
    * stessa cosa.
    */
   const statoAltroRef = useRef<{
-    audio?: boolean; video?: boolean; camera?: string; uscita?: string;
+    audio?: boolean; video?: boolean; camera?: string; output?: string;
   }>({});
 
   const versioneAltroVista = useRef('');
   useEffect(() => {
-    const v = peerState.versione;
+    const v = peerState.version;
     if (!v || v === versioneAltroVista.current) return;
     versioneAltroVista.current = v;
     Diario.segna(`altro-versione:${v}`).catch(() => { /* noop */ });
-  }, [peerState.versione]);
+  }, [peerState.version]);
 
   const avvisoVersione = React.useMemo(() => {
     if (!peerVisto) return null;
-    const sua = peerState.versione;
+    const sua = peerState.version;
     if (!sua) return `Versioni diverse: qui ${VERSION}, di là una più vecchia`;
     if (sua === VERSION) return null;
     return `Versioni diverse: qui ${VERSION}, di là ${sua}`;
-  }, [peerVisto, peerState.versione]);
+  }, [peerVisto, peerState.version]);
 
   /**
    * Il volume di chiamata si rilegge quando può essere cambiato.
@@ -675,7 +675,7 @@ export default function App() {
    * del tuo telefono.
    */
   useEffect(() => {
-    sessionRef.current?.setLivelloUdito(livello);
+    sessionRef.current?.setHeardLevel(livello);
   }, [livello, inChannel]);
 
   /**
@@ -840,7 +840,7 @@ export default function App() {
   /**
    * L'immagine da mostrare al posto del video dell'altro.
    *
-   * Dipende solo dalla coppia, quindi non cambia mai; prima del primo
+   * Dipende solo dalla pairStat, quindi non cambia mai; prima del primo
    * accoppiamento non serve a nulla, ma un valore deve esserci.
    */
   const face = React.useMemo(
@@ -1426,7 +1426,7 @@ export default function App() {
    * ICE non torna indietro da solo: scelta una strada che funziona, non
    * la riconsidera più, nemmeno quando ne ricompare una molto migliore -
    * tornando sul wifi il collegamento continuava a rimbalzare dal server
-   * all'infinito. Una rinegoziazione rifà la raccolta dei candidati e fa
+   * all'infinito. Una rinegoziazione rifà la raccolta dei candidatesById e fa
    * rivalutare le coppie: se la locale c'è, vince per priorità.
    *
    * Una volta sola per collegamento: se anche così resta il relay, vuol
@@ -1439,7 +1439,7 @@ export default function App() {
     // vedeva "collegamento interrotto" ogni dieci secondi per sempre.
     // Si riprova solo dopo un vero cambio di rete - vedi `onJoined`.
     if (connState !== 'connected') return;
-    if (videoStats.percorso !== 'relay' || relayRiprovato.current) return;
+    if (videoStats.path !== 'relay' || relayRiprovato.current) return;
     const t = setTimeout(() => {
       if (!inChannelRef.current || !peerActiveRef.current) return;
       relayRiprovato.current = true;
@@ -1448,7 +1448,7 @@ export default function App() {
       else sessionRef.current?.restartIce();
     }, 8000);
     return () => clearTimeout(t);
-  }, [connState, videoStats.percorso]);
+  }, [connState, videoStats.path]);
 
   // Quale profilo l'interfaccia sta DAVVERO mostrando: distingue "non è
   // arrivato" da "è arrivato ma non si vede".
@@ -1525,7 +1525,7 @@ export default function App() {
       if (!isServerConfigured(c)) setScreen('settings');
       else if (!isPaired(c)) setScreen('pairing');
       // Le impostazioni di sistema si propongono una volta sola, appena
-      // c'è una coppia: prima non avrebbe senso spiegarle.
+      // c'è una pairStat: prima non avrebbe senso spiegarle.
       else if (!c.setupShown) setScreen('setup');
       // Aprire l'app significa voler entrare nel canale: niente pulsanti
       // di mezzo. Lo stato "in ascolto" resta per dopo aver premuto Esci.
@@ -1569,7 +1569,7 @@ export default function App() {
   }, [salvaCfg]);
 
   // --- connessione persistente --------------------------------------------
-  // Vive finché c'è una coppia: passare da "in ascolto" a "nel canale"
+  // Vive finché c'è una pairStat: passare da "in ascolto" a "nel canale"
   // non riconnette nulla, cambia solo lo stato dichiarato al server.
   useEffect(() => {
     if (!cfg || !isPaired(cfg) || !isServerConfigured(cfg) || !disponibile) return;
@@ -2105,11 +2105,11 @@ export default function App() {
           if (st.camera && prima.camera !== st.camera) {
             Diario.segna(`altro-camera:${st.camera}`).catch(() => {});
           }
-          if (st.uscita && prima.uscita !== st.uscita) {
-            Diario.segna(`altro-uscita-audio:${st.uscita}`).catch(() => {});
+          if (st.output && prima.output !== st.output) {
+            Diario.segna(`altro-uscita-audio:${st.output}`).catch(() => {});
           }
           statoAltroRef.current = {
-            audio: st.audio, video: st.video, camera: st.camera, uscita: st.uscita,
+            audio: st.audio, video: st.video, camera: st.camera, output: st.output,
           };
           // Se ci manda il suo stato è tornato, qualunque cosa dicesse il
           // conto alla rovescia: senza fermarlo, poco dopo spegnerebbe uno
@@ -2278,7 +2278,7 @@ export default function App() {
     // Staccarsi non è una cosa da fare a mano qui: basta dichiararsi non
     // disponibili, e l'effetto della connessione smonta tutto da sé -
     // sessione, signaling, servizio in primo piano - come fa a ogni
-    // cambio di coppia.
+    // cambio di pairStat.
     if (!restaDisponibile) {
       salutiamo.current = true;
       setDisponibile(false);
@@ -2386,7 +2386,7 @@ export default function App() {
       setLocalAspect(s.getLocalVideoAspect());
       // La camera si apre su quella scelta, che può essere stata cambiata
       // a video spento: qui si allinea solo l'icona.
-      setCameraFrontale(s.isCameraFrontale());
+      setCameraFrontale(s.isFrontCamera());
     } catch (e: any) {
       Foreground.setCameraActive(false).catch(() => {});
       Alert.alert('Errore camera', String(e?.message ?? e));
@@ -2448,7 +2448,7 @@ export default function App() {
 
   const onSaveSettings = useCallback(async (scritta: DuoConfig) => {
     Diario.segna('impostazioni-salvate').catch(() => { /* noop */ });
-    // Il server appena scritto è il server di questa coppia: se resta
+    // Il server appena scritto è il server di questa pairStat: se resta
     // solo nell'app, tornando qui da un altro collegamento si
     // riporterebbe dietro l'indirizzo vecchio.
     const next = alignPairServer(scritta);
@@ -2473,7 +2473,7 @@ export default function App() {
   /**
    * Passa a un altro collegamento già configurato.
    *
-   * Non c'è niente da smontare a mano: cambiando la coppia cambia
+   * Non c'è niente da smontare a mano: cambiando la pairStat cambia
    * `connKey`, e l'effetto della connessione si rifà da capo - chiude il
    * vecchio, apre il nuovo, rientra nel canale. Qui si spegne solo ciò
    * che si vede, che altrimenti resterebbe a mostrare la persona
@@ -2666,7 +2666,7 @@ export default function App() {
             if (!cfg.setupShown) {
               // `setupShown` è dell'app - una schermata mostrata una
               // volta nella vita del telefono - ma il salvataggio passa
-              // di lì lo stesso, così le impostazioni della coppia
+              // di lì lo stesso, così le impostazioni della pairStat
               // restano allineate.
               setCfg(salvaCfg({ ...cfg, setupShown: true }));
             }
@@ -2709,7 +2709,7 @@ export default function App() {
         // Alla schermata va il LIVELLO, non il guadagno: è il numero
         // che dice a che volume stai sentendo l'altro.
         guadagno={guadagnoVisibile ? livello : null}
-        guadagnoAltro={livello}
+        peerGain={livello}
         volumeSistema={sistema}
         onGuadagno={cambiaLivello}
         avvisoVersione={avvisoVersione}

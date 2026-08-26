@@ -245,7 +245,7 @@ export const CHANGELOG: NotaVersione[] = [
       },
       {
         "forte": "Le righe tecniche non escono più dallo schermo.",
-        "testo": "«andata e ritorno 42 ms» è diventato «latenza a/r 42 ms», e quella riga si rimpicciolisce da sola quando serve, come già faceva quella della risoluzione."
+        "testo": "«andata e ritorno 42 ms» è diventato «latency a/r 42 ms», e quella riga si rimpicciolisce da sola quando serve, come già faceva quella della risoluzione."
       },
       {
         "forte": "Il volume che viaggia è giusto dal primo istante.",
@@ -269,7 +269,7 @@ export const CHANGELOG: NotaVersione[] = [
         "testo": "Bussando all'altro, il suono suona anche qui: è il riscontro che l'avviso è partito davvero."
       },
       {
-        "forte": "La latenza tra le righe tecniche.",
+        "forte": "La latency tra le righe tecniche.",
         "testo": "«Andata e ritorno 42 ms»: quanto ci mette la voce a fare il giro."
       },
       {
@@ -586,7 +586,7 @@ export const CHANGELOG: NotaVersione[] = [
     "paragrafi": [
       {
         "forte": "Tolto l'access token.",
-        "testo": "Era un campo nelle impostazioni avanzate e un controllo sul server, pensato contro gli abusi; sul server era già disattivo da tempo, e la protezione vera è altrove — l'identificativo della coppia nasce da un codice di otto cifre e nulla di ciò che passa dal server è leggibile. Una impostazione in meno da capire."
+        "testo": "Era un campo nelle impostazioni avanzate e un controllo sul server, pensato contro gli abusi; sul server era già disattivo da tempo, e la protezione vera è altrove — l'identificativo della pairStat nasce da un codice di otto cifre e nulla di ciò che passa dal server è leggibile. Una impostazione in meno da capire."
       }
     ]
   },
@@ -805,7 +805,7 @@ export const CHANGELOG: NotaVersione[] = [
       },
       {
         "forte": "Nelle impostazioni",
-        "testo": ": la qualità si applica al tocco senza «Salva», il server si vede ma si modifica solo chiedendolo, e si possono nascondere del tutto i comandi invece di attenuarli. Le due righe tecniche sotto ai pulsanti — risoluzione, banda, percorso — sono ora facoltative e spente di default."
+        "testo": ": la qualità si applica al tocco senza «Salva», il server si vede ma si modifica solo chiedendolo, e si possono nascondere del tutto i comandi invece di attenuarli. Le due righe tecniche sotto ai pulsanti — risoluzione, banda, path — sono ora facoltative e spente di default."
       },
       {
         "forte": "Ogni compilazione ha il suo numero di versione",

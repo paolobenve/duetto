@@ -252,7 +252,7 @@ export default function SettingsScreen({
 
         {/* Il passo avanti sta qui, non in fondo: appena sotto a ciò che si
             è appena scritto. Sotto ci sono impostazioni che si applicano da
-            sole o che riguardano una coppia già fatta. */}
+            sole o che riguardano una pairStat già fatta. */}
         {!paired || cambiaServer ? (
         <TouchableOpacity
           style={[styles.button, !ready && styles.buttonDisabled]}
