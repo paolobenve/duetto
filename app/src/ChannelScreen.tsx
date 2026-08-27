@@ -1579,9 +1579,21 @@ function StatsLine({
    * is what the tilde says.
    */
   const road = stats.latency != null ? stats.latency / 2 : null;
+  /**
+   * The receiving half is what a journey cannot do without.
+   *
+   * It holds the jitter buffer, which is the term that makes this
+   * different from a ping, and it is always measurable on the phone
+   * that plays the sound. The sending half is not always there: the
+   * encoder's time exists for video and not for audio, and the wait in
+   * the send queue is not offered by every build of libwebrtc. Missing
+   * it, the journey is written without it - short by a few
+   * milliseconds, which the tilde already promises - rather than not
+   * written at all, which is what used to happen.
+   */
   const journey = (send?: number | null, recv?: number | null) =>
-    (send != null && recv != null && road != null
-      ? Math.round(send + road + recv)
+    (recv != null && road != null
+      ? Math.round((send ?? 0) + road + recv)
       : null);
   /** Up: ours goes out and lands on their loudspeaker. */
   const upDelay = journey(stats.sendDelay, peerRecv);
