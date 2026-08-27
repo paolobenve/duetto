@@ -1,41 +1,41 @@
-# Guida al deploy sul tuo server
+# A guide to deploying on your own server
 
-Due pezzi: il **signaling** (obbligatorio) e **coturn** per il collegamento di riserva
-(consigliato). Nient'altro: le notifiche non passano da servizi esterni.
+Two pieces: the **signalling server** (compulsory) and **coturn** for the fallback link
+(recommended). Nothing else: the notifications do not go through any outside service.
 
-## 1. Signaling server
+## 1. The signalling server
 
-Sul server:
+On the server:
 
 ```bash
 sudo mkdir -p /opt/duetto && sudo chown $USER /opt/duetto
 ```
 
-Dal **PC**, per copiare il codice:
+From your **PC**, to copy the code over:
 
 ```bash
 rsync -rltvz --no-owner --no-group --exclude node_modules --exclude .env \
-  /percorso/duetto/server/ utente@TUO_SERVER:/opt/duetto/server/
+  /path/to/duetto/server/ user@YOUR_SERVER:/opt/duetto/server/
 ```
 
-Di nuovo sul **server**:
+Back on the **server**:
 
 ```bash
 cd /opt/duetto/server
-cp .env.example .env      # va bene com'è
+cp .env.example .env      # it is fine as it is
 npm install --omit=dev
-npm run test:smoke        # deve stampare TUTTO OK
+npm run test:smoke        # it has to print ALL OK
 ```
 
-### Avvio permanente
+### Starting it for good
 
-Un utente di servizio dedicato, che deve solo **leggere** i file:
+A dedicated service user, which only has to **read** the files:
 
 ```bash
 sudo useradd --system --no-create-home --shell /usr/sbin/nologin duetto
 sudo chown -R $USER:duetto /opt/duetto
 sudo chmod -R u+rwX,g+rX,o-rwx /opt/duetto
-sudo find /opt/duetto -type d -exec chmod g+s {} \;   # i nuovi file ereditano il gruppo
+sudo find /opt/duetto -type d -exec chmod g+s {} \;   # new files inherit the group
 sudo chmod 640 /opt/duetto/server/.env
 
 sudo cp /opt/duetto/server/deploy/duetto-signaling.service /etc/systemd/system/
@@ -47,28 +47,29 @@ sudo systemctl enable --now duetto-signaling
 curl -s http://127.0.0.1:8787/healthz      # {"ok":true,"rooms":0}
 ```
 
-Il bit `g+s` sulle cartelle evita un problema ricorrente: senza, i file copiati in
-seguito con rsync nascono con un gruppo che il servizio non può leggere.
+The `g+s` bit on the folders avoids a recurring problem: without it, files copied later
+with rsync are born with a group the service cannot read.
 
-## 2. Esporlo in HTTPS
+## 2. Exposing it over HTTPS
 
-Il signaling resta su `127.0.0.1:8787`; davanti ci va quello che già hai.
-In `server/deploy/` trovi gli esempi per i tre casi.
+The signalling server stays on `127.0.0.1:8787`; in front of it goes whatever you already
+have. In `server/deploy/` there are examples for the three cases.
 
 ### HAProxy
 
-Se la 443 è di HAProxy, mandagli `/duetto/` **direttamente** a Node, senza attraversare
-il resto della catena. Non è solo comodità: Varnish, se c'è, non gestisce i WebSocket
-senza un `pipe` esplicito, e una cache davanti al signaling non avrebbe senso.
+If port 443 belongs to HAProxy, send it `/duetto/` **straight** to Node, without going
+through the rest of the chain. It is not only convenience: Varnish, if it is there, does
+not handle WebSockets without an explicit `pipe`, and a cache in front of the signalling
+server would make no sense.
 
-Nel frontend della 443, **dopo** le eventuali regole `http-request`:
+In the frontend for 443, **after** any `http-request` rules:
 
 ```
     acl duetto_path path_beg /duetto/
     use_backend duetto_backend if duetto_path
 ```
 
-In fondo al file:
+At the end of the file:
 
 ```
 backend duetto_backend
@@ -79,16 +80,16 @@ backend duetto_backend
     server duetto 127.0.0.1:8787 check
 ```
 
-⚠️ **`timeout tunnel` non è facoltativo.** Senza, eredita `timeout client`/`server` da
-`defaults` (spesso 50 secondi) e tronca il WebSocket di continuo: il sintomo è "la
-presenza cade da sola ogni tanto", difficilissimo da ricondurre a HAProxy.
-E `option http-keep-alive` serve a scavalcare `option http-server-close`, se l'hai in
-`defaults`.
+⚠️ **`timeout tunnel` is not optional.** Without it, it inherits `timeout
+client`/`server` from `defaults` (often 50 seconds) and cuts the WebSocket off
+constantly: the symptom is "presence drops by itself now and then", which is extremely
+hard to trace back to HAProxy. And `option http-keep-alive` is there to override `option
+http-server-close`, if you have it in `defaults`.
 
 ### Apache
 
-Dentro il `<VirtualHost *:443>` esistente, e **prima** di eventuali altre regole di
-rewrite del sito:
+Inside the existing `<VirtualHost *:443>`, and **before** any other rewrite rules of the
+site:
 
 ```apache
 RewriteEngine On
@@ -106,30 +107,32 @@ sudo apachectl configtest && sudo systemctl reload apache2
 
 ### nginx
 
-Vedi `server/deploy/nginx.conf.example`.
+See `server/deploy/nginx.conf.example`.
 
-### Verifica
+### Checking
 
 ```bash
-curl -s https://TUO_DOMINIO/duetto/healthz
+curl -s https://YOUR_DOMAIN/duetto/healthz
 ```
 
-Atteso: `{"ok":true,"rooms":0}`. E il collaudo che conta davvero, l'upgrade a WebSocket:
+Expected: `{"ok":true,"rooms":0}`. And the test that really counts, the upgrade to
+WebSocket:
 
 ```bash
 curl -s -i -N -H "Connection: Upgrade" -H "Upgrade: websocket" \
   -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" -H "Sec-WebSocket-Version: 13" \
-  https://TUO_DOMINIO/duetto/ws | head -3
+  https://YOUR_DOMAIN/duetto/ws | head -3
 ```
 
-Atteso: `HTTP/1.1 101 Switching Protocols`. Se il primo risponde ma il secondo no, la
-richiesta non sta arrivando al backend giusto: quasi sempre è l'ordine delle regole.
+Expected: `HTTP/1.1 101 Switching Protocols`. If the first answers but the second does
+not, the request is not reaching the right backend: nearly always it is the order of the
+rules.
 
-## 3. TURN (coturn) — collegamento di riserva
+## 3. TURN (coturn) — the fallback link
 
-Serve quando le due reti impediscono il collegamento diretto (NAT simmetrici, certe reti
-mobili). Anche passando dal TURN il traffico resta cifrato end-to-end: il relay inoltra
-pacchetti che non può leggere.
+It is needed when the two networks prevent a direct link (symmetric NATs, certain mobile
+networks). Even going through the TURN the traffic stays end-to-end encrypted: the relay
+forwards packets it cannot read.
 
 ```bash
 sudo apt install coturn
@@ -139,92 +142,93 @@ sudo sed -i 's/#TURNSERVER_ENABLED=1/TURNSERVER_ENABLED=1/' /etc/default/coturn
 sudo systemctl enable --now coturn
 ```
 
-Firewall: **TCP/UDP 3478**, **TCP 5349**, e l'intervallo di relay (per due persone
-bastano poche decine di porte: `min-port`/`max-port` in `turnserver.conf`).
+The firewall: **TCP/UDP 3478**, **TCP 5349**, and the relay range (for two people a few
+dozen ports are enough: `min-port`/`max-port` in `turnserver.conf`).
 
 ```bash
-# con firewalld
+# with firewalld
 sudo firewall-cmd --permanent --add-port=3478/tcp --add-port=3478/udp
 sudo firewall-cmd --permanent --add-port=5349/tcp
 sudo firewall-cmd --permanent --add-port=49160-49200/udp
 sudo firewall-cmd --reload
 
-# con ufw
+# with ufw
 sudo ufw allow 3478/tcp && sudo ufw allow 3478/udp
 sudo ufw allow 5349/tcp && sudo ufw allow 49160:49200/udp
 ```
 
-⚠️ Se il tuo provider ha un firewall proprio (pannello web), le porte vanno aperte
-**anche lì**: il server non ne sa nulla, e dall'interno tutto sembra a posto.
+⚠️ If your provider has a firewall of its own (a web panel), the ports have to be opened
+**there as well**: the server knows nothing about it, and from the inside everything looks
+fine.
 
-Verifica che il relay risponda **dall'esterno**, non dal server stesso:
+Check that the relay answers **from outside**, not from the server itself:
 
 ```bash
-node server/tools/stun-check.mjs TUO_DOMINIO 3478
+node server/tools/stun-check.mjs YOUR_DOMAIN 3478
 ```
 
-Poi dillo al signaling, che lo comunichera' ai telefoni: nel `.env`
+Then tell the signalling server, which will pass it on to the phones: in the `.env`
 
 ```
-TURN_URL=turn:TUO_DOMINIO:3478
+TURN_URL=turn:YOUR_DOMAIN:3478
 TURN_USER=duetto
-TURN_PASS=...        # la password scritta in /etc/turnserver.conf
+TURN_PASS=...        # the password written in /etc/turnserver.conf
 ```
 
-e `sudo systemctl restart duetto-signaling`. Il controllo di salute deve rispondere
-`"turn":true`. **Sui telefoni non si configura nulla.**
+and `sudo systemctl restart duetto-signaling`. The health check has to answer
+`"turn":true`. **On the phones nothing is configured.**
 
-## 4. Sui telefoni
+## 4. On the phones
 
-Nell'app basta il **nome del server**. Poi accoppiamento a codice, e non si tocca più
-nulla.
+In the app the **name of the server** is all that is needed. Then the pairing by code, and
+nothing else is ever touched.
 
-Perché la presenza regga davvero:
+For presence to really hold:
 
-1. *Impostazioni → App → Duetto → Batteria → **Senza restrizioni***. Su
-   Xiaomi/Huawei/Samsung cerca anche "avvio automatico" e attivalo.
-2. Concedi microfono, camera e **notifiche** (senza notifiche il foreground service non
-   può mostrare la sua, e Android lo chiude).
+1. *Settings → Apps → Duetto → Battery → **Unrestricted***. On Xiaomi/Huawei/Samsung look
+   for "auto-start" as well and turn it on.
+2. Grant the microphone, the camera and **notifications** (without notifications the
+   foreground service cannot show its own, and Android closes it).
 
-## 5. Se il server veniva da DuoTalk
+## 5. If the server came from DuoTalk
 
-L'app si chiamava DuoTalk: cartella `/opt/duotalk`, servizio `duotalk-signaling`, percorso
-`/duotalk/ws` nel proxy. Il codice è lo stesso, cambiano solo i nomi. Conviene **prima**
-aggiungere il percorso nuovo lasciando il vecchio: così i telefoni ancora con DuoTalk
-continuano a funzionare finché non hanno installato Duetto.
+The app used to be called DuoTalk: the `/opt/duotalk` folder, the `duotalk-signaling`
+service, the `/duotalk/ws` path in the proxy. The code is the same, only the names change.
+It is worth adding the new path **first** while leaving the old one: that way the phones
+still on DuoTalk go on working until Duetto is installed on them.
 
-Nel proxy, accanto alle regole di `/duotalk/ws` metti le stesse per `/duetto/ws` — il
-`.conf.example` aggiornato le ha già — poi ricarica. Da fuori:
+In the proxy, next to the rules for `/duotalk/ws` put the same ones for `/duetto/ws` — the
+updated `.conf.example` already has them — then reload. From outside:
 
 ```bash
-curl -s https://TUO_DOMINIO/duetto/healthz     # {"ok":true,...}
+curl -s https://YOUR_DOMAIN/duetto/healthz     # {"ok":true,...}
 ```
 
-Poi la cartella e il servizio. Fa tutto `server/deploy/migra-da-duotalk.sh`, che conserva
-proprietario, gruppo e unit esistente — cambia i nomi e basta — e se il servizio nuovo non
-risponde rimette le cose com'erano:
+Then the folder and the service. `server/deploy/migrate-from-duotalk.sh` does all of it,
+keeping the owner, the group and the existing unit — it changes the names and no more —
+and if the new service does not answer it puts things back as they were:
 
 ```bash
-scp server/deploy/migra-da-duotalk.sh utente@TUO_SERVER:/tmp/
-ssh -t utente@TUO_SERVER 'sudo bash /tmp/migra-da-duotalk.sh'
+scp server/deploy/migrate-from-duotalk.sh user@YOUR_SERVER:/tmp/
+ssh -t user@YOUR_SERVER 'sudo bash /tmp/migrate-from-duotalk.sh'
 ```
 
-A mano, per capire cosa fa: il `.env` sta dentro `/opt/duotalk/server` e va conservato,
-per questo si sposta invece di ricreare.
+By hand, to see what it does: the `.env` is inside `/opt/duotalk/server` and has to be
+kept, which is why it is moved instead of recreated.
 
 ```bash
 sudo systemctl stop duotalk-signaling
 sudo mv /opt/duotalk /opt/duetto
 ```
 
-Dal PC, il codice nuovo (`--exclude .env` lo lascia intatto):
+From the PC, the new code (`--exclude .env` leaves it untouched):
 
 ```bash
 rsync -rltvz --no-owner --no-group --exclude node_modules --exclude .env \
-  /percorso/duetto/server/ utente@TUO_SERVER:/opt/duetto/server/
+  /path/to/duetto/server/ user@YOUR_SERVER:/opt/duetto/server/
 ```
 
-Sul server, l'utente di servizio e il nuovo unit file:
+On the server, the service user and the new unit file:
 
 ```bash
 sudo useradd --system --no-create-home --shell /usr/sbin/nologin duetto
@@ -243,22 +247,22 @@ sudo systemctl enable --now duetto-signaling
 curl -s http://127.0.0.1:8787/healthz
 ```
 
-Quando entrambi i telefoni sono passati a Duetto, togli dal proxy le regole di
-`/duotalk/ws` e l'utente rimasto: `sudo userdel duotalk`.
+Once both phones have moved to Duetto, take the `/duotalk/ws` rules out of the proxy,
+along with the user left behind: `sudo userdel duotalk`.
 
-`TURN_USER` nel `.env` non va toccato: è la credenziale scritta in
-`/etc/turnserver.conf`, e cambiarla da una parte sola spegne il relay.
+`TURN_USER` in the `.env` is not to be touched: it is the credential written in
+`/etc/turnserver.conf`, and changing it on one side only turns the relay off.
 
 ## Troubleshooting
 
-| Sintomo | Causa probabile | Rimedio |
-|---------|-----------------|---------|
-| `Upgrade Required` da healthz | il proxy inoltra un percorso che il server non riconosce | aggiorna il server: accetta qualsiasi prefisso |
-| healthz risponde ma l'app non si collega | le regole del WebSocket non vengono raggiunte | controlla l'**ordine** delle regole nel proxy |
-| La presenza cade ogni ~50 secondi | `timeout tunnel` non impostato | mettilo a 3600s |
-| "Nessuna risposta dall'altro telefono" | codice diverso, o l'altro non è collegato | rifate l'accoppiamento con un codice nuovo |
-| "Il codice non coincide" | cifre digitate male | è la verifica che funziona: rigenerate il codice |
-| Si collegano ma niente audio | la rete blocca il P2P | configura coturn |
-| Resta in "connecting" poi "failed" su reti diverse | manca il relay, o è irraggiungibile | `stun-check.mjs` dall'esterno: se non risponde è il firewall |
-| Esce dal canale in background | il sistema chiude l'app | escludi Duetto dall'ottimizzazione batteria |
-| Dopo il riavvio del telefono non è più in ascolto | limite noto | riapri l'app una volta |
+| Symptom | Likely cause | Remedy |
+|---------|--------------|--------|
+| `Upgrade Required` from healthz | the proxy forwards a path the server does not recognise | update the server: it accepts any prefix |
+| healthz answers but the app does not connect | the WebSocket rules are never reached | check the **order** of the rules in the proxy |
+| Presence drops every ~50 seconds | `timeout tunnel` not set | set it to 3600s |
+| "No answer from the other phone" | a different code, or the other one is not connected | do the pairing again with a new code |
+| "The code does not match" | digits typed wrong | that is the check doing its job: generate the code again |
+| They connect but there is no sound | the network blocks P2P | configure coturn |
+| It stays "connecting" and then "failed" on different networks | the relay is missing, or cannot be reached | `stun-check.mjs` from outside: if it does not answer it is the firewall |
+| It leaves the channel in the background | the system closes the app | exclude Duetto from battery optimisation |
+| After a phone reboot it is no longer listening | a known limit | open the app once |
