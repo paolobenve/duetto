@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
 import {
-  Foreground, Pip, AppWindow, Visibility, Codecs, Audio, Avvisi, Diario, Volume, Rete,
+  Foreground, Pip, AppWindow, Visibility, Codecs, Audio, Avvisi, Journal, Volume, Rete,
   Battito,
   Sveglia,
 } from 'duetto-platform';
@@ -555,7 +555,7 @@ export default function App() {
     const v = peerState.version;
     if (!v || v === peerVersionSeen.current) return;
     peerVersionSeen.current = v;
-    Diario.segna(`peer-version:${v}`).catch(() => { /* noop */ });
+    Journal.mark(`peer-version:${v}`).catch(() => { /* noop */ });
   }, [peerState.version]);
 
   const versionWarning = React.useMemo(() => {
@@ -618,7 +618,7 @@ export default function App() {
          * whatever volume the phone has at that moment.
          */
         if (now === 0) return prev;
-        Diario.segna('gain-cleared:volume-from-outside').catch(() => { /* noop */ });
+        Journal.mark('gain-cleared:volume-from-outside').catch(() => { /* noop */ });
         return saveCfg({
           ...prev,
           gains: { ...(prev.gains ?? {}), [output]: 1 },
@@ -951,7 +951,7 @@ export default function App() {
       const since = noServerSince.current || (noServerSince.current = Date.now());
       const stuck = Date.now() - since;
       if (stuck < NO_SERVER_WAIT_MS) return;
-      Diario.segna(`server:rebuilt:${Math.round(stuck / 1000)}s`)
+      Journal.mark(`server:rebuilt:${Math.round(stuck / 1000)}s`)
         .catch(() => { /* noop */ });
       // The count starts again now: rebuilding is an attempt, and if it
       // is not enough another will follow after as long again.
@@ -1027,7 +1027,7 @@ export default function App() {
       if (due) clearTimeout(due);
       due = setTimeout(() => {
         due = null;
-        Diario.segna(`network:${what}`).catch(() => { /* noop */ });
+        Journal.mark(`network:${what}`).catch(() => { /* noop */ });
         const sig = signalingRef.current;
         if (!sig) return;
         // Already without a server: there is nothing to save, we simply
@@ -1052,7 +1052,7 @@ export default function App() {
         sig.askPresence();
         networkProbe.current = setTimeout(() => {
           networkProbe.current = null;
-          Diario.segna('network:silent').catch(() => { /* noop */ });
+          Journal.mark('network:silent').catch(() => { /* noop */ });
           noServerSince.current = noServerSince.current || Date.now();
           signalingRef.current?.rebuild();
         }, PROBE_WAIT_MS);
@@ -1088,7 +1088,7 @@ export default function App() {
       const sig = signalingRef.current;
       if (!sig) return;
       const rebuild = (why: string) => {
-        Diario.segna(`heartbeat:${why}`).catch(() => { /* noop */ });
+        Journal.mark(`heartbeat:${why}`).catch(() => { /* noop */ });
         noServerSince.current = noServerSince.current || Date.now();
         probeSent.current = 0;
         emptyBeats.current += 1;
@@ -1104,7 +1104,7 @@ export default function App() {
          * internet it moves the traffic by itself.
          */
         if (emptyBeats.current === 2) {
-          Diario.segna('network:not-carrying').catch(() => { /* noop */ });
+          Journal.mark('network:not-carrying').catch(() => { /* noop */ });
           Rete.segnalaCheNonPassa().catch(() => { /* noop */ });
         }
         sig.rebuild();
@@ -1179,9 +1179,9 @@ export default function App() {
    * none.
    */
   useEffect(() => {
-    Diario.segna('ui-started').catch(() => { /* noop */ });
+    Journal.mark('ui-started').catch(() => { /* noop */ });
     return () => {
-      Diario.segna('ui-torn-down').catch(() => { /* noop */ });
+      Journal.mark('ui-torn-down').catch(() => { /* noop */ });
       // If we are not leaving on purpose, the connection is lost here:
       // the JavaScript engine dies with the interface, and nobody knows
       // except us, in this instant. We hand over to the headless
@@ -1216,10 +1216,10 @@ export default function App() {
    */
   useEffect(() => {
     const state = !inChannel ? 'waiting' : videoOn ? 'channel+video' : 'channel';
-    Diario.stato(state).catch(() => {});
+    Journal.state(state).catch(() => {});
     // A line at every change of state: it marks the border between two
     // stretches, and without borders neither can be measured.
-    Diario.segna(state).catch(() => {});
+    Journal.mark(state).catch(() => {});
   }, [inChannel, videoOn]);
 
   /**
@@ -1323,17 +1323,17 @@ export default function App() {
 
   const readOwnDeath = useCallback(async () => {
     try {
-      const m = await Diario.ultimaMorte();
-      if (!m || !m.quando) return;
+      const m = await Journal.lastDeath();
+      if (!m || !m.when) return;
       // An update of the app is not a death: it is the normal way an
       // app gets replaced, and announcing it would be an alarm about
       // something wanted.
-      if (/installPackage|PackageUpdate/i.test(m.descrizione || '')) return;
+      if (/installPackage|PackageUpdate/i.test(m.description || '')) return;
       const told = await readWithBridge(DEATH_TOLD_KEY, OLD_KEYS.death);
-      if (Number(told) >= m.quando) return;
+      if (Number(told) >= m.when) return;
       // The time of the return is now: the app is starting again at
       // this very moment, and this is the only phone that can know it.
-      deathToTell.current = { when: m.quando, cause: m.causa, back: Date.now() };
+      deathToTell.current = { when: m.when, cause: m.cause, back: Date.now() };
     } catch { /* if the phone does not know, it does not know */ }
   }, []);
 
@@ -1366,7 +1366,7 @@ export default function App() {
     if (!sig?.connected) return;
     const key = sentKeyFor(cfg?.pair?.id ?? '');
     try {
-      const lines = await Diario.righe();
+      const lines = await Journal.lines();
       const mine = await readWithBridge(key, `${OLD_KEYS.sent}.${cfg?.pair?.id ?? ''}`);
       // The single key of old is the starting point for whoever was
       // already here: without it, the first exchange after the update
@@ -1378,7 +1378,7 @@ export default function App() {
       if (sent > lines) sent = 0;
       if (lines <= sent) return;
 
-      const text = await Diario.leggi(sent);
+      const text = await Journal.read(sent);
       if (!text) return;
       sig.sendSignal({ kind: 'journal', text });
       await AsyncStorage.setItem(key, String(lines));
@@ -1624,14 +1624,14 @@ export default function App() {
             if (st === 'offline') {
               if (!noServerSince.current) {
                 noServerSince.current = Date.now();
-                Diario.segna(`server:down:${detail ?? '?'}`).catch(() => {});
+                Journal.mark(`server:down:${detail ?? '?'}`).catch(() => {});
               }
             } else if (st !== 'connecting' && noServerSince.current) {
               const howLong = Math.round((Date.now() - noServerSince.current) / 1000);
               noServerSince.current = 0;
               serverBackAt.current = Date.now();
               emptyBeats.current = 0;
-              Diario.segna(`server:ok:after ${howLong}s`).catch(() => {});
+              Journal.mark(`server:ok:after ${howLong}s`).catch(() => {});
             }
           },
 
@@ -1670,7 +1670,7 @@ export default function App() {
           },
 
           onPeerJoined: (n, mode) => {
-            Diario.segna(`peer-back:${mode === 'active' ? 'channel' : 'waiting'}`)
+            Journal.mark(`peer-back:${mode === 'active' ? 'channel' : 'waiting'}`)
               .catch(() => { /* noop */ });
             setPeerPresent(true);
             setPeerDetached(false);
@@ -1688,7 +1688,7 @@ export default function App() {
             // whoever is watching; this line says it to whoever reads
             // tomorrow with a cable, and it sits on the phone over
             // here, so it can be read without waiting for any exchange.
-            Diario.segna(`peer-gone:${why}`).catch(() => { /* noop */ });
+            Journal.mark(`peer-gone:${why}`).catch(() => { /* noop */ });
             setPeerPresent(false);
             setPeerSeen(false);
             setPeerDetached(why === 'bye');
@@ -1742,7 +1742,7 @@ export default function App() {
           },
 
           onNotify: (reason, n) => {
-            Diario.segna(reason === 'knock' ? 'peer-knocks' : 'peer-enters').catch(() => {});
+            Journal.mark(reason === 'knock' ? 'peer-knocks' : 'peer-enters').catch(() => {});
             noteName(n);
             setKnockPending(false);
             // The name is optional: without one we avoid writing
@@ -1809,7 +1809,7 @@ export default function App() {
             // "I did not leave, the app was closed on me."
             if (msg.kind === 'tornDown') {
               setPeerTornDown(true);
-              Diario.segna('peer-torn-down').catch(() => {});
+              Journal.mark('peer-torn-down').catch(() => {});
               return;
             }
 
@@ -1825,7 +1825,7 @@ export default function App() {
               );
               Foreground.nota(alertNameRef.current, story).catch(() => {});
               setNotice(story);
-              Diario.segna(`peer-death:${msg.cause}`).catch(() => {});
+              Journal.mark(`peer-death:${msg.cause}`).catch(() => {});
               return;
             }
 
@@ -1834,7 +1834,7 @@ export default function App() {
             // channel with us, that is from one single person.
             if (msg.kind === 'alarm') {
               Sveglia.suona(String(msg.sound ?? '')).catch(() => {});
-              Diario.segna(`sveglia:${msg.sound}`).catch(() => {});
+              Journal.mark(`sveglia:${msg.sound}`).catch(() => {});
               return;
             }
 
@@ -1844,7 +1844,7 @@ export default function App() {
             // everything else: the server forwards it without being able
             // to read it.
             if (msg.kind === 'journal') {
-              Diario.aggiungiAltro(String(msg.text ?? ''), journalKeyRef.current)
+              Journal.appendOther(String(msg.text ?? ''), journalKeyRef.current)
                 .catch(() => {});
               return;
             }
@@ -2111,16 +2111,16 @@ export default function App() {
           // that tells of silence.
           const before = peerStateRef.current;
           if (before.audio !== st.audio) {
-            Diario.segna(`peer-audio:${st.audio ? 'on' : 'off'}`).catch(() => {});
+            Journal.mark(`peer-audio:${st.audio ? 'on' : 'off'}`).catch(() => {});
           }
           if (before.video !== st.video) {
-            Diario.segna(`peer-video:${st.video ? 'on' : 'off'}`).catch(() => {});
+            Journal.mark(`peer-video:${st.video ? 'on' : 'off'}`).catch(() => {});
           }
           if (st.camera && before.camera !== st.camera) {
-            Diario.segna(`peer-camera:${st.camera}`).catch(() => {});
+            Journal.mark(`peer-camera:${st.camera}`).catch(() => {});
           }
           if (st.output && before.output !== st.output) {
-            Diario.segna(`peer-audio-output:${st.output}`).catch(() => {});
+            Journal.mark(`peer-audio-output:${st.output}`).catch(() => {});
           }
           peerStateRef.current = {
             audio: st.audio, video: st.video, camera: st.camera, output: st.output,
@@ -2189,13 +2189,13 @@ export default function App() {
     if (before) {
       const still = Date.now() - before.when;
       if (!before.audio && still < RESUME_MIC_MS) {
-        Diario.segna(`resume-mic:after ${Math.round(still / 1000)}s`)
+        Journal.mark(`resume-mic:after ${Math.round(still / 1000)}s`)
           .catch(() => { /* noop */ });
         const on = sessionRef.current?.toggleAudio();
         if (on !== undefined) setAudioOn(on);
       }
       if (before.video && still < RESUME_VIDEO_MS) {
-        Diario.segna(`resume-video:after ${Math.round(still / 1000)}s`)
+        Journal.mark(`resume-video:after ${Math.round(still / 1000)}s`)
           .catch(() => { /* noop */ });
         setTimeout(() => { turnVideoBackOnRef.current?.(); }, 300);
       }
@@ -2267,7 +2267,7 @@ export default function App() {
   const putAwayChannel = useCallback(async (reason: string, pairId?: string) => {
     // The line is written BEFORE sending, otherwise everything goes
     // except the very thing one is doing.
-    await Diario.segna(reason).catch(() => { /* noop */ });
+    await Journal.mark(reason).catch(() => { /* noop */ });
 
     if (pairId) {
       howItWas.current[pairId] = {
@@ -2465,7 +2465,7 @@ export default function App() {
         return saveCfg({ ...prev, videoQuality: q });
       });
       sessionRef.current?.setVideoQuality(q);
-      Diario.segna(`${tell ? '' : 'peer-'}quality:${q}`).catch(() => {});
+      Journal.mark(`${tell ? '' : 'peer-'}quality:${q}`).catch(() => {});
       if (tell) signalingRef.current?.sendSignal({ kind: 'quality', value: q });
     },
     [saveCfg],
@@ -2484,13 +2484,13 @@ export default function App() {
       return saveCfg({ ...prev, richerAudio: richer });
     });
     sessionRef.current?.setAudioOptions(richer);
-    Diario.segna(`${tell ? '' : 'peer-'}rich-voice:${richer ? 'yes' : 'no'}`)
+    Journal.mark(`${tell ? '' : 'peer-'}rich-voice:${richer ? 'yes' : 'no'}`)
       .catch(() => {});
     if (tell) signalingRef.current?.sendSignal({ kind: 'audio', richer });
   }, [saveCfg]);
 
   const onSaveSettings = useCallback(async (written: DuoConfig) => {
-    Diario.segna('settings-saved').catch(() => { /* noop */ });
+    Journal.mark('settings-saved').catch(() => { /* noop */ });
     // The server just written is this pair's server: if it stayed in
     // the app alone, coming back here from another connection would
     // drag the old address along.
@@ -2544,7 +2544,7 @@ export default function App() {
       `controls=${c.controls}`,
       `diagnostics=${c.showDiagnostics ? 'yes' : 'no'}`,
     ];
-    Diario.segna(`settings:${bits.join(',')}`).catch(() => { /* noop */ });
+    Journal.mark(`settings:${bits.join(',')}`).catch(() => { /* noop */ });
   }, [cfg?.pair?.id]);
 
   /**
@@ -2640,7 +2640,7 @@ export default function App() {
     // come back to the other person doubled, on top of what is already
     // playing over there.
     Sveglia.suona(sound, true).catch(() => {});
-    Diario.segna(`alarm-sent:${sound}`).catch(() => {});
+    Journal.mark(`alarm-sent:${sound}`).catch(() => {});
   }, []);
 
   const onForgetPair = useCallback(async (id: string) => {
@@ -2789,7 +2789,7 @@ export default function App() {
         onToggleAudio={() => {
           const on = sessionRef.current?.toggleAudio() ?? false;
           setAudioOn(on);
-          Diario.segna(`audio:${on ? 'on' : 'off'}`).catch(() => {});
+          Journal.mark(`audio:${on ? 'on' : 'off'}`).catch(() => {});
         }}
         onToggleVideo={onToggleVideo}
         onSwitchCamera={() => {
@@ -2803,7 +2803,7 @@ export default function App() {
           // from the front one again and it has to be turned round
           // every time.
           setCfg((prev) => (prev ? saveCfg({ ...prev, frontCamera: front }) : prev));
-          Diario.segna(`camera:${front ? 'front' : 'back'}`).catch(() => {});
+          Journal.mark(`camera:${front ? 'front' : 'back'}`).catch(() => {});
         }}
         onSelectRoute={audio.select}
         onKnock={() => {
@@ -2813,7 +2813,7 @@ export default function App() {
           // be heard - the button just blinks. Knowing that it left is
           // worth as much as sending it.
           Sveglia.suona('bussata', true, KNOCK_ECHO_MS).catch(() => {});
-          Diario.segna('knock').catch(() => {});
+          Journal.mark('knock').catch(() => {});
         }}
         onLeave={leaveChannel}
         leaving={leaving}
@@ -2824,7 +2824,7 @@ export default function App() {
          * explains a framing that would not add up on rereading later.
          */
         onZoom={(z) => {
-          Diario.segna(z > 1.01 ? `zoom:${z.toFixed(1)}x` : 'zoom:full')
+          Journal.mark(z > 1.01 ? `zoom:${z.toFixed(1)}x` : 'zoom:full')
             .catch(() => {});
         }}
         onOpenSettings={() => setScreen('settings')}

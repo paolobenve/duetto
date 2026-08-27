@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import type { GestureResponderEvent } from 'react-native';
 import { MediaStream } from 'react-native-webrtc';
-import { Diario, Prossimita } from 'duetto-platform';
+import { Journal, Prossimita } from 'duetto-platform';
 import { t } from './i18n';
 import type { PresenceStatus } from './signaling';
 import VideoStage from './VideoStage';
@@ -549,7 +549,7 @@ export default function ChannelScreen(props: Props) {
     // after a long silence it is worth knowing: it is the good twin of
     // the touch nobody meant.
     if (still > SLEEP_MS) {
-      Diario.segna(`controls-woken:still ${Math.round(still / 1000)}s`)
+      Journal.mark(`controls-woken:still ${Math.round(still / 1000)}s`)
         .catch(() => { /* noop */ });
     }
     // Asking for them to go is not the same as letting them fade: here
@@ -583,7 +583,7 @@ export default function ChannelScreen(props: Props) {
       // The screen is covered: whatever touched the glass, it is
       // nobody's choice.
       if (coveredRef.current) {
-        Diario.segna('command:ignored-screen-covered').catch(() => { /* noop */ });
+        Journal.mark('command:ignored-screen-covered').catch(() => { /* noop */ });
         return;
       }
       const still = Date.now() - lastTouch.current;
@@ -591,7 +591,7 @@ export default function ChannelScreen(props: Props) {
       const faded = toWatch && (CONTROLS_OPACITY[controls] ?? 0.4) < 1;
       if (faded && still > SLEEP_MS) {
         wake();
-        Diario.segna(`controls-woken:still ${Math.round(still / 1000)}s`)
+        Journal.mark(`controls-woken:still ${Math.round(still / 1000)}s`)
           .catch(() => { /* noop */ });
         return;
       }
@@ -716,7 +716,7 @@ export default function ChannelScreen(props: Props) {
   const signTouch = useCallback((what: string, e: GestureResponderEvent) => {
     const x = Math.round(e?.nativeEvent?.pageX ?? -1);
     const y = Math.round(e?.nativeEvent?.pageY ?? -1);
-    Diario.segna(
+    Journal.mark(
       `command:${what} ${x},${y} covered=${coveredRef.current ? 'yes' : 'no'}`,
     ).catch(() => { /* noop */ });
   }, []);
@@ -724,7 +724,7 @@ export default function ChannelScreen(props: Props) {
   /** True if the touch is to be dropped: the screen is covered. */
   const toIgnore = useCallback(() => {
     if (!coveredRef.current) return false;
-    Diario.segna('command:ignored-screen-covered').catch(() => { /* noop */ });
+    Journal.mark('command:ignored-screen-covered').catch(() => { /* noop */ });
     return true;
   }, []);
 
@@ -1600,7 +1600,7 @@ function CircleButton(props: {
     const x = Math.round(g?.x ?? -1);
     const y = Math.round(g?.y ?? -1);
     const held = g ? Date.now() - g.t : -1;
-    Diario.segna(
+    Journal.mark(
       `command:${what} ${x},${y} after ${held}ms covered=${props.covered ? 'yes' : 'no'}`,
     ).catch(() => { /* noop */ });
   };

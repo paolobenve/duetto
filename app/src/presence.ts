@@ -1,5 +1,5 @@
 import { AppState } from 'react-native';
-import { Foreground, Diario } from 'duetto-platform';
+import { Foreground, Journal } from 'duetto-platform';
 import { loadConfig, isPaired, isServerConfigured, pairFileKey, pairName } from './config';
 import { Signaling } from './signaling';
 import { t } from './i18n';
@@ -70,6 +70,19 @@ export function deathStory(
 ): string {
   const who = named(name) ? name : t('death.theOther');
   const why = t(`death.${{
+    'out-of-memory': 'outOfMemory',
+    crash: 'crashed',
+    'native-crash': 'crashed',
+    frozen: 'frozen',
+    'force-stopped': 'stoppedByHand',
+    'closed-by-user': 'closed',
+    'too-many-resources': 'resources',
+    'permissions-changed': 'permissions',
+    signal: 'phoneClosedIt',
+    other: 'phoneClosedIt',
+    // The causes as the older Duetto said them: they arrive from a phone
+    // that has not been updated yet. This half of the table goes away
+    // with the next version.
     'memoria-finita': 'outOfMemory',
     errore: 'crashed',
     'errore-nativo': 'crashed',
@@ -278,7 +291,7 @@ export async function startListening(): Promise<boolean> {
        */
       onSignal: (msg) => {
         if (msg.kind === 'journal') {
-          Diario.aggiungiAltro(String(msg.text ?? ''), pairFileKey(pair))
+          Journal.appendOther(String(msg.text ?? ''), pairFileKey(pair))
             .catch(() => { /* noop */ });
           return;
         }

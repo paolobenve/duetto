@@ -59,7 +59,7 @@ class ChannelForegroundService : Service() {
      * qualunque parte venga. Facendolo anche qui, una riga fuori tempo
      * ne lascerebbe due in coda e il diario si infittirebbe da solo.
      */
-    private val scriviDiario = Runnable { Diario.campiona(applicationContext) }
+    private val scriviDiario = Runnable { Journal.sample(applicationContext) }
 
     private fun riprogrammaDiario() {
         orologio.removeCallbacks(scriviDiario)
@@ -101,14 +101,14 @@ class ChannelForegroundService : Service() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
                 Intent.ACTION_POWER_CONNECTED ->
-                    Diario.campiona(applicationContext, "carica-attaccata")
+                    Journal.sample(applicationContext, "charger-in")
                 Intent.ACTION_POWER_DISCONNECTED ->
-                    Diario.campiona(applicationContext, "carica-staccata")
+                    Journal.sample(applicationContext, "charger-out")
                 // Lo schermo non fa scrivere una riga: si accende e si
                 // spegne troppo spesso, e ogni riga costa. Si tiene solo
                 // il conto dei secondi, che finisce nella riga dopo.
-                Intent.ACTION_SCREEN_ON -> Diario.schermoCambiato(true)
-                Intent.ACTION_SCREEN_OFF -> Diario.schermoCambiato(false)
+                Intent.ACTION_SCREEN_ON -> Journal.screenChanged(true)
+                Intent.ACTION_SCREEN_OFF -> Journal.screenChanged(false)
             }
         }
     }
@@ -185,12 +185,12 @@ class ChannelForegroundService : Service() {
             diarioAvviato = true
             // Prima di ogni lettura: i nomi in memoria sono cambiati.
             Ponte.migra(applicationContext)
-            Diario.quandoScrive { riprogrammaDiario() }
+            Journal.onWrite { riprogrammaDiario() }
             // Come e' finita l'ultima volta: se il processo di prima e'
             // morto, qui si scopre perche'.
-            Diario.registraUscite(applicationContext)
+            Journal.recordExits(applicationContext)
             // La riga d'avvio riprogramma già l'attesa da sé.
-            Diario.campiona(applicationContext, "avvio")
+            Journal.sample(applicationContext, "start")
         }
 
         // Se Android ci uccide per memoria, ci fa ripartire.
@@ -202,10 +202,10 @@ class ChannelForegroundService : Service() {
         // Prima si stacca la riprogrammazione, poi si scrive l'ultima
         // riga: se no quella rimetterebbe in coda un'attesa che non ha
         // più nessuno ad aspettarla.
-        Diario.quandoScrive(null)
+        Journal.onWrite(null)
         orologio.removeCallbacks(scriviDiario)
         diarioAvviato = false
-        Diario.campiona(applicationContext, "uscita")
+        Journal.sample(applicationContext, "exit")
         releaseWakeLock()
         super.onDestroy()
     }
@@ -230,7 +230,7 @@ class ChannelForegroundService : Service() {
      * esattamente cio' che gli si chiede.
      */
     override fun onTaskRemoved(rootIntent: Intent?) {
-        Diario.campiona(applicationContext, "recenti-svuotati")
+        Journal.sample(applicationContext, "recents-cleared")
         // Il motore JavaScript se ne va con l'activity: senza qualcuno
         // che riprenda la connessione, questo servizio resterebbe a
         // mostrare una presenza che non c'e' piu'. Si passa la mano a
@@ -342,7 +342,7 @@ class ChannelForegroundService : Service() {
             }
         } catch (e: Exception) {
             android.util.Log.w("Duetto", "servizio rifiutato dal sistema: ${e.message}")
-            Diario.campiona(applicationContext, "servizio-rifiutato")
+            Journal.sample(applicationContext, "service-refused")
             try { stopSelf() } catch (_: Exception) { /* noop */ }
         }
     }

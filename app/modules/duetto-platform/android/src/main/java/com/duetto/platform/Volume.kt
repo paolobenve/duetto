@@ -76,7 +76,7 @@ object Volume {
         if (ora - ultimaNota > 2000) {
             ultimaNota = ora
             try {
-                Diario.campiona(ctx.applicationContext, if (su) "volume-su" else "volume-giu")
+                Journal.sample(ctx.applicationContext, if (su) "volume-up" else "volume-down")
             } catch (_: Exception) { /* il diario non vale un tasto */ }
         }
         return true

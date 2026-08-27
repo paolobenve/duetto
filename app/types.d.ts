@@ -95,18 +95,18 @@ declare module 'duetto-platform' {
     hasHardwareVp9Encoder(): Promise<boolean>;
   };
 
-  /** Diario dei consumi: righe scritte dal servizio, lette da qui. */
-  export const Diario: {
-    stato(s: string): Promise<boolean>;
-    segna(motivo: string): Promise<boolean>;
-    righe(): Promise<number>;
-    leggi(daRiga: number): Promise<string>;
-    /** `chi`: da quale collegamento arriva, per tenerli in file separati */
-    aggiungiAltro(testo: string, chi?: string): Promise<boolean>;
-    percorso(): Promise<string>;
-    /** com'è morta l'app l'ultima volta; null se il telefono non lo sa */
-    ultimaMorte(): Promise<{
-      quando: number; causa: string; era: string; descrizione: string;
+  /** Consumption journal: lines written by the service, read from here. */
+  export const Journal: {
+    state(s: string): Promise<boolean>;
+    mark(why: string): Promise<boolean>;
+    lines(): Promise<number>;
+    read(fromLine: number): Promise<string>;
+    /** `who`: which connection it comes from, to keep the files apart */
+    appendOther(text: string, who?: string): Promise<boolean>;
+    path(): Promise<string>;
+    /** how the app died last time; null if the phone does not know */
+    lastDeath(): Promise<{
+      when: number; cause: string; was: string; description: string;
     } | null>;
   };
 

@@ -82,7 +82,7 @@ object Ponte {
         if (avvio > 0L) e.putLong(BootReceiver.LAST_AUTO_START, avvio)
         vecchie.getString("titolo-notifica", null)?.let { e.putString(Notifier.CHIAVE_TITOLO, it) }
         val morte = vecchie.getLong("ultima_morte_registrata", 0L)
-        if (morte > 0L) e.putLong(Diario.ULTIMA_MORTE, morte)
+        if (morte > 0L) e.putLong(Journal.LAST_DEATH, morte)
         e.apply()
 
         val avvisiVecchi = ctx.getSharedPreferences("duetto_avvisi", Context.MODE_PRIVATE)
@@ -110,7 +110,7 @@ object Ponte {
         val base = ctx.getExternalFilesDir(null) ?: ctx.filesDir
         val vecchia = File(base, "diario")
         if (!vecchia.isDirectory) return
-        val nuova = File(base, Diario.CARTELLA)
+        val nuova = File(base, Journal.FOLDER)
         if (!nuova.exists() && vecchia.renameTo(nuova)) {
             rinomina(nuova)
             return
@@ -157,9 +157,9 @@ object Ponte {
     }
 
     private fun nomeNuovo(nome: String) = when {
-        nome == "mio.log" -> Diario.MIO
-        nome == "mio.log.1" -> "${Diario.MIO}.1"
-        nome == "altro.log" -> Diario.ALTRO
+        nome == "mio.log" -> Journal.MINE
+        nome == "mio.log.1" -> "${Journal.MINE}.1"
+        nome == "altro.log" -> Journal.OTHER
         nome.startsWith("altro-") -> "other-" + nome.removePrefix("altro-")
         else -> nome
     }

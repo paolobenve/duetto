@@ -66,7 +66,7 @@ class AudioModule(private val ctx: ReactApplicationContext) :
                     else AudioManager.USE_DEFAULT_STREAM_TYPE
                 // The journal records it: on a phone far away this is the
                 // only way to know whether this line really ran.
-                Diario.tastiVoce(active)
+                Journal.voiceKeys(active)
             } catch (_: Exception) {
                 // The worst that can happen: the keys stay on media,
                 // which is where they started.

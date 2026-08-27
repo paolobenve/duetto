@@ -267,7 +267,7 @@ object Notifier {
             // resta nemmeno il modo di sapere cos'e' successo. Lo scrive
             // nel diario e si ferma.
             Log.w(TAG, "presenza rifiutata dal sistema: ${e.message}")
-            Diario.campiona(service.applicationContext, "presenza-rifiutata")
+            Journal.sample(service.applicationContext, "presence-refused")
             try { service.stopSelf() } catch (_: Exception) { /* noop */ }
         }
     }

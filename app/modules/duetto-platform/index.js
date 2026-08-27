@@ -11,7 +11,7 @@ const NativeLocale = NativeModules.DuettoLocale;
 const NativeCodecs = NativeModules.DuettoCodecs;
 const NativeAudio = NativeModules.DuettoAudio;
 const NativeAvvisi = NativeModules.DuettoAvvisi;
-const NativeDiario = NativeModules.DuettoDiario;
+const NativeJournal = NativeModules.DuettoJournal;
 const NativeVolume = NativeModules.DuettoVolume;
 const NativeSveglia = NativeModules.DuettoSveglia;
 
@@ -182,39 +182,39 @@ export const Codecs = isAndroid && NativeCodecs
   : { hasHardwareVp9Encoder: unavailable };
 
 /**
- * Il diario dei consumi.
+ * The consumption journal.
  *
- * Le righe le scrive il servizio in primo piano, che è vivo anche quando
- * JavaScript non lo è. Da qui si dice soltanto in che stato siamo, si
- * legge quello che c'è da mandare all'altro telefono, e si mette da parte
- * quello che l'altro manda a noi.
+ * The lines are written by the foreground service, which is alive even
+ * when JavaScript is not. From here we only say which state we are in,
+ * read what there is to send to the other phone, and put aside what the
+ * other one sends us.
  *
- * Attenzione a cosa NON contiene: quanto consumano le altre app. Nessuna
- * app può saperlo - quel conto lo tiene Android e lo mostra solo nella
- * sua schermata "Batteria" o via `adb shell dumpsys batterystats`.
+ * Mind what it does NOT hold: how much the other apps use. No app can
+ * know that - Android keeps that account and shows it only in its own
+ * "Battery" screen or through `adb shell dumpsys batterystats`.
  */
-export const Diario = isAndroid && NativeDiario
+export const Journal = isAndroid && NativeJournal
   ? {
-      /** "ascolto" | "canale" | "canale+video": finisce in ogni riga. */
-      stato: (s) => call(NativeDiario, 'stato', String(s)),
-      /** Una riga adesso, per segnare un momento che conta. */
-      segna: (motivo) => call(NativeDiario, 'segna', String(motivo)),
-      righe: () => call(NativeDiario, 'righe'),
-      leggi: (daRiga) => call(NativeDiario, 'leggi', Number(daRiga) || 0),
-      aggiungiAltro: (testo, chi) =>
-        call(NativeDiario, 'aggiungiAltro', String(testo), String(chi || '')),
-      percorso: () => call(NativeDiario, 'percorso'),
-      /** Com'è morta l'app l'ultima volta; null se il telefono non lo sa. */
-      ultimaMorte: () => call(NativeDiario, 'ultimaMorte'),
+      /** "waiting" | "channel" | "channel+video": it ends up on every line. */
+      state: (s) => call(NativeJournal, 'state', String(s)),
+      /** A line right now, to mark a moment that counts. */
+      mark: (why) => call(NativeJournal, 'mark', String(why)),
+      lines: () => call(NativeJournal, 'lines'),
+      read: (fromLine) => call(NativeJournal, 'read', Number(fromLine) || 0),
+      appendOther: (text, who) =>
+        call(NativeJournal, 'appendOther', String(text), String(who || '')),
+      path: () => call(NativeJournal, 'path'),
+      /** How the app died last time; null if the phone does not know. */
+      lastDeath: () => call(NativeJournal, 'lastDeath'),
     }
   : {
-      stato: unavailable,
-      segna: unavailable,
-      righe: () => Promise.resolve(0),
-      leggi: () => Promise.resolve(''),
-      aggiungiAltro: unavailable,
-      percorso: () => Promise.resolve(''),
-      ultimaMorte: () => Promise.resolve(null),
+      state: unavailable,
+      mark: unavailable,
+      lines: () => Promise.resolve(0),
+      read: () => Promise.resolve(''),
+      appendOther: unavailable,
+      path: () => Promise.resolve(''),
+      lastDeath: () => Promise.resolve(null),
     };
 
 /**

@@ -27,7 +27,7 @@ class PresenceService : HeadlessJsTaskService() {
         // If we are here after the system killed us, the reason is written
         // down somewhere: take it now, before the older deaths drop off
         // the list Android keeps.
-        Diario.registraUscite(applicationContext)
+        Journal.recordExits(applicationContext)
         return super.onStartCommand(intent, flags, startId)
     }
 

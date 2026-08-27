@@ -27,7 +27,7 @@ class DuettoPackage : ReactPackage {
         CodecsModule(reactContext),
         AudioModule(reactContext),
         AvvisiModule(reactContext),
-        DiarioModule(reactContext),
+        JournalModule(reactContext),
         VolumeModule(reactContext),
         SvegliaModule(reactContext),
     )
