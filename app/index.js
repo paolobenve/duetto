@@ -1,6 +1,6 @@
 /**
- * Entry point dell'app. Il polyfill di crypto DEVE essere importato
- * per primo, prima di qualunque uso di tweetnacl.
+ * The app's entry point. The crypto polyfill MUST be imported first,
+ * before any use of tweetnacl.
  */
 import 'react-native-get-random-values';
 import { AppRegistry } from 'react-native';
@@ -10,6 +10,6 @@ import { presenceTask } from './src/presence';
 
 AppRegistry.registerComponent(appName, () => App);
 
-// Compito senza interfaccia: lo avvia il servizio nativo dopo il riavvio
-// del telefono, per rimettere in piedi la presenza senza aprire l'app.
+// The task with no interface: the native service starts it after the
+// phone reboots, to put presence back on its feet without opening the app.
 AppRegistry.registerHeadlessTask('duetto-presence', () => presenceTask);
