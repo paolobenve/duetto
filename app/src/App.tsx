@@ -9,7 +9,7 @@ import InCallManager from 'react-native-incall-manager';
 import {
   Foreground, Pip, AppWindow, Visibility, Codecs, Audio, Avvisi, Journal, Volume, Rete,
   Battito,
-  Sveglia,
+  Alarm,
 } from 'duetto-platform';
 import {
   DuoConfig, PairInfo, loadConfig, saveConfig,
@@ -1833,8 +1833,8 @@ export default function App() {
             // alarm volume. It can only come from whoever is in the
             // channel with us, that is from one single person.
             if (msg.kind === 'alarm') {
-              Sveglia.suona(String(msg.sound ?? '')).catch(() => {});
-              Journal.mark(`sveglia:${msg.sound}`).catch(() => {});
+              Alarm.play(String(msg.sound ?? '')).catch(() => {});
+              Journal.mark(`alarm:${msg.sound}`).catch(() => {});
               return;
             }
 
@@ -2639,7 +2639,7 @@ export default function App() {
     // at full volume it would go straight into one's own microphone and
     // come back to the other person doubled, on top of what is already
     // playing over there.
-    Sveglia.suona(sound, true).catch(() => {});
+    Alarm.play(sound, true).catch(() => {});
     Journal.mark(`alarm-sent:${sound}`).catch(() => {});
   }, []);
 
@@ -2812,7 +2812,7 @@ export default function App() {
           // leaves towards a phone far away and from here nothing would
           // be heard - the button just blinks. Knowing that it left is
           // worth as much as sending it.
-          Sveglia.suona('bussata', true, KNOCK_ECHO_MS).catch(() => {});
+          Alarm.play('knock', true, KNOCK_ECHO_MS).catch(() => {});
           Journal.mark('knock').catch(() => {});
         }}
         onLeave={leaveChannel}

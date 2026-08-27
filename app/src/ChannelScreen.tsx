@@ -110,11 +110,11 @@ const OUTPUT_ICON: Record<
  * on the other side too, which is the one that plays it.
  */
 const ALARMS: { name: string; label: string; note: string }[] = [
-  { name: 'tamburi', label: t('alarms.drums'), note: t('alarms.drumsNote') },
-  { name: 'batteria', label: t('alarms.kit'), note: t('alarms.kitNote') },
-  { name: 'fanfara', label: t('alarms.fanfare'), note: t('alarms.fanfareNote') },
-  { name: 'strombazzata', label: t('alarms.horn'), note: t('alarms.hornNote') },
-  { name: 'gallo', label: t('alarms.rooster'), note: t('alarms.roosterNote') },
+  { name: 'drumroll', label: t('alarms.drums'), note: t('alarms.drumsNote') },
+  { name: 'drumkit', label: t('alarms.kit'), note: t('alarms.kitNote') },
+  { name: 'fanfare', label: t('alarms.fanfare'), note: t('alarms.fanfareNote') },
+  { name: 'horn', label: t('alarms.horn'), note: t('alarms.hornNote') },
+  { name: 'rooster', label: t('alarms.rooster'), note: t('alarms.roosterNote') },
 ];
 
 type Props = {

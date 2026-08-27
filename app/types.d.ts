@@ -8,12 +8,12 @@ declare module 'tweetnacl-util' {
 }
 
 declare module 'duetto-platform' {
-  /** I suoni per richiamare l'altro: escono dal volume della sveglia. */
-  export const Sveglia: {
-    /** `eco`: lo suona chi lo ha mandato, e allora esce piano */
-    suona(nome: string, eco?: boolean, maxMs?: number): Promise<boolean>;
-    ferma(): Promise<boolean>;
-    elenco(): Promise<string[]>;
+  /** The sounds for calling the other back: they use the alarm volume. */
+  export const Alarm: {
+    /** `echo`: played by whoever sent it, and then it comes out quietly */
+    play(name: string, echo?: boolean, maxMs?: number): Promise<boolean>;
+    stop(): Promise<boolean>;
+    list(): Promise<string[]>;
   };
 
   export const Volume: {
