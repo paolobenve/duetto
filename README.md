@@ -253,7 +253,7 @@ voice's, and that is the fastest this app goes.
 
 Added up, the two are what you live through while talking: if the other person answers the
 instant you stop, what comes back has waited twice. For whoever wants that one number
-instead of the two arrows there is *the cogwheel → Diagnostics → The whole wait only* —
+instead of the two arrows there is *the cogwheel → Diagnostics → The total delay only* —
 but the arrows are what say which of the two phones the wait sits on, and the road is the
 same in both directions while the phones at its ends are not.
 

@@ -250,7 +250,7 @@ export const en = {
     diagnosticsHint: 'It is there to work out why something went wrong, and it belongs to this phone rather than to one connection. Off it shows nothing and costs nothing.',
     diagnosticsOn: 'Turn diagnostics on',
     diagnosticsOnNote: 'The technical lines under the buttons, a journal line every five minutes, the journals exchanged with the other phone, and the log that `adb logcat` reads. Off, the journal still writes down what happens - the app dying, a coming or going, a change of network - so a problem can still be told afterwards.',
-    delayTotalOnly: 'The whole wait only',
+    delayTotalOnly: 'The total delay only',
     delayTotalOnlyNote: 'One number instead of two: what one lives through talking, the two directions added up. The arrows are worth keeping when hunting for a cause, because they say which of the two is the slow one.',
     controlsWhileWatching: 'The controls while you watch',
     controlsHint: 'After a few seconds they step aside to leave the picture. However they are set they stay pressable, and a touch anywhere calls them back: only how much picture they leave visible changes.',

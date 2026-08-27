@@ -2956,6 +2956,7 @@ export default function App() {
         peerTornDown={peerTornDown}
         videoStats={videoStats}
         peerDelay={peerState.delay ?? null}
+        delayTotalOnly={cfg.delayTotalOnly}
         qualityLabel={t(`quality.${(VIDEO_PROFILES[cfg.videoQuality] ?? VIDEO_PROFILES.standard).key}`)}
         showStats={cfg.diagnostics}
         controls={cfg.controls}

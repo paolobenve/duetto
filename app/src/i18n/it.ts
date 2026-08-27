@@ -238,7 +238,7 @@ export const it: Dictionary = {
     diagnosticsHint: 'Serve a capire perché qualcosa è andato storto, ed è di questo telefono, non di un collegamento. Spenta non mostra niente e non costa niente.',
     diagnosticsOn: 'Accendi la diagnostica',
     diagnosticsOnNote: 'Le righe tecniche sotto ai pulsanti, una riga di diario ogni cinque minuti, lo scambio dei diari con l\'altro telefono e il log che si legge con `adb logcat`. Spenta, il diario annota lo stesso quello che succede — l\'app che muore, un ingresso o un\'uscita, un cambio di rete — così un guaio si può raccontare anche dopo.',
-    delayTotalOnly: 'Solo il ritardo intero',
+    delayTotalOnly: 'Solo il ritardo totale',
     delayTotalOnlyNote: 'Un numero invece di due: quello che si vive parlando, le due direzioni sommate. Le frecce vale la pena tenerle quando si cerca una causa, perché dicono quale delle due è quella lenta.',
     controlsWhileWatching: 'I comandi mentre guardi',
     controlsHint: 'Dopo qualche secondo si fanno da parte per lasciare l’immagine. Comunque scelti restano premibili, e un tocco ovunque li richiama: cambia solo quanta immagine lasciano vedere.',
