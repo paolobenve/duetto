@@ -4,9 +4,9 @@ const isAndroid = Platform.OS === 'android';
 const NativeForeground = NativeModules.DuettoForeground;
 const NativePip = NativeModules.DuettoPip;
 const NativeVisibility = NativeModules.DuettoVisibility;
-const NativeRete = NativeModules.DuettoRete;
-const NativeBattito = NativeModules.DuettoBattito;
-const NativeProssimita = NativeModules.DuettoProssimita;
+const NativeNetwork = NativeModules.DuettoNetwork;
+const NativeHeartbeat = NativeModules.DuettoHeartbeat;
+const NativeProximity = NativeModules.DuettoProximity;
 const NativeLocale = NativeModules.DuettoLocale;
 const NativeCodecs = NativeModules.DuettoCodecs;
 const NativeAudio = NativeModules.DuettoAudio;
@@ -284,87 +284,88 @@ export const Locale = isAndroid && NativeLocale
   : { language: 'en', current: () => Promise.resolve('en') };
 
 /**
- * Quando qualcosa copre lo schermo: una tasca, una cover chiusa.
+ * When something covers the screen: a pocket, a closed case.
  *
- * Serve a non prendere per scelte i tocchi che arrivano al vetro di un
- * telefono in tasca. Vedi ProssimitaModule.
+ * It is there so that the touches reaching the glass of a phone in a
+ * pocket are not taken for choices. See ProximityModule.
  */
-export const Prossimita = isAndroid && NativeProssimita
+export const Proximity = isAndroid && NativeProximity
   ? {
-      /** Com'è adesso. */
-      get: () => call(NativeProssimita, 'coperto'),
+      /** How it is now. */
+      get: () => call(NativeProximity, 'covered'),
 
       /**
-       * Chiama `cb(coperto)` a ogni cambiamento, e si mette in ascolto.
-       * Restituisce la funzione per smettere.
+       * Calls `cb(covered)` at every change, and starts listening.
+       * Gives back the function to stop.
        */
       subscribe(cb) {
-        call(NativeProssimita, 'start');
-        const emitter = new NativeEventEmitter(NativeProssimita);
-        const sub = emitter.addListener('duetto-prossimita', (v) => cb(!!v));
+        call(NativeProximity, 'start');
+        const emitter = new NativeEventEmitter(NativeProximity);
+        const sub = emitter.addListener('duetto-proximity', (v) => cb(!!v));
         return () => {
           sub.remove();
-          call(NativeProssimita, 'stop');
+          call(NativeProximity, 'stop');
         };
       },
     }
   : { get: () => Promise.resolve(false), subscribe: () => () => {} };
 
 /**
- * Il battito che arriva anche a schermo spento.
+ * The heartbeat that arrives with the screen off too.
  *
- * I timer di JavaScript, in React Native, seguono il ritmo dei
- * fotogrammi dello schermo: spento lo schermo non scadono più. Questo
- * invece nasce da un Handler nativo ed è un evento, e gli eventi il
- * motore JavaScript li riceve comunque. Vedi BattitoModule.
+ * JavaScript's timers, in React Native, follow the rhythm of the screen's
+ * frames: with the screen off they never fire. This one is born of a
+ * native Handler and is an event, and events the JavaScript engine
+ * receives anyway. See HeartbeatModule.
  */
-export const Battito = isAndroid && NativeBattito
+export const Heartbeat = isAndroid && NativeHeartbeat
   ? {
       /**
-       * Fitto mentre si è senza server (un battito ogni quindici
-       * secondi), rado quando il collegamento c'è.
+       * Close together while we are without a server (a beat every
+       * fifteen seconds), far apart when the connection is there.
        */
-      fitto: (svelto) => call(NativeBattito, 'fitto', !!svelto),
+      fast: (quick) => call(NativeHeartbeat, 'fast', !!quick),
 
-      /** Chiama `cb()` a ogni battito. Restituisce la funzione per smettere. */
+      /** Calls `cb()` at every beat. Gives back the function to stop. */
       subscribe(cb) {
-        call(NativeBattito, 'start');
-        const emitter = new NativeEventEmitter(NativeBattito);
-        const sub = emitter.addListener('duetto-battito', () => cb());
+        call(NativeHeartbeat, 'start');
+        const emitter = new NativeEventEmitter(NativeHeartbeat);
+        const sub = emitter.addListener('duetto-heartbeat', () => cb());
         return () => {
           sub.remove();
-          call(NativeBattito, 'stop');
+          call(NativeHeartbeat, 'stop');
         };
       },
     }
-  : { subscribe: () => () => {}, fitto: unavailable };
+  : { subscribe: () => () => {}, fast: unavailable };
 
 /**
- * I cambi di rete del telefono: cella, wifi, indirizzo nuovo.
+ * The phone's changes of network: cell, wifi, new address.
  *
- * Serve a rifare la connessione appena c'è una rete nuova, invece di
- * aspettare che qualcuno inciampi nel socket morto. Vedi ReteModule.
+ * It is there to rebuild the connection as soon as there is a new
+ * network, instead of waiting for somebody to trip over the dead socket.
+ * See NetworkModule.
  */
-export const Rete = isAndroid && NativeRete
+export const Network = isAndroid && NativeNetwork
   ? {
       /**
-       * Chiama `cb(cosa)` a ogni cambiamento: "arrivata", "persa",
-       * "indirizzo", "valida". Restituisce la funzione per smettere.
+       * Calls `cb(what)` at every change: "arrived", "lost", "address",
+       * "valid". Gives back the function to stop.
        */
       subscribe(cb) {
-        call(NativeRete, 'start');
-        const emitter = new NativeEventEmitter(NativeRete);
-        const sub = emitter.addListener('duetto-rete', (v) => cb(String(v || '')));
+        call(NativeNetwork, 'start');
+        const emitter = new NativeEventEmitter(NativeNetwork);
+        const sub = emitter.addListener('duetto-network', (v) => cb(String(v || '')));
         return () => sub.remove();
       },
 
       /**
-       * Dice ad Android che su questa rete il traffico non passa, e che
-       * la verifichi adesso. Vedi ReteModule.
+       * Tells Android that on this network the traffic does not get
+       * through, and to check it now. See NetworkModule.
        */
-      segnalaCheNonPassa: () => call(NativeRete, 'segnalaCheNonPassa'),
+      reportNotCarrying: () => call(NativeNetwork, 'reportNotCarrying'),
     }
-  : { subscribe: () => () => {}, segnalaCheNonPassa: unavailable };
+  : { subscribe: () => () => {}, reportNotCarrying: unavailable };
 
 export const Visibility = isAndroid && NativeVisibility
   ? {

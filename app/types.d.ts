@@ -35,24 +35,24 @@ declare module 'duetto-platform' {
     current(): Promise<string>;
   };
 
-  /** Quando qualcosa copre lo schermo: una tasca, una cover chiusa. */
-  export const Prossimita: {
+  /** When something covers the screen: a pocket, a closed case. */
+  export const Proximity: {
     get(): Promise<boolean>;
-    subscribe(cb: (coperto: boolean) => void): () => void;
+    subscribe(cb: (covered: boolean) => void): () => void;
   };
 
-  /** Un battito ogni minuto, che arriva anche a schermo spento. */
-  export const Battito: {
+  /** A beat every minute, arriving with the screen off too. */
+  export const Heartbeat: {
     subscribe(cb: () => void): () => void;
-    /** fitto mentre si è senza server, rado quando il collegamento c'è */
-    fitto(svelto: boolean): Promise<boolean>;
+    /** close together while without a server, far apart when connected */
+    fast(quick: boolean): Promise<boolean>;
   };
 
-  /** I cambi di rete del telefono: cella, wifi, indirizzo nuovo. */
-  export const Rete: {
-    subscribe(cb: (cosa: string) => void): () => void;
-    /** «su questa rete il traffico non passa, verificala adesso» */
-    segnalaCheNonPassa(): Promise<boolean>;
+  /** The phone's changes of network: cell, wifi, new address. */
+  export const Network: {
+    subscribe(cb: (what: string) => void): () => void;
+    /** "on this network the traffic does not get through, check it now" */
+    reportNotCarrying(): Promise<boolean>;
   };
 
   /** Foreground service Android: tiene viva la presenza nel canale. */

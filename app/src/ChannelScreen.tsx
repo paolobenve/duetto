@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import type { GestureResponderEvent } from 'react-native';
 import { MediaStream } from 'react-native-webrtc';
-import { Journal, Prossimita } from 'duetto-platform';
+import { Journal, Proximity } from 'duetto-platform';
 import { t } from './i18n';
 import type { PresenceStatus } from './signaling';
 import VideoStage from './VideoStage';
@@ -692,12 +692,12 @@ export default function ChannelScreen(props: Props) {
   useEffect(() => {
     if (compact) return;
     let alive = true;
-    Prossimita.get().then((v) => {
+    Proximity.get().then((v) => {
       if (!alive) return;
       coveredRef.current = !!v;
       setCovered(!!v);
     }).catch(() => { /* noop */ });
-    const stop = Prossimita.subscribe((v) => {
+    const stop = Proximity.subscribe((v) => {
       coveredRef.current = v;
       setCovered(v);
     });

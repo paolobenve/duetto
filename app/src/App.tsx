@@ -7,8 +7,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
 import {
-  Foreground, Pip, AppWindow, Visibility, Codecs, Audio, Alerts, Journal, Volume, Rete,
-  Battito,
+  Foreground, Pip, AppWindow, Visibility, Codecs, Audio, Alerts, Journal, Volume, Network,
+  Heartbeat,
   Alarm,
 } from 'duetto-platform';
 import {
@@ -1022,8 +1022,8 @@ export default function App() {
   useEffect(() => {
     if (!available) return;
     let due: ReturnType<typeof setTimeout> | null = null;
-    const stop = Rete.subscribe((what) => {
-      if (what === 'persa') return;
+    const stop = Network.subscribe((what) => {
+      if (what === 'lost') return;
       if (due) clearTimeout(due);
       due = setTimeout(() => {
         due = null;
@@ -1084,7 +1084,7 @@ export default function App() {
     if (!available) return;
     probeSent.current = 0;
     answerSeen.current = Date.now();
-    return Battito.subscribe(() => {
+    return Heartbeat.subscribe(() => {
       const sig = signalingRef.current;
       if (!sig) return;
       const rebuild = (why: string) => {
@@ -1105,7 +1105,7 @@ export default function App() {
          */
         if (emptyBeats.current === 2) {
           Journal.mark('network:not-carrying').catch(() => { /* noop */ });
-          Rete.segnalaCheNonPassa().catch(() => { /* noop */ });
+          Network.reportNotCarrying().catch(() => { /* noop */ });
         }
         sig.rebuild();
       };
@@ -1131,7 +1131,7 @@ export default function App() {
    */
   useEffect(() => {
     const without = status === 'offline' || status === 'connecting';
-    Battito.fitto(available && without).catch(() => { /* noop */ });
+    Heartbeat.fast(available && without).catch(() => { /* noop */ });
   }, [status, available]);
 
   /**
