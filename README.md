@@ -113,17 +113,39 @@ Five buttons in a dark panel at the bottom, always there. After 4 seconds they d
 so as not to cover the picture, and come back to full at the first touch anywhere; they
 stay pressable while dimmed.
 
-| Button | What it does |
-|---|---|
-| **Video** | turns the camera on and off |
-| **Audio** | a touch: mute. **A long press**: where the sound comes out |
-| **Turn** | front ↔ back; off when the video is off |
-| **Alert** | calls the other back: it works even when they are in the channel but distracted |
-| **Leave** | leaves the channel and closes the window, staying reachable |
+| Button | A touch | Held down |
+|---|---|---|
+| **Video** | turns the camera on and off | the **video quality**: the four profiles |
+| **Audio** | mute and unmute | **where the sound comes out** |
+| **Turn** | front ↔ back camera | — |
+| **Call** | calls the other back | the **sounds** to call them with |
+| **Leave** | opens the two ways out | the same panel |
 
-The possible audio outputs are four and no more: **speaker**, **phone** (the earpiece),
-**headphones**, **Bluetooth**. Only the ones connected appear, and the choice is
-**remembered** for the next time.
+These three choices live under the finger that is already there because they are made in
+the moment, while looking at what they change: the quality is judged by looking at the
+video, and going to fetch it in the settings loses sight of the very thing being judged.
+Only the quality is also in the settings; the audio output and the sounds are here alone.
+
+The **video quality** is described further down. The possible **audio outputs** are four
+and no more: **speaker**, **phone** (the earpiece), **headphones**, **Bluetooth**. Only
+the ones connected appear, and the choice is **remembered** for the next time.
+
+The **sounds to call them with** are five — a drum roll, a drum kit, a fanfare, a car horn
+and a rooster — and they play on the other phone at the **alarm volume**, not the
+conversation one: they are heard even with the ringer low and the phone across the room.
+They appear only while you are both in the channel: outside it there is no phone on which
+they could play, while the plain call, that one, goes through the server.
+
+**Turn** can be pressed with the video off as well: there it turns nothing, it chooses
+which camera will open. It is for framing something without first showing one's own face
+for an instant.
+
+**Leave** never leaves on a single touch. A touch and a long press open the same panel in
+the middle of the screen, with the two ways out written in full: **leave and stay
+available** — the channel closes but their call still comes through — and **leave and
+become unavailable**, which disconnects Duetto altogether until you open it again. It used
+to leave straight away, and exits appeared that nobody had pressed: it is a corner of the
+screen where touches happen.
 
 ### Video
 

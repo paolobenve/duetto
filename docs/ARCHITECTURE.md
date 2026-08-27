@@ -44,7 +44,7 @@ A minimal WebSocket server in Node.js. It does four things:
   for a good minute. To the other one, nobody has left.
 - **Forwarding**: it passes the `signal` messages from one peer to the other **without
   reading their content**, and the `pair` messages during the pairing.
-- **Alerts**: `notify` when somebody comes into the channel or presses "Alert". There is
+- **Alerts**: `notify` when somebody comes into the channel or presses "Call". There is
   no brake on knocking: one knocks at a single person, who gave you the code in person,
   and a limit would be felt exactly when insisting is what is needed.
 - **Relay**: the TURN credentials live in the server's `.env`, and the server tells them
