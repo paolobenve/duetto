@@ -1,306 +1,314 @@
-# Architettura di Duetto
+# Duetto's architecture
 
-## Modello: canale, non chiamata
+## The model: a channel, not a call
 
-Non esiste il concetto di "chiamare" o "rispondere". Esiste un **canale permanente** per
-una coppia. Ci entri, ci resti, e quando entra anche l'altro il collegamento si stabilisce
-da solo. È un canale vocale Discord ridotto a due posti.
+There is no notion of "calling" or "answering". There is a **permanent channel** for one
+pair. You go into it, you stay in it, and when the other person comes in too the link
+establishes itself. It is a Discord voice channel cut down to two places.
 
-Ne conseguono tre cose:
+Three things follow from that:
 
-1. **La presenza è lo stato principale** dell'interfaccia: "sei solo" / "ci siete
-   entrambi", non "sta squillando".
-2. **Serve un modo di avvisare**, perché l'altro potrebbe non avere l'app aperta.
-3. **La connessione al server dev'essere permanente**, non legata alla schermata.
+1. **Presence is the main state** of the interface: "you are alone" / "you are both
+   here", not "it is ringing".
+2. **A way of alerting is needed**, because the other person may not have the app open.
+3. **The connection to the server has to be permanent**, not tied to the screen.
 
-## I due stati
+## The two states
 
-Ogni telefono tiene **una** connessione al signaling, in uno di due stati:
+Each phone keeps **one** connection to the signalling server, in one of two states:
 
-| Stato | Cosa significa |
+| State | What it means |
 |---|---|
-| `listening` | raggiungibile ma fuori dal canale: microfono chiuso, nessun media |
-| `active` | dentro il canale: si negozia il WebRTC |
+| `listening` | reachable but outside the channel: microphone closed, no media |
+| `active` | inside the channel: WebRTC is being negotiated |
 
-Passare dall'uno all'altro **non riconnette nulla**: cambia solo lo stato dichiarato al
-server. È quello che rende la presenza continua invece che a intermittenza.
+Going from one to the other **reconnects nothing**: only the state declared to the server
+changes. That is what makes presence continuous instead of intermittent.
 
-Quando qualcuno passa a `active` mentre l'altro sta solo ascoltando, il server manda
-`notify` e l'app **si mostra da sé** la notifica. Nessun servizio esterno, nessun
-Firebase, nessuna app di terzi da configurare. Chi è già nel canale non viene notificato:
-se ne accorge da solo, e sarebbe rumore.
+When somebody goes to `active` while the other is merely listening, the server sends
+`notify` and the app **shows itself** the notification. No outside service, no Firebase,
+no third-party app to configure. Whoever is already in the channel is not notified: they
+notice by themselves, and it would be noise.
 
-## Componenti
+## The parts
 
-### 1. Signaling (`server/src/index.js`)
+### 1. Signalling (`server/src/index.js`)
 
-WebSocket minimale in Node.js. Fa quattro cose:
+A minimal WebSocket server in Node.js. It does four things:
 
-- **Presenza**: ogni stanza accetta al massimo 2 connessioni; la terza riceve `room-full`.
-- **Riaggancio**: il lato della coppia (`A`/`B`) identifica il *dispositivo*, non la
-  connessione. Chi si riaggancia dopo un calo di rete si riprende il proprio posto,
-  congedando la connessione precedente: senza questo, il server non avrebbe ancora
-  dichiarato morta la vecchia e il telefono si vedrebbe respinto come un terzo
-  dispositivo per un minuto buono. All'altro non risulta nessuna uscita.
-- **Inoltro**: gira i messaggi `signal` da un peer all'altro **senza leggerne il
-  contenuto**, e i messaggi `pair` durante l'accoppiamento.
-- **Avvisi**: `notify` quando qualcuno entra nel canale o preme "Avvisa" (con un freno di
-  15 secondi contro le pressioni ripetute).
-- **Relay**: le credenziali del TURN stanno nel `.env` del server, che le comunica ai
-  telefoni nel messaggio di ingresso. Sui dispositivi non si configura nulla, e cambiando
-  la password non si deve rimettere mano a ognuno.
-- **Freno agli ingressi**: 30 al minuto per indirizzo. Non dà fastidio a nessuno, e rende
-  impraticabile provare codici di accoppiamento a tappeto.
+- **Presence**: every room accepts at most 2 connections; the third gets `room-full`.
+- **Hooking up again**: the side of the pair (`A`/`B`) identifies the *device*, not the
+  connection. Whoever hooks up again after a dip in the network takes their own place
+  back, dismissing the previous connection: without this, the server would not yet have
+  declared the old one dead and the phone would find itself turned away as a third device
+  for a good minute. To the other one, nobody has left.
+- **Forwarding**: it passes the `signal` messages from one peer to the other **without
+  reading their content**, and the `pair` messages during the pairing.
+- **Alerts**: `notify` when somebody comes into the channel or presses "Alert". There is
+  no brake on knocking: one knocks at a single person, who gave you the code in person,
+  and a limit would be felt exactly when insisting is what is needed.
+- **Relay**: the TURN credentials live in the server's `.env`, and the server tells them
+  to the phones in the joining message. Nothing is configured on the devices, and changing
+  the password does not mean going back to each of them.
+- **A brake on joining**: 30 a minute per address. It bothers nobody, and it makes trying
+  pairing codes wholesale impractical.
 
-La stanza si chiama `pairId`. Coppie diverse hanno `pairId` diversi e non si vedono fra
-loro: lo stesso server serve quante coppie vuoi.
+The room is called `pairId`. Different pairs have different `pairId`s and do not see one
+another: the same server serves as many pairs as you like.
 
-### 2. Accoppiamento (`app/src/pairing.ts`)
+### 2. Pairing (`app/src/pairing.ts`)
 
-Chi crea la coppia riceve **otto cifre**; l'altro le digita.
+Whoever creates the pair gets **eight digits**; the other one types them in.
 
 ```
-Telefono A                    SERVER                    Telefono B
-codice: 8147 1828                                    codice digitato
+Phone A                       SERVER                       Phone B
+code: 8147 1828                                        code typed in
     │                                                        │
-    ├── pairId = KDF_lento(codice) ──▶ stanza ◀── pairId = KDF_lento(codice)
-    │                              (vede solo questo)         │
-    ├── chiave pubblica A ─────────▶ inoltra ────────────────▶│
-    │◀──────────────────────────── inoltra ◀── chiave pubblica B
+    ├── pairId = slow_KDF(code) ──▶ room ◀── pairId = slow_KDF(code)
+    │                          (it sees only this)            │
+    ├── public key A ──────────────▶ forwards ───────────────▶│
+    │◀─────────────────────────── forwards ◀───── public key B
     │                                                        │
-  chiave = KDF(Diffie-Hellman, codice)      chiave = KDF(Diffie-Hellman, codice)
+  key = KDF(Diffie-Hellman, code)          key = KDF(Diffie-Hellman, code)
     │                                                        │
-    ├── prova(chiave, "A") ────────▶ inoltra ───────────────▶│ verifica
-    │ verifica ◀───────────────────── inoltra ◀── prova(chiave, "B")
+    ├── proof(key, "A") ───────────▶ forwards ──────────────▶│ checks
+    │ checks ◀─────────────────────── forwards ◀── proof(key, "B")
 ```
 
-Tre proprietà, e il motivo di ciascuna:
+Three properties, and the reason for each:
 
-**Il codice non arriva mai al server.** Ci arriva solo `pairId`, la sua impronta.
+**The code never reaches the server.** Only `pairId` does, its fingerprint.
 
-**Il calcolo di `pairId` è un po' costoso, ma non troppo.** Otto cifre sono solo 10⁸
-combinazioni: con un hash normale il server potrebbe provarle tutte in pochi secondi.
-Rallentare il calcolo alza quel costo, ma lo alza anche per noi: la prima versione, a
-200.000 giri, faceva aspettare dieci secondi a ogni accoppiamento, e non era accettabile.
+**Working out `pairId` is somewhat costly, but not too much.** Eight digits are only 10⁸
+combinations: with an ordinary hash the server could try them all in a few seconds.
+Slowing the computation down raises that cost, but it raises it for us as well: the first
+version, at 200,000 rounds, made every pairing wait ten seconds, and that was not
+acceptable.
 
-Ora sono 6.000 giri, una frazione di secondo, e la difesa contro chi prova codici a
-tappeto sta dove costa a chi attacca e non a chi usa l'app: il **server limita gli
-ingressi** (30 al minuto per indirizzo) e l'**app impone 20 secondi** prima di ritentare
-dopo un fallimento.
+Now it is 6,000 rounds, a fraction of a second, and the defence against whoever tries
+codes wholesale sits where it costs the attacker and not the user: the **server limits the
+joins** (30 a minute per address) and the **app imposes 20 seconds** before trying again
+after a failure.
 
-Il limite che ne deriva è dichiarato: un server ostile, che vede `pairId`, potrebbe
-risalire a un codice di 8 cifre e inserirsi *durante* l'accoppiamento. Dopo, la chiave è a
-256 bit. La contromisura, se servisse, è allungare il codice — non rallentare il calcolo.
+The limit that follows is stated openly: a hostile server, which sees `pairId`, could work
+its way back to an 8-digit code and get in the middle *during* the pairing. Afterwards the
+key is 256 bits. The countermeasure, if it were needed, is to lengthen the code — not to
+slow the computation down.
 
-**La chiave non deriva dal codice.** Nasce da uno scambio X25519 con il codice mescolato
-nella derivazione. Chi ascolta non può calcolarla (non ha i segreti privati); chi volesse
-mettersi in mezzo dovrebbe conoscere il codice, e le prove finali lo smaschererebbero.
-Le due prove sono diverse per i due lati, così nessuno può rimandare indietro quella
-dell'altro. Finito l'accoppiamento la chiave è a 256 bit e la debolezza del codice non
-conta più.
+**The key does not come from the code.** It is born of an X25519 exchange with the code
+mixed into the derivation. Whoever listens cannot work it out (they do not have the
+private secrets); whoever wanted to get in the middle would have to know the code, and the
+final proofs would unmask them. The two proofs are different for the two sides, so nobody
+can send back the other one's. Once the pairing is over the key is 256 bits and the
+weakness of the code counts no more.
 
-### 3. Cifratura del signaling (`app/src/crypto.ts`)
+### 3. Encryption of the signalling (`app/src/crypto.ts`)
 
-- **NaCl secretbox** (XSalsa20-Poly1305), nonce casuale a 24 byte per messaggio.
-- Il ciphertext è **autenticato**: qualsiasi manomissione fa fallire l'apertura.
+- **NaCl secretbox** (XSalsa20-Poly1305), a random 24-byte nonce per message.
+- The ciphertext is **authenticated**: any tampering makes the opening fail.
 
-Il server vede solo base64 opaco. Non potendo leggere né riscrivere gli SDP, non può
-sostituire il **fingerprint DTLS**, che è ciò che gli permetterebbe di inserirsi nel
-mezzo.
+The server sees only opaque base64. Being unable to read or rewrite the SDPs, it cannot
+replace the **DTLS fingerprint**, which is what would let it get in the middle.
 
 ### 4. Media (`app/src/webrtc.ts`)
 
-- Entrando si apre **solo il microfono**. La camera si accende su richiesta e spegnendola
-  si fa `removeTrack` + `track.stop()`: viene rilasciata davvero, e l'indicatore privacy
-  di Android si spegne.
-- Il **canale video viene aperto subito**, anche vuoto: accendere la camera si limita a
-  metterci dentro la traccia (`replaceTrack`). Nessuna rinegoziazione, nessuna traccia che
-  si accumula. Aggiungere e togliere la traccia a ogni accensione — l'approccio iniziale —
-  produceva tracce nuove che si accavallavano alle vecchie, e il renderer finiva per
-  disegnare quella morta: schermo nero.
-- **Offre sempre e solo una delle due parti**. Il ruolo viene dal lato dell'accoppiamento
-  (`A` = risponde, `B` = offre), non dall'ordine di arrivo nella stanza: quello cambia a
-  ogni riaggancio, e bastavano due riconnessioni sfortunate perché entrambi si credessero
-  l'offerente e le offerte si scontrassero.
-- Chi risponde trova il canale video creato **in sola ricezione** — è così che WebRTC crea i
-  canali derivati da un'offerta altrui — e lo porta a `sendrecv` *prima* di preparare la
-  risposta, così la direzione corretta viaggia nella stessa negoziazione. Senza, quel
-  telefono vedrebbe il video dell'altro ma non riuscirebbe a inviare il proprio.
-- Gli **ICE candidate** arrivati prima della remote description finiscono in coda e
-  vengono applicati dopo, altrimenti andrebbero persi.
-- Un messaggio cifrato `state` comunica all'altro se hai mic/camera attivi e **con quali
-  proporzioni** stai inquadrando.
-- **Non si trasmette a chi non guarda.** Quando l'app dell'altro sparisce dallo schermo,
-  chi manda il video stacca la traccia dal canale: la camera resta accesa per l'anteprima
-  locale, ma verso la rete non esce nulla. Senza, un video verso uno schermo spento
-  costava ~300 kB/s a chi lo mandava, che su rete cellulare si paga. Il segnale viaggia
-  nel messaggio `state` (campo `watching`); vale `true` quando manca, così una build
-  vecchia o un messaggio perso lasciano il video acceso invece di spegnerlo per sempre.
-- Ogni gestore di evento **verifica di appartenere alla connessione in uso**. Ricostruendo
-  il collegamento nascono più `RTCPeerConnection` in pochi secondi e quelle superate
-  continuano a emettere eventi: una connessione già morta infilava la propria traccia
-  nello stream nuovo — due video vivi, e il renderer disegnava quello sbagliato. Attenzione
-  alla trappola: **libwebrtc non marca `ended` le tracce di una connessione chiusa**,
-  quindi filtrarle per `readyState` non serve a nulla. Vale anche per gli stati, dove il
-  danno è peggiore: un `failed` in ritardo faceva ripartire la riparazione di una
-  connessione sana, e le ricostruzioni si innescavano a vicenda.
-- Il **percorso selezionato viene registrato** appena il collegamento si stabilisce —
-  `LOCALE (stessa rete)`, `DIRETTO attraverso NAT` o `RELAY (passa dal server)`. I
-  candidati raccolti non lo dicono: si raccolgono sempre tutti e poi ne vince uno, e senza
-  questo dato non si può dire se una caduta dipenda dalla strada che il traffico prende.
-- Il **formato della camera è fissato**: proporzioni dichiarate in acquisizione e
-  `degradationPreference: maintain-resolution`. Il comportamento predefinito è l'opposto —
-  sotto banda scarsa WebRTC abbassa la risoluzione — e molti sensori cambiando formato
-  cambiano anche l'angolo di ripresa: dall'altra parte si vedeva l'inquadratura allargarsi
-  e restringersi da sola. Meglio perdere fotogrammi che cambiare cosa si inquadra.
+- Going in opens **the microphone only**. The camera comes on on request, and turning it
+  off does `removeTrack` + `track.stop()`: it is really released, and Android's privacy
+  indicator goes out.
+- The **video channel is opened straight away**, empty as well: turning the camera on
+  merely puts the track into it (`replaceTrack`). No renegotiation, no tracks piling up.
+  Adding and removing the track at every switch-on — the first approach — produced new
+  tracks that overlapped the old ones, and the renderer ended up drawing the dead one:
+  a black screen.
+- **Only ever one of the two sides offers.** The role comes from the pairing side (`A` =
+  answers, `B` = offers), not from the order of arrival in the room: that changes at every
+  rehook, and two unlucky reconnections were enough for both to believe themselves the
+  offerer and for the offers to collide.
+- Whoever answers finds the video channel created **receive-only** — that is how WebRTC
+  creates the channels derived from somebody else's offer — and takes it to `sendrecv`
+  *before* preparing the answer, so that the right direction travels in the same
+  negotiation. Without that, this phone would see the other's video but would not manage
+  to send its own.
+- The **ICE candidates** that arrive before the remote description are queued and applied
+  afterwards, otherwise they would be lost.
+- An encrypted `state` message tells the other whether your mic/camera are on and **with
+  what proportions** you are framing.
+- **Nothing is sent to somebody who is not looking.** When the other's app leaves their
+  screen, whoever is sending video detaches the track from the channel: the camera stays
+  on for the local preview, but nothing goes out towards the network. Without that, video
+  towards a dark screen cost the sender ~300 kB/s, which on a mobile network is paid for.
+  The signal travels in the `state` message (the `watching` field); it counts as `true`
+  when missing, so an old build or a lost message leaves the video on instead of turning
+  it off for good.
+- Every event handler **checks that it belongs to the connection in use**. Rebuilding the
+  link, several `RTCPeerConnection`s are born within seconds and the superseded ones go on
+  emitting events: a connection already dead was slipping its own track into the new
+  stream — two live videos, and the renderer drawing the wrong one. Mind the trap:
+  **libwebrtc does not mark the tracks of a closed connection as `ended`**, so filtering
+  them by `readyState` is of no use whatsoever. The same holds for the states, where the
+  damage is worse: a late `failed` made the repair of a healthy connection start up, and
+  the rebuilds set each other off.
+- The **selected path is recorded** as soon as the link establishes itself — `LOCAL (same
+  network)`, `DIRECT through NAT` or `RELAY (through the server)`. The candidates gathered
+  do not say which: they are all gathered every time and then one wins, and without this
+  fact one cannot tell whether a drop depends on the road the traffic takes.
+- The **camera's format is fixed**: proportions declared at capture and
+  `degradationPreference: maintain-resolution`. The default behaviour is the opposite —
+  with little bandwidth WebRTC lowers the resolution — and many sensors, changing format,
+  change the angle of view as well: on the other side the framing could be seen widening
+  and narrowing by itself. Better to lose frames than to change what is being framed.
 
-### 5. Recupero dopo un'interruzione
+### 5. Recovering after an interruption
 
-È la parte che ha richiesto più correzioni, e ognuna è nata da un log.
+It is the part that has needed the most corrections, and every one of them was born of a
+log.
 
-**La connessione al server** si riaggancia da sola, con attese fra 0,5 e 4 secondi.
-Tornando in primo piano si riprova subito, senza aspettare il tentativo programmato.
+**The connection to the server** hooks up again by itself, with waits between 0.5 and 4
+seconds. Coming back to the foreground it tries again at once, without waiting for the
+scheduled attempt.
 
-**Il collegamento diretto** muore con la rete e va riparato, ma **con gradualità**. La
-prima versione demoliva 800 ms dopo il `failed`, e il log ha mostrato che era la causa
-della maggior parte delle interruzioni visibili: ICE si stava riprendendo da solo — nel
-log si vede passare da `failed` a `connected` senza alcun aiuto — e la demolizione
-arrivava nel mezzo.
+**The direct link** dies with the network and has to be repaired, but **gradually**. The
+first version tore it down 800 ms after the `failed`, and the log showed that this was the
+cause of most of the visible interruptions: ICE was picking itself up — in the log it can
+be seen going from `failed` to `connected` with no help at all — and the demolition
+arrived in the middle of that.
 
-L'ordine ora è:
+The order now is:
 
-1. **Aspettare**: 4 secondi da `failed`, 12 da `disconnected`. Su rete mobile il percorso
-   cambia di continuo e spesso rientra da sé in un secondo.
-2. **Riparazione leggera**: `restartIce()` rifà solo la ricerca del percorso, tenendo in
-   piedi connessione e tracce — audio e video non si interrompono affatto. Può farla chi
-   offre; l'altro la chiede con `renegotiate`.
-3. **Ricostruzione completa**, solo se dopo altri 8 secondi non è tornato.
+1. **Wait**: 4 seconds from `failed`, 12 from `disconnected`. On a mobile network the path
+   changes constantly and often comes back by itself within a second.
+2. **A light repair**: `restartIce()` redoes only the search for a path, keeping the
+   connection and the tracks on their feet — audio and video are not interrupted at all.
+   The one who offers can do it; the other asks for it with `renegotiate`.
+3. **A full rebuild**, only if after another 8 seconds it has not come back.
 
-**Solo chi offre ricostruisce.** Chi risponde butta via la connessione morta e aspetta
-l'offerta, che fa nascere quella nuova al momento giusto. Ricostruendo entrambi, chi
-riceve demoliva un istante dopo proprio la connessione che l'offerta in arrivo stava
-creando: si vedevano tre ricostruzioni in due secondi.
+**Only the one who offers rebuilds.** Whoever answers throws the dead connection away and
+waits for the offer, which makes the new one be born at the right moment. With both
+rebuilding, the receiver tore down an instant later the very connection the incoming offer
+was creating: three rebuilds could be seen in two seconds.
 
-**Non si negozia mentre il server è irraggiungibile.** Un'offerta mandata in quel momento
-viene scartata in silenzio e nessuno la rimanda: restava una connessione in attesa di una
-risposta che non sarebbe mai arrivata.
+**Nothing is negotiated while the server cannot be reached.** An offer sent at that moment
+is dropped in silence and nobody sends it again: a connection was left waiting for an
+answer that would never arrive.
 
-**Un'offerta che arriva prima della nostra connessione** non viene persa: la fa nascere
-sul momento.
+**An offer that arrives before our connection** is not lost: it makes it be born on the
+spot.
 
-**Chi risponde può chiedere l'offerta.** Non potendo offrire, resterebbe in attesa
-all'infinito se l'altro non si accorgesse del guasto: ogni cinque secondi, chi si trova
-senza collegamento mentre entrambi sono nel canale manda `renegotiate`. È la rete di
-sicurezza di una scelta altrimenti corretta — offrire da una parte sola evita che le due
-offerte si scontrino.
+**Whoever answers can ask for the offer.** Being unable to offer, they would wait for ever
+if the other did not notice the fault: every five seconds, whoever finds themselves
+without a link while both are in the channel sends `renegotiate`. It is the safety net of
+an otherwise correct choice — offering from one side only keeps the two offers from
+colliding.
 
-### 6. Servizio nativo (`app/modules/duetto-platform`)
+### 6. The native service (`app/modules/duetto-platform`)
 
-Modulo Kotlin locale, agganciato dall'**autolinking** tramite
-`"duetto-platform": "file:modules/duetto-platform"`: così non si tocca
-`MainApplication`, che `bootstrap.sh` rigenera e sovrascriverebbe.
+A local Kotlin module, hooked in by **autolinking** through
+`"duetto-platform": "file:modules/duetto-platform"`: that way `MainApplication` is not
+touched, which `bootstrap.sh` regenerates and would overwrite.
 
-| Aspetto | Scelta |
+| Aspect | The choice |
 |---|---|
-| Tipo servizio | `microphone`, più `camera` quando accendi il video |
-| Notifica fissa | obbligatoria, canale a importanza `LOW` (silenziosa) |
-| Notifiche di avviso | canale separato a importanza `HIGH` |
-| Riavvio | `START_STICKY`: se Android lo uccide per memoria, riparte |
-| Wake lock | `PARTIAL_WAKE_LOCK` con scadenza di sicurezza a 8 ore |
-| Visibilità | `onStart`/`onStop` dell'activity, **non** `AppState` |
+| Service type | `microphone`, plus `camera` when the video is on |
+| Standing notification | compulsory, channel at `LOW` importance (silent) |
+| Alert notifications | a separate channel at `HIGH` importance |
+| Restart | `START_STICKY`: if Android kills it for memory, it comes back |
+| Wake lock | `PARTIAL_WAKE_LOCK` with a safety expiry at 8 hours |
+| Visibility | the activity's `onStart`/`onStop`, **not** `AppState` |
 
-**Presenza dopo il riavvio.** Un ricevitore su `BOOT_COMPLETED` avvia `PresenceService`,
-che eredita da `HeadlessJsTaskService`: fa partire il motore JavaScript **senza aprire
-l'interfaccia** ed esegue un compito che rimette in piedi la connessione di ascolto. Riusa
-tutta la logica già esistente, invece di riscrivere la rete in Kotlin.
+**Presence after a reboot.** A receiver on `BOOT_COMPLETED` starts `PresenceService`,
+which inherits from `HeadlessJsTaskService`: it starts the JavaScript engine **without
+opening the interface** and runs a task that puts the listening connection back on its
+feet. It reuses all the logic that already exists, instead of rewriting the networking in
+Kotlin.
 
-Non "apre l'app da sola": da Android 10 avviare un'activity dal secondo piano è vietato.
-Riparte la presenza, non la finestra. Il compito non si conclude mai di proposito, e si fa
-da parte quando l'app viene aperta: due connessioni dallo stesso dispositivo si
-scalzerebbero a vicenda.
+It does not "open the app by itself": from Android 10 on, starting an activity from the
+background is forbidden. What starts again is presence, not the window. The task never
+finishes on purpose, and it steps aside when the app is opened: two connections from the
+same device would push each other out.
 
-Il collo di bottiglia non è il codice ma il produttore: **senza "avvio automatico"
-abilitato, telefoni come Xiaomi non consegnano nemmeno l'evento di avvio**. Non è
-un'autorizzazione di Android e nessuna app può concederselo; l'app può solo aprire quella
-schermata, e non può nemmeno leggerne l'esito.
+The bottleneck is not the code but the maker: **without "auto-start" enabled, phones like
+Xiaomi do not even deliver the boot event**. It is not an Android permission and no app
+can grant it to itself; the app can only open that screen, and cannot even read the
+outcome.
 
-Contiene anche il **Picture-in-Picture**: il tasto Indietro chiama
-`enterPictureInPictureMode` invece di uscire dal canale, con le proporzioni di ciò che sta
-a schermo intero (Android accetta rapporti fra 0.4184 e 2.39, quindi il valore viene
-limitato).
+It also holds the **Picture-in-Picture**: the Back key calls `enterPictureInPictureMode`
+instead of leaving the channel, with the proportions of what is full-screen (Android
+accepts ratios between 0.4184 and 2.39, so the value is clamped).
 
-Per accorgersi di essere in PiP **non serve intercettare il callback dell'Activity**: in
-PiP la finestra si rimpicciolisce, quindi sotto i 340 dp di larghezza l'interfaccia passa
-in modalità compatta. Questo evita di dover modificare `MainActivity`.
+To notice being in PiP **there is no need to intercept the Activity's callback**: in PiP
+the window becomes small, so below 340 dp of width the interface goes into its compact
+mode. This saves having to change `MainActivity`.
 
-**Perché la visibilità non usa `AppState`**: su Android quello segnala la *pausa*
-dell'activity, e in Picture-in-Picture l'activity è in pausa pur essendo perfettamente
-visibile — spegneremmo il video proprio nella finestrella fatta per continuare a guardarlo.
-`onStart`/`onStop` hanno invece il significato che serve: `onStop` arriva quando l'app
-sparisce davvero dalla vista, e in PiP non arriva.
+**Why visibility does not use `AppState`**: on Android that reports the *pause* of the
+activity, and in Picture-in-Picture the activity is paused while being perfectly visible —
+we would turn the video off exactly in the little window made to go on watching it.
+`onStart`/`onStop`, instead, mean what we need: `onStop` arrives when the app really
+leaves the view, and in PiP it does not arrive.
 
-### 7. Layout video (`app/src/VideoStage.tsx`)
+### 7. Video layout (`app/src/VideoStage.tsx`)
 
-- Chi è a schermo intero usa `objectFit: contain`: **mai tagliato**.
-- Il riquadrino ha **le proporzioni della camera che mostra**. Ricavarle non è banale: la
-  camera consegna sempre un fotogramma orizzontale (1280×720) che viene ruotato in base a
-  come tieni il telefono. `getLocalVideoAspect()` legge `track.getSettings()` e fa seguire
-  il lato lungo all'orientamento; il risultato viaggia nel messaggio cifrato `state`, così
-  anche l'altro sa che forma dargli.
-- Trascinabile e ridimensionabile: maniglia d'angolo e pizzico a due dita, gestiti dallo
-  stesso `PanResponder` guardando `nativeEvent.touches.length`.
-- Tocco e trascinamento si distinguono con una soglia di 4 px.
-- **Zoom** sul video grande: pizzico fino a 5×, trascinamento per spostarsi dentro
-  l'ingrandimento (vincolato ai bordi), doppio tocco per tornare a schermo pieno.
-- Con un solo video acceso il riquadrino non compare e lo scambio si azzera — ma **non
-  durante un'interruzione**: lì il video dell'altro manca solo momentaneamente, e azzerare
-  la disposizione significherebbe ritrovarsela cambiata a ogni caduta di rete.
-- Durante un'interruzione **nulla si sposta**: il posto grande resta riservato all'altro,
-  il riquadro resta al suo posto vuoto con l'etichetta "in attesa", e un avviso spiega
-  cosa sta succedendo. Prima il proprio video veniva promosso a schermo intero e poi
-  rimpicciolito al ritorno, a ogni singola caduta.
+- Whoever is full-screen uses `objectFit: contain`: **never cropped**.
+- The little frame has **the proportions of the camera it is showing**. Working them out is
+  not trivial: the camera always delivers a landscape frame (1280×720) which is rotated
+  according to how you hold the phone. `getLocalVideoAspect()` reads `track.getSettings()`
+  and makes the long side follow the orientation; the result travels in the encrypted
+  `state` message, so the other one knows what shape to give it too.
+- Draggable and resizable: a corner handle and a two-finger pinch, both handled by the
+  same `PanResponder` by looking at `nativeEvent.touches.length`.
+- A touch and a drag are told apart with a threshold of 4 px.
+- **Zoom** on the big video: pinch up to 5×, drag to move about inside the enlargement
+  (bound to the edges), double tap to go back to the whole screen.
+- With only one video on, the little frame does not appear and the swap is reset — but
+  **not during an interruption**: there the other's video is only missing for a moment,
+  and resetting the arrangement would mean finding it changed at every drop of the
+  network.
+- During an interruption **nothing moves**: the big place stays reserved for the other,
+  the frame stays where it is, empty, with the "waiting" label, and a warning explains
+  what is happening. Before, one's own video was promoted to full screen and then made
+  small again on its return, at every single drop.
 
-Una cosa che **non è possibile**: trattenere l'ultimo fotogramma durante un'interruzione.
-Quando la traccia muore il renderer svuota la superficie, e conservare l'immagine
-richiederebbe catturarla a parte fotogramma per fotogramma.
+One thing that is **not possible**: holding the last frame during an interruption. When
+the track dies the renderer empties the surface, and keeping the picture would mean
+capturing it separately, frame by frame.
 
-### 8. Uscita audio (`app/src/audioRoute.ts`)
+### 8. Audio output (`app/src/audioRoute.ts`)
 
-Quattro uscite possibili — vivavoce, auricolare, cuffie con filo, Bluetooth — e non ne
-esistono altre. L'elenco di quelle *disponibili* cambia da solo, quindi lo prendiamo
-dall'evento `onAudioDeviceChanged` invece di indovinarlo.
+Four possible outputs — speaker, earpiece, wired headphones, Bluetooth — and there are no
+others. The list of the *available* ones changes by itself, so we take it from the
+`onAudioDeviceChanged` event instead of guessing it.
 
-La scelta viene **salvata** e ripristinata al rientro se quel dispositivo è ancora
-collegato; altrimenti si lascia la selezione di sistema, senza imporne una nostra.
+The choice is **saved** and restored on coming back if that device is still connected;
+otherwise the system's selection is left alone, without imposing one of ours.
 
-## Modello di minaccia
+## The threat model
 
-| Avversario | Può | Non può |
+| Adversary | Can | Cannot |
 |-----------|-----|---------|
-| Chi ascolta la rete | vedere che c'è traffico | leggere media o signaling |
-| Server compromesso | metadati (quali coppie, quando), DoS | leggere o alterare i contenuti |
-| Server compromesso, durante l'accoppiamento | tentare di indovinare il codice | riuscirci nei tempi utili, grazie al KDF lento |
-| Terzo che conosce il server | aprire connessioni | entrare in una coppia senza il codice |
-| TURN relay | inoltrare pacchetti | decifrare il media |
+| Whoever listens to the network | see that there is traffic | read media or signalling |
+| A compromised server | metadata (which pairs, when), DoS | read or alter the contents |
+| A compromised server, during the pairing | try to guess the code | manage it in the time available, thanks to the slow KDF |
+| A third party who knows the server | open connections | get into a pair without the code |
+| The TURN relay | forward packets | decrypt the media |
 
-Il momento delicato è **solo l'accoppiamento**. Dopo, la chiave è a 256 bit e casuale.
+The delicate moment is **the pairing alone**. Afterwards the key is 256 bits and random.
 
-## Limiti noti e possibili estensioni
+## Known limits and possible extensions
 
-- **Riavvio del telefono**: la presenza riparte da sola, ma servono qualche decina di
-  secondi perché il sistema dia spazio all'app: un avviso mandato subito dopo il riavvio
-  può ancora non trovarla.
-- **OEM aggressivi**: Xiaomi, Huawei, Samsung chiudono i servizi in background nonostante
-  le regole di Android. Serve escludere l'app dall'ottimizzazione batteria; non c'è modo
-  di ottenerlo da codice.
-- **Consumo**: wake lock e connessione sempre aperta costano batteria. È il prezzo della
-  presenza continua, e si paga soprattutto nell'attesa. Due cose sono già state tolte di
-  mezzo: il colpetto del server, che era ogni 30 secondi anche di notte — 120 risvegli
-  della radio l'ora per non fare nulla — e ora è raro finché si sta solo in ascolto; e il
-  microfono, che si apre quando l'altro arriva e non entrando nel canale. Resta il wake
-  lock continuo: rilasciarlo nell'attesa è possibile, ma richiede una sveglia nativa di
-  riserva, perché con la CPU sospesa i timer JavaScript si fermano e nessuno rifarebbe il
-  socket caduto.
-- **Codice di sicurezza visivo**: si potrebbe mostrare un SAS derivato dalla chiave, da
-  confrontare a voce, per chi volesse una conferma in più dopo l'accoppiamento.
-- **Chat testuale**: un `RTCDataChannel` sulla connessione esistente sarebbe già cifrato.
+- **The phone reboot**: presence starts again by itself, but it takes some tens of seconds
+  for the system to give the app room: an alert sent right after the reboot may still not
+  find it.
+- **Aggressive OEMs**: Xiaomi, Huawei and Samsung close background services in spite of
+  Android's rules. The app has to be excluded from battery optimisation; there is no way
+  of getting that from code.
+- **Consumption**: the wake lock and the always-open connection cost battery. It is the
+  price of continuous presence, and it is paid above all while waiting. Two things have
+  already been got out of the way: the server's tap, which was every 30 seconds even at
+  night — 120 wake-ups of the radio an hour to do nothing — and is now rare as long as one
+  is merely listening; and the microphone, which is opened when the other person arrives
+  and not on entering the channel. What is left is the continuous wake lock: releasing it
+  while waiting is possible, but it needs a native alarm as a fallback, because with the
+  CPU suspended the JavaScript timers stop and nobody would rebuild the dropped socket.
+- **A visual security code**: a SAS derived from the key could be shown, to be compared
+  aloud, for whoever wanted one more confirmation after the pairing.
+- **A text chat**: an `RTCDataChannel` on the existing connection would already be
+  encrypted.
