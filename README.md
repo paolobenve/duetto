@@ -36,6 +36,8 @@ passphrase to keep the same.
   only if you want it, and when you turn it off it is really released.
 - **It picks itself up**: if the network drops, on its return the link is rebuilt in about
   a second, with nothing to touch.
+- **More than one pairing**: the phone can hold several connections, each with its own
+  name, its own server and its own settings. You are in one at a time.
 
 ## The layout
 
@@ -106,6 +108,38 @@ What happens underneath:
 
 Read the code out **aloud or in person**, not by message. After the pairing it counts for
 nothing any more.
+
+### More than one connection
+
+The pairing can be done more than once, and the connections stay: *the cogwheel →
+Connections* lists them, «Add a connection» adds one — showing a new code, or taking the
+other person's. It remains an app for two: **two at a time**. You are in one connection,
+and while you are there you are reachable in that one and no longer in the one you left.
+At start-up the app takes up the last one used.
+
+Each of them carries its own things, and that is the point of them being separate:
+
+- **A name that is yours alone.** Not the person's: the name of the thread between you —
+  "Home", "Office", "Mountains". It shows on the pill at the top and in the standing
+  notification, so you know which connection you are in. It never travels: the other
+  person does not see it and will never know it.
+- **Its own server.** A pair lives inside the server it was born on. Two connections can
+  be on two different servers, and moving from one to the other carries the address along.
+- **Its own settings, all of them.** The video quality, the richer voice, the technical
+  lines, how much the controls step aside, the codec, the vibration and the sound of the
+  alert, where the sound comes out and how much the other voice is lifted for each output,
+  which camera opens, and **the language**: the same phone can speak English with somebody
+  and Italian with somebody else.
+- **Its own journal**, in a file of its own: the consumption of two different phones does
+  not end up mixed into lines that do not say whose they are.
+
+Nearly everything one chooses is about a person rather than about the app — the quality
+depends on the network they have, the alert sound is how you recognise them without
+looking, the volume of their voice on how their microphone was recorded. Kept once for the
+whole app, changing connection dragged along the choices made for somebody else.
+
+Breaking one is «Break the connection with…», and it takes a new pairing to have it back.
+On the other phone there is nothing to break: from there «Add a connection» is enough.
 
 ## The interface
 
