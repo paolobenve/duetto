@@ -234,26 +234,25 @@ in both directions:
 
 ```
 Resolution: best   ↑1920×1080·30fps·460kB/s   ↓960×540·24fps·140kB/s
-link: direct   audio 34 kbit/s   latency r/t 42 ms
-voice ~95 ms   picture ~140 ms
+link: direct   audio 34 kbit/s   latency r/t 42 ms   delay ~140 ms
 ```
 
 The ceilings are not targets: if the scene costs little and the network holds, two
 different profiles can give the same result. That line is the only way of knowing.
 
-The last two numbers are the wait, one way: how long the voice and the picture take to
-reach you. Three things are added up, all read from the connection itself — half the round
-trip, how long a packet sat in the jitter buffer, and the time to decode it. What is not
-in there, and cannot be from this side, is the camera and the microphone of the phone that
-is sending, its encoder, and the audio output of this one, which on Android is worth some
-tens of milliseconds: so the true wait is a little longer than what is written, never
-shorter. That is what the tilde is for.
+The last number is the wait, one way: how long what arrives takes to reach you. With the
+video on it is the picture's, and the voice follows it — WebRTC keeps lips in step by
+**holding the sound back** until the frame is ready. With no video it is the voice's, and
+that is the fastest this app goes.
 
-They are worth watching together with the video: switching the camera on makes the voice
-arrive later, and for two reasons at once. The network gets busier, so the jitter buffer
-grows to cover it; and WebRTC keeps lips in step with sound, which it does by **holding
-the audio back** until the picture is ready — the picture is the slower of the two. With
-the video off, the voice travels as fast as this app can make it.
+Three things are added up, all read from the connection itself: half the round trip, how
+long a packet sat in the jitter buffer, and the time to decode it. What is not in there,
+and cannot be from this side, is the camera and the microphone of the phone that is
+sending, its encoder, and the audio output of this one, which on Android is worth some
+tens of milliseconds. So the true wait is a little longer than what is written, never
+shorter — that is what the tilde is for. It is measured on what arrives, so the two phones
+show two different numbers, and rightly: with different chips, and different audio paths,
+the wait is not the same in the two directions.
 
 **VP9** compresses about a third better, but it appears as a choice only if **both** phones
 have the encoder in hardware — the app asks the system at start-up. In software it would

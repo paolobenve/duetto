@@ -1491,8 +1491,8 @@ function PresenceCard(props: {
 export function statsLineCount(stats: VideoStats, versions?: string | null): number {
   let n = 1;                                    // the resolution: always there
   if (versions) n += 1;
-  if (stats.path || stats.audioKbps != null || stats.latency != null) n += 1;
-  if (stats.voiceDelay != null || stats.pictureDelay != null) n += 1;
+  if (stats.path || stats.audioKbps != null || stats.latency != null
+      || stats.voiceDelay != null || stats.pictureDelay != null) n += 1;
   return n;
 }
 
@@ -1536,6 +1536,17 @@ function StatsLine({ stats, quality, showUp, showDown, versions }: {
    * is the choice that explains the numbers beside it, which would
    * otherwise seem to come from nowhere.
    */
+  /**
+   * The wait, as it is at this moment: one number, not two.
+   *
+   * With the picture on, it is the picture that sets it - and the voice
+   * follows, because WebRTC holds the sound back until the frame is
+   * ready, to keep lips in step. Naming them separately said the same
+   * thing twice. With no video there is only the voice, and that is the
+   * number.
+   */
+  const delay = stats.pictureDelay ?? stats.voiceDelay ?? null;
+
   const path = stats.path === 'local'
     ? t('channel.pathLocal')
     : stats.path === 'direct'
@@ -1562,7 +1573,7 @@ function StatsLine({ stats, quality, showUp, showDown, versions }: {
           {versions}
         </Text>
       ) : null}
-      {path || stats.audioKbps != null || stats.latency != null ? (
+      {path || stats.audioKbps != null || stats.latency != null || delay != null ? (
         // Like the line above: with the latency at its end it went off
         // the screen, and a line cut in the middle of a number says
         // nothing.
@@ -1576,21 +1587,7 @@ function StatsLine({ stats, quality, showUp, showDown, versions }: {
             ? `${path ? '   ' : ''}${t('channel.audioRate', { kbps: stats.audioKbps })}`
             : ''}
           {stats.latency != null ? `   ${t('channel.latency', { ms: stats.latency })}` : ''}
-        </Text>
-      ) : null}
-      {stats.voiceDelay != null || stats.pictureDelay != null ? (
-        // What arrives, and how late. The round trip above says how far
-        // away the other phone is; this says how long the wait is once
-        // everything in between has had its share.
-        <Text
-          style={styles.stats}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.6}>
-          {stats.voiceDelay != null ? t('channel.voiceDelay', { ms: stats.voiceDelay }) : ''}
-          {stats.pictureDelay != null
-            ? `${stats.voiceDelay != null ? '   ' : ''}${t('channel.pictureDelay', { ms: stats.pictureDelay })}`
-            : ''}
+          {delay != null ? `   ${t('channel.delay', { ms: delay })}` : ''}
         </Text>
       ) : null}
     </>
