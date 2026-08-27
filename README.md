@@ -234,7 +234,7 @@ in both directions:
 
 ```
 Resolution: best   ↑1920×1080·30fps·460kB/s   ↓960×540·24fps·140kB/s
-link: direct   audio 34 kbit/s   latency r/t 42 ms   delay ↑~140 · ↓~120 ms
+link: direct   audio 34 kbit/s   latency ↑↓42ms   delay ↑~140 · ↓~120ms
 ```
 
 The ceilings are not targets: if the scene costs little and the network holds, two

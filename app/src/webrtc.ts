@@ -78,12 +78,16 @@ export type VideoStats = {
   /**
    * How long a packet takes to go and come back, in milliseconds.
    *
-   * This is the number that explains the conversations where you talk
-   * over each other: under 100 nobody notices, over 300 you start
-   * treading on each other's words. ICE measures it on the road it is
-   * actually using, so it also says whether that road is a good one - a
-   * relay on the other side of the world shows up here before it shows
-   * up in the picture.
+   * It is the road alone: how long a packet takes to go and come back,
+   * with nothing of what the two phones do at its ends. Half of it is
+   * the first of the three terms of the wait below, so reading the two
+   * together says how much of that wait is travel and how much is
+   * buffers and codecs - which is the whole question, when a
+   * conversation drags.
+   *
+   * ICE measures it on the road actually in use, so it also says
+   * whether that road is a good one: a relay on the other side of the
+   * world shows up here before it shows up in the picture.
    */
   latency?: number | null;
   /**
