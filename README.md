@@ -298,4 +298,41 @@ version at the bottom of the settings: when you report a problem, say that numbe
 
 ## Licence
 
-Personal use.
+Duetto is free software, under the **GNU General Public License, version 3 or later**
+([LICENSE](LICENSE)). It can be used, studied and changed by anybody; whoever
+redistributes it, changed or not, has to pass the same freedom on, with the source.
+
+    Duetto - a permanent voice and video channel for two people
+    Copyright (C) 2026 Paolo Benvenuto
+
+    This program is free software: you can redistribute it and/or modify it under the
+    terms of the GNU General Public License as published by the Free Software Foundation,
+    either version 3 of the License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful, but WITHOUT ANY
+    WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+    PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License along with this
+    program. If not, see <https://www.gnu.org/licenses/>.
+
+### The libraries
+
+Everything Duetto is built on is permissive and asks nothing beyond keeping its copyright
+notices: React Native, react-native-webrtc, react-native-svg, async-storage,
+react-native-get-random-values and `ws` are MIT; react-native-incall-manager is ISC;
+tweetnacl and tweetnacl-util are in the public domain (Unlicense); and the libwebrtc that
+does the real work, packaged as `org.jitsi:webrtc`, is Google's, BSD-3-Clause. There is no
+copyleft library in the tree: the GPL here is a choice, not an obligation.
+
+### The sounds
+
+The sounds for calling the other person back are not code and have licences of their own,
+listed in `app/assets/make-sounds.py` and in the app under *Where the sounds come from*.
+The car horn and the knock are made by the app itself. The drum roll, the drum kit and the
+rooster are recordings published on freesound.org under **CC0**: no rights reserved.
+
+⚠️ The fanfare (freesound #534017, robinhood76) is **CC BY-NC 4.0**, and NonCommercial is
+not a free licence: as long as that file is in here, the app as a whole cannot be
+redistributed commercially, and that clashes with the GPL. It is on its way out, to be
+replaced by a CC0 recording.

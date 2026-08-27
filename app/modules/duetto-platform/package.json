@@ -5,6 +5,7 @@
   "main": "index.js",
   "react-native": "index.js",
   "private": true,
+  "license": "GPL-3.0-or-later",
   "peerDependencies": {
     "react-native": ">=0.76.0"
   }
