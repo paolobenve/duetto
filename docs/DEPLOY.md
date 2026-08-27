@@ -190,69 +190,6 @@ For presence to really hold:
 2. Grant the microphone, the camera and **notifications** (without notifications the
    foreground service cannot show its own, and Android closes it).
 
-## 5. If the server came from DuoTalk
-
-The app used to be called DuoTalk: the `/opt/duotalk` folder, the `duotalk-signaling`
-service, the `/duotalk/ws` path in the proxy. The code is the same, only the names change.
-It is worth adding the new path **first** while leaving the old one: that way the phones
-still on DuoTalk go on working until Duetto is installed on them.
-
-In the proxy, next to the rules for `/duotalk/ws` put the same ones for `/duetto/ws` — the
-updated `.conf.example` already has them — then reload. From outside:
-
-```bash
-curl -s https://YOUR_DOMAIN/duetto/healthz     # {"ok":true,...}
-```
-
-Then the folder and the service. `server/deploy/migrate-from-duotalk.sh` does all of it,
-keeping the owner, the group and the existing unit — it changes the names and no more —
-and if the new service does not answer it puts things back as they were:
-
-```bash
-scp server/deploy/migrate-from-duotalk.sh user@YOUR_SERVER:/tmp/
-ssh -t user@YOUR_SERVER 'sudo bash /tmp/migrate-from-duotalk.sh'
-```
-
-By hand, to see what it does: the `.env` is inside `/opt/duotalk/server` and has to be
-kept, which is why it is moved instead of recreated.
-
-```bash
-sudo systemctl stop duotalk-signaling
-sudo mv /opt/duotalk /opt/duetto
-```
-
-From the PC, the new code (`--exclude .env` leaves it untouched):
-
-```bash
-rsync -rltvz --no-owner --no-group --exclude node_modules --exclude .env \
-  /path/to/duetto/server/ user@YOUR_SERVER:/opt/duetto/server/
-```
-
-On the server, the service user and the new unit file:
-
-```bash
-sudo useradd --system --no-create-home --shell /usr/sbin/nologin duetto
-sudo chown -R $USER:duetto /opt/duetto
-sudo find /opt/duetto -type d -exec chmod g+s {} \;
-sudo chmod 640 /opt/duetto/server/.env
-
-sudo cp /opt/duetto/server/deploy/duetto-signaling.service /etc/systemd/system/
-sudo sed -i "s|^User=.*|User=duetto|; s|^ExecStart=.*|ExecStart=$(which node) src/index.js|" \
-  /etc/systemd/system/duetto-signaling.service
-
-sudo systemctl disable duotalk-signaling
-sudo rm /etc/systemd/system/duotalk-signaling.service
-sudo systemctl daemon-reload
-sudo systemctl enable --now duetto-signaling
-curl -s http://127.0.0.1:8787/healthz
-```
-
-Once both phones have moved to Duetto, take the `/duotalk/ws` rules out of the proxy,
-along with the user left behind: `sudo userdel duotalk`.
-
-`TURN_USER` in the `.env` is not to be touched: it is the credential written in
-`/etc/turnserver.conf`, and changing it on one side only turns the relay off.
-
 ## Troubleshooting
 
 | Symptom | Likely cause | Remedy |
