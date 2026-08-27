@@ -172,7 +172,7 @@ export const en = {
     audioRate: 'audio {rate}',
     latency: 'latency ↑↓{ms}ms',
     delay: 'delay ~{ms}ms',
-    delayBoth: 'delay ↑~{up} · ↓~{down}ms',
+    delayBoth: 'delay ↑~{up} ↓~{down}ms',
     delayDown: 'delay ↓~{ms}ms',
     pathLocal: 'direct, same network',
     pathDirect: 'direct between the phones',

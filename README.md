@@ -234,7 +234,7 @@ in both directions:
 
 ```
 Resolution: best   ↑1920×1080·30fps·460kB/s   ↓960×540·24fps·140kB/s
-link: direct   audio 4.2kB/s   latency ↑↓42ms   delay ↑~140 · ↓~120ms
+link: direct   audio 4.2kB/s   latency ↑↓42ms   delay ↑~140 ↓~120ms
 ```
 
 The ceilings are not targets: if the scene costs little and the network holds, two
@@ -242,10 +242,20 @@ different profiles can give the same result. That line is the only way of knowin
 is in bytes a second like the ceilings above, so the two can be compared without doing
 arithmetic in one's head.
 
-The last two numbers are the wait, one in each direction, like the bandwidth above. Down
-is what reaches you; up is what reaches them, which only their phone can time — each can
-measure just what arrives — so they tell each other. If the up arrow is missing, the other
-side has not said its own yet, or is running a Duetto too old to say it at all.
+The last two numbers are the wait, one in each direction, like the bandwidth above: up is
+your voice going, down is theirs coming.
+
+A journey has three pieces. The phone that sends adds the **encoder** and the wait in its
+**send queue**; the road adds **half the round trip**; the phone that receives adds the
+**jitter buffer**, the **decoder** and its **loudspeaker**, which on Android is worth more
+than the decoder is. Neither phone can time a whole journey — each only holds the pieces
+made at home — so the two tell each other the halves they measure, and both write the two
+directions. Nothing in those numbers is borrowed or guessed.
+
+What is still missing is what no API offers: the camera and the microphone, from the light
+and the air to the first byte. So the true wait is a little longer than what is written,
+never shorter, and that is what the tilde says. If the arrows are missing, the other side
+has not said its halves yet, or is running a Duetto too old to say them at all.
 
 With the video on it is the picture's wait, and the voice follows it — WebRTC keeps lips in
 step by **holding the sound back** until the frame is ready. With no video it is the

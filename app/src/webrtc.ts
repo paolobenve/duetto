@@ -55,8 +55,9 @@ export type ChannelEvents = {
     /** which APK of that version: the versions are raised by hand, so
      *  two phones on the same one can be weeks apart */
     build?: number;
-    /** the wait they are living through: ours plus theirs is the whole of it */
-    delay?: number;
+    /** the two halves they can time: with ours they make both journeys */
+    sendDelay?: number;
+    recvDelay?: number;
     /** which camera is filming: 'front' or 'back' */
     camera?: string;
     /** how loudly they are listening to US: 1 = as we send it */
@@ -91,23 +92,24 @@ export type VideoStats = {
    */
   latency?: number | null;
   /**
-   * How long the voice and the picture take to reach you, one way, in
-   * milliseconds. An estimate, and it says so with a tilde on screen.
+   * The two halves of the wait that THIS phone can time, in
+   * milliseconds.
    *
-   * The round trip above measures the road; this measures the wait.
-   * Three things are added up, all of them read from the connection
-   * itself: half the round trip, how long a packet sat in the jitter
-   * buffer - which is where a restless network turns into delay - and
-   * the time to decode it.
+   * `sendDelay` is what it adds before a frame leaves: the encoder and
+   * the queue behind it. `recvDelay` is what it adds after one arrives:
+   * the jitter buffer, the decoder, and the loudspeaker.
    *
-   * What is NOT in there, and cannot be from this side: the camera and
-   * the microphone of the phone that is sending, its encoder, and the
-   * audio output of this one, which on Android is worth some tens of
-   * milliseconds. So the true wait, from their mouth to your ear, is a
-   * little longer than this number - never shorter.
+   * Neither is a journey: a journey is one phone's send half, plus the
+   * road, plus the other's receive half. Each phone tells the other its
+   * two, and both can then write the two directions - all of it from
+   * measurements taken where they are made, none of it borrowed.
+   *
+   * What is still missing, and no API offers: the camera and the
+   * microphone, from the light and the air to the first byte. So the
+   * true wait is a little longer than what is written - never shorter.
    */
-  voiceDelay?: number | null;
-  pictureDelay?: number | null;
+  sendDelay?: number | null;
+  recvDelay?: number | null;
   out?: { w: number; h: number; fps: number; kbps: number | null };
   in?: { w: number; h: number; fps: number; kbps: number | null };
   /** how much audio is going out: the only way to check the ceiling */
@@ -167,20 +169,25 @@ export class ChannelSession {
   /** we are looking at the screen: we tell the other side */
   private localWatching = true;
   /**
-   * The wait we are living through, as last told to the other side.
+   * The two halves of a journey, as this phone measures them.
    *
-   * Each phone can only measure what arrives at it: the wait one feels
-   * in a conversation is the sum of the two, and neither of them can
-   * work it out alone. So each says its own, and both can add up.
+   * A frame or a sample goes: encoder, send queue, the road, the jitter
+   * buffer, the decoder, the loudspeaker. The first two are on the
+   * phone that sends, the last three on the phone that receives, and
+   * the road belongs to both.
    *
-   * It is told only while diagnostics are on - it is a number nobody
-   * looks at otherwise - and only when it has really moved: it changes
-   * by a few milliseconds at every reading, and a message for that
-   * would be noise on the wire.
+   * So neither of them can time a whole journey - but each times its
+   * own pieces exactly, and they are pure local measurements: nothing
+   * borrowed, nothing stale. They tell each other the two numbers and
+   * both work out both directions.
+   *
+   * `sendDelay`: encoding and the wait in the send queue, here.
+   * `recvDelay`: jitter buffer, decoding and the audio output, here.
    */
-  private delaySaid: number | null = null;
+  private sendDelay: number | null = null;
+  private recvDelay: number | null = null;
+  private delaySaid = '';
   private delaySaidAt = 0;
-  private ourDelay: number | null = null;
   /**
    * The other side is looking. It starts at `true` and only comes down
    * on an explicit message: an older build, or a message lost on the
@@ -203,8 +210,7 @@ export class ChannelSession {
    * because an hour of history was holding it still. What is wanted is
    * the difference between two readings, exactly as for the bytes.
    */
-  private lastWait: Record<string, { delay: number; emitted: number;
-    decode?: number; frames?: number }> = {};
+  private lastWait: Record<string, Record<string, { sum: number; count: number }>> = {};
   /** a line in the log now and then, while the panel refreshes often */
   private statsTicks = 0;
 
@@ -704,7 +710,8 @@ export class ChannelSession {
         output: msg.output,
         version: msg.version,
         build: msg.build,
-        delay: msg.delay,
+        sendDelay: msg.sendDelay,
+        recvDelay: msg.recvDelay,
         camera: msg.camera,
         volume: msg.volume,
       });
@@ -1021,32 +1028,34 @@ export class ChannelSession {
        */
       const candidatesById = new Map<string, any>();
       let pairStat: any = null;
-      /** What each of the two arriving streams waited, and its own round trip. */
-      const waited: Record<string, {
-        buffer?: number; decode?: number; rtt?: number;
-      }> = {};
+      /**
+       * Every term of the wait, in seconds, over the last interval.
+       *
+       * They all come the same way: a total that grows, divided by a
+       * count that grows with it. Read as they stand - total over total
+       * - they would give the average of the whole conversation, and a
+       * number like that hardly moves when something changes: it is how
+       * switching a camera off used to change nothing on the screen. So
+       * every one of them is taken as the step between two readings.
+       *
+       * `waited[what]` is a term: 'buffer', 'decode', 'playout' on the
+       * receiving side, 'encode' and 'queue' on the sending one. The
+       * kind - audio or video - keeps its own set, because the picture
+       * and the sound do not wait the same.
+       */
+      const waited: Record<string, Record<string, number>> = {};
+      const step = (kind: string, what: string, sum: number, count: number) => {
+        if (typeof sum !== 'number' || typeof count !== 'number') return;
+        if (!this.lastWait[kind]) this.lastWait[kind] = {};
+        const was = this.lastWait[kind][what];
+        this.lastWait[kind][what] = { sum, count };
+        if (!was || count <= was.count || sum < was.sum) return;
+        if (!waited[kind]) waited[kind] = {};
+        waited[kind][what] = (sum - was.sum) / (count - was.count);
+      };
       const forKind = (kind: string) => {
         if (!waited[kind]) waited[kind] = {};
         return waited[kind];
-      };
-      /**
-       * The wait over the last interval, not since the beginning.
-       *
-       * Both counters are totals, so the answer is the step of one
-       * divided by the step of the other. At the first reading there is
-       * no step and no number: one sample later there is.
-       */
-      const step = (kind: string, delay: number, emitted: number,
-                    decode?: number, frames?: number) => {
-        const was = this.lastWait[kind];
-        this.lastWait[kind] = { delay, emitted, decode, frames };
-        if (!was || emitted <= was.emitted || delay < was.delay) return;
-        const w = forKind(kind);
-        w.buffer = (delay - was.delay) / (emitted - was.emitted);
-        if (decode !== undefined && frames !== undefined && was.frames !== undefined
-            && was.decode !== undefined && frames > was.frames && decode >= was.decode) {
-          w.decode = (decode - was.decode) / (frames - was.frames);
-        }
       };
       stats.forEach((r: any) => {
         if (r.type === 'local-candidate' || r.type === 'remote-candidate') {
@@ -1087,12 +1096,22 @@ export class ChannelSession {
         if (r.type === 'remote-inbound-rtp' && typeof r.roundTripTime === 'number') {
           forKind(String(r.kind)).rtt = r.roundTripTime;
         }
-        if (r.type === 'inbound-rtp'
-            && typeof r.jitterBufferDelay === 'number'
-            && typeof r.jitterBufferEmittedCount === 'number') {
-          step(String(r.kind), r.jitterBufferDelay, r.jitterBufferEmittedCount,
-               typeof r.totalDecodeTime === 'number' ? r.totalDecodeTime : undefined,
-               typeof r.framesDecoded === 'number' ? r.framesDecoded : undefined);
+        if (r.type === 'inbound-rtp') {
+          const kind = String(r.kind);
+          step(kind, 'buffer', r.jitterBufferDelay, r.jitterBufferEmittedCount);
+          step(kind, 'decode', r.totalDecodeTime, r.framesDecoded);
+        }
+        // What this phone adds before letting a frame go: the encoder,
+        // and the wait in the queue behind it.
+        if (r.type === 'outbound-rtp') {
+          const kind = String(r.kind);
+          step(kind, 'encode', r.totalEncodeTime, r.framesEncoded);
+          step(kind, 'queue', r.totalPacketSendDelay, r.packetsSent);
+        }
+        // The loudspeaker's own wait, which is the tail nobody used to
+        // count and which on Android is worth more than the decoder.
+        if (r.type === 'media-playout') {
+          step('audio', 'playout', r.totalPlayoutDelay, r.totalSamplesCount);
         }
         if (r.kind === 'audio' && r.type === 'outbound-rtp') {
           out.audioKbps = rate(this.lastAudioOut, r.timestamp, r.bytesSent);
@@ -1121,48 +1140,62 @@ export class ChannelSession {
       });
 
       /**
-       * The wait on one of the two streams, in milliseconds.
+       * The two halves this phone can time, in milliseconds.
        *
-       * Without the buffer there is nothing to say: it is the term that
-       * makes this different from the round trip, and it is missing
-       * until something has actually been played. The stream's own
-       * round trip is preferred to the ICE one, which travels the same
-       * road but is measured on another kind of packet.
+       * The picture's terms win over the sound's when there is a
+       * picture: with the video on it is the frame that sets the pace,
+       * and the sound is held back to keep in step with it. With no
+       * video only the sound is there, and it is the fastest this app
+       * goes.
+       *
+       * The audio output is added to the receiving half whatever is on
+       * screen: it is the same loudspeaker in both cases.
        */
-      const oneWay = (kind: string): number | null => {
-        const w = waited[kind];
-        if (!w || w.buffer === undefined) return null;
-        const roundTrip = w.rtt ?? pairStat?.currentRoundTripTime;
-        const half = typeof roundTrip === 'number' ? roundTrip / 2 : 0;
-        return Math.round((half + w.buffer + (w.decode ?? 0)) * 1000);
+      const term = (kind: string, what: string): number | undefined => waited[kind]?.[what];
+      const play = term('audio', 'playout') ?? 0;
+
+      const recv = (kind: string): number | null => {
+        const buffer = term(kind, 'buffer');
+        if (buffer === undefined) return null;
+        return buffer + (term(kind, 'decode') ?? 0) + play;
       };
-      out.voiceDelay = oneWay('audio');
-      out.pictureDelay = oneWay('video');
+      const send = (kind: string): number | null => {
+        const queue = term(kind, 'queue');
+        const encode = term(kind, 'encode');
+        if (queue === undefined && encode === undefined) return null;
+        return (queue ?? 0) + (encode ?? 0);
+      };
+
+      const recvSeconds = recv('video') ?? recv('audio');
+      const sendSeconds = send('video') ?? send('audio');
+      this.recvDelay = recvSeconds === null || recvSeconds === undefined
+        ? null : Math.round(recvSeconds * 1000);
+      this.sendDelay = sendSeconds === null || sendSeconds === undefined
+        ? null : Math.round(sendSeconds * 1000);
+      out.recvDelay = this.recvDelay;
+      out.sendDelay = this.sendDelay;
 
       /**
-       * The one we are living through - the picture's when there is a
-       * picture, because the sound is held back to keep up with it -
-       * goes to the other side, so that both can show the whole of it.
-       * Twenty milliseconds of movement are worth a message; less is
-       * the number breathing.
-       */
-      this.ourDelay = out.pictureDelay ?? out.voiceDelay ?? null;
-      /**
-       * Said when it moves, and said anyway every so often.
+       * Said when either half moves, and said anyway every so often.
        *
        * The first rule alone was not enough, and it showed: switching a
-       * camera off, the wait on the other side comes down in small
-       * steps - five milliseconds at a time - and none of them ever
-       * reached the threshold, so the number on the far screen stayed
-       * where it was, stale, while the thing it measured had changed.
-       * A message every six seconds costs nothing and is never wrong.
+       * camera off, the wait comes down in small steps - five
+       * milliseconds at a time - and none of them ever reached the
+       * threshold, so the number on the far screen stayed where it was,
+       * stale, while the thing it measured had changed. A message every
+       * six seconds costs nothing and is never wrong.
        */
       const now = Date.now();
-      if (this.diagnostics && this.ourDelay !== null
-          && (this.delaySaid === null
-            || Math.abs(this.ourDelay - this.delaySaid) > 10
+      const saying = `${this.sendDelay ?? ''}/${this.recvDelay ?? ''}`;
+      const moved = (a: number | null, b: number | null) =>
+        a !== null && b !== null && Math.abs(a - b) > 10;
+      const before = this.delaySaid.split('/');
+      if (this.diagnostics && saying !== '/'
+          && (this.delaySaid === ''
+            || moved(this.sendDelay, Number(before[0]) || null)
+            || moved(this.recvDelay, Number(before[1]) || null)
             || now - this.delaySaidAt > 6000)) {
-        this.delaySaid = this.ourDelay;
+        this.delaySaid = saying;
         this.delaySaidAt = now;
         this.broadcastState();
       }
@@ -1608,7 +1641,8 @@ export class ChannelSession {
       output: this.ourOutput,
       version: VERSION,
       build: BUILD,
-      delay: this.ourDelay ?? undefined,
+      sendDelay: this.sendDelay ?? undefined,
+      recvDelay: this.recvDelay ?? undefined,
       camera: this.isFrontCamera() ? 'front' : 'back',
       volume: this.heardLevel,
       video: this.isVideoEnabled(),

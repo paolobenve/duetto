@@ -170,9 +170,10 @@ type Props = {
   peerTornDown?: boolean;
   /** the real resolution and bandwidth, outgoing and incoming */
   videoStats: VideoStats;
-  /** the wait the other side tells us about; null if they do not */
-  peerDelay?: number | null;
-  /** show only the whole of the wait, not its two halves */
+  /** the two halves the other phone times; null if it does not say */
+  peerSendDelay?: number | null;
+  peerRecvDelay?: number | null;
+  /** show only the total, not the two directions */
   delayTotalOnly?: boolean;
   /** the chosen profile: without it those numbers depend on nothing */
   qualityLabel: string;
@@ -302,7 +303,7 @@ type Props = {
  */
 export default function ChannelScreen(props: Props) {
   const {
-    connectionName, peerName, peerAvatar, peerPresent, peerDetached, peerTornDown, videoStats, peerDelay, delayTotalOnly, qualityLabel, showStats, controls, news, onNewsRead, gain, peerGain, systemVolume, onChangeLevel,
+    connectionName, peerName, peerAvatar, peerPresent, peerDetached, peerTornDown, videoStats, peerSendDelay, peerRecvDelay, delayTotalOnly, qualityLabel, showStats, controls, news, onNewsRead, gain, peerGain, systemVolume, onChangeLevel,
     versionWarning, frontCamera, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes,
@@ -1114,7 +1115,8 @@ export default function ChannelScreen(props: Props) {
               showUp={localHasVideo}
               showDown={remoteHasVideo}
               versions={versionWarning}
-              peerDelay={peerDelay}
+              peerSend={peerSendDelay}
+              peerRecv={peerRecvDelay}
               totalOnly={delayTotalOnly}
             />
           </View>
@@ -1498,7 +1500,7 @@ export function statsLineCount(stats: VideoStats, versions?: string | null): num
   let n = 1;                                    // the resolution: always there
   if (versions) n += 1;
   if (stats.path || stats.audioKbps != null || stats.latency != null
-      || stats.voiceDelay != null || stats.pictureDelay != null) n += 1;
+      || stats.recvDelay != null) n += 1;
   return n;
 }
 
@@ -1506,7 +1508,7 @@ export function statsLineCount(stats: VideoStats, versions?: string | null): num
 export const STATS_LINE_H = 18;
 
 function StatsLine({
-  stats, quality, showUp, showDown, versions, peerDelay, totalOnly,
+  stats, quality, showUp, showDown, versions, peerSend, peerRecv, totalOnly,
 }: {
   stats: VideoStats;
   quality: string;
@@ -1515,9 +1517,10 @@ function StatsLine({
   showDown: boolean;
   /** the warning about different versions, or `null` if they match */
   versions?: string | null;
-  /** the wait on their side, which they tell us; null if they do not */
-  peerDelay?: number | null;
-  /** only the whole of it, for whoever wants one number and not two */
+  /** the two halves the other phone times; null while it has not said */
+  peerSend?: number | null;
+  peerRecv?: number | null;
+  /** only the total, for whoever wants one number and not two */
   totalOnly?: boolean;
 }) {
   /**
@@ -1564,15 +1567,26 @@ function StatsLine({
    * otherwise seem to come from nowhere.
    */
   /**
-   * The wait, as it is at this moment: one number, not two.
+   * A journey, from the three pieces that make it.
    *
-   * With the picture on, it is the picture that sets it - and the voice
-   * follows, because WebRTC holds the sound back until the frame is
-   * ready, to keep lips in step. Naming them separately said the same
-   * thing twice. With no video there is only the voice, and that is the
-   * number.
+   * One phone's send half - encoder and queue - the road, and the other
+   * phone's receive half - jitter buffer, decoder, loudspeaker. Each
+   * phone times its own two and tells them; the road is the round trip,
+   * halved, and either of them can measure that.
+   *
+   * Nothing here is guessed: what is missing is only what no API
+   * offers, the camera and the microphone before the first byte. That
+   * is what the tilde says.
    */
-  const delay = stats.pictureDelay ?? stats.voiceDelay ?? null;
+  const road = stats.latency != null ? stats.latency / 2 : null;
+  const journey = (send?: number | null, recv?: number | null) =>
+    (send != null && recv != null && road != null
+      ? Math.round(send + road + recv)
+      : null);
+  /** Up: ours goes out and lands on their loudspeaker. */
+  const upDelay = journey(stats.sendDelay, peerRecv);
+  /** Down: theirs goes out and lands on ours. */
+  const downDelay = journey(peerSend, stats.recvDelay);
 
   /**
    * The wait in the two directions, like the bandwidth above.
@@ -1591,7 +1605,7 @@ function StatsLine({
    * answers the instant you stop, what comes back has waited twice.
    * That is the number the setting leaves alone on the line.
    */
-  const together = delay != null && peerDelay != null ? delay + peerDelay : null;
+  const together = upDelay != null && downDelay != null ? upDelay + downDelay : null;
 
   const path = stats.path === 'local'
     ? t('channel.pathLocal')
@@ -1619,7 +1633,7 @@ function StatsLine({
           {versions}
         </Text>
       ) : null}
-      {path || stats.audioKbps != null || stats.latency != null || delay != null ? (
+      {path || stats.audioKbps != null || stats.latency != null || downDelay != null ? (
         // Like the line above: with the latency at its end it went off
         // the screen, and a line cut in the middle of a number says
         // nothing.
@@ -1633,16 +1647,16 @@ function StatsLine({
             ? `${path ? '   ' : ''}${t('channel.audioRate', { rate: bytes(stats.audioKbps) ?? '' })}`
             : ''}
           {stats.latency != null ? `   ${t('channel.latency', { ms: stats.latency })}` : ''}
-          {delay != null
-            ? (totalOnly && together != null
-              // Only the whole of it, and it is still called the wait:
-              // it is the one being lived through, the two arrows are
-              // its halves.
-              ? `   ${t('channel.delay', { ms: together })}`
-              : peerDelay != null
-                ? `   ${t('channel.delayBoth', { up: peerDelay, down: delay })}`
-                : `   ${t('channel.delayDown', { ms: delay })}`)
-            : ''}
+          {totalOnly && together != null
+            // Only the total, and it is still called the wait: it is
+            // the one being lived through, the two arrows are its
+            // halves.
+            ? `   ${t('channel.delay', { ms: together })}`
+            : upDelay != null && downDelay != null
+              ? `   ${t('channel.delayBoth', { up: upDelay, down: downDelay })}`
+              : downDelay != null
+                ? `   ${t('channel.delayDown', { ms: downDelay })}`
+                : ''}
         </Text>
       ) : null}
     </>

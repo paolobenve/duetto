@@ -160,7 +160,7 @@ export const it: Dictionary = {
     audioRate: 'audio {rate}',
     latency: 'latenza ↑↓{ms}ms',
     delay: 'ritardo ~{ms}ms',
-    delayBoth: 'ritardo ↑~{up} · ↓~{down}ms',
+    delayBoth: 'ritardo ↑~{up} ↓~{down}ms',
     delayDown: 'ritardo ↓~{ms}ms',
     pathLocal: 'diretto, stessa rete',
     pathDirect: 'diretto tra i telefoni',

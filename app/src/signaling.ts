@@ -50,13 +50,15 @@ export type SignalMessage =
   // theirs, on their phone, and without telling each other you end up
   // repeating "can you hear me?" and never finding out that you were at
   // a quarter volume.
-  // `delay`: the wait THEY are living through, in milliseconds. Each
-  // phone measures only what reaches it, and what one feels in a
-  // conversation is the two added up: without telling each other,
-  // neither could ever show the whole of it.
+  // `sendDelay` and `recvDelay`: the two halves of the wait that THEIR
+  // phone can time - the encoder and the send queue on one side, the
+  // jitter buffer, the decoder and the loudspeaker on the other. A
+  // journey is one phone's send half plus the road plus the other's
+  // receive half, so neither could ever write it alone: they tell each
+  // other the pieces they measure at home, and both do the sum.
   | { kind: 'state'; audio: boolean; video: boolean; aspect?: number; watching?: boolean;
       hwVp9?: boolean; output?: string; version?: string; build?: number; camera?: string;
-      volume?: number; delay?: number }
+      volume?: number; sendDelay?: number; recvDelay?: number }
   // "I did not leave: the phone closed the window on me."
   //
   // Sent by the headless presence when it takes the place of an app
