@@ -1,47 +1,48 @@
-# Duetto - HAProxy davanti al signaling.
+# Duetto - HAProxy in front of the signalling server.
 #
-# Se la 443 e' gestita da HAProxy, conviene mandargli /duetto/ DIRETTAMENTE
-# al signaling su 127.0.0.1:8787, senza passare dal resto della catena
-# (tipicamente Varnish e poi il web server).
+# If port 443 is handled by HAProxy, it is worth sending /duetto/ STRAIGHT
+# to the signalling server on 127.0.0.1:8787, without going through the
+# rest of the chain (typically Varnish and then the web server).
 #
-# Due motivi, non solo comodita':
-#  - Varnish NON gestisce i WebSocket se non gli si insegna a fare "pipe"
-#    sulle richieste con Upgrade;
-#  - mettere una cache davanti a un canale di signaling non ha senso.
+# Two reasons, and not only convenience:
+#  - Varnish does NOT handle WebSockets unless it is taught to "pipe"
+#    requests carrying Upgrade;
+#  - putting a cache in front of a signalling channel makes no sense.
 #
-# L'app si collegherà a:  wss://TUO_DOMINIO/duetto/ws
+# The app will connect to:  wss://YOUR_DOMAIN/duetto/ws
 
 
 # ---------------------------------------------------------------------
-# 1) Nel frontend che ascolta sulla 443, insieme agli altri acl
+# 1) In the frontend listening on 443, along with the other acls
 # ---------------------------------------------------------------------
 
     acl duetto_path path_beg /duetto/
     use_backend duetto_backend if duetto_path
 
-# Le use_backend si valutano nell'ordine di scrittura e comunque prima
-# del default_backend: se hai altre use_backend generiche, questa deve
-# venire prima.
+# The use_backend lines are evaluated in the order they are written, and
+# in any case before default_backend: if you have other general
+# use_backend lines, this one has to come first.
 
 
 # ---------------------------------------------------------------------
-# 2) Backend nuovo, in fondo al file
+# 2) A new backend, at the end of the file
 # ---------------------------------------------------------------------
 
 backend duetto_backend
     mode http
 
-    # Scavalca "option http-server-close" ereditata da defaults: chiude la
-    # connessione lato server dopo la risposta, cosa che con una
-    # connessione permanente non vogliamo.
+    # It overrides "option http-server-close" inherited from defaults:
+    # that closes the connection on the server side after the answer,
+    # which with a permanent connection is not what we want.
     option http-keep-alive
 
-    # LA RIGA CHE CONTA DAVVERO.
-    # Dopo l'upgrade a WebSocket la connessione resta aperta e silenziosa
-    # a lungo. "timeout tunnel" sostituisce i timeout client/server una
-    # volta stabilito il tunnel; se non lo imposti eredita quelli di
-    # defaults (spesso 50 secondi) e la presenza cadrebbe di continuo,
-    # con un sintomo difficile da ricondurre alla causa.
+    # THE LINE THAT REALLY MATTERS.
+    # After the upgrade to WebSocket the connection stays open and silent
+    # for a long time. "timeout tunnel" replaces the client/server
+    # timeouts once the tunnel is established; if you do not set it, it
+    # inherits the ones from defaults (often 50 seconds) and presence
+    # would drop constantly, with a symptom that is hard to trace back to
+    # its cause.
     timeout tunnel 3600s
     timeout server 3600s
 

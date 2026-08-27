@@ -1,15 +1,15 @@
-# Duetto - snippet nginx per esporre il signaling WebSocket con TLS.
-# Mettilo dentro un server{} gia' servito in HTTPS sul tuo dominio.
+# Duetto - an nginx snippet to expose the signalling WebSocket with TLS.
+# Put it inside a server{} already served over HTTPS on your domain.
 #
-#   L'app si collegera' a:  wss://TUO_DOMINIO/duetto/ws
+#   The app will connect to:  wss://YOUR_DOMAIN/duetto/ws
 #
-# Il signaling gira in locale su 127.0.0.1:8787 (vedi .env).
+# The signalling server runs locally on 127.0.0.1:8787 (see .env).
 
 location /duetto/ws {
     proxy_pass http://127.0.0.1:8787;
     proxy_http_version 1.1;
 
-    # Upgrade a WebSocket
+    # Upgrade to WebSocket
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";
 
@@ -18,7 +18,7 @@ location /duetto/ws {
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
 
-    # Tieni viva la connessione a lungo (chiamate lunghe)
+    # Keep the connection alive for a long time (long calls)
     proxy_read_timeout 3600s;
     proxy_send_timeout 3600s;
 }

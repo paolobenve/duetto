@@ -1,27 +1,28 @@
-# Duetto - signaling dietro Apache, sul dominio che hai gia'.
+# Duetto - the signalling server behind Apache, on the domain you already
+# have.
 #
-# Queste righe vanno DENTRO il <VirtualHost *:443> del tuo dominio
-# esistente (quello che serve gia' il sito in HTTPS).
+# These lines go INSIDE the <VirtualHost *:443> of your existing domain
+# (the one already serving the site over HTTPS).
 #
-# Moduli richiesti:
+# Modules needed:
 #   sudo a2enmod proxy proxy_http proxy_wstunnel rewrite
 #
-# Poi:
+# Then:
 #   sudo apachectl configtest && sudo systemctl reload apache2
 #
-# L'app si collegherà a:  wss://TUO_DOMINIO/duetto/ws
-# Il signaling ascolta in locale su 127.0.0.1:8787 (vedi .env).
+# The app will connect to:  wss://YOUR_DOMAIN/duetto/ws
+# The signalling server listens locally on 127.0.0.1:8787 (see .env).
 
-# --- Signaling (WebSocket) ---
-# Nota: questa RewriteRule deve venire PRIMA di eventuali altre regole
-# di rewrite del sito, altrimenti rischia di non essere mai raggiunta.
+# --- Signalling (WebSocket) ---
+# Note: this RewriteRule has to come BEFORE any other rewrite rules of
+# the site, otherwise it risks never being reached.
 RewriteEngine On
 RewriteCond %{HTTP:Upgrade} =websocket [NC]
 RewriteRule ^/duetto/ws$ ws://127.0.0.1:8787/ [P,L]
 
-# --- Health check (HTTP normale) ---
+# --- Health check (ordinary HTTP) ---
 ProxyPass        /duetto/healthz http://127.0.0.1:8787/healthz
 ProxyPassReverse /duetto/healthz http://127.0.0.1:8787/healthz
 
-# Le chiamate durano a lungo: il proxy non deve chiudere la connessione.
+# The calls last a long time: the proxy must not close the connection.
 ProxyTimeout 3600

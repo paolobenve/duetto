@@ -1,9 +1,9 @@
-# systemd unit per il signaling Duetto.
-# Copia in /etc/systemd/system/duetto-signaling.service, poi:
+# systemd unit for Duetto's signalling server.
+# Copy to /etc/systemd/system/duetto-signaling.service, then:
 #   sudo systemctl daemon-reload
 #   sudo systemctl enable --now duetto-signaling
 #
-# Adatta User, WorkingDirectory e il percorso di node.
+# Adjust User, WorkingDirectory and the path to node.
 
 [Unit]
 Description=Duetto signaling server (WebSocket)
@@ -17,7 +17,7 @@ EnvironmentFile=/opt/duetto/server/.env
 ExecStart=/usr/bin/node src/index.js
 Restart=on-failure
 RestartSec=3
-# Hardening di base
+# Basic hardening
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict

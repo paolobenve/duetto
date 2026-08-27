@@ -1,27 +1,31 @@
 // Duetto - Signaling server
 // -------------------------------------------------------------
-// Modello "canale": non ci sono chiamate da fare o ricevere. Esiste un
-// canale permanente per una coppia; chi entra ci resta e aspetta l'altro.
+// The "channel" model: there are no calls to make or to answer. There is
+// a permanent channel for one pair; whoever goes in stays there and waits
+// for the other.
 //
-// Ogni telefono tiene UNA connessione sempre aperta, in uno di due stati:
+// Each phone keeps ONE connection open at all times, in one of two
+// states:
 //
-//   listening  il telefono è raggiungibile ma non nel canale: microfono
-//              chiuso, nessun media. Serve solo a poter essere avvisati.
-//   active     il telefono è nel canale: si negozia il WebRTC.
+//   listening  the phone can be reached but is not in the channel:
+//              microphone closed, no media. It is only there so that one
+//              can be alerted.
+//   active     the phone is in the channel: WebRTC is being negotiated.
 //
-// Compiti del server:
-//  1) Tenere la coppia (max 2 presenze per stanza, nessun terzo entra).
-//  2) Avvisare l'altro quando uno passa ad "active", o quando bussa:
-//     è l'app stessa a mostrarsi la notifica, niente servizi esterni.
-//  3) Inoltrare buste OPACHE: i payload di signaling arrivano già
-//     cifrati dal client e il server non può leggerli né alterarli.
-//  4) Inoltrare lo scambio di chiavi dell'accoppiamento (chiavi
-//     pubbliche: non c'è nulla da nascondere, e senza il codice il
-//     server non può comunque calcolare la chiave finale).
+// What the server does:
+//  1) Holds the pair (at most 2 presences per room, no third one gets in).
+//  2) Alerts the other when one goes to "active", or knocks: it is the
+//     app itself that shows the notification, no outside services.
+//  3) Forwards OPAQUE envelopes: the signalling payloads arrive already
+//     encrypted from the client and the server can neither read nor alter
+//     them.
+//  4) Forwards the pairing key exchange (public keys: there is nothing to
+//     hide, and without the code the server cannot work out the final key
+//     anyway).
 //
-// La stanza si chiama `pairId` ed è un'impronta del codice di
-// accoppiamento: il codice vero al server non arriva mai. Coppie diverse
-// hanno pairId diversi e non si vedono fra loro.
+// The room is called `pairId` and is a fingerprint of the pairing code:
+// the real code never reaches the server. Different pairs have different
+// pairIds and do not see one another.
 // -------------------------------------------------------------
 
 import { createServer } from 'node:http';
@@ -29,16 +33,16 @@ import { WebSocketServer } from 'ws';
 import { randomUUID } from 'node:crypto';
 
 const PORT = parseInt(process.env.PORT || '8787', 10);
-const HOST = process.env.HOST || '127.0.0.1'; // dietro reverse proxy: solo loopback
+const HOST = process.env.HOST || '127.0.0.1'; // behind a reverse proxy: loopback only
 
-// Collegamento di riserva (TURN). Configurato QUI e non sui telefoni:
-// così resta una cosa sola da mantenere, e cambiando password non si
-// deve rimettere mano a ogni dispositivo.
+// The fallback link (TURN). Configured HERE and not on the phones: that
+// way there is one single thing to maintain, and changing the password
+// does not mean going back to every device.
 const TURN_URL = process.env.TURN_URL || '';
 const TURN_USER = process.env.TURN_USER || '';
 const TURN_PASS = process.env.TURN_PASS || '';
 
-/** Da mandare ai client perché sappiano come raggiungere il relay. */
+/** To be sent to the clients so they know how to reach the relay. */
 function turnConfig() {
   if (!TURN_URL || !TURN_PASS) return null;
   return {
@@ -49,62 +53,64 @@ function turnConfig() {
 }
 const MAX_PER_ROOM = 2;
 const MAX_MESSAGE_BYTES = 256 * 1024;
+
 /**
- * Ogni quanto il server manda un colpetto a ciascun telefono.
+ * How often the server taps each phone on the shoulder.
  *
- * Serve a due cose insieme: accorgersi delle connessioni morte, e tenere
- * viva la mappatura NAT dell'operatore, senza la quale il telefono smette
- * di essere raggiungibile pur credendosi collegato.
+ * It does two things at once: it notices dead connections, and it keeps
+ * the operator's NAT mapping alive, without which the phone stops being
+ * reachable while believing itself connected.
  *
- * Il conto però lo paga il telefono, non il server: ogni pacchetto tira
- * fuori la radio dal riposo e ce la tiene per qualche secondo. A 30
- * secondi fissi erano 120 risvegli l'ora, tutta la notte, per non fare
- * nulla - la voce di consumo piu' grossa dell'attesa.
+ * The bill, though, is paid by the phone and not by the server: every
+ * packet pulls the radio out of its rest and holds it there for a few
+ * seconds. At a fixed 30 seconds that was 120 wake-ups an hour, all night
+ * long, to do nothing - the largest single cost of waiting.
  *
- * Quindi fitto solo dove la prontezza conta davvero, cioe' con qualcuno
- * nel canale; rado quando si sta soltanto in ascolto. Quattro minuti
- * stanno larghi dentro i tempi di scadenza del NAT mobile, che nella
- * pratica vanno dalla decina di minuti in su.
+ * So: close together only where being prompt really matters, that is with
+ * somebody in the channel; far apart when one is merely listening. Four
+ * minutes sit comfortably inside the expiry times of mobile NAT, which in
+ * practice run from ten minutes upwards.
  *
- * I tempi si possono cambiare dal `.env`: servono corti per la prova
- * automatica, e sul campo permettono di tarare l'attesa - se misurando
- * il consumo si scopre che quattro minuti si possono allungare - senza
- * rimettere mano al codice.
+ * The times can be changed from the `.env`: the automatic test needs
+ * short ones, and in the field they allow the wait to be tuned - if
+ * measuring consumption shows that four minutes could be stretched -
+ * without touching the code.
  */
 const ms = (v, def) => (Number(v) > 0 ? Number(v) : def);
-const BATTITO_ATTIVO_MS = ms(process.env.BATTITO_ATTIVO_MS, 30_000);
-const BATTITO_ASCOLTO_MS = ms(process.env.BATTITO_ASCOLTO_MS, 240_000);
+const HEARTBEAT_ACTIVE_MS = ms(process.env.HEARTBEAT_ACTIVE_MS, 30_000);
+const HEARTBEAT_LISTENING_MS = ms(process.env.HEARTBEAT_LISTENING_MS, 240_000);
 
-/** Ogni quanto si guarda chi e' scaduto. Costa nulla: i socket sono due. */
-const BATTITO_TICK_MS = ms(process.env.BATTITO_TICK_MS, 5_000);
+/** How often we look at who has run out. It costs nothing: two sockets. */
+const HEARTBEAT_TICK_MS = ms(process.env.HEARTBEAT_TICK_MS, 5_000);
 
 /**
- * Quanto si aspetta la risposta prima di dare la connessione per morta.
+ * How long the answer is waited for before the connection is given up for
+ * dead.
  *
- * Deve stare largo sul risveglio di un telefono che dormiva - radio da
- * riagganciare compresa - e stretto abbastanza da non lasciare a lungo
- * l'altro davanti a una presenza che non c'e' piu'.
+ * It has to sit comfortably around the waking of a phone that was asleep
+ * - reconnecting the radio included - and tightly enough not to leave the
+ * other person for long in front of a presence that is not there any
+ * more.
  */
-const ATTESA_RISPOSTA_MS = ms(process.env.ATTESA_RISPOSTA_MS, 20_000);
+const ANSWER_WAIT_MS = ms(process.env.ANSWER_WAIT_MS, 20_000);
 
-// Quanti ingressi al minuto per indirizzo. Non dà fastidio a nessuno
-// (le riconnessioni sono poche), ma rende impraticabile provare codici
-// di accoppiamento a tappeto: 100 milioni di combinazioni a questo ritmo
-// richiederebbero millenni.
+// How many joins a minute per address. It bothers nobody (reconnections
+// are few), but it makes trying pairing codes wholesale impractical: 100
+// million combinations at this rate would take millennia.
 const JOIN_LIMIT = 30;
 const JOIN_WINDOW_MS = 60_000;
 
-/** @type {Map<string, number[]>} istanti dei tentativi recenti per IP */
+/** @type {Map<string, number[]>} moments of the recent attempts per IP */
 const joinAttempts = new Map();
 
 function clientIp(req) {
-  // Dietro il reverse proxy l'indirizzo vero sta nell'intestazione.
+  // Behind the reverse proxy the real address is in the header.
   const fwd = req.headers['x-forwarded-for'];
   if (typeof fwd === 'string' && fwd.length > 0) return fwd.split(',')[0].trim();
-  return req.socket?.remoteAddress || 'sconosciuto';
+  return req.socket?.remoteAddress || 'unknown';
 }
 
-/** Vero se questo indirizzo ha già esaurito i tentativi consentiti. */
+/** True if this address has already used up the attempts allowed. */
 function tooManyJoins(ip) {
   const now = Date.now();
   const recent = (joinAttempts.get(ip) || []).filter((t) => now - t < JOIN_WINDOW_MS);
@@ -113,7 +119,8 @@ function tooManyJoins(ip) {
   return recent.length > JOIN_LIMIT;
 }
 
-// Ogni tanto ripuliamo, per non tenere in memoria indirizzi vecchi.
+// Every now and then we tidy up, so as not to keep old addresses in
+// memory.
 setInterval(() => {
   const now = Date.now();
   for (const [ip, times] of joinAttempts) {
@@ -125,7 +132,7 @@ setInterval(() => {
 
 const MODES = ['listening', 'active'];
 
-/** @type {Map<string, Set<import('ws').WebSocket>>} presenze per pairId */
+/** @type {Map<string, Set<import('ws').WebSocket>>} presences per pairId */
 const rooms = new Map();
 
 function send(ws, obj) {
@@ -144,32 +151,34 @@ function leaveRoom(ws) {
   const set = rooms.get(roomId);
   if (!set) return;
   set.delete(ws);
-  // Se questa connessione è stata rimpiazzata dallo stesso dispositivo che
-  // si riaggancia, l'altro non deve vedere nessuna uscita: il posto è già
-  // occupato di nuovo, e annunciarla farebbe cadere il collegamento buono.
+  // If this connection has been replaced by the same device hooking up
+  // again, the other one must see no departure at all: the place is
+  // taken once more, and announcing it would bring the good connection
+  // down.
   if (!ws.replaced) {
-    // Il motivo cambia cosa deve fare l'altro: chi ha salutato se n'e'
-    // andato davvero, e la sua immagine puo' sparire subito; chi e'
-    // caduto probabilmente sta cambiando rete e torna fra pochi secondi,
-    // e smontargli il posto addosso vuol dire rimontarlo un attimo dopo.
-    const reason = ws.salutato ? 'bye' : 'caduta';
+    // The reason changes what the other one has to do: whoever said
+    // goodbye has really gone, and their picture can disappear at once;
+    // whoever dropped is most likely changing network and will be back
+    // within seconds, and taking their place apart means putting it back
+    // together a moment later.
+    const reason = ws.saidBye ? 'bye' : 'dropped';
     for (const peer of set) send(peer, { type: 'peer-left', peerId: ws.peerId, reason });
   }
   if (set.size === 0) rooms.delete(roomId);
   ws.roomId = null;
 }
 
-/** Nome mostrato nelle notifiche dell'altro: ripulito, non ci fidiamo. */
+/** The name shown in the other's notifications: cleaned, we do not trust it. */
 function cleanName(raw) {
   const s = typeof raw === 'string' ? raw.trim() : '';
-  if (!s) return 'Qualcuno';
+  if (!s) return 'Someone';
   return s.replace(/[\r\n]/g, ' ').slice(0, 32);
 }
 
 const httpServer = createServer((req, res) => {
-  // Accettiamo sia /healthz sia /qualsiasi/prefisso/healthz: davanti può
-  // esserci un proxy che inoltra il percorso senza riscriverlo (HAProxy)
-  // o che lo riscrive (Apache, nginx). Così funziona in entrambi i casi.
+  // We accept both /healthz and /any/prefix/healthz: in front there may
+  // be a proxy that forwards the path without rewriting it (HAProxy) or
+  // one that rewrites it (Apache, nginx). This way it works either way.
   if (req.url === '/healthz' || req.url.endsWith('/healthz')) {
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ ok: true, rooms: rooms.size, turn: !!turnConfig() }));
@@ -183,18 +192,18 @@ const wss = new WebSocketServer({ server: httpServer, maxPayload: MAX_MESSAGE_BY
 
 wss.on('connection', (ws, req) => {
   ws.ip = clientIp(req);
-  /** Ultima volta che si e' avuta prova che c'e': ora, appena arrivato. */
+  /** The last proof that they are there: now, having just arrived. */
   ws.lastSeen = Date.now();
-  /** Quando gli e' stato mandato un colpetto senza ancora risposta. */
+  /** When a tap was sent to them with no answer yet. */
   ws.pingSentAt = null;
   ws.peerId = randomUUID();
   ws.roomId = null;
   ws.joined = false;
   ws.mode = 'listening';
-  ws.side = null;      // 'A' o 'B': identifica il dispositivo
-  ws.replaced = false; // rimpiazzato dallo stesso dispositivo
-  ws.salutato = false; // ha detto "bye": uscita voluta, non caduta
-  ws.name = 'Qualcuno';
+  ws.side = null;     // 'A' or 'B': it identifies the device
+  ws.replaced = false; // replaced by the same device
+  ws.saidBye = false;  // said "bye": a wanted exit, not a drop
+  ws.name = 'Someone';
 
   ws.on('pong', () => {
     ws.pingSentAt = null;
@@ -202,8 +211,8 @@ wss.on('connection', (ws, req) => {
   });
 
   ws.on('message', (data, isBinary) => {
-    // Un messaggio e' gia' prova che c'e', e ha appena rinfrescato la
-    // mappatura NAT: rimandiamo in avanti il prossimo colpetto.
+    // A message is proof enough that they are there, and it has just
+    // refreshed the NAT mapping: we push the next tap further ahead.
     ws.lastSeen = Date.now();
     if (isBinary) return;
     let msg;
@@ -234,15 +243,15 @@ wss.on('connection', (ws, req) => {
       let set = rooms.get(roomId);
       if (!set) { set = new Set(); rooms.set(roomId, set); }
 
-      // Il lato ('A' o 'B') identifica il DISPOSITIVO, non la connessione:
-      // è fissato all'accoppiamento e non cambia mai. Se troviamo una
-      // connessione dello stesso lato, è lo stesso telefono che si
-      // riaggancia dopo un cambio di rete, e si riprende il suo posto.
+      // The side ('A' or 'B') identifies the DEVICE, not the connection:
+      // it is fixed at pairing and never changes. If we find a connection
+      // of the same side, it is the same phone hooking up again after a
+      // change of network, and it takes its place back.
       //
-      // Senza questo, chi perde la rete trova i due posti occupati - uno
-      // dei quali da se stesso - e viene respinto come se fosse un terzo
-      // dispositivo, finché il battito non si accorge della connessione
-      // morta: fino a un minuto di "coppia occupata" senza motivo.
+      // Without this, whoever loses the network finds both places taken -
+      // one of them by themselves - and is turned away as though they
+      // were a third device, until the heartbeat notices the dead
+      // connection: up to a minute of "pair full" for no reason.
       const side = msg.side === 'A' || msg.side === 'B' ? msg.side : null;
       if (side) {
         for (const peer of [...set]) {
@@ -269,9 +278,9 @@ wss.on('connection', (ws, req) => {
       ws.name = cleanName(msg.name);
       ws.mode = MODES.includes(msg.mode) ? msg.mode : 'listening';
 
-      // "polite" nel senso della perfect negotiation WebRTC: chi era già
-      // nella stanza cede in caso di collisione di offerte. Deterministico,
-      // così i due ruoli non coincidono mai.
+      // "polite" in the sense of WebRTC's perfect negotiation: whoever
+      // was in the room already gives way if the offers collide.
+      // Deterministic, so the two roles never coincide.
       const other = others[0];
       send(ws, {
         type: 'joined',
@@ -290,11 +299,12 @@ wss.on('connection', (ws, req) => {
           name: ws.name,
           mode: ws.mode,
         });
-        // Appena detto a chi entra che l'altro c'e': conviene assicurarsi
-        // che sia vero, invece di aspettare il prossimo giro del battito.
-        verificaPresenza(peer);
-        // Se entra già nel canale mentre l'altro è solo in ascolto,
-        // è il momento di farglielo sapere.
+        // Having just told whoever comes in that the other is there, it
+        // is worth making sure it is true, instead of waiting for the
+        // heartbeat's next round.
+        checkPresence(peer);
+        // If they come straight into the channel while the other is only
+        // listening, this is the moment to let them know.
         if (ws.mode === 'active' && peer.mode === 'listening') {
           send(peer, { type: 'notify', reason: 'peer-active', name: ws.name });
         }
@@ -302,7 +312,7 @@ wss.on('connection', (ws, req) => {
       return;
     }
 
-    // --- 2) Cambio di stato ---------------------------------------------
+    // --- 2) Change of state ---------------------------------------------
     if (msg.type === 'mode') {
       const next = MODES.includes(msg.mode) ? msg.mode : null;
       if (!next || next === ws.mode) return;
@@ -310,9 +320,9 @@ wss.on('connection', (ws, req) => {
       ws.mode = next;
       for (const peer of peersOf(ws.roomId, ws)) {
         send(peer, { type: 'peer-mode', mode: next, name: ws.name });
-        if (next === 'active') verificaPresenza(peer);
-        // Notifica solo la transizione che conta: qualcuno È ENTRATO
-        // nel canale mentre l'altro stava soltanto in ascolto.
+        if (next === 'active') checkPresence(peer);
+        // Only the transition that counts is notified: somebody HAS COME
+        // INTO the channel while the other was merely listening.
         if (before === 'listening' && next === 'active' && peer.mode === 'listening') {
           send(peer, { type: 'notify', reason: 'peer-active', name: ws.name });
         }
@@ -320,7 +330,7 @@ wss.on('connection', (ws, req) => {
       return;
     }
 
-    // --- 3) Inoltro delle buste cifrate ---------------------------------
+    // --- 3) Forwarding the encrypted envelopes --------------------------
     if (msg.type === 'signal') {
       for (const peer of peersOf(ws.roomId, ws)) {
         send(peer, { type: 'signal', from: ws.peerId, payload: msg.payload });
@@ -328,7 +338,7 @@ wss.on('connection', (ws, req) => {
       return;
     }
 
-    // --- 4) Accoppiamento: scambio di chiavi pubbliche -------------------
+    // --- 4) Pairing: the exchange of public keys -------------------------
     if (msg.type === 'pair') {
       for (const peer of peersOf(ws.roomId, ws)) {
         send(peer, { type: 'pair', from: ws.peerId, payload: msg.payload });
@@ -336,11 +346,12 @@ wss.on('connection', (ws, req) => {
       return;
     }
 
-    // --- 5) "Avvisa": notifica esplicita all'altro -----------------------
+    // --- 5) "Alert": an explicit notification to the other ---------------
     if (msg.type === 'knock') {
-      // Nessun freno: si bussa a una persona sola, che ti ha dato il
-      // codice di persona. Se non risponde, insistere è legittimo, e
-      // un limite qui si sente solo quando serve davvero insistere.
+      // No brake: one knocks at a single person, who gave you the code in
+      // person. If they do not answer, insisting is legitimate, and a
+      // limit here would be felt exactly when insisting is what is
+      // needed.
       const others = peersOf(ws.roomId, ws);
       if (others.length === 0) {
         send(ws, { type: 'knock-result', ok: false, error: 'peer-offline' });
@@ -348,27 +359,28 @@ wss.on('connection', (ws, req) => {
       }
       for (const peer of others) {
         send(peer, { type: 'notify', reason: 'knock', name: ws.name });
-        // Bussare e' il momento in cui conta di piu' sapere se c'e'
-        // davvero: se non risponde, entro pochi secondi la sua uscita
-        // arriva a chi ha bussato, invece di restare "avvisato" a vuoto.
-        verificaPresenza(peer);
+        // Knocking is the moment when knowing whether they are really
+        // there matters most: if they do not answer, within seconds their
+        // departure reaches whoever knocked, instead of leaving them
+        // "alerted" for nothing.
+        checkPresence(peer);
       }
       send(ws, { type: 'knock-result', ok: true });
       return;
     }
 
-    // --- 6) "C'e' ancora?": stato dell'altro su richiesta ----------------
+    // --- 6) "Still there?": the other's state on request -----------------
     //
-    // Il canale e' fatto di annunci: chi entra, chi esce, chi cade. Ma
-    // l'annuncio di una caduta arriva solo quando il server se ne
-    // accorge, e con il battito rado di chi sta in ascolto puo' volerci
-    // qualche minuto. Chi sta aspettando qualcuno guarda quella riga -
-    // "in ascolto" o "scollegato" - e merita di poterla rinfrescare.
+    // The channel is made of announcements: who comes in, who goes out,
+    // who drops. But the announcement of a drop only arrives when the
+    // server notices, and with the slow heartbeat of somebody who is
+    // merely listening that can take minutes. Whoever is waiting for
+    // somebody looks at that line - "listening" or "disconnected" - and
+    // deserves to be able to refresh it.
     //
-    // La risposta e' cio' che il server sa adesso; insieme parte un
-    // colpetto all'altro, cosi' se quella presenza e' un fantasma il
-    // `peer-left` arriva entro pochi secondi e la riga si corregge da
-    // sola.
+    // The answer is what the server knows right now; along with it a tap
+    // goes out to the other, so that if that presence is a ghost the
+    // `peer-left` arrives within seconds and the line corrects itself.
     if (msg.type === 'presence') {
       const other = peersOf(ws.roomId, ws)[0];
       send(ws, {
@@ -377,12 +389,12 @@ wss.on('connection', (ws, req) => {
         peerActive: other ? other.mode === 'active' : false,
         peerName: other ? other.name : '',
       });
-      if (other) verificaPresenza(other);
+      if (other) checkPresence(other);
       return;
     }
 
     if (msg.type === 'bye') {
-      ws.salutato = true;
+      ws.saidBye = true;
       leaveRoom(ws);
       return;
     }
@@ -392,56 +404,56 @@ wss.on('connection', (ws, req) => {
   ws.on('error', () => leaveRoom(ws));
 });
 
-/** Ogni quanto va interrogato questo telefono. */
-function intervalloBattito(ws) {
-  // Chi non ha ancora fatto join sta occupando un posto senza dire chi
-  // e': si controlla in fretta, come chi e' nel canale.
-  if (!ws.joined || ws.mode === 'active') return BATTITO_ATTIVO_MS;
-  return BATTITO_ASCOLTO_MS;
+/** How often this phone is to be asked. */
+function heartbeatInterval(ws) {
+  // Whoever has not joined yet is taking up a place without saying who
+  // they are: they get checked quickly, like whoever is in the channel.
+  if (!ws.joined || ws.mode === 'active') return HEARTBEAT_ACTIVE_MS;
+  return HEARTBEAT_LISTENING_MS;
 }
 
 /**
- * Interroga subito questo telefono, fuori dal giro normale.
+ * Asks this phone at once, outside the normal round.
  *
- * Si usa nei momenti in cui la presenza dell'altro sta per essere data
- * per buona - qualcuno bussa, entra, o si affaccia nel canale - perche'
- * con il battito rado una connessione morta potrebbe restare in piedi
- * per minuti, e l'altro vedrebbe presente chi non c'e' piu'.
+ * It is used at the moments when the other's presence is about to be
+ * taken as good - somebody knocks, comes in, or looks into the channel -
+ * because with the slow heartbeat a dead connection could stay on its
+ * feet for minutes, and the other would see present somebody who is gone.
  *
- * Non risolve la richiesta in corso, che parte comunque: fa in modo che
- * entro pochi secondi la verita' venga a galla da sola, con il
- * `peer-left` che segue la chiusura.
+ * It does not settle the request under way, which goes out regardless: it
+ * makes sure that within seconds the truth comes out by itself, with the
+ * `peer-left` that follows the closing.
  */
-function verificaPresenza(ws) {
-  if (!ws || ws.pingSentAt) return;   // gia' in attesa di risposta
+function checkPresence(ws) {
+  if (!ws || ws.pingSentAt) return;   // already waiting for an answer
   ws.pingSentAt = Date.now();
   try { ws.ping(); } catch { /* noop */ }
 }
 
-// Ping/pong per chiudere connessioni morte (telefoni che perdono rete)
+// Ping/pong to close dead connections (phones that lose the network)
 const heartbeat = setInterval(() => {
   const now = Date.now();
   for (const ws of wss.clients) {
     if (ws.pingSentAt) {
-      // Interrogato e ancora muto: oltre l'attesa lo si da' per morto.
-      if (now - ws.pingSentAt > ATTESA_RISPOSTA_MS) ws.terminate();
+      // Asked and still silent: past the wait they are given up for dead.
+      if (now - ws.pingSentAt > ANSWER_WAIT_MS) ws.terminate();
       continue;
     }
-    if (now - (ws.lastSeen ?? 0) < intervalloBattito(ws)) continue;
-    verificaPresenza(ws);
+    if (now - (ws.lastSeen ?? 0) < heartbeatInterval(ws)) continue;
+    checkPresence(ws);
   }
-}, BATTITO_TICK_MS);
+}, HEARTBEAT_TICK_MS);
 
 wss.on('close', () => clearInterval(heartbeat));
 
 httpServer.listen(PORT, HOST, () => {
-  console.log(`[duetto] signaling in ascolto su ws://${HOST}:${PORT}`);
-  console.log(`[duetto] TURN di riserva: ${turnConfig() ? TURN_URL : 'non configurato (le reti diverse non si collegheranno)'}`);
+  console.log(`[duetto] signalling listening on ws://${HOST}:${PORT}`);
+  console.log(`[duetto] TURN fallback: ${turnConfig() ? TURN_URL : 'not configured (different networks will not connect)'}`);
 });
 
 for (const sig of ['SIGINT', 'SIGTERM']) {
   process.on(sig, () => {
-    console.log(`\n[duetto] ${sig}, chiusura...`);
+    console.log(`\n[duetto] ${sig}, shutting down...`);
     for (const ws of wss.clients) ws.close(1001, 'server-shutdown');
     httpServer.close(() => process.exit(0));
   });
