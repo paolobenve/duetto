@@ -1520,14 +1520,29 @@ function StatsLine({
   /** only the whole of it, for whoever wants one number and not two */
   totalOnly?: boolean;
 }) {
+  /**
+   * Bytes a second, everywhere on these lines.
+   *
+   * It is the unit one watches data use in, and having the voice in
+   * bits beside the video in bytes meant two numbers that could not be
+   * compared at a glance - which is the whole reason they sit next to
+   * each other.
+   *
+   * Below ten it gets a decimal: the voice lives around four, and
+   * rounded to a whole number the difference between an ordinary voice
+   * and a rich one would disappear.
+   */
+  const bytes = (kbps: number | null | undefined) => {
+    if (kbps === null || kbps === undefined) return null;
+    const kBs = kbps / 8;
+    if (kBs >= 1000) return `${(kBs / 1000).toFixed(1)}MB/s`;
+    return kBs < 10 ? `${kBs.toFixed(1)}kB/s` : `${Math.round(kBs)}kB/s`;
+  };
+
   const fmt = (v?: { w: number; h: number; fps: number; kbps: number | null }) => {
     if (!v || !v.w || !v.h) return null;
-    // In bytes per second: it is the unit one watches data use in, and
-    // it is also shorter to read in passing under the buttons.
-    const kBs = v.kbps === null ? null : v.kbps / 8;
-    const band = kBs === null ? '' :
-      kBs >= 1000 ? `·${(kBs / 1000).toFixed(1)}MB/s` : `·${Math.round(kBs)}kB/s`;
-    return `${v.w}×${v.h}·${v.fps}fps${band}`;
+    const band = bytes(v.kbps);
+    return `${v.w}×${v.h}·${v.fps}fps${band ? `·${band}` : ''}`;
   };
   // Switching a camera off leaves its RTP stream among the statistics
   // with the last sizes seen: without this filter the line would go on
@@ -1615,7 +1630,7 @@ function StatsLine({
           minimumFontScale={0.6}>
           {path ? t('channel.linkLabel', { path }) : ''}
           {stats.audioKbps != null
-            ? `${path ? '   ' : ''}${t('channel.audioRate', { kbps: stats.audioKbps })}`
+            ? `${path ? '   ' : ''}${t('channel.audioRate', { rate: bytes(stats.audioKbps) ?? '' })}`
             : ''}
           {stats.latency != null ? `   ${t('channel.latency', { ms: stats.latency })}` : ''}
           {delay != null

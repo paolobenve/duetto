@@ -33,13 +33,13 @@ export const it: Dictionary = {
 
   quality: {
     saver: 'Risparmio',
-    saverNote: 'fino a 640×360 · tetto 300 kb/s',
+    saverNote: 'fino a 640×360 · tetto 37kB/s',
     standard: 'Standard',
-    standardNote: 'fino a 960×540 · tetto 1,2 Mb/s',
+    standardNote: 'fino a 960×540 · tetto 150kB/s',
     better: 'Migliore',
-    betterNote: 'fino a 1280×720 · tetto 2,5 Mb/s',
+    betterNote: 'fino a 1280×720 · tetto 312kB/s',
     best: 'Massima',
-    bestNote: 'fino a 1920×1080 · tetto 4 Mb/s',
+    bestNote: 'fino a 1920×1080 · tetto 500kB/s',
   },
 
   audio: {
@@ -157,7 +157,7 @@ export const it: Dictionary = {
     state: 'stato: {state}',
     resolutionLabel: 'Risoluzione: {quality}',
     linkLabel: 'Collegamento: {path}',
-    audioRate: 'audio {kbps} kb/s',
+    audioRate: 'audio {rate}',
     latency: 'latenza ↑↓{ms}ms',
     delay: 'ritardo ~{ms}ms',
     delayBoth: 'ritardo ↑~{up} · ↓~{down}ms',
@@ -214,7 +214,7 @@ export const it: Dictionary = {
     vp9OtherPhone: 'L’altro telefono non ha l’encoder VP9 in hardware. Serve su entrambi: il codec è uno solo per tutta la sessione.',
     audio: 'Audio',
     richerVoice: 'Voce più ricca',
-    richerVoiceNote: 'Raddoppia il tetto dell’audio, da circa 32 a 64 kb/s: la voce smette di suonare telefonica. Costa 4 kB/s in più per direzione. Vale per tutti e due i telefoni: quello che senti lo manda l’altro.\nCon il video acceso si alza da sé, spenta o accesa che sia: di fianco a mezzo megabit di video quei 4 kB/s non si notano, e rinunciare alla voce buona per risparmiarli sarebbe un cattivo affare. Torna a contare quando il video si spegne.',
+    richerVoiceNote: 'Raddoppia il tetto dell’audio, da circa 4 a 8kB/s: la voce smette di suonare telefonica. Costa 4 kB/s in più per direzione. Vale per tutti e due i telefoni: quello che senti lo manda l’altro.\nCon il video acceso si alza da sé, spenta o accesa che sia: di fianco a mezzo megabit di video quei 4 kB/s non si notano, e rinunciare alla voce buona per risparmiarli sarebbe un cattivo affare. Torna a contare quando il video si spegne.',
     whenTheyCall: 'Quando l’altro ti avvisa',
     whenTheyCallHint: 'Vale per gli avvisi che arrivano a te. Quello che sente l’altro quando sei tu a bussare lo decide lui, sul suo telefono.',
     vibration: 'Vibrazione',

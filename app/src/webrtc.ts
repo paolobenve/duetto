@@ -192,6 +192,18 @@ export class ChannelSession {
   private lastOutbound: { ts: number; bytes: number } | null = null;
   private lastInbound: { ts: number; bytes: number } | null = null;
   private lastAudioOut: { ts: number; bytes: number } | null = null;
+  /**
+   * What the wait counters said last time, one entry per stream.
+   *
+   * They are totals since the stream was born: `jitterBufferDelay`
+   * divided by the samples emitted gives the average of a whole
+   * conversation, not of this moment. Read that way the number hardly
+   * moved - turning the video off changed nothing on the screen,
+   * because an hour of history was holding it still. What is wanted is
+   * the difference between two readings, exactly as for the bytes.
+   */
+  private lastWait: Record<string, { delay: number; emitted: number;
+    decode?: number; frames?: number }> = {};
   /** a line in the log now and then, while the panel refreshes often */
   private statsTicks = 0;
 
@@ -443,6 +455,7 @@ export class ChannelSession {
     // other side's video alone there is still something to show.
     this.lastOutbound = null;
     this.lastInbound = null;
+    this.lastWait = {};
     if (!this.statsTimer) this.startStats();
 
     /**
@@ -1008,10 +1021,31 @@ export class ChannelSession {
       const candidatesById = new Map<string, any>();
       let pairStat: any = null;
       /** What each of the two arriving streams waited, and its own round trip. */
-      const waited: Record<string, { buffer?: number; decode?: number; rtt?: number }> = {};
+      const waited: Record<string, {
+        buffer?: number; decode?: number; rtt?: number;
+      }> = {};
       const forKind = (kind: string) => {
         if (!waited[kind]) waited[kind] = {};
         return waited[kind];
+      };
+      /**
+       * The wait over the last interval, not since the beginning.
+       *
+       * Both counters are totals, so the answer is the step of one
+       * divided by the step of the other. At the first reading there is
+       * no step and no number: one sample later there is.
+       */
+      const step = (kind: string, delay: number, emitted: number,
+                    decode?: number, frames?: number) => {
+        const was = this.lastWait[kind];
+        this.lastWait[kind] = { delay, emitted, decode, frames };
+        if (!was || emitted <= was.emitted || delay < was.delay) return;
+        const w = forKind(kind);
+        w.buffer = (delay - was.delay) / (emitted - was.emitted);
+        if (decode !== undefined && frames !== undefined && was.frames !== undefined
+            && was.decode !== undefined && frames > was.frames && decode >= was.decode) {
+          w.decode = (decode - was.decode) / (frames - was.frames);
+        }
       };
       stats.forEach((r: any) => {
         if (r.type === 'local-candidate' || r.type === 'remote-candidate') {
@@ -1052,14 +1086,12 @@ export class ChannelSession {
         if (r.type === 'remote-inbound-rtp' && typeof r.roundTripTime === 'number') {
           forKind(String(r.kind)).rtt = r.roundTripTime;
         }
-        if (r.type === 'inbound-rtp') {
-          const w = forKind(String(r.kind));
-          if (r.jitterBufferEmittedCount > 0 && typeof r.jitterBufferDelay === 'number') {
-            w.buffer = r.jitterBufferDelay / r.jitterBufferEmittedCount;
-          }
-          if (r.framesDecoded > 0 && typeof r.totalDecodeTime === 'number') {
-            w.decode = r.totalDecodeTime / r.framesDecoded;
-          }
+        if (r.type === 'inbound-rtp'
+            && typeof r.jitterBufferDelay === 'number'
+            && typeof r.jitterBufferEmittedCount === 'number') {
+          step(String(r.kind), r.jitterBufferDelay, r.jitterBufferEmittedCount,
+               typeof r.totalDecodeTime === 'number' ? r.totalDecodeTime : undefined,
+               typeof r.framesDecoded === 'number' ? r.framesDecoded : undefined);
         }
         if (r.kind === 'audio' && r.type === 'outbound-rtp') {
           out.audioKbps = rate(this.lastAudioOut, r.timestamp, r.bytesSent);
@@ -1390,6 +1422,7 @@ export class ChannelSession {
     // shown after the change would be an average straddling it.
     this.lastOutbound = null;
     this.lastInbound = null;
+    this.lastWait = {};
     this.logOutboundVideo();
   }
 
@@ -1637,6 +1670,7 @@ export class ChannelSession {
     if (this.statsTimer) { clearInterval(this.statsTimer); this.statsTimer = null; }
     this.lastOutbound = null;
     this.lastInbound = null;
+    this.lastWait = {};
     // With no connection there is no video paying for the rich voice:
     // the next one starts again from the user's setting.
     this.heavyVideo = false;

@@ -209,10 +209,10 @@ Four profiles, each with its own **capture resolution** and its own bandwidth ce
 
 | | Capture | Ceiling |
 |---|---|---|
-| Saver | 640×360 | 300 kb/s |
-| Standard | 960×540 | 1.2 Mb/s |
-| Better | 1280×720 | 2.5 Mb/s |
-| Best | 1920×1080 | 4 Mb/s |
+| Saver | 640×360 | 37 kB/s |
+| Standard | 960×540 | 150 kB/s |
+| Better | 1280×720 | 312 kB/s |
+| Best | 1920×1080 | 500 kB/s |
 
 The choice **holds for both phones**: the profile acts on the encoder of whoever is
 sending, so on its own it would change only what the other one sees. Keeping them in step,
@@ -234,11 +234,13 @@ in both directions:
 
 ```
 Resolution: best   ↑1920×1080·30fps·460kB/s   ↓960×540·24fps·140kB/s
-link: direct   audio 34 kb/s   latency ↑↓42ms   delay ↑~140 · ↓~120ms
+link: direct   audio 4.2kB/s   latency ↑↓42ms   delay ↑~140 · ↓~120ms
 ```
 
 The ceilings are not targets: if the scene costs little and the network holds, two
-different profiles can give the same result. That line is the only way of knowing.
+different profiles can give the same result. That line is the only way of knowing — and it
+is in bytes a second like the ceilings above, so the two can be compared without doing
+arithmetic in one's head.
 
 The last two numbers are the wait, one in each direction, like the bandwidth above. Down
 is what reaches you; up is what reaches them, which only their phone can time — each can
