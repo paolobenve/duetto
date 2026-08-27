@@ -186,6 +186,7 @@ export class ChannelSession {
    */
   private sendDelay: number | null = null;
   private recvDelay: number | null = null;
+  private termsLogged = false;
   private delaySaid = '';
   private delaySaidAt = 0;
   /**
@@ -463,6 +464,7 @@ export class ChannelSession {
     this.lastOutbound = null;
     this.lastInbound = null;
     this.lastWait = {};
+    this.termsLogged = false;
     if (!this.statsTimer) this.startStats();
 
     /**
@@ -1166,6 +1168,27 @@ export class ChannelSession {
         return (queue ?? 0) + (encode ?? 0);
       };
 
+      /**
+       * Which of the terms this phone really offers, said once.
+       *
+       * They are read by name out of a report that changes between
+       * versions of libwebrtc: a name that is not there costs no error
+       * and no warning, it simply weighs zero - and a term missing in
+       * silence would make the whole number look smaller without anyone
+       * knowing why. The log says which ones turned up, once per
+       * connection, and settles the question on the real phones.
+       */
+      if (!this.termsLogged && (waited.audio || waited.video)) {
+        this.termsLogged = true;
+        const found = [];
+        for (const kind of ['audio', 'video']) {
+          for (const what of ['buffer', 'decode', 'playout', 'encode', 'queue']) {
+            if (waited[kind]?.[what] !== undefined) found.push(`${kind}.${what}`);
+          }
+        }
+        log('the wait is made of:', found.join(', ') || 'nothing readable');
+      }
+
       const recvSeconds = recv('video') ?? recv('audio');
       const sendSeconds = send('video') ?? send('audio');
       this.recvDelay = recvSeconds === null || recvSeconds === undefined
@@ -1471,6 +1494,7 @@ export class ChannelSession {
     this.lastOutbound = null;
     this.lastInbound = null;
     this.lastWait = {};
+    this.termsLogged = false;
     this.logOutboundVideo();
   }
 
@@ -1720,6 +1744,7 @@ export class ChannelSession {
     this.lastOutbound = null;
     this.lastInbound = null;
     this.lastWait = {};
+    this.termsLogged = false;
     // With no connection there is no video paying for the rich voice:
     // the next one starts again from the user's setting.
     this.heavyVideo = false;
