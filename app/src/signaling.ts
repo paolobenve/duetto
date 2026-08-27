@@ -41,7 +41,7 @@ export type SignalMessage =
   // repeating "can you hear me?" and never finding out that you were at
   // a quarter volume.
   | { kind: 'state'; audio: boolean; video: boolean; aspect?: number; watching?: boolean;
-      hwVp9?: boolean; output?: string; version?: string; camera?: string;
+      hwVp9?: boolean; output?: string; version?: string; build?: number; camera?: string;
       volume?: number }
   // "I did not leave: the phone closed the window on me."
   //

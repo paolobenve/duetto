@@ -20,7 +20,7 @@ import {
 } from './config';
 import { Signaling, PresenceStatus, Mode } from './signaling';
 import { useLanguage, t } from './i18n';
-import { VERSION } from './version';
+import { VERSION, BUILD } from './version';
 import { ChannelSession } from './webrtc';
 import type { VideoStats } from './webrtc';
 import SettingsScreen from './SettingsScreen';
@@ -390,6 +390,8 @@ export default function App() {
     output?: string;
     /** which Duetto they have; missing if older than this field */
     version?: string;
+    /** which APK of that version; missing if older than this field */
+    build?: number;
     /** how loudly they are hearing us: 1 = as we send it */
     volume?: number;
   }>({ audio: true, video: false });
@@ -553,18 +555,38 @@ export default function App() {
   const peerVersionSeen = useRef('');
   useEffect(() => {
     const v = peerState.version;
-    if (!v || v === peerVersionSeen.current) return;
-    peerVersionSeen.current = v;
-    Journal.mark(`peer-version:${v}`).catch(() => { /* noop */ });
-  }, [peerState.version]);
+    if (!v) return;
+    // The build goes with it: the version alone no longer says which
+    // APK is over there, now that all three of its numbers are raised
+    // by hand.
+    const said = peerState.build ? `${v}+${peerState.build}` : v;
+    if (said === peerVersionSeen.current) return;
+    peerVersionSeen.current = said;
+    Journal.mark(`peer-version:${said}`).catch(() => { /* noop */ });
+  }, [peerState.version, peerState.build]);
 
   const versionWarning = React.useMemo(() => {
     if (!peerSeen) return null;
     const theirs = peerState.version;
     if (!theirs) return t('news.versionsDifferOlder', { here: VERSION });
-    if (theirs === VERSION) return null;
-    return t('news.versionsDiffer', { here: VERSION, there: theirs });
-  }, [peerSeen, peerState.version]);
+    if (theirs !== VERSION) return t('news.versionsDiffer', { here: VERSION, there: theirs });
+    /**
+     * The same version, a different APK.
+     *
+     * The version used to end with the build counter, so any two phones
+     * built at different moments called themselves differently and this
+     * line appeared by itself. Now the three numbers are raised by hand
+     * and two 0.9.0 can be weeks apart - which is exactly the case one
+     * needs telling about, because it is what happens after installing
+     * on one phone only.
+     *
+     * An older Duetto does not send the build: there we say nothing,
+     * rather than blame a difference we cannot see.
+     */
+    const theirBuild = peerState.build;
+    if (!theirBuild || theirBuild === BUILD) return null;
+    return t('news.buildsDiffer', { here: String(BUILD), there: String(theirBuild) });
+  }, [peerSeen, peerState.version, peerState.build]);
 
   /**
    * The call volume is read again whenever it may have changed.

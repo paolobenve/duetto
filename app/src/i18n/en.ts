@@ -28,6 +28,7 @@ export const en = {
     reachableAgain: '{who} is reachable again ({at}).',
     versionsDiffer: 'Different versions: {here} here, {there} over there',
     versionsDifferOlder: 'Different versions: {here} here, an older one over there',
+    buildsDiffer: 'The same version, different builds: {here} here, {there} over there',
   },
 
   quality: {

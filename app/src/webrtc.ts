@@ -10,7 +10,7 @@ import {
 import type { DuoConfig } from './config';
 import { iceServers, VIDEO_PROFILES, CAPTURE_FPS } from './config';
 import type { Signaling, SignalMessage } from './signaling';
-import { VERSION } from './version';
+import { VERSION, BUILD } from './version';
 
 /**
  * The channel session: audio always, video on request.
@@ -42,6 +42,9 @@ export type ChannelEvents = {
     output?: string;
     /** which Duetto is running there; missing if older than this field */
     version?: string;
+    /** which APK of that version: the versions are raised by hand, so
+     *  two phones on the same one can be weeks apart */
+    build?: number;
     /** which camera is filming: 'front' or 'back' */
     camera?: string;
     /** how loudly they are listening to US: 1 = as we send it */
@@ -634,6 +637,7 @@ export class ChannelSession {
         hwVp9: this.peerVp9,
         output: msg.output,
         version: msg.version,
+        build: msg.build,
         camera: msg.camera,
         volume: msg.volume,
       });
@@ -1418,6 +1422,7 @@ export class ChannelSession {
       audio: this.isAudioEnabled(),
       output: this.ourOutput,
       version: VERSION,
+      build: BUILD,
       camera: this.isFrontCamera() ? 'front' : 'back',
       volume: this.heardLevel,
       video: this.isVideoEnabled(),
