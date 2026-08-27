@@ -266,6 +266,20 @@ After the **phone reboots** presence starts again by itself: a receiver starts t
 JavaScript engine without opening the interface. It takes some tens of seconds for the
 system to give the app room, so an alert sent right after a reboot may still not find it.
 
+### The phones it has been tried on
+
+Duetto is built against the Android 14 SDK (`targetSdk 34`, compiled with 35) and asks for
+Android 7 as a floor (`minSdk 24`) — but a floor is a declaration, not a test. What it has
+really lived on, day after day:
+
+| Phone | Android | |
+|---|---|---|
+| POCO X8 Pro (Xiaomi) | 16 · HyperOS 3.0 | the maker's own rules: auto-start has to be granted by hand, and the tick for unrestricted battery can stay grey even once it is |
+| Motorola moto g82 5G | 13 | |
+
+It is a small sample: two makers, three years of Android apart. On anything else it has
+never been switched on, which does not mean it will not work — it means nobody has looked.
+
 ⚠️ **Two system settings are indispensable**, and the app offers them at the end of the
 pairing (they can be opened again from *the cogwheel → Staying reachable*):
 
