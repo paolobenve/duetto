@@ -1837,28 +1837,18 @@ export default function App() {
           },
 
           onSignal: async (msg) => {
-            const sess = sessionRef.current;
-            if (!sess) return;
-            // They have been left without a connection and ask us to
-            // make the offer again: it is up to us, the offering side.
-            if (msg.kind === 'renegotiate') {
-              if (!politeRef.current && inChannelRef.current) attachPeer(true);
-              return;
-            }
-            // They changed the quality: it holds for both, so that one
-            // does not end up with two different settings without
-            // knowing which of them is on screen. It is not sent back:
-            // that would bounce for ever.
-            if (msg.kind === 'quality') {
-              applyQuality(msg.value as DuoConfig['videoQuality'], false);
-              return;
-            }
-            // Like the resolution: it holds for both, and whoever
-            // receives it does not send it back.
-            if (msg.kind === 'audio') {
-              applyAudio(msg.richer, false);
-              return;
-            }
+            /**
+             * First what has nothing to do with the connection.
+             *
+             * Below there is a session to hand the message to, and
+             * without one there is nothing to do - one is not in the
+             * channel. But four of these messages have never needed it:
+             * a journal to file away, a death to tell, a sound to play,
+             * a window taken apart. Sitting after that guard, they were
+             * dropped in silence at exactly the moment they matter -
+             * with the other person merely waiting, which is where a
+             * sound is sent to get somebody up from their chair.
+             */
             // "I did not leave, the app was closed on me."
             if (msg.kind === 'tornDown') {
               setPeerTornDown(true);
@@ -1883,8 +1873,8 @@ export default function App() {
             }
 
             // A sound to wake us: this phone plays it, loud, from the
-            // alarm volume. It can only come from whoever is in the
-            // channel with us, that is from one single person.
+            // alarm volume. It can only come from the one person this
+            // phone is paired with, in the channel or waiting.
             if (msg.kind === 'alarm') {
               Alarm.play(String(msg.sound ?? '')).catch(() => {});
               Journal.mark(`alarm:${msg.sound}`).catch(() => {});
@@ -1912,6 +1902,29 @@ export default function App() {
             if (msg.kind === 'journal') {
               Journal.appendOther(String(msg.text ?? ''), journalKeyRef.current)
                 .catch(() => {});
+              return;
+            }
+
+            const sess = sessionRef.current;
+            if (!sess) return;
+            // They have been left without a connection and ask us to
+            // make the offer again: it is up to us, the offering side.
+            if (msg.kind === 'renegotiate') {
+              if (!politeRef.current && inChannelRef.current) attachPeer(true);
+              return;
+            }
+            // They changed the quality: it holds for both, so that one
+            // does not end up with two different settings without
+            // knowing which of them is on screen. It is not sent back:
+            // that would bounce for ever.
+            if (msg.kind === 'quality') {
+              applyQuality(msg.value as DuoConfig['videoQuality'], false);
+              return;
+            }
+            // Like the resolution: it holds for both, and whoever
+            // receives it does not send it back.
+            if (msg.kind === 'audio') {
+              applyAudio(msg.richer, false);
               return;
             }
             // If they rebuilt before us, their offer arrives when we
