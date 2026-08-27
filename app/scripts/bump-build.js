@@ -1,4 +1,13 @@
 #!/usr/bin/env node
+/*
+ * Duetto - a permanent voice and video channel for two people.
+ * Copyright (C) 2026 Paolo Benvenuto
+ *
+ * Free software under the GNU General Public License, version 3 or any
+ * later version, and with no warranty of any kind. The full text is in
+ * the LICENSE file at the root of the project, and at
+ * <https://www.gnu.org/licenses/>.
+ */
 /**
  * Raises the build number and writes it into src/version.ts.
  *
@@ -47,8 +56,21 @@ const stamp = `${String(now.getDate()).padStart(2, '0')}/` +
   `${String(now.getMonth() + 1).padStart(2, '0')} ` +
   `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
+// The licence header goes into what is generated too: these files are
+// in the repository like all the others, and a build must not strip it.
+const HEADER = `/*
+ * Duetto - a permanent voice and video channel for two people.
+ * Copyright (C) 2026 Paolo Benvenuto
+ *
+ * Free software under the GNU General Public License, version 3 or any
+ * later version, and with no warranty of any kind. The full text is in
+ * the LICENSE file at the root of the project, and at
+ * <https://www.gnu.org/licenses/>.
+ */
+`;
+
 fs.writeFileSync(outFile,
-`// Written by scripts/bump-build.js at every build: do not edit by hand.
+`${HEADER}// Written by scripts/bump-build.js at every build: do not edit by hand.
 export const VERSION = '${VERSION}';
 export const BUILD = ${n};
 export const BUILT_AT = '${stamp}';
