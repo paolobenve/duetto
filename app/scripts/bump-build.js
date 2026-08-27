@@ -15,14 +15,17 @@ const appDir = path.join(__dirname, '..');
 /**
  * The version shown in the app.
  *
- * `major` and `minor` live in version.json and are raised by hand, when
- * a set of changes really changes what the app is. The last number
- * moves on at every build instead: that way every APK has a name of its
- * own, and asking "which version have you got" is enough to know
- * exactly what is running - without having to remember a separate build
- * number as well.
+ * All three numbers live in version.json and are raised by hand, when a
+ * set of changes is worth announcing: the version is a decision, not a
+ * counter.
+ *
+ * The build number is a separate thing, and it is not in the version:
+ * it counts the compilations, one by one, and it is what tells two APKs
+ * that call themselves the same version apart. That is why it is shown
+ * beside the version in the settings, and why reporting a problem means
+ * saying it too.
  */
-const { major, minor } = JSON.parse(
+const { major, minor, patch } = JSON.parse(
   fs.readFileSync(path.join(appDir, 'version.json'), 'utf8'),
 );
 const counterFile = path.join(appDir, 'build-number.json');
@@ -37,7 +40,7 @@ try {
 n += 1;
 fs.writeFileSync(counterFile, JSON.stringify({ build: n }, null, 2) + '\n');
 
-const VERSION = `${major}.${minor}.${n}`;
+const VERSION = `${major}.${minor}.${patch}`;
 
 const now = new Date();
 const stamp = `${String(now.getDate()).padStart(2, '0')}/` +
@@ -52,7 +55,7 @@ export const BUILT_AT = '${stamp}';
 /** What is shown in the app. */
 export const VERSION_LABEL = '${VERSION}';
 /** For the settings: it tells two APKs of the same version apart. */
-export const VERSION_FULL = '${VERSION} · ${stamp}';
+export const VERSION_FULL = '${VERSION} · build ${n} · ${stamp}';
 `);
 
-console.log(`${VERSION} (${stamp})`);
+console.log(`${VERSION} (build ${n}, ${stamp})`);

@@ -288,8 +288,13 @@ What changes at every version, from the point of view of whoever uses it:
 [CHANGELOG.md](CHANGELOG.md).
 
 The version is raised by hand in `app/version.json`, when a set of changes is worth
-announcing: it is a decision, not a counter. The build number, on the other hand, goes up
-by itself at every compilation.
+announcing: it is a decision, not a counter. Publishing starts at **0.9.0** and goes on
+with 0.9.1, 0.9.2 and so on; 1.0.0 will come when the thing feels finished enough to be
+called that.
+
+The build number is a separate matter and goes up by itself at every compilation. It is
+what tells two APKs that call themselves the same version apart, so it is beside the
+version at the bottom of the settings: when you report a problem, say that number too.
 
 ## Licence
 
