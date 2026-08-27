@@ -9,13 +9,13 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 
 /**
- * Cosa sa fare la parte video di QUESTO telefono.
+ * What the video side of THIS phone can do.
  *
- * VP9 comprime meglio di VP8 a parità di immagine, ma solo se lo encoda
- * l'hardware: in software costa più batteria e calore di quanta banda
- * faccia risparmiare. Quindi l'opzione va offerta solo dove serve
- * davvero, e questo si può sapere solo a telefono acceso - non deciderlo
- * a tavolino guardando due modelli.
+ * VP9 compresses better than VP8 at the same picture quality, but only
+ * when hardware does the encoding: in software it costs more battery and
+ * heat than the bandwidth it saves. So the option is worth offering only
+ * where it truly helps, and that can only be known on a running phone -
+ * not decided at a desk by looking at a couple of models.
  */
 class CodecsModule(ctx: ReactApplicationContext) : ReactContextBaseJavaModule(ctx) {
 
@@ -39,9 +39,10 @@ class CodecsModule(ctx: ReactApplicationContext) : ReactContextBaseJavaModule(ct
     }
 
     /**
-     * Da Android 10 il sistema lo dichiara. Prima bisogna dedurlo dal
-     * nome: i codec software di Android si chiamano "OMX.google.*" o
-     * "c2.android.*", tutto il resto viene dal produttore del chip.
+     * From Android 10 on the system says so itself. Before that it has to
+     * be guessed from the name: Android's software codecs are called
+     * "OMX.google.*" or "c2.android.*", everything else comes from the
+     * chip maker.
      */
     private fun isHardware(info: MediaCodecInfo): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

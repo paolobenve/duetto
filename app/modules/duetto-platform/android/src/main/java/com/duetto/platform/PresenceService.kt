@@ -7,37 +7,38 @@ import com.facebook.react.bridge.Arguments
 import com.facebook.react.jstasks.HeadlessJsTaskConfig
 
 /**
- * Tiene viva la presenza SENZA aprire l'interfaccia.
+ * Keeps presence alive WITHOUT opening the interface.
  *
- * Serve al riavvio del telefono: da Android 10 avviare un'activity dal
- * secondo piano è vietato, quindi non si può "aprire l'app da sola".
- * Si può però avviare il motore JavaScript senza interfaccia, ed è
- * quello che fa questo servizio: la stessa logica di connessione che già
- * esiste riparte da sola e il telefono torna raggiungibile.
+ * It is what a reboot needs: from Android 10 on, starting an activity
+ * from the background is forbidden, so the app cannot "open itself". The
+ * JavaScript engine can be started without an interface, though, and that
+ * is what this service does: the same connection logic that already
+ * exists starts up again and the phone becomes reachable once more.
  *
- * Il compito JS non si conclude mai di proposito (vedi presence.ts): deve
- * restare in ascolto finché il servizio vive.
+ * The JS task never finishes on purpose (see presence.ts): it has to keep
+ * listening for as long as the service lives.
  */
 class PresenceService : HeadlessJsTaskService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Senza passare in primo piano Android chiuderebbe il servizio in
-        // pochi secondi, e la presenza durerebbe quanto un fiammifero.
+        // Without going to the foreground, Android would close the service
+        // within seconds, and presence would last about as long as a match.
         Notifier.startForegroundPresence(this)
-        // Se siamo qui dopo che il sistema ci ha uccisi, il perche' e'
-        // scritto da qualche parte: si prende adesso, prima che le morti
-        // piu' vecchie escano dalla lista che Android tiene.
+        // If we are here after the system killed us, the reason is written
+        // down somewhere: take it now, before the older deaths drop off
+        // the list Android keeps.
         Diario.registraUscite(applicationContext)
         return super.onStartCommand(intent, flags, startId)
     }
 
     /**
-     * Nemmeno qui scartare l'app dai recenti spegne la presenza.
+     * Here too, swiping the app out of the recents does not stop presence.
      *
-     * Stessa regola del servizio del canale, e stesso motivo: quel gesto
-     * si fa per riordinare, non per dire "non cercatemi piu'", e chi lo
-     * faceva si ritrovava irraggiungibile senza saperlo. A dirlo con
-     * parole sue c'e' "esci e renditi non disponibile".
+     * Same rule as the channel service, and for the same reason: that
+     * gesture is made to tidy up, not to say "do not look for me any
+     * more", and whoever made it found themselves unreachable without
+     * knowing. What says it in so many words is "leave and become
+     * unavailable".
      */
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
@@ -47,17 +48,17 @@ class PresenceService : HeadlessJsTaskService() {
         return HeadlessJsTaskConfig(
             "duetto-presence",
             Arguments.createMap(),
-            // 0 = nessun limite di tempo: il compito deve restare vivo.
+            // 0 = no time limit: the task has to stay alive.
             0,
-            // Continua anche quando l'app è in primo piano: è il JS a
-            // decidere di farsi da parte quando l'interfaccia prende il
-            // comando (vedi presence.ts).
+            // Carry on even when the app is in the foreground: it is up to
+            // JS to step aside when the interface takes over (see
+            // presence.ts).
             true,
         )
     }
 
     companion object {
-        /** Vero se il sistema permette di avviarlo in questo momento. */
+        /** True if the system allows starting it right now. */
         fun canStart(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
     }
 }

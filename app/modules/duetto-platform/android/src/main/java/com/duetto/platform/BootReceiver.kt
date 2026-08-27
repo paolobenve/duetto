@@ -7,16 +7,16 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 
 /**
- * Fa ripartire la presenza dopo il riavvio del telefono.
+ * Brings presence back after the phone reboots.
  *
- * ATTENZIONE su Xiaomi/POCO e simili: questo evento non viene consegnato
- * affatto se l'app non ha "Avvio automatico" abilitato nelle impostazioni
- * di sistema. Non è aggirabile da codice.
+ * BEWARE on Xiaomi/POCO and the like: this event is not delivered at all
+ * unless the app has "Auto-start" enabled in the system settings. There
+ * is no way around it from code.
  */
 class BootReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
-        // I nomi in memoria sono cambiati: si passa di qui per primi.
+        // The names in storage have changed: this is the first stop.
         Ponte.migra(context)
         val action = intent.action ?: return
         if (action != Intent.ACTION_BOOT_COMPLETED &&
@@ -25,16 +25,16 @@ class BootReceiver : BroadcastReceiver() {
         ) return
 
         /**
-         * Si annota che l'evento è arrivato.
+         * Note down that the event arrived.
          *
-         * Quell'autorizzazione non è leggibile - è una schermata del
-         * produttore, nessuna app può interrogarla - ma l'unica cosa che
-         * conta davvero è se dopo un riavvio l'app riparte. Se questo
-         * evento arriva, è la prova sul campo che è a posto; se non
-         * arriva mai, l'utente lo scopre da sé.
+         * That permission cannot be read - it is a manufacturer's screen,
+         * no app can query it - but the only thing that really matters is
+         * whether the app comes back after a reboot. If this event
+         * arrives, that is field proof it is fine; if it never does, the
+         * user finds out by themselves.
          */
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-            .putLong(ULTIMO_AVVIO, System.currentTimeMillis())
+            .putLong(LAST_AUTO_START, System.currentTimeMillis())
             .apply()
 
         if (!PresenceService.canStart()) return
@@ -43,28 +43,28 @@ class BootReceiver : BroadcastReceiver() {
                 context,
                 Intent(context, PresenceService::class.java),
             )
-            Log.i("Duetto", "presenza riavviata dopo il boot")
+            Log.i("Duetto", "presence restarted after boot")
         } catch (e: Exception) {
-            // Se il sistema lo vieta non c'è molto da fare: l'utente
-            // aprira' l'app e la presenza ripartira' da lì.
-            Log.w("Duetto", "impossibile riavviare la presenza: ${e.message}")
+            // If the system forbids it there is not much to do: the user
+            // will open the app and presence will start from there.
+            Log.w("Duetto", "could not restart presence: ${e.message}")
         }
     }
 
     companion object {
         const val PREFS = "duetto_boot"
-        const val ULTIMO_AVVIO = "last_auto_start"
+        const val LAST_AUTO_START = "last_auto_start"
 
         /**
-         * I nomi di prima, in italiano: si leggono una volta e si
-         * riscrivono con i nuovi.
+         * The former names, in Italian: they are read once and written
+         * back under the new ones.
          *
-         * Il progetto passa all'inglese per essere pubblicato, e con il
-         * resto cambiano anche i nomi con cui le cose stanno scritte
-         * nella memoria del telefono. Chi ha gia' l'app non deve
-         * accorgersene. Questo ponte si toglie alla prossima versione.
+         * The project moves to English to be published, and along with
+         * the rest the names things are stored under on the phone change
+         * too. Whoever already has the app must not notice. This bridge
+         * goes away in the next version.
          */
-        const val PREFS_VECCHIE = "duetto_avvio"
-        const val ULTIMO_AVVIO_VECCHIO = "ultimo_avvio_automatico"
+        const val OLD_PREFS = "duetto_avvio"
+        const val OLD_LAST_AUTO_START = "ultimo_avvio_automatico"
     }
 }

@@ -125,7 +125,7 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
     @ReactMethod
     fun lastAutoStart(promise: Promise) {
         val p = ctx.getSharedPreferences(BootReceiver.PREFS, android.content.Context.MODE_PRIVATE)
-        promise.resolve(p.getLong(BootReceiver.ULTIMO_AVVIO, 0L).toDouble())
+        promise.resolve(p.getLong(BootReceiver.LAST_AUTO_START, 0L).toDouble())
     }
 
     /** Da quanto è acceso il telefono: serve a datare l'ultimo riavvio. */

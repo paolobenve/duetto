@@ -8,9 +8,9 @@ import com.facebook.react.uimanager.ReactShadowNode
 import com.facebook.react.uimanager.ViewManager
 
 /**
- * Registrato automaticamente dall'autolinking di React Native, grazie alla
- * dipendenza "file:modules/duetto-platform" in package.json: non serve
- * toccare MainApplication.
+ * Registered automatically by React Native's autolinking, thanks to the
+ * "file:modules/duetto-platform" dependency in package.json: there is no
+ * need to touch MainApplication.
  */
 class DuettoPackage : ReactPackage {
 

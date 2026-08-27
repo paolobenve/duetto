@@ -10,16 +10,16 @@ import android.os.PowerManager
 import android.provider.Settings
 
 /**
- * Le due impostazioni da cui dipende il "restare raggiungibili".
+ * The two settings "staying reachable" depends on.
  *
- * 1) Uso senza restrizioni di batteria: è standard di Android e si può
- *    chiedere con una finestra di sistema, una spunta e via.
+ * 1) Unrestricted battery use: it is standard Android and can be asked
+ *    for with a system dialog, one tick and done.
  *
- * 2) Avvio automatico: NON è un'autorizzazione di Android, è una
- *    schermata proprietaria dei produttori. Nessuna app può concederselo
- *    da sola; l'unica cosa possibile è aprire quella schermata al posto
- *    dell'utente. Senza, dopo un riavvio del telefono i produttori più
- *    aggressivi non consegnano nemmeno l'evento di avvio.
+ * 2) Auto-start: this is NOT an Android permission, it is a screen of the
+ *    manufacturer's own. No app can grant it to itself; the only thing
+ *    possible is to open that screen on the user's behalf. Without it,
+ *    after the phone reboots the more aggressive manufacturers do not
+ *    even deliver the boot event.
  */
 object StartupHelper {
 
@@ -30,16 +30,16 @@ object StartupHelper {
     }
 
     /**
-     * Apre la richiesta di uso senza restrizioni.
+     * Opens the request for unrestricted use.
      *
-     * Va lanciata dall'ACTIVITY in primo piano, non dal contesto
-     * dell'applicazione: partendo da lì alcune interfacce (HyperOS fra
-     * queste) mostrano la finestra per un istante e la chiudono da sole.
+     * It has to be started from the foreground ACTIVITY, not from the
+     * application context: started from there, some interfaces (HyperOS
+     * among them) show the dialog for an instant and close it themselves.
      *
-     * E se il produttore la blocca del tutto - Xiaomi lo fa - si ripiega
-     * sull'elenco di sistema e, in ultima istanza, sulla scheda dell'app:
-     * meglio una schermata da cui l'utente può comunque arrivarci che
-     * una finestra che sparisce.
+     * And if the manufacturer blocks it altogether - Xiaomi does - we
+     * fall back on the system list and, as a last resort, on the app's
+     * own page: better a screen the user can still get there from than a
+     * dialog that vanishes.
      */
     fun requestIgnoreBatteryOptimizations(ctx: Context, activity: Activity?): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return false
@@ -56,7 +56,7 @@ object StartupHelper {
         return openAppSettings(ctx, activity)
     }
 
-    /** Avvia, aggiungendo NEW_TASK solo se non partiamo da un'activity. */
+    /** Starts it, adding NEW_TASK only when we do not come from an activity. */
     private fun start(from: Context, intent: Intent, needsNewTask: Boolean): Boolean {
         return try {
             if (needsNewTask) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -69,9 +69,9 @@ object StartupHelper {
     }
 
     /**
-     * Schermate di avvio automatico note, per produttore. L'elenco è
-     * per tentativi: i nomi cambiano fra versioni, e non esiste un modo
-     * ufficiale per raggiungerle.
+     * Known auto-start screens, by manufacturer. The list works by trial:
+     * the names change between versions, and there is no official way to
+     * reach them.
      */
     private val AUTOSTART_SCREENS = listOf(
         "com.miui.securitycenter" to "com.miui.permcenter.autostart.AutoStartManagementActivity",
@@ -87,7 +87,7 @@ object StartupHelper {
         "com.samsung.android.lool" to "com.samsung.android.sm.ui.battery.BatteryActivity",
     )
 
-    /** Vero se una schermata di avvio automatico esiste su questo telefono. */
+    /** True if an auto-start screen exists on this phone. */
     fun hasAutoStartScreen(ctx: Context): Boolean = findAutoStartIntent(ctx) != null
 
     fun openAutoStartSettings(ctx: Context, activity: Activity?): Boolean {
@@ -104,7 +104,7 @@ object StartupHelper {
         return null
     }
 
-    /** Ripiego: la scheda dell'app nelle impostazioni di sistema. */
+    /** Fallback: the app's page in the system settings. */
     fun openAppSettings(ctx: Context, activity: Activity? = null): Boolean {
         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
             .setData(Uri.parse("package:${ctx.packageName}"))

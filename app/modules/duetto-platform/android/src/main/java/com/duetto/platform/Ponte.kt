@@ -76,10 +76,10 @@ object Ponte {
     }
 
     private fun preferenze(ctx: Context, nuove: android.content.SharedPreferences) {
-        val vecchie = ctx.getSharedPreferences(BootReceiver.PREFS_VECCHIE, Context.MODE_PRIVATE)
+        val vecchie = ctx.getSharedPreferences(BootReceiver.OLD_PREFS, Context.MODE_PRIVATE)
         val e = nuove.edit()
-        val avvio = vecchie.getLong(BootReceiver.ULTIMO_AVVIO_VECCHIO, 0L)
-        if (avvio > 0L) e.putLong(BootReceiver.ULTIMO_AVVIO, avvio)
+        val avvio = vecchie.getLong(BootReceiver.OLD_LAST_AUTO_START, 0L)
+        if (avvio > 0L) e.putLong(BootReceiver.LAST_AUTO_START, avvio)
         vecchie.getString("titolo-notifica", null)?.let { e.putString(Notifier.CHIAVE_TITOLO, it) }
         val morte = vecchie.getLong("ultima_morte_registrata", 0L)
         if (morte > 0L) e.putLong(Diario.ULTIMA_MORTE, morte)

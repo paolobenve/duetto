@@ -11,36 +11,37 @@ import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.UiThreadUtil
 
 /**
- * Manda i tasti del volume sul flusso della conversazione.
+ * Points the volume keys at the stream the conversation comes out of.
  *
- * PERCHE' SERVE
- * Il suono di una chiamata non esce dal volume "multimedia" ma da quello
- * "chiamata", che è un'altra manopola. I tasti laterali però regolano
- * quello che il sistema crede sia il flusso attivo, e per un'app comune
- * quello è il multimedia: si preme, la barretta scende, e la voce
- * dell'altro resta esattamente com'era.
+ * WHY IT IS NEEDED
+ * A call's sound does not come out of the "media" volume but out of the
+ * "call" one, which is a different knob. The side keys, though, adjust
+ * whatever the system believes the active stream is, and for an ordinary
+ * app that is media: you press, the little bar goes down, and the other
+ * voice stays exactly where it was.
  *
- * Su parecchi telefoni Android indovina da solo, vedendo che siamo in
- * MODE_IN_COMMUNICATION; su altri no - e lì i tasti non hanno alcun
- * effetto, col volume bloccato dove capita, spesso al massimo. Discord e
- * WhatsApp non hanno il problema perché si registrano come chiamate vere
- * nel sistema (ConnectionService), che è tutt'altro impianto.
+ * On many phones Android guesses right on its own, seeing that we are in
+ * MODE_IN_COMMUNICATION; on others it does not - and there the keys have
+ * no effect at all, with the volume stuck wherever it happened to be,
+ * often at the top. Discord and WhatsApp do not have the problem because
+ * they register as real calls with the system (ConnectionService), which
+ * is a whole other machinery.
  *
- * La riga che risolve è una sola, e va detta esplicitamente. In
- * react-native-incall-manager c'è, ma commentata con un TODO
- * (InCallManagerModule.java, "setVolumeControlStream"), quindi tocca a
- * noi.
+ * The line that fixes it is a single one, and it has to be said out loud.
+ * react-native-incall-manager has it, but commented out with a TODO
+ * (InCallManagerModule.java, "setVolumeControlStream"), so it is up to
+ * us.
  *
- * La rimettiamo a ogni onActivityResumed finché siamo nel canale: è una
- * proprietà dell'activity, e un'activity ricreata ripartirebbe dal
- * comportamento normale senza che nessuno se ne accorga.
+ * We set it again on every onActivityResumed while we are in the channel:
+ * it is a property of the activity, and a recreated activity would go
+ * back to the ordinary behaviour without anybody noticing.
  */
 class AudioModule(private val ctx: ReactApplicationContext) :
     ReactContextBaseJavaModule(ctx) {
 
     override fun getName() = "DuettoAudio"
 
-    /** Se in questo momento vogliamo i tasti sul volume della chiamata. */
+    /** Whether we want the keys on the call volume right now. */
     private var wanted = false
     private var registered = false
 
@@ -63,22 +64,22 @@ class AudioModule(private val ctx: ReactApplicationContext) :
                 activity.volumeControlStream =
                     if (active) AudioManager.STREAM_VOICE_CALL
                     else AudioManager.USE_DEFAULT_STREAM_TYPE
-                // Il diario lo registra: su un telefono lontano e' l'unico
-                // modo di sapere se questa riga e' stata eseguita davvero.
+                // The journal records it: on a phone far away this is the
+                // only way to know whether this line really ran.
                 Diario.tastiVoce(active)
             } catch (_: Exception) {
-                // Peggio che possa andare: i tasti restano sul multimedia,
-                // che è la situazione di partenza.
+                // The worst that can happen: the keys stay on media,
+                // which is where they started.
             }
         }
     }
 
     /**
-     * `true` entrando nel canale, `false` uscendone.
+     * `true` when entering the channel, `false` when leaving it.
      *
-     * Va rimesso a `false`: lasciato acceso, fuori dalla conversazione i
-     * tasti regolerebbero un volume che non si sta usando, e sembrerebbero
-     * rotti nel modo opposto.
+     * It has to be put back to `false`: left on, outside the conversation
+     * the keys would adjust a volume nobody is using, and they would look
+     * broken the other way round.
      */
     @ReactMethod
     fun useCallVolumeKeys(active: Boolean, promise: Promise) {
@@ -93,8 +94,8 @@ class AudioModule(private val ctx: ReactApplicationContext) :
 
         val activity = currentActivity
         if (activity == null) {
-            // Nessuna activity ora (app in secondo piano): ci penserà
-            // onActivityResumed. Non è un fallimento.
+            // No activity right now (app in the background): onActivityResumed
+            // will see to it. This is not a failure.
             promise.resolve(false)
             return
         }

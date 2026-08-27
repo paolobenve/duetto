@@ -10,12 +10,13 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 
 /**
- * Picture-in-Picture di sistema: la finestrella che resta sopra le altre
- * app. Ci si entra col tasto Indietro, invece di uscire dal canale.
+ * The system's Picture-in-Picture: the little window that stays on top of
+ * the other apps. The Back key goes in there, instead of leaving the
+ * channel.
  *
- * Richiede android:supportsPictureInPicture="true" sulla MainActivity e
- * che fra i configChanges ci siano screenSize/smallestScreenSize/
- * screenLayout/orientation: ci pensa scripts/patch-android-manifest.js.
+ * It needs android:supportsPictureInPicture="true" on the MainActivity,
+ * and screenSize/smallestScreenSize/screenLayout/orientation among the
+ * configChanges: scripts/patch-android-manifest.js takes care of that.
  */
 class PipModule(private val ctx: ReactApplicationContext) :
     ReactContextBaseJavaModule(ctx) {
@@ -23,18 +24,19 @@ class PipModule(private val ctx: ReactApplicationContext) :
     override fun getName() = "DuettoPip"
 
     companion object {
-        // Limiti imposti da Android: fuori da questi la richiesta fallisce.
+        // Limits imposed by Android: outside them the request fails.
         private const val MIN_RATIO = 0.4184f
         private const val MAX_RATIO = 2.39f
     }
 
     /**
-     * Manda l'app in secondo piano, come farebbe il tasto Home.
+     * Sends the app to the background, the way the Home key would.
      *
-     * Serve per "Esci": l'app deve sparire dallo schermo, ma il processo
-     * deve restare vivo. Chiuderla davvero (finish) distruggerebbe il
-     * contesto JavaScript e con esso la connessione che ci tiene
-     * raggiungibili, quindi non arriverebbero più le notifiche.
+     * This is what "Leave" needs: the app has to disappear from the
+     * screen, but the process has to stay alive. Really closing it
+     * (finish) would destroy the JavaScript context, and with it the
+     * connection that keeps us reachable, so no notification would
+     * arrive any more.
      */
     @ReactMethod
     fun minimize(promise: Promise) {
@@ -58,9 +60,9 @@ class PipModule(private val ctx: ReactApplicationContext) :
     }
 
     /**
-     * Entra in PiP con le proporzioni indicate (larghezza/altezza).
-     * Risolve false se il sistema non lo consente: chi chiama decide
-     * allora se lasciar fare al tasto Indietro il suo mestiere normale.
+     * Enters PiP with the given aspect ratio (width/height). Resolves
+     * false when the system does not allow it: the caller then decides
+     * whether to let the Back key do its ordinary job.
      */
     @ReactMethod
     fun enter(aspect: Double, promise: Promise) {
@@ -75,7 +77,7 @@ class PipModule(private val ctx: ReactApplicationContext) :
         }
         try {
             val ratio = aspect.toFloat().coerceIn(MIN_RATIO, MAX_RATIO)
-            // Rational vuole interi: moltiplichiamo per avere precisione.
+            // Rational wants integers: multiply to keep some precision.
             val params = PictureInPictureParams.Builder()
                 .setAspectRatio(Rational((ratio * 1000).toInt(), 1000))
                 .build()
