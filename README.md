@@ -1,268 +1,274 @@
 # Duetto
 
-Un mini "Discord" fatto su misura per **due sole persone**. Non è un'app per *chiamare*:
-è un **canale permanente**. Apri l'app e sei dentro; se c'è anche l'altro vi collegate da
-soli, altrimenti resti raggiungibile e vieni avvisato appena arriva.
+A tiny "Discord" made to measure for **two people only**. It is not an app for *calling*:
+it is a **permanent channel**. Open the app and you are in; if the other person is there
+too you connect by yourselves, and otherwise you stay reachable and get told the moment
+they arrive.
 
-Audio e video viaggiano **cifrati end-to-end direttamente tra i due telefoni**. Il tuo
-server serve solo a farvi trovare: **non può leggere nulla**.
+Audio and video travel **end-to-end encrypted straight between the two phones**. Your
+server is only there to let you find each other: **it cannot read anything**.
 
-## Come si installa, dal punto di vista di chi la usa
+## How it is installed, from the point of view of whoever uses it
 
-1. Installi l'app
-2. Scrivi il nome del tuo server
-3. Su un telefono premi «Crea il codice», sull'altro digiti le otto cifre che appaiono
-4. Concedi due impostazioni di sistema, che l'app ti spiega e ti apre
+1. You install the app
+2. You write the name of your server
+3. On one phone you press «Create the code», on the other you type in the eight digits
+   that appear
+4. You grant two system settings, which the app explains and opens for you
 
-Fatto, per sempre. Nessun altro servizio da installare, nessuna password da inventare,
-nessun canale o passphrase da tenere uguali.
+Done, for good. No other service to install, no password to invent, no channel or
+passphrase to keep the same.
 
-## Come funziona
+## How it works
 
 ```
-  Telefono A  ⇄  [ tuo server: signaling + TURN di riserva ]  ⇄  Telefono B
-      └──────────  audio/video P2P cifrato (DTLS-SRTP)  ──────────┘
+  Phone A  ⇄  [ your server: signalling + TURN fallback ]  ⇄  Phone B
+     └──────────  P2P encrypted audio/video (DTLS-SRTP)  ─────────┘
 ```
 
-- **Canale, non chiamata**: entri e resti. Il server tiene la presenza, massimo due.
-- **Sempre raggiungibile**: fuori dal canale l'app resta *in ascolto* — microfono chiuso,
-  connessione aperta — e ti avvisa quando l'altro entra. La notifica se la mostra l'app
-  stessa: nessun servizio di terzi, nessun Firebase.
-- **Anche dopo un riavvio del telefono**: la presenza riparte da sola, senza aprire l'app.
-- **Audio subito, video a richiesta**: entrando si apre il microfono; la camera si accende
-  solo se la vuoi, e quando la spegni viene rilasciata davvero.
-- **Si riprende da solo**: se la rete cade, al ritorno il collegamento si ricostruisce in
-  circa un secondo, senza toccare nulla.
+- **A channel, not a call**: you go in and you stay. The server holds the presence, two at
+  most.
+- **Always reachable**: outside the channel the app stays *listening* — microphone closed,
+  connection open — and tells you when the other person comes in. The notification is
+  shown by the app itself: no third-party service, no Firebase.
+- **After a reboot too**: presence starts again by itself, without opening the app.
+- **Audio at once, video on request**: going in opens the microphone; the camera comes on
+  only if you want it, and when you turn it off it is really released.
+- **It picks itself up**: if the network drops, on its return the link is rebuilt in about
+  a second, with nothing to touch.
 
-## Struttura
+## The layout
 
 ```
 duetto/
-├── server/              # Signaling WebSocket
-│   ├── src/index.js     # presenza, stati, inoltro buste, relay TURN
-│   ├── smoke-test.mjs   # 29 controlli end-to-end
-│   ├── tools/           # stun-check.mjs: verifica il relay dall'esterno
+├── server/              # WebSocket signalling
+│   ├── src/index.js     # presence, states, envelope forwarding, TURN relay
+│   ├── smoke-test.mjs   # 42 end-to-end checks
+│   ├── tools/           # stun-check.mjs: checks the relay from outside
 │   └── deploy/          # haproxy, apache, nginx, coturn, systemd
-├── app/                 # App Android in React Native
-│   ├── src/             # accoppiamento, crypto, signaling, webrtc, UI
-│   ├── modules/duetto-platform/   # modulo nativo Kotlin
-│   ├── bootstrap.sh     # genera la parte nativa Android
-│   └── scripts/         # sincronizzazione moduli, numero di build, manifest
-└── docs/                # architettura e guida al deploy
+├── app/                 # Android app in React Native
+│   ├── src/             # pairing, crypto, signalling, webrtc, UI
+│   ├── modules/duetto-platform/   # the native Kotlin module
+│   ├── bootstrap.sh     # generates the Android native part
+│   └── scripts/         # module syncing, build number, manifest
+└── docs/                # architecture and the deploy guide
 ```
 
-## Avvio rapido
+## A quick start
 
-### Server
+### The server
 
 ```bash
 cd server
-cp .env.example .env      # va bene com'è
+cp .env.example .env      # it is fine as it is
 npm install
-npm run test:smoke        # deve stampare TUTTO OK
+npm run test:smoke        # it has to print ALL OK
 npm start
 ```
 
-Poi esponilo in HTTPS dietro il proxy che già hai, e aggiungi `coturn` per quando i due
-telefoni sono su reti diverse — tutto in [docs/DEPLOY.md](docs/DEPLOY.md).
+Then expose it over HTTPS behind the proxy you already have, and add `coturn` for when the
+two phones are on different networks — it is all in [docs/DEPLOY.md](docs/DEPLOY.md).
 
-### App Android
+### The Android app
 
-Prerequisiti: Node 18+, JDK 17, Android SDK (`ANDROID_HOME`).
+What you need first: Node 18+, JDK 17, the Android SDK (`ANDROID_HOME`).
 
 ```bash
 cd app
-./bootstrap.sh          # crea android/, applica manifest e permessi, npm install
-npm run build:apk       # APK di release, con numero di build incrementato
+./bootstrap.sh          # creates android/, applies the manifest and permissions, npm install
+npm run build:apk       # a release APK, with the build number raised
 adb install -r android/app/build/outputs/apk/release/app-release.apk
 ```
 
-La versione compare **in alto a destra nell'app**; il numero di build, che cambia a ogni
-compilazione, sta nelle impostazioni in fondo. Con installazioni frequenti è facile provare
-a lungo un APK vecchio credendolo nuovo: se segnali un problema, dì anche quel numero.
+The version appears **at the top right in the app**; the build number, which changes at
+every compilation, is at the bottom of the settings. With frequent installations it is
+easy to spend a long time trying an old APK believing it is the new one: if you report a
+problem, say that number as well.
 
-Su alcuni telefoni (Xiaomi, POCO) `adb install` è bloccato finché non abiliti
-*Opzioni sviluppatore → Installazione tramite USB*. In alternativa copia l'APK sul
-telefono e aprilo dal gestore file.
+On some phones (Xiaomi, POCO) `adb install` is blocked until you turn on
+*Developer options → Install via USB*. Failing that, copy the APK to the phone and open it
+from the file manager.
 
-## L'accoppiamento
+## The pairing
 
-Chi crea la coppia riceve **otto cifre**. L'altro le digita. Da lì in poi i due telefoni
-sono accoppiati per sempre e il codice non serve più: buttalo.
+Whoever creates the pair gets **eight digits**. The other one types them in. From then on
+the two phones are paired for good and the code is of no further use: throw it away.
 
-Cosa succede sotto:
+What happens underneath:
 
-1. Dal codice si ricava `pairId`, l'unica cosa che il server vede. Il codice **non gli
-   arriva mai**.
-2. I due telefoni si scambiano chiavi pubbliche e fanno un Diffie-Hellman (X25519),
-   mescolando il codice nella derivazione.
-3. Ognuno manda una prova di possesso della chiave. Se il codice digitato è sbagliato la
-   prova non torna e l'accoppiamento **fallisce dicendolo**, invece di lasciarvi con una
-   connessione muta.
+1. From the code comes `pairId`, the only thing the server sees. The code **never reaches
+   it**.
+2. The two phones exchange public keys and do a Diffie-Hellman (X25519), mixing the code
+   into the derivation.
+3. Each one sends a proof that it holds the key. If the code typed in is wrong the proof
+   does not come back and the pairing **fails saying so**, instead of leaving you with a
+   mute connection.
 
-Dettale il codice **a voce o di persona**, non per messaggio. Dopo l'accoppiamento non
-conta più nulla.
+Read the code out **aloud or in person**, not by message. After the pairing it counts for
+nothing any more.
 
-## L'interfaccia
+## The interface
 
-Cinque pulsanti in un pannello scuro in basso, sempre presenti. Dopo 4 secondi si
-attenuano al 40% per non coprire l'immagine e tornano pieni al primo tocco ovunque;
-restano premibili anche da attenuati.
+Five buttons in a dark panel at the bottom, always there. After 4 seconds they dim to 40%
+so as not to cover the picture, and come back to full at the first touch anywhere; they
+stay pressable while dimmed.
 
-| Pulsante | Cosa fa |
+| Button | What it does |
 |---|---|
-| **Video** | accende/spegne la camera |
-| **Audio** | tocco: muto. **Pressione prolungata**: da dove esce l'audio |
-| **Gira** | frontale ↔ posteriore; spento se il video è off |
-| **Avvisa** | richiama l'altro: vale anche se è già nel canale ma distratto |
-| **Esci** | lascia il canale e chiude la finestra, restando raggiungibile |
+| **Video** | turns the camera on and off |
+| **Audio** | a touch: mute. **A long press**: where the sound comes out |
+| **Turn** | front ↔ back; off when the video is off |
+| **Alert** | calls the other back: it works even when they are in the channel but distracted |
+| **Leave** | leaves the channel and closes the window, staying reachable |
 
-Le uscite audio possibili sono quattro e non di più: **vivavoce**, **telefono**
-(l'altoparlantino), **cuffie**, **Bluetooth**. Compaiono solo quelle collegate, e la
-scelta viene **ricordata** per la volta successiva.
+The possible audio outputs are four and no more: **speaker**, **phone** (the earpiece),
+**headphones**, **Bluetooth**. Only the ones connected appear, and the choice is
+**remembered** for the next time.
 
 ### Video
 
-- **Non si trasmette a chi non guarda**: quando l'app dell'altro sparisce dallo schermo, il
-  tuo telefono smette di spedire il video e riprende appena torna. La camera resta accesa
-  per l'anteprima, ma la banda non se ne va verso uno schermo spento. In
-  Picture-in-Picture il video continua: lì lo stai guardando davvero.
-- Chi è a schermo intero **non viene mai tagliato**: eventuali bande nere sono il prezzo
-  dell'immagine integra.
-- Il riquadrino ha **sempre le proporzioni della sua camera**, mai quadrato. È
-  trascinabile e ridimensionabile: bottoncino d'angolo o due dita. Angoli vivi di
-  proposito — il video è una superficie nativa che nessun bordo arrotondato può ritagliare.
-- **Resta dove lo metti**, anche chiudendo l'app: si ricorda il bordo a cui l'hai
-  appoggiato e la distanza da quello, in percentuale. Così un riquadrino in basso a
-  sinistra ci resta anche quando il video cambia forma e le bande nere si spostano.
-- **Toccandolo i due si scambiano** di posto. La disposizione scelta **sopravvive alle
-  interruzioni**: nulla si sposta quando la rete va e viene.
-- **Pizzico per ingrandire** fino a 5×, trascinamento per spostarti dentro
-  l'ingrandimento, doppio tocco per tornare a schermo pieno.
-- Durante un'interruzione compare un avviso e il riquadro resta al suo posto, vuoto: la
-  disposizione non cambia mai.
+- **Nothing is sent to somebody who is not looking**: when the other person's app leaves
+  their screen, your phone stops sending the video and takes it up again as soon as it
+  comes back. The camera stays on for the preview, but the bandwidth does not go off
+  towards a dark screen. In Picture-in-Picture the video carries on: there it really is
+  being watched.
+- Whoever is full-screen is **never cropped**: any black bars are the price of an
+  untouched picture.
+- The little frame always has **the proportions of its own camera**, never square. It can
+  be dragged and resized: the corner handle or two fingers. Sharp corners on purpose — the
+  video is a native surface that no rounded border can cut into.
+- **It stays where you put it**, even when the app is closed: it remembers which edge you
+  rested it against, and how far from it, as a percentage. That way a little frame at the
+  bottom left stays there even when the video changes shape and the black bars move.
+- **Touching it, the two swap** places. The chosen arrangement **survives the
+  interruptions**: nothing moves when the network comes and goes.
+- **Pinch to enlarge** up to 5×, drag to move about inside the enlargement, double tap to
+  go back to the whole screen.
+- During an interruption a warning appears and the frame stays where it is, empty: the
+  arrangement never changes.
 
-### Qualità del video
+### Video quality
 
-Quattro profili, ognuno con la sua **risoluzione di ripresa** e il suo tetto di banda:
+Four profiles, each with its own **capture resolution** and its own bandwidth ceiling:
 
-| | Ripresa | Tetto |
+| | Capture | Ceiling |
 |---|---|---|
-| Risparmio | 640×360 | 300 kbit/s |
-| Standard | 960×540 | 1,2 Mbit/s |
-| Migliore | 1280×720 | 2,5 Mbit/s |
-| Massima | 1920×1080 | 4 Mbit/s |
+| Saver | 640×360 | 300 kbit/s |
+| Standard | 960×540 | 1.2 Mbit/s |
+| Better | 1280×720 | 2.5 Mbit/s |
+| Best | 1920×1080 | 4 Mbit/s |
 
-La scelta **vale per tutti e due i telefoni**: il profilo agisce sull'encoder di chi
-trasmette, quindi da solo cambierebbe solo quello che vede l'altro. Tenendoli allineati la
-scelta significa "come guardiamo"; se all'altro non va bene, la ricambia lui.
+The choice **holds for both phones**: the profile acts on the encoder of whoever is
+sending, so on its own it would change only what the other one sees. Keeping them in step,
+the choice means "how we watch"; if it does not suit the other person, they change it
+back.
 
-Cambiando profilo **la camera si riapre**, e si vede un attimo di nero. È il prezzo di una
-scoperta fatta misurando: la via indolore sarebbe scalare l'uscita dell'encoder, e su alcuni
-telefoni funziona — su altri la richiesta viene registrata e poi disattesa, e quel telefono
-continua a mandare 1080p con il profilo "risparmio" attivo. La risoluzione di ripresa invece
-nessun encoder può ignorarla.
+Changing profile **reopens the camera**, and a moment of black can be seen. It is the
+price of something found out by measuring: the painless way would be to scale the
+encoder's output, and on some phones that works — on others the request is recorded and
+then disregarded, and that phone goes on sending 1080p with the "saver" profile on. The
+capture resolution, on the other hand, no encoder can ignore.
 
-Se il sensore non ha il formato chiesto ripiega sul più vicino, che può essere 4:3: le
-proporzioni cambiano fra un profilo e l'altro, e il riquadrino si adatta di conseguenza. Il
-log lo dice (`formato non 16:9`).
+If the sensor does not have the format asked for it falls back on the nearest one, which
+may be 4:3: the proportions change from one profile to another, and the little frame
+adapts accordingly. The log says so (`not a 16:9 format`).
 
-Sotto ai pulsanti c'è **cosa sta passando davvero**, nelle due direzioni:
+Under the buttons there is **what is really going through**, in both directions:
 
 ```
-Risoluzione: massima   ↑1920×1080·30fps·460kB/s   ↓960×540·24fps·140kB/s
+Resolution: best   ↑1920×1080·30fps·460kB/s   ↓960×540·24fps·140kB/s
 ```
 
-I tetti non sono obiettivi: se la scena costa poco e la rete regge, due profili diversi
-possono dare lo stesso risultato. Quella riga è l'unico modo di saperlo.
+The ceilings are not targets: if the scene costs little and the network holds, two
+different profiles can give the same result. That line is the only way of knowing.
 
-**VP9** comprime circa un terzo meglio, ma compare selezionabile solo se **entrambi** i
-telefoni hanno l'encoder in hardware — l'app lo chiede al sistema all'avvio. In software
-costerebbe più batteria di quanta banda faccia risparmiare, e le preferenze di codec
-valgono per l'intera sessione: sceglierlo perché lo sa fare uno solo costringerebbe l'altro
-a encodare via software.
+**VP9** compresses about a third better, but it appears as a choice only if **both** phones
+have the encoder in hardware — the app asks the system at start-up. In software it would
+cost more battery than the bandwidth it saves, and codec preferences hold for the whole
+session: choosing it because one of the two can do it would force the other to encode in
+software.
 
-### Quando non c'è video
+### When there is no video
 
-Al posto dell'immagine compare un **volto generato dalla coppia**: un colore e un
-simbolo che restano sempre gli stessi, diversi sui due telefoni. Non è casuale a ogni
-apertura, così diventa riconoscibile come "lui". Se hai scritto un nome vince l'iniziale.
-L'anello diventa verde quando l'altro è nel canale.
+In place of the picture a **face generated by the pair** appears: a colour and a symbol
+that always stay the same, different on the two phones. It is not random at every opening,
+so it becomes recognisable as "them". If you have written a name, its initial wins. The
+ring turns green when the other person is in the channel.
 
-### Tasto Indietro
+### The Back key
 
-Non fa uscire dal canale: mette l'app nella **finestrella Picture-in-Picture**, che resta
-sopra le altre app mentre continui a parlare.
+It does not leave the channel: it puts the app into the **little Picture-in-Picture
+window**, which stays on top of the other apps while you go on talking.
 
-## Restare raggiungibili
+## Staying reachable
 
-Un *foreground service* tiene viva la connessione anche in background e a schermo spento,
-e mostra una **notifica fissa**: non è rimovibile, è Android che la impone in cambio del
-diritto di restare attivi.
+A *foreground service* keeps the connection alive in the background and with the screen
+off, and shows a **standing notification**: it cannot be removed, it is Android that
+imposes it in return for the right to stay active.
 
-Dopo un **riavvio del telefono** la presenza riparte da sola: un ricevitore avvia il
-motore JavaScript senza aprire l'interfaccia. Servono qualche decina di secondi perché il
-sistema dia spazio all'app, quindi un avviso mandato subito dopo il riavvio può ancora
-non trovarla.
+After the **phone reboots** presence starts again by itself: a receiver starts the
+JavaScript engine without opening the interface. It takes some tens of seconds for the
+system to give the app room, so an alert sent right after a reboot may still not find it.
 
-⚠️ **Due impostazioni di sistema sono indispensabili**, e l'app le propone alla fine
-dell'accoppiamento (riapribili da *ingranaggio → Restare raggiungibili*):
+⚠️ **Two system settings are indispensable**, and the app offers them at the end of the
+pairing (they can be opened again from *the cogwheel → Staying reachable*):
 
-1. **Uso senza restrizioni di batteria**. Su Xiaomi, Huawei e Oppo questa è gestita dal
-   produttore e non da Android: la spunta nell'app può restare grigia anche dopo averla
-   impostata correttamente.
-2. **Avvio automatico**. Non è un'autorizzazione di Android ma una schermata proprietaria:
-   l'app può solo aprirtela, e non può leggerne lo stato. Può però accorgersi se ha
-   funzionato: si annota quando riparte da sola dopo un riavvio, e solo allora dà quel punto
-   per risolto. **Senza, dopo un riavvio
-   il telefono non consegna nemmeno l'evento di avvio** e la presenza non riparte.
+1. **Unrestricted battery use**. On Xiaomi, Huawei and Oppo this is handled by the maker
+   and not by Android: the tick in the app can stay grey even after it has been set
+   correctly.
+2. **Auto-start**. It is not an Android permission but a screen of the maker's own: the app
+   can only open it for you, and cannot read its state. It can, though, notice whether it
+   worked: it notes down when it starts by itself after a reboot, and only then does it
+   count that point as settled. **Without it, after a reboot the phone does not even
+   deliver the boot event** and presence does not start again.
 
-## Sicurezza
+## Security
 
-- ✅ Audio/video cifrati end-to-end, anche quando passano dal TURN.
-- ✅ Signaling cifrato e autenticato: il server non può leggerlo né alterarlo.
-- ✅ La chiave è a 256 bit e nasce da uno scambio Diffie-Hellman, non da una password.
-- ✅ Massimo due presenze per coppia; coppie diverse non si vedono fra loro.
-- ⚠️ Il momento delicato è **solo l'accoppiamento**: proteggi il codice mentre lo detti.
-- ⚠️ Il server vede i **metadati**: quali coppie sono connesse e quando, non cosa vi dite.
+- ✅ Audio/video encrypted end-to-end, even when they go through the TURN.
+- ✅ Signalling encrypted and authenticated: the server can neither read nor alter it.
+- ✅ The key is 256 bits and comes from a Diffie-Hellman exchange, not from a password.
+- ✅ At most two presences per pair; different pairs do not see one another.
+- ⚠️ The delicate moment is **the pairing alone**: protect the code while you read it out.
+- ⚠️ The server sees the **metadata**: which pairs are connected and when, not what you
+  say to each other.
 
-Modello di minaccia completo in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+The full threat model is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## Diagnosticare un problema
+## Working out what went wrong
 
-L'app registra tutto quello che serve. Con il telefono collegato:
+The app records everything that is needed. With the phone plugged in:
 
 ```bash
 adb logcat -s ReactNativeJS | grep duetto
 ```
 
-Tre famiglie di righe: `duetto-rtc` per il collegamento audio/video, `duetto-sig` per la
-connessione al server (comprese le cadute, con codice e durata), `duetto-presenza` per
-l'ascolto dopo il riavvio.
+Three families of lines: `duetto-rtc` for the audio/video link, `duetto-sig` for the
+connection to the server (drops included, with the code and how long it lasted),
+`duetto-presence` for the listening after a reboot.
 
-La riga più utile quando qualcosa cade è `percorso:`, che dice da dove sta passando il
-traffico — `LOCALE (stessa rete)`, `DIRETTO attraverso NAT` o `RELAY (passa dal server)`.
-Le tre strade hanno fragilità diverse, e senza saperlo si finisce per incolpare la cosa
-sbagliata.
+The most useful line when something drops is `path:`, which says where the traffic is
+going through — `LOCAL (same network)`, `DIRECT through NAT` or `RELAY (through the
+server)`. The three roads have different weaknesses, and without knowing which one it is
+one ends up blaming the wrong thing.
 
-Con due telefoni collegati serve indicare quale: `adb -s <seriale> logcat …`
+With two phones plugged in you have to say which: `adb -s <serial> logcat …`
 
-Se l'app dovesse chiudersi da sola, lo stack è minificato e va tradotto:
+If the app were to close by itself, the stack is minified and has to be translated:
 
 ```bash
 adb logcat -b crash -d | tail -40 > /tmp/stack.txt
 npx metro-symbolicate app/android/app/build/generated/sourcemaps/react/release/index.android.bundle.map < /tmp/stack.txt
 ```
 
-## Cronologia
+## History
 
-Cosa cambia a ogni versione, dal punto di vista di chi la usa:
+What changes at every version, from the point of view of whoever uses it:
 [CHANGELOG.md](CHANGELOG.md).
 
-La versione si alza a mano in `app/version.json`, quando un insieme di cambiamenti vale la
-pena di essere annunciato: è una decisione, non un contatore. Il numero di build avanza
-invece da solo a ogni compilazione.
+The version is raised by hand in `app/version.json`, when a set of changes is worth
+announcing: it is a decision, not a counter. The build number, on the other hand, goes up
+by itself at every compilation.
 
-## Licenza
+## Licence
 
-Uso personale.
+Personal use.
