@@ -179,6 +179,7 @@ export class ChannelSession {
    * would be noise on the wire.
    */
   private delaySaid: number | null = null;
+  private delaySaidAt = 0;
   private ourDelay: number | null = null;
   /**
    * The other side is looking. It starts at `true` and only comes down
@@ -1146,9 +1147,23 @@ export class ChannelSession {
        * the number breathing.
        */
       this.ourDelay = out.pictureDelay ?? out.voiceDelay ?? null;
+      /**
+       * Said when it moves, and said anyway every so often.
+       *
+       * The first rule alone was not enough, and it showed: switching a
+       * camera off, the wait on the other side comes down in small
+       * steps - five milliseconds at a time - and none of them ever
+       * reached the threshold, so the number on the far screen stayed
+       * where it was, stale, while the thing it measured had changed.
+       * A message every six seconds costs nothing and is never wrong.
+       */
+      const now = Date.now();
       if (this.diagnostics && this.ourDelay !== null
-          && (this.delaySaid === null || Math.abs(this.ourDelay - this.delaySaid) > 20)) {
+          && (this.delaySaid === null
+            || Math.abs(this.ourDelay - this.delaySaid) > 10
+            || now - this.delaySaidAt > 6000)) {
         this.delaySaid = this.ourDelay;
+        this.delaySaidAt = now;
         this.broadcastState();
       }
 
