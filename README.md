@@ -209,10 +209,10 @@ Four profiles, each with its own **capture resolution** and its own bandwidth ce
 
 | | Capture | Ceiling |
 |---|---|---|
-| Saver | 640×360 | 300 kbit/s |
-| Standard | 960×540 | 1.2 Mbit/s |
-| Better | 1280×720 | 2.5 Mbit/s |
-| Best | 1920×1080 | 4 Mbit/s |
+| Saver | 640×360 | 300 kb/s |
+| Standard | 960×540 | 1.2 Mb/s |
+| Better | 1280×720 | 2.5 Mb/s |
+| Best | 1920×1080 | 4 Mb/s |
 
 The choice **holds for both phones**: the profile acts on the encoder of whoever is
 sending, so on its own it would change only what the other one sees. Keeping them in step,
@@ -234,7 +234,7 @@ in both directions:
 
 ```
 Resolution: best   ↑1920×1080·30fps·460kB/s   ↓960×540·24fps·140kB/s
-link: direct   audio 34 kbit/s   latency ↑↓42ms   delay ↑~140 · ↓~120ms
+link: direct   audio 34 kb/s   latency ↑↓42ms   delay ↑~140 · ↓~120ms
 ```
 
 The ceilings are not targets: if the scene costs little and the network holds, two

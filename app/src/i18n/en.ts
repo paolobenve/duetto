@@ -43,13 +43,13 @@ export const en = {
 
   quality: {
     saver: 'Saver',
-    saverNote: 'up to 640×360 · 300 kbit/s ceiling',
+    saverNote: 'up to 640×360 · 300 kb/s ceiling',
     standard: 'Standard',
-    standardNote: 'up to 960×540 · 1.2 Mbit/s ceiling',
+    standardNote: 'up to 960×540 · 1.2 Mb/s ceiling',
     better: 'Better',
-    betterNote: 'up to 1280×720 · 2.5 Mbit/s ceiling',
+    betterNote: 'up to 1280×720 · 2.5 Mb/s ceiling',
     best: 'Best',
-    bestNote: 'up to 1920×1080 · 4 Mbit/s ceiling',
+    bestNote: 'up to 1920×1080 · 4 Mb/s ceiling',
   },
 
   audio: {
@@ -169,7 +169,7 @@ export const en = {
     state: 'state: {state}',
     resolutionLabel: 'Resolution: {quality}',
     linkLabel: 'Link: {path}',
-    audioRate: 'audio {kbps} kbit/s',
+    audioRate: 'audio {kbps} kb/s',
     latency: 'latency ↑↓{ms}ms',
     delay: 'delay ~{ms}ms',
     delayBoth: 'delay ↑~{up} · ↓~{down}ms',
@@ -226,7 +226,7 @@ export const en = {
     vp9OtherPhone: 'The other phone has no VP9 encoder in hardware. Both need it: there is one codec for the whole session.',
     audio: 'Audio',
     richerVoice: 'Richer voice',
-    richerVoiceNote: 'It doubles the audio ceiling, from about 32 to 64 kbit/s: the voice stops sounding like a telephone. It costs 4 kB/s more in each direction. It holds for both phones: what you hear is sent by the other person.\nWith the video on it goes up by itself, on or off: beside half a megabit of video those 4 kB/s go unnoticed, and giving up a good voice to save them would be a poor bargain. It counts again when the video goes off.',
+    richerVoiceNote: 'It doubles the audio ceiling, from about 32 to 64 kb/s: the voice stops sounding like a telephone. It costs 4 kB/s more in each direction. It holds for both phones: what you hear is sent by the other person.\nWith the video on it goes up by itself, on or off: beside half a megabit of video those 4 kB/s go unnoticed, and giving up a good voice to save them would be a poor bargain. It counts again when the video goes off.',
     whenTheyCall: 'When the other person calls you',
     whenTheyCallHint: 'It holds for the calls that reach you. What the other person hears when it is you knocking is their choice, on their phone.',
     vibration: 'Vibration',
