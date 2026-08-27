@@ -275,9 +275,10 @@ really lived on, day after day:
 | Phone | Android | |
 |---|---|---|
 | POCO X8 Pro (Xiaomi) | 16 · HyperOS 3.0 | the maker's own rules: auto-start has to be granted by hand, and the tick for unrestricted battery can stay grey even once it is |
+| Motorola edge 50 fusion | 14 | the phone that showed the volume keys moving the call volume index and changing nothing at all in the ear — which is why, in the channel, those keys are the app's |
 | Motorola moto g82 5G | 13 | |
 
-It is a small sample: two makers, three years of Android apart. On anything else it has
+It is a small sample: two makers and three versions of Android. On anything else it has
 never been switched on, which does not mean it will not work — it means nobody has looked.
 
 ⚠️ **Two system settings are indispensable**, and the app offers them at the end of the
