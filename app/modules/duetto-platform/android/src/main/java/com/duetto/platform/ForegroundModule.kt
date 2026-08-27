@@ -7,7 +7,7 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 
-/** Ponte JS -> ChannelForegroundService. */
+/** Bridge from JS to ChannelForegroundService. */
 class ForegroundModule(private val ctx: ReactApplicationContext) :
     ReactContextBaseJavaModule(ctx) {
 
@@ -35,9 +35,9 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
     }
 
     /**
-     * Da chiamare quando accendi/spegni il video: su Android 14+ usare la
-     * camera fuori dal primo piano richiede che il servizio dichiari anche
-     * il tipo "camera".
+     * To be called when the video goes on or off: on Android 14+ using
+     * the camera outside the foreground requires the service to declare
+     * the "camera" type as well.
      */
     @ReactMethod
     fun setCameraActive(active: Boolean, promise: Promise) {
@@ -47,17 +47,17 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
     }
 
     @ReactMethod
-    fun setText(text: String, nome: String, promise: Promise) {
+    fun setText(text: String, name: String, promise: Promise) {
         sendToService(promise) {
             putExtra(ChannelForegroundService.EXTRA_TEXT, text)
-            putExtra(ChannelForegroundService.EXTRA_NOME, nome)
+            putExtra(ChannelForegroundService.EXTRA_NAME, name)
         }
     }
 
-    /** Toglie la notizia silenziosa quando non è più vera. */
+    /** Takes the quiet note away when it is not true any more. */
     @ReactMethod
-    fun togliNota(promise: Promise) {
-        Notifier.togliNota(ctx)
+    fun clearNote(promise: Promise) {
+        Notifier.clearNote(ctx)
         promise.resolve(true)
     }
 
@@ -72,19 +72,19 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
     }
 
     /**
-     * Passa la mano all'ascolto senza interfaccia.
+     * Hands over to listening without an interface.
      *
-     * Si chiama quando l'interfaccia sta per sparire senza che nessuno
-     * abbia chiesto di andarsene: da quel momento il motore JavaScript
-     * dell'app non c'e' piu', e con lui se ne andrebbe la connessione.
-     * PresenceService ne avvia uno senza finestra, che la riapre.
+     * It is called when the interface is about to disappear without
+     * anybody having asked to leave: from that moment the app's
+     * JavaScript engine is gone, and the connection would go with it.
+     * PresenceService starts one with no window, which opens it again.
      *
-     * Con un po' di ritardo: il contesto vecchio deve finire di
-     * smontarsi, altrimenti il compito senza interfaccia nascerebbe
-     * dentro a quello che sta morendo.
+     * With a little delay: the old context has to finish taking itself
+     * apart, otherwise the task without an interface would be born inside
+     * the one that is dying.
      */
     @ReactMethod
-    fun riprendiPresenza(promise: Promise) {
+    fun resumePresence(promise: Promise) {
         if (!PresenceService.canStart()) {
             promise.resolve(false)
             return
@@ -96,13 +96,13 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
                     Intent(ctx, PresenceService::class.java),
                 )
             } catch (e: Exception) {
-                android.util.Log.w("Duetto", "presenza non ripresa: ${e.message}")
+                android.util.Log.w("Duetto", "presence not resumed: ${e.message}")
             }
         }, 1500)
         promise.resolve(true)
     }
 
-    // --- Impostazioni da cui dipende il restare raggiungibili ---------
+    // --- The settings that staying reachable depends on ---------------
 
     @ReactMethod
     fun isBatteryUnrestricted(promise: Promise) {
@@ -115,12 +115,11 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
     }
 
     /**
-     * Quando l'app è ripartita da sola per l'ultima volta, in
-     * millisecondi; 0 se non è mai successo.
+     * When the app last started up by itself, in milliseconds; 0 if it
+     * never happened.
      *
-     * È l'unico modo di sapere se l'avvio automatico è concesso:
-     * l'autorizzazione in sé non è leggibile da nessuna app, ma il suo
-     * effetto sì.
+     * It is the only way to know whether auto-start is granted: the
+     * permission itself cannot be read by any app, but its effect can.
      */
     @ReactMethod
     fun lastAutoStart(promise: Promise) {
@@ -128,7 +127,7 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
         promise.resolve(p.getLong(BootReceiver.LAST_AUTO_START, 0L).toDouble())
     }
 
-    /** Da quanto è acceso il telefono: serve a datare l'ultimo riavvio. */
+    /** How long the phone has been on: it dates the last reboot. */
     @ReactMethod
     fun uptimeMs(promise: Promise) {
         promise.resolve(android.os.SystemClock.elapsedRealtime().toDouble())
@@ -149,29 +148,29 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
         promise.resolve(StartupHelper.openAppSettings(ctx, currentActivity))
     }
 
-    /** Notizia da leggere con comodo: non suona e non vibra. */
+    /** News to be read at leisure: it does not sound and does not buzz. */
     @ReactMethod
-    fun nota(nome: String, text: String, promise: Promise) {
+    fun note(name: String, text: String, promise: Promise) {
         try {
-            Notifier.mostraNota(ctx, nome, text)
+            Notifier.showNote(ctx, name, text)
             promise.resolve(true)
         } catch (e: Exception) {
             promise.reject("notify_error", e)
         }
     }
 
-    /** Avviso da mostrare quando l'app non è in primo piano. */
+    /** An alert to show when the app is not in the foreground. */
     @ReactMethod
-    fun notify(nome: String, text: String, promise: Promise) {
+    fun notify(name: String, text: String, promise: Promise) {
         try {
-            Notifier.show(ctx, nome, text)
+            Notifier.show(ctx, name, text)
             promise.resolve(true)
         } catch (e: Exception) {
             promise.reject("notify_error", e)
         }
     }
 
-    /** Toglie l'avviso, quando l'utente è rientrato nell'app. */
+    /** Takes the alert away, when the user has come back into the app. */
     @ReactMethod
     fun clearNotification(promise: Promise) {
         Notifier.cancel(ctx)

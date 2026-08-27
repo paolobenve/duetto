@@ -55,20 +55,20 @@ declare module 'duetto-platform' {
     reportNotCarrying(): Promise<boolean>;
   };
 
-  /** Foreground service Android: tiene viva la presenza nel canale. */
+  /** Android foreground service: keeps presence in the channel alive. */
   export const Foreground: {
     start(text?: string, withCamera?: boolean): Promise<boolean>;
     setCameraActive(active: boolean): Promise<boolean>;
-    /** testo della notifica fissa, e nome del collegamento da metterci davanti */
-    setText(text: string, nome?: string): Promise<boolean>;
+    /** text of the standing notification, and the connection name to put in front */
+    setText(text: string, name?: string): Promise<boolean>;
     stop(): Promise<boolean>;
-    notify(nome: string, text: string): Promise<boolean>;
-    /** notizia silenziosa: non suona e non vibra */
-    nota(nome: string, text: string): Promise<boolean>;
-    /** toglie la notizia quando non è più vera */
-    togliNota(): Promise<boolean>;
-    /** avvia l'ascolto senza interfaccia, quando l'app sta per sparire */
-    riprendiPresenza(): Promise<boolean>;
+    notify(name: string, text: string): Promise<boolean>;
+    /** quiet news: it does not sound and does not buzz */
+    note(name: string, text: string): Promise<boolean>;
+    /** takes the news away when it is not true any more */
+    clearNote(): Promise<boolean>;
+    /** starts listening without an interface, when the app is about to go */
+    resumePresence(): Promise<boolean>;
     clearNotification(): Promise<boolean>;
     isBatteryUnrestricted(): Promise<boolean>;
     requestBatteryUnrestricted(): Promise<boolean>;

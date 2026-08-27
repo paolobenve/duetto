@@ -296,7 +296,7 @@ export async function startListening(): Promise<boolean> {
           return;
         }
         if (msg.kind === 'death') {
-          Foreground.nota(
+          Foreground.note(
             connectionName,
             deathStory(
               Number(msg.when), String(msg.cause), name, Number(msg.back) || 0,

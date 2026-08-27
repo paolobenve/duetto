@@ -1204,7 +1204,7 @@ export default function App() {
          * after an exit they had chosen. True, and misleading.
          */
         interfaceInCharge(false, inChannelRef.current);
-        Foreground.riprendiPresenza().catch(() => { /* noop */ });
+        Foreground.resumePresence().catch(() => { /* noop */ });
       }
     };
   }, []);
@@ -1303,7 +1303,7 @@ export default function App() {
       // In the shade only: inside the app the same sentence would
       // appear twice, once in the card and once in the notification
       // behind it.
-      Foreground.nota(alertNameRef.current, t('news.reachableAgain', { who, at }))
+      Foreground.note(alertNameRef.current, t('news.reachableAgain', { who, at }))
         .catch(() => {});
     }, TELLING_DELAY_MS);
   }, [peerPresent, status, forgetReturn]);
@@ -1318,7 +1318,7 @@ export default function App() {
    */
   useEffect(() => {
     if (peerPresent) return;
-    Foreground.togliNota().catch(() => { /* noop */ });
+    Foreground.clearNote().catch(() => { /* noop */ });
   }, [peerPresent]);
 
   const readOwnDeath = useCallback(async () => {
@@ -1823,7 +1823,7 @@ export default function App() {
                 Number(msg.when), String(msg.cause), shownNameRef.current,
                 Number(msg.back) || 0,
               );
-              Foreground.nota(alertNameRef.current, story).catch(() => {});
+              Foreground.note(alertNameRef.current, story).catch(() => {});
               setNotice(story);
               Journal.mark(`peer-death:${msg.cause}`).catch(() => {});
               return;

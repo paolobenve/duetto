@@ -17,7 +17,7 @@ class BootReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         // The names in storage have changed: this is the first stop.
-        Ponte.migra(context)
+        Bridge.migrate(context)
         val action = intent.action ?: return
         if (action != Intent.ACTION_BOOT_COMPLETED &&
             action != Intent.ACTION_LOCKED_BOOT_COMPLETED &&

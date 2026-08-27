@@ -40,89 +40,93 @@ function call(mod, name, ...args) {
 const unavailable = () => Promise.resolve(false);
 
 /**
- * Foreground service Android.
+ * Android's foreground service.
  *
- * Senza questo, mettendo l'app in background o spegnendo lo schermo
- * Android sospende il processo: la connessione cadrebbe e usciresti dal
- * canale. Il tipo "microphone" è anche l'unico modo consentito da
- * Android 14+ per usare il microfono fuori dal primo piano.
+ * Without this, putting the app in the background or turning the screen
+ * off makes Android suspend the process: the connection would drop and
+ * you would fall out of the channel. The "microphone" type is also the
+ * only way Android 14+ allows the microphone to be used outside the
+ * foreground.
  *
- * Il prezzo è la notifica fissa nella barra di stato: obbligatoria,
- * è Android che la impone come contropartita.
+ * The price is the standing notification in the status bar: compulsory,
+ * it is Android that imposes it in return.
  */
 export const Foreground = isAndroid && NativeForeground
   ? {
-      /** Avvia il servizio. `withCamera` aggiunge il tipo camera. */
-      start: (text = 'In ascolto', withCamera = false) =>
+      /** Starts the service. `withCamera` adds the camera type. */
+      start: (text = 'Listening', withCamera = false) =>
         call(NativeForeground, 'start', String(text), !!withCamera),
 
       /**
-       * Da chiamare quando accendi/spegni il video: su Android 14+ usare
-       * la camera fuori dal primo piano richiede che il servizio
-       * dichiari anche il tipo "camera".
+       * To be called when the video goes on or off: on Android 14+, using
+       * the camera outside the foreground requires the service to declare
+       * the "camera" type as well.
        */
       setCameraActive: (active) =>
         call(NativeForeground, 'setCameraActive', !!active),
 
       /**
-       * Aggiorna la notifica fissa: testo, e nome del collegamento.
+       * Updates the standing notification: the text, and the name of the
+       * connection.
        *
-       * Il nome va in testa al testo, in corsivo, e lo compone Android:
-       * nel titolo non si vede quando la notifica è ripiegata, ed è
-       * proprio lì che serve sapere in quale dei collegamenti si è.
+       * The name goes in front of the text, in italics, and Android puts
+       * it together: in the title it cannot be seen when the notification
+       * is folded, and that is exactly where one needs to know which of
+       * the connections one is in.
        */
-      setText: (text, nome) =>
-        call(NativeForeground, 'setText', String(text), String(nome || '')),
+      setText: (text, name) =>
+        call(NativeForeground, 'setText', String(text), String(name || '')),
 
-      /** Ferma il servizio e rilascia il wake lock. */
+      /** Stops the service and releases the wake lock. */
       stop: () => call(NativeForeground, 'stop'),
 
-      /** Avviso da mostrare quando l'app non è in primo piano. */
-      notify: (nome, text) =>
-        call(NativeForeground, 'notify', String(nome || ''), String(text)),
+      /** An alert to show when the app is not in the foreground. */
+      notify: (name, text) =>
+        call(NativeForeground, 'notify', String(name || ''), String(text)),
 
-      /** Notizia da leggere con comodo: non suona e non vibra. */
-      nota: (nome, text) =>
-        call(NativeForeground, 'nota', String(nome || ''), String(text)),
+      /** News to be read at leisure: it does not sound and does not buzz. */
+      note: (name, text) =>
+        call(NativeForeground, 'note', String(name || ''), String(text)),
 
-      /** Toglie la notizia, quando quello che diceva non vale più. */
-      togliNota: () => call(NativeForeground, 'togliNota'),
+      /** Takes the news away, when what it said does not hold any more. */
+      clearNote: () => call(NativeForeground, 'clearNote'),
 
       /**
-       * Passa la mano all'ascolto senza interfaccia: si chiama quando
-       * l'interfaccia sta per sparire senza che nessuno l'abbia chiesto.
+       * Hands over to listening without an interface: it is called when
+       * the interface is about to disappear without anybody having asked.
        */
-      riprendiPresenza: () => call(NativeForeground, 'riprendiPresenza'),
+      resumePresence: () => call(NativeForeground, 'resumePresence'),
 
-      /** Toglie l'avviso, quando si rientra nell'app. */
+      /** Takes the alert away, when one comes back into the app. */
       clearNotification: () => call(NativeForeground, 'clearNotification'),
 
-      /** Vero se l'app può restare attiva senza limiti di batteria. */
+      /** True if the app may stay active with no battery limits. */
       isBatteryUnrestricted: () => call(NativeForeground, 'isBatteryUnrestricted'),
 
-      /** Finestra di sistema per concederlo: una spunta e basta. */
+      /** The system dialog for granting it: one tick and that is all. */
       requestBatteryUnrestricted: () =>
         call(NativeForeground, 'requestBatteryUnrestricted'),
 
       /**
-       * Quando l'app è ripartita da sola dopo un riavvio (ms), 0 se mai.
+       * When the app last started up by itself after a reboot (ms), 0 if
+       * never.
        *
-       * L'autorizzazione all'avvio automatico non è leggibile da nessuna
-       * app: si può però sapere se ha funzionato, che è la cosa che
-       * interessa davvero.
+       * The auto-start permission cannot be read by any app: one can know
+       * whether it worked, though, which is the thing that really
+       * matters.
        */
       lastAutoStart: () => call(NativeForeground, 'lastAutoStart'),
 
-      /** Da quanto è acceso il telefono, per datare l'ultimo riavvio. */
+      /** How long the phone has been on, to date the last reboot. */
       uptimeMs: () => call(NativeForeground, 'uptimeMs'),
 
-      /** Vero se questo telefono ha una schermata di avvio automatico. */
+      /** True if this phone has an auto-start screen. */
       hasAutoStartScreen: () => call(NativeForeground, 'hasAutoStartScreen'),
 
-      /** Apre quella schermata: non è concedibile da codice. */
+      /** Opens that screen: it cannot be granted from code. */
       openAutoStartSettings: () => call(NativeForeground, 'openAutoStartSettings'),
 
-      /** Ripiego: la scheda dell'app nelle impostazioni di sistema. */
+      /** Fallback: the app's page in the system settings. */
       openAppSettings: () => call(NativeForeground, 'openAppSettings'),
     }
   : {
@@ -131,9 +135,9 @@ export const Foreground = isAndroid && NativeForeground
       setText: unavailable,
       stop: unavailable,
       notify: unavailable,
-      nota: unavailable,
-      togliNota: unavailable,
-      riprendiPresenza: unavailable,
+      note: unavailable,
+      clearNote: unavailable,
+      resumePresence: unavailable,
       clearNotification: unavailable,
       isBatteryUnrestricted: unavailable,
       requestBatteryUnrestricted: unavailable,

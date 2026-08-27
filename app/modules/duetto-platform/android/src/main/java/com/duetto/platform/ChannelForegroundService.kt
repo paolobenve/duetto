@@ -18,95 +18,99 @@ import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 
 /**
- * Tiene vivo il processo mentre sei nel canale.
+ * Keeps the process alive while you are in the channel.
  *
- * Android sospende le app in background e a schermo spento: senza un
- * foreground service la connessione WebRTC cadrebbe dopo pochi secondi.
- * Da Android 14 il tipo "microphone" è anche l'unico modo consentito
- * per continuare a registrare audio fuori dal primo piano.
+ * Android suspends apps in the background and with the screen off:
+ * without a foreground service the WebRTC connection would drop within
+ * seconds. From Android 14 the "microphone" type is also the only way
+ * allowed to go on recording audio outside the foreground.
  *
- * La notifica fissa nella barra di stato non è un vezzo: è Android che
- * la impone come contropartita, e non è rimovibile.
+ * The standing notification in the status bar is not a whim: it is
+ * Android that imposes it in return, and it cannot be removed.
  */
 class ChannelForegroundService : Service() {
 
     private var wakeLock: PowerManager.WakeLock? = null
-    private var currentText: String = "Sei nel canale"
+    private var currentText: String = Strings.inChannel
+
     /**
-     * Il nome del collegamento in uso, che va in testa al testo.
+     * The name of the connection in use, which goes in front of the text.
      *
-     * Lo manda l'app, perché è lei a saperlo. Nel testo e non nel
-     * titolo: la notifica ripiegata, su parecchi telefoni, il titolo non
-     * lo mostra, e "Sei nel canale" senza nome non dice in quale.
+     * The app sends it, because the app is the one that knows it. In the
+     * text and not in the title: the folded notification, on a good many
+     * phones, does not show the title, and "You are in the channel"
+     * without a name does not say which one.
      */
-    private var currentNome: String? = null
+    private var currentName: String? = null
     private var cameraActive: Boolean = false
 
     /**
-     * Il diario dei consumi si scrive da qui.
+     * The consumption journal is written from here.
      *
-     * E' il servizio a essere vivo per tutto il tempo che interessa
-     * misurare - anche a schermo spento e con l'app in secondo piano -
-     * mentre il lato JavaScript puo' essere fermo. Con il wake lock che
-     * teniamo, questa attesa scatta puntuale; se un domani il wake lock
-     * andra' via, servira' una sveglia di sistema al suo posto.
+     * It is the service that is alive for the whole time worth measuring
+     * - with the screen off and the app in the background too - while the
+     * JavaScript side may be stopped. With the wake lock we hold, this
+     * wait fires on time; if one day the wake lock went away, a system
+     * alarm would be needed in its place.
      */
-    private val orologio = Handler(Looper.getMainLooper())
-    private var diarioAvviato = false
+    private val clock = Handler(Looper.getMainLooper())
+    private var journalStarted = false
 
     /**
-     * Non si riprogramma da sé: ci pensa Diario a ogni riga scritta, da
-     * qualunque parte venga. Facendolo anche qui, una riga fuori tempo
-     * ne lascerebbe due in coda e il diario si infittirebbe da solo.
+     * It does not reschedule itself: the Journal sees to that at every
+     * line written, wherever it comes from. Doing it here as well, a line
+     * written off the beat would leave two waits queued and the journal
+     * would thicken by itself.
      */
-    private val scriviDiario = Runnable { Journal.sample(applicationContext) }
+    private val writeJournal = Runnable { Journal.sample(applicationContext) }
 
-    private fun riprogrammaDiario() {
-        orologio.removeCallbacks(scriviDiario)
-        orologio.postDelayed(scriviDiario, INTERVALLO_DIARIO_MS)
+    private fun rescheduleJournal() {
+        clock.removeCallbacks(writeJournal)
+        clock.postDelayed(writeJournal, JOURNAL_INTERVAL_MS)
     }
 
     companion object {
         const val CHANNEL_ID = "duetto_presence"
         const val NOTIFICATION_ID = 4711
         const val EXTRA_TEXT = "text"
-        const val EXTRA_NOME = "nome"
+        const val EXTRA_NAME = "name"
         const val EXTRA_CAMERA = "camera"
 
-        // Rete di sicurezza: se qualcosa va storto e non fermiamo il
-        // servizio, il wake lock non resta appeso per sempre.
+        // A safety net: if something goes wrong and we do not stop the
+        // service, the wake lock does not hang around for ever.
         private const val WAKELOCK_TIMEOUT_MS = 8L * 60L * 60L * 1000L
 
         /**
-         * Ogni quanto si scrive una riga di diario.
+         * How often a journal line is written.
          *
-         * Cinque minuti sono abbastanza fitti da vedere la differenza fra
-         * un'ora in conversazione e una di attesa, e abbastanza radi da
-         * non essere loro stessi un consumo: la riga costa una lettura di
-         * contatori e una scrittura di un centinaio di byte.
+         * Five minutes is close enough to see the difference between an
+         * hour in conversation and an hour of waiting, and far enough
+         * apart not to be a consumption of its own: the line costs one
+         * read of some counters and a write of a hundred bytes or so.
          */
-        private const val INTERVALLO_DIARIO_MS = 5L * 60L * 1000L
+        private const val JOURNAL_INTERVAL_MS = 5L * 60L * 1000L
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     /**
-     * Attaccare e staccare il cavo sono i confini più importanti del
-     * diario: in carica la batteria sale, e qualunque conto sul consumo
-     * fatto a cavallo di quel momento è privo di senso. Segnandoli con
-     * una riga, chi legge può buttare via i periodi in carica interi
-     * invece di trovarsi differenze positive in mezzo ai numeri.
+     * Plugging the cable in and pulling it out are the journal's most
+     * important boundaries: while charging the battery goes up, and any
+     * account of consumption made across that moment is meaningless.
+     * Marking them with a line, whoever reads can throw whole charging
+     * periods away instead of finding positive differences in the middle
+     * of the numbers.
      */
-    private val cavo = object : BroadcastReceiver() {
+    private val charger = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
                 Intent.ACTION_POWER_CONNECTED ->
                     Journal.sample(applicationContext, "charger-in")
                 Intent.ACTION_POWER_DISCONNECTED ->
                     Journal.sample(applicationContext, "charger-out")
-                // Lo schermo non fa scrivere una riga: si accende e si
-                // spegne troppo spesso, e ogni riga costa. Si tiene solo
-                // il conto dei secondi, che finisce nella riga dopo.
+                // The screen does not make a line get written: it goes on
+                // and off far too often, and every line costs. Only the
+                // count of seconds is kept, which ends up on the next line.
                 Intent.ACTION_SCREEN_ON -> Journal.screenChanged(true)
                 Intent.ACTION_SCREEN_OFF -> Journal.screenChanged(false)
             }
@@ -116,61 +120,61 @@ class ChannelForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        val filtro = IntentFilter().apply {
+        val filter = IntentFilter().apply {
             addAction(Intent.ACTION_POWER_CONNECTED)
             addAction(Intent.ACTION_POWER_DISCONNECTED)
             addAction(Intent.ACTION_SCREEN_ON)
             addAction(Intent.ACTION_SCREEN_OFF)
         }
-        // Registrato a runtime e non nel manifest: da Android 8 questi
-        // annunci non arrivano più ai ricevitori dichiarati nel manifest.
+        // Registered at runtime and not in the manifest: from Android 8
+        // these announcements no longer reach receivers declared there.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(cavo, filtro, RECEIVER_NOT_EXPORTED)
+            registerReceiver(charger, filter, RECEIVER_NOT_EXPORTED)
         } else {
-            registerReceiver(cavo, filtro)
+            registerReceiver(charger, filter)
         }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Intento nullo = ci ha rimessi in piedi il sistema, dopo averci
-        // uccisi per fare posto ad altro (START_STICKY). Il servizio
-        // torna, ma il motore JavaScript se n'e' andato insieme al
-        // processo: da solo, questo servizio saprebbe soltanto mostrare
-        // una notifica che dichiara una presenza inesistente, che e'
-        // peggio di niente.
+        // A null intent = the system put us back on our feet, after
+        // killing us to make room for something else (START_STICKY). The
+        // service comes back, but the JavaScript engine went away with the
+        // process: on its own, this service would only know how to show a
+        // notification declaring a presence that does not exist, which is
+        // worse than nothing.
         //
-        // La strada per rimettere in piedi la connessione esiste gia' ed
-        // e' quella del riavvio del telefono: si passa la mano a
-        // PresenceService, che avvia il JavaScript senza interfaccia. La
-        // notifica e' la stessa - stesso canale, stesso numero - quindi
-        // il passaggio non si vede.
+        // The road to putting the connection back up already exists and it
+        // is the one taken after a reboot: it hands over to
+        // PresenceService, which starts the JavaScript with no interface.
+        // The notification is the same - same channel, same number - so
+        // the changeover cannot be seen.
         if (intent == null) {
-            // Ci ha rimessi in piedi il sistema: siamo in secondo piano, e
-            // il microfono da qui non si puo' chiedere.
-            goForeground(puoUsareIlMicrofono = false)
+            // The system put us back on our feet: we are in the
+            // background, and the microphone cannot be asked for here.
+            goForeground(mayUseMicrophone = false)
             if (PresenceService.canStart()) {
                 try {
                     androidx.core.content.ContextCompat.startForegroundService(
                         this,
                         Intent(this, PresenceService::class.java),
                     )
-                    android.util.Log.i("Duetto", "risvegliati dal sistema: presenza riavviata")
+                    android.util.Log.i("Duetto", "woken by the system: presence restarted")
                 } catch (e: Exception) {
-                    android.util.Log.w("Duetto", "risveglio non riuscito: ${e.message}")
+                    android.util.Log.w("Duetto", "waking did not work: ${e.message}")
                 }
             }
-            // Il posto e' suo: restare in due significherebbe due servizi
-            // e un wake lock di troppo.
+            // The place is theirs: staying on in twos would mean two
+            // services and one wake lock too many.
             stopSelf()
             return START_NOT_STICKY
         }
 
         intent.getStringExtra(EXTRA_TEXT)?.let { currentText = it }
-        intent.getStringExtra(EXTRA_NOME)?.let {
-            currentNome = it
-            // Anche su disco: dopo un riavvio la notifica di presenza
-            // nasce prima che l'app possa dire come si chiama.
-            Notifier.ricordaNome(this, it)
+        intent.getStringExtra(EXTRA_NAME)?.let {
+            currentName = it
+            // On disk as well: after a reboot the presence notification is
+            // born before the app can say what it is called.
+            Notifier.rememberName(this, it)
         }
         if (intent.hasExtra(EXTRA_CAMERA)) {
             cameraActive = intent.getBooleanExtra(EXTRA_CAMERA, false)
@@ -178,83 +182,83 @@ class ChannelForegroundService : Service() {
         goForeground()
         acquireWakeLock()
 
-        // onStartCommand arriva a ogni cambio di testo della notifica:
-        // senza questa guardia si accumulerebbe un campionatore per ogni
-        // chiamata, e il diario si riempirebbe di righe gemelle.
-        if (!diarioAvviato) {
-            diarioAvviato = true
-            // Prima di ogni lettura: i nomi in memoria sono cambiati.
-            Ponte.migra(applicationContext)
-            Journal.onWrite { riprogrammaDiario() }
-            // Come e' finita l'ultima volta: se il processo di prima e'
-            // morto, qui si scopre perche'.
+        // onStartCommand arrives at every change of the notification's
+        // text: without this guard a sampler would pile up for every call,
+        // and the journal would fill with twin lines.
+        if (!journalStarted) {
+            journalStarted = true
+            // Before any reading: the names in storage have changed.
+            Bridge.migrate(applicationContext)
+            Journal.onWrite { rescheduleJournal() }
+            // How it ended last time: if the process before died, here is
+            // where we find out why.
             Journal.recordExits(applicationContext)
-            // La riga d'avvio riprogramma già l'attesa da sé.
+            // The start line reschedules the wait by itself.
             Journal.sample(applicationContext, "start")
         }
 
-        // Se Android ci uccide per memoria, ci fa ripartire.
+        // If Android kills us for memory, it starts us again.
         return START_STICKY
     }
 
     override fun onDestroy() {
-        try { unregisterReceiver(cavo) } catch (_: Exception) { /* mai registrato */ }
-        // Prima si stacca la riprogrammazione, poi si scrive l'ultima
-        // riga: se no quella rimetterebbe in coda un'attesa che non ha
-        // più nessuno ad aspettarla.
+        try { unregisterReceiver(charger) } catch (_: Exception) { /* never registered */ }
+        // First the rescheduling is unhooked, then the last line is
+        // written: otherwise that line would queue a wait nobody is left
+        // to wait for.
         Journal.onWrite(null)
-        orologio.removeCallbacks(scriviDiario)
-        diarioAvviato = false
+        clock.removeCallbacks(writeJournal)
+        journalStarted = false
         Journal.sample(applicationContext, "exit")
         releaseWakeLock()
         super.onDestroy()
     }
 
     /**
-     * Scartare l'app dai recenti NON spegne la presenza.
+     * Swiping the app out of the recents does NOT stop presence.
      *
-     * Prima si', e sembrava ragionevole: chi butta via l'app dai recenti
-     * vuole chiuderla. Ma il diario di due telefoni diversi racconta
-     * un'altra storia: dopo ogni "uscita" il processo restava li' senza
-     * servizio, e mezz'ora dopo Android lo riciclava - `era=in-cache`,
-     * "[TOO MANY EMPTY PROCS]", "memoria-finita". Chi aveva scartato
-     * l'app per riordinare i recenti si ritrovava irraggiungibile senza
-     * averlo chiesto, e senza modo di accorgersene.
+     * It used to, and that seemed reasonable: whoever throws the app out
+     * of the recents wants to close it. But the journals of two different
+     * phones tell another story: after every "exit" the process stayed
+     * there with no service, and half an hour later Android recycled it -
+     * `was=cached`, "[TOO MANY EMPTY PROCS]", "out-of-memory". Whoever had
+     * swiped the app away to tidy the recents up found themselves
+     * unreachable without having asked for it, and with no way of
+     * noticing.
      *
-     * Il gesto e' ambiguo, e ora non serve piu' a nulla: per non essere
-     * raggiungibili c'e' "esci e renditi non disponibile", che lo dice
-     * con parole sue. Non c'era, quando questa scorciatoia e' stata
-     * scritta.
+     * The gesture is ambiguous, and it is of no use any more: to be
+     * unreachable there is "leave and become unavailable", which says so
+     * in so many words. It was not there when this shortcut was written.
      *
-     * Restando in piedi, il servizio tiene su anche il processo: e'
-     * esattamente cio' che gli si chiede.
+     * By staying on its feet, the service holds the process up too: which
+     * is exactly what it is asked to do.
      */
     override fun onTaskRemoved(rootIntent: Intent?) {
         Journal.sample(applicationContext, "recents-cleared")
-        // Il motore JavaScript se ne va con l'activity: senza qualcuno
-        // che riprenda la connessione, questo servizio resterebbe a
-        // mostrare una presenza che non c'e' piu'. Si passa la mano a
-        // PresenceService, la stessa strada del riavvio del telefono.
+        // The JavaScript engine goes with the activity: with nobody to
+        // take the connection back up, this service would be left showing
+        // a presence that is not there any more. It hands over to
+        // PresenceService, the same road as a reboot.
         //
-        // Con un po' di ritardo: prima deve finire di smontarsi il
-        // contesto vecchio, altrimenti il compito senza interfaccia
-        // nascerebbe dentro a quello che sta morendo.
+        // With a little delay: the old context has to finish taking itself
+        // apart first, otherwise the task without an interface would be
+        // born inside the one that is dying.
         if (PresenceService.canStart()) {
-            orologio.postDelayed({
+            clock.postDelayed({
                 try {
                     androidx.core.content.ContextCompat.startForegroundService(
                         applicationContext,
                         Intent(applicationContext, PresenceService::class.java),
                     )
                 } catch (e: Exception) {
-                    android.util.Log.w("Duetto", "recenti: presenza non ripresa: ${e.message}")
+                    android.util.Log.w("Duetto", "recents: presence not resumed: ${e.message}")
                 }
             }, 2500)
         }
         super.onTaskRemoved(rootIntent)
     }
 
-    // --- notifica -----------------------------------------------------------
+    // --- notification -------------------------------------------------------
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -263,11 +267,11 @@ class ChannelForegroundService : Service() {
 
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Presenza nel canale",
-            // LOW: niente suono, la notifica è solo informativa
+            Strings.presenceChannel,
+            // LOW: no sound, the notification is only there to inform
             NotificationManager.IMPORTANCE_LOW,
         ).apply {
-            description = "Mostra che sei collegato al canale Duetto"
+            description = Strings.presenceChannelWhat
             setShowBadge(false)
             enableVibration(false)
         }
@@ -287,20 +291,19 @@ class ChannelForegroundService : Service() {
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Duetto")
-            .setContentText(Notifier.conNome(currentNome ?: Notifier.nome(this), currentText))
-            .setSmallIcon(R.drawable.ic_notifica)
+            .setContentText(Notifier.withName(currentName ?: Notifier.name(this), currentText))
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(pending)
-            // Niente `setOngoing`: e' quella dichiarazione a rendere la
-            // notifica non cancellabile, e su Android 13 e successivi non
-            // serve piu' a niente. Da li' in poi il sistema lascia
-            // scacciare la notifica di un servizio in primo piano - il
-            // servizio continua a girare e si resta raggiungibili lo
-            // stesso - mentre prima della 13 e' il sistema stesso a
-            // tenerla ferma, con o senza questa riga. Toglierla non
-            // cambia niente sui telefoni vecchi e restituisce la scelta
-            // su quelli nuovi. Ricompare al primo cambiamento di stato,
-            // perche' un servizio in primo piano una notifica deve
-            // averla.
+            // No `setOngoing`: it is that declaration that makes the
+            // notification impossible to dismiss, and on Android 13 and
+            // later it is of no use any more. From there on the system
+            // lets a foreground service's notification be swiped away -
+            // the service goes on running and one stays reachable all the
+            // same - while before 13 it is the system itself that holds it
+            // in place, with or without this line. Taking it away changes
+            // nothing on old phones and gives the choice back on new ones.
+            // It comes back at the first change of state, because a
+            // foreground service has to have a notification.
             .setSilent(true)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -309,23 +312,24 @@ class ChannelForegroundService : Service() {
     }
 
     /**
-     * @param puoUsareIlMicrofono false quando non siamo noi ad avviarci
+     * @param mayUseMicrophone false when we are not the ones starting up
      *
-     * Il tipo "microfono" da Android 14 si puo' chiedere solo stando in
-     * primo piano: chiederlo da fermi - come quando e' il SISTEMA a
-     * rimetterci in piedi dopo averci uccisi - fa lanciare un'eccezione
-     * e morire l'app. In quel caso si parte senza tipo: la notifica c'e'
-     * lo stesso, e chi ha davvero bisogno del microfono - l'ingresso nel
-     * canale - lo chiede da capo quando l'utente e' davanti allo schermo.
+     * From Android 14 the "microphone" type can only be asked for while
+     * in the foreground: asking for it from a standstill - as when the
+     * SYSTEM puts us back on our feet after killing us - throws an
+     * exception and kills the app. In that case we start with no type: the
+     * notification is there all the same, and whoever really needs the
+     * microphone - entering the channel - asks for it afresh when the user
+     * is in front of the screen.
      *
-     * E in ogni caso non si muore: se il sistema rifiuta, si scrive nel
-     * diario e ci si ferma. Un'app che va in errore non lascia nemmeno il
-     * modo di capire cos'e' successo.
+     * And in any case nobody dies: if the system refuses, it is written in
+     * the journal and we stop. An app that crashes does not even leave a
+     * way of understanding what happened.
      */
-    private fun goForeground(puoUsareIlMicrofono: Boolean = true) {
+    private fun goForeground(mayUseMicrophone: Boolean = true) {
         val notification = buildNotification()
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && puoUsareIlMicrofono) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && mayUseMicrophone) {
                 var type = ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
                 if (cameraActive) {
                     type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
@@ -341,7 +345,7 @@ class ChannelForegroundService : Service() {
                 startForeground(NOTIFICATION_ID, notification)
             }
         } catch (e: Exception) {
-            android.util.Log.w("Duetto", "servizio rifiutato dal sistema: ${e.message}")
+            android.util.Log.w("Duetto", "service refused by the system: ${e.message}")
             Journal.sample(applicationContext, "service-refused")
             try { stopSelf() } catch (_: Exception) { /* noop */ }
         }
@@ -352,7 +356,7 @@ class ChannelForegroundService : Service() {
     private fun acquireWakeLock() {
         if (wakeLock?.isHeld == true) return
         val pm = getSystemService(POWER_SERVICE) as? PowerManager ?: return
-        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Duetto::presenza").apply {
+        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Duetto::presence").apply {
             setReferenceCounted(false)
             acquire(WAKELOCK_TIMEOUT_MS)
         }
@@ -362,7 +366,7 @@ class ChannelForegroundService : Service() {
         try {
             if (wakeLock?.isHeld == true) wakeLock?.release()
         } catch (_: Exception) {
-            // già rilasciato: nulla da fare
+            // already released: nothing to do
         }
         wakeLock = null
     }

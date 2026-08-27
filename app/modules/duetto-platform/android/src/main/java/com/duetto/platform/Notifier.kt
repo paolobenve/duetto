@@ -12,12 +12,13 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.text.HtmlCompat
 
 /**
- * Notifiche di avviso ("Anna è nel canale").
+ * Alert notifications ("Anna is in the channel").
  *
- * Sono cosa diversa dalla notifica fissa del foreground service: quella
- * è silenziosa e serve solo a tenere vivo il processo, questa deve farsi
- * notare. Per questo stanno su due canali separati, così puoi anche
- * regolarle indipendentemente dalle impostazioni di Android.
+ * They are a different thing from the foreground service's standing
+ * notification: that one is silent and only serves to keep the process
+ * alive, this one has to be noticed. That is why they sit on two separate
+ * channels, so that you can also tune them independently from Android's
+ * settings.
  */
 object Notifier {
 
@@ -25,63 +26,63 @@ object Notifier {
     private const val ALERT_NOTIFICATION_ID = 4712
     private const val PRESENCE_CHANNEL_ID = "duetto_presence"
     private const val PRESENCE_NOTIFICATION_ID = 4711
-    private const val NOTA_NOTIFICATION_ID = 4713
+    private const val NOTE_NOTIFICATION_ID = 4713
 
     /**
-     * Dopo quanto una notizia si toglie da sola: dieci minuti.
+     * How long before a piece of news takes itself away: ten minutes.
      *
-     * Una notizia invecchia. "E' tornato alle 8:35" letto a mezzogiorno
-     * non dice piu' niente di vero, e intanto sta li' in mezzo alle
-     * altre: meglio che sparisca da se'.
+     * News grows old. "They came back at 8:35" read at noon does not say
+     * anything true any more, and meanwhile it sits there among the
+     * others: better that it disappears by itself.
      */
-    private const val SCADENZA_NOTA_MS = 10L * 60L * 1000L
+    private const val NOTE_TIMEOUT_MS = 10L * 60L * 1000L
 
     /**
-     * Una notifica che non fa rumore.
+     * A notification that makes no noise.
      *
-     * Serve per le cose da sapere, non per quelle a cui rispondere:
-     * "l'app dell'altro e' morta e ora e' tornata" e' una notizia, e
-     * usare per quella il canale degli avvisi - che suona e vibra come
-     * ha chiesto l'utente - vorrebbe dire far scattare in piedi qualcuno
-     * per un'informazione. Va sul canale della presenza, che e' muto per
-     * costruzione, e sta in un posto suo per non scacciare l'avviso vero
-     * se arrivano insieme.
+     * It is there for things to know about, not for things to answer:
+     * "the other person's app died and now it is back" is news, and using
+     * the alerts channel for that - which sounds and buzzes as the user
+     * asked - would mean making somebody jump to their feet over a piece
+     * of information. It goes on the presence channel, which is mute by
+     * construction, and it sits in a place of its own so as not to chase
+     * away the real alert if they arrive together.
      */
-    /** Il titolo: uguale per tutte, il nome del collegamento sta nel testo. */
-    private const val TITOLO = "Duetto"
+    /** The title: the same for all, the connection's name is in the text. */
+    private const val TITLE = "Duetto"
 
     /**
-     * Il testo di una notifica, con davanti il nome del collegamento.
+     * The text of a notification, with the connection's name in front.
      *
-     * In corsivo, perche' non e' parte della frase: e' la stanza in cui
-     * la frase e' stata detta. Sta nel TESTO e non nel titolo perche' il
-     * titolo, con la notifica ripiegata, su parecchi telefoni non si
-     * vede - e "Sei nel canale" senza il nome, con piu' di un
-     * collegamento configurato, non dice in quale.
+     * In italics, because it is not part of the sentence: it is the room
+     * the sentence was said in. It sits in the TEXT and not in the title
+     * because the title, with the notification folded, is not shown on a
+     * good many phones - and "You are in the channel" without the name,
+     * with more than one connection set up, does not say which.
      *
-     * Con un collegamento solo il nome e' vuoto e non compare niente:
-     * non c'e' nulla da distinguere.
+     * With a single connection the name is empty and nothing shows: there
+     * is nothing to tell apart.
      */
-    fun conNome(nome: String, testo: String): CharSequence {
-        if (nome.isEmpty()) return testo
+    fun withName(name: String, text: String): CharSequence {
+        if (name.isEmpty()) return text
         return HtmlCompat.fromHtml(
-            "<i>${scappa(nome)}</i> \u00b7 ${scappa(testo)}",
+            "<i>${escape(name)}</i> · ${escape(text)}",
             HtmlCompat.FROM_HTML_MODE_LEGACY,
         )
     }
 
-    /** I nomi li scrive l'utente: un "<" non deve diventare un tag. */
-    private fun scappa(s: String) =
+    /** The names are written by the user: a "<" must not become a tag. */
+    private fun escape(s: String) =
         s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
-    /** Toglie la notizia: si usa quando quello che diceva non vale piu'. */
-    fun togliNota(ctx: Context) {
+    /** Takes the news away: used when what it said is not true any more. */
+    fun clearNote(ctx: Context) {
         try {
-            NotificationManagerCompat.from(ctx).cancel(NOTA_NOTIFICATION_ID)
+            NotificationManagerCompat.from(ctx).cancel(NOTE_NOTIFICATION_ID)
         } catch (_: Exception) { /* noop */ }
     }
 
-    fun mostraNota(ctx: Context, nome: String, text: String) {
+    fun showNote(ctx: Context, name: String, text: String) {
         val launch = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)?.apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
@@ -92,27 +93,28 @@ object Notifier {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val notification = NotificationCompat.Builder(ctx, PRESENCE_CHANNEL_ID)
-            .setContentTitle(TITOLO)
-            .setContentText(conNome(nome, text))
-            .setStyle(NotificationCompat.BigTextStyle().bigText(conNome(nome, text)))
-            .setSmallIcon(R.drawable.ic_notifica)
+            .setContentTitle(TITLE)
+            .setContentText(withName(name, text))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(withName(name, text)))
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(pending)
             .setAutoCancel(true)
             .setSilent(true)
-            .setTimeoutAfter(SCADENZA_NOTA_MS)
+            .setTimeoutAfter(NOTE_TIMEOUT_MS)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .build()
         try {
-            NotificationManagerCompat.from(ctx).notify(NOTA_NOTIFICATION_ID, notification)
+            NotificationManagerCompat.from(ctx).notify(NOTE_NOTIFICATION_ID, notification)
         } catch (_: SecurityException) {
         }
     }
 
-    fun show(ctx: Context, nome: String, text: String) {
-        // Il canale dipende dalle preferenze: vedi Avvisi. Da lì viene
-        // il suono nel caso normale; vibrazione e suono in conversazione
-        // li fa Avvisi.avvisaOra qui sotto, perché il canale non può.
-        val canale = Alerts.channel(ctx)
+    fun show(ctx: Context, name: String, text: String) {
+        // The channel depends on the preferences: see Alerts. The sound in
+        // the ordinary case comes from there; vibration and sound during
+        // the conversation are done by Alerts.alertNow below, because the
+        // channel cannot.
+        val channel = Alerts.channel(ctx)
 
         val launch = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)?.apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -124,18 +126,18 @@ object Notifier {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
 
-        val builder = NotificationCompat.Builder(ctx, canale)
-            .setContentTitle(TITOLO)
-            .setContentText(conNome(nome, text))
-            .setSmallIcon(R.drawable.ic_notifica)
+        val builder = NotificationCompat.Builder(ctx, channel)
+            .setContentTitle(TITLE)
+            .setContentText(withName(name, text))
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(pending)
             .setAutoCancel(true)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
 
-        // Prima di Android 8 i canali non esistono e queste due cose si
-        // dicono qui. Da Android 8 in su vengono ignorate: comanda il
-        // canale, e ripeterle non fa danno.
+        // Before Android 8 the channels do not exist and these two things
+        // are said here. From Android 8 on they are ignored: the channel
+        // is in command, and repeating them does no harm.
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
             builder.setSound(Alerts.chosenSound(ctx))
             Alerts.chosenRhythm(ctx)?.let { builder.setVibrate(it) }
@@ -144,50 +146,51 @@ object Notifier {
         val notification = builder.build()
 
         try {
-            // Se il permesso notifiche è negato lancia SecurityException:
-            // è un avviso mancato, non un buon motivo per far cadere l'app.
+            // If the notification permission is denied it throws a
+            // SecurityException: it is a missed alert, not a good reason
+            // to bring the app down.
             NotificationManagerCompat.from(ctx).notify(ALERT_NOTIFICATION_ID, notification)
         } catch (_: SecurityException) {
         }
 
-        // Vibrazione e suono che la notifica da sola non può garantire:
-        // vedi Avvisi.avvisaOra. Va dopo, non prima: se la notifica non
-        // si può mostrare, un avviso che suona e basta è comunque meglio
-        // di niente, ma l'ordine naturale resta quello.
+        // Vibration and sound that the notification alone cannot
+        // guarantee: see Alerts.alertNow. It goes after, not before: if
+        // the notification cannot be shown, an alert that merely sounds is
+        // still better than nothing, but the natural order stays this one.
         Alerts.alertNow(ctx)
     }
 
-    /** Dove teniamo l'ultimo titolo, per ritrovarlo dopo un riavvio. */
-    const val CHIAVE_TITOLO = "notification-title"
+    /** Where we keep the last title, to find it again after a reboot. */
+    const val KEY_TITLE = "notification-title"
 
-    /** Ricorda come si chiama il collegamento in uso. */
-    fun ricordaNome(ctx: Context, titolo: String) {
+    /** Remembers what the connection in use is called. */
+    fun rememberName(ctx: Context, title: String) {
         try {
             ctx.getSharedPreferences(BootReceiver.PREFS, Context.MODE_PRIVATE)
-                .edit().putString(CHIAVE_TITOLO, titolo).apply()
+                .edit().putString(KEY_TITLE, title).apply()
         } catch (_: Exception) { /* noop */ }
     }
 
     /**
-     * Il nome del collegamento in uso, come l'ha scritto l'app.
+     * The name of the connection in use, as the app wrote it.
      *
-     * Si rilegge da qui perché dopo un riavvio del telefono la notifica
-     * di presenza compare prima che l'app abbia parlato, e senza questo
-     * non direbbe su quale collegamento sta aspettando.
+     * It is read back from here because after the phone reboots the
+     * presence notification appears before the app has spoken, and
+     * without this it would not say which connection it is waiting on.
      */
-    fun nome(ctx: Context): String {
+    fun name(ctx: Context): String {
         return try {
             ctx.getSharedPreferences(BootReceiver.PREFS, Context.MODE_PRIVATE)
-                .getString(CHIAVE_TITOLO, null) ?: ""
+                .getString(KEY_TITLE, null) ?: ""
         } catch (_: Exception) { "" }
     }
 
     /**
-     * Porta un servizio in primo piano con la notifica di presenza.
+     * Brings a service to the foreground with the presence notification.
      *
-     * Riusa il canale silenzioso del servizio principale: è la stessa
-     * informazione ("sei raggiungibile"), e due notifiche fisse diverse
-     * sarebbero solo confusione.
+     * It reuses the main service's silent channel: it is the same
+     * information ("you can be reached"), and two different standing
+     * notifications would only be confusing.
      */
     fun startForegroundPresence(service: android.app.Service) {
         val launch = service.packageManager
@@ -205,10 +208,10 @@ object Notifier {
                 manager?.createNotificationChannel(
                     NotificationChannel(
                         PRESENCE_CHANNEL_ID,
-                        "Presenza nel canale",
+                        Strings.presenceChannel,
                         NotificationManager.IMPORTANCE_LOW,
                     ).apply {
-                        description = "Mostra che sei raggiungibile"
+                        description = Strings.reachableWhat
                         setShowBadge(false)
                         enableVibration(false)
                     },
@@ -217,33 +220,33 @@ object Notifier {
         }
 
         val notification = NotificationCompat.Builder(service, PRESENCE_CHANNEL_ID)
-            .setContentTitle(TITOLO)
-            .setContentText(conNome(nome(service), "In attesa"))
-            .setSmallIcon(R.drawable.ic_notifica)
+            .setContentTitle(TITLE)
+            .setContentText(withName(name(service), Strings.waiting))
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(pending)
-            // Niente `setOngoing`: e' quella dichiarazione a rendere la
-            // notifica non cancellabile, e su Android 13 e successivi non
-            // serve piu' a niente. Da li' in poi il sistema lascia
-            // scacciare la notifica di un servizio in primo piano - il
-            // servizio continua a girare e si resta raggiungibili lo
-            // stesso - mentre prima della 13 e' il sistema stesso a
-            // tenerla ferma, con o senza questa riga. Toglierla non
-            // cambia niente sui telefoni vecchi e restituisce la scelta
-            // su quelli nuovi. Ricompare al primo cambiamento di stato,
-            // perche' un servizio in primo piano una notifica deve
-            // averla.
+            // No `setOngoing`: it is that declaration that makes the
+            // notification impossible to dismiss, and on Android 13 and
+            // later it is of no use any more. From there on the system
+            // lets a foreground service's notification be swiped away -
+            // the service goes on running and one stays reachable all the
+            // same - while before 13 it is the system itself that holds it
+            // in place, with or without this line. Taking it away changes
+            // nothing on old phones and gives the choice back on new ones.
+            // It comes back at the first change of state, because a
+            // foreground service has to have a notification.
             .setSilent(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
 
         /**
-         * Il tipo dice ad Android a cosa serve questo servizio, e da
-         * Android 14 alcuni tipi si possono chiedere solo stando in primo
-         * piano. Qui non si e' quasi mai: la presenza riparte dopo un
-         * riavvio, o quando l'interfaccia e' appena stata smantellata.
+         * The type tells Android what this service is for, and from
+         * Android 14 some types can only be asked for while in the
+         * foreground. Here we hardly ever are: presence starts again after
+         * a reboot, or when the interface has just been taken apart.
          *
-         * "specialUse" e' quello onesto - restare raggiungibili - e
-         * l'unico senza permessi da chiedere ne' tetti di durata.
+         * "specialUse" is the honest one - staying reachable - and the
+         * only one with no permissions to ask for and no limits on how
+         * long it may run.
          */
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -262,11 +265,11 @@ object Notifier {
                 service.startForeground(PRESENCE_NOTIFICATION_ID, notification)
             }
         } catch (e: Exception) {
-            // Se il sistema rifiuta, la presenza non parte: e' un guaio.
-            // Ma un'app che va in errore e' peggio, e a chi la usa non
-            // resta nemmeno il modo di sapere cos'e' successo. Lo scrive
-            // nel diario e si ferma.
-            Log.w(TAG, "presenza rifiutata dal sistema: ${e.message}")
+            // If the system refuses, presence does not start: that is
+            // trouble. But an app that crashes is worse, and whoever uses
+            // it is not even left with a way of knowing what happened. It
+            // writes it in the journal and stops.
+            Log.w(TAG, "presence refused by the system: ${e.message}")
             Journal.sample(service.applicationContext, "presence-refused")
             try { service.stopSelf() } catch (_: Exception) { /* noop */ }
         }
