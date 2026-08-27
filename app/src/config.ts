@@ -225,11 +225,11 @@ export type DuoConfig = {
   /**
    * The wait, written as one number instead of two.
    *
-   * Off, the technical line says the half that reaches this phone and
-   * then the whole of it - the half says WHERE the wait is, which the
-   * total alone cannot. On, only the whole: it is the one being lived
-   * through, and for whoever is not hunting for a cause it is the only
-   * one worth reading.
+   * Off, the technical line says the two directions: which of them is
+   * the slow one says on which of the two phones the wait sits, and the
+   * total alone cannot. On, only the total: it is the one being lived
+   * through while talking, and for whoever is not hunting for a cause
+   * it is the only one worth reading.
    */
   delayTotalOnly: boolean;
   /**
