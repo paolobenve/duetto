@@ -33,17 +33,26 @@ import { Alerts } from 'duetto-platform';
  * like every other notification on the phone. The other two force it,
  * one way or the other.
  */
-const VIBRATIONS: {
+/**
+ * Lists that are built while drawing, not once and for all.
+ *
+ * A `const` at the top of the file is filled in when the file is first
+ * imported, with whatever language was in use at that moment - and it
+ * stays that way. Changing language, the screen redrew itself in the new
+ * one while these three lists went on saying what they had said the
+ * first time. That is why they are functions.
+ */
+const VIBRATIONS = (): {
   value: DuoConfig['alertVibration']; label: string; note: string;
-}[] = [
+}[] => [
   { value: 'default', label: t('settings.vibrationPhone'), note: t('settings.vibrationPhoneNote') },
   { value: 'always', label: t('settings.vibrationAlways'), note: t('settings.vibrationAlwaysNote') },
   { value: 'never', label: t('settings.vibrationNever'), note: t('settings.vibrationNeverNote') },
 ];
 
-const SOUNDS: {
+const SOUNDS = (): {
   value: DuoConfig['alertSound']; label: string; note: string;
-}[] = [
+}[] => [
   { value: 'default', label: t('settings.soundDefault'), note: t('settings.soundDefaultNote') },
   { value: 'none', label: t('settings.soundNone'), note: t('settings.soundNoneNote') },
   { value: 'chosen', label: t('settings.soundChoose'), note: t('settings.soundChooseNote') },
@@ -56,9 +65,9 @@ const SOUNDS: {
  * the thing one is choosing, and whoever reads "well faded" without a
  * number cannot tell whether it will be a shadow or a memory.
  */
-const CONTROLS: {
+const CONTROLS = (): {
   value: DuoConfig['controls']; label: string; note: string;
-}[] = [
+}[] => [
   { value: 'dim', label: t('settings.controlsDim'), note: t('settings.controlsDimNote') },
   { value: 'faint', label: t('settings.controlsFaint'), note: t('settings.controlsFaintNote') },
   { value: 'hidden', label: t('settings.controlsHidden'), note: t('settings.controlsHiddenNote') },
@@ -378,7 +387,7 @@ export default function SettingsScreen({
         <Text style={styles.sectionHint}>{t('settings.whenTheyCallHint')}</Text>
 
         <Text style={styles.sectionHint}>{t('settings.vibration')}</Text>
-        {VIBRATIONS.map((v) => (
+        {VIBRATIONS().map((v) => (
           <TouchableOpacity
             key={v.value}
             style={[styles.choice, cfg.alertVibration === v.value && styles.choicePicked]}
@@ -395,7 +404,7 @@ export default function SettingsScreen({
         ))}
 
         <Text style={styles.sectionHint}>{t('settings.sound')}</Text>
-        {SOUNDS.map((s) => (
+        {SOUNDS().map((s) => (
           <TouchableOpacity
             key={s.value}
             style={[styles.choice, cfg.alertSound === s.value && styles.choicePicked]}
@@ -433,7 +442,7 @@ export default function SettingsScreen({
 
         <Text style={styles.subsection}>{t('settings.controlsWhileWatching')}</Text>
         <Text style={styles.sectionHint}>{t('settings.controlsHint')}</Text>
-        {CONTROLS.map((c) => (
+        {CONTROLS().map((c) => (
           <TouchableOpacity
             key={c.value}
             style={[styles.choice, cfg.controls === c.value && styles.choicePicked]}

@@ -9,6 +9,7 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { LanguageChoice } from './i18n';
+import { fromItalianStorage } from './legacy';
 
 /**
  * The app's configuration.
@@ -340,7 +341,11 @@ export async function loadConfig(): Promise<DuoConfig> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_CONFIG;
-    return fromItalian(tidyPairs(oneDiagnostics({ ...DEFAULT_CONFIG, ...JSON.parse(raw) })));
+    // The names first, then everything else: what follows reads fields
+    // that on a phone updating from an earlier Duetto are still
+    // written in Italian.
+    const stored = fromItalianStorage(JSON.parse(raw));
+    return tidyPairs(oneDiagnostics({ ...DEFAULT_CONFIG, ...stored }));
   } catch {
     return DEFAULT_CONFIG;
   }
@@ -361,36 +366,6 @@ function oneDiagnostics(cfg: any): DuoConfig {
     || (Array.isArray(cfg.pairs)
       && cfg.pairs.some((p: any) => p?.settings?.showDiagnostics === true));
   return { ...cfg, diagnostics: anywhere };
-}
-
-/**
- * TEMPORARY. The Italian words that used to be written in the stored
- * settings.
- *
- * The project is moving to English to be published, and the values
- * saved on the phone move with it. Whoever already has the app must not
- * notice: what is read gets translated on the way in, once, and is
- * written back in English at the first save. To be REMOVED once all the
- * phones have been through here.
- */
-function fromItalian(cfg: DuoConfig): DuoConfig {
-  const was = <T extends string>(v: any, table: Record<string, T>, fallback: T): T =>
-    (typeof v === 'string' && table[v]) || (typeof v === 'string' && (Object.values(table) as string[]).includes(v) ? v as T : fallback);
-  return {
-    ...cfg,
-    videoQuality: was<VideoQuality>(cfg.videoQuality, {
-      risparmio: 'saver', standard: 'standard', migliore: 'better', massima: 'best',
-    }, 'better'),
-    controls: was(cfg.controls, {
-      poco: 'dim', molto: 'faint', nascondi: 'hidden',
-    } as Record<string, DuoConfig['controls']>, 'dim'),
-    alertVibration: was(cfg.alertVibration, {
-      predefinito: 'default', sempre: 'always', mai: 'never',
-    } as Record<string, DuoConfig['alertVibration']>, 'default'),
-    alertSound: was(cfg.alertSound, {
-      predefinito: 'default', nessuno: 'none', scelto: 'chosen',
-    } as Record<string, DuoConfig['alertSound']>, 'default'),
-  };
 }
 
 function tidyPairs(cfg: DuoConfig): DuoConfig {

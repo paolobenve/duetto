@@ -118,7 +118,12 @@ const OUTPUT_ICON: Record<
  * listen to them one by one. The technical name is known to the phone
  * on the other side too, which is the one that plays it.
  */
-const ALARMS: { name: string; label: string; note: string }[] = [
+/**
+ * Built while drawing, not once at import: a list made at the top of the
+ * file freezes the language it was born in, and changing language it
+ * would go on speaking the old one under a screen that had changed.
+ */
+const ALARMS = (): { name: string; label: string; note: string }[] => [
   { name: 'drumroll', label: t('alarms.drums'), note: t('alarms.drumsNote') },
   { name: 'drumkit', label: t('alarms.kit'), note: t('alarms.kitNote') },
   { name: 'fanfare', label: t('alarms.fanfare'), note: t('alarms.fanfareNote') },
@@ -1145,7 +1150,7 @@ export default function ChannelScreen(props: Props) {
         <Pressable style={styles.sheetBack} onPress={() => setAlarmMenu(false)}>
           <View style={styles.sheet}>
             <Text style={styles.sheetTitle}>{t('channel.callThem')}</Text>
-            {ALARMS.map((sv) => (
+            {ALARMS().map((sv) => (
               <TouchableOpacity
                 key={sv.name}
                 style={styles.sheetRow}

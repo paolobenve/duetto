@@ -146,6 +146,55 @@ export type SignalingEvents = {
  *
  *   adb logcat -s ReactNativeJS | grep duetto-sig
  */
+/**
+ * TEMPORARY. What an older Duetto says on the wire.
+ *
+ * The names of the messages went into English along with the code, and
+ * a phone that has not been updated goes on sending the ones from
+ * before: `diario` for the journal, `sveglia` for the sound to call
+ * somebody back, `morte` for the app that died, `smontata` for the
+ * window taken apart by the phone. Not recognising them, we dropped
+ * them in silence - the journals stopped being exchanged on the very
+ * evening of the update, and it took reading them to notice.
+ *
+ * We send the new names and accept both, which is what was done for the
+ * sounds and for the causes of a death. It goes away with the next
+ * version, once every phone has been updated.
+ */
+function fromOlderDuetto(msg: any): SignalMessage {
+  if (!msg || typeof msg !== 'object') return msg;
+  switch (msg.kind) {
+    case 'diario':
+      return { kind: 'journal', text: String(msg.testo ?? '') };
+    case 'sveglia':
+      return { kind: 'alarm', sound: String(msg.suono ?? '') };
+    case 'morte':
+      return {
+        kind: 'death',
+        when: Number(msg.quando) || 0,
+        cause: String(msg.causa ?? ''),
+        back: Number(msg.tornato) || undefined,
+      };
+    case 'smontata':
+      return { kind: 'tornDown' };
+    case 'audio':
+      // The field changed name inside a message whose name did not.
+      return msg.richer === undefined
+        ? { kind: 'audio', richer: msg.migliore === true }
+        : msg;
+    case 'state':
+      // Two of its fields were in Italian: where the sound comes out
+      // over there, and which Duetto is running.
+      return {
+        ...msg,
+        output: msg.output ?? msg.uscita,
+        version: msg.version ?? msg.versione,
+      };
+    default:
+      return msg;
+  }
+}
+
 const log = logger('[duetto-sig]');
 
 // The wait between one attempt and the next. Kept short on purpose:
@@ -336,7 +385,7 @@ export class Signaling {
           this.events.onError?.('decrypt-failed');
           return;
         }
-        this.events.onSignal?.(clear);
+        this.events.onSignal?.(fromOlderDuetto(clear));
         break;
       }
 

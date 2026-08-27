@@ -599,7 +599,10 @@ export default function App() {
     const theirBuild = peerState.build;
     if (!theirBuild || theirBuild === BUILD) return null;
     return t('news.buildsDiffer', { here: String(BUILD), there: String(theirBuild) });
-  }, [peerSeen, peerState.version, peerState.build]);
+    // The language is among the dependencies because the sentence is
+    // built here: without it, changing language would leave this line in
+    // the one it was born in.
+  }, [peerSeen, peerState.version, peerState.build, cfg?.language]);
 
   /**
    * The call volume is read again whenever it may have changed.
