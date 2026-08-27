@@ -84,6 +84,24 @@ export type VideoStats = {
    * up in the picture.
    */
   latency?: number | null;
+  /**
+   * How long the voice and the picture take to reach you, one way, in
+   * milliseconds. An estimate, and it says so with a tilde on screen.
+   *
+   * The round trip above measures the road; this measures the wait.
+   * Three things are added up, all of them read from the connection
+   * itself: half the round trip, how long a packet sat in the jitter
+   * buffer - which is where a restless network turns into delay - and
+   * the time to decode it.
+   *
+   * What is NOT in there, and cannot be from this side: the camera and
+   * the microphone of the phone that is sending, its encoder, and the
+   * audio output of this one, which on Android is worth some tens of
+   * milliseconds. So the true wait, from their mouth to your ear, is a
+   * little longer than this number - never shorter.
+   */
+  voiceDelay?: number | null;
+  pictureDelay?: number | null;
   out?: { w: number; h: number; fps: number; kbps: number | null };
   in?: { w: number; h: number; fps: number; kbps: number | null };
   /** how much audio is going out: the only way to check the ceiling */
@@ -968,6 +986,12 @@ export class ChannelSession {
        */
       const candidatesById = new Map<string, any>();
       let pairStat: any = null;
+      /** What each of the two arriving streams waited, and its own round trip. */
+      const waited: Record<string, { buffer?: number; decode?: number; rtt?: number }> = {};
+      const forKind = (kind: string) => {
+        if (!waited[kind]) waited[kind] = {};
+        return waited[kind];
+      };
       stats.forEach((r: any) => {
         if (r.type === 'local-candidate' || r.type === 'remote-candidate') {
           candidatesById.set(r.id, r);
@@ -1002,6 +1026,20 @@ export class ChannelSession {
       };
 
       stats.forEach((r: any) => {
+        // The round trip of the media itself, which RTCP measures on
+        // the stream and not on the ICE ping.
+        if (r.type === 'remote-inbound-rtp' && typeof r.roundTripTime === 'number') {
+          forKind(String(r.kind)).rtt = r.roundTripTime;
+        }
+        if (r.type === 'inbound-rtp') {
+          const w = forKind(String(r.kind));
+          if (r.jitterBufferEmittedCount > 0 && typeof r.jitterBufferDelay === 'number') {
+            w.buffer = r.jitterBufferDelay / r.jitterBufferEmittedCount;
+          }
+          if (r.framesDecoded > 0 && typeof r.totalDecodeTime === 'number') {
+            w.decode = r.totalDecodeTime / r.framesDecoded;
+          }
+        }
         if (r.kind === 'audio' && r.type === 'outbound-rtp') {
           out.audioKbps = rate(this.lastAudioOut, r.timestamp, r.bytesSent);
           this.lastAudioOut = { ts: r.timestamp, bytes: r.bytesSent };
@@ -1027,6 +1065,25 @@ export class ChannelSession {
           this.lastInbound = { ts: r.timestamp, bytes: r.bytesReceived };
         }
       });
+
+      /**
+       * The wait on one of the two streams, in milliseconds.
+       *
+       * Without the buffer there is nothing to say: it is the term that
+       * makes this different from the round trip, and it is missing
+       * until something has actually been played. The stream's own
+       * round trip is preferred to the ICE one, which travels the same
+       * road but is measured on another kind of packet.
+       */
+      const oneWay = (kind: string): number | null => {
+        const w = waited[kind];
+        if (!w || w.buffer === undefined) return null;
+        const roundTrip = w.rtt ?? pairStat?.currentRoundTripTime;
+        const half = typeof roundTrip === 'number' ? roundTrip / 2 : 0;
+        return Math.round((half + w.buffer + (w.decode ?? 0)) * 1000);
+      };
+      out.voiceDelay = oneWay('audio');
+      out.pictureDelay = oneWay('video');
 
       this.events.onVideoStats?.(out);
       this.weighVideo((out.out?.kbps ?? 0) + (out.in?.kbps ?? 0));

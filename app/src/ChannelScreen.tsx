@@ -779,7 +779,11 @@ export default function ChannelScreen(props: Props) {
         onBigAspect={setBigAspect}
         insetV={compact ? 0 : inset.v}
         insetH={compact ? 0 : inset.h}
-        insetBottom={!compact && showStats ? (versionWarning ? 54 : 36) : 0}
+        insetBottom={
+          !compact && showStats
+            ? statsLineCount(videoStats, versionWarning) * STATS_LINE_H
+            : 0
+        }
         onBackground={touch}
         onOnlyBig={setOnlyBig}
         onZoom={onZoom}
@@ -1096,7 +1100,10 @@ export default function ChannelScreen(props: Props) {
           // A fixed height: with the second line appearing only once
           // the path is known, the panel grew under one's fingers and
           // the buttons moved.
-          <View style={[styles.statsBox, versionWarning ? styles.statsBoxThree : null]}>
+          <View style={[
+            styles.statsBox,
+            { height: statsLineCount(videoStats, versionWarning) * STATS_LINE_H },
+          ]}>
             <StatsLine
               stats={videoStats}
               quality={qualityLabel}
@@ -1474,6 +1481,24 @@ function PresenceCard(props: {
  * is sending 1080p while receiving 640x352 explains at a glance why the
  * other person's picture is poor - without having to read a log.
  */
+/**
+ * How many technical lines there will be.
+ *
+ * The box has a fixed height and the video above it is inset by as
+ * much: if the two disagree the buttons move under the finger when a
+ * number appears. So they ask the same function.
+ */
+export function statsLineCount(stats: VideoStats, versions?: string | null): number {
+  let n = 1;                                    // the resolution: always there
+  if (versions) n += 1;
+  if (stats.path || stats.audioKbps != null || stats.latency != null) n += 1;
+  if (stats.voiceDelay != null || stats.pictureDelay != null) n += 1;
+  return n;
+}
+
+/** One line of the box is this tall; the height comes from the count. */
+export const STATS_LINE_H = 18;
+
 function StatsLine({ stats, quality, showUp, showDown, versions }: {
   stats: VideoStats;
   quality: string;
@@ -1551,6 +1576,21 @@ function StatsLine({ stats, quality, showUp, showDown, versions }: {
             ? `${path ? '   ' : ''}${t('channel.audioRate', { kbps: stats.audioKbps })}`
             : ''}
           {stats.latency != null ? `   ${t('channel.latency', { ms: stats.latency })}` : ''}
+        </Text>
+      ) : null}
+      {stats.voiceDelay != null || stats.pictureDelay != null ? (
+        // What arrives, and how late. The round trip above says how far
+        // away the other phone is; this says how long the wait is once
+        // everything in between has had its share.
+        <Text
+          style={styles.stats}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.6}>
+          {stats.voiceDelay != null ? t('channel.voiceDelay', { ms: stats.voiceDelay }) : ''}
+          {stats.pictureDelay != null
+            ? `${stats.voiceDelay != null ? '   ' : ''}${t('channel.pictureDelay', { ms: stats.pictureDelay })}`
+            : ''}
         </Text>
       ) : null}
     </>
@@ -1684,9 +1724,8 @@ const styles = StyleSheet.create({
   avatarLive: { borderColor: '#38d16a' },
   avatarText: { color: '#e6ebf1', fontSize: 42, fontWeight: '700' },
   avatarSymbol: { fontSize: 52 },
-  statsBox: { height: 36, justifyContent: 'center' },
-  /** with the warning about versions the lines become three */
-  statsBoxThree: { height: 54 },
+  /** The height comes from statsLineCount: see there. */
+  statsBox: { justifyContent: 'center' },
   /**
    * The technical lines have to stay legible even when faded.
    *

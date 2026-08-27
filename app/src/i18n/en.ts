@@ -171,6 +171,8 @@ export const en = {
     linkLabel: 'Link: {path}',
     audioRate: 'audio {kbps} kbit/s',
     latency: 'latency r/t {ms} ms',
+    voiceDelay: 'voice ~{ms} ms',
+    pictureDelay: 'picture ~{ms} ms',
     pathLocal: 'direct, same network',
     pathDirect: 'direct between the phones',
     pathRelay: 'through the server',
