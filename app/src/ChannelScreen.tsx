@@ -170,6 +170,10 @@ type Props = {
   peerTornDown?: boolean;
   /** the real resolution and bandwidth, outgoing and incoming */
   videoStats: VideoStats;
+  /** the wait the other side tells us about; null if they do not */
+  peerDelay?: number | null;
+  /** show only the whole of the wait, not its two halves */
+  delayTotalOnly?: boolean;
   /** the chosen profile: without it those numbers depend on nothing */
   qualityLabel: string;
   /** the two technical lines under the buttons, off by default */
@@ -298,7 +302,7 @@ type Props = {
  */
 export default function ChannelScreen(props: Props) {
   const {
-    connectionName, peerName, peerAvatar, peerPresent, peerDetached, peerTornDown, videoStats, qualityLabel, showStats, controls, news, onNewsRead, gain, peerGain, systemVolume, onChangeLevel,
+    connectionName, peerName, peerAvatar, peerPresent, peerDetached, peerTornDown, videoStats, peerDelay, delayTotalOnly, qualityLabel, showStats, controls, news, onNewsRead, gain, peerGain, systemVolume, onChangeLevel,
     versionWarning, frontCamera, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes,
@@ -1110,6 +1114,8 @@ export default function ChannelScreen(props: Props) {
               showUp={localHasVideo}
               showDown={remoteHasVideo}
               versions={versionWarning}
+              peerDelay={peerDelay}
+              totalOnly={delayTotalOnly}
             />
           </View>
         ) : null}
@@ -1499,7 +1505,9 @@ export function statsLineCount(stats: VideoStats, versions?: string | null): num
 /** One line of the box is this tall; the height comes from the count. */
 export const STATS_LINE_H = 18;
 
-function StatsLine({ stats, quality, showUp, showDown, versions }: {
+function StatsLine({
+  stats, quality, showUp, showDown, versions, peerDelay, totalOnly,
+}: {
   stats: VideoStats;
   quality: string;
   /** cameras really on: the statistics lag by one sample */
@@ -1507,6 +1515,10 @@ function StatsLine({ stats, quality, showUp, showDown, versions }: {
   showDown: boolean;
   /** the warning about different versions, or `null` if they match */
   versions?: string | null;
+  /** the wait on their side, which they tell us; null if they do not */
+  peerDelay?: number | null;
+  /** only the whole of it, for whoever wants one number and not two */
+  totalOnly?: boolean;
 }) {
   const fmt = (v?: { w: number; h: number; fps: number; kbps: number | null }) => {
     if (!v || !v.w || !v.h) return null;
@@ -1546,6 +1558,20 @@ function StatsLine({ stats, quality, showUp, showDown, versions }: {
    * number.
    */
   const delay = stats.pictureDelay ?? stats.voiceDelay ?? null;
+
+  /**
+   * What one lives through when talking, which is the two added up.
+   *
+   * If the other answers the instant you stop, what comes back to you
+   * has waited twice: your voice going, theirs returning. Neither phone
+   * can work it out alone - each measures only what reaches it - so
+   * they tell each other, and here the sum is made.
+   *
+   * It is missing while the other side has not said its own yet, and
+   * with a Duetto too old to say it at all: then there is the half we
+   * know, which is still worth reading.
+   */
+  const together = delay != null && peerDelay != null ? delay + peerDelay : null;
 
   const path = stats.path === 'local'
     ? t('channel.pathLocal')
@@ -1587,7 +1613,15 @@ function StatsLine({ stats, quality, showUp, showDown, versions }: {
             ? `${path ? '   ' : ''}${t('channel.audioRate', { kbps: stats.audioKbps })}`
             : ''}
           {stats.latency != null ? `   ${t('channel.latency', { ms: stats.latency })}` : ''}
-          {delay != null ? `   ${t('channel.delay', { ms: delay })}` : ''}
+          {delay != null
+            ? (totalOnly && together != null
+              // Only the whole of it, and it is still called the wait:
+              // it is the one being lived through, the other two are
+              // its halves.
+              ? `   ${t('channel.delay', { ms: together })}`
+              : `   ${t('channel.delay', { ms: delay })}${
+                together != null ? ` · ${t('channel.delayTogether', { ms: together })}` : ''}`)
+            : ''}
         </Text>
       ) : null}
     </>

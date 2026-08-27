@@ -568,6 +568,22 @@ export default function SettingsScreen({
           </View>
         </TouchableOpacity>
 
+        {cfg.diagnostics ? (
+          <TouchableOpacity
+            style={[styles.choice, cfg.delayTotalOnly && styles.choicePicked]}
+            onPress={() => {
+              const v = !cfg.delayTotalOnly;
+              setCfg({ ...cfg, delayTotalOnly: v });
+              onLive?.({ delayTotalOnly: v });
+            }}>
+            <View style={[styles.radio, cfg.delayTotalOnly && styles.radioPicked]} />
+            <View style={styles.choiceText}>
+              <Text style={styles.choiceLabel}>{t('settings.delayTotalOnly')}</Text>
+              <Text style={styles.choiceNote}>{t('settings.delayTotalOnlyNote')}</Text>
+            </View>
+          </TouchableOpacity>
+        ) : null}
+
         <Text style={styles.section}>{t('settings.security')}</Text>
         <View style={styles.infoBox}>
           <Text style={styles.infoLine}>

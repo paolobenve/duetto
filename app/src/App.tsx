@@ -416,6 +416,8 @@ export default function App() {
     version?: string;
     /** which APK of that version; missing if older than this field */
     build?: number;
+    /** the wait on their side: with ours, it makes the whole of it */
+    delay?: number;
     /** how loudly they are hearing us: 1 = as we send it */
     volume?: number;
   }>({ audio: true, video: false });
@@ -2953,6 +2955,7 @@ export default function App() {
         peerDetached={peerDetached}
         peerTornDown={peerTornDown}
         videoStats={videoStats}
+        peerDelay={peerState.delay ?? null}
         qualityLabel={t(`quality.${(VIDEO_PROFILES[cfg.videoQuality] ?? VIDEO_PROFILES.standard).key}`)}
         showStats={cfg.diagnostics}
         controls={cfg.controls}

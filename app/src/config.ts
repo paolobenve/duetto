@@ -223,6 +223,16 @@ export type DuoConfig = {
    */
   diagnostics: boolean;
   /**
+   * The wait, written as one number instead of two.
+   *
+   * Off, the technical line says the half that reaches this phone and
+   * then the whole of it - the half says WHERE the wait is, which the
+   * total alone cannot. On, only the whole: it is the one being lived
+   * through, and for whoever is not hunting for a cause it is the only
+   * one worth reading.
+   */
+  delayTotalOnly: boolean;
+  /**
    * How far the controls step aside while a video is playing.
    *
    * "dim" keeps them legible (40%), "faint" reduces them to a shadow
@@ -322,6 +332,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   videoQuality: 'better',
   richerAudio: false,
   diagnostics: false,
+  delayTotalOnly: false,
   controls: 'dim',
   videoCodec: 'auto',
   alertVibration: 'default',

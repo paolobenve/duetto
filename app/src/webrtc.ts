@@ -55,6 +55,8 @@ export type ChannelEvents = {
     /** which APK of that version: the versions are raised by hand, so
      *  two phones on the same one can be weeks apart */
     build?: number;
+    /** the wait they are living through: ours plus theirs is the whole of it */
+    delay?: number;
     /** which camera is filming: 'front' or 'back' */
     camera?: string;
     /** how loudly they are listening to US: 1 = as we send it */
@@ -160,6 +162,20 @@ export class ChannelSession {
   private videoSender: any = null;
   /** we are looking at the screen: we tell the other side */
   private localWatching = true;
+  /**
+   * The wait we are living through, as last told to the other side.
+   *
+   * Each phone can only measure what arrives at it: the wait one feels
+   * in a conversation is the sum of the two, and neither of them can
+   * work it out alone. So each says its own, and both can add up.
+   *
+   * It is told only while diagnostics are on - it is a number nobody
+   * looks at otherwise - and only when it has really moved: it changes
+   * by a few milliseconds at every reading, and a message for that
+   * would be noise on the wire.
+   */
+  private delaySaid: number | null = null;
+  private ourDelay: number | null = null;
   /**
    * The other side is looking. It starts at `true` and only comes down
    * on an explicit message: an older build, or a message lost on the
@@ -670,6 +686,7 @@ export class ChannelSession {
         output: msg.output,
         version: msg.version,
         build: msg.build,
+        delay: msg.delay,
         camera: msg.camera,
         volume: msg.volume,
       });
@@ -1084,6 +1101,20 @@ export class ChannelSession {
       };
       out.voiceDelay = oneWay('audio');
       out.pictureDelay = oneWay('video');
+
+      /**
+       * The one we are living through - the picture's when there is a
+       * picture, because the sound is held back to keep up with it -
+       * goes to the other side, so that both can show the whole of it.
+       * Twenty milliseconds of movement are worth a message; less is
+       * the number breathing.
+       */
+      this.ourDelay = out.pictureDelay ?? out.voiceDelay ?? null;
+      if (this.diagnostics && this.ourDelay !== null
+          && (this.delaySaid === null || Math.abs(this.ourDelay - this.delaySaid) > 20)) {
+        this.delaySaid = this.ourDelay;
+        this.broadcastState();
+      }
 
       this.events.onVideoStats?.(out);
       this.weighVideo((out.out?.kbps ?? 0) + (out.in?.kbps ?? 0));
@@ -1525,6 +1556,7 @@ export class ChannelSession {
       output: this.ourOutput,
       version: VERSION,
       build: BUILD,
+      delay: this.ourDelay ?? undefined,
       camera: this.isFrontCamera() ? 'front' : 'back',
       volume: this.heardLevel,
       video: this.isVideoEnabled(),

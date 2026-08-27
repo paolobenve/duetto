@@ -50,9 +50,13 @@ export type SignalMessage =
   // theirs, on their phone, and without telling each other you end up
   // repeating "can you hear me?" and never finding out that you were at
   // a quarter volume.
+  // `delay`: the wait THEY are living through, in milliseconds. Each
+  // phone measures only what reaches it, and what one feels in a
+  // conversation is the two added up: without telling each other,
+  // neither could ever show the whole of it.
   | { kind: 'state'; audio: boolean; video: boolean; aspect?: number; watching?: boolean;
       hwVp9?: boolean; output?: string; version?: string; build?: number; camera?: string;
-      volume?: number }
+      volume?: number; delay?: number }
   // "I did not leave: the phone closed the window on me."
   //
   // Sent by the headless presence when it takes the place of an app

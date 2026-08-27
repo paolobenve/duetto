@@ -234,16 +234,25 @@ in both directions:
 
 ```
 Resolution: best   ↑1920×1080·30fps·460kB/s   ↓960×540·24fps·140kB/s
-link: direct   audio 34 kbit/s   latency r/t 42 ms   delay ~140 ms
+link: direct   audio 34 kbit/s   latency r/t 42 ms   delay ~140 ms · together ~260 ms
 ```
 
 The ceilings are not targets: if the scene costs little and the network holds, two
 different profiles can give the same result. That line is the only way of knowing.
 
-The last number is the wait, one way: how long what arrives takes to reach you. With the
-video on it is the picture's, and the voice follows it — WebRTC keeps lips in step by
-**holding the sound back** until the frame is ready. With no video it is the voice's, and
-that is the fastest this app goes.
+The last two numbers are the wait. The first is one way: how long what arrives takes to
+reach you. With the video on it is the picture's, and the voice follows it — WebRTC keeps
+lips in step by **holding the sound back** until the frame is ready. With no video it is
+the voice's, and that is the fastest this app goes.
+
+The second is the one you live through while talking. If the other person answers the
+instant you stop, what comes back has waited twice: your voice going and theirs returning.
+Neither phone can work that out on its own — each measures only what reaches it — so they
+tell each other, and both add up. If it is missing, the other side has not said its own
+yet, or is running a Duetto too old to say it at all. For whoever wants one number instead
+of two there is *the cogwheel → Diagnostics → The whole wait only*; the half is worth
+keeping when hunting for a cause, because it says on which of the two phones the wait
+sits.
 
 Three things are added up, all read from the connection itself: half the round trip, how
 long a packet sat in the jitter buffer, and the time to decode it. What is not in there,
