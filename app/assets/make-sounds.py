@@ -69,10 +69,10 @@ def normalise(x, peak=0.89):
 
 # --- Drum roll -------------------------------------------------------------
 # A drum bar of exactly one measure at 120 to the minute - two seconds -
-# with the last half second of silence, which is part of the bar. Twice
-# over, because one alone goes by too fast for somebody asleep; the final
-# pause is cut, since closing with half a second of nothing makes the
-# sound seem truncated.
+# with the last half second of silence, which is part of the bar. It is
+# played once, and that pause is cut: it is the tail of a bar that is not
+# followed by another, and closing with half a second of nothing makes
+# the sound seem truncated.
 DRUMROLL = os.path.join(HERE, 'drumroll.wav')
 
 def sample(path, until=None):
@@ -96,18 +96,19 @@ def drumroll():
     # Where the bar stops sounding: from there on it is its own pause.
     loud = np.where(np.abs(bar) > 0.02)[0]
     sound = bar[:loud[-1] + int(SR * 0.05)] if len(loud) else bar
-    return normalise(fade(np.concatenate([bar, sound])))
+    return normalise(fade(sound))
 
 # --- Drum kit --------------------------------------------------------------
 # A whole bar, not a single hit: it lasts one measure - four quarters at
 # 130 to the minute, one second eighty-five - and it ends where it starts
-# again, so repeating it does not let the join be heard. Two bars: one
-# alone goes by too fast for somebody who is sleeping.
+# again. One bar, not two: a couple of seconds of drums say what they
+# have to say, and a sound that can be sent again with a touch does not
+# need to insist by itself.
 DRUMKIT = os.path.join(HERE, 'drumkit.wav')
 
 def drumkit():
     bar = sample(DRUMKIT)
-    return normalise(fade(np.concatenate([bar, bar])))
+    return normalise(fade(bar))
 
 # --- Fanfare ---------------------------------------------------------------
 # "Ta-daaa": a second and a half of trumpets that end by themselves. It
