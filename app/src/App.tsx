@@ -304,9 +304,20 @@ export default function App() {
    * The next close is a goodbye, not a handover.
    *
    * Raised by whoever leaves on purpose - "make yourself unavailable",
-   * or breaking a connection - and lowered by the close itself.
+   * breaking a connection, moving to another one - and lowered by the
+   * close itself.
    */
   const sayGoodbye = useRef(false);
+  /**
+   * And with that goodbye the presence ends: the service stops.
+   *
+   * It is NOT the same thing as saying goodbye. Moving to another
+   * connection is a goodbye for whoever is left behind, but the phone
+   * stays reachable - over there - so the service has to carry on: had
+   * the two travelled together, every switch would have switched the
+   * presence off and on again, and in that gap nobody could reach you.
+   */
+  const stopService = useRef(false);
   /**
    * The latest piece of news to show inside the app.
    *
@@ -850,6 +861,25 @@ export default function App() {
    */
   const noServerSince = useRef(0);
 
+  /**
+   * When our own link to the server last came back.
+   *
+   * Whoever comes back from an outage finds the other person there and
+   * has no way, from the presence alone, of telling "they came back"
+   * from "we came back": the two look identical from here. The moment
+   * of our own return says which of the two it was.
+   */
+  const serverBackAt = useRef(0);
+
+  /**
+   * How long a return of ours goes on explaining the other person's.
+   *
+   * Long enough for the answer to the first question after reconnecting
+   * to arrive, short enough that a real return a minute later is still
+   * told.
+   */
+  const OUR_RETURN_MS = 20_000;
+
   const noticeTextRef = useRef(noticeText);
   /**
    * The line is only written when the presence is really there.
@@ -1234,6 +1264,21 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    /**
+     * Without a server, they are not absent: they are unknown.
+     *
+     * The count used to start from "we cannot see them", which is also
+     * true while the app is starting up and while our own link is down.
+     * From there came the sentence told about the wrong person: the
+     * phone that had been away was this one, and the moment the server
+     * answered - "they are there" - it read a whole absence of theirs
+     * and announced their return.
+     */
+    if (status === 'connecting' || status === 'offline') {
+      awaySince.current = 0;
+      forgetReturn();
+      return;
+    }
     if (!peerPresent) {
       if (awaySince.current === 0) awaySince.current = Date.now();
       forgetReturn();
@@ -1242,6 +1287,9 @@ export default function App() {
     const gone = awaySince.current;
     awaySince.current = 0;
     if (!gone || Date.now() - gone < ABSENCE_WORTH_TELLING_MS) return;
+    // Our own link has just come back: what looks like their return is
+    // ours. Theirs, if it happens, will be told when it happens.
+    if (Date.now() - serverBackAt.current < OUR_RETURN_MS) return;
     forgetReturn();
     returnDue.current = setTimeout(() => {
       returnDue.current = null;
@@ -1258,7 +1306,7 @@ export default function App() {
       Foreground.nota(alertNameRef.current, t('news.reachableAgain', { who, at }))
         .catch(() => {});
     }, TELLING_DELAY_MS);
-  }, [peerPresent, forgetReturn]);
+  }, [peerPresent, status, forgetReturn]);
 
   /**
    * "Reachable again" stops being true when they disappear again.
@@ -1581,6 +1629,7 @@ export default function App() {
             } else if (st !== 'connecting' && noServerSince.current) {
               const howLong = Math.round((Date.now() - noServerSince.current) / 1000);
               noServerSince.current = 0;
+              serverBackAt.current = Date.now();
               emptyBeats.current = 0;
               Diario.segna(`server:ok:after ${howLong}s`).catch(() => {});
             }
@@ -1878,7 +1927,10 @@ export default function App() {
        * recents inside the service itself: there were two shortcuts,
        * and I had removed only one.
        */
-      if (goodbye) Foreground.stop().catch(() => {});
+      if (stopService.current) {
+        stopService.current = false;
+        Foreground.stop().catch(() => {});
+      }
       try { InCallManager.stop(); } catch { /* noop */ }
       Audio.useCallVolumeKeys(false).catch(() => {});
     };
@@ -2131,8 +2183,9 @@ export default function App() {
      * the right type, and at this instant the session is still taking
      * its place.
      */
-    const before = howItWas.current;
-    howItWas.current = null;
+    const mine = cfg.pair?.id;
+    const before = mine ? howItWas.current[mine] : undefined;
+    if (mine) delete howItWas.current[mine];
     if (before) {
       const still = Date.now() - before.when;
       if (!before.audio && still < RESUME_MIC_MS) {
@@ -2176,7 +2229,8 @@ export default function App() {
   const BREATH_MS = 250;
 
   /**
-   * How the conversation stood at the last exit, and when.
+   * How the conversation stood when it was put away, one drawer per
+   * connection.
    *
    * Leaving and coming straight back is nearly always not a choice: it
    * is a wrong touch, or the phone closing the app. And even when it is
@@ -2184,31 +2238,44 @@ export default function App() {
    * off and having to switch it on by hand is a nuisance. Things resume
    * as they were, with two different waits for the microphone and for
    * the camera: see RESUME_MIC_MS.
+   *
+   * With a name on each drawer, because moving to another connection is
+   * a way of leaving too, and there whoever goes out and whoever comes
+   * in are two different people: with a single drawer, going from Anna
+   * to Bruno you would find Bruno's microphone off because you had
+   * switched it off with Anna - and going Anna, Bruno, Anna the memory
+   * of Anna would have been overwritten on the way past.
    */
-  const howItWas = useRef<{ when: number; video: boolean; audio: boolean } | null>(null);
+  type HowItWas = { when: number; video: boolean; audio: boolean };
+  const howItWas = useRef<Record<string, HowItWas>>({});
 
   /**
-   * Leaving the channel, after putting the journal in a safe place.
+   * Putting the channel away: what leaving and switching have in
+   * common.
    *
-   * The order matters: first the exit line is written, then it is sent
-   * to the other phone while the connection is still open, and only
-   * then do we really leave. Leaving first, the story of what one had
-   * just done stayed on this phone - and if the app died in the
-   * meantime, nobody read it any more.
+   * They are the same act - the channel is let go, the session comes
+   * down, one goes elsewhere - so the same three things are done, in
+   * the same order: the line in the journal, the memory of how it was,
+   * and the last exchange of journals while the connection is still
+   * open. Leaving first, the story of what one had just done stayed on
+   * this phone - and if the app died in the meantime, nobody read it
+   * any more.
+   *
+   * What the two do NOT share stays with the callers: leaving hides the
+   * app's window, switching does not.
    */
-  const leaveChannel = useCallback(async (stayAvailable = true) => {
-    // The exit line is written BEFORE sending, otherwise everything
-    // goes except the very thing one is doing.
-    await Diario.segna(stayAvailable ? 'left-channel' : 'unavailable')
-      .catch(() => { /* noop */ });
+  const putAwayChannel = useCallback(async (reason: string, pairId?: string) => {
+    // The line is written BEFORE sending, otherwise everything goes
+    // except the very thing one is doing.
+    await Diario.segna(reason).catch(() => { /* noop */ });
 
-    // Before tearing everything down: how it was, so it can be put back
-    // if we come straight back in.
-    howItWas.current = {
-      when: Date.now(),
-      video: sessionRef.current?.isVideoEnabled() === true,
-      audio: sessionRef.current?.isAudioEnabled() !== false,
-    };
+    if (pairId) {
+      howItWas.current[pairId] = {
+        when: Date.now(),
+        video: sessionRef.current?.isVideoEnabled() === true,
+        audio: sessionRef.current?.isAudioEnabled() !== false,
+      };
+    }
 
     setLeaving(true);
     try {
@@ -2223,6 +2290,13 @@ export default function App() {
     } finally {
       setLeaving(false);
     }
+  }, [sendJournal]);
+
+  /** Leaving the channel, after putting the journal in a safe place. */
+  const leaveChannel = useCallback(async (stayAvailable = true) => {
+    await putAwayChannel(
+      stayAvailable ? 'left-channel' : 'unavailable', cfg?.pair?.id,
+    );
 
     const sig = signalingRef.current;
     sessionRef.current?.leaveChannel();
@@ -2245,6 +2319,8 @@ export default function App() {
     // service - as it does at every change of pair.
     if (!stayAvailable) {
       sayGoodbye.current = true;
+      // Here the presence really does end: nobody is left to reach.
+      stopService.current = true;
       setAvailable(false);
     }
 
@@ -2253,7 +2329,7 @@ export default function App() {
     // get the notification when the other person comes in. Opening the
     // app again brings you straight back into the channel.
     AppWindow.minimize().catch(() => {});
-  }, [sendJournal]);
+  }, [putAwayChannel, cfg?.pair?.id]);
 
   /**
    * A safety net against the connection that does not come back.
@@ -2519,6 +2595,12 @@ export default function App() {
     if (!cfg) return;
     const next = switchToPair(cfg, id);
     if (next === cfg) return;
+    // Moving is leaving: the same journal line, the same memory of how
+    // it was, the same last exchange - and a goodbye, because from over
+    // there you disappear by choice, not because the line dropped. The
+    // service is not stopped: you stay reachable, on the other person.
+    await putAwayChannel('pair-switch', cfg.pair?.id);
+    sayGoodbye.current = true;
     setCfg(saveCfg(next));
     setPeerName(next.pair?.peerName || '');
     setPeerPresent(false);
@@ -2526,7 +2608,7 @@ export default function App() {
     resetPeerMemory();
     stopWaiting();
     setScreen('channel');
-  }, [cfg, stopWaiting, resetPeerMemory]);
+  }, [cfg, stopWaiting, resetPeerMemory, putAwayChannel]);
 
   /**
    * The name I give a connection myself.
@@ -2567,6 +2649,9 @@ export default function App() {
     // the other side must know it was not a drop.
     if (cfg.pair?.id === id) sayGoodbye.current = true;
     const next = forgetPair(cfg, id);
+    // With nothing left to connect to, the presence ends here; if
+    // another connection remains, the phone stays reachable there.
+    if (cfg.pair?.id === id && !isPaired(next)) stopService.current = true;
     setCfg(saveCfg(next));
     if (cfg.pair?.id === id) {
       setPeerName(next.pair?.peerName || '');
