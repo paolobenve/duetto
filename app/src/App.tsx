@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
 import {
-  Foreground, Pip, AppWindow, Visibility, Codecs, Audio, Avvisi, Journal, Volume, Rete,
+  Foreground, Pip, AppWindow, Visibility, Codecs, Audio, Alerts, Journal, Volume, Rete,
   Battito,
   Alarm,
 } from 'duetto-platform';
@@ -1517,7 +1517,7 @@ export default function App() {
       // needed: it is born with
       // sound and vibration inside it, and creating it at the first
       // alert would mean creating it while it is being used.
-      Avvisi.configura(c.alertVibration, c.alertSound, c.alertSoundUri).catch(() => {});
+      Alerts.configure(c.alertVibration, c.alertSound, c.alertSoundUri).catch(() => {});
       if (!isServerConfigured(c)) setScreen('settings');
       else if (!isPaired(c)) setScreen('pairing');
       // The system settings are offered once, as soon as there is a
@@ -2700,7 +2700,7 @@ export default function App() {
             // The call's sound and vibration live in the notification
             // channel, which has to be built again at every change.
             if ('alertVibration' in patch || 'alertSound' in patch || 'alertSoundUri' in patch) {
-              Avvisi.configura(next.alertVibration, next.alertSound, next.alertSoundUri)
+              Alerts.configure(next.alertVibration, next.alertSound, next.alertSoundUri)
                 .catch(() => {});
             }
             return next;

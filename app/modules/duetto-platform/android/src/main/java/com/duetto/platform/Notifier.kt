@@ -112,7 +112,7 @@ object Notifier {
         // Il canale dipende dalle preferenze: vedi Avvisi. Da lì viene
         // il suono nel caso normale; vibrazione e suono in conversazione
         // li fa Avvisi.avvisaOra qui sotto, perché il canale non può.
-        val canale = Avvisi.canale(ctx)
+        val canale = Alerts.channel(ctx)
 
         val launch = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)?.apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -137,8 +137,8 @@ object Notifier {
         // dicono qui. Da Android 8 in su vengono ignorate: comanda il
         // canale, e ripeterle non fa danno.
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-            builder.setSound(Avvisi.suonoScelto(ctx))
-            Avvisi.ritmoScelto(ctx)?.let { builder.setVibrate(it) }
+            builder.setSound(Alerts.chosenSound(ctx))
+            Alerts.chosenRhythm(ctx)?.let { builder.setVibrate(it) }
         }
 
         val notification = builder.build()
@@ -154,7 +154,7 @@ object Notifier {
         // vedi Avvisi.avvisaOra. Va dopo, non prima: se la notifica non
         // si può mostrare, un avviso che suona e basta è comunque meglio
         // di niente, ma l'ordine naturale resta quello.
-        Avvisi.avvisaOra(ctx)
+        Alerts.alertNow(ctx)
     }
 
     /** Dove teniamo l'ultimo titolo, per ritrovarlo dopo un riavvio. */

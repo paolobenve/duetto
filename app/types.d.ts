@@ -110,14 +110,14 @@ declare module 'duetto-platform' {
     } | null>;
   };
 
-  /** Vibrazione e suono dell'avviso. */
-  export const Avvisi: {
-    configura(
-      vibra: 'default' | 'always' | 'never',
-      suono: 'default' | 'none' | 'chosen',
+  /** The alert's vibration and sound. */
+  export const Alerts: {
+    configure(
+      vibration: 'default' | 'always' | 'never',
+      sound: 'default' | 'none' | 'chosen',
       uri?: string,
     ): Promise<boolean | string>;
-    scegliSuono(uriCorrente?: string): Promise<{ uri: string; nome: string } | null>;
+    pickSound(currentUri?: string): Promise<{ uri: string; name: string } | null>;
   };
 
   /** Manda i tasti del volume sul flusso della conversazione. */

@@ -10,7 +10,7 @@ const NativeProssimita = NativeModules.DuettoProssimita;
 const NativeLocale = NativeModules.DuettoLocale;
 const NativeCodecs = NativeModules.DuettoCodecs;
 const NativeAudio = NativeModules.DuettoAudio;
-const NativeAvvisi = NativeModules.DuettoAvvisi;
+const NativeAlerts = NativeModules.DuettoAlerts;
 const NativeJournal = NativeModules.DuettoJournal;
 const NativeVolume = NativeModules.DuettoVolume;
 const NativeAlarm = NativeModules.DuettoAlarm;
@@ -218,31 +218,32 @@ export const Journal = isAndroid && NativeJournal
     };
 
 /**
- * Come deve farsi sentire l'avviso dell'altro.
+ * How the other person's alert has to make itself heard.
  *
- * Da Android 8 suono e vibrazione si fissano alla nascita del canale di
- * notifica e non si possono più cambiare: `configura` ne crea uno nuovo
- * e butta il vecchio. Va chiamata all'avvio, non solo quando si cambia
- * idea, perché il canale può non esistere ancora.
+ * From Android 8 on, sound and vibration are fixed when the notification
+ * channel is born and cannot be changed any more: `configure` creates a
+ * new one and throws the old away. It has to be called at start-up, not
+ * only when one changes one's mind, because the channel may not exist
+ * yet.
  */
-export const Avvisi = isAndroid && NativeAvvisi
+export const Alerts = isAndroid && NativeAlerts
   ? {
       /**
-       * @param vibra 'predefinito' | 'sempre' | 'mai'
-       * @param suono 'predefinito' | 'nessuno' | 'scelto'
-       * @param uri   indirizzo del suono, solo con 'scelto'
+       * @param vibration 'default' | 'always' | 'never'
+       * @param sound     'default' | 'none' | 'chosen'
+       * @param uri       address of the sound, only with 'chosen'
        */
-      configura: (vibra, suono, uri = '') =>
-        call(NativeAvvisi, 'configura', String(vibra), String(suono), String(uri)),
+      configure: (vibration, sound, uri = '') =>
+        call(NativeAlerts, 'configure', String(vibration), String(sound), String(uri)),
 
       /**
-       * Apre la scelta dei suoni di sistema.
-       * Restituisce `{uri, nome}`, o null se si annulla.
+       * Opens the system's sound picker.
+       * Gives back `{uri, name}`, or null if it is cancelled.
        */
-      scegliSuono: (uriCorrente = '') =>
-        call(NativeAvvisi, 'scegliSuono', String(uriCorrente)),
+      pickSound: (currentUri = '') =>
+        call(NativeAlerts, 'pickSound', String(currentUri)),
     }
-  : { configura: unavailable, scegliSuono: () => Promise.resolve(null) };
+  : { configure: unavailable, pickSound: () => Promise.resolve(null) };
 
 /**
  * I tasti del volume.

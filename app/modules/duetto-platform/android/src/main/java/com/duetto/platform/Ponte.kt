@@ -95,7 +95,7 @@ object Ponte {
                 val v = avvisiVecchi.getString(chiave, "predefinito") ?: "predefinito"
                 tradotto[v] ?: v
             }
-            Avvisi.salva(ctx, come("vibra"), come("suono"), avvisiVecchi.getString("uri", "") ?: "")
+            Alerts.save(ctx, come("vibra"), come("suono"), avvisiVecchi.getString("uri", "") ?: "")
         }
     }
 

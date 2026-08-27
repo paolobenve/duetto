@@ -26,7 +26,7 @@ class DuettoPackage : ReactPackage {
         LocaleModule(reactContext),
         CodecsModule(reactContext),
         AudioModule(reactContext),
-        AvvisiModule(reactContext),
+        AlertsModule(reactContext),
         JournalModule(reactContext),
         VolumeModule(reactContext),
         AlarmModule(reactContext),

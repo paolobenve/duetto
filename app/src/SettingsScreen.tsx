@@ -13,7 +13,7 @@ import {
 import { peerAvatar } from './avatar';
 import { isRealName } from './presence';
 import { VERSION_FULL } from './version';
-import { Avvisi } from 'duetto-platform';
+import { Alerts } from 'duetto-platform';
 
 /**
  * The choices for the call's vibration.
@@ -400,12 +400,12 @@ export default function SettingsScreen({
               // nothing changes - not even the selected entry, which
               // would otherwise say "chosen" without anything having
               // been chosen.
-              const picked = await Avvisi.scegliSuono(cfg.alertSoundUri).catch(() => null);
+              const picked = await Alerts.pickSound(cfg.alertSoundUri).catch(() => null);
               if (!picked) return;
               const patch = {
                 alertSound: 'chosen' as const,
                 alertSoundUri: picked.uri,
-                alertSoundName: picked.nome,
+                alertSoundName: picked.name,
               };
               setCfg({ ...cfg, ...patch });
               onLive?.(patch);
