@@ -35,6 +35,7 @@ export const en = {
     title: 'What is new',
     close: 'Close',
     reachableAgain: '{who} is reachable again ({at}).',
+    build: 'build {n}',
     versionsDiffer: 'Different versions: {here} here, {there} over there',
     versionsDifferOlder: 'Different versions: {here} here, an older one over there',
     buildsDiffer: 'The same version, different builds: {here} here, {there} over there',

@@ -592,8 +592,23 @@ export default function App() {
   const versionWarning = React.useMemo(() => {
     if (!peerSeen) return null;
     const theirs = peerState.version;
-    if (!theirs) return t('news.versionsDifferOlder', { here: VERSION });
-    if (theirs !== VERSION) return t('news.versionsDiffer', { here: VERSION, there: theirs });
+    /**
+     * The build goes with the version, on both sides.
+     *
+     * Two phones can differ by a whole version or by one compilation,
+     * and in a beta the second happens far more often: saying "0.9.0
+     * here, 0.9.0 over there" while one of the two is twenty builds
+     * behind would explain nothing. Where the other side does not say
+     * its build - an older Duetto - only the version is named, which is
+     * everything that is known.
+     */
+    const mine = `${VERSION} (${t('news.build', { n: String(BUILD) })})`;
+    const theirBuild = peerState.build;
+    if (!theirs) return t('news.versionsDifferOlder', { here: mine });
+    const said = theirBuild
+      ? `${theirs} (${t('news.build', { n: String(theirBuild) })})`
+      : theirs;
+    if (theirs !== VERSION) return t('news.versionsDiffer', { here: mine, there: said });
     /**
      * The same version, a different APK.
      *
@@ -607,7 +622,6 @@ export default function App() {
      * An older Duetto does not send the build: there we say nothing,
      * rather than blame a difference we cannot see.
      */
-    const theirBuild = peerState.build;
     if (!theirBuild || theirBuild === BUILD) return null;
     return t('news.buildsDiffer', { here: String(BUILD), there: String(theirBuild) });
     // The language is among the dependencies because the sentence is
@@ -2267,7 +2281,11 @@ export default function App() {
     if (mine && before) { delete howItWas.current[mine]; saveHowItWas(); }
     if (before) {
       const still = Date.now() - before.when;
-      if (!before.audio && still < RESUME_MIC_MS) {
+      // An app that vanished did not choose to: whatever it was doing
+      // is what it should be doing again. The clock only judges a
+      // channel that was put away on purpose.
+      const vanished = before.live === true;
+      if (!before.audio && (vanished || still < RESUME_MIC_MS)) {
         Journal.mark(`resume-mic:after ${Math.round(still / 1000)}s`)
           .catch(() => { /* noop */ });
         const on = sessionRef.current?.toggleAudio();
@@ -2290,6 +2308,8 @@ export default function App() {
    * the channel - is born before the function that turns the video on.
    */
   const turnVideoBackOnRef = useRef<(() => void) | null>(null);
+  /** Writes down how the channel stands: see noteHowItIs. */
+  const noteHowItIsRef = useRef<(() => void) | null>(null);
 
   /**
    * How long we wait at most before leaving anyway.
@@ -2325,14 +2345,54 @@ export default function App() {
    * switched it off with Anna - and going Anna, Bruno, Anna the memory
    * of Anna would have been overwritten on the way past.
    */
-  type HowItWas = { when: number; video: boolean; audio: boolean };
+  /**
+   * `live` says how the drawer was filled.
+   *
+   * Leaving or switching connection fills it and the app goes on
+   * living, so the time that has passed is what decides whether to
+   * restore: coming back after an hour, the microphone is not put back
+   * on mute by surprise.
+   *
+   * An app that is killed - an update, or the phone closing it - fills
+   * nothing: the drawer left behind is the one written at the last
+   * touch of the buttons, and there the time says nothing, because
+   * nobody went anywhere. What it says is "this is how the channel was
+   * when the app disappeared", and that is worth restoring whenever it
+   * comes back.
+   */
+  type HowItWas = { when: number; video: boolean; audio: boolean; live?: boolean };
   const howItWas = useRef<Record<string, HowItWas>>({});
+
+  /**
+   * How the channel stands right now, written down at every touch.
+   *
+   * Without this the update lost the mute: putting the channel away is
+   * what fills the drawer, and an app that is killed does not put
+   * anything away - it is simply not there any more.
+   */
+  const noteHowItIs = useCallback((pairId: string | undefined) => {
+    if (!pairId) return;
+    howItWas.current[pairId] = {
+      when: Date.now(),
+      video: sessionRef.current?.isVideoEnabled() === true,
+      audio: sessionRef.current?.isAudioEnabled() !== false,
+      live: true,
+    };
+    saveHowItWasRef.current?.();
+  }, []);
+  // By way of a reference, because the video button is born before this
+  // function and could not name it.
+  const noteHowItIsPair = useRef<string | undefined>(undefined);
+  useEffect(() => { noteHowItIsPair.current = cfg?.pair?.id; }, [cfg?.pair?.id]);
+  noteHowItIsRef.current = () => noteHowItIs(noteHowItIsPair.current);
 
   /** Puts the drawers away, without anybody waiting for it. */
   const saveHowItWas = useCallback(() => {
     AsyncStorage.setItem(HOW_IT_WAS_KEY, JSON.stringify(howItWas.current))
       .catch(() => { /* a lost drawer costs one switch by hand */ });
   }, []);
+  const saveHowItWasRef = useRef<(() => void) | null>(null);
+  saveHowItWasRef.current = saveHowItWas;
 
   /**
    * And takes them out again at start-up, throwing away the old ones.
@@ -2350,7 +2410,12 @@ export default function App() {
         const now = Date.now();
         const fresh: Record<string, HowItWas> = {};
         for (const [id, was] of Object.entries(stored)) {
-          if (was && now - was.when < RESUME_MIC_MS) fresh[id] = was;
+          // The ones left by an app that vanished do not expire: their
+          // time says when a button was last touched, not when anybody
+          // went away.
+          if (was && (was.live === true || now - was.when < RESUME_MIC_MS)) {
+            fresh[id] = was;
+          }
         }
         howItWas.current = fresh;
       } catch { /* nothing to take out */ }
@@ -2382,6 +2447,7 @@ export default function App() {
         when: Date.now(),
         video: sessionRef.current?.isVideoEnabled() === true,
         audio: sessionRef.current?.isAudioEnabled() !== false,
+        live: false,
       };
       saveHowItWas();
     }
@@ -2521,6 +2587,7 @@ export default function App() {
       setVideoOn(await s.disableVideo());
       setLocalAspect(undefined);
       Foreground.setCameraActive(false).catch(() => {});
+      noteHowItIsRef.current?.();
       return;
     }
     if (!cameraGranted.current) {
@@ -2538,6 +2605,7 @@ export default function App() {
       // The camera opens on the chosen one, which may have been
       // changed with the video off: here we only align the icon.
       setFrontCamera(s.isFrontCamera());
+      noteHowItIsRef.current?.();
     } catch (e: any) {
       Foreground.setCameraActive(false).catch(() => {});
       Alert.alert(t('errors.cameraError'), String(e?.message ?? e));
@@ -2918,6 +2986,7 @@ export default function App() {
         onToggleAudio={() => {
           const on = sessionRef.current?.toggleAudio() ?? false;
           setAudioOn(on);
+          noteHowItIs(cfg?.pair?.id);
           Journal.mark(`audio:${on ? 'on' : 'off'}`).catch(() => {});
         }}
         onToggleVideo={onToggleVideo}

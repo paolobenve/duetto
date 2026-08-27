@@ -25,6 +25,7 @@ export const it: Dictionary = {
     title: 'Novità',
     close: 'Chiudi',
     reachableAgain: '{who} è di nuovo raggiungibile ({at}).',
+    build: 'build {n}',
     versionsDiffer: 'Versioni diverse: qui {here}, di là {there}',
     versionsDifferOlder: 'Versioni diverse: qui {here}, di là una più vecchia',
     buildsDiffer: 'Stessa versione, build diverse: qui {here}, di là {there}',
