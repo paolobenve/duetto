@@ -14,11 +14,10 @@ import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.modules.core.DeviceEventManagerModule
 
 /**
- * Il ponte per i tasti del volume presi in mano dall'app.
+ * The bridge for the volume keys taken over by the app.
  *
- * Manda a JavaScript un evento solo nei casi in cui il volume di sistema
- * non si e' mosso: la stragrande maggioranza delle pressioni non passa
- * mai di qui.
+ * It sends JavaScript an event only in the cases where the system volume
+ * did not move: the vast majority of presses never comes through here.
  */
 class VolumeModule(private val ctx: ReactApplicationContext) :
     ReactContextBaseJavaModule(ctx) {
@@ -26,10 +25,10 @@ class VolumeModule(private val ctx: ReactApplicationContext) :
     override fun getName() = "DuettoVolume"
 
     init {
-        Volume.avvisa = { direzione ->
+        Volume.tell = { direction ->
             if (ctx.hasActiveReactInstance()) {
                 ctx.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-                    .emit(EVENTO, direzione)
+                    .emit(EVENT, direction)
             }
         }
     }
@@ -38,17 +37,17 @@ class VolumeModule(private val ctx: ReactApplicationContext) :
         get() = ctx.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
 
     /**
-     * Il volume di chiamata del telefono, e il suo massimo.
+     * The phone's call volume, and its maximum.
      *
-     * E' meta' di quello che si sente: l'altra meta' e' il guadagno di
-     * Duetto, che moltiplica il suono prima di suonarlo. Il livello che
-     * l'app mostra e' il prodotto dei due, e questo e' il fattore che
-     * comanda il telefono - quello che Android ricorda separatamente per
-     * cornetta, altoparlante, cuffie e bluetooth, e che si muove anche
-     * da fuori.
+     * It is half of what one hears: the other half is Duetto's gain,
+     * which multiplies the sound before playing it. The level the app
+     * shows is the product of the two, and this is the factor the phone
+     * commands - the one Android remembers separately for earpiece,
+     * speaker, headphones and bluetooth, and which moves from outside
+     * too.
      */
     @ReactMethod
-    fun leggi(promise: Promise) {
+    fun read(promise: Promise) {
         val a = am
         val m = Arguments.createMap()
         if (a == null) {
@@ -67,16 +66,16 @@ class VolumeModule(private val ctx: ReactApplicationContext) :
         promise.resolve(m)
     }
 
-    /** Mette il volume di chiamata a un valore preciso. */
+    /** Puts the call volume at an exact value. */
     @ReactMethod
-    fun metti(valore: Int, promise: Promise) {
+    fun set(value: Int, promise: Promise) {
         val a = am
         if (a == null) { promise.resolve(false); return }
         try {
             val max = a.getStreamMaxVolume(AudioManager.STREAM_VOICE_CALL)
-            val v = valore.coerceIn(0, max)
-            // Senza suoni e senza il pannello di sistema: la barretta la
-            // disegna l'app, e vederne due sovrapposte confonde.
+            val v = value.coerceIn(0, max)
+            // No sounds and no system panel: the little bar is drawn by
+            // the app, and seeing two of them overlapping is confusing.
             a.setStreamVolume(AudioManager.STREAM_VOICE_CALL, v, 0)
             promise.resolve(true)
         } catch (_: Exception) {
@@ -85,65 +84,67 @@ class VolumeModule(private val ctx: ReactApplicationContext) :
     }
 
     /**
-     * Avverte quando il volume di chiamata cambia, anche da fuori.
+     * Warns when the call volume changes, from outside as well.
      *
-     * Serve perche' il numero mostrato da Duetto non menta: se qualcuno
-     * abbassa il volume da un'altra app o dal pannello di sistema, il
-     * livello e' cambiato davvero, e finora l'app continuava a mostrare
-     * il suo.
+     * It is there so that the number Duetto shows does not lie: if
+     * somebody lowers the volume from another app or from the system
+     * panel, the level really has changed, and until now the app went on
+     * showing its own.
      *
-     * L'azione non e' nella documentazione pubblica ma esiste da sempre
-     * e la usano tutti; se un giorno non arrivasse piu', il livello si
-     * riallineerebbe comunque a ogni battito e a ogni tocco dei tasti.
+     * The action is not in the public documentation but has always been
+     * there and everybody uses it; if one day it stopped arriving, the
+     * level would line itself up again at every heartbeat and at every
+     * touch of the keys anyway.
      */
-    private var registrato = false
-    private val ascolto = object : BroadcastReceiver() {
+    private var registered = false
+    private val listener = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.getIntExtra(EXTRA_TIPO, -1) != AudioManager.STREAM_VOICE_CALL) return
+            if (intent?.getIntExtra(EXTRA_TYPE, -1) != AudioManager.STREAM_VOICE_CALL) return
             if (!ctx.hasActiveReactInstance()) return
             try {
                 ctx.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-                    .emit(EVENTO_SISTEMA, intent.getIntExtra(EXTRA_VALORE, -1))
+                    .emit(SYSTEM_EVENT, intent.getIntExtra(EXTRA_VALUE, -1))
             } catch (_: Exception) { /* noop */ }
         }
     }
 
     @ReactMethod
-    fun ascoltaSistema(promise: Promise) {
-        if (registrato) { promise.resolve(true); return }
+    fun listenToSystem(promise: Promise) {
+        if (registered) { promise.resolve(true); return }
         try {
-            // Con la bandiera, e non a mano: da Android 14 registrare un
-            // ricevitore senza dichiarare se il segnale puo' venire da
-            // fuori fa cadere l'app con una SecurityException. Questo
-            // arriva dal sistema, quindi non e' esportato.
+            // With the flag, and not by hand: from Android 14 on,
+            // registering a receiver without declaring whether the signal
+            // can come from outside brings the app down with a
+            // SecurityException. This one comes from the system, so it is
+            // not exported.
             ContextCompat.registerReceiver(
-                ctx, ascolto, IntentFilter(AZIONE_VOLUME),
+                ctx, listener, IntentFilter(VOLUME_ACTION),
                 ContextCompat.RECEIVER_NOT_EXPORTED,
             )
-            registrato = true
+            registered = true
             promise.resolve(true)
         } catch (_: Exception) {
             promise.resolve(false)
         }
     }
 
-    /** Nel canale i tasti li guardiamo noi; fuori sono del sistema. */
+    /** In the channel we watch the keys; outside they belong to the system. */
     @ReactMethod
-    fun prendiTasti(attivo: Boolean, promise: Promise) {
-        Volume.attivo = attivo
+    fun takeKeys(active: Boolean, promise: Promise) {
+        Volume.active = active
         promise.resolve(true)
     }
 
-    // Richiesti da NativeEventEmitter su iOS; su Android non servono, ma
-    // averli evita l'avviso in console.
+    // Required by NativeEventEmitter on iOS; on Android they are not
+    // needed, but having them avoids the warning in the console.
     @ReactMethod fun addListener(eventName: String) { /* noop */ }
     @ReactMethod fun removeListeners(count: Int) { /* noop */ }
 
     companion object {
-        const val EVENTO = "duetto-volume"
-        const val EVENTO_SISTEMA = "duetto-volume-sistema"
-        private const val AZIONE_VOLUME = "android.media.VOLUME_CHANGED_ACTION"
-        private const val EXTRA_TIPO = "android.media.EXTRA_VOLUME_STREAM_TYPE"
-        private const val EXTRA_VALORE = "android.media.EXTRA_VOLUME_STREAM_VALUE"
+        const val EVENT = "duetto-volume"
+        const val SYSTEM_EVENT = "duetto-volume-system"
+        private const val VOLUME_ACTION = "android.media.VOLUME_CHANGED_ACTION"
+        private const val EXTRA_TYPE = "android.media.EXTRA_VOLUME_STREAM_TYPE"
+        private const val EXTRA_VALUE = "android.media.EXTRA_VOLUME_STREAM_VALUE"
     }
 }

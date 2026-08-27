@@ -577,7 +577,7 @@ export default function App() {
   useEffect(() => {
     let alive = true;
     const reread = () => {
-      Volume.leggi().then((v) => {
+      Volume.read().then((v) => {
         if (alive && v && v.max > 0) setSystemVolume({ volume: v.volume, max: v.max });
       }).catch(() => { /* noop */ });
     };
@@ -596,7 +596,7 @@ export default function App() {
      * Our own change does not count: when it is us moving the knob we
      * remember it for a moment, and let that announcement through.
      */
-    const stop = Volume.ascoltaSistema((value) => {
+    const stop = Volume.listenToSystem((value) => {
       reread();
       const ours = ourOwnSet.current;
       const fromUs = ours
@@ -701,7 +701,7 @@ export default function App() {
       // echo of this, not somebody else's choice.
       ourOwnSet.current = { v, t: Date.now() };
       setSystemVolume({ ...phone, volume: v });
-      Volume.metti(v).catch(() => { /* noop */ });
+      Volume.set(v).catch(() => { /* noop */ });
     };
 
     const up = Math.round((ours + GAIN_STEP) * 100) / 100;
@@ -744,11 +744,11 @@ export default function App() {
 
   useEffect(() => {
     if (!inChannel) return;
-    Volume.prendiTasti(true).catch(() => {});
+    Volume.takeKeys(true).catch(() => {});
     const stop = Volume.subscribe(changeLevel);
     return () => {
       stop();
-      Volume.prendiTasti(false).catch(() => {});
+      Volume.takeKeys(false).catch(() => {});
     };
   }, [inChannel, changeLevel]);
 

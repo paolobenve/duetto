@@ -17,16 +17,16 @@ declare module 'duetto-platform' {
   };
 
   export const Volume: {
-    /** nel canale l'app prende i tasti del volume; fuori li lascia */
-    prendiTasti(attivo: boolean): Promise<boolean>;
-    /** `cb(+1|-1)` quando il volume di sistema non si è mosso */
-    subscribe(cb: (direzione: number) => void): () => void;
-    /** il volume di chiamata del telefono, e il suo massimo */
-    leggi(): Promise<{ volume: number; max: number }>;
-    /** lo mette a un valore preciso */
-    metti(valore: number): Promise<boolean>;
-    /** `cb(valore)` quando il volume di chiamata cambia, anche da fuori */
-    ascoltaSistema(cb: (valore: number) => void): () => void;
+    /** in the channel the app takes the volume keys; outside it leaves them */
+    takeKeys(active: boolean): Promise<boolean>;
+    /** `cb(+1|-1)` when the system volume did not move */
+    subscribe(cb: (direction: number) => void): () => void;
+    /** the phone's call volume, and its maximum */
+    read(): Promise<{ volume: number; max: number }>;
+    /** puts it at an exact value */
+    set(value: number): Promise<boolean>;
+    /** `cb(value)` when the call volume changes, from outside as well */
+    listenToSystem(cb: (value: number) => void): () => void;
   };
 
   /** La lingua a cui è impostato il telefono, in due lettere. */

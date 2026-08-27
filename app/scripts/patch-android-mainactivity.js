@@ -29,20 +29,32 @@ if (!fs.existsSync(file)) {
 
 let kt = fs.readFileSync(file, 'utf8');
 
-if (kt.includes('Volume.intercetta')) {
-  console.log('volume keys: already in place');
+// The guard looks at the import and not at the method names: an
+// activity patched by an older Duetto has the same import and the old
+// Italian names, and looking for those would add a second pair of
+// overrides on top of them. Those names are put right here instead,
+// because android/ is not regenerated at every build and an activity
+// calling a method that no longer exists does not compile.
+if (kt.includes('import com.duetto.platform.Volume')) {
+  const renamed = kt
+    .replace(/Volume\.intercetta\(/g, 'Volume.intercept(')
+    .replace(/Volume\.consumaRilascio\(/g, 'Volume.consumeRelease(');
+  if (renamed !== kt) {
+    fs.writeFileSync(file, renamed);
+    console.log('volume keys: the old names put right');
+  } else {
+    console.log('volume keys: already in place');
+  }
   process.exit(0);
 }
 
 const imports = `import android.view.KeyEvent
 import com.duetto.platform.Volume
 `;
-if (!kt.includes('import com.duetto.platform.Volume')) {
-  kt = kt.replace(
-    /^(import com\.facebook\.react\.ReactActivity\n)/m,
-    `${imports}$1`,
-  );
-}
+kt = kt.replace(
+  /^(import com\.facebook\.react\.ReactActivity\n)/m,
+  `${imports}$1`,
+);
 
 const methods = `
   /**
@@ -54,13 +66,13 @@ const methods = `
    * through here.
    */
   override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
-    if (Volume.intercetta(this, keyCode)) return true
+    if (Volume.intercept(this, keyCode)) return true
     return super.onKeyDown(keyCode, event)
   }
 
   /** The release is consumed with the press, or the key acts twice. */
   override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
-    if (Volume.consumaRilascio(keyCode)) return true
+    if (Volume.consumeRelease(keyCode)) return true
     return super.onKeyUp(keyCode, event)
   }
 `;

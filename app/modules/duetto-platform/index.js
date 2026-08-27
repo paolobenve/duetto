@@ -387,22 +387,22 @@ export const Visibility = isAndroid && NativeVisibility
 
 
 /**
- * I tasti del volume, mentre si è nel canale.
+ * The volume keys, while one is in the channel.
  *
- * L'app li prende in mano e li gira al sistema; l'evento arriva qui solo
- * quando il sistema NON si è mosso, perché il volume di chiamata è al
- * suo limite - cosa che su parecchi telefoni, in vivavoce, è la
- * normalità. In quel caso tocca all'app alzare la voce dell'altro per
- * conto suo.
+ * The app takes them in hand and passes them to the system; the event
+ * arrives here only when the system did NOT move, because the call volume
+ * is at its limit - which on a good many phones, on speaker, is the
+ * normal state of things. In that case it is up to the app to raise the
+ * other voice on its own account.
  */
 export const Volume = isAndroid && NativeVolume
   ? {
-      /** Nel canale sì, fuori no: fuori i tasti sono del sistema. */
-      prendiTasti: (attivo) => call(NativeVolume, 'prendiTasti', !!attivo),
+      /** In the channel yes, outside no: outside the keys are the system's. */
+      takeKeys: (active) => call(NativeVolume, 'takeKeys', !!active),
 
       /**
-       * Chiama `cb(+1 | -1)` quando il volume di sistema non si muove.
-       * Restituisce la funzione per smettere di ascoltare.
+       * Calls `cb(+1 | -1)` when the system volume does not move.
+       * Gives back the function to stop listening.
        */
       subscribe(cb) {
         const emitter = new NativeEventEmitter(NativeVolume);
@@ -411,34 +411,34 @@ export const Volume = isAndroid && NativeVolume
       },
 
       /**
-       * Il volume di chiamata del telefono: `{ volume, max }`.
+       * The phone's call volume: `{ volume, max }`.
        *
-       * È metà di quello che si sente - l'altra metà è il guadagno di
-       * Duetto - ed è la metà che Android ricorda separatamente per ogni
-       * uscita e che si muove anche da fuori.
+       * It is half of what one hears - the other half is Duetto's gain -
+       * and it is the half Android remembers separately for every output
+       * and which moves from outside as well.
        */
-      leggi: () => call(NativeVolume, 'leggi'),
+      read: () => call(NativeVolume, 'read'),
 
-      /** Lo mette a un valore preciso, senza suoni né barretta di sistema. */
-      metti: (valore) => call(NativeVolume, 'metti', Math.round(Number(valore) || 0)),
+      /** Puts it at an exact value, with no sounds and no system bar. */
+      set: (value) => call(NativeVolume, 'set', Math.round(Number(value) || 0)),
 
       /**
-       * Chiama `cb(valore)` quando il volume di chiamata cambia, anche
-       * per mano di un'altra app.
+       * Calls `cb(value)` when the call volume changes, by another app's
+       * hand as well.
        */
-      ascoltaSistema(cb) {
-        call(NativeVolume, 'ascoltaSistema');
+      listenToSystem(cb) {
+        call(NativeVolume, 'listenToSystem');
         const emitter = new NativeEventEmitter(NativeVolume);
-        const sub = emitter.addListener('duetto-volume-sistema', (v) => cb(Number(v)));
+        const sub = emitter.addListener('duetto-volume-system', (v) => cb(Number(v)));
         return () => sub.remove();
       },
     }
   : {
-      prendiTasti: unavailable,
+      takeKeys: unavailable,
       subscribe: () => () => {},
-      leggi: () => Promise.resolve({ volume: 0, max: 0 }),
-      metti: unavailable,
-      ascoltaSistema: () => () => {},
+      read: () => Promise.resolve({ volume: 0, max: 0 }),
+      set: unavailable,
+      listenToSystem: () => () => {},
     };
 
 
