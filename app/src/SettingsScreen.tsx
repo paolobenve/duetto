@@ -50,12 +50,20 @@ const VIBRATIONS = (): {
   { value: 'never', label: t('settings.vibrationNever'), note: t('settings.vibrationNeverNote') },
 ];
 
+/**
+ * Only the two that are always there.
+ *
+ * The third - the sound picked from the phone's own - is not a fixed
+ * entry: it appears with the name it has, and choosing it is choosing
+ * it. Picking a different one is a separate line, further down, because
+ * the two things are different: one is "use this", the other is "let me
+ * look for another".
+ */
 const SOUNDS = (): {
   value: DuoConfig['alertSound']; label: string; note: string;
 }[] => [
   { value: 'default', label: t('settings.soundDefault'), note: t('settings.soundDefaultNote') },
   { value: 'none', label: t('settings.soundNone'), note: t('settings.soundNoneNote') },
-  { value: 'chosen', label: t('settings.soundChoose'), note: t('settings.soundChooseNote') },
 ];
 
 /**
@@ -162,6 +170,15 @@ export default function SettingsScreen({
   const inUse = initial.pair?.id;
 
   const nameOf = (p: PairInfo) => pairName(p) || t('settings.unnamed');
+
+  /**
+   * Whether a sound of the phone's own has already been picked.
+   *
+   * The name is enough to show it, the address is what makes it play:
+   * either of the two means there is one to offer, and a configuration
+   * written before this field existed had only the address.
+   */
+  const hasOwnSound = !!(cfg.alertSoundName || cfg.alertSoundUri);
 
   /** the connection being named, and the name in progress */
   const [naming, setNaming] = useState<PairInfo | null>(null);
@@ -408,37 +425,64 @@ export default function SettingsScreen({
           <TouchableOpacity
             key={s.value}
             style={[styles.choice, cfg.alertSound === s.value && styles.choicePicked]}
-            onPress={async () => {
-              if (s.value !== 'chosen') {
-                setCfg({ ...cfg, alertSound: s.value });
-                onLive?.({ alertSound: s.value });
-                return;
-              }
-              // A system screen makes the choice: if it is cancelled,
-              // nothing changes - not even the selected entry, which
-              // would otherwise say "chosen" without anything having
-              // been chosen.
-              const picked = await Alerts.pickSound(cfg.alertSoundUri).catch(() => null);
-              if (!picked) return;
-              const patch = {
-                alertSound: 'chosen' as const,
-                alertSoundUri: picked.uri,
-                alertSoundName: picked.name,
-              };
-              setCfg({ ...cfg, ...patch });
-              onLive?.(patch);
+            onPress={() => {
+              setCfg({ ...cfg, alertSound: s.value });
+              onLive?.({ alertSound: s.value });
             }}>
             <View style={[styles.radio, cfg.alertSound === s.value && styles.radioPicked]} />
             <View style={styles.choiceText}>
-              <Text style={styles.choiceLabel}>
-                {s.value === 'chosen' && cfg.alertSoundName
-                  ? cfg.alertSoundName
-                  : s.label}
-              </Text>
+              <Text style={styles.choiceLabel}>{s.label}</Text>
               <Text style={styles.choiceNote}>{s.note}</Text>
             </View>
           </TouchableOpacity>
         ))}
+
+        {/* The sound picked from the phone's own is an entry like the
+            others: it shows the name it has, and touching it chooses
+            it. Before, that same touch opened the system screen again -
+            so the sound in use could not be picked back without going
+            to look for it a second time. */}
+        {hasOwnSound ? (
+          <TouchableOpacity
+            style={[styles.choice, cfg.alertSound === 'chosen' && styles.choicePicked]}
+            onPress={() => {
+              setCfg({ ...cfg, alertSound: 'chosen' });
+              onLive?.({ alertSound: 'chosen' });
+            }}>
+            <View style={[styles.radio, cfg.alertSound === 'chosen' && styles.radioPicked]} />
+            <View style={styles.choiceText}>
+              <Text style={styles.choiceLabel}>
+                {cfg.alertSoundName || t('settings.soundChosen')}
+              </Text>
+              <Text style={styles.choiceNote}>{t('settings.soundChosenNote')}</Text>
+            </View>
+          </TouchableOpacity>
+        ) : null}
+
+        {/* Going to look for another one: an action, not a choice, and
+            it says so with an arrow instead of a dot. */}
+        <TouchableOpacity
+          style={[styles.rowButton, styles.rowAfterChoices]}
+          onPress={async () => {
+            // A system screen makes the choice: if it is cancelled,
+            // nothing changes - not even the selected entry, which would
+            // otherwise say "chosen" without anything having been chosen.
+            const picked = await Alerts.pickSound(cfg.alertSoundUri).catch(() => null);
+            if (!picked) return;
+            const patch = {
+              alertSound: 'chosen' as const,
+              alertSoundUri: picked.uri,
+              alertSoundName: picked.name,
+            };
+            setCfg({ ...cfg, ...patch });
+            onLive?.(patch);
+          }}>
+          <Text style={styles.rowButtonText}>
+            {hasOwnSound ? t('settings.soundChooseAnother') : t('settings.soundChoose')}
+          </Text>
+          <Text style={styles.rowButtonArrow}>{'\u203A'}</Text>
+        </TouchableOpacity>
+        <Text style={styles.sectionHint}>{t('settings.soundChooseNote')}</Text>
 
         <Text style={styles.subsection}>{t('settings.controlsWhileWatching')}</Text>
         <Text style={styles.sectionHint}>{t('settings.controlsHint')}</Text>
@@ -706,6 +750,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#151a23', borderRadius: 12, paddingVertical: 15,
     paddingHorizontal: 16, borderWidth: 1, borderColor: '#252c38',
   },
+  // The same row, when it follows a list of choices: those carry a
+  // margin of their own, and without this it would be stuck to the
+  // last of them.
+  rowAfterChoices: { marginTop: 8 },
   rowButtonText: { color: '#e6ebf1', fontSize: 16, fontWeight: '600' },
   rowButtonArrow: { color: '#6b7686', fontSize: 22, lineHeight: 24 },
   toggle: { marginTop: 20, paddingVertical: 10 },
