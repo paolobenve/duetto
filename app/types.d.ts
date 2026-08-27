@@ -1,4 +1,4 @@
-// Dichiarazioni per i moduli senza tipi propri.
+// Declarations for the modules with no types of their own.
 
 declare module 'tweetnacl-util' {
   export function decodeUTF8(s: string): Uint8Array;
@@ -29,7 +29,7 @@ declare module 'duetto-platform' {
     listenToSystem(cb: (value: number) => void): () => void;
   };
 
-  /** La lingua a cui è impostato il telefono, in due lettere. */
+  /** The language the phone is set to, as a two-letter code. */
   export const Locale: {
     language: string;
     current(): Promise<string>;
@@ -79,18 +79,18 @@ declare module 'duetto-platform' {
     openAppSettings(): Promise<boolean>;
   };
 
-  /** Picture-in-Picture di sistema. */
+  /** The system's Picture-in-Picture. */
   export const Pip: {
     isSupported(): Promise<boolean>;
     enter(aspect?: number): Promise<boolean>;
   };
 
-  /** La finestra dell'app. */
+  /** The app's window. */
   export const AppWindow: {
     minimize(): Promise<boolean>;
   };
 
-  /** Cosa sa fare la parte video di questo telefono. */
+  /** What the video side of this phone can do. */
   export const Codecs: {
     hasHardwareVp9Encoder(): Promise<boolean>;
   };
@@ -120,18 +120,19 @@ declare module 'duetto-platform' {
     pickSound(currentUri?: string): Promise<{ uri: string; name: string } | null>;
   };
 
-  /** Manda i tasti del volume sul flusso della conversazione. */
+  /** Points the volume keys at the conversation's stream. */
   export const Audio: {
     useCallVolumeKeys(active: boolean): Promise<boolean>;
   };
 
   /**
-   * Se l'app sta davvero mostrando qualcosa. Diverso da AppState: in
-   * Picture-in-Picture l'activity è in pausa ma la finestrella si vede.
+   * Whether the app is really showing anything. Different from AppState:
+   * in Picture-in-Picture the activity is paused but the little window
+   * can be seen.
    */
   export const Visibility: {
     get(): Promise<boolean>;
-    /** Restituisce la funzione per smettere di ascoltare. */
+    /** Gives back the function to stop listening. */
     subscribe(cb: (visible: boolean) => void): () => void;
   };
 }

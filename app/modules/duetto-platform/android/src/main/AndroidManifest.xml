@@ -1,42 +1,43 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Restare vivi in background -->
+    <!-- Staying alive in the background -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
-    <!-- Per l'ascolto senza interfaccia, che non usa ne' microfono ne'
-         camera: tiene aperta una connessione e aspetta. -->
+    <!-- For listening without an interface, which uses neither the
+         microphone nor the camera: it holds a connection open and waits. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <!-- Android 13+: serve per mostrare la notifica del servizio -->
+    <!-- Android 13+: needed to show the service's notification -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- Ripartire dopo il riavvio del telefono -->
+    <!-- Coming back after the phone reboots -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <!-- Chiedere l'uso senza restrizioni di batteria -->
+    <!-- Asking for unrestricted battery use -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application>
-        <!-- Presenza senza interfaccia: rimette in piedi la connessione
-             dopo il riavvio, senza aprire l'app (vietato da Android 10).
+        <!-- Presence with no interface: it puts the connection back up
+             after a reboot, without opening the app (forbidden from
+             Android 10).
 
-             Il tipo NON e' "microphone": questo servizio il microfono non
-             lo apre mai - tiene una connessione e aspetta - e dichiararlo
-             era sbagliato di suo. Era anche fatale: da Android 14 un'app
-             che non e' in primo piano non puo' avviare un servizio di
-             tipo microfono, e noi lo avviamo proprio quando l'interfaccia
-             e' appena sparita. Il sistema lanciava un'eccezione e l'app
-             moriva.
+             The type is NOT "microphone": this service never opens the
+             microphone - it holds a connection and waits - and declaring
+             it was wrong in itself. It was also fatal: from Android 14 an
+             app that is not in the foreground cannot start a service of
+             the microphone type, and we start it exactly when the
+             interface has just disappeared. The system threw an exception
+             and the app died.
 
-             "dataSync" sarebbe l'altra scelta ovvia, ma da Android 15 ha
-             un tetto di sei ore al giorno, e questa presenza deve poter
-             stare accesa tutta la notte. -->
+             "dataSync" would be the other obvious choice, but from
+             Android 15 it has a ceiling of six hours a day, and this
+             presence has to be able to stay on all night. -->
         <service
             android:name=".PresenceService"
             android:exported="false"
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Resta raggiungibile per la chiamata dell'altra persona" />
+                android:value="Stay reachable for the other person's call" />
         </service>
 
         <receiver
@@ -50,11 +51,11 @@
             </intent-filter>
         </receiver>
 
-        <!-- Niente `stopWithTask`: diceva ad Android di spegnere il
-             servizio quando il telefono mette via l'app, ed e' proprio il
-             momento in cui la presenza deve restare. Chi non vuole essere
-             raggiungibile ha "esci e renditi non disponibile", che lo dice
-             a parole sue. -->
+        <!-- No `stopWithTask`: it told Android to shut the service down
+             when the phone puts the app away, and that is exactly the
+             moment presence has to stay. Whoever does not want to be
+             reachable has "leave and become unavailable", which says so
+             in so many words. -->
         <service
             android:name=".ChannelForegroundService"
             android:exported="false"

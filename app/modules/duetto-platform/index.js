@@ -16,18 +16,18 @@ const NativeVolume = NativeModules.DuettoVolume;
 const NativeAlarm = NativeModules.DuettoAlarm;
 
 /**
- * Chiama un metodo nativo solo se esiste davvero.
+ * Calls a native method only if it really exists.
  *
- * Il lato JS e il lato nativo possono disallinearsi: basta un APK
- * costruito con una versione precedente del modulo. Senza questa
- * protezione una chiamata a un metodo mancante fa cadere l'intera app
- * con "undefined is not a function", per giunta lontano dal punto in cui
- * sta il vero problema. Meglio non fare nulla e restituire false.
+ * The JS side and the native side can drift apart: an APK built with an
+ * earlier version of the module is enough. Without this protection, a
+ * call to a missing method brings the whole app down with "undefined is
+ * not a function", and far from where the real trouble is, at that.
+ * Better to do nothing and give back false.
  */
 function call(mod, name, ...args) {
   const fn = mod && mod[name];
   if (typeof fn !== 'function') {
-    if (__DEV__) console.warn(`[duetto-platform] metodo nativo assente: ${name}`);
+    if (__DEV__) console.warn(`[duetto-platform] native method missing: ${name}`);
     return Promise.resolve(false);
   }
   try {
@@ -149,37 +149,38 @@ export const Foreground = isAndroid && NativeForeground
     };
 
 /**
- * Picture-in-Picture di sistema: la finestrella che resta sopra le altre
- * app. Usata dal tasto Indietro, per non uscire dal canale per sbaglio.
+ * The system's Picture-in-Picture: the little window that stays on top of
+ * the other apps. Used by the Back key, so as not to leave the channel by
+ * mistake.
  */
 export const Pip = isAndroid && NativePip
   ? {
-      /** Vero se il telefono lo supporta (Android 8+ e funzione presente). */
+      /** True if the phone supports it (Android 8+ and the feature there). */
       isSupported: () => call(NativePip, 'isSupported'),
 
-      /** Entra in PiP con le proporzioni date (larghezza/altezza). */
+      /** Enters PiP with the given aspect ratio (width/height). */
       enter: (aspect = 9 / 16) =>
         call(NativePip, 'enter', Number(aspect) || 9 / 16),
     }
   : { isSupported: unavailable, enter: unavailable };
 
 /**
- * La finestra dell'app.
+ * The app's window.
  *
- * "minimize" manda l'app in secondo piano come il tasto Home, senza
- * chiuderla: il processo resta vivo e con esso la connessione che ci
- * tiene raggiungibili. Chiuderla davvero interromperebbe le notifiche.
+ * "minimize" sends the app to the background like the Home key, without
+ * closing it: the process stays alive and with it the connection that
+ * keeps us reachable. Really closing it would cut the notifications off.
  */
 export const AppWindow = isAndroid && NativePip
   ? { minimize: () => call(NativePip, 'minimize') }
   : { minimize: unavailable };
 
 /**
- * Cosa sa fare la parte video di questo telefono.
+ * What the video side of this phone can do.
  *
- * VP9 comprime meglio di VP8, ma solo se lo encoda l'hardware: in
- * software costa più batteria di quanta banda faccia risparmiare. Va
- * quindi chiesto al telefono, non dedotto dal modello.
+ * VP9 compresses better than VP8, but only when hardware does the
+ * encoding: in software it costs more battery than the bandwidth it
+ * saves. So it has to be asked of the phone, not guessed from the model.
  */
 export const Codecs = isAndroid && NativeCodecs
   ? { hasHardwareVp9Encoder: () => call(NativeCodecs, 'hasHardwareVp9Encoder') }
@@ -250,35 +251,27 @@ export const Alerts = isAndroid && NativeAlerts
   : { configure: unavailable, pickSound: () => Promise.resolve(null) };
 
 /**
- * I tasti del volume.
+ * The volume keys.
  *
- * Il suono della conversazione esce dal volume "chiamata", ma i tasti
- * laterali regolano quello che il sistema crede sia il flusso attivo: per
- * un'app comune il multimedia. Su certi telefoni - Motorola Edge 50
- * Fusion fra questi - premerli non ha quindi alcun effetto sulla voce
- * dell'altro, che resta al volume che ha.
+ * The conversation's sound comes out of the "call" volume, but the side
+ * keys adjust whatever the system believes the active stream is: for an
+ * ordinary app, media. On some phones - the Motorola Edge 50 Fusion among
+ * them - pressing them therefore has no effect at all on the other voice,
+ * which stays at the volume it had.
  */
 export const Audio = isAndroid && NativeAudio
   ? {
-      /** `true` entrando nel canale, `false` uscendone. */
+      /** `true` on entering the channel, `false` on leaving it. */
       useCallVolumeKeys: (active) =>
         call(NativeAudio, 'useCallVolumeKeys', !!active),
     }
   : { useCallVolumeKeys: unavailable };
 
 /**
- * Se l'app sta davvero mostrando qualcosa sullo schermo.
+ * The language the phone is set to, as a two-letter code.
  *
- * Diverso da AppState di React Native, che su Android segnala la pausa
- * dell'activity: in Picture-in-Picture l'activity è in pausa ma la
- * finestrella è ben visibile. Qui contano onStart/onStop, che in PiP non
- * scattano.
- */
-/**
- * La lingua a cui è impostato il telefono, in due lettere.
- *
- * Arriva già pronta all'avvio, senza aspettare una risposta: la prima
- * schermata deve poter essere scritta subito. Vedi LocaleModule.
+ * It arrives ready at start-up, without waiting for an answer: the first
+ * screen has to be writable straight away. See LocaleModule.
  */
 export const Locale = isAndroid && NativeLocale
   ? {
@@ -371,14 +364,22 @@ export const Network = isAndroid && NativeNetwork
     }
   : { subscribe: () => () => {}, reportNotCarrying: unavailable };
 
+/**
+ * Whether the app is really showing anything on the screen.
+ *
+ * Different from React Native's AppState, which on Android reports the
+ * activity's pause: in Picture-in-Picture the activity is paused but the
+ * little window is perfectly visible. What counts here is onStart/onStop,
+ * which in PiP do not fire.
+ */
 export const Visibility = isAndroid && NativeVisibility
   ? {
-      /** Vero se l'app è visibile in questo momento. */
+      /** True if the app is visible right now. */
       get: () => call(NativeVisibility, 'isVisible'),
 
       /**
-       * Chiama `cb(visibile)` a ogni cambiamento. Restituisce la funzione
-       * per smettere.
+       * Calls `cb(visible)` at every change. Gives back the function to
+       * stop.
        */
       subscribe(cb) {
         call(NativeVisibility, 'start');

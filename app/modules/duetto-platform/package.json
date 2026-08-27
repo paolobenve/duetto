@@ -1,7 +1,7 @@
 {
   "name": "duetto-platform",
   "version": "1.0.0",
-  "description": "Foreground service Android: tiene viva la presenza nel canale anche in background e a schermo spento.",
+  "description": "Android foreground service: keeps presence in the channel alive in the background and with the screen off.",
   "main": "index.js",
   "react-native": "index.js",
   "private": true,

@@ -30,7 +30,7 @@ repositories {
 }
 
 dependencies {
-    // La versione viene risolta dal React Native Gradle Plugin dell'app.
+    // The version is resolved by the app's React Native Gradle Plugin.
     implementation 'com.facebook.react:react-android'
     implementation 'androidx.core:core-ktx:1.13.1'
 }
