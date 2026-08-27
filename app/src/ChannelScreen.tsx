@@ -1560,16 +1560,21 @@ function StatsLine({
   const delay = stats.pictureDelay ?? stats.voiceDelay ?? null;
 
   /**
-   * What one lives through when talking, which is the two added up.
+   * The wait in the two directions, like the bandwidth above.
    *
-   * If the other answers the instant you stop, what comes back to you
-   * has waited twice: your voice going, theirs returning. Neither phone
-   * can work it out alone - each measures only what reaches it - so
-   * they tell each other, and here the sum is made.
+   * What this phone can measure is the wait of what REACHES it, which
+   * is the arrow down. The one going up is measured by the other phone
+   * - each can only time what arrives - and it is told to us: without
+   * that, half of the conversation would be invisible from here.
    *
-   * It is missing while the other side has not said its own yet, and
-   * with a Duetto too old to say it at all: then there is the half we
-   * know, which is still worth reading.
+   * Which of the two is the bad one is the thing worth knowing: the
+   * road is the same in both directions, but the phones at its ends are
+   * not, and a wait that is all on one side is not looked for on the
+   * other.
+   *
+   * Added up they make what one lives through talking: if the other
+   * answers the instant you stop, what comes back has waited twice.
+   * That is the number the setting leaves alone on the line.
    */
   const together = delay != null && peerDelay != null ? delay + peerDelay : null;
 
@@ -1616,11 +1621,12 @@ function StatsLine({
           {delay != null
             ? (totalOnly && together != null
               // Only the whole of it, and it is still called the wait:
-              // it is the one being lived through, the other two are
+              // it is the one being lived through, the two arrows are
               // its halves.
               ? `   ${t('channel.delay', { ms: together })}`
-              : `   ${t('channel.delay', { ms: delay })}${
-                together != null ? ` · ${t('channel.delayTogether', { ms: together })}` : ''}`)
+              : peerDelay != null
+                ? `   ${t('channel.delayBoth', { up: peerDelay, down: delay })}`
+                : `   ${t('channel.delayDown', { ms: delay })}`)
             : ''}
         </Text>
       ) : null}
