@@ -280,6 +280,29 @@ others. The list of the *available* ones changes by itself, so we take it from t
 The choice is **saved** and restored on coming back if that device is still connected;
 otherwise the system's selection is left alone, without imposing one of ours.
 
+### 9. Diagnostics (`app/src/log.ts`, `Journal.kt`)
+
+Everything that exists in order to understand sits behind one switch, off by default and
+belonging to the phone rather than to a connection - the journal is one file and the log
+one stream, while every other setting travels with the person.
+
+On, four things happen: the two technical lines appear under the buttons; the journal adds
+its five-minute sample; the journals are exchanged with the other phone every five
+minutes; and the eighty-odd `log()` calls speak.
+
+Off, two of them do not simply stop:
+
+- The journal keeps writing the lines that **events** produce - a death of the process, a
+  coming or going, a change of network - and drops only the periodic sample. It costs a
+  write now and then, and it is what makes a report worth reading: without it the first
+  answer to anybody reporting anything would be "turn it on and wait for it to happen
+  again".
+- The connection is still measured, only more slowly: `getStats()` every ten seconds
+  instead of every two. It cannot be turned off, because two things that are not
+  diagnostics at all read those numbers - the voice ceiling, which rises when the video
+  goes quiet, and the one attempt at a direct road when the link is going through the
+  relay.
+
 ## The threat model
 
 | Adversary | Can | Cannot |

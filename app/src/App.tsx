@@ -30,6 +30,7 @@ import {
 import { Signaling, PresenceStatus, Mode } from './signaling';
 import { useLanguage, t } from './i18n';
 import { VERSION, BUILD } from './version';
+import { logger, setLogging } from './log';
 import { ChannelSession } from './webrtc';
 import type { VideoStats } from './webrtc';
 import SettingsScreen from './SettingsScreen';
@@ -71,6 +72,9 @@ const RETURN_WAIT_MS = 6000;
  * connected, that is, when the network is already in use.
  */
 const JOURNAL_SWAP_MS = 5 * 60 * 1000;
+
+const rtcLog = logger('[duetto-rtc]');
+const uiLog = logger('[duetto-ui]');
 
 /**
  * How many journal lines have already been sent, per connection.
@@ -1420,6 +1424,10 @@ export default function App() {
 
   useEffect(() => {
     if (!peerPresent) return;
+    // Only with diagnostics on: it is a few hundred bytes every five
+    // minutes, but it is bytes on somebody else's phone, spent on
+    // something neither of you has asked to read.
+    if (!cfg?.diagnostics) return;
     let alive = true;
 
     const send = () => { if (alive) sendJournal(); };
@@ -1438,7 +1446,7 @@ export default function App() {
     const first = setTimeout(send, 10_000);
     const timer = setInterval(send, JOURNAL_SWAP_MS);
     return () => { alive = false; clearTimeout(first); clearInterval(timer); };
-  }, [peerPresent, sendJournal]);
+  }, [peerPresent, sendJournal, cfg?.diagnostics]);
 
   /**
    * If we are going through the relay, the direct road is tried once.
@@ -1464,7 +1472,7 @@ export default function App() {
     const t = setTimeout(() => {
       if (!inChannelRef.current || !peerActiveRef.current) return;
       relayRetried.current = true;
-      console.log('[duetto-rtc]', 'going through the relay: looking for a direct road');
+      rtcLog('going through the relay: looking for a direct road');
       if (politeRef.current) signalingRef.current?.sendSignal({ kind: 'renegotiate' });
       else sessionRef.current?.restartIce();
     }, 8000);
@@ -1474,7 +1482,7 @@ export default function App() {
   // Which profile the interface is REALLY showing: it tells "it did not
   // arrive" from "it arrived but cannot be seen".
   useEffect(() => {
-    if (cfg) console.log('[duetto-ui]', 'profile shown:', cfg.videoQuality);
+    if (cfg) uiLog('profile shown:', cfg.videoQuality);
   }, [cfg?.videoQuality]);
 
   // Knowing whether we are in the foreground decides whether to show a
@@ -2042,7 +2050,7 @@ export default function App() {
       // impossible error that could be ignored: now, if we keep quiet,
       // the other person comes in and nothing connects, with nothing to
       // explain it.
-      console.log('[duetto-rtc]', 'attachPeer failed:', String(e?.message ?? e));
+      rtcLog('attachPeer failed:', String(e?.message ?? e));
       // Only if the microphone was the one missing. The other failures
       // of attachPeer happen during reconnections and sort themselves
       // out: a notice at every attempt would be noise, and would cover
@@ -2070,7 +2078,7 @@ export default function App() {
     const s = sessionRef.current;
     if (!s || !s.hasPeer()) { attachPeer(true); return; }
 
-    console.log('[duetto-rtc]', 'network back: restarting ICE without rebuilding');
+    rtcLog('network back: restarting ICE without rebuilding');
     if (politeRef.current) signalingRef.current?.sendSignal({ kind: 'renegotiate' });
     else s.restartIce();
 
@@ -2078,7 +2086,7 @@ export default function App() {
     hardTimer.current = setTimeout(() => {
       if (connStateRef.current === 'connected') return;
       if (!inChannelRef.current || !peerActiveRef.current) return;
-      console.log('[duetto-rtc]', 'the restart was not enough: rebuilding');
+      rtcLog('the restart was not enough: rebuilding');
       attachPeer(true);
     }, 6000);
   }, [attachPeer, clearRecovery]);
@@ -2573,10 +2581,30 @@ export default function App() {
       `alert=${c.alertSound}`,
       `vibration=${c.alertVibration}`,
       `controls=${c.controls}`,
-      `diagnostics=${c.showDiagnostics ? 'yes' : 'no'}`,
+      `diagnostics=${c.diagnostics ? 'yes' : 'no'}`,
     ];
     Journal.mark(`settings:${bits.join(',')}`).catch(() => { /* noop */ });
   }, [cfg?.pair?.id]);
+
+  /**
+   * Diagnostics, wherever they reach.
+   *
+   * Four things follow this switch: the logs, which go quiet; the
+   * journal's periodic sampling, which stops on the native side; the
+   * pace at which the connection is measured; and the technical lines,
+   * which are handed to the screen further down. The exchange of
+   * journals is in the effect that sends them.
+   *
+   * It runs at the first reading of the settings as well, not only at a
+   * change: before that the logs are silent, which is the quiet choice
+   * for whoever never turns this on.
+   */
+  useEffect(() => {
+    const on = !!cfg?.diagnostics;
+    setLogging(on);
+    Journal.sampling(on).catch(() => { /* noop */ });
+    sessionRef.current?.setDiagnostics(on);
+  }, [cfg?.diagnostics]);
 
   /**
    * The camera button follows the connection in use.
@@ -2788,7 +2816,7 @@ export default function App() {
         peerTornDown={peerTornDown}
         videoStats={videoStats}
         qualityLabel={t(`quality.${(VIDEO_PROFILES[cfg.videoQuality] ?? VIDEO_PROFILES.standard).key}`)}
-        showStats={cfg.showDiagnostics}
+        showStats={cfg.diagnostics}
         controls={cfg.controls}
         news={notice}
         onNewsRead={() => setNotice(null)}

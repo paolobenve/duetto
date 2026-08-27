@@ -85,7 +85,6 @@ export type PairSettings = {
   displayName: string;
   videoQuality: VideoQuality;
   richerAudio: boolean;
-  showDiagnostics: boolean;
   controls: 'dim' | 'faint' | 'hidden';
   videoCodec: 'auto' | 'vp9';
   alertVibration: 'default' | 'always' | 'never';
@@ -104,7 +103,7 @@ export type PairSettings = {
 
 /** The fields that travel with the connection, in one place. */
 const PAIR_FIELDS: (keyof PairSettings)[] = [
-  'displayName', 'videoQuality', 'richerAudio', 'showDiagnostics', 'controls',
+  'displayName', 'videoQuality', 'richerAudio', 'controls',
   'videoCodec', 'alertVibration', 'alertSound', 'alertSoundUri', 'alertSoundName',
   'audioOutput', 'gains', 'frontCamera', 'language',
 ];
@@ -203,13 +202,25 @@ export type DuoConfig = {
    */
   richerAudio: boolean;
   /**
-   * The two diagnostic lines under the buttons.
+   * Diagnostics: everything that exists in order to understand, and
+   * that is of no use to whoever only wants to talk.
    *
-   * Off: they are there to work out why a call is going badly, not to
-   * look each other in the face. Whoever needs them knows where they
-   * are.
+   * It gathers four things that used to be either always on or scattered
+   * about: the two technical lines under the buttons, the journal's
+   * five-minute sampling, the exchange of journals with the other phone,
+   * and the log lines that `adb logcat` reads.
+   *
+   * Off, the journal does not stop: it goes on writing the lines that
+   * tell a story - a death of the process, a coming and going, a change
+   * of network - and drops only the periodic sample with the battery
+   * and traffic counters. Whoever reports a problem is not left with
+   * empty hands.
+   *
+   * It belongs to the phone and not to the connection: the journal is
+   * one file, and the logs are one stream. This is the only setting of
+   * the interface that does not travel with the person.
    */
-  showDiagnostics: boolean;
+  diagnostics: boolean;
   /**
    * How far the controls step aside while a video is playing.
    *
@@ -309,7 +320,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   // definition, however good their network.
   videoQuality: 'better',
   richerAudio: false,
-  showDiagnostics: false,
+  diagnostics: false,
   controls: 'dim',
   videoCodec: 'auto',
   alertVibration: 'default',
@@ -329,10 +340,27 @@ export async function loadConfig(): Promise<DuoConfig> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_CONFIG;
-    return fromItalian(tidyPairs({ ...DEFAULT_CONFIG, ...JSON.parse(raw) }));
+    return fromItalian(tidyPairs(oneDiagnostics({ ...DEFAULT_CONFIG, ...JSON.parse(raw) })));
   } catch {
     return DEFAULT_CONFIG;
   }
+}
+
+/**
+ * The diagnostics switch used to be one per connection.
+ *
+ * It was called `showDiagnostics` and lived among the settings that
+ * travel with the person, because back then it only turned the two
+ * lines under the buttons on. Now that it also decides what gets
+ * written and what is sent, it is the phone's business - and whoever
+ * had it on anywhere gets it on.
+ */
+function oneDiagnostics(cfg: any): DuoConfig {
+  if (typeof cfg.diagnostics === 'boolean') return cfg;
+  const anywhere = cfg.showDiagnostics === true
+    || (Array.isArray(cfg.pairs)
+      && cfg.pairs.some((p: any) => p?.settings?.showDiagnostics === true));
+  return { ...cfg, diagnostics: anywhere };
 }
 
 /**

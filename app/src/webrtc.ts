@@ -20,6 +20,7 @@ import type { DuoConfig } from './config';
 import { iceServers, VIDEO_PROFILES, CAPTURE_FPS } from './config';
 import type { Signaling, SignalMessage } from './signaling';
 import { VERSION, BUILD } from './version';
+import { logger } from './log';
 
 /**
  * The channel session: audio always, video on request.
@@ -105,7 +106,7 @@ export const DEFAULT_ASPECT = 9 / 16;
  *
  *   adb logcat -s ReactNativeJS | grep duetto
  */
-const log = (...args: any[]) => console.log('[duetto-rtc]', ...args);
+const log = logger('[duetto-rtc]');
 
 /**
  * The two ceilings for the voice, and when the video decides for them.
@@ -172,6 +173,8 @@ export class ChannelSession {
    */
   private heavyVideo = false;
   private statsTimer: ReturnType<typeof setInterval> | null = null;
+  /** Whether the technical lines are being watched: it sets the pace below. */
+  private diagnostics = false;
   /** the other side says its camera is on: the `state` message tells us */
   private peerVideoDeclared = false;
 
@@ -243,6 +246,10 @@ export class ChannelSession {
      */
     this.peerGain = cfg.gains?.[cfg.audioOutput] ?? 1;
     this.heardLevel = this.peerGain;
+    // A session born while diagnostics are on measures itself at the
+    // close pace from the start: the switch reaches the ones already
+    // running through setDiagnostics, but a new one would begin slow.
+    this.diagnostics = cfg.diagnostics === true;
   }
 
   // --- Coming into the channel ---------------------------------------------
@@ -398,9 +405,7 @@ export class ChannelSession {
     // other side's video alone there is still something to show.
     this.lastOutbound = null;
     this.lastInbound = null;
-    if (!this.statsTimer) {
-      this.statsTimer = setInterval(() => { this.logOutboundVideo(); }, 2000);
-    }
+    if (!this.statsTimer) this.startStats();
 
     /**
      * True only while this is THE connection in use.
@@ -914,6 +919,37 @@ export class ChannelSession {
    * `qualityLimitationReason` says it in a word: "bandwidth", "cpu", or
    * "none" - meaning: this is enough.
    */
+  /**
+   * How often the connection is measured.
+   *
+   * `getStats()` is not free: it is a call over the bridge that comes
+   * back with dozens of entries to walk through, and it used to happen
+   * every two seconds for the whole length of a conversation, whether
+   * anybody was reading the numbers or not.
+   *
+   * Only with diagnostics on is it worth that pace, because there the
+   * numbers are on the screen and have to move. Off, the measurement is
+   * still needed - it is what tells the voice ceiling when the video
+   * goes quiet, and it is what notices the link is going through the
+   * relay - but ten seconds is plenty for both: the one has a hysteresis
+   * of its own, the other happens once per link.
+   */
+  private static readonly STATS_MS = 2000;
+  private static readonly STATS_SLOW_MS = 10000;
+
+  private startStats() {
+    if (this.statsTimer) clearInterval(this.statsTimer);
+    const every = this.diagnostics ? ChannelSession.STATS_MS : ChannelSession.STATS_SLOW_MS;
+    this.statsTimer = setInterval(() => { this.logOutboundVideo(); }, every);
+  }
+
+  /** Follows the diagnostics switch: it changes the pace above. */
+  setDiagnostics(on: boolean) {
+    if (on === this.diagnostics) return;
+    this.diagnostics = on;
+    if (this.statsTimer) this.startStats();
+  }
+
   private async logOutboundVideo() {
     const pc: any = this.pc;
     if (!pc?.getStats) return;

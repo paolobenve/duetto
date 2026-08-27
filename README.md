@@ -307,7 +307,16 @@ The full threat model is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Working out what went wrong
 
-The app records everything that is needed. With the phone plugged in:
+Everything below this line asks for **Diagnostics** first: *the cogwheel → Diagnostics →
+Turn diagnostics on*. Off — which is how it comes — the app measures itself less closely,
+says nothing to the log and sends nothing to the other phone: it is machinery for
+understanding, and whoever only wants to talk should not be carrying it around.
+
+What stays on either way is the journal's account of **what happens**: the app dying, a
+coming or going, a change of network. So a problem that has already happened can still be
+told afterwards, even by somebody who had never turned any of this on.
+
+With Diagnostics on and the phone plugged in:
 
 ```bash
 adb logcat -s ReactNativeJS | grep duetto
@@ -323,6 +332,21 @@ server)`. The three roads have different weaknesses, and without knowing which o
 one ends up blaming the wrong thing.
 
 With two phones plugged in you have to say which: `adb -s <serial> logcat …`
+
+### The journal
+
+Beside the log there is a **journal of consumption**, which the foreground service writes
+and which survives the app: a line every five minutes with the battery, how much of the
+interval the screen was on, the network, what Duetto was doing and how much CPU and
+traffic it used, plus a line at every moment that counts. It is what explains a phone that
+drains, or an app that dies at night — and it says why the process died, which Android
+knows and tells nobody until it is asked.
+
+`app/scripts/read-journal.sh` pulls it all off a plugged-in phone. With Diagnostics on the
+two phones **exchange journals** through the encrypted envelope, so plugging ONE phone in
+gives you both: the other one, in somebody else's hands, no cable ever reaches. There is
+nothing personal in there — battery numbers and app states, nothing of what you say to
+each other.
 
 If the app were to close by itself, the stack is minified and has to be translated:
 

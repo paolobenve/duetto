@@ -17,7 +17,13 @@
 #
 # Connecting ONE phone is enough: the other, in somebody else's hands,
 # never reaches a cable, and that is why they exchange journals by
-# themselves.
+# themselves - as long as Diagnostics are on over there, because it is
+# their bytes that are being spent.
+#
+# With Diagnostics off the journal is still written, but only the lines
+# that events write: a death of the app, a coming or going, a change of
+# network. The five-minute sample - battery, screen, CPU, traffic - is
+# the part that has to be asked for.
 #
 # Use:  ./scripts/read-journal.sh [destination-folder]
 

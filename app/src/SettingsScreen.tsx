@@ -431,21 +431,6 @@ export default function SettingsScreen({
           </TouchableOpacity>
         ))}
 
-        <Text style={styles.subsection}>{t('settings.screen')}</Text>
-        <TouchableOpacity
-          style={[styles.choice, cfg.showDiagnostics && styles.choicePicked]}
-          onPress={() => {
-            const v = !cfg.showDiagnostics;
-            setCfg({ ...cfg, showDiagnostics: v });
-            onLive?.({ showDiagnostics: v });
-          }}>
-          <View style={[styles.radio, cfg.showDiagnostics && styles.radioPicked]} />
-          <View style={styles.choiceText}>
-            <Text style={styles.choiceLabel}>{t('settings.showTechnical')}</Text>
-            <Text style={styles.choiceNote}>{t('settings.showTechnicalNote')}</Text>
-          </View>
-        </TouchableOpacity>
-
         <Text style={styles.subsection}>{t('settings.controlsWhileWatching')}</Text>
         <Text style={styles.sectionHint}>{t('settings.controlsHint')}</Text>
         {CONTROLS.map((c) => (
@@ -508,6 +493,26 @@ export default function SettingsScreen({
         <TouchableOpacity style={styles.rowButton} onPress={onOpenSetup}>
           <Text style={styles.rowButtonText}>{t('settings.reviewSystemSettings')}</Text>
           <Text style={styles.rowButtonArrow}>{'\u203A'}</Text>
+        </TouchableOpacity>
+
+        {/* Diagnostics belong to the phone, like staying reachable, and
+            not to the person: the journal is one file and the log one
+            stream. That is why they sit here among the app's own things
+            and not among the settings that travel with a connection. */}
+        <Text style={styles.section}>{t('settings.diagnostics')}</Text>
+        <Text style={styles.sectionHint}>{t('settings.diagnosticsHint')}</Text>
+        <TouchableOpacity
+          style={[styles.choice, cfg.diagnostics && styles.choicePicked]}
+          onPress={() => {
+            const v = !cfg.diagnostics;
+            setCfg({ ...cfg, diagnostics: v });
+            onLive?.({ diagnostics: v });
+          }}>
+          <View style={[styles.radio, cfg.diagnostics && styles.radioPicked]} />
+          <View style={styles.choiceText}>
+            <Text style={styles.choiceLabel}>{t('settings.diagnosticsOn')}</Text>
+            <Text style={styles.choiceNote}>{t('settings.diagnosticsOnNote')}</Text>
+          </View>
         </TouchableOpacity>
 
         <Text style={styles.section}>{t('settings.security')}</Text>

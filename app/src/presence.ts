@@ -12,6 +12,7 @@ import { Foreground, Journal } from 'duetto-platform';
 import { loadConfig, isPaired, isServerConfigured, pairFileKey, pairName } from './config';
 import { Signaling } from './signaling';
 import { t } from './i18n';
+import { logger, setLogging } from './log';
 
 /**
  * Presence with no interface.
@@ -193,7 +194,7 @@ export function presenceLine(o: {
     : t('presence.peerWaiting', { ours, who });
 }
 
-const log = (...args: any[]) => console.log('[duetto-presence]', ...args);
+const log = logger('[duetto-presence]');
 
 /** Starts listening, if a pair has been set up. */
 export async function startListening(): Promise<boolean> {
@@ -204,6 +205,10 @@ export async function startListening(): Promise<boolean> {
   }
 
   const cfg = await loadConfig();
+  // Here too, before the first line: the headless side has settings of
+  // its own to read, and without this it would talk to a log nobody
+  // asked for.
+  setLogging(cfg.diagnostics);
   if (!isPaired(cfg) || !isServerConfigured(cfg)) {
     log('no pair set up: there is nothing to listen for');
     return false;

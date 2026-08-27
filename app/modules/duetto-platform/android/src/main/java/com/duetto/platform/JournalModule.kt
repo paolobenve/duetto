@@ -34,6 +34,26 @@ class JournalModule(private val ctx: ReactApplicationContext) :
         promise.resolve(true)
     }
 
+    /**
+     * Whether to write the periodic line as well.
+     *
+     * It follows the diagnostics switch. The lines written by events go
+     * on regardless: they are the ones that explain a report, and they
+     * cost a write every now and then.
+     */
+    @ReactMethod
+    fun sampling(on: Boolean, promise: Promise) {
+        if (on == Journal.sampling) { promise.resolve(true); return }
+        Journal.sampling = on
+        // Turning it on writes a line at once, and that line is what
+        // starts the periodic wait again: it is the service that keeps
+        // the time, and it puts it back in the queue at every line
+        // written. Without this, sampling switched on in the middle of a
+        // conversation would sit still until the next event.
+        if (on) Journal.sample(ctx, "sampling-on")
+        promise.resolve(true)
+    }
+
     /** A line right now, to mark a moment that counts. */
     @ReactMethod
     fun mark(why: String, promise: Promise) {

@@ -108,6 +108,8 @@ declare module 'duetto-platform' {
   export const Journal: {
     state(s: string): Promise<boolean>;
     mark(why: string): Promise<boolean>;
+    /** whether to write the periodic line: it follows the diagnostics switch */
+    sampling(on: boolean): Promise<boolean>;
     lines(): Promise<number>;
     read(fromLine: number): Promise<string>;
     /** `who`: which connection it comes from, to keep the files apart */

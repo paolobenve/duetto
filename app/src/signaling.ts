@@ -8,6 +8,7 @@
  * <https://www.gnu.org/licenses/>.
  */
 import { SignalCrypto } from './crypto';
+import { logger } from './log';
 
 /**
  * The connection to the signalling server.
@@ -145,7 +146,7 @@ export type SignalingEvents = {
  *
  *   adb logcat -s ReactNativeJS | grep duetto-sig
  */
-const log = (...args: any[]) => console.log('[duetto-sig]', ...args);
+const log = logger('[duetto-sig]');
 
 // The wait between one attempt and the next. Kept short on purpose:
 // reconnecting is not a detail here, it is the difference between being
@@ -440,7 +441,7 @@ export class Signaling {
     // invisible: all you saw was the effect, a negotiation that never
     // arrived.
     const kind = (obj as any)?.type ?? '?';
-    console.log('[duetto-sig]', 'dropped (server out of reach):', kind);
+    log('dropped (server out of reach):', kind);
   }
 
   private scheduleReconnect() {

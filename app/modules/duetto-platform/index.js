@@ -213,6 +213,12 @@ export const Journal = isAndroid && NativeJournal
       state: (s) => call(NativeJournal, 'state', String(s)),
       /** A line right now, to mark a moment that counts. */
       mark: (why) => call(NativeJournal, 'mark', String(why)),
+      /**
+       * Whether to write the periodic line as well: it follows the
+       * diagnostics switch. The lines written by events go on either
+       * way.
+       */
+      sampling: (on) => call(NativeJournal, 'sampling', !!on),
       lines: () => call(NativeJournal, 'lines'),
       read: (fromLine) => call(NativeJournal, 'read', Number(fromLine) || 0),
       appendOther: (text, who) =>
@@ -224,6 +230,7 @@ export const Journal = isAndroid && NativeJournal
   : {
       state: unavailable,
       mark: unavailable,
+      sampling: unavailable,
       lines: () => Promise.resolve(0),
       read: () => Promise.resolve(''),
       appendOther: unavailable,

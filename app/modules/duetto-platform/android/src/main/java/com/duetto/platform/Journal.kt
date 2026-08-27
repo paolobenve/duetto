@@ -66,6 +66,22 @@ object Journal {
 
     private val format = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
 
+    /**
+     * Whether the five-minute sampling is wanted.
+     *
+     * It is the periodic line - battery counters, CPU, bytes - and it
+     * belongs to diagnostics: it is written to be read afterwards, by
+     * somebody looking for a reason. With diagnostics off it does not
+     * get written, and the journal keeps only the lines that tell a
+     * story: a death, a coming or going, a change of network. Those cost
+     * nothing and are what a report is worth reading with.
+     *
+     * JS says so as soon as it has read the settings; before that we do
+     * not sample, which is the quiet choice.
+     */
+    @Volatile
+    var sampling = false
+
     /** The state JS tells us about: waiting, channel, video. */
     @Volatile private var state: String = "start"
 
