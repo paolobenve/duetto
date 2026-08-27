@@ -24,17 +24,14 @@ The sources live in assets/, and here is where they come from:
 
   drumroll.wav   freesound.org #556255, "waveplaysfx"    CC0
   drumkit.wav    freesound.org #695331, "hewnmarrow"     CC0
-  fanfare.wav    freesound.org #534017, "robinhood76"    CC BY-NC 4.0
+  fanfare.flac   freesound.org #397355, "plasterbrain"   CC0
   rooster.flac   freesound.org #454174, "kyles"          CC0
 
-CC0 means no rights reserved: those three ask for nothing, and they are
-named out of fairness, not out of duty.
-
-The fanfare is the only one whose licence asks for something in return:
-attribution, which is in the app's settings under "Where the sounds come
-from", and non-commercial - Duetto is not sold and has no advertising, so
-that is fine, but if that ever changed the fanfare would have to go. The
-other three ask for nothing; naming them anyway costs one line.
+CC0 means no rights reserved: not one of them asks for anything, and
+they are named out of fairness, not out of duty. It is worth keeping it
+that way: a sound that asked for something in return would ask it of
+everybody who takes this code, and one that forbade commercial use would
+not sit with the licence the rest of it carries.
 
 The script does not touch them except to cut them where they end, to
 repeat the ones that are a single bar, and to bring them all to the same
@@ -113,11 +110,11 @@ def drumkit():
     return normalise(fade(np.concatenate([bar, bar])))
 
 # --- Fanfare ---------------------------------------------------------------
-# "Ta-daaa": two seconds of trumpets, with the tail dying away by itself
-# in a reverb. It is cut where the reverb is over - the rest is recorded
-# silence, which takes up room in the file and adds nothing to the ear.
-FANFARE = os.path.join(HERE, 'fanfare.wav')
-FANFARE_END = 2.3
+# "Ta-daaa": a second and a half of trumpets that end by themselves. It
+# is cut just past the tail - what follows is recorded silence, which
+# takes up room in the file and adds nothing to the ear.
+FANFARE = os.path.join(HERE, 'fanfare.flac')
+FANFARE_END = 1.5
 
 def fanfare():
     return normalise(fade(sample(FANFARE, FANFARE_END), 0.08))

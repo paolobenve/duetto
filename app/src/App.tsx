@@ -98,6 +98,17 @@ const DEATH_TOLD_KEY = 'duetto.death.told';
  * the new name and, failing that, takes the old one and writes it back
  * under the new. To be REMOVED once every phone has been through here.
  */
+/**
+ * Where the drawers below are kept, so that they survive the app.
+ *
+ * They used to live in memory alone, and an update - which kills the
+ * process - lost them: coming back after installing, the microphone was
+ * on again although it had been left muted. The phone closing the app
+ * did the same. What decides whether to restore is the time that has
+ * passed, not whether the process is the same one.
+ */
+const HOW_IT_WAS_KEY = 'duetto.how-it-was';
+
 const OLD_KEYS = {
   sent: 'duetto.diario.inviate',
   death: 'duetto.morte.raccontata',
@@ -1877,6 +1888,19 @@ export default function App() {
             if (msg.kind === 'alarm') {
               Alarm.play(String(msg.sound ?? '')).catch(() => {});
               Journal.mark(`alarm:${msg.sound}`).catch(() => {});
+              // Outside the channel it also says who it is: a rooster
+              // going off on a phone lying on a table, with nothing on
+              // the screen, is a riddle. It is the same case as a call
+              // - somebody wants you - and it gets the same words.
+              if (!inChannelRef.current) {
+                const who = shownNameRef.current;
+                Foreground.notify(
+                  alertNameRef.current,
+                  isRealName(who)
+                    ? t('alert.callingYouFrom', { who })
+                    : t('alert.callingYou'),
+                ).catch(() => { /* noop */ });
+              }
               return;
             }
 
@@ -2227,7 +2251,7 @@ export default function App() {
      */
     const mine = cfg.pair?.id;
     const before = mine ? howItWas.current[mine] : undefined;
-    if (mine) delete howItWas.current[mine];
+    if (mine && before) { delete howItWas.current[mine]; saveHowItWas(); }
     if (before) {
       const still = Date.now() - before.when;
       if (!before.audio && still < RESUME_MIC_MS) {
@@ -2291,6 +2315,35 @@ export default function App() {
   type HowItWas = { when: number; video: boolean; audio: boolean };
   const howItWas = useRef<Record<string, HowItWas>>({});
 
+  /** Puts the drawers away, without anybody waiting for it. */
+  const saveHowItWas = useCallback(() => {
+    AsyncStorage.setItem(HOW_IT_WAS_KEY, JSON.stringify(howItWas.current))
+      .catch(() => { /* a lost drawer costs one switch by hand */ });
+  }, []);
+
+  /**
+   * And takes them out again at start-up, throwing away the old ones.
+   *
+   * Older than the longest of the two waits, a drawer can no longer be
+   * used by anybody: keeping it would only mean carrying it around for
+   * ever.
+   */
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(HOW_IT_WAS_KEY);
+        if (!raw) return;
+        const stored = JSON.parse(raw) as Record<string, HowItWas>;
+        const now = Date.now();
+        const fresh: Record<string, HowItWas> = {};
+        for (const [id, was] of Object.entries(stored)) {
+          if (was && now - was.when < RESUME_MIC_MS) fresh[id] = was;
+        }
+        howItWas.current = fresh;
+      } catch { /* nothing to take out */ }
+    })();
+  }, []);
+
   /**
    * Putting the channel away: what leaving and switching have in
    * common.
@@ -2317,6 +2370,7 @@ export default function App() {
         video: sessionRef.current?.isVideoEnabled() === true,
         audio: sessionRef.current?.isAudioEnabled() !== false,
       };
+      saveHowItWas();
     }
 
     setLeaving(true);

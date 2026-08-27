@@ -264,7 +264,7 @@ export const it: Dictionary = {
     secWhat: 'cosa',
     secServerKnowsTail: ' vi dite.',
     soundsOrigin: 'Da dove vengono i suoni',
-    soundsOriginText: 'I suoni per richiamare l’altro sono registrazioni pubblicate su freesound.org.\nTamburi — waveplaysfx (#556255), CC0\nBatteria — hewnmarrow (#695331), CC0\nFanfara — robinhood76 (#534017), CC BY-NC 4.0\nCanto del gallo — kyles (#454174), CC0\nLa strombazzata invece la genera l’app, non viene da nessuno.',
+    soundsOriginText: 'I suoni per richiamare l’altro sono registrazioni pubblicate su freesound.org, tutte in CC0: nessun diritto riservato, e sono nominate per correttezza, non per obbligo.\nTamburi — waveplaysfx (#556255)\nBatteria — hewnmarrow (#695331)\nFanfara — plasterbrain (#397355)\nCanto del gallo — kyles (#454174)\nLa strombazzata e la bussata invece le genera l’app, non vengono da nessuno.',
     connectionName: 'Nome del collegamento',
     connectionNamePlaceholder: 'Casa, ufficio, montagna…',
     connectionNameHint: 'È il nome del collegamento, non della persona: serve a te per sapere in quale dei tuoi collegamenti stai. Compare sulla pastiglia in alto e nella notifica. Resta su questo telefono: l’altro non lo vede e non lo saprà mai.',

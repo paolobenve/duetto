@@ -8,7 +8,7 @@
  * <https://www.gnu.org/licenses/>.
  */
 import { AppState } from 'react-native';
-import { Foreground, Journal } from 'duetto-platform';
+import { Foreground, Journal, Alarm } from 'duetto-platform';
 import { loadConfig, isPaired, isServerConfigured, pairFileKey, pairName } from './config';
 import { Signaling } from './signaling';
 import { t } from './i18n';
@@ -315,6 +315,25 @@ export async function startListening(): Promise<boolean> {
             deathStory(
               Number(msg.when), String(msg.cause), name, Number(msg.back) || 0,
             ),
+          ).catch(() => { /* noop */ });
+          return;
+        }
+        /**
+         * A sound to call somebody back, arriving at a phone with no
+         * interface open.
+         *
+         * It is the case the sounds are for: the other person is not
+         * answering, and their phone is across the room. Here there is
+         * nobody watching a screen, so along with the sound goes the
+         * notification that says who wants them - a rooster on its own,
+         * from a phone lying on a table, explains nothing.
+         */
+        if (msg.kind === 'alarm') {
+          Alarm.play(String(msg.sound ?? '')).catch(() => { /* noop */ });
+          Journal.mark(`alarm:${msg.sound}`).catch(() => { /* noop */ });
+          Foreground.notify(
+            connectionName,
+            named(name) ? t('alert.callingYouFrom', { who: name }) : t('alert.callingYou'),
           ).catch(() => { /* noop */ });
         }
       },

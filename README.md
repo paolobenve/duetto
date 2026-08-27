@@ -402,10 +402,8 @@ copyleft library in the tree: the GPL here is a choice, not an obligation.
 
 The sounds for calling the other person back are not code and have licences of their own,
 listed in `app/assets/make-sounds.py` and in the app under *Where the sounds come from*.
-The car horn and the knock are made by the app itself. The drum roll, the drum kit and the
-rooster are recordings published on freesound.org under **CC0**: no rights reserved.
-
-⚠️ The fanfare (freesound #534017, robinhood76) is **CC BY-NC 4.0**, and NonCommercial is
-not a free licence: as long as that file is in here, the app as a whole cannot be
-redistributed commercially, and that clashes with the GPL. It is on its way out, to be
-replaced by a CC0 recording.
+The car horn and the knock are made by the app itself. The drum roll, the drum kit, the
+fanfare and the rooster are recordings published on freesound.org, **all of them CC0**: no
+rights reserved. They are named out of fairness rather than duty — and it is worth keeping
+it that way, because a sound that asked for something in return would ask it of everybody
+who takes this code.

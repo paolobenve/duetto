@@ -1059,11 +1059,12 @@ export default function ChannelScreen(props: Props) {
           // wants to do when the first call got no answer.
           disabled={!reachable}
           onPress={press(knock)}
-          // Held down, the sounds for calling them back. Only while you
-          // are both in the channel: outside it there is no phone on
-          // which they could play, and the call - that one, yes - goes
-          // through the server.
-          onLongPress={together ? press(() => setAlarmMenu(true)) : undefined}
+          // Held down, the sounds for calling them back. As long as
+          // they can be reached, not only while you are both in the
+          // channel: the sound travels in the encrypted envelope and
+          // their phone plays it while merely waiting too - which is
+          // exactly when somebody has to be got up from a chair.
+          onLongPress={reachable ? press(() => setAlarmMenu(true)) : undefined}
         />
         <CircleButton
           covered={covered}
