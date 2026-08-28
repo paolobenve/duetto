@@ -295,10 +295,24 @@ const HEARTBEAT_TICK_MS = ms(process.env.HEARTBEAT_TICK_MS, 5_000);
  */
 const ANSWER_WAIT_MS = ms(process.env.ANSWER_WAIT_MS, 20_000);
 
-// How many joins a minute per address. It bothers nobody (reconnections
-// are few), but it makes trying pairing codes wholesale impractical: 100
-// million combinations at this rate would take millennia.
-const JOIN_LIMIT = 30;
+/**
+ * How many knocks a minute from one address, from phones this server
+ * does not know.
+ *
+ * It is there to make trying pairing codes wholesale impractical: a
+ * hundred million combinations at this rate would take millennia.
+ *
+ * It counts only the knocks of whoever is NOT recognised. At home every
+ * phone shares one address, and a restart brings them all back at once:
+ * counting those too, the budget went in seconds and the phones locked
+ * themselves out - each refusal answered by another knock half a second
+ * later, which is how a brake becomes a wall. A phone that has just
+ * signed for itself is not trying anything.
+ *
+ * Higher than it was, as well: thirty was stingy for a household behind
+ * one address.
+ */
+const JOIN_LIMIT = Number(process.env.JOIN_LIMIT || 120);
 const JOIN_WINDOW_MS = 60_000;
 
 /** @type {Map<string, number[]>} moments of the recent attempts per IP */
@@ -439,11 +453,6 @@ wss.on('connection', (ws, req) => {
         send(ws, { type: 'error', error: 'expected-join' });
         return;
       }
-      if (tooManyJoins(ws.ip)) {
-        send(ws, { type: 'error', error: 'too-many-attempts' });
-        ws.close(4004, 'too-many-attempts');
-        return;
-      }
       const roomId = typeof msg.room === 'string' ? msg.room.trim() : '';
       if (!roomId || roomId.length > 128) {
         send(ws, { type: 'error', error: 'bad-room' });
@@ -463,9 +472,19 @@ wss.on('connection', (ws, req) => {
        * counted, so trying keys costs thirty a minute, like trying
        * pairing codes.
        */
+      const known = doorIsShut()
+        ? whoIsThere(msg, ws.nonce) || asGuest(msg, ws.nonce, roomId, set)
+        : null;
+
+      // The brake, for whoever is not recognised: see JOIN_LIMIT.
+      if (!known && tooManyJoins(ws.ip)) {
+        send(ws, { type: 'error', error: 'too-many-attempts' });
+        ws.close(4004, 'too-many-attempts');
+        return;
+      }
+
       if (doorIsShut()) {
-        const who = whoIsThere(msg, ws.nonce)
-          || asGuest(msg, ws.nonce, roomId, set);
+        const who = known;
         if (!who) {
           console.log(`[duetto] turned away: ${String(msg.pub || 'no key').slice(0, 12)}`
             + ` from ${ws.ip}`);

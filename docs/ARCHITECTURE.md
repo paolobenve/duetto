@@ -50,8 +50,13 @@ A minimal WebSocket server in Node.js. It does four things:
 - **Relay**: the TURN credentials live in the server's `.env`, and the server tells them
   to the phones in the joining message. Nothing is configured on the devices, and changing
   the password does not mean going back to each of them.
-- **A brake on joining**: 30 a minute per address. It bothers nobody, and it makes trying
-  pairing codes wholesale impractical.
+- **A brake on joining**: 120 a minute per address, and only for phones this server does
+  not recognise. It makes trying pairing codes wholesale impractical without touching
+  anybody at home - where every phone shares one address, and a restart brings them all
+  back at once. Counting those too, the budget went in seconds and the phones locked
+  themselves out: refused, each answered with another knock half a second later, which is
+  how a brake becomes a wall. The app now stands still for a minute when it is told it
+  knocks too often.
 - **One key per phone**: with `AUTHORISED_KEYS` set, the server greets every connection
   with a number and the join has to come back with the phone's public key and that number
   signed. The secret half never leaves the phone, so getting in cannot be passed on by

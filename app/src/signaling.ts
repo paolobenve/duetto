@@ -232,6 +232,8 @@ const log = logger('[duetto-sig]');
 const GREETING_WAIT_MS = 700;
 
 const RECONNECT_MIN_MS = 500;
+/** How long to stand still when the server says we knock too often. */
+const TOO_MANY_WAIT_MS = 60_000;
 const RECONNECT_MAX_MS = 4000;
 
 /** Somebody the server lets in, as the app shows them. */
@@ -282,6 +284,17 @@ export class Signaling {
   private closedByUser = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private backoff = RECONNECT_MIN_MS;
+  /**
+   * A long wait, when the server says we are knocking too often.
+   *
+   * Its brake counts the knocks from one address in a minute, and at
+   * home every phone shares the same one: after a restart they all come
+   * back at once and the budget goes. Answering that with another knock
+   * half a second later is what turns a brake into a wall - two a
+   * second against thirty a minute, and it never clears. So we stand
+   * still for a minute, which is the length of the window.
+   */
+  private pausedUntil = 0;
   private mode: Mode;
 
   constructor(private opts: SignalingOptions, private events: SignalingEvents) {
@@ -542,6 +555,12 @@ export class Signaling {
         break;
 
       case 'error':
+        // The brake on knocking: standing still is the only way out of
+        // it, and half a second is not standing still.
+        if (msg.error === 'too-many-attempts') {
+          this.pausedUntil = Date.now() + TOO_MANY_WAIT_MS;
+          log('too many knocks: waiting a minute before trying again');
+        }
         this.events.onError?.(msg.error || 'unknown');
         break;
     }
@@ -639,8 +658,9 @@ export class Signaling {
 
   private scheduleReconnect() {
     if (this.closedByUser || this.reconnectTimer) return;
-    const delay = this.backoff;
-    this.backoff = Math.min(this.backoff * 2, RECONNECT_MAX_MS);
+    const held = this.pausedUntil - Date.now();
+    const delay = held > 0 ? held : this.backoff;
+    if (held <= 0) this.backoff = Math.min(this.backoff * 2, RECONNECT_MAX_MS);
     log('trying again in', delay, 'ms');
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;

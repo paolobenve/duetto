@@ -605,6 +605,21 @@ try {
   check(notTheGuest.error === 'not-allowed', 'a stranger who knows the room stays out');
   g5.close();
 
+  // --- the brake counts only strangers -----------------------------------------
+  // At home every phone shares one address: counting the knocks of
+  // those the server knows, a restart would lock the household out -
+  // and each refusal answered by another knock keeps it that way.
+  const many = client(PORT3);
+  await many.open();
+  await wait(150);
+  for (let i = 0; i < 40; i += 1) {
+    many.send({ type: 'join', room: 'stanza-di-anna', name: 'Anna', side: 'A',
+      pub: anna.pub, sig: anna.signs(many.nonce()) });
+  }
+  const stillIn = await many.expect('joined');
+  check(stillIn.type === 'joined', 'a phone it knows is not counted against the brake');
+  many.close();
+
   // --- inviting from the app --------------------------------------------------
   // The phone asking is at the other end of a connection this server
   // let in by signature: there is nothing new to prove. A guest's phone
