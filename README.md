@@ -91,6 +91,29 @@ On some phones (Xiaomi, POCO) `adb install` is blocked until you turn on
 *Developer options → Install via USB*. Failing that, copy the APK to the phone and open it
 from the file manager.
 
+### From nothing to talking
+
+The whole thing, in order, for whoever is setting up both ends. It matters that the door
+is shut last: a server that already asks who you are, before the phones have anything to
+show, locks out the very person installing it.
+
+1. **Put the server up** with the door open — no `SERVER_KEY`, no `AUTHORISED_KEYS` — and
+   check it answers: `curl -s https://YOUR_DOMAIN/duetto/healthz`.
+2. **Install the app** on both phones. It opens on the settings, because there is nothing
+   it could do before knowing where to go.
+3. **Write the name of the server** — the domain alone is enough, the app builds the rest
+   of the address — and save. Nothing else needs typing.
+4. **Pair the two phones**: «Create the code» on one, the eight digits typed on the other.
+   From this moment they are a pair for good.
+5. **Grant the two system settings** the app offers at the end of the pairing: unrestricted
+   battery, and auto-start where the maker asks for it. Without them presence does not
+   survive the night.
+6. **Then, if you want, shut the door.** Take each phone's card from *the cogwheel → This
+   phone's card*, put them in `AUTHORISED_KEYS`, and restart the server. From then on only
+   those phones get in, and any one of them can be taken away without touching the others.
+
+Adding a third phone later is the same from step 2, plus its card in the list.
+
 ## The pairing
 
 Whoever creates the pair gets **eight digits**. The other one types them in. From then on
