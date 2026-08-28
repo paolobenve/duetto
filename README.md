@@ -11,7 +11,7 @@ server is only there to let you find each other: **it cannot read anything**.
 ## How it is installed, from the point of view of whoever uses it
 
 1. You install the app
-2. You write the name of your server
+2. You write the name of your server, and the key it asks for, if it asks for one
 3. On one phone you press «Create the code», on the other you type in the eight digits
    that appear
 4. You grant two system settings, which the app explains and opens for you
@@ -337,6 +337,8 @@ pairing (they can be opened again from *the cogwheel → Staying reachable*):
 - ✅ Signalling encrypted and authenticated: the server can neither read nor alter it.
 - ✅ The key is 256 bits and comes from a Diffie-Hellman exchange, not from a password.
 - ✅ At most two presences per pair; different pairs do not see one another.
+- ✅ The server can ask for **a key at the door**, so that not everybody who learns its
+  address can use it — or be handed the relay's credentials.
 - ⚠️ The delicate moment is **the pairing alone**: protect the code while you read it out.
 - ⚠️ The server sees the **metadata**: which pairs are connected and when, not what you
   say to each other.

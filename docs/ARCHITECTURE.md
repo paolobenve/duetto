@@ -52,6 +52,12 @@ A minimal WebSocket server in Node.js. It does four things:
   the password does not mean going back to each of them.
 - **A brake on joining**: 30 a minute per address. It bothers nobody, and it makes trying
   pairing codes wholesale impractical.
+- **A key at the door**: with `SERVER_KEY` set, a join that does not carry it is answered
+  `not-allowed` and closed — before anything else is said, the TURN credentials included,
+  which otherwise travel in the very first message to whoever knocks. The keys are
+  compared as digests, in a fixed time, and a wrong one costs an attempt against the brake
+  above. It protects the server, not the pair: what keeps a pair apart from everybody else
+  is the pairing code, which never comes here.
 
 The room is called `pairId`. Different pairs have different `pairId`s and do not see one
 another: the same server serves as many pairs as you like.
@@ -310,7 +316,7 @@ Off, two of them do not simply stop:
 | Whoever listens to the network | see that there is traffic | read media or signalling |
 | A compromised server | metadata (which pairs, when), DoS | read or alter the contents |
 | A compromised server, during the pairing | try to guess the code | manage it in the time available, thanks to the slow KDF |
-| A third party who knows the server | open connections | get into a pair without the code |
+| A third party who knows the server | open connections, unless there is a key | get into a pair without the code |
 | The TURN relay | forward packets | decrypt the media |
 
 The delicate moment is **the pairing alone**. Afterwards the key is 256 bits and random.

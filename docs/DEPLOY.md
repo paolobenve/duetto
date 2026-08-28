@@ -27,6 +27,29 @@ npm install --omit=dev
 npm run test:smoke        # it has to print ALL OK
 ```
 
+### The key of the house
+
+A server with no key can be used by anybody who learns its address — and, worse, hands
+them the TURN credentials in the very first message, which is your bandwidth paid by you.
+One line in the `.env` closes the door:
+
+```bash
+openssl rand -hex 12          # something like 3f9c1a77e4b20d58c6a1
+```
+
+```
+SERVER_KEY=3f9c1a77e4b20d58c6a1
+```
+
+Then say it out loud to the people who use your server, as you would the key of a house:
+in the app it goes under the address, in the settings. To take it away from somebody,
+change it here and tell the others the new one.
+
+It is not an identity and it protects nothing of the conversation: whoever has it can
+knock at this door, and no further. What keeps a pair apart from everybody else is the
+pairing code, which never reaches the server. And left empty, the server lets everybody in,
+as it always did.
+
 ### Starting it for good
 
 A dedicated service user, which only has to **read** the files:
@@ -197,6 +220,7 @@ For presence to really hold:
 | `Upgrade Required` from healthz | the proxy forwards a path the server does not recognise | update the server: it accepts any prefix |
 | healthz answers but the app does not connect | the WebSocket rules are never reached | check the **order** of the rules in the proxy |
 | Presence drops every ~50 seconds | `timeout tunnel` not set | set it to 3600s |
+| "This server does not let you in" | `SERVER_KEY` set on the server and missing, or wrong, on the phone | write it in the app under the address |
 | "No answer from the other phone" | a different code, or the other one is not connected | do the pairing again with a new code |
 | "The code does not match" | digits typed wrong | that is the check doing its job: generate the code again |
 | They connect but there is no sound | the network blocks P2P | configure coturn |
