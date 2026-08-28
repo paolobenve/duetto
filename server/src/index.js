@@ -39,7 +39,7 @@
 
 import { createServer } from 'node:http';
 import { WebSocketServer } from 'ws';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 
 const PORT = parseInt(process.env.PORT || '8787', 10);
 const HOST = process.env.HOST || '127.0.0.1'; // behind a reverse proxy: loopback only
@@ -60,6 +60,38 @@ function turnConfig() {
     credential: TURN_PASS,
   };
 }
+/**
+ * The key of the house.
+ *
+ * Without it, anybody who learns the address can use this server: open
+ * rooms of their own, and - worse - be handed the relay's credentials
+ * in the very first message, which is your bandwidth paid by you. With
+ * it, a stranger is turned away before being told anything at all.
+ *
+ * It is not an identity and it protects nothing of the conversation:
+ * whoever has it can knock at this door, and no further. What keeps a
+ * pair apart from anybody else is the pairing code, which never comes
+ * here.
+ *
+ * Left empty, the server lets everybody in, as it always did: a server
+ * that is already running does not lock its own owners out overnight.
+ */
+const SERVER_KEY = process.env.SERVER_KEY || '';
+
+/**
+ * The same key or not, told in a fixed time.
+ *
+ * Comparing two strings with `===` gives an answer sooner when the
+ * first letter is wrong, which over enough tries says how much of a key
+ * was right. Comparing the digests instead takes the same time for
+ * every wrong key, and they are of equal length by construction.
+ */
+function keyIsRight(said) {
+  if (!SERVER_KEY) return true;
+  const digest = (v) => createHash('sha256').update(String(v ?? '')).digest();
+  return timingSafeEqual(digest(said), digest(SERVER_KEY));
+}
+
 const MAX_PER_ROOM = 2;
 const MAX_MESSAGE_BYTES = 256 * 1024;
 
@@ -241,6 +273,14 @@ wss.on('connection', (ws, req) => {
       if (tooManyJoins(ws.ip)) {
         send(ws, { type: 'error', error: 'too-many-attempts' });
         ws.close(4004, 'too-many-attempts');
+        return;
+      }
+      // Before anything else is said, the relay's credentials included:
+      // the attempt has just been counted, so guessing the key costs
+      // thirty tries a minute like guessing a pairing code.
+      if (!keyIsRight(msg.key)) {
+        send(ws, { type: 'error', error: 'not-allowed' });
+        ws.close(4006, 'not-allowed');
         return;
       }
       const roomId = typeof msg.room === 'string' ? msg.room.trim() : '';
@@ -457,6 +497,9 @@ wss.on('close', () => clearInterval(heartbeat));
 
 httpServer.listen(PORT, HOST, () => {
   console.log(`[duetto] signalling listening on ws://${HOST}:${PORT}`);
+  console.log(`[duetto] key: ${SERVER_KEY
+    ? 'asked for at the door'
+    : 'none - anybody who knows the address can use this server'}`);
   console.log(`[duetto] TURN fallback: ${turnConfig() ? TURN_URL : 'not configured (different networks will not connect)'}`);
 });
 

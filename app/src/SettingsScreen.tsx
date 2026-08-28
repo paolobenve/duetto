@@ -260,6 +260,21 @@ export default function SettingsScreen({
         </View>
         )}
 
+        {/* The key of the house, under the address it opens.
+            Shown while the server is being written and, once paired,
+            only if there is one: a server that asks for nothing would
+            otherwise offer an empty field for something nobody has. */}
+        {!paired || changingServer || cfg.serverKey ? (
+          <Field
+            label={t('settings.serverKey')}
+            value={cfg.serverKey}
+            onChange={set('serverKey')}
+            placeholder={t('settings.serverKeyPlaceholder')}
+            hint={t('settings.serverKeyHint')}
+            autoCapitalize="none"
+          />
+        ) : null}
+
         {/* The step forward belongs here, not at the bottom: right
             under what one has just written. Below are settings that
             apply by themselves or that concern a pairing already

@@ -20,6 +20,9 @@ const URL = `ws://127.0.0.1:${PORT}`;
 // The real heartbeat is 30 seconds and 4 minutes: here everything is
 // shrunk, otherwise checking it would mean sitting and watching for a
 // quarter of an hour. The ratios between the times stay the same.
+/** The key of the house: every join in this test carries it. */
+const KEY = 'chiave-di-prova';
+
 const HEARTBEAT_ACTIVE_MS = 400;
 const HEARTBEAT_LISTENING_MS = 4000;
 const ANSWER_WAIT_MS = 600;
@@ -30,6 +33,7 @@ const srv = spawn('node', ['src/index.js'], {
     // The relay is told to the phones by the server: here we check that
     // it really arrives in the joining message.
     TURN_URL: 'turn:example.org:3478', TURN_USER: 'duo', TURN_PASS: 'secret',
+    SERVER_KEY: KEY,
     HEARTBEAT_ACTIVE_MS: String(HEARTBEAT_ACTIVE_MS),
     HEARTBEAT_LISTENING_MS: String(HEARTBEAT_LISTENING_MS),
     HEARTBEAT_TICK_MS: '50',
@@ -95,7 +99,7 @@ try {
   // --- A connects, only listening ---------------------------------------
   const a = client();
   await a.open();
-  a.send({ type: 'join', room: 'pair1', name: 'Anna', mode: 'listening', side: 'A' });
+  a.send({ type: 'join', key: KEY, room: 'pair1', name: 'Anna', mode: 'listening', side: 'A' });
   const aJoined = await a.expect('joined');
   check(aJoined.polite === true, 'first connected: the polite role');
   check(aJoined.peerPresent === false, 'first connected: the other is not there');
@@ -106,7 +110,7 @@ try {
   // --- B connects, listening as well -------------------------------------
   const b = client();
   await b.open();
-  b.send({ type: 'join', room: 'pair1', name: 'Bruno', mode: 'listening', side: 'B' });
+  b.send({ type: 'join', key: KEY, room: 'pair1', name: 'Bruno', mode: 'listening', side: 'B' });
   const bJoined = await b.expect('joined');
   check(bJoined.polite === false, 'second connected: the impolite role (roles kept apart)');
   check(bJoined.peerPresent === true, 'second connected: sees the other');
@@ -165,7 +169,7 @@ try {
   await wait(100);
   const c0 = client();
   await c0.open();
-  c0.send({ type: 'join', room: 'alone', name: 'Carla', mode: 'active' });
+  c0.send({ type: 'join', key: KEY, room: 'alone', name: 'Carla', mode: 'active' });
   await c0.expect('joined');
   c0.send({ type: 'knock' });
   const k3 = await c0.expect('knock-result');
@@ -179,17 +183,17 @@ try {
   await wait(100);
   const r1 = client();
   await r1.open();
-  r1.send({ type: 'join', room: 'rehook', name: 'Anna', side: 'A' });
+  r1.send({ type: 'join', key: KEY, room: 'rehook', name: 'Anna', side: 'A' });
   await r1.expect('joined');
   const r2 = client();
   await r2.open();
-  r2.send({ type: 'join', room: 'rehook', name: 'Bruno', side: 'B' });
+  r2.send({ type: 'join', key: KEY, room: 'rehook', name: 'Bruno', side: 'B' });
   await r2.expect('joined');
 
   // Anna reappears without the old connection having been declared dead
   const r1bis = client();
   await r1bis.open();
-  r1bis.send({ type: 'join', room: 'rehook', name: 'Anna', side: 'A' });
+  r1bis.send({ type: 'join', key: KEY, room: 'rehook', name: 'Anna', side: 'A' });
   const again = await r1bis.expect('joined');
   check(again.type === 'joined', 'hooking up again one takes one’s own place back');
   check(again.peerPresent === true, 'and finds the other still there');
@@ -200,7 +204,7 @@ try {
   // A real third device stays out all the same
   const r3 = client();
   await r3.open();
-  r3.send({ type: 'join', room: 'rehook', name: 'Cip', side: null });
+  r3.send({ type: 'join', key: KEY, room: 'rehook', name: 'Cip', side: null });
   const r3res = await r3.expect('error');
   check(r3res.error === 'room-full', 'a real third device stays out');
   r1bis.close(); r2.close(); r3.close();
@@ -208,18 +212,18 @@ try {
   // --- third device --------------------------------------------------------
   const d = client();
   await d.open();
-  d.send({ type: 'join', room: 'pair1', name: 'X', mode: 'listening' });
+  d.send({ type: 'join', key: KEY, room: 'pair1', name: 'X', mode: 'listening' });
   await d.expect('joined');
   const e = client();
   await e.open();
-  e.send({ type: 'join', room: 'pair1', name: 'Y', mode: 'listening' });
+  e.send({ type: 'join', key: KEY, room: 'pair1', name: 'Y', mode: 'listening' });
   const eRes = await e.expect('error');
   check(eRes.error === 'room-full', 'the third device is turned away');
 
   // --- pairs that do not see each other ------------------------------------
   const f = client();
   await f.open();
-  f.send({ type: 'join', room: 'pair2', name: 'Z', mode: 'listening' });
+  f.send({ type: 'join', key: KEY, room: 'pair2', name: 'Z', mode: 'listening' });
   const fRes = await f.expect('joined');
   check(fRes.peerPresent === false, 'another pair does not see the first');
 
@@ -230,7 +234,7 @@ try {
   // about to be taken as good.
   const h1 = client();
   await h1.open();
-  h1.send({ type: 'join', room: 'heartbeat', name: 'H1', side: 'A', mode: 'listening' });
+  h1.send({ type: 'join', key: KEY, room: 'heartbeat', name: 'H1', side: 'A', mode: 'listening' });
   await h1.expect('joined');
 
   const listeningBefore = h1.pings();
@@ -243,7 +247,7 @@ try {
 
   const h2 = client();
   await h2.open();
-  h2.send({ type: 'join', room: 'heartbeat', name: 'H2', side: 'B', mode: 'listening' });
+  h2.send({ type: 'join', key: KEY, room: 'heartbeat', name: 'H2', side: 'B', mode: 'listening' });
   const h2Joined = await h2.expect('joined');
   // On this field depends whether whoever arrives hooks up to the other at
   // once: get it wrong and both would be left in front of a waiting screen.
@@ -277,7 +281,7 @@ try {
   // way of asking, that line would go on saying something no longer true.
   const p1 = client();
   await p1.open();
-  p1.send({ type: 'join', room: 'ask', name: 'P1', side: 'A', mode: 'active' });
+  p1.send({ type: 'join', key: KEY, room: 'ask', name: 'P1', side: 'A', mode: 'active' });
   await p1.expect('joined');
 
   p1.send({ type: 'presence' });
@@ -286,7 +290,7 @@ try {
 
   const p2 = client();
   await p2.open();
-  p2.send({ type: 'join', room: 'ask', name: 'P2', side: 'B', mode: 'listening' });
+  p2.send({ type: 'join', key: KEY, room: 'ask', name: 'P2', side: 'B', mode: 'listening' });
   await p2.expect('joined');
   await p1.expect('peer-joined');
 
@@ -335,14 +339,39 @@ try {
   check(withoutRoom.error === 'expected-join', 'with no room one is asked to join first');
   p3.close();
 
+  // --- the key of the house --------------------------------------------------
+  // Whoever does not have it is turned away at the door, before being
+  // told anything: the relay's credentials travel in the very first
+  // message, and they are not for strangers.
+  const k1 = client();
+  await k1.open();
+  k1.send({ type: 'join', room: 'pair1', name: 'X', side: 'A' });
+  const noKey = await k1.expect('error');
+  check(noKey.error === 'not-allowed', 'with no key one does not get in');
+  check(await k1.closed(1000), 'and the door is closed');
+
+  const k2 = client();
+  await k2.open();
+  k2.send({ type: 'join', room: 'pair1', key: 'sbagliata', name: 'X', side: 'A' });
+  const badKey = await k2.expect('error');
+  check(badKey.error === 'not-allowed', 'with the wrong key, the same');
+
+  const kOk = client();
+  await kOk.open();
+  kOk.send({ type: 'join', room: 'chiave', key: KEY, name: 'X', side: 'A' });
+  const good = await kOk.expect('joined');
+  check(good.type === 'joined', 'with the right key one gets in');
+  check(!!good.turn, 'and only then are the relay credentials handed over');
+  kOk.close();
+
   // --- a wanted departure ---------------------------------------------------
   const v1 = client();
   await v1.open();
-  v1.send({ type: 'join', room: 'goodbyes', name: 'V1', side: 'A', mode: 'listening' });
+  v1.send({ type: 'join', key: KEY, room: 'goodbyes', name: 'V1', side: 'A', mode: 'listening' });
   await v1.expect('joined');
   const v2 = client();
   await v2.open();
-  v2.send({ type: 'join', room: 'goodbyes', name: 'V2', side: 'B', mode: 'listening' });
+  v2.send({ type: 'join', key: KEY, room: 'goodbyes', name: 'V2', side: 'B', mode: 'listening' });
   await v2.expect('joined');
   await v1.expect('peer-joined');
 

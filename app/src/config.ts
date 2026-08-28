@@ -57,6 +57,15 @@ export type PairInfo = {
    */
   serverUrl?: string;
   /**
+   * The key of the server this pairing was born on.
+   *
+   * It travels with the address for the same reason: two connections
+   * can live on two servers, and each server has its own key. It is not
+   * a secret of the pair - the pair has its own, and a far better one -
+   * it is what the server asks at the door.
+   */
+  serverKey?: string;
+  /**
    * The settings of THIS connection.
    *
    * Nearly everything one chooses is about a particular person rather
@@ -172,6 +181,16 @@ export type VideoQuality = 'saver' | 'standard' | 'better' | 'best';
 export type DuoConfig = {
   /** wss://YOUR_DOMAIN/duetto/ws */
   serverUrl: string;
+  /**
+   * The key the server asks for, if it asks for one.
+   *
+   * Without it, anybody who has learnt the address can use the server -
+   * and, worse, is handed the relay's credentials in the very first
+   * message. With it, a stranger is turned away before being told
+   * anything at all. A server that does not ask for one leaves this
+   * empty, and nothing changes.
+   */
+  serverKey: string;
   /** how the other person sees me */
   displayName: string;
   /** the connection in use; null until a pairing has been made */
@@ -321,6 +340,7 @@ export type DuoConfig = {
 
 export const DEFAULT_CONFIG: DuoConfig = {
   serverUrl: '',
+  serverKey: '',
   displayName: '',
   pair: null,
   pairs: [],
@@ -401,6 +421,7 @@ export function addPair(cfg: DuoConfig, pair: PairInfo): DuoConfig {
   // reasonable thing to give it, and from then on they are its own.
   const fresh: PairInfo = {
     serverUrl: cfg.serverUrl,
+    serverKey: cfg.serverKey,
     settings: settingsInUse(cfg),
     ...pair,
   };
@@ -427,6 +448,7 @@ export function switchToPair(cfg: DuoConfig, id: string): DuoConfig {
   const after: DuoConfig = {
     ...stored,
     serverUrl: chosen.serverUrl || stored.serverUrl,
+    serverKey: chosen.serverKey ?? stored.serverKey,
     pair: chosen,
     pairs: [chosen, ...stored.pairs.filter((p) => p.id !== id)],
   };
@@ -447,6 +469,7 @@ export function forgetPair(cfg: DuoConfig, id: string): DuoConfig {
   const after: DuoConfig = {
     ...cfg,
     serverUrl: next?.serverUrl || cfg.serverUrl,
+    serverKey: next?.serverKey ?? cfg.serverKey,
     pair: next,
     pairs: left,
   };
@@ -530,8 +553,11 @@ export function renamePair(cfg: DuoConfig, id: string, label: string): DuoConfig
  * pair would drag its old address along.
  */
 export function alignPairServer(cfg: DuoConfig): DuoConfig {
-  if (!cfg.pair || cfg.pair.serverUrl === cfg.serverUrl) return cfg;
-  const pair = { ...cfg.pair, serverUrl: cfg.serverUrl };
+  if (!cfg.pair
+    || (cfg.pair.serverUrl === cfg.serverUrl && cfg.pair.serverKey === cfg.serverKey)) {
+    return cfg;
+  }
+  const pair = { ...cfg.pair, serverUrl: cfg.serverUrl, serverKey: cfg.serverKey };
   return {
     ...cfg,
     pair,

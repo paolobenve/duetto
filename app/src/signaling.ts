@@ -211,6 +211,16 @@ const RECONNECT_MAX_MS = 4000;
 
 export type SignalingOptions = {
   serverUrl: string;
+  /**
+   * The key of the server, when it asks for one.
+   *
+   * It says nothing about who you are and it does not protect the pair:
+   * that is the pairing code's business. It protects the SERVER - it is
+   * the key of the house, and without it a stranger who has learnt the
+   * address is turned away before being told anything, the relay's
+   * credentials included.
+   */
+  serverKey?: string;
   /** the room = the fingerprint of the pairing code */
   room: string;
   displayName: string;
@@ -304,6 +314,7 @@ export class Signaling {
       this.rawSend({
         type: 'join',
         room: this.opts.room,
+        key: this.opts.serverKey || undefined,
         name: this.opts.displayName || 'Someone',
         mode: this.mode,
         side: this.opts.side,

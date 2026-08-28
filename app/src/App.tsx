@@ -1663,6 +1663,7 @@ export default function App() {
       const sig = new Signaling(
         {
           serverUrl: cfg.serverUrl.trim(),
+          serverKey: cfg.serverKey,
           room: pair.id,
           displayName: cfg.displayName || 'Someone',
           key: pair.key,
@@ -1978,6 +1979,12 @@ export default function App() {
             }
             else if (code === 'decrypt-failed') {
               Alert.alert(t('errors.differentKeys'), t('errors.differentKeysBody'));
+            }
+            // The server does not know us: it is not a fault of the
+            // pair, and trying again would change nothing until
+            // somebody writes the key down.
+            else if (code === 'not-allowed') {
+              Alert.alert(t('errors.notAllowed'), t('errors.notAllowedBody'));
             }
           },
         },

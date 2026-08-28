@@ -116,6 +116,7 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
     const sig = new Signaling(
       {
         serverUrl: cfg.serverUrl.trim(),
+        serverKey: cfg.serverKey,
         room: pairId,
         displayName: cfg.displayName || '',
         key: null,
