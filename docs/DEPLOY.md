@@ -92,6 +92,16 @@ npm run devices                      # who is on the list, and what is still inv
 npm run devices -- --remove anna     # takes a phone away, at the next knock
 ```
 
+**Whoever you let in brings their own people.** Anna does not need an invitation for the
+person she pairs with: that phone is let in beside hers, the first time, while she is in
+the room — and it is written down for that room alone. With that key it cannot open a room
+of its own, so what you let in does not let anybody else in. Taking Anna away takes her
+rooms and the people she brought with them.
+
+There is no ceiling on how many connections one person may open: a phone is in one at a
+time, so many rooms cost open sockets and not conversations. `npm run devices` shows the
+count beside each name, which is worth seeing without being worth forbidding.
+
 Nothing needs restarting: the list is read every time somebody knocks. It lives in
 `devices.json` beside the server, or wherever `DEVICES_FILE` says.
 

@@ -34,7 +34,7 @@ if (cut >= 0) {
   process.exit(0);
 }
 
-const { devices, invitations } = read();
+const { devices, invitations, rooms } = read();
 console.log(`${fileName()}\n`);
 
 if (devices.length === 0) console.log('No phone on the list: the door is open.');
@@ -42,7 +42,16 @@ else {
   console.log('Phones on the list:');
   for (const d of devices) {
     const card = d.pub.length > 16 ? `${d.pub.slice(0, 8)}…${d.pub.slice(-6)}` : d.pub;
-    console.log(`  ${d.name.padEnd(12)} ${card}   since ${d.since.slice(0, 10)}`);
+    // How many connections they have opened, and how many of those
+    // brought somebody along. There is no ceiling on this - a phone is
+    // in one connection at a time, so many rooms cost sockets and not
+    // conversations - but a strange number is worth seeing.
+    const theirs = rooms.filter((r) => r.owner === d.name);
+    const brought = theirs.filter((r) => r.guest).length;
+    const also = theirs.length
+      ? `   ${theirs.length} connection(s), ${brought} with somebody along`
+      : '';
+    console.log(`  ${d.name.padEnd(12)} ${card}   since ${d.since.slice(0, 10)}${also}`);
   }
 }
 

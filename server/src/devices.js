@@ -39,7 +39,7 @@ const FILE = process.env.DEVICES_FILE
 /** A week. Long enough to be handed over calmly, short enough to expire. */
 const INVITE_DAYS = Number(process.env.INVITE_DAYS || 7);
 
-const EMPTY = { devices: [], invitations: [] };
+const EMPTY = { devices: [], invitations: [], rooms: [] };
 
 export function fileName() {
   return FILE;
@@ -59,6 +59,7 @@ export function read() {
     return {
       devices: Array.isArray(parsed.devices) ? parsed.devices : [],
       invitations: Array.isArray(parsed.invitations) ? parsed.invitations : [],
+      rooms: Array.isArray(parsed.rooms) ? parsed.rooms : [],
     };
   } catch {
     // A broken file must not lock everybody out in silence: it is said
@@ -135,6 +136,44 @@ export function useInvitation(code, pub) {
   return invitation.name;
 }
 
+/**
+ * The rooms of the people on the list, and who they let in.
+ *
+ * A connection lives in a room, and two phones live in a connection. If
+ * one of them is on the list, the other is with them: it is written
+ * down here, for that room and no other. So somebody invited can talk
+ * to whoever they like - the person on the other side has nothing to
+ * ask anybody - but that person cannot go and open rooms of their own:
+ * their key is worth something in one room, and nowhere else.
+ *
+ * That is where the chain stops. Whoever you let in brings their own
+ * people; their people bring nobody.
+ */
+export function roomOf(room) {
+  return read().rooms.find((r) => r.room === room) || null;
+}
+
+/** Writes down that this room belongs to somebody on the list. */
+export function noteRoom(room, owner) {
+  const data = read();
+  // The first one on the list who uses it owns it, and it does not
+  // change hands: two people on the list can share a room - two phones
+  // of the same person, say - and passing it back and forth at every
+  // knock would only make the file restless.
+  if (data.rooms.some((r) => r.room === room)) return;
+  data.rooms.push({ room, owner, guest: null, since: new Date().toISOString() });
+  write(data);
+}
+
+/** And that this phone is the other half of it. */
+export function noteGuest(room, pub) {
+  const data = read();
+  const known = data.rooms.find((r) => r.room === room);
+  if (!known || known.guest) return;
+  known.guest = pub;
+  write(data);
+}
+
 /** The name this key is written down under, or null. */
 export function nameOf(pub) {
   const found = read().devices.find((d) => d.pub === pub);
@@ -147,6 +186,10 @@ export function remove(name) {
   const before = data.devices.length;
   data.devices = data.devices.filter((d) => d.name !== name);
   data.invitations = data.invitations.filter((i) => i.name !== name);
+  // Their rooms go with them, and the people they had brought along:
+  // those keys were worth something in those rooms alone, and the rooms
+  // are not there any more.
+  data.rooms = data.rooms.filter((r) => r.owner !== name);
   write(data);
   return before - data.devices.length;
 }

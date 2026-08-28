@@ -42,7 +42,7 @@ import { WebSocketServer } from 'ws';
 import {
   createHash, createPublicKey, randomBytes, randomUUID, timingSafeEqual, verify,
 } from 'node:crypto';
-import { read, useInvitation } from './devices.js';
+import { noteGuest, noteRoom, read, roomOf, useInvitation } from './devices.js';
 
 const PORT = parseInt(process.env.PORT || '8787', 10);
 const HOST = process.env.HOST || '127.0.0.1'; // behind a reverse proxy: loopback only
@@ -181,20 +181,54 @@ function whoIsThere(msg, nonce) {
   if (!pub || !signed(pub, msg.sig, nonce)) return null;
 
   const fromEnv = AUTHORISED_KEYS.get(pub);
-  if (fromEnv) return fromEnv;
+  if (fromEnv) return { name: fromEnv, owner: true };
 
   const known = listed().find((d) => d.pub === pub);
-  if (known) return known.name;
+  if (known) return { name: known.name, owner: true };
 
   if (msg.invite) {
     const name = useInvitation(msg.invite, pub);
     if (name) {
       console.log(`[duetto] ${name} comes in with an invitation, `
         + `phone ${pub.slice(0, 12)}…`);
-      return name;
+      return { name, owner: true };
     }
   }
   return null;
+}
+
+/**
+ * The other half of somebody's connection.
+ *
+ * Whoever is on the list can talk to anybody: the person on the other
+ * side has nothing to ask and nobody to ask it of - they install the
+ * app, write the address, and pair. Their phone is let in here, and
+ * written down for THAT room: with that key they cannot open another
+ * one, so what one lets in does not let in anybody else.
+ *
+ * The first time, the one on the list has to be in the room at that
+ * moment. It costs nothing - a pairing is made with both phones awake
+ * anyway - and it means that a room's second seat cannot be taken by
+ * somebody who has merely learnt its name. Afterwards the key is
+ * written down and comes and goes on its own.
+ */
+function asGuest(msg, nonce, roomId, here) {
+  const pub = String(msg.pub || '');
+  if (!pub || !signed(pub, msg.sig, nonce)) return null;
+
+  const room = roomOf(roomId);
+  if (!room) return null;
+
+  if (room.guest === pub) return { name: `${room.owner}+`, owner: false };
+  if (room.guest) return null;
+
+  const ownerIsHere = [...here].some((peer) => peer.owner && peer.who === room.owner);
+  if (!ownerIsHere) return null;
+
+  noteGuest(roomId, pub);
+  console.log(`[duetto] ${room.owner} brings somebody along in their room, `
+    + `phone ${pub.slice(0, 12)}…`);
+  return { name: `${room.owner}+`, owner: false };
 }
 
 /** Is the door shut? It is, as soon as one phone is on the list. */
@@ -394,6 +428,15 @@ wss.on('connection', (ws, req) => {
         ws.close(4004, 'too-many-attempts');
         return;
       }
+      const roomId = typeof msg.room === 'string' ? msg.room.trim() : '';
+      if (!roomId || roomId.length > 128) {
+        send(ws, { type: 'error', error: 'bad-room' });
+        ws.close(4002, 'bad-room');
+        return;
+      }
+      let set = rooms.get(roomId);
+      if (!set) { set = new Set(); rooms.set(roomId, set); }
+
       /**
        * The door, before anything else is said - the relay's
        * credentials included, which otherwise travel in the very first
@@ -405,7 +448,8 @@ wss.on('connection', (ws, req) => {
        * pairing codes.
        */
       if (doorIsShut()) {
-        const who = whoIsThere(msg, ws.nonce);
+        const who = whoIsThere(msg, ws.nonce)
+          || asGuest(msg, ws.nonce, roomId, set);
         if (!who) {
           console.log(`[duetto] turned away: ${String(msg.pub || 'no key').slice(0, 12)}`
             + ` from ${ws.ip}`);
@@ -413,20 +457,16 @@ wss.on('connection', (ws, req) => {
           ws.close(4006, 'not-allowed');
           return;
         }
-        ws.who = who;
+        ws.who = who.name;
+        ws.owner = who.owner === true;
+        // The room belongs to whoever is on the list: it is written
+        // down now, so that the other half can be let in beside them.
+        if (ws.owner) noteRoom(roomId, who.name);
       } else if (!keyIsRight(msg.key)) {
         send(ws, { type: 'error', error: 'not-allowed' });
         ws.close(4006, 'not-allowed');
         return;
       }
-      const roomId = typeof msg.room === 'string' ? msg.room.trim() : '';
-      if (!roomId || roomId.length > 128) {
-        send(ws, { type: 'error', error: 'bad-room' });
-        ws.close(4002, 'bad-room');
-        return;
-      }
-      let set = rooms.get(roomId);
-      if (!set) { set = new Set(); rooms.set(roomId, set); }
 
       // The side ('A' or 'B') identifies the DEVICE, not the connection:
       // it is fixed at pairing and never changes. If we find a connection

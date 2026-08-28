@@ -114,6 +114,11 @@ show, locks out the very person installing it.
 
 Adding a third phone later is the same from step 2, plus its card in the list.
 
+Whoever you let in brings their own people: the person they pair with has nothing to ask
+anybody — they install the app, write the address, and pair. That phone is let in beside
+theirs and is known for that connection alone, so it cannot open one of its own. The chain
+stops at one link.
+
 Letting somebody else in — a person, not another phone of yours — is not done by hand:
 `npm run invite -- anna` on the server prints a short code, you hand it over as you would
 a pairing code, and they write it in the app once. Their phone is then written down under

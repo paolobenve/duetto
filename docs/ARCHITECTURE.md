@@ -65,6 +65,13 @@ A minimal WebSocket server in Node.js. It does four things:
   a document: it is "the person I handed this to", the same trust the pairing code between
   two phones rests on. The list is a small JSON file read at every knock, so taking a
   phone away takes effect at once instead of at the next restart.
+- **The other half of a connection**: a phone nobody has written down is let into a room
+  where somebody on the list is sitting, and written down for that room alone. So whoever
+  is let in can talk to anybody - the person on the other side asks nobody for anything -
+  while that person cannot open rooms of their own: the chain stops at one link. The first
+  admission asks for the owner to be in the room at that moment, which costs nothing (a
+  pairing is made with both phones awake) and keeps a second seat from being taken by
+  somebody who has merely learnt a room's name.
 - **A key at the door**: with `SERVER_KEY` set, a join that does not carry it is answered
   `not-allowed` and closed — before anything else is said, the TURN credentials included,
   which otherwise travel in the very first message to whoever knocks. The keys are

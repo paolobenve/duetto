@@ -447,7 +447,7 @@ try {
   const s2 = client(PORT2);
   await s2.open();
   await wait(150);
-  s2.send({ type: 'join', room: 'firme', name: 'X', side: 'B',
+  s2.send({ type: 'join', room: 'una-stanza-di-nessuno', name: 'X', side: 'B',
     pub: stranger.pub, sig: stranger.signs(s2.nonce()) });
   const notOnList = await s2.expect('error');
   check(notOnList.error === 'not-allowed', 'a phone that is not on the list does not');
@@ -457,7 +457,7 @@ try {
   await wait(150);
   // Anna's key, and a signature made for another connection: the number
   // is picked afresh every time, so a stolen signature is worth nothing.
-  s3.send({ type: 'join', room: 'firme', name: 'X', side: 'B',
+  s3.send({ type: 'join', room: 'un-altra-stanza', name: 'X', side: 'B',
     pub: anna.pub, sig: anna.signs(s1.nonce()) });
   const replayed = await s3.expect('error');
   check(replayed.error === 'not-allowed', 'and neither does a signature made for another');
@@ -465,7 +465,7 @@ try {
   const s4 = client(PORT2);
   await s4.open();
   await wait(150);
-  s4.send({ type: 'join', room: 'firme', key: KEY, name: 'X', side: 'B' });
+  s4.send({ type: 'join', room: 'una-terza-stanza', key: KEY, name: 'X', side: 'B' });
   const wordOnly = await s4.expect('error');
   check(wordOnly.error === 'not-allowed', 'with the list up, the word of the house is not enough');
 
@@ -533,6 +533,61 @@ try {
   const revoked = await i4.expect('error');
   check(revoked.error === 'not-allowed', 'taken off the list, it is out at once');
   i4.close();
+
+  // --- whoever is let in brings their own people -------------------------------
+  // The other half of a connection has nothing to ask anybody: it is
+  // let in beside the one on the list, and written down for that room
+  // alone.
+  const guest = phone();
+  const g1 = client(PORT3);
+  await g1.open();
+  await wait(150);
+  g1.send({ type: 'join', room: 'stanza-di-anna', name: 'Anna', side: 'A',
+    pub: anna.pub, sig: anna.signs(g1.nonce()) });
+  await g1.expect('joined');
+
+  const g2 = client(PORT3);
+  await g2.open();
+  await wait(150);
+  g2.send({ type: 'join', room: 'stanza-di-anna', name: 'La madre', side: 'B',
+    pub: guest.pub, sig: guest.signs(g2.nonce()) });
+  const alongside = await g2.expect('joined');
+  check(alongside.type === 'joined', 'the other half is let in beside the one on the list');
+  g2.close();
+
+  // In another room that key is worth nothing: what one lets in does
+  // not let in anybody else.
+  const g3 = client(PORT3);
+  await g3.open();
+  await wait(150);
+  g3.send({ type: 'join', room: 'una-stanza-sua', name: 'La madre', side: 'A',
+    pub: guest.pub, sig: guest.signs(g3.nonce()) });
+  const elsewhere = await g3.expect('error');
+  check(elsewhere.error === 'not-allowed', 'and cannot open a room of their own');
+  g3.close();
+
+  // Anna leaves; her guest comes back to the room they share.
+  g1.close();
+  await wait(200);
+  const g4 = client(PORT3);
+  await g4.open();
+  await wait(150);
+  g4.send({ type: 'join', room: 'stanza-di-anna', name: 'La madre', side: 'B',
+    pub: guest.pub, sig: guest.signs(g4.nonce()) });
+  const backAlone = await g4.expect('joined');
+  check(backAlone.type === 'joined', 'and comes back to that room on their own');
+  g4.close();
+
+  // A third phone that has merely learnt the room's name: the seat is taken.
+  const outsider = phone();
+  const g5 = client(PORT3);
+  await g5.open();
+  await wait(150);
+  g5.send({ type: 'join', room: 'stanza-di-anna', name: 'X', side: 'A',
+    pub: outsider.pub, sig: outsider.signs(g5.nonce()) });
+  const notTheGuest = await g5.expect('error');
+  check(notTheGuest.error === 'not-allowed', 'a stranger who knows the room stays out');
+  g5.close();
 
   srv3.kill('SIGTERM');
   await wait(200);
