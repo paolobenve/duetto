@@ -285,6 +285,21 @@ export default function SettingsScreen({
           </View>
         ) : null}
 
+        {/* The invitation, next to the card it goes with: one is what
+            this phone is, the other is who said it could come in. Once
+            spent it counts for nothing, so it is not taken away from
+            under anybody's eyes. */}
+        {!paired || changingServer || cfg.invitation ? (
+          <Field
+            label={t('settings.invitation')}
+            value={cfg.invitation}
+            onChange={set('invitation')}
+            placeholder={t('settings.invitationPlaceholder')}
+            hint={t('settings.invitationHint')}
+            autoCapitalize="none"
+          />
+        ) : null}
+
         {/* The key of the house, under the address it opens.
             Shown while the server is being written and, once paired,
             only if there is one: a server that asks for nothing would

@@ -69,6 +69,37 @@ AUTHORISED_KEYS=anna:kK9v…Q=,bruno:7Yt2…w=
 To take one phone away, its entry goes and nobody else notices. The log says which name
 came in. With this set, `SERVER_KEY` is ignored: the door is the signature.
 
+### Inviting somebody
+
+Writing keys into the `.env` works for the two or three phones of whoever owns the server.
+It stops working the moment somebody else is to be let in: you would have to be at a
+keyboard, with their card in front of you, at the moment they ask.
+
+So there is an invitation instead — a short code, made for one person, spent once:
+
+```bash
+npm run invite -- anna
+```
+
+It prints something like `KRT4-9WBH`. Hand it over as you would a pairing code — out loud,
+by message, however you like — and the person writes it in the app under the server's
+address, once, before connecting. Their phone gets written down under that name, and the
+code is spent: whoever it was passed on to finds it worth nothing, which is the cheapest
+way of noticing that it was passed on.
+
+```bash
+npm run devices                      # who is on the list, and what is still invited
+npm run devices -- --remove anna     # takes a phone away, at the next knock
+```
+
+Nothing needs restarting: the list is read every time somebody knocks. It lives in
+`devices.json` beside the server, or wherever `DEVICES_FILE` says.
+
+⚠️ The door is shut as soon as **one** phone is on the list — from the `.env` or from an
+invitation. So put your own phones in first, or make an invitation for each of them and
+use them yourself: otherwise the first person to accept an invitation shuts the door on
+you. `npm run invite` says so when the list is still empty.
+
 ### Starting it for good
 
 A dedicated service user, which only has to **read** the files:

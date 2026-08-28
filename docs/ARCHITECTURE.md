@@ -59,6 +59,12 @@ A minimal WebSocket server in Node.js. It does four things:
   changes every time; and one phone can be taken away without touching anybody else's. The
   keys are Ed25519: tweetnacl signs on the phone, node's own crypto verifies here, and the
   raw 32 bytes are wrapped in the twelve that make an SPKI.
+- **Invitations**: a phone nobody has written down can still get in, once, by carrying a
+  code made for one person - `npm run invite -- anna`. The server takes it, writes that
+  phone's key down under that name and spends the code. The identity is not an address or
+  a document: it is "the person I handed this to", the same trust the pairing code between
+  two phones rests on. The list is a small JSON file read at every knock, so taking a
+  phone away takes effect at once instead of at the next restart.
 - **A key at the door**: with `SERVER_KEY` set, a join that does not carry it is answered
   `not-allowed` and closed — before anything else is said, the TURN credentials included,
   which otherwise travel in the very first message to whoever knocks. The keys are

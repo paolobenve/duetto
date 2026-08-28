@@ -114,6 +114,12 @@ show, locks out the very person installing it.
 
 Adding a third phone later is the same from step 2, plus its card in the list.
 
+Letting somebody else in — a person, not another phone of yours — is not done by hand:
+`npm run invite -- anna` on the server prints a short code, you hand it over as you would
+a pairing code, and they write it in the app once. Their phone is then written down under
+that name, and the code is spent. `npm run devices` says who is in, and takes anybody out
+again.
+
 ## The pairing
 
 Whoever creates the pair gets **eight digits**. The other one types them in. From then on

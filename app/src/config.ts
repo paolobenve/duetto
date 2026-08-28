@@ -191,6 +191,17 @@ export type DuoConfig = {
    * empty, and nothing changes.
    */
   serverKey: string;
+  /**
+   * The invitation, when one has been given.
+   *
+   * It is written once, before the first connection to a server that
+   * keeps a list of phones: the server takes it, writes this phone down
+   * under the name the invitation carried, and spends it. From then on
+   * the phone is known by its own key and this is worth nothing - it is
+   * left where it is, doing no harm, so that nobody has to be told to
+   * go and delete something.
+   */
+  invitation: string;
   /** how the other person sees me */
   displayName: string;
   /** the connection in use; null until a pairing has been made */
@@ -341,6 +352,7 @@ export type DuoConfig = {
 export const DEFAULT_CONFIG: DuoConfig = {
   serverUrl: '',
   serverKey: '',
+  invitation: '',
   displayName: '',
   pair: null,
   pairs: [],

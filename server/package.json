@@ -9,7 +9,9 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "test:smoke": "node smoke-test.mjs"
+    "test:smoke": "node smoke-test.mjs",
+    "invite": "node tools/invite.mjs",
+    "devices": "node tools/devices.mjs"
   },
   "engines": {
     "node": ">=18"

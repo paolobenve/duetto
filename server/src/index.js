@@ -42,6 +42,7 @@ import { WebSocketServer } from 'ws';
 import {
   createHash, createPublicKey, randomBytes, randomUUID, timingSafeEqual, verify,
 } from 'node:crypto';
+import { read, useInvitation } from './devices.js';
 
 const PORT = parseInt(process.env.PORT || '8787', 10);
 const HOST = process.env.HOST || '127.0.0.1'; // behind a reverse proxy: loopback only
@@ -110,6 +111,18 @@ function keyIsRight(said) {
  * Set, it is the door. Empty, the server falls back on SERVER_KEY, and
  * with neither it lets everybody in, as it always did.
  */
+/**
+ * The phones written down by an invitation, alongside those in the
+ * `.env`. The file is read at every knock: see src/devices.js.
+ */
+const listed = () => {
+  try {
+    return read().devices;
+  } catch {
+    return [];
+  }
+};
+
 const AUTHORISED_KEYS = new Map(
   (process.env.AUTHORISED_KEYS || '')
     .split(',')
@@ -143,19 +156,50 @@ function asKey(base64) {
   }
 }
 
-/** The name this key was let in under, or null if it was not. */
-function whoSigned(pub, signature, nonce) {
-  const name = AUTHORISED_KEYS.get(String(pub || ''));
-  if (!name) return null;
+/** Whether this key really made this signature. */
+function signed(pub, signature, nonce) {
   const key = asKey(pub);
-  if (!key) return null;
+  if (!key) return false;
   try {
-    const ok = verify(null, Buffer.from(nonce, 'base64'), key,
+    return verify(null, Buffer.from(nonce, 'base64'), key,
       Buffer.from(String(signature || ''), 'base64'));
-    return ok ? name : null;
   } catch {
-    return null;
+    return false;
   }
+}
+
+/**
+ * The name this phone is known by, or null.
+ *
+ * Two ways in, and the signature is asked for either way: written in
+ * the `.env` by the owner, or written down by an invitation it used.
+ * An invitation is spent here, at the first knock that carries it -
+ * after that this phone is on the list like any other.
+ */
+function whoIsThere(msg, nonce) {
+  const pub = String(msg.pub || '');
+  if (!pub || !signed(pub, msg.sig, nonce)) return null;
+
+  const fromEnv = AUTHORISED_KEYS.get(pub);
+  if (fromEnv) return fromEnv;
+
+  const known = listed().find((d) => d.pub === pub);
+  if (known) return known.name;
+
+  if (msg.invite) {
+    const name = useInvitation(msg.invite, pub);
+    if (name) {
+      console.log(`[duetto] ${name} comes in with an invitation, `
+        + `phone ${pub.slice(0, 12)}…`);
+      return name;
+    }
+  }
+  return null;
+}
+
+/** Is the door shut? It is, as soon as one phone is on the list. */
+function doorIsShut() {
+  return AUTHORISED_KEYS.size > 0 || listed().length > 0;
 }
 
 const MAX_PER_ROOM = 2;
@@ -360,8 +404,8 @@ wss.on('connection', (ws, req) => {
        * counted, so trying keys costs thirty a minute, like trying
        * pairing codes.
        */
-      if (AUTHORISED_KEYS.size > 0) {
-        const who = whoSigned(msg.pub, msg.sig, ws.nonce);
+      if (doorIsShut()) {
+        const who = whoIsThere(msg, ws.nonce);
         if (!who) {
           console.log(`[duetto] turned away: ${String(msg.pub || 'no key').slice(0, 12)}`
             + ` from ${ws.ip}`);
@@ -589,8 +633,9 @@ wss.on('close', () => clearInterval(heartbeat));
 
 httpServer.listen(PORT, HOST, () => {
   console.log(`[duetto] signalling listening on ws://${HOST}:${PORT}`);
-  console.log(`[duetto] door: ${AUTHORISED_KEYS.size > 0
-    ? `${AUTHORISED_KEYS.size} phone(s) allowed in, by signature`
+  const onTheList = AUTHORISED_KEYS.size + listed().length;
+  console.log(`[duetto] door: ${onTheList > 0
+    ? `${onTheList} phone(s) allowed in, by signature`
     : SERVER_KEY
       ? 'a key is asked for'
       : 'open - anybody who knows the address can use this server'}`);

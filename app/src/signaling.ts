@@ -238,6 +238,8 @@ export type SignalingOptions = {
    * credentials included.
    */
   serverKey?: string;
+  /** the invitation, used once at the first knock on a new server */
+  invitation?: string;
   /** the room = the fingerprint of the pairing code */
   room: string;
   displayName: string;
@@ -401,6 +403,7 @@ export class Signaling {
       key: this.opts.serverKey || undefined,
       pub: card?.pub,
       sig: card?.sig,
+      invite: this.opts.invitation || undefined,
       name: this.opts.displayName || 'Someone',
       mode: this.mode,
       side: this.opts.side,

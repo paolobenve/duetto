@@ -1677,6 +1677,7 @@ export default function App() {
         {
           serverUrl: cfg.serverUrl.trim(),
           serverKey: cfg.serverKey,
+          invitation: cfg.invitation,
           room: pair.id,
           displayName: cfg.displayName || 'Someone',
           key: pair.key,

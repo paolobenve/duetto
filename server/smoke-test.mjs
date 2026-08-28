@@ -14,10 +14,18 @@
 import { spawn } from 'node:child_process';
 import { WebSocket } from 'ws';
 import { generateKeyPairSync, sign } from 'node:crypto';
+import { tmpdir } from 'node:os';
+import { unlinkSync } from 'node:fs';
 
 const PORT = 8799;
 /** The second server, the one with a list of phones. */
 const PORT2 = 8798;
+/** And the third, the one that hands out invitations. */
+const PORT3 = 8797;
+/** The list of phones lives in a file of its own, thrown away at the end. */
+const LIST_FILE = `${tmpdir()}/duetto-devices-${process.pid}.json`;
+// Before anything reads it: the module takes the name once, at import.
+process.env.DEVICES_FILE = LIST_FILE;
 const URL = `ws://127.0.0.1:${PORT}`;
 
 // The real heartbeat is 30 seconds and 4 minutes: here everything is
@@ -84,7 +92,12 @@ function client(port = PORT) {
   let pings = 0;
   ws.on('ping', () => { pings++; });
   return {
-    open: () => new Promise((r) => ws.once('open', r)),
+    // With a limit: a server that does not come up would otherwise
+    // leave the whole test waiting for ever, saying nothing.
+    open: () => new Promise((resolve, reject) => {
+      const t = setTimeout(() => reject(new Error('the server does not open')), 3000);
+      ws.once('open', () => { clearTimeout(t); resolve(); });
+    }),
     /** The number the server greeted us with, to be signed. */
     nonce: () => nonce,
     send: (o) => ws.send(JSON.stringify(o)),
@@ -459,6 +472,71 @@ try {
   s1.close(); s2.close(); s3.close(); s4.close();
   srv2.kill('SIGTERM');
   await wait(200);
+
+  // --- an invitation ----------------------------------------------------------
+  // A code made for one person, spent by the first phone that uses it:
+  // from then on that phone is on the list like any other, and the code
+  // is worth nothing to anybody else.
+  const invited = phone();
+  const late = phone();
+  const srv3 = spawn('node', ['src/index.js'], {
+    env: {
+      ...process.env, PORT: String(PORT3), HOST: '127.0.0.1',
+      AUTHORISED_KEYS: `anna:${anna.pub}`,
+      DEVICES_FILE: LIST_FILE,
+      HEARTBEAT_TICK_MS: '50',
+    },
+    stdio: ['ignore', 'ignore', 'inherit'],
+  });
+  await wait(600);
+
+  const { addInvitation } = await import('./src/devices.js');
+  const { code } = addInvitation('bruno');
+
+  const i1 = client(PORT3);
+  await i1.open();
+  await wait(150);
+  i1.send({ type: 'join', room: 'inviti', name: 'Bruno', side: 'A',
+    pub: invited.pub, sig: invited.signs(i1.nonce()), invite: code });
+  const enrolled = await i1.expect('joined');
+  check(enrolled.type === 'joined', 'an invitation lets a phone in');
+  i1.close();
+
+  // The same phone, with no invitation: it is on the list now.
+  const i2 = client(PORT3);
+  await i2.open();
+  await wait(150);
+  i2.send({ type: 'join', room: 'inviti', name: 'Bruno', side: 'A',
+    pub: invited.pub, sig: invited.signs(i2.nonce()) });
+  const remembered = await i2.expect('joined');
+  check(remembered.type === 'joined', 'and from then on it needs none');
+  i2.close();
+
+  // Somebody else with the same code: it was spent.
+  const i3 = client(PORT3);
+  await i3.open();
+  await wait(150);
+  i3.send({ type: 'join', room: 'inviti', name: 'X', side: 'B',
+    pub: late.pub, sig: late.signs(i3.nonce()), invite: code });
+  const spent = await i3.expect('error');
+  check(spent.error === 'not-allowed', 'a code passed on is worth nothing: it is spent');
+  i3.close();
+
+  // Taken off the list, and out at the next knock without a restart.
+  const { remove } = await import('./src/devices.js');
+  remove('bruno');
+  const i4 = client(PORT3);
+  await i4.open();
+  await wait(150);
+  i4.send({ type: 'join', room: 'inviti', name: 'Bruno', side: 'A',
+    pub: invited.pub, sig: invited.signs(i4.nonce()) });
+  const revoked = await i4.expect('error');
+  check(revoked.error === 'not-allowed', 'taken off the list, it is out at once');
+  i4.close();
+
+  srv3.kill('SIGTERM');
+  await wait(200);
+  try { unlinkSync(LIST_FILE); } catch { /* it was never written */ }
 
   a.close(); c0.close(); d.close(); e.close(); f.close();
 } catch (err) {

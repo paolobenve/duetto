@@ -35,3 +35,6 @@ yarn-error.log*
 
 # Python leftovers from assets/make-sounds.py
 __pycache__/
+
+# The phones let in by invitation: they belong to one server, not to the code
+server/devices.json

@@ -262,6 +262,7 @@ export async function startListening(): Promise<boolean> {
     {
       serverUrl: cfg.serverUrl.trim(),
       serverKey: cfg.serverKey,
+      invitation: cfg.invitation,
       room: pair.id,
       displayName: cfg.displayName || NO_NAME[0],
       key: pair.key,

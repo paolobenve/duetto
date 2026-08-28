@@ -117,6 +117,7 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
       {
         serverUrl: cfg.serverUrl.trim(),
         serverKey: cfg.serverKey,
+        invitation: cfg.invitation,
         room: pairId,
         displayName: cfg.displayName || '',
         key: null,
