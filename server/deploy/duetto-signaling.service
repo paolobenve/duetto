@@ -22,7 +22,12 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=
+# The one place it may write: the list of the phones let in, and the
+# invitations not yet used. With `strict` above and nothing here the
+# whole filesystem is read-only - which is what one wants of a server
+# that only forwards envelopes, and was true of this one until it began
+# keeping a list.
+ReadWritePaths=/opt/duetto/server
 
 [Install]
 WantedBy=multi-user.target

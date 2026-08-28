@@ -64,16 +64,37 @@ export function read() {
   } catch {
     // A broken file must not lock everybody out in silence: it is said
     // out loud, and the door falls back on what the .env says.
-    console.warn(`[duetto] ${FILE} is unreadable: ignored`);
+    console.warn(`[duetto] ${FILE} cannot be read: ignored`);
+    console.warn('[duetto] (whose is it? the service reads it as its own user)');
     return { ...EMPTY };
   }
 }
 
-/** Writes it whole, and never half: the temporary file takes the fall. */
+/**
+ * Writes it whole, and never half: the temporary file takes the fall.
+ *
+ * A failure here must not bring the server down, and it did: a unit
+ * with `ProtectSystem=strict` and nothing writable gives EROFS, the
+ * exception went up uncaught, systemd restarted the process, the phone
+ * knocked again and it fell over again - a loop that took the two
+ * people talking with it. Whoever cannot write can still hold a
+ * conversation up: what is lost is the memory of it, and that is worth
+ * saying once, not dying for.
+ *
+ * The mode leaves the group in: the file is written by the service and
+ * read by the commands in tools/, which are run by a person.
+ */
 export function write(data) {
   const temporary = `${FILE}.new`;
-  writeFileSync(temporary, `${JSON.stringify(data, null, 2)}\n`, { mode: 0o600 });
-  renameSync(temporary, FILE);
+  try {
+    writeFileSync(temporary, `${JSON.stringify(data, null, 2)}\n`, { mode: 0o640 });
+    renameSync(temporary, FILE);
+    return true;
+  } catch (e) {
+    console.warn(`[duetto] cannot write ${FILE}: ${e.message}`);
+    console.warn('[duetto] the list is not being kept: see ReadWritePaths in the unit');
+    return false;
+  }
 }
 
 /**

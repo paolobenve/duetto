@@ -15,8 +15,13 @@ From your **PC**, to copy the code over:
 
 ```bash
 rsync -rltvz --no-owner --no-group --exclude node_modules --exclude .env \
+  --exclude devices.json \
   /path/to/duetto/server/ user@YOUR_SERVER:/opt/duetto/server/
 ```
+
+Both `.env` and `devices.json` belong to the installation and not to the code: the first
+holds the relay's password, the second the phones let in. Copying them over from a
+developer's machine would replace what the server knows with somebody else's list.
 
 Back on the **server**:
 
@@ -101,7 +106,7 @@ The same from a terminal, when the app is not at hand — or when you have shut 
 out and the app cannot connect at all:
 
 ```bash
-npm run invite -- anna
+sudo -u duetto npm run invite -- anna
 ```
 
 It prints something like `KRT4-9WBH`. Hand it over as you would a pairing code — out loud,
@@ -127,6 +132,26 @@ count beside each name, which is worth seeing without being worth forbidding.
 
 Nothing needs restarting: the list is read every time somebody knocks. It lives in
 `devices.json` beside the server, or wherever `DEVICES_FILE` says.
+
+⚠️ The service has to be **allowed to write it**. The unit here hardens the server with
+`ProtectSystem=strict`, which makes the whole filesystem read-only — right for something
+that only forwards envelopes, and wrong from the moment it keeps a list. The line that
+opens the one door it needs is already in the example:
+
+```
+ReadWritePaths=/opt/duetto/server
+```
+
+Without it the server says `cannot write …: read-only file system` and carries on with no
+memory: phones are let in and forgotten at the next restart. Whoever set the server up
+before this existed has to add the line and `systemctl daemon-reload`.
+
+The file is written by the service, as its own user. So the commands above are run as that
+user too:
+
+```bash
+sudo -u duetto npm run invite -- anna
+```
 
 ⚠️ The door is shut as soon as **one** phone is on the list — from the `.env` or from an
 invitation. So put your own phones in first, or make an invitation for each of them and
