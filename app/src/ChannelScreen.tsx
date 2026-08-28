@@ -786,7 +786,7 @@ export default function ChannelScreen(props: Props) {
         insetH={compact ? 0 : inset.h}
         insetBottom={
           !compact && showStats
-            ? statsLineCount(videoStats, versionWarning) * STATS_LINE_H
+            ? statsLineCount(videoStats) * STATS_LINE_H
             : 0
         }
         onBackground={touch}
@@ -997,6 +997,20 @@ export default function ChannelScreen(props: Props) {
           styles.panel,
           { opacity, bottom: 8 + inset.v, left: 12 + inset.h, right: 12 + inset.h },
         ]}>
+        {/* Different versions: it is said whatever one is doing, and
+            without asking for Diagnostics. It is not a technical
+            number: it is the explanation of things one notices by
+            using the app - a sound that does not go off over there, a
+            piece of news that never arrives - and whoever never opens
+            Diagnostics is exactly the person left without it. In sight
+            while merely waiting as well, which is where one would
+            rather know before going in. */}
+        {versionWarning ? (
+          <Text style={styles.versionLine} numberOfLines={1} adjustsFontSizeToFit
+            minimumFontScale={0.7}>
+            {versionWarning}
+          </Text>
+        ) : null}
         <View style={styles.controls}>
         <CircleButton
           covered={covered}
@@ -1107,14 +1121,13 @@ export default function ChannelScreen(props: Props) {
           // the buttons moved.
           <View style={[
             styles.statsBox,
-            { height: statsLineCount(videoStats, versionWarning) * STATS_LINE_H },
+            { height: statsLineCount(videoStats) * STATS_LINE_H },
           ]}>
             <StatsLine
               stats={videoStats}
               quality={qualityLabel}
               showUp={localHasVideo}
               showDown={remoteHasVideo}
-              versions={versionWarning}
               peerSend={peerSendDelay}
               peerRecv={peerRecvDelay}
               totalOnly={delayTotalOnly}
@@ -1496,9 +1509,8 @@ function PresenceCard(props: {
  * much: if the two disagree the buttons move under the finger when a
  * number appears. So they ask the same function.
  */
-export function statsLineCount(stats: VideoStats, versions?: string | null): number {
+export function statsLineCount(stats: VideoStats): number {
   let n = 1;                                    // the resolution: always there
-  if (versions) n += 1;
   if (stats.path || stats.audioKbps != null || stats.latency != null
       || stats.recvDelay != null) n += 1;
   return n;
@@ -1508,15 +1520,13 @@ export function statsLineCount(stats: VideoStats, versions?: string | null): num
 export const STATS_LINE_H = 18;
 
 function StatsLine({
-  stats, quality, showUp, showDown, versions, peerSend, peerRecv, totalOnly,
+  stats, quality, showUp, showDown, peerSend, peerRecv, totalOnly,
 }: {
   stats: VideoStats;
   quality: string;
   /** cameras really on: the statistics lag by one sample */
   showUp: boolean;
   showDown: boolean;
-  /** the warning about different versions, or `null` if they match */
-  versions?: string | null;
   /** the two halves the other phone times; null while it has not said */
   peerSend?: number | null;
   peerRecv?: number | null;
@@ -1640,11 +1650,6 @@ function StatsLine({
         {up ? `  \u2191${up}` : ''}
         {down ? `  \u2193${down}` : ''}
       </Text>
-      {versions ? (
-        <Text style={[styles.stats, styles.statsWarning]} numberOfLines={1}>
-          {versions}
-        </Text>
-      ) : null}
       {path || stats.audioKbps != null || stats.latency != null || downDelay != null ? (
         // Like the line above: with the latency at its end it went off
         // the screen, and a line cut in the middle of a number says
@@ -1803,6 +1808,16 @@ const styles = StyleSheet.create({
   avatarText: { color: '#e6ebf1', fontSize: 42, fontWeight: '700' },
   avatarSymbol: { fontSize: 52 },
   /** The height comes from statsLineCount: see there. */
+  /**
+   * The warning about versions, above the buttons.
+   *
+   * The colour of the technical warnings, but not their size: this one
+   * is read by whoever has asked for nothing, so it is not a footnote.
+   */
+  versionLine: {
+    color: '#e0b341', fontSize: 13, textAlign: 'center',
+    marginBottom: 6, paddingHorizontal: 8,
+  },
   statsBox: { justifyContent: 'center' },
   /**
    * The technical lines have to stay legible even when faded.

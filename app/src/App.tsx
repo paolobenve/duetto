@@ -1624,6 +1624,19 @@ export default function App() {
    * anybody. It is written only when it really changes, so doing it at
    * every entry costs nothing.
    */
+  /**
+   * Says which Duetto is on this phone, in the encrypted envelope.
+   *
+   * Sent when the two find each other, from both sides, so that neither
+   * has to ask. It costs a few dozen bytes once per meeting, and it is
+   * what lets the warning about different versions be shown while
+   * merely waiting - before going in, which is when it is worth
+   * something.
+   */
+  const sayHello = useCallback(() => {
+    signalingRef.current?.sendSignal({ kind: 'hello', version: VERSION, build: BUILD });
+  }, []);
+
   const noteName = useCallback((n: string) => {
     setPeerName(n);
     setCfg((prev) => {
@@ -1709,7 +1722,10 @@ export default function App() {
           onJoined: ({ peerPresent: present, peerActive, peerName: n, turn }) => {
             // Finding them connected, whatever they had done before no
             // longer counts.
-            if (present) setPeerDetached(false);
+            if (present) {
+              setPeerDetached(false);
+              sayHello();
+            }
             // The relay is configured by the server: nothing is typed
             // on the phones.
             serverTurnRef.current = turn ? [turn] : [];
@@ -1746,6 +1762,7 @@ export default function App() {
             setPeerPresent(true);
             setPeerDetached(false);
             noteName(n);
+            sayHello();
             // They are back: the wait that was about to forget them is off.
             stopWaiting();
             peerActiveRef.current = mode === 'active';
@@ -1788,7 +1805,10 @@ export default function App() {
             stopNetworkProbe();
             answerSeen.current = Date.now();
             setPeerPresent(present);
-            if (present) setPeerDetached(false);
+            if (present) {
+              setPeerDetached(false);
+              sayHello();
+            }
             if (n) noteName(n);
             peerActiveRef.current = peerActive;
             if (peerActive) {
@@ -1867,6 +1887,17 @@ export default function App() {
              * with the other person merely waiting, which is where a
              * sound is sent to get somebody up from their chair.
              */
+            // Which Duetto they have: it arrives as soon as you find
+            // each other, waiting or not.
+            if (msg.kind === 'hello') {
+              setPeerState((prev) => ({
+                ...prev,
+                version: msg.version,
+                build: msg.build,
+              }));
+              return;
+            }
+
             // "I did not leave, the app was closed on me."
             if (msg.kind === 'tornDown') {
               setPeerTornDown(true);

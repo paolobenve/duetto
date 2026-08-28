@@ -13,6 +13,7 @@ import { loadConfig, isPaired, isServerConfigured, pairFileKey, pairName } from 
 import { Signaling } from './signaling';
 import { t } from './i18n';
 import { logger, setLogging } from './log';
+import { VERSION, BUILD } from './version';
 
 /**
  * Presence with no interface.
@@ -252,6 +253,11 @@ export async function startListening(): Promise<boolean> {
     if (!active) Foreground.clearNotification().catch(() => { /* noop */ });
   };
 
+  /** Which Duetto is on this phone: see the same in App.tsx. */
+  const sayHello = () => {
+    signaling?.sendSignal({ kind: 'hello', version: VERSION, build: BUILD });
+  };
+
   signaling = new Signaling(
     {
       serverUrl: cfg.serverUrl.trim(),
@@ -274,6 +280,11 @@ export async function startListening(): Promise<boolean> {
         if (peerPresent) detached = false;
         active = peerActive;
         if (peerName) name = peerName;
+        // Which Duetto is on this phone, said from here too: the app
+        // over there shows it while merely waiting, and a phone that is
+        // listening with no interface would otherwise look like one
+        // that has nothing to say.
+        if (peerPresent) sayHello();
         refresh();
       },
       onPeerJoined: (peerName, mode) => {
@@ -281,6 +292,7 @@ export async function startListening(): Promise<boolean> {
         detached = false;
         active = mode === 'active';
         if (peerName) name = peerName;
+        sayHello();
         refresh();
       },
       onPeerLeft: (why) => {

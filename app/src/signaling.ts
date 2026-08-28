@@ -68,6 +68,15 @@ export type SignalMessage =
   | { kind: 'tornDown' }
   // The answering side cannot offer: if it ends up without a link and
   // the other one does not notice, the only way out is to ask.
+  // Which Duetto is on the other phone, said as soon as the two find
+  // each other - in the channel or merely waiting. It used to travel
+  // only inside `state`, which the session sends, and the session
+  // exists only in the channel: so while waiting nobody knew anything,
+  // which is exactly when one would rather know before going in.
+  //
+  // It goes in the encrypted envelope and not through the server: what
+  // version somebody is running is their business, not his.
+  | { kind: 'hello'; version: string; build?: number }
   | { kind: 'renegotiate' }
   // Video quality belongs to both: changing it on one phone changes it
   // on the other. Whoever receives it does not send it back.

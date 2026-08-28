@@ -366,6 +366,12 @@ Three families of lines: `duetto-rtc` for the audio/video link, `duetto-sig` for
 connection to the server (drops included, with the code and how long it lasted),
 `duetto-presence` for the listening after a reboot.
 
+One thing is said without asking for any of this: **different versions**. If the other
+phone is running an older Duetto, a line above the buttons says so — while merely waiting
+as well, which is where one would rather know before going in. It is not a technical
+number: it is the explanation of things one notices by using the app, a sound that does
+not go off over there, a piece of news that never arrives.
+
 The most useful line when something drops is `path:`, which says where the traffic is
 going through — `LOCAL (same network)`, `DIRECT through NAT` or `RELAY (through the
 server)`. The three roads have different weaknesses, and without knowing which one it is
