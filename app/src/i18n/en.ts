@@ -222,6 +222,7 @@ export const en = {
     since: 'Since ',
     addConnection: 'Add a connection',
     addConnectionHint: 'It shows a new code, or you type in the other person\'s. The ones you have stay where they are: the new one is added and comes into use. It is for a new person, and it is for when the other side has broken the pair, because from here there is no way of noticing.',
+    cannotAddHere: 'This server lets you talk to whoever let you in, and to nobody new: a connection of your own would need an invitation from them.',
     forgetTitle: 'Break the connection with {who}?',
     forgetBody: 'To have it back you will both have to pair again with a new code.\n\nThere is no need to break it on the other phone too: from there "Add a connection" is enough.',
     forgetSwitch: '\n\nYou will move to {who}.',

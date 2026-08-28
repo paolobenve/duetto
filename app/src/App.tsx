@@ -403,6 +403,15 @@ export default function App() {
    * settings hangs on it. A guest's phone never even shows it.
    */
   const [canInvite, setCanInvite] = useState(false);
+  /**
+   * Whether this phone may open connections of its own here.
+   *
+   * On a server that keeps a list, a phone let in beside somebody else
+   * may talk to them and to nobody new: pairing would make a room
+   * nobody can open, and the app would try in silence until it gave up.
+   * Better to say so and take the button away.
+   */
+  const [canAddPair, setCanAddPair] = useState(true);
   const [people, setPeople] = useState<PersonOnServer[]>([]);
   const [invitations, setInvitations] = useState<InvitationOnServer[]>([]);
   const [freshInvite, setFreshInvite] = useState<{ name: string; code: string } | null>(null);
@@ -1732,8 +1741,11 @@ export default function App() {
             }
           },
 
-          onJoined: ({ peerPresent: present, peerActive, peerName: n, turn, owner }) => {
+          onJoined: ({
+            peerPresent: present, peerActive, peerName: n, turn, owner, opens,
+          }) => {
             setCanInvite(owner);
+            setCanAddPair(opens);
             // Finding them connected, whatever they had done before no
             // longer counts.
             if (present) {
@@ -2953,6 +2965,7 @@ export default function App() {
           onOpenSetup={() => { setSetupFrom('settings'); setScreen('setup'); }}
           onQualityChange={(q) => applyQuality(q, true)}
           canInvite={canInvite}
+        canAddPair={canAddPair}
         people={people}
         invitations={invitations}
         freshInvite={freshInvite}

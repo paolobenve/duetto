@@ -483,6 +483,9 @@ wss.on('connection', (ws, req) => {
         send(ws, { type: 'error', error: 'not-allowed' });
         ws.close(4006, 'not-allowed');
         return;
+      } else {
+        // An open door: everybody may open connections, as always.
+        ws.opens = true;
       }
 
       // The side ('A' or 'B') identifies the DEVICE, not the connection:
@@ -530,6 +533,10 @@ wss.on('connection', (ws, req) => {
         // Whether this phone may invite: it is one of those written in
         // the .env. The app shows or hides a whole section on it.
         owner: ws.invites === true,
+        // And whether it may open connections of its own. A phone let
+        // in beside somebody else may not: telling it lets the app take
+        // away a button that would only lead to a closed door.
+        opens: ws.opens !== false,
         turn: turnConfig(),
         polite: others.length === 0,
         peerPresent: !!other,

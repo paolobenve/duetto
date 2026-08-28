@@ -86,6 +86,8 @@ const CONTROLS = (): {
 type Props = {
   /** whether this phone may invite: the server says so */
   canInvite?: boolean;
+  /** whether it may open connections of its own here: the server says so too */
+  canAddPair?: boolean;
   people?: PersonOnServer[];
   invitations?: InvitationOnServer[];
   freshInvite?: { name: string; code: string } | null;
@@ -146,7 +148,8 @@ type Props = {
 export default function SettingsScreen({
   initial, onForgetPair, onSwitchPair, onRenamePair, onSave, onRepair, onClose, onOpenSetup,
   vp9Here, vp9Peer, onQualityChange, onLive,
-  canInvite, people = [], invitations = [], freshInvite, onAskPeople, onInvite, onForget,
+  canInvite, canAddPair, people = [], invitations = [], freshInvite,
+  onAskPeople, onInvite, onForget,
 }: Props) {
   const vp9Available = !!vp9Here && !!vp9Peer;
   const vp9Why = vp9Available
@@ -403,10 +406,21 @@ export default function SettingsScreen({
                 </View>
               );
             })}
-            <TouchableOpacity style={styles.secondary} onPress={onRepair}>
-              <Text style={styles.secondaryText}>{t('settings.addConnection')}</Text>
-            </TouchableOpacity>
-            <Text style={styles.sectionHint}>{t('settings.addConnectionHint')}</Text>
+            {/* On a server that keeps a list, a phone let in beside
+                somebody else may talk to them and to nobody new: the
+                pairing would make a room nobody can open, and it would
+                fail without saying why. So the button goes, and the
+                reason takes its place. */}
+            {canAddPair === false ? (
+              <Text style={styles.sectionHint}>{t('settings.cannotAddHere')}</Text>
+            ) : (
+              <>
+                <TouchableOpacity style={styles.secondary} onPress={onRepair}>
+                  <Text style={styles.secondaryText}>{t('settings.addConnection')}</Text>
+                </TouchableOpacity>
+                <Text style={styles.sectionHint}>{t('settings.addConnectionHint')}</Text>
+              </>
+            )}
           </>
         ) : null}
 
@@ -812,23 +826,26 @@ function Copyable(props: { label: string; value: string; hint?: string }) {
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{props.label}</Text>
-      <TextInput
-        style={styles.copyable}
-        value={props.value}
-        editable={false}
-        multiline
-        selectTextOnFocus
-      />
-      <TouchableOpacity
-        onPress={() => {
-          Clipboard.setString(props.value);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 2000);
-        }}>
-        <Text style={styles.linkInline}>
-          {copied ? t('settings.copied') : t('settings.copy')}
-        </Text>
-      </TouchableOpacity>
+      <View style={styles.copyRow}>
+        <TextInput
+          style={[styles.copyable, styles.copyableGrows]}
+          value={props.value}
+          editable={false}
+          multiline
+          selectTextOnFocus
+        />
+        <TouchableOpacity
+          style={styles.copyButton}
+          onPress={() => {
+            Clipboard.setString(props.value);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+          }}>
+          <Text style={styles.copyButtonText}>
+            {copied ? t('settings.copied') : t('settings.copy')}
+          </Text>
+        </TouchableOpacity>
+      </View>
       {props.hint ? <Text style={styles.hint}>{props.hint}</Text> : null}
     </View>
   );
@@ -950,12 +967,26 @@ const styles = StyleSheet.create({
   // margin of their own, and without this it would be stuck to the
   // last of them.
   rowAfterChoices: { marginTop: 8 },
-  /** What is to be copied: it may run onto three lines, and all of them count. */
+  /**
+   * What is to be copied, and the button that copies it, side by side.
+   *
+   * The box takes the width it can and wraps onto as many lines as it
+   * needs; the button stays beside it, the same height, so that the
+   * thing and the way of taking it are one gesture apart.
+   */
+  copyRow: { flexDirection: 'row', alignItems: 'stretch', gap: 8 },
   copyable: {
     backgroundColor: '#0f131b', borderRadius: 10, borderWidth: 1,
     borderColor: '#252c38', color: '#e6ebf1', fontSize: 15,
     paddingHorizontal: 12, paddingVertical: 10, textAlignVertical: 'top',
   },
+  copyableGrows: { flex: 1 },
+  copyButton: {
+    justifyContent: 'center', paddingHorizontal: 16,
+    backgroundColor: '#182030', borderRadius: 10, borderWidth: 1,
+    borderColor: '#2f7cf6',
+  },
+  copyButtonText: { color: '#2f7cf6', fontSize: 15, fontWeight: '600' },
   rowButtonText: { color: '#e6ebf1', fontSize: 16, fontWeight: '600' },
   rowButtonArrow: { color: '#6b7686', fontSize: 22, lineHeight: 24 },
   toggle: { marginTop: 20, paddingVertical: 10 },

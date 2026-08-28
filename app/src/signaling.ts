@@ -145,6 +145,8 @@ export type SignalingEvents = {
     turn: IceServer | null;
     /** whether this phone may invite: it is one of the owner's */
     owner: boolean;
+    /** whether it may open connections of its own on this server */
+    opens: boolean;
   }) => void;
   onPeerJoined?: (name: string, mode: Mode) => void;
   /** @param why 'bye' if they left, 'dropped' if the network went */
@@ -475,6 +477,9 @@ export class Signaling {
         this.events.onJoined?.({
           polite: !!msg.polite,
           owner: !!msg.owner,
+          // Missing from an older server, and then it is a yes: that is
+          // what it always was.
+          opens: msg.opens !== false,
           peerPresent: !!msg.peerPresent,
           peerActive: !!msg.peerActive,
           peerName: msg.peerName || '',

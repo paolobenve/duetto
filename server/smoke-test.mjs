@@ -522,6 +522,7 @@ try {
     pub: invited.pub, sig: invited.signs(inv.nonce()) });
   const invitedJoined = await inv.expect('joined');
   check(invitedJoined.owner === false, 'somebody invited is not told they may invite');
+  check(invitedJoined.opens === true, 'but they may open connections of their own');
   inv.send({ type: 'invite', name: 'chiunque' });
   const noHandingOut = await inv.expect('error');
   check(noHandingOut.error === 'not-yours', 'and cannot hand out invitations');
@@ -653,6 +654,8 @@ try {
     pub: guest.pub, sig: guest.signs(g6.nonce()) });
   const asGuestJoined = await g6.expect('joined');
   check(asGuestJoined.owner === false, 'a guest is told they may not');
+  check(asGuestJoined.opens === false,
+    'and that they cannot open a connection of their own either');
   g6.send({ type: 'invite', name: 'chiunque' });
   const refused = await g6.expect('error');
   check(refused.error === 'not-yours', 'and asking anyway gets nowhere');
