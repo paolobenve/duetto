@@ -50,6 +50,25 @@ knock at this door, and no further. What keeps a pair apart from everybody else 
 pairing code, which never reaches the server. And left empty, the server lets everybody in,
 as it always did.
 
+### One key per phone
+
+A key of the house is a word, and a word gets repeated: it cannot be taken back from one
+person without changing it for everybody, and when it turns up elsewhere there is no
+telling who passed it on.
+
+A phone can carry a key of its own instead. It makes one the first time it is asked for,
+and the secret half never leaves it; the app shows the other half under *the cogwheel →
+This phone's card*. That half can travel by any road — a message, a piece of paper — since
+with it alone nobody gets in. At every connection the server picks a number and the phone
+signs it.
+
+```
+AUTHORISED_KEYS=anna:kK9v…Q=,bruno:7Yt2…w=
+```
+
+To take one phone away, its entry goes and nobody else notices. The log says which name
+came in. With this set, `SERVER_KEY` is ignored: the door is the signature.
+
 ### Starting it for good
 
 A dedicated service user, which only has to **read** the files:
@@ -221,6 +240,7 @@ For presence to really hold:
 | healthz answers but the app does not connect | the WebSocket rules are never reached | check the **order** of the rules in the proxy |
 | Presence drops every ~50 seconds | `timeout tunnel` not set | set it to 3600s |
 | "This server does not let you in" | `SERVER_KEY` set on the server and missing, or wrong, on the phone | write it in the app under the address |
+| "This server does not let you in", with `AUTHORISED_KEYS` | that phone's card is not in the list, or is in it wrongly | copy it again from *the cogwheel → This phone's card* |
 | "No answer from the other phone" | a different code, or the other one is not connected | do the pairing again with a new code |
 | "The code does not match" | digits typed wrong | that is the check doing its job: generate the code again |
 | They connect but there is no sound | the network blocks P2P | configure coturn |

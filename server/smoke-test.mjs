@@ -13,8 +13,11 @@
 // the limit of two.
 import { spawn } from 'node:child_process';
 import { WebSocket } from 'ws';
+import { generateKeyPairSync, sign } from 'node:crypto';
 
 const PORT = 8799;
+/** The second server, the one with a list of phones. */
+const PORT2 = 8798;
 const URL = `ws://127.0.0.1:${PORT}`;
 
 // The real heartbeat is 30 seconds and 4 minutes: here everything is
@@ -22,6 +25,24 @@ const URL = `ws://127.0.0.1:${PORT}`;
 // quarter of an hour. The ratios between the times stay the same.
 /** The key of the house: every join in this test carries it. */
 const KEY = 'chiave-di-prova';
+
+/**
+ * Two phones with a key of their own: one written in the server's list,
+ * one not. What the phones do with tweetnacl, here node does - it is
+ * the same Ed25519, and the point of the test is the door, not the
+ * arithmetic.
+ */
+const phone = () => {
+  const { publicKey, privateKey } = generateKeyPairSync('ed25519');
+  const pub = publicKey.export({ format: 'der', type: 'spki' }).subarray(12);
+  return {
+    pub: pub.toString('base64'),
+    signs: (nonce) =>
+      sign(null, Buffer.from(nonce, 'base64'), privateKey).toString('base64'),
+  };
+};
+const anna = phone();
+const stranger = phone();
 
 const HEARTBEAT_ACTIVE_MS = 400;
 const HEARTBEAT_LISTENING_MS = 4000;
@@ -45,12 +66,14 @@ const srv = spawn('node', ['src/index.js'], {
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** A client with a queue of messages, to wait for one specific type. */
-function client() {
-  const ws = new WebSocket(URL);
+function client(port = PORT) {
+  const ws = new WebSocket(`ws://127.0.0.1:${port}`);
   const queue = [];
   const waiters = [];
+  let nonce = null;
   ws.on('message', (d) => {
     const msg = JSON.parse(d.toString());
+    if (msg.type === 'hello') { nonce = msg.nonce; return; }
     const i = waiters.findIndex((x) => x.type === msg.type);
     if (i !== -1) waiters.splice(i, 1)[0].resolve(msg);
     else queue.push(msg);
@@ -62,6 +85,8 @@ function client() {
   ws.on('ping', () => { pings++; });
   return {
     open: () => new Promise((r) => ws.once('open', r)),
+    /** The number the server greeted us with, to be signed. */
+    nonce: () => nonce,
     send: (o) => ws.send(JSON.stringify(o)),
     pings: () => pings,
     /** Stops reading: from here on it no longer answers the pings. */
@@ -380,6 +405,60 @@ try {
   check(saidBye.reason === 'bye', 'whoever says goodbye is announced as gone, not as dropped');
 
   v1.close(); v2.close();
+
+  // --- a phone with a key of its own ------------------------------------------
+  // The server is restarted with a list of allowed phones: from that
+  // moment the door is a signature, and the word of the house counts
+  // for nothing.
+  srv.kill('SIGTERM');
+  await wait(300);
+  const srv2 = spawn('node', ['src/index.js'], {
+    env: {
+      ...process.env, PORT: String(PORT2), HOST: '127.0.0.1',
+      AUTHORISED_KEYS: `anna:${anna.pub}`,
+      HEARTBEAT_TICK_MS: '50',
+    },
+    stdio: ['ignore', 'ignore', 'inherit'],
+  });
+  await wait(600);
+
+  const s1 = client(PORT2);
+  await s1.open();
+  await wait(150);
+  check(!!s1.nonce(), 'the server says a number to sign, as soon as one connects');
+  s1.send({ type: 'join', room: 'firme', name: 'Anna', side: 'A',
+    pub: anna.pub, sig: anna.signs(s1.nonce()) });
+  const signedIn = await s1.expect('joined');
+  check(signedIn.type === 'joined', 'the phone on the list signs and gets in');
+
+  const s2 = client(PORT2);
+  await s2.open();
+  await wait(150);
+  s2.send({ type: 'join', room: 'firme', name: 'X', side: 'B',
+    pub: stranger.pub, sig: stranger.signs(s2.nonce()) });
+  const notOnList = await s2.expect('error');
+  check(notOnList.error === 'not-allowed', 'a phone that is not on the list does not');
+
+  const s3 = client(PORT2);
+  await s3.open();
+  await wait(150);
+  // Anna's key, and a signature made for another connection: the number
+  // is picked afresh every time, so a stolen signature is worth nothing.
+  s3.send({ type: 'join', room: 'firme', name: 'X', side: 'B',
+    pub: anna.pub, sig: anna.signs(s1.nonce()) });
+  const replayed = await s3.expect('error');
+  check(replayed.error === 'not-allowed', 'and neither does a signature made for another');
+
+  const s4 = client(PORT2);
+  await s4.open();
+  await wait(150);
+  s4.send({ type: 'join', room: 'firme', key: KEY, name: 'X', side: 'B' });
+  const wordOnly = await s4.expect('error');
+  check(wordOnly.error === 'not-allowed', 'with the list up, the word of the house is not enough');
+
+  s1.close(); s2.close(); s3.close(); s4.close();
+  srv2.kill('SIGTERM');
+  await wait(200);
 
   a.close(); c0.close(); d.close(); e.close(); f.close();
 } catch (err) {

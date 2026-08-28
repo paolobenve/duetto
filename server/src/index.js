@@ -39,7 +39,9 @@
 
 import { createServer } from 'node:http';
 import { WebSocketServer } from 'ws';
-import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
+import {
+  createHash, createPublicKey, randomBytes, randomUUID, timingSafeEqual, verify,
+} from 'node:crypto';
 
 const PORT = parseInt(process.env.PORT || '8787', 10);
 const HOST = process.env.HOST || '127.0.0.1'; // behind a reverse proxy: loopback only
@@ -90,6 +92,70 @@ function keyIsRight(said) {
   if (!SERVER_KEY) return true;
   const digest = (v) => createHash('sha256').update(String(v ?? '')).digest();
   return timingSafeEqual(digest(said), digest(SERVER_KEY));
+}
+
+/**
+ * The phones allowed in, by the key each of them carries.
+ *
+ * `AUTHORISED_KEYS=anna:BASE64,bruno:BASE64`. The secret half never
+ * leaves the phone that made it: what is written here is the public
+ * half, which can travel by any road, and a phone proves it holds the
+ * other half by signing a number this server picks at the moment.
+ *
+ * That is the difference from the key of the house above: a word can be
+ * repeated to anybody, a signature cannot. To take one phone away, its
+ * line goes and nobody else notices; and the log says which name came
+ * in, not just that somebody did.
+ *
+ * Set, it is the door. Empty, the server falls back on SERVER_KEY, and
+ * with neither it lets everybody in, as it always did.
+ */
+const AUTHORISED_KEYS = new Map(
+  (process.env.AUTHORISED_KEYS || '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      const cut = entry.indexOf(':');
+      return cut < 0
+        ? [entry, entry]
+        : [entry.slice(cut + 1).trim(), entry.slice(0, cut).trim()];
+    }),
+);
+
+/**
+ * A raw Ed25519 key, dressed as node expects to find it.
+ *
+ * What is written in the settings is the naked key, 32 bytes: node
+ * wants it wrapped in the twelve bytes that say "this is an Ed25519
+ * public key". They are always the same twelve.
+ */
+const SPKI = Buffer.from('302a300506032b6570032100', 'hex');
+function asKey(base64) {
+  const raw = Buffer.from(String(base64 || ''), 'base64');
+  if (raw.length !== 32) return null;
+  try {
+    return createPublicKey({
+      key: Buffer.concat([SPKI, raw]), format: 'der', type: 'spki',
+    });
+  } catch {
+    return null;
+  }
+}
+
+/** The name this key was let in under, or null if it was not. */
+function whoSigned(pub, signature, nonce) {
+  const name = AUTHORISED_KEYS.get(String(pub || ''));
+  if (!name) return null;
+  const key = asKey(pub);
+  if (!key) return null;
+  try {
+    const ok = verify(null, Buffer.from(nonce, 'base64'), key,
+      Buffer.from(String(signature || ''), 'base64'));
+    return ok ? name : null;
+  } catch {
+    return null;
+  }
 }
 
 const MAX_PER_ROOM = 2;
@@ -237,6 +303,15 @@ wss.on('connection', (ws, req) => {
   ws.lastSeen = Date.now();
   /** When a tap was sent to them with no answer yet. */
   ws.pingSentAt = null;
+  /**
+   * A number picked now, for this connection alone.
+   *
+   * The phone signs it to show it holds the secret half of its key. A
+   * signature made for one connection is worth nothing on the next, so
+   * there is nothing to steal by listening - and nothing to replay.
+   */
+  ws.nonce = randomBytes(16).toString('base64');
+  send(ws, { type: 'hello', nonce: ws.nonce });
   ws.peerId = randomUUID();
   ws.roomId = null;
   ws.joined = false;
@@ -275,10 +350,27 @@ wss.on('connection', (ws, req) => {
         ws.close(4004, 'too-many-attempts');
         return;
       }
-      // Before anything else is said, the relay's credentials included:
-      // the attempt has just been counted, so guessing the key costs
-      // thirty tries a minute like guessing a pairing code.
-      if (!keyIsRight(msg.key)) {
+      /**
+       * The door, before anything else is said - the relay's
+       * credentials included, which otherwise travel in the very first
+       * message to whoever knocks.
+       *
+       * With a list of phones, the door is a signature; failing that, a
+       * word; failing that too, it is open. The attempt has just been
+       * counted, so trying keys costs thirty a minute, like trying
+       * pairing codes.
+       */
+      if (AUTHORISED_KEYS.size > 0) {
+        const who = whoSigned(msg.pub, msg.sig, ws.nonce);
+        if (!who) {
+          console.log(`[duetto] turned away: ${String(msg.pub || 'no key').slice(0, 12)}`
+            + ` from ${ws.ip}`);
+          send(ws, { type: 'error', error: 'not-allowed' });
+          ws.close(4006, 'not-allowed');
+          return;
+        }
+        ws.who = who;
+      } else if (!keyIsRight(msg.key)) {
         send(ws, { type: 'error', error: 'not-allowed' });
         ws.close(4006, 'not-allowed');
         return;
@@ -497,9 +589,11 @@ wss.on('close', () => clearInterval(heartbeat));
 
 httpServer.listen(PORT, HOST, () => {
   console.log(`[duetto] signalling listening on ws://${HOST}:${PORT}`);
-  console.log(`[duetto] key: ${SERVER_KEY
-    ? 'asked for at the door'
-    : 'none - anybody who knows the address can use this server'}`);
+  console.log(`[duetto] door: ${AUTHORISED_KEYS.size > 0
+    ? `${AUTHORISED_KEYS.size} phone(s) allowed in, by signature`
+    : SERVER_KEY
+      ? 'a key is asked for'
+      : 'open - anybody who knows the address can use this server'}`);
   console.log(`[duetto] TURN fallback: ${turnConfig() ? TURN_URL : 'not configured (different networks will not connect)'}`);
 });
 

@@ -198,6 +198,8 @@ export const en = {
     subtitle: 'A channel for the two of you alone. You come in and you stay: when the other person comes in too, you connect by yourselves.',
     server: 'Server',
     changeServer: 'Change server',
+    deviceCard: 'This phone\'s card',
+    deviceCardHint: 'Some servers let in only the phones they know. This is what identifies this one: send it to whoever runs the server - by message, out loud, however you like. It is the half that can be given away; the half that signs never leaves this phone.',
     serverKey: 'The server\'s key',
     serverKeyPlaceholder: 'empty, if it asks for none',
     serverKeyHint: 'Some servers ask for one at the door, so that not everybody who has learnt the address can use them. It is not a secret of yours and it does not protect the conversation - the pairing code does that: it is the key of the house, the same for whoever is let in. Whoever set the server up says what it is.',

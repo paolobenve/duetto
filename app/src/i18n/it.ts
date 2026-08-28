@@ -186,6 +186,8 @@ export const it: Dictionary = {
     subtitle: 'Un canale solo per voi due. Entri e resti: quando entra anche l’altro, vi collegate da soli.',
     server: 'Server',
     changeServer: 'Cambia server',
+    deviceCard: 'La carta di questo telefono',
+    deviceCardHint: 'Certi server fanno entrare solo i telefoni che conoscono. Questa è la cosa che identifica il tuo: mandala a chi tiene il server - per messaggio, a voce, come vuoi. È la metà che si può dare via; quella che firma da questo telefono non esce.',
     serverKey: 'La chiave del server',
     serverKeyPlaceholder: 'vuota, se non ne chiede',
     serverKeyHint: 'Certi server ne chiedono una alla porta, così non può usarli chiunque ne abbia saputo l\'indirizzo. Non è un tuo segreto e non protegge la conversazione - a quello pensa il codice di accoppiamento: è la chiave di casa, uguale per tutti quelli che si fanno entrare. Chi ha messo su il server dice qual è.',

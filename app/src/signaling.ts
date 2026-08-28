@@ -9,6 +9,7 @@
  */
 import { SignalCrypto } from './crypto';
 import { logger } from './log';
+import { deviceKey, signNonce } from './device';
 
 /**
  * The connection to the signalling server.
@@ -215,6 +216,13 @@ const log = logger('[duetto-sig]');
 // The wait between one attempt and the next. Kept short on purpose:
 // reconnecting is not a detail here, it is the difference between being
 // reachable and not. A failed attempt costs next to nothing.
+/**
+ * How long the server is given to say its number before we knock
+ * anyway. Long enough for a round trip on a poor network, short enough
+ * that nobody notices it.
+ */
+const GREETING_WAIT_MS = 700;
+
 const RECONNECT_MIN_MS = 500;
 const RECONNECT_MAX_MS = 4000;
 
@@ -244,6 +252,11 @@ export type SignalingOptions = {
 
 export class Signaling {
   private ws: WebSocket | null = null;
+  /** Already knocked on this socket: it is done once, greeting or not. */
+  private joined = false;
+  private joinTimer: ReturnType<typeof setTimeout> | null = null;
+  /** The number to sign, when the server has one. */
+  private nonce: string | null = null;
   private crypto: SignalCrypto | null = null;
   private closedByUser = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -320,14 +333,22 @@ export class Signaling {
       if (!inUse()) { try { ws.close(); } catch { /* noop */ } return; }
       log('connected to the server');
       this.backoff = RECONNECT_MIN_MS;
-      this.rawSend({
-        type: 'join',
-        room: this.opts.room,
-        key: this.opts.serverKey || undefined,
-        name: this.opts.displayName || 'Someone',
-        mode: this.mode,
-        side: this.opts.side,
-      });
+      /**
+       * A breath for the server to say its number, and then in we go.
+       *
+       * A server that keeps a list of phones greets with a number to
+       * sign: the signature is what shows this phone holds the secret
+       * half of its key. One that does not, says nothing - and an older
+       * one has never heard of any of this - so after a moment we knock
+       * anyway, without a signature. Waiting for a greeting that will
+       * never come would mean a new app unable to use an old server.
+       */
+      this.joined = false;
+      // The number belongs to the socket that said it: an old one,
+      // signed on a new connection, is worth nothing and would be
+      // refused.
+      this.nonce = null;
+      this.joinTimer = setTimeout(() => { this.join(); }, GREETING_WAIT_MS);
     };
 
     ws.onmessage = (ev) => { if (inUse()) this.handle(ev.data); };
@@ -349,6 +370,43 @@ export class Signaling {
     };
   }
 
+  /**
+   * Knocks, once per socket.
+   *
+   * With a number from the server it goes signed, with the public half
+   * of the phone's key alongside: whoever reads the list knows which
+   * phone this is. Without one - an older server, or one that lets
+   * everybody in - it goes as it always did.
+   */
+  private async join() {
+    if (this.joined || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    this.joined = true;
+    if (this.joinTimer) { clearTimeout(this.joinTimer); this.joinTimer = null; }
+
+    let card: { pub: string; sig: string } | null = null;
+    if (this.nonce) {
+      try {
+        const key = await deviceKey();
+        card = { pub: key.pub, sig: signNonce(key, this.nonce) };
+      } catch {
+        // Unable to sign: we knock all the same, and a server that
+        // wants a signature will say no. Better a clear "not allowed"
+        // than a connection that never happens.
+      }
+    }
+
+    this.rawSend({
+      type: 'join',
+      room: this.opts.room,
+      key: this.opts.serverKey || undefined,
+      pub: card?.pub,
+      sig: card?.sig,
+      name: this.opts.displayName || 'Someone',
+      mode: this.mode,
+      side: this.opts.side,
+    });
+  }
+
   private handle(data: any) {
     let msg: any;
     try {
@@ -358,6 +416,14 @@ export class Signaling {
     }
 
     switch (msg.type) {
+      // The server picks a number and asks for it signed: it wants to
+      // know which phone this is. Answering means knocking straight
+      // away, without waiting out the breath above.
+      case 'hello':
+        this.nonce = typeof msg.nonce === 'string' ? msg.nonce : null;
+        this.join();
+        break;
+
       case 'joined':
         this.events.onStatus?.(msg.peerActive ? 'together' : 'alone');
         this.events.onJoined?.({

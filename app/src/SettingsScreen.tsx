@@ -7,7 +7,7 @@
  * the LICENSE file at the root of the project, and at
  * <https://www.gnu.org/licenses/>.
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity,
   KeyboardAvoidingView, Platform, Alert, Modal, Pressable,
@@ -23,6 +23,7 @@ import { peerAvatar } from './avatar';
 import { isRealName } from './presence';
 import { VERSION_FULL } from './version';
 import { Alerts } from 'duetto-platform';
+import { deviceKey } from './device';
 
 /**
  * The choices for the call's vibration.
@@ -180,6 +181,17 @@ export default function SettingsScreen({
    */
   const hasOwnSound = !!(cfg.alertSoundName || cfg.alertSoundUri);
 
+  /**
+   * The public half of this phone's key, for whoever runs a server.
+   *
+   * Read once when the screen opens: it is made at the first ask and
+   * then never changes.
+   */
+  const [deviceCard, setDeviceCard] = useState('');
+  useEffect(() => {
+    deviceKey().then((k) => setDeviceCard(k.pub)).catch(() => { /* noop */ });
+  }, []);
+
   /** the connection being named, and the name in progress */
   const [naming, setNaming] = useState<PairInfo | null>(null);
   const [writtenName, setWrittenName] = useState('');
@@ -259,6 +271,19 @@ export default function SettingsScreen({
           </Text>
         </View>
         )}
+
+        {/* The card of this phone: shown next to the address, because
+            it is the same conversation - who may come in. It is the
+            public half, so it can travel by any road: a message, a
+            piece of paper. Only the phone that made it can sign with
+            the other half. */}
+        {deviceCard ? (
+          <View style={styles.field}>
+            <Text style={styles.label}>{t('settings.deviceCard')}</Text>
+            <Text selectable style={styles.readonly}>{deviceCard}</Text>
+            <Text style={styles.hint}>{t('settings.deviceCardHint')}</Text>
+          </View>
+        ) : null}
 
         {/* The key of the house, under the address it opens.
             Shown while the server is being written and, once paired,

@@ -52,6 +52,13 @@ A minimal WebSocket server in Node.js. It does four things:
   the password does not mean going back to each of them.
 - **A brake on joining**: 30 a minute per address. It bothers nobody, and it makes trying
   pairing codes wholesale impractical.
+- **One key per phone**: with `AUTHORISED_KEYS` set, the server greets every connection
+  with a number and the join has to come back with the phone's public key and that number
+  signed. The secret half never leaves the phone, so getting in cannot be passed on by
+  telling somebody something; a signature is worth one connection only, since the number
+  changes every time; and one phone can be taken away without touching anybody else's. The
+  keys are Ed25519: tweetnacl signs on the phone, node's own crypto verifies here, and the
+  raw 32 bytes are wrapped in the twelve that make an SPKI.
 - **A key at the door**: with `SERVER_KEY` set, a join that does not carry it is answered
   `not-allowed` and closed — before anything else is said, the TURN credentials included,
   which otherwise travel in the very first message to whoever knocks. The keys are
