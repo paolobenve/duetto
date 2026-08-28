@@ -132,6 +132,10 @@ export type SignalingEvents = {
    * screen now.
    */
   onStatus?: (s: PresenceStatus, detail?: string) => void;
+  /** The people this server lets in, when we are allowed to ask. */
+  onPeople?: (people: PersonOnServer[], invitations: InvitationOnServer[]) => void;
+  /** An invitation just made, ready to be handed over. */
+  onInvited?: (name: string, code: string, days: number) => void;
   onJoined?: (info: {
     polite: boolean;
     peerPresent: boolean;
@@ -139,6 +143,8 @@ export type SignalingEvents = {
     peerName: string;
     /** the fallback relay, configured on the server */
     turn: IceServer | null;
+    /** whether this phone may invite: it is one of the owner's */
+    owner: boolean;
   }) => void;
   onPeerJoined?: (name: string, mode: Mode) => void;
   /** @param why 'bye' if they left, 'dropped' if the network went */
@@ -225,6 +231,17 @@ const GREETING_WAIT_MS = 700;
 
 const RECONNECT_MIN_MS = 500;
 const RECONNECT_MAX_MS = 4000;
+
+/** Somebody the server lets in, as the app shows them. */
+export type PersonOnServer = {
+  name: string;
+  since: string;
+  /** how many connections they have opened, and how many brought somebody */
+  rooms: number;
+  brought: number;
+};
+
+export type InvitationOnServer = { name: string; code: string; expires: string };
 
 export type SignalingOptions = {
   serverUrl: string;
@@ -410,6 +427,21 @@ export class Signaling {
     });
   }
 
+  /** Asks the server who it lets in. Answered only to the owner's phones. */
+  askPeople() {
+    this.rawSend({ type: 'people' });
+  }
+
+  /** Makes an invitation for one person, and hands back the code. */
+  askInvite(name: string) {
+    this.rawSend({ type: 'invite', name });
+  }
+
+  /** Takes somebody off the list, with their rooms and their guests. */
+  forgetPerson(name: string) {
+    this.rawSend({ type: 'forget', name });
+  }
+
   private handle(data: any) {
     let msg: any;
     try {
@@ -427,10 +459,22 @@ export class Signaling {
         this.join();
         break;
 
+      // Who is let in, and an invitation just made: only a phone of the
+      // owner's is ever answered these.
+      case 'people':
+        this.events.onPeople?.(msg.people ?? [], msg.invitations ?? []);
+        break;
+
+      case 'invited':
+        this.events.onInvited?.(String(msg.name || ''), String(msg.code || ''),
+          Number(msg.days) || 0);
+        break;
+
       case 'joined':
         this.events.onStatus?.(msg.peerActive ? 'together' : 'alone');
         this.events.onJoined?.({
           polite: !!msg.polite,
+          owner: !!msg.owner,
           peerPresent: !!msg.peerPresent,
           peerActive: !!msg.peerActive,
           peerName: msg.peerName || '',

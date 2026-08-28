@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView, Platform, Alert, Modal, Pressable,
 } from 'react-native';
 import type { DuoConfig, PairInfo, VideoQuality } from './config';
+import type { PersonOnServer, InvitationOnServer } from './signaling';
 import { t, LANGUAGES } from './i18n';
 import type { LanguageChoice } from './i18n';
 import {
@@ -83,6 +84,14 @@ const CONTROLS = (): {
 ];
 
 type Props = {
+  /** whether this phone may invite: the server says so */
+  canInvite?: boolean;
+  people?: PersonOnServer[];
+  invitations?: InvitationOnServer[];
+  freshInvite?: { name: string; code: string } | null;
+  onAskPeople?: () => void;
+  onInvite?: (name: string) => void;
+  onForget?: (name: string) => void;
   initial: DuoConfig;
   onSave: (cfg: DuoConfig) => void;
   /** forgets a connection, in use or not */
@@ -137,6 +146,7 @@ type Props = {
 export default function SettingsScreen({
   initial, onForgetPair, onSwitchPair, onRenamePair, onSave, onRepair, onClose, onOpenSetup,
   vp9Here, vp9Peer, onQualityChange, onLive,
+  canInvite, people = [], invitations = [], freshInvite, onAskPeople, onInvite, onForget,
 }: Props) {
   const vp9Available = !!vp9Here && !!vp9Peer;
   const vp9Why = vp9Available
@@ -187,6 +197,11 @@ export default function SettingsScreen({
    * Read once when the screen opens: it is made at the first ask and
    * then never changes.
    */
+  const [inviteName, setInviteName] = useState('');
+  // The list is asked for when this screen opens: it lives on the
+  // server, and it may have changed since the last look.
+  useEffect(() => { if (canInvite) onAskPeople?.(); }, [canInvite]);
+
   const [deviceCard, setDeviceCard] = useState('');
   useEffect(() => {
     deviceKey().then((k) => setDeviceCard(k.pub)).catch(() => { /* noop */ });
@@ -607,6 +622,77 @@ export default function SettingsScreen({
             not to the person: the journal is one file and the log one
             stream. That is why they sit here among the app's own things
             and not among the settings that travel with a connection. */}
+        {/* The people this server lets in - only on a phone of the
+            owner's, which the server itself says. A guest never sees
+            this: they can talk to whoever they like, and hand out
+            nothing. */}
+        {canInvite ? (
+          <>
+            <Text style={styles.section}>{t('settings.people')}</Text>
+            <Text style={styles.sectionHint}>{t('settings.peopleHint')}</Text>
+
+            {people.map((person) => (
+              <View key={person.name} style={styles.choice}>
+                <View style={styles.choiceText}>
+                  <Text style={styles.choiceLabel}>{person.name}</Text>
+                  <Text style={styles.choiceNote}>
+                    {t('settings.personSince', { date: person.since.slice(0, 10) })}
+                    {person.rooms
+                      ? `  ·  ${t('settings.personRooms', {
+                        n: person.rooms, guests: person.brought })}`
+                      : ''}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => onForget?.(person.name)}>
+                  <Text style={styles.linkInline}>{t('settings.forgetPerson')}</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+
+            {invitations.map((i) => (
+              <View key={i.code} style={styles.choice}>
+                <View style={styles.choiceText}>
+                  <Text style={styles.choiceLabel}>{i.code}</Text>
+                  <Text style={styles.choiceNote}>
+                    {t('settings.inviteWaiting', {
+                      who: i.name, date: i.expires.slice(0, 10) })}
+                  </Text>
+                </View>
+              </View>
+            ))}
+
+            {/* The code just made, big and selectable: it is about to be
+                read out or pasted into a message. */}
+            {freshInvite ? (
+              <View style={styles.field}>
+                <Text selectable style={styles.freshCode}>{freshInvite.code}</Text>
+                <Text style={styles.hint}>
+                  {t('settings.inviteMade', { who: freshInvite.name })}
+                </Text>
+              </View>
+            ) : null}
+
+            <Field
+              label={t('settings.invitePerson')}
+              value={inviteName}
+              onChange={setInviteName}
+              placeholder={t('settings.invitePersonPlaceholder')}
+              hint={t('settings.invitePersonHint')}
+            />
+            <TouchableOpacity
+              style={[styles.rowButton, styles.rowAfterChoices]}
+              onPress={() => {
+                const name = inviteName.trim();
+                if (!name) return;
+                onInvite?.(name);
+                setInviteName('');
+              }}>
+              <Text style={styles.rowButtonText}>{t('settings.makeInvitation')}</Text>
+              <Text style={styles.rowButtonArrow}>{'\u203A'}</Text>
+            </TouchableOpacity>
+          </>
+        ) : null}
+
         <Text style={styles.section}>{t('settings.diagnostics')}</Text>
         <Text style={styles.sectionHint}>{t('settings.diagnosticsHint')}</Text>
         <TouchableOpacity
@@ -825,6 +911,11 @@ const styles = StyleSheet.create({
   // margin of their own, and without this it would be stuck to the
   // last of them.
   rowAfterChoices: { marginTop: 8 },
+  /** The invitation just made: it is to be read out, so it is large. */
+  freshCode: {
+    color: '#e6ebf1', fontSize: 26, fontWeight: '700', letterSpacing: 2,
+    textAlign: 'center', paddingVertical: 10,
+  },
   rowButtonText: { color: '#e6ebf1', fontSize: 16, fontWeight: '600' },
   rowButtonArrow: { color: '#6b7686', fontSize: 22, lineHeight: 24 },
   toggle: { marginTop: 20, paddingVertical: 10 },

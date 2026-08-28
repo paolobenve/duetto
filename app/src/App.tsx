@@ -28,6 +28,7 @@ import {
   storeSettingsInPair,
 } from './config';
 import { Signaling, PresenceStatus, Mode } from './signaling';
+import type { PersonOnServer, InvitationOnServer } from './signaling';
 import { useLanguage, t } from './i18n';
 import { VERSION, BUILD } from './version';
 import { logger, setLogging } from './log';
@@ -394,6 +395,17 @@ export default function App() {
    */
   const [peerTornDown, setPeerTornDown] = useState(false);
   const [peerName, setPeerName] = useState('');
+  /**
+   * Who this server lets in, when it lets us ask.
+   *
+   * Only a phone of the owner's is answered: `canInvite` comes from the
+   * server itself, in the joining message, and the whole section in the
+   * settings hangs on it. A guest's phone never even shows it.
+   */
+  const [canInvite, setCanInvite] = useState(false);
+  const [people, setPeople] = useState<PersonOnServer[]>([]);
+  const [invitations, setInvitations] = useState<InvitationOnServer[]>([]);
+  const [freshInvite, setFreshInvite] = useState<{ name: string; code: string } | null>(null);
   const [connState, setConnState] = useState('new');
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
@@ -1720,7 +1732,8 @@ export default function App() {
             }
           },
 
-          onJoined: ({ peerPresent: present, peerActive, peerName: n, turn }) => {
+          onJoined: ({ peerPresent: present, peerActive, peerName: n, turn, owner }) => {
+            setCanInvite(owner);
             // Finding them connected, whatever they had done before no
             // longer counts.
             if (present) {
@@ -2000,6 +2013,16 @@ export default function App() {
             // they have just dropped - and for that there is already
             // the line saying how they are, without stopping whatever
             // one was doing.
+          },
+
+          onPeople: (list, waiting) => {
+            setPeople(list);
+            setInvitations(waiting);
+          },
+          onInvited: (name, code) => {
+            // The list follows on its own: the server sends it right
+            // after, with this invitation already in it.
+            setFreshInvite({ name, code });
           },
 
           onError: (code) => {
@@ -2929,7 +2952,14 @@ export default function App() {
           onClose={isPaired(cfg) ? () => setScreen('channel') : undefined}
           onOpenSetup={() => { setSetupFrom('settings'); setScreen('setup'); }}
           onQualityChange={(q) => applyQuality(q, true)}
-          onLive={(patch) => setCfg((prev) => {
+          canInvite={canInvite}
+        people={people}
+        invitations={invitations}
+        freshInvite={freshInvite}
+        onAskPeople={() => signalingRef.current?.askPeople()}
+        onInvite={(name) => signalingRef.current?.askInvite(name)}
+        onForget={(name) => signalingRef.current?.forgetPerson(name)}
+        onLive={(patch) => setCfg((prev) => {
             if (!prev) return prev;
             const next = saveCfg({ ...prev, ...patch });
             // The audio options have to be applied as well: the

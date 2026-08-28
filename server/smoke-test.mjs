@@ -589,6 +589,60 @@ try {
   check(notTheGuest.error === 'not-allowed', 'a stranger who knows the room stays out');
   g5.close();
 
+  // --- inviting from the app --------------------------------------------------
+  // The phone asking is at the other end of a connection this server
+  // let in by signature: there is nothing new to prove. A guest's phone
+  // is answered no.
+  const a1 = client(PORT3);
+  await a1.open();
+  await wait(150);
+  a1.send({ type: 'join', room: 'ufficio-di-anna', name: 'Anna', side: 'A',
+    pub: anna.pub, sig: anna.signs(a1.nonce()) });
+  const asOwner = await a1.expect('joined');
+  check(asOwner.owner === true, 'a phone of the owner\u2019s is told that it may invite');
+
+  a1.send({ type: 'invite', name: 'carla' });
+  const made = await a1.expect('invited');
+  check(!!made.code && made.name === 'carla', 'and makes an invitation from the app');
+
+  const list = await a1.expect('people');
+  check(Array.isArray(list.people) && Array.isArray(list.invitations),
+    'the list of people comes with it, unasked');
+  check(list.invitations.some((i) => i.code === made.code),
+    'and the invitation just made is in it');
+
+  // Somebody uses it: from here on they are in the list by name.
+  const carla = client(PORT3);
+  await carla.open();
+  await wait(150);
+  carla.send({ type: 'join', room: 'stanza-di-carla', name: 'Carla', side: 'A',
+    pub: late.pub, sig: late.signs(carla.nonce()), invite: made.code });
+  await carla.expect('joined');
+  carla.close();
+
+  a1.send({ type: 'people' });
+  const withCarla = await a1.expect('people');
+  check(withCarla.people.some((p) => p.name === 'carla'),
+    'and whoever used it is in the list by name');
+
+  a1.send({ type: 'forget', name: 'carla' });
+  const shorter = await a1.expect('people');
+  check(!shorter.people.some((p) => p.name === 'carla'), 'taking somebody away, from the app');
+  a1.close();
+
+  // The one let in beside somebody is a guest: they hand out nothing.
+  const g6 = client(PORT3);
+  await g6.open();
+  await wait(150);
+  g6.send({ type: 'join', room: 'stanza-di-anna', name: 'La madre', side: 'B',
+    pub: guest.pub, sig: guest.signs(g6.nonce()) });
+  const asGuestJoined = await g6.expect('joined');
+  check(asGuestJoined.owner === false, 'a guest is told they may not');
+  g6.send({ type: 'invite', name: 'chiunque' });
+  const refused = await g6.expect('error');
+  check(refused.error === 'not-yours', 'and asking anyway gets nowhere');
+  g6.close();
+
   srv3.kill('SIGTERM');
   await wait(200);
   try { unlinkSync(LIST_FILE); } catch { /* it was never written */ }

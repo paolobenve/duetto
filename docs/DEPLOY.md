@@ -75,7 +75,18 @@ Writing keys into the `.env` works for the two or three phones of whoever owns t
 It stops working the moment somebody else is to be let in: you would have to be at a
 keyboard, with their card in front of you, at the moment they ask.
 
-So there is an invitation instead — a short code, made for one person, spent once:
+So there is an invitation instead — a short code, made for one person, spent once. It is
+made **from the app**, on a phone of yours: *the cogwheel → Who may use this server →
+Invite somebody*. Write the name, touch, and the code appears, ready to be handed over.
+Below it is the list of who is in, with «take away» beside each name.
+
+Nothing new proves who you are: the phone asking is at the other end of a connection this
+server has just let in by signature, so it already knows whose it is. Only the phones
+written in `AUTHORISED_KEYS` may do it — those are yours. Whoever came in with an
+invitation is a guest: they can talk to anybody, and hand out nothing.
+
+The same from a terminal, when the app is not at hand — or when you have shut yourself
+out and the app cannot connect at all:
 
 ```bash
 npm run invite -- anna

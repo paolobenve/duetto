@@ -119,11 +119,12 @@ anybody — they install the app, write the address, and pair. That phone is let
 theirs and is known for that connection alone, so it cannot open one of its own. The chain
 stops at one link.
 
-Letting somebody else in — a person, not another phone of yours — is not done by hand:
-`npm run invite -- anna` on the server prints a short code, you hand it over as you would
-a pairing code, and they write it in the app once. Their phone is then written down under
-that name, and the code is spent. `npm run devices` says who is in, and takes anybody out
-again.
+Letting somebody else in — a person, not another phone of yours — is done from the app, on
+a phone of yours: *the cogwheel → Who may use this server*. Write a name, and a short code
+appears; you hand it over as you would a pairing code, and they write it in the app once.
+Their phone is then known by its own card, and the code is spent. The same screen lists who
+is in, and takes anybody out again. On the server, `npm run invite` and `npm run devices`
+do the same from a terminal, for when the app cannot be reached.
 
 ## The pairing
 

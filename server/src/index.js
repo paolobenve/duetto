@@ -42,7 +42,9 @@ import { WebSocketServer } from 'ws';
 import {
   createHash, createPublicKey, randomBytes, randomUUID, timingSafeEqual, verify,
 } from 'node:crypto';
-import { noteGuest, noteRoom, read, roomOf, useInvitation } from './devices.js';
+import {
+  addInvitation, noteGuest, noteRoom, read, remove as removePerson, roomOf, useInvitation,
+} from './devices.js';
 
 const PORT = parseInt(process.env.PORT || '8787', 10);
 const HOST = process.env.HOST || '127.0.0.1'; // behind a reverse proxy: loopback only
@@ -510,6 +512,9 @@ wss.on('connection', (ws, req) => {
       send(ws, {
         type: 'joined',
         peerId: ws.peerId,
+        // Whether this phone may invite: it is the owner's, written in
+        // the .env. The app shows or hides a whole section on it.
+        owner: ws.owner === true,
         turn: turnConfig(),
         polite: others.length === 0,
         peerPresent: !!other,
@@ -615,6 +620,54 @@ wss.on('connection', (ws, req) => {
         peerName: other ? other.name : '',
       });
       if (other) checkPresence(other);
+      return;
+    }
+
+    /**
+     * Inviting somebody, and seeing who is in, from the app.
+     *
+     * The one asking is already at the other end of a connection this
+     * server let in by signature: it knows which phone it is and
+     * whether it is one of the owner's. So there is nothing new to
+     * prove, no page to expose, no secret in a URL - the authority is
+     * the same key that opened the door a moment ago.
+     *
+     * Only the phones written in the .env may do this. Somebody let in
+     * by an invitation is a guest: they can talk to whoever they like,
+     * and hand out nothing.
+     */
+    if (msg.type === 'invite' || msg.type === 'people' || msg.type === 'forget') {
+      if (!ws.owner) {
+        send(ws, { type: 'error', error: 'not-yours' });
+        return;
+      }
+      if (msg.type === 'invite') {
+        const name = String(msg.name || '').trim().slice(0, 32);
+        if (!name) { send(ws, { type: 'error', error: 'no-name' }); return; }
+        const made = addInvitation(name);
+        console.log(`[duetto] ${ws.who} invites ${name}`);
+        send(ws, { type: 'invited', name, code: made.code, days: made.days });
+        // And the list right after, without being asked: the invitation
+        // just made belongs in it, and one round trip is enough.
+      }
+      if (msg.type === 'forget') {
+        const name = String(msg.name || '').trim();
+        const gone = removePerson(name);
+        console.log(`[duetto] ${ws.who} takes ${name} off the list (${gone})`);
+      }
+      const { devices: list, invitations, rooms: theirRooms } = read();
+      send(ws, {
+        type: 'people',
+        people: list.map((d) => ({
+          name: d.name,
+          since: d.since,
+          rooms: theirRooms.filter((r) => r.owner === d.name).length,
+          brought: theirRooms.filter((r) => r.owner === d.name && r.guest).length,
+        })),
+        invitations: invitations
+          .filter((i) => Date.parse(i.expires) > Date.now())
+          .map((i) => ({ name: i.name, code: i.code, expires: i.expires })),
+      });
       return;
     }
 
