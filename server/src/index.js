@@ -178,22 +178,36 @@ function signed(pub, signature, nonce) {
  * An invitation is spent here, at the first knock that carries it -
  * after that this phone is on the list like any other.
  */
+/**
+ * Three ways to be here, and they are not the same thing.
+ *
+ * `opens`: this phone may open connections of its own, and whoever it
+ * pairs with is let in beside it. True for the phones in the `.env` and
+ * for anybody who came in with an invitation.
+ *
+ * `invites`: this phone may hand out invitations and take people off
+ * the list. True for the phones in the `.env` alone - the ones whose
+ * owner had to be at the server to write them there. Somebody let in by
+ * an invitation can talk to whoever they like and hand out nothing:
+ * otherwise the first person invited could invite the world, and the
+ * list would stop meaning anything.
+ */
 function whoIsThere(msg, nonce) {
   const pub = String(msg.pub || '');
   if (!pub || !signed(pub, msg.sig, nonce)) return null;
 
   const fromEnv = AUTHORISED_KEYS.get(pub);
-  if (fromEnv) return { name: fromEnv, owner: true };
+  if (fromEnv) return { name: fromEnv, opens: true, invites: true };
 
   const known = listed().find((d) => d.pub === pub);
-  if (known) return { name: known.name, owner: true };
+  if (known) return { name: known.name, opens: true, invites: false };
 
   if (msg.invite) {
     const name = useInvitation(msg.invite, pub);
     if (name) {
       console.log(`[duetto] ${name} comes in with an invitation, `
         + `phone ${pub.slice(0, 12)}…`);
-      return { name, owner: true };
+      return { name, opens: true, invites: false };
     }
   }
   return null;
@@ -221,16 +235,16 @@ function asGuest(msg, nonce, roomId, here) {
   const room = roomOf(roomId);
   if (!room) return null;
 
-  if (room.guest === pub) return { name: `${room.owner}+`, owner: false };
+  if (room.guest === pub) return { name: `${room.owner}+`, opens: false, invites: false };
   if (room.guest) return null;
 
-  const ownerIsHere = [...here].some((peer) => peer.owner && peer.who === room.owner);
+  const ownerIsHere = [...here].some((peer) => peer.opens && peer.who === room.owner);
   if (!ownerIsHere) return null;
 
   noteGuest(roomId, pub);
   console.log(`[duetto] ${room.owner} brings somebody along in their room, `
     + `phone ${pub.slice(0, 12)}…`);
-  return { name: `${room.owner}+`, owner: false };
+  return { name: `${room.owner}+`, opens: false, invites: false };
 }
 
 /** Is the door shut? It is, as soon as one phone is on the list. */
@@ -460,10 +474,11 @@ wss.on('connection', (ws, req) => {
           return;
         }
         ws.who = who.name;
-        ws.owner = who.owner === true;
-        // The room belongs to whoever is on the list: it is written
-        // down now, so that the other half can be let in beside them.
-        if (ws.owner) noteRoom(roomId, who.name);
+        ws.opens = who.opens === true;
+        ws.invites = who.invites === true;
+        // The room belongs to whoever may open one: it is written down
+        // now, so that the other half can be let in beside them.
+        if (ws.opens) noteRoom(roomId, who.name);
       } else if (!keyIsRight(msg.key)) {
         send(ws, { type: 'error', error: 'not-allowed' });
         ws.close(4006, 'not-allowed');
@@ -512,9 +527,9 @@ wss.on('connection', (ws, req) => {
       send(ws, {
         type: 'joined',
         peerId: ws.peerId,
-        // Whether this phone may invite: it is the owner's, written in
+        // Whether this phone may invite: it is one of those written in
         // the .env. The app shows or hides a whole section on it.
-        owner: ws.owner === true,
+        owner: ws.invites === true,
         turn: turnConfig(),
         polite: others.length === 0,
         peerPresent: !!other,
@@ -637,7 +652,7 @@ wss.on('connection', (ws, req) => {
      * and hand out nothing.
      */
     if (msg.type === 'invite' || msg.type === 'people' || msg.type === 'forget') {
-      if (!ws.owner) {
+      if (!ws.invites) {
         send(ws, { type: 'error', error: 'not-yours' });
         return;
       }

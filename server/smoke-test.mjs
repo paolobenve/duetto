@@ -512,6 +512,21 @@ try {
   check(remembered.type === 'joined', 'and from then on it needs none');
   i2.close();
 
+  // Somebody who came in with an invitation can open connections of
+  // their own - and hands out nothing: otherwise the first person
+  // invited could invite the world.
+  const inv = client(PORT3);
+  await inv.open();
+  await wait(150);
+  inv.send({ type: 'join', room: 'stanza-di-bruno', name: 'Bruno', side: 'A',
+    pub: invited.pub, sig: invited.signs(inv.nonce()) });
+  const invitedJoined = await inv.expect('joined');
+  check(invitedJoined.owner === false, 'somebody invited is not told they may invite');
+  inv.send({ type: 'invite', name: 'chiunque' });
+  const noHandingOut = await inv.expect('error');
+  check(noHandingOut.error === 'not-yours', 'and cannot hand out invitations');
+  inv.close();
+
   // Somebody else with the same code: it was spent.
   const i3 = client(PORT3);
   await i3.open();

@@ -82,8 +82,20 @@ Below it is the list of who is in, with «take away» beside each name.
 
 Nothing new proves who you are: the phone asking is at the other end of a connection this
 server has just let in by signature, so it already knows whose it is. Only the phones
-written in `AUTHORISED_KEYS` may do it — those are yours. Whoever came in with an
-invitation is a guest: they can talk to anybody, and hand out nothing.
+written in `AUTHORISED_KEYS` may do it — those are yours, and writing them there took
+being at the server once.
+
+So there are three ways to be on this server, and it is worth keeping them apart:
+
+| | may open connections | may invite |
+|---|---|---|
+| written in `AUTHORISED_KEYS` | yes | yes |
+| came in with an invitation | yes | no |
+| the other half of somebody's connection | no — that one room | no |
+
+Which means only the phones that have to hand out invitations belong in the `.env`. The
+people you talk to do not: they are the other half of your connections, and they are let
+in beside you without asking anybody for anything.
 
 The same from a terminal, when the app is not at hand — or when you have shut yourself
 out and the app cannot connect at all:

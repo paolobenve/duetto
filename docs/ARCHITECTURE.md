@@ -59,6 +59,12 @@ A minimal WebSocket server in Node.js. It does four things:
   changes every time; and one phone can be taken away without touching anybody else's. The
   keys are Ed25519: tweetnacl signs on the phone, node's own crypto verifies here, and the
   raw 32 bytes are wrapped in the twelve that make an SPKI.
+- **Three ways to be here, and they are not the same**: the phones written in the `.env`
+  may open connections and hand out invitations - somebody had to be at the server to
+  write them there. Whoever came in with an invitation may open connections of their own,
+  and hands out nothing: otherwise the first person invited could invite the world and the
+  list would stop meaning anything. And the other half of somebody's connection may
+  neither open one nor hand anything out: their key is worth something in one room.
 - **Invitations, made from the app**: the owner's phone asks the server for one over the
   connection it has just been let in by signature - `invite`, `people`, `forget`, answered
   only to a phone whose key is in `AUTHORISED_KEYS`. There is no page to expose, no secret
