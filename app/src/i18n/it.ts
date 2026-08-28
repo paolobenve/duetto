@@ -186,6 +186,8 @@ export const it: Dictionary = {
     subtitle: 'Un canale solo per voi due. Entri e resti: quando entra anche l’altro, vi collegate da soli.',
     server: 'Server',
     changeServer: 'Cambia server',
+    copy: 'copia',
+    copied: 'copiata',
     deviceCard: 'La carta di questo telefono',
     deviceCardHint: 'Certi server fanno entrare solo i telefoni che conoscono. Questa è la cosa che identifica il tuo: mandala a chi tiene il server - per messaggio, a voce, come vuoi. È la metà che si può dare via; quella che firma da questo telefono non esce.',
     invitation: 'L\'invito',

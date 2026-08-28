@@ -10,7 +10,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity,
-  KeyboardAvoidingView, Platform, Alert, Modal, Pressable,
+  KeyboardAvoidingView, Platform, Alert, Modal, Pressable, Clipboard,
 } from 'react-native';
 import type { DuoConfig, PairInfo, VideoQuality } from './config';
 import type { PersonOnServer, InvitationOnServer } from './signaling';
@@ -293,11 +293,11 @@ export default function SettingsScreen({
             piece of paper. Only the phone that made it can sign with
             the other half. */}
         {deviceCard ? (
-          <View style={styles.field}>
-            <Text style={styles.label}>{t('settings.deviceCard')}</Text>
-            <Text selectable style={styles.readonly}>{deviceCard}</Text>
-            <Text style={styles.hint}>{t('settings.deviceCardHint')}</Text>
-          </View>
+          <Copyable
+            label={t('settings.deviceCard')}
+            value={deviceCard}
+            hint={t('settings.deviceCardHint')}
+          />
         ) : null}
 
         {/* The invitation, next to the card it goes with: one is what
@@ -664,12 +664,11 @@ export default function SettingsScreen({
             {/* The code just made, big and selectable: it is about to be
                 read out or pasted into a message. */}
             {freshInvite ? (
-              <View style={styles.field}>
-                <Text selectable style={styles.freshCode}>{freshInvite.code}</Text>
-                <Text style={styles.hint}>
-                  {t('settings.inviteMade', { who: freshInvite.name })}
-                </Text>
-              </View>
+              <Copyable
+                label={freshInvite.code}
+                value={freshInvite.code}
+                hint={t('settings.inviteMade', { who: freshInvite.name })}
+              />
             ) : null}
 
             <Field
@@ -795,6 +794,46 @@ export default function SettingsScreen({
   );
 }
 
+/**
+ * Something to be copied, with a button that copies it.
+ *
+ * The card is forty-four characters and wraps onto three lines: holding
+ * a finger down selects a word and the handles do not always reach the
+ * last line, so the thing one has to hand over cannot be taken whole.
+ * A button does it in one touch, and says so - without a word back, one
+ * touches again wondering whether it worked.
+ *
+ * What is shown is a read-only field rather than a piece of text: on
+ * Android a tap inside selects the lot, which leaves the old way open
+ * for whoever prefers it.
+ */
+function Copyable(props: { label: string; value: string; hint?: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <View style={styles.field}>
+      <Text style={styles.label}>{props.label}</Text>
+      <TextInput
+        style={styles.copyable}
+        value={props.value}
+        editable={false}
+        multiline
+        selectTextOnFocus
+      />
+      <TouchableOpacity
+        onPress={() => {
+          Clipboard.setString(props.value);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        }}>
+        <Text style={styles.linkInline}>
+          {copied ? t('settings.copied') : t('settings.copy')}
+        </Text>
+      </TouchableOpacity>
+      {props.hint ? <Text style={styles.hint}>{props.hint}</Text> : null}
+    </View>
+  );
+}
+
 function Field(props: {
   label: string;
   value: string;
@@ -911,10 +950,11 @@ const styles = StyleSheet.create({
   // margin of their own, and without this it would be stuck to the
   // last of them.
   rowAfterChoices: { marginTop: 8 },
-  /** The invitation just made: it is to be read out, so it is large. */
-  freshCode: {
-    color: '#e6ebf1', fontSize: 26, fontWeight: '700', letterSpacing: 2,
-    textAlign: 'center', paddingVertical: 10,
+  /** What is to be copied: it may run onto three lines, and all of them count. */
+  copyable: {
+    backgroundColor: '#0f131b', borderRadius: 10, borderWidth: 1,
+    borderColor: '#252c38', color: '#e6ebf1', fontSize: 15,
+    paddingHorizontal: 12, paddingVertical: 10, textAlignVertical: 'top',
   },
   rowButtonText: { color: '#e6ebf1', fontSize: 16, fontWeight: '600' },
   rowButtonArrow: { color: '#6b7686', fontSize: 22, lineHeight: 24 },

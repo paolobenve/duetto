@@ -198,6 +198,8 @@ export const en = {
     subtitle: 'A channel for the two of you alone. You come in and you stay: when the other person comes in too, you connect by yourselves.',
     server: 'Server',
     changeServer: 'Change server',
+    copy: 'copy',
+    copied: 'copied',
     deviceCard: 'This phone\'s card',
     deviceCardHint: 'Some servers let in only the phones they know. This is what identifies this one: send it to whoever runs the server - by message, out loud, however you like. It is the half that can be given away; the half that signs never leaves this phone.',
     invitation: 'The invitation',
