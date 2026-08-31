@@ -699,5 +699,10 @@ type RTCIceServer = { urls: string; username?: string; credential?: string };
  * at all.
  */
 export function iceServers(): RTCIceServer[] {
-  return [{ urls: 'stun:stun.l.google.com:19302' }];
+  // Nothing hardcoded, and above all nothing belonging to anybody
+  // else: for years a public Google STUN sat here as a fallback, the
+  // single outside dependency in a self-hosted design. Every server
+  // the phones need - STUN included, derived from the relay's own
+  // address when not named - arrives in the joining message.
+  return [];
 }

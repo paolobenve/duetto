@@ -40,6 +40,16 @@ import com.facebook.react.modules.core.DeviceEventManagerModule
 class HeartbeatModule(private val ctx: ReactApplicationContext) :
     ReactContextBaseJavaModule(ctx) {
 
+    init {
+        // For the alarm's hand-struck beat: see beatNow().
+        current = this
+    }
+
+    override fun invalidate() {
+        if (current === this) current = null
+        super.invalidate()
+    }
+
     override fun getName() = "DuettoHeartbeat"
 
     private val clock = Handler(Looper.getMainLooper())
@@ -117,6 +127,31 @@ class HeartbeatModule(private val ctx: ReactApplicationContext) :
 
     companion object {
         const val EVENT = "duetto-heartbeat"
+
+        @Volatile
+        private var current: HeartbeatModule? = null
+
+        /**
+         * One beat, struck by hand.
+         *
+         * The watchdog alarm calls this when it fires: if the
+         * JavaScript engine is alive, the beat sets off the same round
+         * as the clock's own - the connection is looked at, a dead one
+         * is remade. True if the beat was delivered; false means there
+         * is no engine to hear it, and the caller must take the longer
+         * road through the presence service.
+         */
+        fun beatNow(): Boolean {
+            val m = current ?: return false
+            if (!m.ctx.hasActiveReactInstance()) return false
+            return try {
+                m.ctx.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+                    .emit(EVENT, 0.0)
+                true
+            } catch (_: Exception) {
+                false
+            }
+        }
 
         /**
          * One minute: it is the longest hole we accept staying

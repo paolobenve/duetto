@@ -65,6 +65,30 @@ function turnConfig() {
     credential: TURN_PASS,
   };
 }
+
+/**
+ * The STUN of the house.
+ *
+ * For years the phones fell back on a hardcoded public one (Google's) -
+ * the single outside dependency in an otherwise self-hosted design, and
+ * one nobody had chosen on purpose. There is no need for it: coturn
+ * answers STUN on the relay's own port, so when the operator does not
+ * name one it is derived from the relay's address, and the phones owe
+ * nothing to anybody.
+ */
+const STUN_URL = process.env.STUN_URL || '';
+function stunConfig() {
+  if (STUN_URL) {
+    return { urls: STUN_URL.split(',').map((u) => u.trim()).filter(Boolean) };
+  }
+  // Derived: turn:host:port -> stun:host:port, the plain entry only
+  // (a `turns:` TLS address is a relay matter; STUN needs no secrets).
+  const first = TURN_URL.split(',').map((u) => u.trim())
+    .find((u) => u.startsWith('turn:'));
+  if (!first) return null;
+  const hostPort = first.slice('turn:'.length).split('?')[0];
+  return { urls: [`stun:${hostPort}`] };
+}
 /**
  * The key of the house.
  *
@@ -360,6 +384,49 @@ function peersOf(roomId, exclude) {
   return [...set].filter((c) => c !== exclude);
 }
 
+/**
+ * Departures on the point of coming back.
+ *
+ * A drop is usually a change of network: the same phone is back within
+ * a couple of seconds, on a fresh socket. Announcing the departure the
+ * instant the old socket closes made everybody downstream flinch for
+ * nothing - the waiting line flicked to "disconnected", the headless
+ * notification rewrote itself, and a knock in that window was refused -
+ * only for the return to cancel it all a breath later. So a `dropped`
+ * departure is held for a few seconds first: if the same side is back
+ * in the room when the wait runs out, nobody is told anything (their
+ * rejoining already announced them); if not, the departure goes out as
+ * before, a little later.
+ *
+ * A goodbye is not held: whoever said it has really gone.
+ *
+ * Keyed by room and side, because the side is the device: whatever
+ * socket it comes back on, it is the same phone returning.
+ *
+ * @type {Map<string, { timer: NodeJS.Timeout, peerId: string, knocks: string[] }>}
+ */
+const returning = new Map();
+const GRACE_MS = ms(process.env.PEER_LEFT_GRACE_MS, 4000);
+
+function holdDeparture(roomId, ws) {
+  const key = `${roomId}\n${ws.side}`;
+  const held = returning.get(key);
+  if (held) clearTimeout(held.timer);
+  const timer = setTimeout(() => {
+    returning.delete(key);
+    // Looked up now, not captured then: the room may have been emptied
+    // and remade in the meantime, and whoever is in it NOW is the one
+    // owed the news.
+    const set = rooms.get(roomId);
+    if (!set) return;
+    for (const peer of set) {
+      send(peer, { type: 'peer-left', peerId: ws.peerId, reason: 'dropped' });
+    }
+  }, GRACE_MS);
+  timer.unref?.();
+  returning.set(key, { timer, peerId: ws.peerId, knocks: held?.knocks ?? [] });
+}
+
 function leaveRoom(ws) {
   const roomId = ws.roomId;
   if (!roomId) return;
@@ -374,10 +441,14 @@ function leaveRoom(ws) {
     // The reason changes what the other one has to do: whoever said
     // goodbye has really gone, and their picture can disappear at once;
     // whoever dropped is most likely changing network and will be back
-    // within seconds, and taking their place apart means putting it back
-    // together a moment later.
-    const reason = ws.saidBye ? 'bye' : 'dropped';
-    for (const peer of set) send(peer, { type: 'peer-left', peerId: ws.peerId, reason });
+    // within seconds - so their departure is held a moment (see
+    // `returning`), and only announced if they really stay away.
+    if (!ws.saidBye && ws.side) {
+      holdDeparture(roomId, ws);
+    } else {
+      const reason = ws.saidBye ? 'bye' : 'dropped';
+      for (const peer of set) send(peer, { type: 'peer-left', peerId: ws.peerId, reason });
+    }
   }
   if (set.size === 0) rooms.delete(roomId);
   ws.roomId = null;
@@ -437,7 +508,11 @@ wss.on('connection', (ws, req) => {
   ws.on('message', (data, isBinary) => {
     // A message is proof enough that they are there, and it has just
     // refreshed the NAT mapping: we push the next tap further ahead.
+    // It also forgives a pending ping: a phone busy talking may well
+    // answer the pong late, and terminating a connection that is
+    // actively speaking would be the one way to get this exactly wrong.
     ws.lastSeen = Date.now();
+    ws.pingSentAt = null;
     if (isBinary) return;
     let msg;
     try {
@@ -459,8 +534,10 @@ wss.on('connection', (ws, req) => {
         ws.close(4002, 'bad-room');
         return;
       }
-      let set = rooms.get(roomId);
-      if (!set) { set = new Set(); rooms.set(roomId, set); }
+      // The room is looked up but not yet written down: a join that is
+      // turned away at the door must leave no trace, or refused attempts
+      // with made-up room names would pile up in the map forever.
+      const set = rooms.get(roomId) ?? new Set();
 
       /**
        * The door, before anything else is said - the relay's
@@ -469,7 +546,7 @@ wss.on('connection', (ws, req) => {
        *
        * With a list of phones, the door is a signature; failing that, a
        * word; failing that too, it is open. The attempt has just been
-       * counted, so trying keys costs thirty a minute, like trying
+       * counted, so trying keys costs JOIN_LIMIT a minute, like trying
        * pairing codes.
        */
       const known = doorIsShut()
@@ -535,6 +612,8 @@ wss.on('connection', (ws, req) => {
       }
 
       ws.side = side;
+      // Only now, past the door, does the room really exist.
+      rooms.set(roomId, set);
       const others = peersOf(roomId, ws);
       set.add(ws);
       ws.roomId = roomId;
@@ -557,11 +636,28 @@ wss.on('connection', (ws, req) => {
         // away a button that would only lead to a closed door.
         opens: ws.opens !== false,
         turn: turnConfig(),
+        stun: stunConfig(),
         polite: others.length === 0,
         peerPresent: !!other,
         peerActive: other ? other.mode === 'active' : false,
         peerName: other ? other.name : '',
       });
+
+      // If this side dropped moments ago, its departure is still being
+      // held (see `returning`): they are back, the announcement dies
+      // unsaid, and a knock that found nobody in the meantime - a cell
+      // change at the wrong instant - is delivered now instead of
+      // simply never having happened.
+      if (side) {
+        const back = returning.get(`${roomId}\n${side}`);
+        if (back) {
+          clearTimeout(back.timer);
+          returning.delete(`${roomId}\n${side}`);
+          for (const name of back.knocks) {
+            send(ws, { type: 'notify', reason: 'knock', name });
+          }
+        }
+      }
 
       for (const peer of others) {
         send(peer, {
@@ -625,6 +721,17 @@ wss.on('connection', (ws, req) => {
       // needed.
       const others = peersOf(ws.roomId, ws);
       if (others.length === 0) {
+        // Honest with whoever knocked: right now there is nobody. But
+        // if the other side dropped a breath ago and is being waited
+        // for (see `returning`), the knock is left on their doormat -
+        // a cell change at the wrong instant used to make it simply
+        // never have happened. Only the last one: two knocks in four
+        // seconds mean the same thing.
+        const otherSide = ws.side === 'A' ? 'B' : ws.side === 'B' ? 'A' : null;
+        if (otherSide) {
+          const away = returning.get(`${ws.roomId}\n${otherSide}`);
+          if (away) away.knocks = [cleanName(ws.name)];
+        }
         send(ws, { type: 'knock-result', ok: false, error: 'peer-offline' });
         return;
       }
@@ -781,5 +888,22 @@ for (const sig of ['SIGINT', 'SIGTERM']) {
     console.log(`\n[duetto] ${sig}, shutting down...`);
     for (const ws of wss.clients) ws.close(1001, 'server-shutdown');
     httpServer.close(() => process.exit(0));
+    // A client that never finishes its close handshake would keep the
+    // server hanging here until systemd loses patience and pulls the
+    // plug; we leave on our own feet instead.
+    setTimeout(() => process.exit(0), 3000).unref();
   });
 }
+
+// A throw anywhere in the message path would otherwise take down every
+// pair at once, in an unknown state. Better to say what happened and
+// leave: systemd puts us back up in seconds, and the phones rejoin by
+// themselves - a clean restart beats limping on with corrupt state.
+process.on('uncaughtException', (err) => {
+  console.error('[duetto] uncaught exception:', err?.stack || err);
+  process.exit(1);
+});
+process.on('unhandledRejection', (err) => {
+  console.error('[duetto] unhandled rejection:', err?.stack || err);
+  process.exit(1);
+});

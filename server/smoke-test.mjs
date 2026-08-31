@@ -55,6 +55,8 @@ const stranger = phone();
 const HEARTBEAT_ACTIVE_MS = 400;
 const HEARTBEAT_LISTENING_MS = 4000;
 const ANSWER_WAIT_MS = 600;
+/** The real wait for a dropped peer's return is four seconds. */
+const GRACE_MS = 300;
 
 const srv = spawn('node', ['src/index.js'], {
   env: {
@@ -67,6 +69,7 @@ const srv = spawn('node', ['src/index.js'], {
     HEARTBEAT_LISTENING_MS: String(HEARTBEAT_LISTENING_MS),
     HEARTBEAT_TICK_MS: '50',
     ANSWER_WAIT_MS: String(ANSWER_WAIT_MS),
+    PEER_LEFT_GRACE_MS: String(GRACE_MS),
   },
   stdio: ['ignore', 'ignore', 'inherit'],
 });
@@ -144,6 +147,8 @@ try {
   check(aJoined.turn?.urls?.[0] === 'turn:example.org:3478',
     'the server tells the relay: it is not configured on the phones');
   check(aJoined.turn?.credential === 'secret', 'with the credentials to use it');
+  check(aJoined.stun?.urls?.[0] === 'stun:example.org:3478',
+    'and a STUN of the house, derived from the relay: nothing of Google’s');
 
   // --- B connects, listening as well -------------------------------------
   const b = client();
@@ -419,11 +424,146 @@ try {
 
   v1.close(); v2.close();
 
+  // --- a drop followed by a quick return is never announced -------------------
+  // A drop is usually a change of network: the same phone is back within
+  // seconds. The departure is held for a moment, and if they return in
+  // time nobody downstream ever flinches.
+  const gr1 = client();
+  await gr1.open();
+  gr1.send({ type: 'join', key: KEY, room: 'grace', name: 'G1', side: 'A', mode: 'listening' });
+  await gr1.expect('joined');
+  const gr2 = client();
+  await gr2.open();
+  gr2.send({ type: 'join', key: KEY, room: 'grace', name: 'G2', side: 'B', mode: 'listening' });
+  await gr2.expect('joined');
+  await gr1.expect('peer-joined');
+
+  gr2.close(); // a drop, not a goodbye
+  const gr2b = client();
+  await gr2b.open();
+  gr2b.send({ type: 'join', key: KEY, room: 'grace', name: 'G2', side: 'B', mode: 'listening' });
+  await gr2b.expect('joined');
+  await gr1.expect('peer-joined');
+  check(await gr1.expectNone('peer-left', GRACE_MS * 3),
+    'a drop followed by a quick return is never announced');
+
+  // And whoever really stays away is announced all the same, a little
+  // later, still as a drop.
+  gr2b.close();
+  const stayedAway = await gr1.expect('peer-left');
+  check(stayedAway.reason === 'dropped',
+    'whoever stays away is announced as dropped, after the wait');
+  gr1.close();
+
+  // --- a knock into the hole waits on the doormat ------------------------------
+  // Knocking during the other's change of cell used to simply never have
+  // happened: now it is honest with the knocker - there IS nobody - and
+  // is delivered the moment they come back.
+  const kk1 = client();
+  await kk1.open();
+  kk1.send({ type: 'join', key: KEY, room: 'gracek', name: 'K1', side: 'A', mode: 'listening' });
+  await kk1.expect('joined');
+  const kk2 = client();
+  await kk2.open();
+  kk2.send({ type: 'join', key: KEY, room: 'gracek', name: 'K2', side: 'B', mode: 'listening' });
+  await kk2.expect('joined');
+  await kk1.expect('peer-joined');
+
+  const kk2b = client();
+  await kk2b.open();
+  kk2.close();
+  await wait(50);
+  kk1.send({ type: 'knock' });
+  const missed = await kk1.expect('knock-result');
+  check(missed.ok === false && missed.error === 'peer-offline',
+    'knocking into the hole: told honestly there is nobody');
+  kk2b.send({ type: 'join', key: KEY, room: 'gracek', name: 'K2', side: 'B', mode: 'listening' });
+  await kk2b.expect('joined');
+  const held = await kk2b.expect('notify');
+  check(held.reason === 'knock' && held.name === 'K1',
+    'and the knock is waiting for them on their return');
+  kk1.close(); kk2b.close();
+
+  // --- a refused join leaves no trace ----------------------------------------
+  // Room names are chosen by whoever knocks: if a join turned away at
+  // the door left an entry behind, made-up names would pile up in the
+  // server's memory for ever.
+  const healthz = async () => {
+    const res = await fetch(`http://127.0.0.1:${PORT}/healthz`);
+    return res.json();
+  };
+  // The goodbyes above are still propagating: the baseline is taken
+  // once the doors have finished swinging.
+  await wait(300);
+  const roomsBefore = (await healthz()).rooms;
+  const shadow = client();
+  await shadow.open();
+  shadow.send({ type: 'join', room: 'made-up-name-xyz', key: 'wrong', name: 'G' });
+  await shadow.expect('error');
+  await shadow.closed(1000);
+  check((await healthz()).rooms === roomsBefore, 'a refused join leaves no room behind');
+
+  // --- a talkative connection is never taken for dead -------------------------
+  // A phone busy speaking may answer the protocol's ping late: its
+  // messages are proof enough that it is there, and must forgive the
+  // pending ping - terminating a connection that is actively talking
+  // would be the one way to get the heartbeat exactly wrong.
+  const chatty = new WebSocket(URL, { autoPong: false });
+  await new Promise((r) => chatty.once('open', r));
+  chatty.send(JSON.stringify({ type: 'join', key: KEY, room: 'talkers', name: 'T', side: 'A', mode: 'active' }));
+  let chattyClosed = false;
+  chatty.on('close', () => { chattyClosed = true; });
+  // Slower than the heartbeat (so pings do go out) but faster than the
+  // answer window (so a message always lands before the patience runs
+  // out) - the exact shape of a phone talking with a late pong.
+  for (let i = 0; i < 5; i++) {
+    await wait(Math.floor(ANSWER_WAIT_MS * 0.8));
+    if (!chattyClosed) chatty.send(JSON.stringify({ type: 'presence' }));
+  }
+  check(!chattyClosed, 'messages forgive a late pong: the talkative one stays');
+  try { chatty.close(); } catch { /* noop */ }
+
+  // And the regression twin: silent AND pongless must still be found out.
+  const mute = new WebSocket(URL, { autoPong: false });
+  await new Promise((r) => mute.once('open', r));
+  mute.send(JSON.stringify({ type: 'join', key: KEY, room: 'talkers2', name: 'M', side: 'A', mode: 'active' }));
+  const muteGone = await new Promise((r) => {
+    const t = setTimeout(() => r(false), HEARTBEAT_ACTIVE_MS + ANSWER_WAIT_MS * 3);
+    mute.once('close', () => { clearTimeout(t); r(true); });
+  });
+  check(muteGone, 'silent and pongless is still dismissed');
+
+  // --- a message meant to hurt does not bring the house down ------------------
+  // Junk in every field the handlers touch: the server may well answer
+  // "error", but it must still be standing for the next one to knock.
+  const poison = client();
+  await poison.open();
+  poison.send({ type: 'join', key: KEY, room: 'poison', name: { a: 1 }, side: 'X', mode: 42 });
+  await poison.expect('joined');
+  poison.send({ type: 'signal' });
+  poison.send({ type: 'mode', mode: null });
+  poison.send({ type: 'knock', extra: [Symbol] });
+  poison.send({ type: 'invite', label: {} });
+  poison.send({ type: 'forget', pub: 12345 });
+  await wait(200);
+  const after = client();
+  await after.open();
+  after.send({ type: 'join', key: KEY, room: 'poison2', name: 'OK', side: 'A' });
+  await after.expect('joined');
+  check(true, 'poisoned messages: the server is still standing');
+  poison.close(); after.close();
+
   // --- a phone with a key of its own ------------------------------------------
   // The server is restarted with a list of allowed phones: from that
   // moment the door is a signature, and the word of the house counts
   // for nothing.
+  // On the way out, it must leave on its own feet even with sockets
+  // still open: a shutdown that waits for everybody's close handshake
+  // can wait for ever.
+  const exited = new Promise((r) => srv.once('exit', () => r(true)));
   srv.kill('SIGTERM');
+  check(await Promise.race([exited, wait(4000).then(() => false)]),
+    'told to stop, it stops within moments');
   await wait(300);
   const srv2 = spawn('node', ['src/index.js'], {
     env: {

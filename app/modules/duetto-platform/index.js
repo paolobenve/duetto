@@ -75,6 +75,25 @@ export const Foreground = isAndroid && NativeForeground
         call(NativeForeground, 'setCameraActive', !!active),
 
       /**
+       * In the channel or merely waiting: the service holds the CPU
+       * awake only for a conversation. See the service's own note.
+       */
+      setInChannel: (active) =>
+        call(NativeForeground, 'setInChannel', !!active),
+
+      /**
+       * "Leave and become unavailable", written where a reboot cannot
+       * erase it.
+       */
+      setAvailable: (v) => call(NativeForeground, 'setAvailable', !!v),
+
+      /**
+       * Whether the watchdog alarm has anything to watch over: false
+       * while no pair is set up.
+       */
+      watchdogWanted: (v) => call(NativeForeground, 'watchdogWanted', !!v),
+
+      /**
        * Updates the standing notification: the text, and the name of the
        * connection.
        *
@@ -141,6 +160,9 @@ export const Foreground = isAndroid && NativeForeground
   : {
       start: unavailable,
       setCameraActive: unavailable,
+      setInChannel: unavailable,
+      setAvailable: unavailable,
+      watchdogWanted: unavailable,
       setText: unavailable,
       stop: unavailable,
       notify: unavailable,

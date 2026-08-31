@@ -68,6 +68,12 @@ declare module 'duetto-platform' {
   export const Foreground: {
     start(text?: string, withCamera?: boolean): Promise<boolean>;
     setCameraActive(active: boolean): Promise<boolean>;
+    /** in the channel or merely waiting: the wake lock follows this */
+    setInChannel(active: boolean): Promise<boolean>;
+    /** "leave and become unavailable", written where a reboot cannot erase it */
+    setAvailable(v: boolean): Promise<boolean>;
+    /** whether the watchdog alarm has anything to watch over */
+    watchdogWanted(v: boolean): Promise<boolean>;
     /** text of the standing notification, and the connection name to put in front */
     setText(text: string, name?: string): Promise<boolean>;
     stop(): Promise<boolean>;

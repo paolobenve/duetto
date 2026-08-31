@@ -21,6 +21,9 @@ export const it: Dictionary = {
     notAllowedBody: 'Chiede una chiave alla porta, e quella scritta qui non va bene. Chiedila a chi ha messo su il server, e scrivila sotto l\'indirizzo nelle impostazioni.',
     differentKeys: 'Chiavi diverse',
     differentKeysBody: 'I due telefoni non condividono la stessa chiave: rifate l’accoppiamento.',
+    batteryRestricted: 'Sono tornate le restrizioni batteria',
+    batteryRestrictedBody: 'Il sistema ha rimesso le restrizioni a Duetto: a schermo spento potresti diventare irraggiungibile. Consenti l’uso senza restrizioni per restare raggiungibile.',
+    batteryRestrictedAction: 'Consenti',
   },
 
   news: {

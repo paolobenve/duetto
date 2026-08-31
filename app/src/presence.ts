@@ -11,6 +11,7 @@ import { AppState } from 'react-native';
 import { Foreground, Journal, Alarm } from 'duetto-platform';
 import { loadConfig, isPaired, isServerConfigured, pairFileKey, pairName } from './config';
 import { Signaling } from './signaling';
+import { attachWatchdog, Watchdog } from './watchdog';
 import { t } from './i18n';
 import { logger, setLogging } from './log';
 import { VERSION, BUILD } from './version';
@@ -31,6 +32,17 @@ import { VERSION, BUILD } from './version';
  */
 
 let signaling: Signaling | null = null;
+
+/**
+ * The same watchdog the interface uses, because for years this path ran
+ * without one - and this is the path the app exists for. After a
+ * reboot, with the screen off, JavaScript's own timers do not fire: a
+ * socket that died silently stayed dead until the server's unhurried
+ * heartbeat tripped over it, minutes later, while the phone believed
+ * itself reachable. The native heartbeat and the network's
+ * announcements are events, and events arrive even here.
+ */
+let watchdog: Watchdog | null = null;
 
 /**
  * The interface has a connection of its own.
@@ -212,8 +224,12 @@ export async function startListening(): Promise<boolean> {
   setLogging(cfg.diagnostics);
   if (!isPaired(cfg) || !isServerConfigured(cfg)) {
     log('no pair set up: there is nothing to listen for');
+    // Said to the watchdog alarm too, or it would spend the night
+    // starting a service that has nothing to listen for.
+    Foreground.watchdogWanted(false).catch(() => { /* noop */ });
     return false;
   }
+  Foreground.watchdogWanted(true).catch(() => { /* noop */ });
 
   const pair = cfg.pair!;
   log('listening');
@@ -234,10 +250,12 @@ export async function startListening(): Promise<boolean> {
   /**
    * How the other side is doing, for the notification alone.
    *
-   * Nothing is asked of anybody here: after a reboot nobody is looking
-   * at a screen, and waking the radio every minute to refresh a line
-   * nobody reads would be the opposite of what this part of the app is
-   * for. We listen to what the server sends of its own accord.
+   * Nothing is asked for the line's own sake: after a reboot nobody is
+   * looking at a screen, and waking the radio to refresh a line nobody
+   * reads would be the opposite of what this part of the app is for.
+   * We listen to what the server sends of its own accord - and to the
+   * answers the watchdog gets to its liveness questions, which cost
+   * nothing extra and catch up on any announcement that got lost.
    */
   let present = false;
   let active = false;
@@ -352,6 +370,21 @@ export async function startListening(): Promise<boolean> {
         }
       },
 
+      /**
+       * The watchdog's questions come back here. The answer settles the
+       * doubt about the socket - and since it also says how the other
+       * side is doing, the notification line catches up with any
+       * announcement that got lost along the way.
+       */
+      onPresence: ({ peerPresent, peerActive, peerName }) => {
+        watchdog?.noteAnswer();
+        present = peerPresent;
+        if (peerPresent) detached = false;
+        active = peerActive;
+        if (peerName) name = peerName;
+        refresh();
+      },
+
       onNotify: (reason, peerName) => {
         const who = peerName;
         const text = reason === 'knock'
@@ -363,6 +396,13 @@ export async function startListening(): Promise<boolean> {
     },
   );
   signaling.connect();
+  // Nobody else is watching over this connection: the pace-setting is
+  // the watchdog's too (driveFast), one beat a minute when all is well
+  // and one every fifteen seconds while the server is out of reach.
+  // With no wake lock the beats only come while the CPU is awake anyway
+  // - a network change, a packet from the server, the alarm's net - so
+  // waiting costs next to nothing.
+  watchdog = attachWatchdog(() => signaling, { driveFast: true });
   return true;
 }
 
@@ -370,6 +410,8 @@ export async function startListening(): Promise<boolean> {
 export function stopListening() {
   if (!signaling) return;
   log('connection handed over to the app');
+  watchdog?.stop();
+  watchdog = null;
   // No goodbye: we are not leaving, we are handing over to the app that
   // has just opened. Saying goodbye here made the other side write
   // "they disconnected" every time this phone was picked up.
@@ -389,11 +431,23 @@ export function isListening(): boolean {
  * task sits idle until the app hands it back.
  */
 export async function presenceTask(): Promise<void> {
-  // If the app is already in the foreground, it is the one in charge.
+  // The service is often born in the middle of the interface's
+  // teardown, when the state still reads as "open": a moment's
+  // patience, then the flags speak for themselves - startListening
+  // steps aside on its own if the interface really holds the
+  // connection.
   if (AppState.currentState === 'active') {
-    log('app already open: leaving it to it');
-  } else {
-    await startListening();
+    log('app looks open: waiting a moment before deciding');
+    await new Promise<void>((r) => setTimeout(r, 4000));
   }
-  return new Promise<void>(() => { /* never resolved: it has to stay alive */ });
+  if (await startListening()) {
+    return new Promise<void>(() => { /* never resolved: it has to stay alive */ });
+  }
+  // Nothing to hold: the app is in charge, or no pair is set up. This
+  // used to park for ever anyway, leaving a foreground service whose
+  // notification promised a presence that did not exist. Ending the
+  // task lets the service stop and take the notification with it; if
+  // the interface later dies without a handover, the watchdog alarm
+  // brings presence back.
+  log('nothing to hold: stepping down');
 }

@@ -60,6 +60,12 @@
             </intent-filter>
         </receiver>
 
+        <!-- The net under everything: an alarm that looks at presence
+             every ten minutes, whatever else has died. See WatchdogAlarm. -->
+        <receiver
+            android:name=".WatchdogAlarm"
+            android:exported="false" />
+
         <!-- No `stopWithTask`: it told Android to shut the service down
              when the phone puts the app away, and that is exactly the
              moment presence has to stay. Whoever does not want to be

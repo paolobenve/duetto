@@ -278,6 +278,10 @@ export class ChannelSession {
   private polite = false;
   private makingOffer = false;
   private ignoreOffer = false;
+  /** When the offer that is being ignored was set aside: see onSignal. */
+  private ignoreOfferSince = 0;
+  /** An ICE restart was asked for and no offer has left yet. */
+  private restartAskedAt = 0;
   /** candidates that arrived before the remote description: they queue up */
   private pendingCandidates: any[] = [];
   /** the relay the server tells us about: no need to set it up on each phone */
@@ -690,6 +694,8 @@ export class ChannelSession {
       const desc = pc.localDescription!;
       log('offer sent');
       this.signaling.sendSignal({ kind: 'desc', type: 'offer', sdp: desc.sdp });
+      // If an ICE restart was waiting for this offer, it has left now.
+      this.restartAskedAt = 0;
     } catch (e) {
       log('negotiation failed:', String(e));
       // if a negotiation fails, the next event will try again
@@ -736,7 +742,11 @@ export class ChannelSession {
 
       // Impolite: on a collision, ignore the other side's offer.
       this.ignoreOffer = !this.polite && collision;
-      if (this.ignoreOffer) { log('offer ignored (collision, we are impolite)'); return; }
+      if (this.ignoreOffer) {
+        this.ignoreOfferSince = Date.now();
+        log('offer ignored (collision, we are impolite)');
+        return;
+      }
 
       if (collision) {
         // Polite: roll our own offer back and take theirs.
@@ -770,7 +780,19 @@ export class ChannelSession {
     }
 
     if (msg.kind === 'ice') {
-      if (this.ignoreOffer) { log('candidate ignored (collision, we are impolite)'); return; }
+      if (this.ignoreOffer) {
+        // The flag lives from one description to the next: if the
+        // collision it belongs to never completes - the answer to our
+        // own offer lost along the way - it used to stay up for ever,
+        // discarding every candidate that arrived. After a good while
+        // with no description it no longer describes anything.
+        if (Date.now() - this.ignoreOfferSince > 10_000) {
+          this.ignoreOffer = false;
+        } else {
+          log('candidate ignored (collision, we are impolite)');
+          return;
+        }
+      }
       // If there is no remote description yet, the candidate queues up.
       if (!pc.remoteDescription) {
         this.pendingCandidates.push(msg.candidate);
@@ -849,8 +871,29 @@ export class ChannelSession {
     if (!pc || this.polite) return false;
     try {
       if (typeof pc.restartIce === 'function') {
+        this.restartAskedAt = Date.now();
         pc.restartIce();
         log('ICE restarted');
+        // Trust, but verify: restartIce() only queues a request for
+        // negotiation, and the event carrying it has been known not to
+        // fire. If no offer has left in a moment, it is made by hand -
+        // the same road the older versions below always take. (A timer:
+        // with the screen off it may not fire, and there the heartbeat's
+        // harder medicine covers the same hole.)
+        setTimeout(async () => {
+          if (this.pc !== pc || !this.restartAskedAt) return;
+          this.restartAskedAt = 0;
+          try {
+            const offer = await pc.createOffer({ iceRestart: true });
+            await pc.setLocalDescription(offer);
+            this.signaling.sendSignal({
+              kind: 'desc', type: 'offer', sdp: pc.localDescription.sdp,
+            });
+            log('the restart offer had not left: made by hand');
+          } catch (e) {
+            log('hand-made restart offer failed:', String(e));
+          }
+        }, 1500);
         return true;
       }
       // Older versions: the same thing, with an offer.

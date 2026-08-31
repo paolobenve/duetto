@@ -31,6 +31,9 @@ export const en = {
     notAllowedBody: 'It asks for a key at the door, and the one written here does not fit. Ask whoever set the server up, and write it under the address in the settings.',
     differentKeys: 'Different keys',
     differentKeysBody: 'The two phones do not share the same key: pair them again.',
+    batteryRestricted: 'Battery restrictions are back',
+    batteryRestrictedBody: 'The system has put restrictions on Duetto again: with the screen off you may become unreachable. Allow unrestricted use to stay reachable.',
+    batteryRestrictedAction: 'Allow',
   },
 
   news: {

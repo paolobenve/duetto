@@ -46,6 +46,12 @@ class BootReceiver : BroadcastReceiver() {
             .putLong(LAST_AUTO_START, System.currentTimeMillis())
             .apply()
 
+        // "Leave and become unavailable" now survives the reboot: it
+        // used to be forgotten with the interface's memory, and the
+        // phone made itself reachable again against an explicit choice.
+        if (!WatchdogAlarm.available(context)) return
+        WatchdogAlarm.schedule(context)
+
         if (!PresenceService.canStart()) return
         try {
             ContextCompat.startForegroundService(

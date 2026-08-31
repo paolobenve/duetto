@@ -8,6 +8,52 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 0.9.146
+
+**In attesa si consuma molto meno.** Il blocco che teneva sveglio il processore, finora tenuto
+sempre, ora si tiene solo dentro al canale: aspettando, il telefono dorme davvero. A vegliare
+restano gli annunci della rete, i rari pacchetti del server — che svegliano il telefono da soli —
+e una sveglia di sistema che ogni dieci minuti guarda che la presenza ci sia ancora. La sveglia è
+anche la rete di sicurezza che mancava: se il telefono uccide il servizio d'ascolto, entro dieci
+minuti viene rimesso in piedi, cosa che prima non faceva nessuno.
+
+**L'ascolto senza interfaccia ha le stesse orecchie dell'app.** Dopo un riavvio, o quando il
+sistema smonta l'app, la connessione era sorvegliata solo dai timer di JavaScript — che a schermo
+spento non suonano. Ora il battito nativo e gli annunci della rete vegliano anche lì: un socket
+morto in silenzio viene rifatto in secondi, non scoperto dopo minuti.
+
+**Una chiamata che muore in tasca si ripara in tasca.** Ogni riparazione del collegamento diretto
+dipendeva da timer che a schermo spento stanno fermi: la cura partiva nell'istante in cui si
+riaccendeva lo schermo. Ora la dà anche il battito, che nel canale suona pure a schermo spento, e
+mentre il collegamento sta male accelera: la riparazione arriva in una quindicina di secondi.
+
+**Chi cade e torna subito non «esce» più.** Un cambio di rete faceva lampeggiare «si è
+disconnesso» sull'altro telefono, per poi smentirlo un attimo dopo. Ora il server aspetta qualche
+secondo prima di annunciare una caduta: se sei già tornato, nessuno si accorge di niente. E una
+bussata arrivata proprio in quel buco non sparisce più: ti aspetta sulla soglia e ti viene
+consegnata al rientro.
+
+**I fatti non si perdono più nei buchi.** Il diario, il «non me ne sono andato», il suono per
+richiamarti: se partivano mentre il server era irraggiungibile o l'altro stava riagganciando,
+sparivano in silenzio. Ora aspettano in tasca e vengono consegnati appena c'è di nuovo qualcuno
+ad ascoltare.
+
+**«Esci e diventa irraggiungibile» sopravvive al riavvio.** La scelta viveva solo nella memoria
+dell'app: riavviando il telefono tornavi raggiungibile senza volerlo. Ora resta scritta dove il
+riavvio non la cancella.
+
+**Negare il microfono non ti rende più invisibile.** Rifiutando il permesso, l'app rinunciava
+anche ad ascoltare: restavi irraggiungibile senza saperlo. Per ascoltare il microfono non serve —
+serve solo per entrare nel canale — e ora l'ascolto resta.
+
+**Se le restrizioni batteria tornano, te lo dice.** Il permesso chiesto alla prima installazione
+può essere revocato in silenzio dal sistema o da un «ottimizzatore»: era il modo classico di
+diventare irraggiungibili senza saperlo. Ora l'app se ne accorge quando la riapri e te lo dice.
+
+**Niente più server di Google.** Per anni un indirizzo STUN pubblico di Google faceva da ripiego
+nei telefoni: l'unica dipendenza esterna di un progetto che si regge da solo. Non serviva: il tuo
+relay risponde già anche a quello, e ora i telefoni usano solo indirizzi tuoi.
+
 ## 1.1.122
 
 **Un telefono in tasca non preme più niente.** Finché qualcosa copre lo schermo - una tasca, una

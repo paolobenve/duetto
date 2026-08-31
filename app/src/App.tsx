@@ -16,10 +16,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
 import {
-  Foreground, Pip, AppWindow, Visibility, Codecs, Audio, Alerts, Journal, Volume, Network,
+  Foreground, Pip, AppWindow, Visibility, Codecs, Audio, Alerts, Journal, Volume,
   Heartbeat,
   Alarm,
 } from 'duetto-platform';
+import { attachWatchdog, Watchdog } from './watchdog';
 import {
   DuoConfig, PairInfo, loadConfig, saveConfig,
   isServerConfigured, isPaired, VIDEO_PROFILES,
@@ -41,7 +42,7 @@ import ChannelScreen from './ChannelScreen';
 import { loadPipPosition } from './VideoStage';
 import { useAudioRoute } from './audioRoute';
 import {
-  stopListening, presenceLine, deathStory, interfaceInCharge, isRealName,
+  startListening, stopListening, presenceLine, deathStory, interfaceInCharge, isRealName,
 } from './presence';
 import { avatarFor, peerAvatar } from './avatar';
 
@@ -184,12 +185,6 @@ const GAIN_MAX = 4;
 const NOTICE_RETRY_MS = 5_000;
 
 /**
- * How long to wait, after a change of network, before rebuilding the
- * connection: the events arrive in a volley and one is enough.
- */
-const NETWORK_SETTLE_MS = 700;
-
-/**
  * How long we keep quiet before saying the server is gone.
  *
  * Five seconds: a change of cell sorts itself out in one or two and
@@ -197,12 +192,6 @@ const NETWORK_SETTLE_MS = 700;
  * seen anyway.
  */
 const SERVER_GRACE_MS = 5_000;
-
-/**
- * How long the server's answer is waited for before the link is given
- * up for dead, after the network has changed under our feet.
- */
-const PROBE_WAIT_MS = 3_000;
 
 /** Within this, an announced volume change is the echo of our own. */
 const VOLUME_ECHO_MS = 2_000;
@@ -473,8 +462,19 @@ export default function App() {
   const cameraGranted = useRef(false);
   const inChannelRef = useRef(false);
   const appStateRef = useRef(AppState.currentState);
+  /** The battery warning is given once per opening, not at every glance. */
+  const batteryWarned = useRef(false);
   /** enterChannel is needed inside an effect that is born before it */
   const enterChannelRef = useRef<(() => void) | null>(null);
+  /** attachPeer too: the watchdog's beat is born before it */
+  const attachPeerRef = useRef<((force?: boolean) => void) | null>(null);
+  /**
+   * When the last repair of the link was set off, whoever set it off.
+   *
+   * The heartbeat's medicine and the ladder's must not demolish on each
+   * other's toes: a repair younger than a beat is left to work.
+   */
+  const recoveryBegunAt = useRef(0);
   /** the relay announced by the server, valid while the connection lasts */
   const serverTurnRef = useRef<any[]>([]);
   /** the wait before the light repair of a fallen link */
@@ -1049,16 +1049,13 @@ export default function App() {
   }, [status, available]);
 
   /**
-   * The last question sent to the server and the last answer received.
+   * The connection's watchdog, shared with the headless presence.
    *
-   * They are for the heartbeat: two numbers instead of a stopwatch,
-   * because a stopwatch cannot be used here - with the screen off it
-   * never runs out. Comparing them at every beat tells us whether the
-   * previous one went unanswered, and an unanswered question is a dead
-   * socket.
+   * The listening and the judging live in watchdog.ts: here we only
+   * hold the handle, to tell it when the server has answered and to
+   * stop it when the interface steps aside.
    */
-  const probeSent = useRef(0);
-  const answerSeen = useRef(0);
+  const watchdog = useRef<Watchdog | null>(null);
 
   /**
    * "Their app was closed on them" holds while they stay waiting.
@@ -1079,134 +1076,53 @@ export default function App() {
    */
   const ourOwnSet = useRef<{ v: number; t: number } | null>(null);
 
-  /** Beats in a row that came to nothing: at the second we call the network into question. */
-  const emptyBeats = useRef(0);
-
-  /** The probe under way after a change of network, if there is one. */
-  const networkProbe = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const stopNetworkProbe = useCallback(() => {
-    if (!networkProbe.current) return;
-    clearTimeout(networkProbe.current);
-    networkProbe.current = null;
-  }, []);
-
   /**
-   * The network has changed: we check that the link is still alive.
-   *
-   * No TCP connection survives a change of address, and changing cell
-   * always changes the address: the socket to the server is dead even
-   * though it looks open, and the news of its death can arrive minutes
-   * later. The first to know is Android, which has just made the
-   * change - but "the network has changed" does not mean "the
-   * connection is dead", and tearing it down on suspicion costs the
-   * other person a disappearance. So we ask the server, and rebuild
-   * only if it does not answer.
-   *
-   * A moment to settle before rebuilding: at a change of network the
-   * events arrive in a volley - arrived, address, validated - and
-   * rebuilding three times is of no use.
+   * The watchdog watches over the connection: the network's changes and
+   * the native heartbeat, the only alarm clock that rings with the
+   * screen off. The whole story is in watchdog.ts - the same ears also
+   * serve the headless presence, which for years ran deaf without them.
    */
   useEffect(() => {
     if (!available) return;
-    let due: ReturnType<typeof setTimeout> | null = null;
-    const stop = Network.subscribe((what) => {
-      if (what === 'lost') return;
-      if (due) clearTimeout(due);
-      due = setTimeout(() => {
-        due = null;
-        Journal.mark(`network:${what}`).catch(() => { /* noop */ });
-        const sig = signalingRef.current;
-        if (!sig) return;
-        // Already without a server: there is nothing to save, we simply
-        // rebuild.
-        if (!sig.connected) {
-          noServerSince.current = noServerSince.current || Date.now();
-          sig.rebuild();
-          return;
-        }
-        /**
-         * It looks alive: first we ask whether it really is.
-         *
-         * Bringing a healthy connection down is not free - the other
-         * person sees you disappear and come back - and the first
-         * version of this piece did it at every sigh of the network:
-         * the two phones vanished on each other every few seconds. The
-         * server answers the question about presence, and that answer
-         * is the proof that the socket is alive: if it does not come
-         * within a few seconds, then it really was dead.
-         */
-        stopNetworkProbe();
-        sig.askPresence();
-        networkProbe.current = setTimeout(() => {
-          networkProbe.current = null;
-          Journal.mark('network:silent').catch(() => { /* noop */ });
-          noServerSince.current = noServerSince.current || Date.now();
-          signalingRef.current?.rebuild();
-        }, PROBE_WAIT_MS);
-      }, NETWORK_SETTLE_MS);
-    });
-    return () => {
-      if (due) clearTimeout(due);
-      stopNetworkProbe();
-      stop();
-    };
-  }, [available, stopNetworkProbe]);
-
-  /**
-   * The native heartbeat: the only alarm clock that rings with the
-   * screen off.
-   *
-   * At every beat the connection is looked at. If the socket has
-   * already been declared dead it is simply remade. If it looks alive
-   * it is asked a question, and the answer is checked at the beat
-   * AFTER: a timer here would be of no use, because JavaScript's timers
-   * do not go off with the screen off - and that is exactly the hole
-   * this heartbeat comes to plug.
-   *
-   * It costs a message of a few dozen bytes a minute, and in exchange
-   * it keeps the road open through the routers in between, which close
-   * connections that sit still.
-   */
-  useEffect(() => {
-    if (!available) return;
-    probeSent.current = 0;
-    answerSeen.current = Date.now();
-    return Heartbeat.subscribe(() => {
-      const sig = signalingRef.current;
-      if (!sig) return;
-      const rebuild = (why: string) => {
-        Journal.mark(`heartbeat:${why}`).catch(() => { /* noop */ });
+    const w = attachWatchdog(() => signalingRef.current, {
+      onNoServer: () => {
         noServerSince.current = noServerSince.current || Date.now();
-        probeSent.current = 0;
-        emptyBeats.current += 1;
-        /**
-         * Two beats to nothing: we tell Android to look at the network.
-         *
-         * This is the case of somebody leaving the house: the wifi,
-         * which works perfectly well, goes weak and stops carrying
-         * data, but the phone stays attached to it - with the screen
-         * off, for a good half minute. We know before the system does,
-         * because our attempts fail one after another: we say so, the
-         * check is its own, and if that network does not reach the
-         * internet it moves the traffic by itself.
-         */
-        if (emptyBeats.current === 2) {
-          Journal.mark('network:not-carrying').catch(() => { /* noop */ });
-          Network.reportNotCarrying().catch(() => { /* noop */ });
-        }
-        sig.rebuild();
-      };
-      if (!sig.connected) { rebuild('no-socket'); return; }
-      // The previous question went unanswered: the socket looks alive
-      // but carries nothing any more.
-      if (probeSent.current && answerSeen.current < probeSent.current) {
-        rebuild('silent');
-        return;
-      }
-      emptyBeats.current = 0;
-      probeSent.current = Date.now();
-      sig.askPresence();
+      },
+      /**
+       * The beat also looks at the link between the two, not only at
+       * the socket to the server.
+       *
+       * Every repair of a fallen link used to hang from JavaScript
+       * timers, which stand still with the screen off: a call that
+       * died in a pocket, with the socket in perfect health, was
+       * repaired at the exact instant the screen came back on. The
+       * beat ticks with the screen off (in the channel the service
+       * holds the CPU), so the same medicine as the safety net below
+       * is given from here: the asking side asks, the offering side
+       * rebuilds. And the beat quickens while the link is sick, so the
+       * repair comes within seconds, not within the minute.
+       */
+      onBeat: () => {
+        if (!inChannelRef.current || !peerActiveRef.current) return;
+        const sess = sessionRef.current;
+        if (!sess) return;
+        const sick = !sess.isPeerHealthy();
+        Heartbeat.fast(sick).catch(() => { /* noop */ });
+        if (!sick) return;
+        // Not on the ladder's toes: a repair set off moments ago -
+        // screen on, timers running - is left to work.
+        if (Date.now() - recoveryBegunAt.current < 15_000) return;
+        recoveryBegunAt.current = Date.now();
+        Journal.mark('heartbeat:peer-sick').catch(() => { /* noop */ });
+        if (politeRef.current) signalingRef.current?.sendSignal({ kind: 'renegotiate' });
+        else attachPeerRef.current?.(true);
+      },
     });
+    watchdog.current = w;
+    return () => {
+      watchdog.current = null;
+      w.stop();
+    };
   }, [available]);
 
   /**
@@ -1548,8 +1464,35 @@ export default function App() {
       Foreground.clearNotification().catch(() => {});
       // Opening the app again is already saying "I am here": if you had
       // detached, the presence comes back by itself. Whoever wants to
-      // stay invisible does not open it.
+      // stay invisible does not open it. Said to the native side too,
+      // where the choice survives a reboot.
       setAvailable(true);
+      Foreground.setAvailable(true).catch(() => {});
+      /**
+       * The battery exemption is looked at again, every time.
+       *
+       * It was asked for once, during setup - but the system, or one of
+       * the makers' "optimizers", can quietly take it back, and its
+       * loss is the classic way of becoming unreachable without
+       * knowing. The check costs one cheap read; the warning is given
+       * once per opening of the app, not at every glance.
+       */
+      Foreground.isBatteryUnrestricted().then((ok: boolean) => {
+        if (ok || batteryWarned.current || !signalingRef.current) return;
+        batteryWarned.current = true;
+        Journal.mark('battery:restricted').catch(() => {});
+        Alert.alert(
+          t('errors.batteryRestricted'),
+          t('errors.batteryRestrictedBody'),
+          [
+            { text: t('settings.cancel'), style: 'cancel' },
+            {
+              text: t('errors.batteryRestrictedAction'),
+              onPress: () => { Foreground.requestBatteryUnrestricted().catch(() => {}); },
+            },
+          ],
+        );
+      }).catch(() => {});
       // Coming back to the foreground there is no sense waiting for the
       // next scheduled attempt: we try again now.
       signalingRef.current?.reconnectNow();
@@ -1688,11 +1631,19 @@ export default function App() {
       if (!perms.mic) {
         Alert.alert(t('errors.permissionDenied'), t('errors.noMicrophone'));
         setScreen('settings');
+        // Listening needs no microphone - only entering the channel
+        // does. The headless connection was closed above to make room
+        // for ours; without this, refusing the permission silently cost
+        // the phone its reachability as well.
+        startListening().catch(() => {});
         return;
       }
       if (cancelled) return;
 
       Foreground.start(noticeTextRef.current, false).catch(() => {});
+      // There is a pair and a connection to watch over: the watchdog
+      // alarm's net goes up (it may have been lowered while unpaired).
+      Foreground.watchdogWanted(true).catch(() => {});
 
       const sig = new Signaling(
         {
@@ -1736,13 +1687,12 @@ export default function App() {
               const howLong = Math.round((Date.now() - noServerSince.current) / 1000);
               noServerSince.current = 0;
               serverBackAt.current = Date.now();
-              emptyBeats.current = 0;
               Journal.mark(`server:ok:after ${howLong}s`).catch(() => {});
             }
           },
 
           onJoined: ({
-            peerPresent: present, peerActive, peerName: n, turn, owner, opens,
+            peerPresent: present, peerActive, peerName: n, turn, stun, owner, opens,
           }) => {
             setCanInvite(owner);
             setCanAddPair(opens);
@@ -1753,8 +1703,10 @@ export default function App() {
               sayHello();
             }
             // The relay is configured by the server: nothing is typed
-            // on the phones.
-            serverTurnRef.current = turn ? [turn] : [];
+            // on the phones. The same goes for a STUN of the house, if
+            // the operator names one - it comes before the hardcoded
+            // public fallback.
+            serverTurnRef.current = [stun, turn].filter(Boolean) as any[];
             sessionRef.current?.setServerIceServers(serverTurnRef.current);
             // If we had been left without a server, any offer that went
             // out meanwhile was lost: we start from scratch.
@@ -1828,8 +1780,7 @@ export default function App() {
             // The server has answered: whatever doubt we had about the
             // socket, it is alive. It goes for the probe after a change
             // of network and for the heartbeat's own.
-            stopNetworkProbe();
-            answerSeen.current = Date.now();
+            watchdog.current?.noteAnswer();
             setPeerPresent(present);
             if (present) {
               setPeerDetached(false);
@@ -2100,6 +2051,10 @@ export default function App() {
       if (stopService.current) {
         stopService.current = false;
         Foreground.stop().catch(() => {});
+      } else if (inChannelRef.current) {
+        // Torn down while still in the channel (a change of pair): the
+        // service stays for the next connection, the wake lock does not.
+        Foreground.setInChannel(false).catch(() => {});
       }
       try { InCallManager.stop(); } catch { /* noop */ }
       Audio.useCallVolumeKeys(false).catch(() => {});
@@ -2214,6 +2169,7 @@ export default function App() {
     else s.restartIce();
 
     clearRecovery();
+    recoveryBegunAt.current = Date.now();
     hardTimer.current = setTimeout(() => {
       if (connStateRef.current === 'connected') return;
       if (!inChannelRef.current || !peerActiveRef.current) return;
@@ -2254,6 +2210,7 @@ export default function App() {
           // wait, we try the light repair, and only if that is not
           // enough do we rebuild.
           clearRecovery();
+          recoveryBegunAt.current = Date.now();
           softTimer.current = setTimeout(async () => {
             if (connStateRef.current === 'connected') return;
             if (signalingWasDown.current) return;
@@ -2328,6 +2285,9 @@ export default function App() {
     try {
       InCallManager.start({ media: 'audio' });
     } catch { /* noop */ }
+    // From here on the CPU must not doze: the service holds the wake
+    // lock only while one is really in the channel.
+    Foreground.setInChannel(true).catch(() => { /* noop */ });
     // On switching the audio back on, InCallManager takes the output
     // back to the default one: this pair's choice has to be put back
     // now, not before.
@@ -2377,6 +2337,7 @@ export default function App() {
   }, [cfg, attachPeer, stopWaiting]);
 
   useEffect(() => { enterChannelRef.current = enterChannel; }, [enterChannel]);
+  useEffect(() => { attachPeerRef.current = attachPeer; }, [attachPeer]);
 
   /**
    * Switching the camera back on after an immediate return.
@@ -2556,6 +2517,8 @@ export default function App() {
     try { InCallManager.stop(); } catch { /* noop */ }
     Audio.useCallVolumeKeys(false).catch(() => {});
     Foreground.setCameraActive(false).catch(() => {});
+    // Waiting again: the wake lock goes, the watchdog alarm remains.
+    Foreground.setInChannel(false).catch(() => {});
     setLocalStream(null);
     setRemoteStream(null);
     setRemoteHasVideo(false);
@@ -2572,8 +2535,12 @@ export default function App() {
     if (!stayAvailable) {
       sayGoodbye.current = true;
       // Here the presence really does end: nobody is left to reach.
+      // The native side is told as well: the choice used to live in the
+      // interface's memory alone, and a reboot made the phone reachable
+      // again against an explicit request.
       stopService.current = true;
       setAvailable(false);
+      Foreground.setAvailable(false).catch(() => {});
     }
 
     // Leaving the channel is leaving the app: the window disappears.
@@ -2602,6 +2569,9 @@ export default function App() {
       if (!inChannelRef.current || !peerActiveRef.current) return;
       if (sess.isPeerHealthy()) return;
 
+      // Noted for the heartbeat's sake: its medicine and this one are
+      // the same, and they must not demolish on each other's toes.
+      recoveryBegunAt.current = Date.now();
       if (politeRef.current) sig.sendSignal({ kind: 'renegotiate' });
       else attachPeer(true);
     }, 5000);

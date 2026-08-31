@@ -92,9 +92,42 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
      * apart, otherwise the task without an interface would be born inside
      * the one that is dying.
      */
+    /**
+     * To be called on entering and leaving the channel: the service
+     * holds the CPU awake only while a conversation is actually running.
+     * Waiting costs nothing - see the note on `inChannel` in the service.
+     */
+    @ReactMethod
+    fun setInChannel(active: Boolean, promise: Promise) {
+        sendToService(promise) {
+            putExtra(ChannelForegroundService.EXTRA_IN_CHANNEL, active)
+        }
+    }
+
+    /**
+     * "Leave and become unavailable", written where a reboot cannot
+     * erase it: the boot receiver, the watchdog alarm and the handovers
+     * all read it before putting presence back on its feet.
+     */
+    @ReactMethod
+    fun setAvailable(v: Boolean, promise: Promise) {
+        WatchdogAlarm.setAvailable(ctx, v)
+        promise.resolve(true)
+    }
+
+    /**
+     * Whether there is anything for the watchdog alarm to watch over:
+     * false while no pair is set up, true again the moment one is.
+     */
+    @ReactMethod
+    fun watchdogWanted(v: Boolean, promise: Promise) {
+        WatchdogAlarm.setWanted(ctx, v)
+        promise.resolve(true)
+    }
+
     @ReactMethod
     fun resumePresence(promise: Promise) {
-        if (!PresenceService.canStart()) {
+        if (!PresenceService.canStart() || !WatchdogAlarm.available(ctx)) {
             promise.resolve(false)
             return
         }

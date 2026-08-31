@@ -54,6 +54,20 @@ class ChannelForegroundService : Service() {
     private var cameraActive: Boolean = false
 
     /**
+     * Whether the user is actually in the channel, not merely waiting.
+     *
+     * The wake lock follows this and nothing else. In conversation the
+     * CPU must not doze - WebRTC is a stream of timers and packets - and
+     * the cost is the cost of the call. Waiting is another life: the
+     * socket sits still, the server's rare pings arrive by themselves
+     * (an incoming packet wakes the CPU on its own), and holding the
+     * lock all night bought nothing but a warm battery. What used to
+     * need it - noticing a silent death with the screen off - is the
+     * watchdog alarm's job now.
+     */
+    private var inChannel: Boolean = false
+
+    /**
      * The consumption journal is written from here.
      *
      * It is the service that is alive for the whole time worth measuring
@@ -88,6 +102,7 @@ class ChannelForegroundService : Service() {
         const val EXTRA_TEXT = "text"
         const val EXTRA_NAME = "name"
         const val EXTRA_CAMERA = "camera"
+        const val EXTRA_IN_CHANNEL = "inChannel"
 
         // A safety net: if something goes wrong and we do not stop the
         // service, the wake lock does not hang around for ever.
@@ -165,7 +180,7 @@ class ChannelForegroundService : Service() {
             // The system put us back on our feet: we are in the
             // background, and the microphone cannot be asked for here.
             goForeground(mayUseMicrophone = false)
-            if (PresenceService.canStart()) {
+            if (PresenceService.canStart() && WatchdogAlarm.available(this)) {
                 try {
                     androidx.core.content.ContextCompat.startForegroundService(
                         this,
@@ -192,8 +207,13 @@ class ChannelForegroundService : Service() {
         if (intent.hasExtra(EXTRA_CAMERA)) {
             cameraActive = intent.getBooleanExtra(EXTRA_CAMERA, false)
         }
+        if (intent.hasExtra(EXTRA_IN_CHANNEL)) {
+            inChannel = intent.getBooleanExtra(EXTRA_IN_CHANNEL, false)
+        }
         goForeground()
-        acquireWakeLock()
+        if (inChannel) acquireWakeLock() else releaseWakeLock()
+        // The net under the waiting: see WatchdogAlarm.
+        WatchdogAlarm.schedule(this)
 
         // onStartCommand arrives at every change of the notification's
         // text: without this guard a sampler would pile up for every call,
@@ -256,7 +276,7 @@ class ChannelForegroundService : Service() {
         // With a little delay: the old context has to finish taking itself
         // apart first, otherwise the task without an interface would be
         // born inside the one that is dying.
-        if (PresenceService.canStart()) {
+        if (PresenceService.canStart() && WatchdogAlarm.available(this)) {
             clock.postDelayed({
                 try {
                     androidx.core.content.ContextCompat.startForegroundService(

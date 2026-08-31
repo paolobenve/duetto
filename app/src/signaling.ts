@@ -143,6 +143,8 @@ export type SignalingEvents = {
     peerName: string;
     /** the fallback relay, configured on the server */
     turn: IceServer | null;
+    /** a STUN of the house, if the operator names one */
+    stun: IceServer | null;
     /** whether this phone may invite: it is one of the owner's */
     owner: boolean;
     /** whether it may open connections of its own on this server */
@@ -333,6 +335,19 @@ export class Signaling {
   }
 
   private open() {
+    // The pause is honoured here, at the one gate every road passes
+    // through: rebuild(), reconnectNow() and the heartbeat's repairs
+    // all end in open(), and each of them used to walk straight past
+    // it - so the brake the pause was written for got hammered anyway,
+    // by the very machinery meant to be patient.
+    if (Date.now() < this.pausedUntil) {
+      log('paused by the brake, not dialing yet');
+      this.scheduleReconnect();
+      return;
+    }
+    // Whoever was across the table belonged to the old socket: the
+    // fresh `joined` will say whether they are still there.
+    this.peerThere = false;
     this.events.onStatus?.('connecting');
     let ws: WebSocket;
     try {
@@ -486,6 +501,10 @@ export class Signaling {
         break;
 
       case 'joined':
+        this.peerThere = !!msg.peerPresent;
+        // The held facts go first, so they land in the order they were
+        // born, before anything the handlers below decide to say.
+        if (this.peerThere) this.flushOutbox();
         this.events.onStatus?.(msg.peerActive ? 'together' : 'alone');
         this.events.onJoined?.({
           polite: !!msg.polite,
@@ -497,10 +516,13 @@ export class Signaling {
           peerActive: !!msg.peerActive,
           peerName: msg.peerName || '',
           turn: msg.turn ?? null,
+          stun: msg.stun ?? null,
         });
         break;
 
       case 'peer-joined':
+        this.peerThere = true;
+        this.flushOutbox();
         if (msg.mode === 'active') this.events.onStatus?.('together');
         this.events.onPeerJoined?.(
           msg.name || 'Someone', msg.mode === 'active' ? 'active' : 'listening',
@@ -508,6 +530,7 @@ export class Signaling {
         break;
 
       case 'peer-left':
+        this.peerThere = false;
         this.events.onStatus?.('alone');
         // "bye" = they left; "dropped" = their connection went, and
         // they will most likely be back. Older servers do not say
@@ -517,6 +540,8 @@ export class Signaling {
         break;
 
       case 'presence':
+        this.peerThere = !!msg.peerPresent;
+        if (this.peerThere) this.flushOutbox();
         this.events.onPresence?.({
           peerPresent: !!msg.peerPresent,
           peerActive: !!msg.peerActive,
@@ -566,10 +591,69 @@ export class Signaling {
     }
   }
 
+  /**
+   * The pocket of facts waiting for somebody to hear them.
+   *
+   * A message sent while the server is out of reach, or while the
+   * other side is between two connections, used to vanish in silence -
+   * and among them were exactly the lines that explain a death, the
+   * "I did not leave", the sound meant to call somebody back. Those are
+   * FACTS: true whenever they arrive, worth carrying across the hole.
+   *
+   * Negotiation is the opposite and is deliberately NOT kept: an offer
+   * or a candidate replayed into a fresh negotiation is how glare bugs
+   * are born. That side regenerates itself - the rejoining restarts it
+   * from scratch, and the safety nets re-ask - so replaying it could
+   * only do harm.
+   *
+   * A handful at most, each with a shelf life: a pocket, not a mailbox.
+   */
+  private outbox: { kind: string; sealed: unknown; born: number; keep: number }[] = [];
+
+  /** How long each fact stays worth delivering. Absent = not kept. */
+  private static readonly KEEPABLE: Record<string, number> = {
+    // The story of a death and the journal make sense even much later.
+    journal: 10 * 60_000, death: 10 * 60_000, tornDown: 10 * 60_000,
+    // A call-back sound or a settings change grow stale in a minute.
+    alarm: 60_000, quality: 60_000, audio: 60_000,
+  };
+
+  /**
+   * Whether the other side is there to hear a signal: the server
+   * forwards to whoever is in the room and lets the rest fall, so a
+   * signal with nobody across the table is as lost as one with no
+   * socket.
+   */
+  private peerThere = false;
+
+  private flushOutbox() {
+    if (this.outbox.length === 0) return;
+    const now = Date.now();
+    const worth = this.outbox.filter((m) => now - m.born <= m.keep);
+    this.outbox = [];
+    for (const m of worth) {
+      log('outbox: delivering a held', m.kind);
+      this.rawSend({ type: 'signal', payload: m.sealed });
+    }
+  }
+
   /** A WebRTC or state message, encrypted. */
   sendSignal(msg: SignalMessage) {
     if (!this.crypto) return;
-    this.rawSend({ type: 'signal', payload: this.crypto.seal(msg) });
+    const sealed = this.crypto.seal(msg);
+    if (this.peerThere && this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.rawSend({ type: 'signal', payload: sealed });
+      return;
+    }
+    const keep = Signaling.KEEPABLE[msg.kind];
+    if (!keep) {
+      log('dropped (nobody to hear it):', msg.kind);
+      return;
+    }
+    log('outbox: holding a', msg.kind);
+    this.outbox.push({ kind: msg.kind, sealed, born: Date.now(), keep });
+    // A pocket, not a mailbox: the oldest falls out first.
+    if (this.outbox.length > 8) this.outbox.shift();
   }
 
   /** A pairing message, in the clear (public keys). */
@@ -659,7 +743,11 @@ export class Signaling {
   private scheduleReconnect() {
     if (this.closedByUser || this.reconnectTimer) return;
     const held = this.pausedUntil - Date.now();
-    const delay = held > 0 ? held : this.backoff;
+    // A pinch of chance on top of the backoff: two phones behind the
+    // same address that lost the server together would otherwise knock
+    // again in step, forever, and trip its brake together too.
+    const jitter = Math.floor(Math.random() * (this.backoff / 2));
+    const delay = held > 0 ? held : this.backoff + jitter;
     if (held <= 0) this.backoff = Math.min(this.backoff * 2, RECONNECT_MAX_MS);
     log('trying again in', delay, 'ms');
     this.reconnectTimer = setTimeout(() => {

@@ -128,8 +128,8 @@ acceptable.
 
 Now it is 6,000 rounds, a fraction of a second, and the defence against whoever tries
 codes wholesale sits where it costs the attacker and not the user: the **server limits the
-joins** (30 a minute per address) and the **app imposes 20 seconds** before trying again
-after a failure.
+joins** (120 a minute per address, recognised phones exempt) and the **app imposes 20
+seconds** before trying again after a failure.
 
 The limit that follows is stated openly: a hostile server, which sees `pairId`, could work
 its way back to an 8-digit code and get in the middle *during* the pairing. Afterwards the
@@ -363,15 +363,23 @@ The delicate moment is **the pairing alone**. Afterwards the key is 256 bits and
   find it.
 - **Aggressive OEMs**: Xiaomi, Huawei and Samsung close background services in spite of
   Android's rules. The app has to be excluded from battery optimisation; there is no way
-  of getting that from code.
-- **Consumption**: the wake lock and the always-open connection cost battery. It is the
-  price of continuous presence, and it is paid above all while waiting. Two things have
-  already been got out of the way: the server's tap, which was every 30 seconds even at
-  night — 120 wake-ups of the radio an hour to do nothing — and is now rare as long as one
-  is merely listening; and the microphone, which is opened when the other person arrives
-  and not on entering the channel. What is left is the continuous wake lock: releasing it
-  while waiting is possible, but it needs a native alarm as a fallback, because with the
-  CPU suspended the JavaScript timers stop and nobody would rebuild the dropped socket.
+  of getting that from code. And there is a kill no app survives: the force-stop kind
+  (`[KILL UID]` in the exit records — seen in the field on a Motorola, minutes after
+  unplugging, with the battery exemption granted). It wipes the app's alarms and blocks
+  its receivers until a human opens the app again, so even the watchdog alarm is silenced;
+  the journal tells this case apart by the absence of `watchdog-*` lines after the death.
+  The remedy is the maker's own switch (Adaptive Battery and its kin), off.
+- **Consumption**: the always-open connection costs battery; it is the price of
+  continuous presence. Three things have been got out of the way: the server's tap,
+  which was every 30 seconds even at night — 120 wake-ups of the radio an hour to do
+  nothing — and is now rare as long as one is merely listening; the microphone, which is
+  opened when the other person arrives and not on entering the channel; and the wake
+  lock, which used to be held the whole time and is now held only in the channel.
+  Waiting runs with the CPU free to doze: the network's announcements and the server's
+  own packets wake it when something happens, and a native alarm (`WatchdogAlarm`) looks
+  at presence every ten minutes as the net under everything — it is the fallback that
+  releasing the lock was waiting for, and it also brings presence back when the phone's
+  maker kills the service outright.
 - **A visual security code**: a SAS derived from the key could be shown, to be compared
   aloud, for whoever wanted one more confirmation after the pairing.
 - **A text chat**: an `RTCDataChannel` on the existing connection would already be

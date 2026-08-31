@@ -8,7 +8,7 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-import { existsSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, renameSync, statSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import path from 'node:path';
 
@@ -52,15 +52,36 @@ export function fileName() {
  * hundred bytes, and this way taking a phone away takes effect at once
  * instead of at the next restart - which is the moment one wants it to.
  */
+/**
+ * The last reading, kept as long as the file has not moved.
+ *
+ * "Read at every knock" stays true in spirit - editing the file still
+ * takes effect at once, because the file's own clock betrays the change
+ * - but the price drops from three synchronous disk reads per join to
+ * one cheap stat. It matters exactly once: after a restart, when every
+ * phone knocks in the same second, and each of those reads used to
+ * stall every other pair's messages.
+ *
+ * (Reads and writes here are all synchronous in a single process, so
+ * there is no torn state to guard against: no locking is needed, only
+ * this small memory.)
+ */
+let cached = null;
+let cachedStamp = 0;
+
 export function read() {
   try {
-    if (!existsSync(FILE)) return { ...EMPTY };
+    if (!existsSync(FILE)) { cached = null; return { ...EMPTY }; }
+    const stamp = statSync(FILE).mtimeMs;
+    if (cached && stamp === cachedStamp) return cached;
     const parsed = JSON.parse(readFileSync(FILE, 'utf8'));
-    return {
+    cachedStamp = stamp;
+    cached = {
       devices: Array.isArray(parsed.devices) ? parsed.devices : [],
       invitations: Array.isArray(parsed.invitations) ? parsed.invitations : [],
       rooms: Array.isArray(parsed.rooms) ? parsed.rooms : [],
     };
+    return cached;
   } catch {
     // A broken file must not lock everybody out in silence: it is said
     // out loud, and the door falls back on what the .env says.
@@ -89,10 +110,15 @@ export function write(data) {
   try {
     writeFileSync(temporary, `${JSON.stringify(data, null, 2)}\n`, { mode: 0o640 });
     renameSync(temporary, FILE);
+    // The memory in read() must not outlive what it remembers.
+    cached = null;
     return true;
   } catch (e) {
     console.warn(`[duetto] cannot write ${FILE}: ${e.message}`);
     console.warn('[duetto] the list is not being kept: see ReadWritePaths in the unit');
+    // Here too: a change that could not be written must not live on in
+    // the memory as though it had been.
+    cached = null;
     return false;
   }
 }

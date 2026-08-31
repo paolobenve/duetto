@@ -4,10 +4,20 @@
 #   sudo systemctl enable --now duetto-signaling
 #
 # Adjust User, WorkingDirectory and the path to node.
+#
+# BEWARE when copying this over an existing installation: the User
+# below is an example, and the real one is whoever owns (or shares the
+# group of) the working directory. Overwriting a tuned unit with this
+# file, User included, is a mistake that has already been made once:
+# the service died at CHDIR, as a stranger at the door.
 
 [Unit]
 Description=Duetto signaling server (WebSocket)
 After=network.target
+# Never give up: a crash-loop is slowed down by the backoff below, not
+# stopped - a server that stays down until a human notices is worse.
+# (In [Unit] and not [Service]: older systemd only knows it here.)
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple
@@ -15,8 +25,16 @@ User=www-data
 WorkingDirectory=/opt/duetto/server
 EnvironmentFile=/opt/duetto/server/.env
 ExecStart=/usr/bin/node src/index.js
-Restart=on-failure
+# `always` and not `on-failure`: the server deliberately exits on any
+# uncaught error, and even a clean-but-wrong exit must not leave the
+# phones without their meeting point. A crash-loop slows down to one
+# try a minute - or stays at one every 3 s on systemd older than 254,
+# which ignores the two backoff lines. Both are better than a server
+# that stays down until a human notices.
+Restart=always
 RestartSec=3
+RestartSteps=5
+RestartMaxDelaySec=60
 # Basic hardening
 NoNewPrivileges=true
 PrivateTmp=true
