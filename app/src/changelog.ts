@@ -16,6 +16,15 @@ export type ReleaseNote = {
 
 export const CHANGELOG: ReleaseNote[] = [
   {
+    "version": "0.9.2 build 174",
+    "paragraphs": [
+      {
+        "strong": "Il ritardo perde la tilde.",
+        "text": "Le righe tecniche dicono «ritardo 250ms» invece di «~250ms»: più pulito da leggere. Che il numero sia una stima, non una misura esatta, ora lo dice la nota nelle impostazioni della diagnostica."
+      }
+    ]
+  },
+  {
     "version": "0.9.2 build 173",
     "paragraphs": [
       {

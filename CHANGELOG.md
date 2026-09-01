@@ -8,6 +8,12 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 0.9.2 build 174
+
+**Il ritardo perde la tilde.** Le righe tecniche dicono «ritardo 250ms» invece di
+«~250ms»: più pulito da leggere. Che il numero sia una stima, non una misura esatta,
+ora lo dice la nota nelle impostazioni della diagnostica.
+
 ## 0.9.2 build 173
 
 **Il ritorno sul wifi viene visto davvero.** Gli avvisi di rete arrivano a raffica, e
