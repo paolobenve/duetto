@@ -8,6 +8,15 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 0.9.2 build 173
+
+**Il ritorno sul wifi viene visto davvero.** Gli avvisi di rete arrivano a raffica, e
+tenendo l'ultimo della raffica un cambio di rete vero usciva travestito da starnuto —
+proprio ciò che un collegamento in salute ha imparato a ignorare. Così, riacceso il
+wifi, si continuava a parlare attraverso l'operatore e dal server, senza mai cercare
+le strade nuove. Ora nella raffica vince la parola più forte, e il rientro sul wifi
+fa ripartire la ricerca: pochi secondi e si è di nuovo diretti.
+
 ## 0.9.2 build 172
 
 **Duetto parla anche spagnolo, portoghese e francese.** Tutta l'interfaccia, dagli

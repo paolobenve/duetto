@@ -113,6 +113,20 @@ export function attachWatchdog(
   let answerSeen = Date.now();
   let emptyBeats = 0;
   let settle: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * The strongest word heard while the volley settles.
+   *
+   * A change of network arrives as a volley - `arrived`, then
+   * `address`, then `valid`, within a breath - and the settling used
+   * to keep the LAST word: a real change of network came out dressed
+   * as an address twitch, exactly the thing a healthy link has
+   * learned to ignore. A phone back on its wifi kept talking through
+   * the carrier, candidates and all, and nobody ever went looking for
+   * the roads the new network had opened. The strongest word wins
+   * instead: arrived over valid, valid over address.
+   */
+  let settleWord = '';
+  const WORD_RANK: Record<string, number> = { address: 0, valid: 1, arrived: 2 };
   let probe: ReturnType<typeof setTimeout> | null = null;
 
   const stopProbe = () => {
@@ -172,10 +186,13 @@ export function attachWatchdog(
       return;
     }
     if (settle) clearTimeout(settle);
+    if ((WORD_RANK[what] ?? 0) >= (WORD_RANK[settleWord] ?? -1)) settleWord = what;
     settle = setTimeout(() => {
       settle = null;
-      Journal.mark(`network:${what}`).catch(() => { /* noop */ });
-      hooks.onNetwork?.(what);
+      const word = settleWord;
+      settleWord = '';
+      Journal.mark(`network:${word}`).catch(() => { /* noop */ });
+      hooks.onNetwork?.(word);
       const sig = get();
       if (!sig) return;
       // Already without a server: there is nothing to save, we simply

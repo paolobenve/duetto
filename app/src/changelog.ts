@@ -16,6 +16,15 @@ export type ReleaseNote = {
 
 export const CHANGELOG: ReleaseNote[] = [
   {
+    "version": "0.9.2 build 173",
+    "paragraphs": [
+      {
+        "strong": "Il ritorno sul wifi viene visto davvero.",
+        "text": "Gli avvisi di rete arrivano a raffica, e tenendo l'ultimo della raffica un cambio di rete vero usciva travestito da starnuto — proprio ciò che un collegamento in salute ha imparato a ignorare. Così, riacceso il wifi, si continuava a parlare attraverso l'operatore e dal server, senza mai cercare le strade nuove. Ora nella raffica vince la parola più forte, e il rientro sul wifi fa ripartire la ricerca: pochi secondi e si è di nuovo diretti."
+      }
+    ]
+  },
+  {
     "version": "0.9.2 build 172",
     "paragraphs": [
       {
