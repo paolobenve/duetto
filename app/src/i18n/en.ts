@@ -79,7 +79,10 @@ export const en = {
     unknown: 'nobody knows why',
     atTime: 'at {time}',
     onDayAtTime: 'on {date} at {time}',
-    story: '{who} disappeared {when}: {why}. Back at {back}.',
+    // The return first: the shade cuts the sentence at its first
+    // words, and "disappeared" next to "in the channel" read as a
+    // denial of the present. What is true now leads; the story follows.
+    story: '{who} came back at {back} — had disappeared {when}: {why}.',
   },
 
   presence: {
@@ -281,6 +284,8 @@ export const en = {
     delayTotalOnlyNote: 'One number instead of two: what one lives through talking, the two directions added up. The arrows are worth keeping when hunting for a cause, because they say which of the two is the slow one.',
     controlsWhileWatching: 'The controls while you watch',
     controlsHint: 'After a few seconds they step aside to leave the picture. However they are set they stay pressable, and a touch anywhere calls them back: only how much picture they leave visible changes.',
+    controlsNone: 'Always visible',
+    controlsNoneNote: 'They never step aside: full strength, always.',
     controlsDim: 'Barely faded',
     controlsDimNote: 'They stay legible, at 40%. It is the usual way.',
     controlsFaint: 'Well faded',

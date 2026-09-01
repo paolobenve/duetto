@@ -79,6 +79,15 @@ export type SignalMessage =
   // version somebody is running is their business, not his.
   | { kind: 'hello'; version: string; build?: number }
   | { kind: 'renegotiate' }
+  /**
+   * Both packets through our own relay, or back to the open roads.
+   *
+   * Said by whoever finds the direct road rotten (see the flap
+   * counter): the two sides have to agree, or the pairs would stay
+   * half-mixed. An older build ignores it and simply does not comply,
+   * which costs nothing worse than today's behaviour.
+   */
+  | { kind: 'relayOnly'; on: boolean }
   // Video quality belongs to both: changing it on one phone changes it
   // on the other. Whoever receives it does not send it back.
   | { kind: 'quality'; value: string }
@@ -641,13 +650,26 @@ export class Signaling {
   sendSignal(msg: SignalMessage) {
     if (!this.crypto) return;
     const sealed = this.crypto.seal(msg);
-    if (this.peerThere && this.ws && this.ws.readyState === WebSocket.OPEN) {
+    const open = !!this.ws && this.ws.readyState === WebSocket.OPEN;
+    const keep = Signaling.KEEPABLE[msg.kind];
+    /**
+     * `peerThere` decides one thing only: whether a FACT goes into the
+     * pocket instead of to a room that may be empty. It must never
+     * silence the rest - what we know of the other side can be stale
+     * or simply not yet said (the moment between the socket opening
+     * and the server's `joined` is exactly such a window), and an
+     * offer withheld on stale knowledge left two phones facing each
+     * other in silence, each believing its link healthy because it was
+     * too NEW to be called sick. Negotiation goes out whenever there
+     * is a socket to carry it, as it always did: at worst the server
+     * lets it fall, which is the price of before.
+     */
+    if (open && (this.peerThere || !keep)) {
       this.rawSend({ type: 'signal', payload: sealed });
       return;
     }
-    const keep = Signaling.KEEPABLE[msg.kind];
     if (!keep) {
-      log('dropped (nobody to hear it):', msg.kind);
+      log('dropped (no way to send it):', msg.kind);
       return;
     }
     log('outbox: holding a', msg.kind);

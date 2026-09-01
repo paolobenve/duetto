@@ -340,6 +340,8 @@ class ChannelForegroundService : Service() {
             .setSilent(true)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setGroup(Notifier.GROUP)
+            .setSortKey(Notifier.SORT_STATE)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build()
     }

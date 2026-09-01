@@ -9,7 +9,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, StyleSheet, Animated, PanResponder, useWindowDimensions, Text,
+  View, StyleSheet, Animated, PanResponder, useWindowDimensions, Text, Pressable,
 } from 'react-native';
 import { RTCView, MediaStream } from 'react-native-webrtc';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -106,6 +106,14 @@ const MAX_ZOOM = 5;
 const TAP_ZOOM = 2.5;
 const DOUBLE_TAP_MS = 300;
 
+/**
+ * A finger resting half a second, without moving: a long press.
+ *
+ * Long enough that holding the phone does not open menus by itself,
+ * short enough that asking for one does not feel like insisting.
+ */
+const LONG_PRESS_MS = 500;
+
 type Props = {
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
@@ -189,6 +197,13 @@ type Props = {
    */
   onBackground?: () => void;
   /**
+   * A finger resting on the big picture (or on the empty screen), half
+   * a second without moving. The little square stays out of this too,
+   * for the same reason as above. It dies the moment the finger moves,
+   * so zooming and dragging never trip over it.
+   */
+  onBackgroundLong?: () => void;
+  /**
    * Who fills the big screen.
    *
    * The label is drawn by whoever makes the top bar, to keep it on the
@@ -217,7 +232,7 @@ export default function VideoStage(props: Props) {
     awaitingRemote, notice,
   } = props;
   const { width, height } = useWindowDimensions();
-  const { onBigAspect, insetV = 0, insetH = 0, insetBottom = 0, onBackground, onOnlyBig } = props;
+  const { onBigAspect, insetV = 0, insetH = 0, insetBottom = 0, onBackground, onBackgroundLong, onOnlyBig } = props;
 
   // false = they are big (the default), true = I am the big one
   const [selfBig, setSelfBig] = useState(false);
@@ -752,6 +767,10 @@ export default function VideoStage(props: Props) {
   const movedInGesture = useRef(false);
   /** the wait that tells a single tap from the first of a double one */
   const tapWait = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** the wait that turns a resting finger into a long press */
+  const longWait = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** the long press fired: the release must not count as a tap too */
+  const longFired = useRef(false);
 
   /**
    * How far we are zoomed in, according to us.
@@ -830,9 +849,27 @@ export default function VideoStage(props: Props) {
           zoomStart.current = zoomRef.current;
           shiftStart.current = { ...shiftRef.current };
           pinchBase.current = 0;
+          // The long press arms here and dies at the first movement:
+          // zooming and dragging never meet it.
+          longFired.current = false;
+          if (longWait.current) clearTimeout(longWait.current);
+          longWait.current = onBackgroundLong
+            ? setTimeout(() => {
+              longWait.current = null;
+              if (movedInGesture.current) return;
+              longFired.current = true;
+              onBackgroundLong();
+            }, LONG_PRESS_MS)
+            : null;
         },
         onPanResponderMove: (e, g) => {
           const touches = e.nativeEvent.touches ?? [];
+          if (touches.length >= 2 || Math.abs(g.dx) > 8 || Math.abs(g.dy) > 8) {
+            if (longWait.current) {
+              clearTimeout(longWait.current);
+              longWait.current = null;
+            }
+          }
           if (touches.length >= 2) {
             movedInGesture.current = true;
             const [a, b] = touches;
@@ -859,6 +896,15 @@ export default function VideoStage(props: Props) {
           }
         },
         onPanResponderRelease: () => {
+          if (longWait.current) {
+            clearTimeout(longWait.current);
+            longWait.current = null;
+          }
+          // The menu is already open: the finger lifting is not a tap.
+          if (longFired.current) {
+            longFired.current = false;
+            return;
+          }
           if (!movedInGesture.current) {
             // A double tap: it zooms in, or goes back to the full picture.
             const now = Date.now();
@@ -893,9 +939,15 @@ export default function VideoStage(props: Props) {
           else clampShift();
           onZoom?.(zoomRef.current);
         },
-        onPanResponderTerminate: () => clampShift(),
+        onPanResponderTerminate: () => {
+          if (longWait.current) {
+            clearTimeout(longWait.current);
+            longWait.current = null;
+          }
+          clampShift();
+        },
       }),
-    [zoom, shift, resetZoom, clampShift, onBackground, noteZoom, noteShift, onZoom],
+    [zoom, shift, resetZoom, clampShift, onBackground, onBackgroundLong, noteZoom, noteShift, onZoom],
   );
 
   return (
@@ -923,7 +975,11 @@ export default function VideoStage(props: Props) {
           />
         </Animated.View>
       ) : (
-        <View style={[styles.big, styles.placeholder]} onTouchStart={onBackground}>
+        <Pressable
+          style={[styles.big, styles.placeholder]}
+          onPress={onBackground}
+          onLongPress={onBackgroundLong}
+          delayLongPress={LONG_PRESS_MS}>
           {/* During an interruption: black, not the summary.
               Their video is about to come back, and putting the "they
               are in the channel" screen up again at every change of
@@ -933,7 +989,7 @@ export default function VideoStage(props: Props) {
               With a notice laid over it the same holds: two overlapping
               messages would say the same thing. */}
           {notice || awaitingRemote ? null : placeholder}
-        </View>
+        </Pressable>
       )}
 
       {notice ? (

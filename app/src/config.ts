@@ -95,7 +95,7 @@ export type PairSettings = {
   displayName: string;
   videoQuality: VideoQuality;
   richerAudio: boolean;
-  controls: 'dim' | 'faint' | 'hidden';
+  controls: 'dim' | 'faint' | 'hidden' | 'none';
   videoCodec: 'auto' | 'vp9';
   alertVibration: 'default' | 'always' | 'never';
   alertSound: 'default' | 'none' | 'chosen';
@@ -270,7 +270,7 @@ export type DuoConfig = {
    * can still be pressed, and a touch anywhere brings them back: all
    * that changes is how much of the picture they leave you.
    */
-  controls: 'dim' | 'faint' | 'hidden';
+  controls: 'dim' | 'faint' | 'hidden' | 'none';
   /**
    * `vp9` only if both phones encode it in hardware; otherwise the
    * setting stays written but has no effect, and the option does not

@@ -78,6 +78,7 @@ const SOUNDS = (): {
 const CONTROLS = (): {
   value: DuoConfig['controls']; label: string; note: string;
 }[] => [
+  { value: 'none', label: t('settings.controlsNone'), note: t('settings.controlsNoneNote') },
   { value: 'dim', label: t('settings.controlsDim'), note: t('settings.controlsDimNote') },
   { value: 'faint', label: t('settings.controlsFaint'), note: t('settings.controlsFaintNote') },
   { value: 'hidden', label: t('settings.controlsHidden'), note: t('settings.controlsHiddenNote') },

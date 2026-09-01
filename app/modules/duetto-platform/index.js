@@ -192,8 +192,20 @@ export const Pip = isAndroid && NativePip
       /** Enters PiP with the given aspect ratio (width/height). */
       enter: (aspect = 9 / 16) =>
         call(NativePip, 'enter', Number(aspect) || 9 / 16),
+
+      /**
+       * Calls `cb(inPip)` when the little window begins or ends. The
+       * activity is the only one told the truth: the window's measures,
+       * as React Native reports them, may go on describing the full
+       * screen. Gives back the function to stop.
+       */
+      subscribe(cb) {
+        const emitter = new NativeEventEmitter(NativePip);
+        const sub = emitter.addListener('duetto-pip', (v) => cb(!!v));
+        return () => sub.remove();
+      },
     }
-  : { isSupported: unavailable, enter: unavailable };
+  : { isSupported: unavailable, enter: unavailable, subscribe: () => () => {} };
 
 /**
  * The app's window.
@@ -399,8 +411,21 @@ export const Network = isAndroid && NativeNetwork
        * through, and to check it now. See NetworkModule.
        */
       reportNotCarrying: () => call(NativeNetwork, 'reportNotCarrying'),
+
+      /**
+       * The emergency lane: mobile data switched on and every socket
+       * bound to it, deaf wifi or not. Costs radio - whoever opens it
+       * closes it. See NetworkModule.
+       */
+      requestMobile: () => call(NativeNetwork, 'requestMobile'),
+      releaseMobile: () => call(NativeNetwork, 'releaseMobile'),
     }
-  : { subscribe: () => () => {}, reportNotCarrying: unavailable };
+  : {
+      subscribe: () => () => {},
+      reportNotCarrying: unavailable,
+      requestMobile: unavailable,
+      releaseMobile: unavailable,
+    };
 
 /**
  * Whether the app is really showing anything on the screen.

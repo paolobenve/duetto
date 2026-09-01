@@ -30,12 +30,53 @@ import com.facebook.react.bridge.ReactMethod
 class PipModule(private val ctx: ReactApplicationContext) :
     ReactContextBaseJavaModule(ctx) {
 
+    init {
+        current = this
+    }
+
+    override fun invalidate() {
+        if (current === this) current = null
+        super.invalidate()
+    }
+
     override fun getName() = "DuettoPip"
+
+    @ReactMethod fun addListener(eventName: String) {}
+    @ReactMethod fun removeListeners(count: Int) {}
 
     companion object {
         // Limits imposed by Android: outside them the request fails.
         private const val MIN_RATIO = 0.4184f
         private const val MAX_RATIO = 2.39f
+
+        const val EVENT = "duetto-pip"
+
+        @Volatile
+        private var current: PipModule? = null
+
+        /**
+         * The activity says when the little window begins and ends.
+         *
+         * The interface used to work it out from its own width - and on
+         * a good many phones React Native goes on reporting the full
+         * screen while the window has shrunk to a postage stamp, so the
+         * buttons and the technical lines were drawn onto it. Only the
+         * activity is told the truth (onPictureInPictureModeChanged,
+         * injected by patch-android-mainactivity.js), and from here it
+         * reaches the JavaScript as an event.
+         */
+        fun changed(inPip: Boolean) {
+            val m = current ?: return
+            if (!m.ctx.hasActiveReactInstance()) return
+            try {
+                m.ctx.getJSModule(
+                    com.facebook.react.modules.core.DeviceEventManagerModule
+                        .RCTDeviceEventEmitter::class.java,
+                ).emit(EVENT, inPip)
+            } catch (_: Exception) {
+                // The window still shows; only its clothes are wrong.
+            }
+        }
     }
 
     /**

@@ -93,11 +93,13 @@ export type VideoStats = {
   latency?: number | null;
   /**
    * The two halves of the wait that THIS phone can time, in
-   * milliseconds.
+   * milliseconds - the halves of what is travelling: the sound's when
+   * only sound flows, the picture's while frames move, because the two
+   * are synchronised and the wait one lives through is the frame's.
    *
-   * `sendDelay` is what it adds before a frame leaves: the encoder and
-   * the queue behind it. `recvDelay` is what it adds after one arrives:
-   * the jitter buffer, the decoder, and the loudspeaker.
+   * `sendDelay` is what it adds before it leaves: the encoder and the
+   * queue behind it. `recvDelay` is what it adds after it arrives: the
+   * jitter buffer, the decoder, and the loudspeaker.
    *
    * Neither is a journey: a journey is one phone's send half, plus the
    * road, plus the other's receive half. Each phone tells the other its
@@ -149,6 +151,30 @@ const log = logger('[duetto-rtc]');
  * so a video wobbling around the threshold does not make the ceiling
  * bounce.
  */
+/**
+ * How long a negotiation may meet silence before it is called stalled:
+ * see isStalled(). Long enough for a slow road and a slow phone, short
+ * enough that nobody stares at "establishing the connection" for it.
+ */
+const STALL_MS = 10_000;
+
+/**
+ * The balancing of the two pictures: see weighBalance().
+ *
+ * Sending this many times more than what comes back, for this many
+ * readings in a row (the readings are two seconds apart), is called
+ * lopsided; the strong sender then lowers its own ceiling a step and
+ * watches what happens, as many times as it takes, never below the
+ * floor. When the other side has caught up for as long, the ceiling
+ * climbs back a step at a time, and at the profile's own ceiling it is
+ * taken away altogether.
+ */
+const BALANCE_RATIO = 3;
+const BALANCE_TICKS = 10;
+const BALANCE_STEP = 0.7;
+const BALANCE_CLIMB = 1.5;
+const BALANCE_FLOOR = 200_000;
+
 const AUDIO_PLAIN = 32000;
 const AUDIO_RICH = 64000;
 const AUDIO_EXTRA_KBPS = (AUDIO_RICH - AUDIO_PLAIN) / 1000;
@@ -282,6 +308,29 @@ export class ChannelSession {
   private ignoreOfferSince = 0;
   /** An ICE restart was asked for and no offer has left yet. */
   private restartAskedAt = 0;
+  /** When our offer left with no answer back yet; 0 = nothing pending. */
+  private offerPendingSince = 0;
+  /** When this peer was built: the clock for "nothing ever arrived". */
+  private peerBornAt = 0;
+
+  /**
+   * The motorway: every packet through our own relay, both ways.
+   *
+   * On a cellular network behind the operator's shared NAT, the
+   * "cheap" road - our relay straight to the other's home NAT mapping
+   * - kept dying every few minutes, while the pair that lives entirely
+   * inside coturn sat there `succeeded` and unused: the TURN protocol
+   * does its own keeping-alive, and no NAT in the middle gets a say.
+   * When the flap counter finds the same road rotten twice, both sides
+   * agree (the `relayOnly` message) to take the motorway until the
+   * network changes. It costs the server's bandwidth, which is exactly
+   * what the server is for.
+   */
+  private relayOnly = false;
+
+  setRelayOnly(v: boolean) { this.relayOnly = v; }
+
+  isRelayOnly(): boolean { return this.relayOnly; }
   /** candidates that arrived before the remote description: they queue up */
   private pendingCandidates: any[] = [];
   /** the relay the server tells us about: no need to set it up on each phone */
@@ -457,9 +506,14 @@ export class ChannelSession {
     this.polite = polite;
     const servers = [...iceServers(), ...this.extraIce];
     log('connecting the peer - they offer:', polite, '| ICE servers:',
-      servers.map((s2) => s2.urls).join(', '));
-    const pc = new RTCPeerConnection({ iceServers: servers });
+      servers.map((s2) => s2.urls).join(', '),
+      this.relayOnly ? '| RELAY ONLY' : '');
+    const pc = new RTCPeerConnection({
+      iceServers: servers,
+      ...(this.relayOnly ? { iceTransportPolicy: 'relay' as any } : {}),
+    });
     this.pc = pc;
+    this.peerBornAt = Date.now();
 
     this.remoteStream = new MediaStream();
 
@@ -696,6 +750,8 @@ export class ChannelSession {
       this.signaling.sendSignal({ kind: 'desc', type: 'offer', sdp: desc.sdp });
       // If an ICE restart was waiting for this offer, it has left now.
       this.restartAskedAt = 0;
+      // And the answer's clock starts: see isStalled().
+      this.offerPendingSince = Date.now();
     } catch (e) {
       log('negotiation failed:', String(e));
       // if a negotiation fails, the next event will try again
@@ -730,6 +786,22 @@ export class ChannelSession {
       return;
     }
 
+    if (msg.kind === 'relayOnly') {
+      const on = msg.on !== false;
+      if (on === this.relayOnly) return;
+      log('the other side says: motorway', on ? 'on' : 'off');
+      this.relayOnly = on;
+      // The policy lives in the connection's construction: the change
+      // needs a fresh one. The offering side rebuilds and offers; the
+      // polite side tears down and waits for what is coming.
+      this.detachPeer();
+      if (!this.polite) {
+        await this.attachPeer(this.polite);
+        this.broadcastState();
+      }
+      return;
+    }
+
     if (msg.kind === 'renegotiate') return; // handled by whoever knows the role
 
     const pc = this.pc;
@@ -760,6 +832,8 @@ export class ChannelSession {
       await pc.setRemoteDescription(
         new RTCSessionDescription({ type: msg.type, sdp: msg.sdp }),
       );
+      // Something came back: whatever was waiting, it is not stalled.
+      this.offerPendingSince = 0;
       await this.flushCandidates();
       await this.captureVideoSender();
 
@@ -780,6 +854,13 @@ export class ChannelSession {
     }
 
     if (msg.kind === 'ice') {
+      // On the motorway, side roads are not even listened to: a
+      // reflexive candidate paired with our relay would rebuild the
+      // exact fragile pair the motorway was chosen to escape.
+      if (this.relayOnly && typeof msg.candidate?.candidate === 'string'
+          && !msg.candidate.candidate.includes(' typ relay')) {
+        return;
+      }
       if (this.ignoreOffer) {
         // The flag lives from one description to the next: if the
         // collision it belongs to never completes - the answer to our
@@ -928,6 +1009,31 @@ export class ChannelSession {
   }
 
   /**
+   * Negotiation that went out and met silence.
+   *
+   * The sickness isPeerHealthy() cannot see: a connection whose offer
+   * (or whose whole negotiation) was lost on the road stays NEW for
+   * ever - never failed, never disconnected, just unborn - and every
+   * safety net read NEW as healthy. Two phones stood facing each
+   * other, each waiting, each convinced nothing was wrong; it happened
+   * now and then for as long as anyone remembers, whenever an offer
+   * fell into the gap between the socket opening and the server's
+   * `joined`.
+   *
+   * Two shapes of the same silence: our offer left and no answer came
+   * back (the offering side), or the peer was built and nothing ever
+   * arrived at all (the answering side). After a good while, that
+   * silence is a verdict - and the ordinary medicine applies.
+   */
+  isStalled(): boolean {
+    const pc: any = this.pc;
+    if (!pc || pc.connectionState !== 'new') return false;
+    const now = Date.now();
+    if (this.offerPendingSince && now - this.offerPendingSince > STALL_MS) return true;
+    return !pc.remoteDescription && !!this.peerBornAt && now - this.peerBornAt > STALL_MS;
+  }
+
+  /**
    * There is a video track from the other side, not yet closed.
    *
    * We deliberately do NOT look at "muted" alone: what it means varies
@@ -975,15 +1081,25 @@ export class ChannelSession {
       const stats = await pc.getStats();
       let pair: any = null;
       const candidates = new Map<string, any>();
+      const pairs = new Map<string, any>();
+      let chosenId: string | null = null;
       stats.forEach((r: any) => {
         if (r.type === 'local-candidate' || r.type === 'remote-candidate') {
           candidates.set(r.id, r);
         }
-        // "selected" in some implementations, "nominated+succeeded" in others
-        if (r.type === 'candidate-pair' && (r.selected || r.nominated) && r.state === 'succeeded') {
-          pair = r;
+        // "selected" in some implementations, "nominated+succeeded" in
+        // others - and in the standard's own words, the transport names
+        // the winner. All three dialects are listened to: see the same
+        // note where the statistics are gathered.
+        if (r.type === 'candidate-pair') {
+          pairs.set(r.id, r);
+          if ((r.selected || r.nominated) && r.state === 'succeeded') pair = r;
+        }
+        if (r.type === 'transport' && r.selectedCandidatePairId) {
+          chosenId = r.selectedCandidatePairId;
         }
       });
+      if (chosenId && pairs.get(chosenId)) pair = pairs.get(chosenId);
       if (!pair) { log('path: not settled yet'); return; }
 
       // Every road tried, not only the winning one: if the traffic goes
@@ -1102,15 +1218,33 @@ export class ChannelSession {
         if (!waited[kind]) waited[kind] = {};
         return waited[kind];
       };
+      /**
+       * The winning pair, asked of the transport first.
+       *
+       * `selectedCandidatePairId` is the standard's way of naming it.
+       * The flags on the pairs themselves - `selected`, `nominated` -
+       * are the older dialects, and on the cellular path after an ICE
+       * restart they simply were not there: the road, the latency and
+       * with them the whole journey vanished from the screen at the
+       * exact moment one wanted to see which road had died.
+       */
+      const pairsById = new Map<string, any>();
+      let selectedPairId: string | null = null;
       stats.forEach((r: any) => {
         if (r.type === 'local-candidate' || r.type === 'remote-candidate') {
           candidatesById.set(r.id, r);
         }
-        if (r.type === 'candidate-pair' && (r.selected || r.nominated)
-            && r.state === 'succeeded') {
-          pairStat = r;
+        if (r.type === 'candidate-pair') {
+          pairsById.set(r.id, r);
+          if ((r.selected || r.nominated) && r.state === 'succeeded') pairStat = r;
+        }
+        if (r.type === 'transport' && r.selectedCandidatePairId) {
+          selectedPairId = r.selectedCandidatePairId;
         }
       });
+      if (selectedPairId && pairsById.get(selectedPairId)) {
+        pairStat = pairsById.get(selectedPairId);
+      }
       if (pairStat) {
         const roundTrip = pairStat.currentRoundTripTime;
         out.latency = typeof roundTrip === 'number'
@@ -1185,13 +1319,23 @@ export class ChannelSession {
       });
 
       /**
-       * The two halves this phone can time, in milliseconds.
+       * The two halves this phone can time, in milliseconds - the
+       * halves OF WHAT IS TRAVELLING.
        *
-       * The picture's terms win over the sound's when there is a
-       * picture: with the video on it is the frame that sets the pace,
-       * and the sound is held back to keep in step with it. With no
-       * video only the sound is there, and it is the fastest this app
-       * goes.
+       * Sound alone: the sound's terms, which is the fastest this app
+       * goes. With a picture flowing, the picture's terms take over:
+       * the two streams are synchronised, the sound is held to the
+       * frame, and the wait one lives through is the frame's. (The
+       * sound's own buffer does grow a little under that holding, but
+       * the picture's chain is the one being watched, and it is the
+       * one written.) This is a CHOICE, made deliberately and once
+       * revisited: measuring the sound alone in both cases was tried,
+       * read the wrong way round on the screen, and put back.
+       *
+       * The picture's terms only exist while frames actually move -
+       * the counters stand still with the camera off, and a standing
+       * counter yields no term - so the fall from video to audio needs
+       * no flag: it happens by itself, per direction.
        *
        * The audio output is added to the receiving half whatever is on
        * screen: it is the same loudspeaker in both cases.
@@ -1272,6 +1416,7 @@ export class ChannelSession {
 
       this.events.onVideoStats?.(out);
       this.weighVideo((out.out?.kbps ?? 0) + (out.in?.kbps ?? 0));
+      this.weighBalance(out.out?.kbps ?? null, out.in?.kbps ?? null);
 
       // One line in the log now and then is enough: the rest is under
       // the controls.
@@ -1292,6 +1437,89 @@ export class ChannelSession {
    * this connection, and while it is there, the voice's extra few kbits
    * are noticed nowhere.
    */
+  /** The balancing ceiling on the outgoing video, in bit/s; null = none. */
+  private balanceCap: number | null = null;
+  private lopsidedTicks = 0;
+  private evenTicks = 0;
+
+  /**
+   * The strong sender gives way, a step at a time.
+   *
+   * Two pictures crossing the same conversation can come out absurdly
+   * unequal - full HD one way, a stamp the other - and the difference
+   * buys the weak side nothing: the strong stream and the weak one do
+   * not even share a bottleneck. So, by explicit choice, whoever sends
+   * far more than they receive lowers their own ceiling a step and
+   * watches what happens, until the two are roughly even; and climbs
+   * back the moment the other keeps up. The lever is the bandwidth
+   * ceiling alone - the encoder scales the picture under it by itself,
+   * with no camera to reopen and no black frame.
+   *
+   * Only while both pictures flow: one camera off makes the
+   * difference the point, not a fault.
+   */
+  private weighBalance(outKbps: number | null, inKbps: number | null) {
+    if (!this.isVideoEnabled() || !this.peerVideoDeclared
+        || outKbps === null || inKbps === null || inKbps <= 0) {
+      this.lopsidedTicks = 0;
+      this.evenTicks = 0;
+      if (this.balanceCap !== null && !this.peerVideoDeclared) {
+        // Their camera went off: the reason for the ceiling went with it.
+        this.balanceCap = null;
+        this.applyBalance();
+      }
+      return;
+    }
+    const profile = VIDEO_PROFILES[this.cfg.videoQuality] ?? VIDEO_PROFILES.better;
+    if (outKbps > inKbps * BALANCE_RATIO) {
+      this.evenTicks = 0;
+      this.lopsidedTicks += 1;
+      if (this.lopsidedTicks < BALANCE_TICKS) return;
+      this.lopsidedTicks = 0;
+      const from = this.balanceCap ?? profile.maxBitrate;
+      const next = Math.max(Math.round(from * BALANCE_STEP), BALANCE_FLOOR);
+      if (next >= from) return; // already at the floor
+      this.balanceCap = next;
+      log('balance: giving way,', Math.round(next / 1000), 'kbit/s ceiling',
+        `(sending ${outKbps}, receiving ${inKbps})`);
+      this.applyBalance();
+      return;
+    }
+    if (this.balanceCap !== null && outKbps < inKbps * (BALANCE_RATIO / 2)) {
+      this.lopsidedTicks = 0;
+      this.evenTicks += 1;
+      if (this.evenTicks < BALANCE_TICKS) return;
+      this.evenTicks = 0;
+      const next = Math.round(this.balanceCap * BALANCE_CLIMB);
+      this.balanceCap = next >= profile.maxBitrate ? null : next;
+      log('balance: climbing back,',
+        this.balanceCap === null ? 'ceiling gone' : `${Math.round(next / 1000)} kbit/s`);
+      this.applyBalance();
+      return;
+    }
+    this.lopsidedTicks = 0;
+    this.evenTicks = 0;
+  }
+
+  /** Writes the balancing ceiling onto the live sender. */
+  private async applyBalance() {
+    const sender = this.videoSender;
+    if (!sender) return;
+    try {
+      const profile = VIDEO_PROFILES[this.cfg.videoQuality] ?? VIDEO_PROFILES.better;
+      const params = sender.getParameters();
+      if (!Array.isArray(params.encodings) || params.encodings.length === 0) {
+        params.encodings = [{}];
+      }
+      params.encodings[0].maxBitrate = Math.min(
+        profile.maxBitrate, this.balanceCap ?? profile.maxBitrate,
+      );
+      await sender.setParameters(params);
+    } catch (e) {
+      log('balance: cannot write the ceiling:', String(e));
+    }
+  }
+
   private weighVideo(videoKbps: number) {
     const before = this.heavyVideo;
     if (!this.heavyVideo && videoKbps >= VIDEO_HEAVY) this.heavyVideo = true;
@@ -1481,7 +1709,11 @@ export class ChannelSession {
       // by the capture, and on this side only the bandwidth ceiling is
       // left.
       params.encodings[0].scaleResolutionDownBy = 1;
-      params.encodings[0].maxBitrate = profile.maxBitrate;
+      // The balancing ceiling holds across a change of profile: the
+      // imbalance it answers did not change with the setting.
+      params.encodings[0].maxBitrate = Math.min(
+        profile.maxBitrate, this.balanceCap ?? profile.maxBitrate,
+      );
       await sender.setParameters(params);
       if (sender !== this.videoSender) {
         log('parameters written on the live sender, not the remembered one');
@@ -1802,6 +2034,14 @@ export class ChannelSession {
     this.pendingCandidates = [];
     this.makingOffer = false;
     this.ignoreOffer = false;
+    this.offerPendingSince = 0;
+    this.peerBornAt = 0;
+    // The balancing starts afresh with the link: if the imbalance is
+    // real it re-forms in twenty seconds, and if it is not, a rebuilt
+    // link must not inherit a ceiling chosen against another road.
+    this.balanceCap = null;
+    this.lopsidedTicks = 0;
+    this.evenTicks = 0;
     this.events.onRemoteStream?.(null);
     this.events.onRemoteVideo?.(false);
     if (this.pc) {

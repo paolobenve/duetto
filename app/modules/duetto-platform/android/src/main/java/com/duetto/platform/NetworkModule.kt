@@ -14,6 +14,7 @@ import android.net.ConnectivityManager
 import android.net.LinkProperties
 import android.net.Network
 import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
@@ -143,6 +144,115 @@ class NetworkModule(private val ctx: ReactApplicationContext) :
         } catch (_: Exception) {
             promise.resolve(false)
         }
+    }
+
+    /**
+     * The emergency lane: mobile data, asked for by name.
+     *
+     * The wifi that dies as one walks out of the house is deaf long
+     * before the phone lets go of it, and `reportNotCarrying` above
+     * only ASKS Android to make its mind up - which, mid-conversation,
+     * can take the better part of a minute. Here we stop asking:
+     * requesting the cellular transport switches the data radio on
+     * even while the wifi is still the default, and binding the
+     * process to it puts every new socket - the signalling and the
+     * call's own - on the road that works.
+     *
+     * It costs radio, so whoever opens the lane closes it: when the
+     * wifi is validated again (the `valid` event above), or when the
+     * conversation ends. Closing unbinds, and the phone goes back to
+     * choosing its own road.
+     */
+    private var mobileLane: ConnectivityManager.NetworkCallback? = null
+
+    /**
+     * The wifi's watchman, alive only while the lane is open.
+     *
+     * With the process bound to the cellular network, the default
+     * network callback above speaks of the cellular alone: nobody
+     * would ever say the wifi has come back to health. This second
+     * pair of eyes watches the wifi transport by name and says
+     * "wifi-back" on the step from useless to good - the word the
+     * app closes the lane on, at its own pace.
+     */
+    private var wifiWatch: ConnectivityManager.NetworkCallback? = null
+    private var wifiWasValid = false
+
+    @ReactMethod
+    fun requestMobile(promise: Promise) {
+        if (mobileLane != null) { promise.resolve(true); return }
+        val c = cm
+        if (c == null) { promise.resolve(false); return }
+        try {
+            val request = NetworkRequest.Builder()
+                .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build()
+            val lane = object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: Network) {
+                    try { c.bindProcessToNetwork(network) } catch (_: Exception) { return }
+                    // Said as an arrival: every piece of machinery that
+                    // rebuilds on a new network runs on this word.
+                    emit("arrived")
+                }
+
+                override fun onLost(network: Network) {
+                    // The lane itself died (aeroplane mode, no signal):
+                    // the binding must not outlive it, or every socket
+                    // would be nailed to a road that is not there.
+                    try { c.bindProcessToNetwork(null) } catch (_: Exception) { /* noop */ }
+                    emit("lost")
+                }
+            }
+            c.requestNetwork(request, lane)
+            mobileLane = lane
+
+            wifiWasValid = false
+            val watch = object : ConnectivityManager.NetworkCallback() {
+                override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
+                    val valid = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+                    if (valid == wifiWasValid) return
+                    wifiWasValid = valid
+                    if (valid) emit("wifi-back")
+                }
+
+                override fun onLost(network: Network) {
+                    wifiWasValid = false
+                }
+            }
+            try {
+                c.registerNetworkCallback(
+                    NetworkRequest.Builder()
+                        .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        .build(),
+                    watch,
+                )
+                wifiWatch = watch
+            } catch (_: Exception) {
+                // Without the watchman the lane still works: it just
+                // stays open until the conversation ends.
+            }
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.resolve(false)
+        }
+    }
+
+    @ReactMethod
+    fun releaseMobile(promise: Promise) {
+        val lane = mobileLane
+        mobileLane = null
+        val watch = wifiWatch
+        wifiWatch = null
+        try {
+            if (watch != null) cm?.unregisterNetworkCallback(watch)
+            if (lane != null) cm?.unregisterNetworkCallback(lane)
+            cm?.bindProcessToNetwork(null)
+            // Back on the phone's own choice: the rebuild runs again.
+            if (lane != null) emit("arrived")
+        } catch (_: Exception) { /* noop */ }
+        promise.resolve(true)
     }
 
     /** Starts listening. Idempotent. */

@@ -38,6 +38,43 @@ if (!fs.existsSync(file)) {
 
 let kt = fs.readFileSync(file, 'utf8');
 
+/**
+ * Picture-in-Picture: the activity is the only one told when the little
+ * window begins and ends, and the interface needs to know - React
+ * Native goes on reporting the full screen's width while the window has
+ * shrunk to a postage stamp, and the buttons and the technical lines
+ * were drawn onto it. The override hands the truth to PipModule, which
+ * carries it to JavaScript. Idempotent, like the rest of this file.
+ */
+if (!kt.includes('onPictureInPictureModeChanged')) {
+  if (!kt.includes('import android.content.res.Configuration')) {
+    kt = kt.replace(
+      /^(import com\.facebook\.react\.ReactActivity\n)/m,
+      'import android.content.res.Configuration\n$1',
+    );
+  }
+  if (!kt.includes('import com.duetto.platform.PipModule')) {
+    kt = kt.replace(
+      /^(import com\.facebook\.react\.ReactActivity\n)/m,
+      'import com.duetto.platform.PipModule\n$1',
+    );
+  }
+  const pipMethod = `
+  /** The little window begins or ends: the app changes its clothes. */
+  override fun onPictureInPictureModeChanged(
+    isInPictureInPictureMode: Boolean,
+    newConfig: Configuration,
+  ) {
+    super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+    PipModule.changed(isInPictureInPictureMode)
+  }
+`;
+  const closingPip = kt.lastIndexOf('}');
+  kt = kt.slice(0, closingPip) + pipMethod + kt.slice(closingPip);
+  fs.writeFileSync(file, kt);
+  console.log('picture-in-picture: MainActivity told to speak up');
+}
+
 // The guard looks at the import and not at the method names: an
 // activity patched by an older Duetto has the same import and the old
 // Italian names, and looking for those would add a second pair of

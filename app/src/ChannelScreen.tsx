@@ -70,11 +70,26 @@ const SLEEP_MS = 60000;
  * the buttons have to be found from memory. Zero removes them
  * altogether.
  */
-const CONTROLS_OPACITY: Record<'dim' | 'faint' | 'hidden', number> = {
+const CONTROLS_OPACITY: Record<'none' | 'dim' | 'faint' | 'hidden', number> = {
+  /** they never step aside: whoever wants them there always, has them */
+  none: 1,
   dim: 0.4,
   faint: 0.15,
   hidden: 0,
 };
+
+/**
+ * The degrees of fading, for the settings and for the menu a long
+ * press on the picture opens: one list, so the two can never disagree.
+ */
+export const FADING_CHOICES = (): {
+  value: 'none' | 'dim' | 'faint' | 'hidden'; label: string; note: string;
+}[] => [
+  { value: 'none', label: t('settings.controlsNone'), note: t('settings.controlsNoneNote') },
+  { value: 'dim', label: t('settings.controlsDim'), note: t('settings.controlsDimNote') },
+  { value: 'faint', label: t('settings.controlsFaint'), note: t('settings.controlsFaintNote') },
+  { value: 'hidden', label: t('settings.controlsHidden'), note: t('settings.controlsHiddenNote') },
+];
 
 /**
  * The "You"/"Not you" label never goes below this.
@@ -133,6 +148,14 @@ const ALARMS = (): { name: string; label: string; note: string }[] => [
 
 type Props = {
   /**
+   * We are inside the system's little window, says the activity.
+   *
+   * Not worked out from the width: on a good many phones React Native
+   * goes on reporting the full screen while the window has shrunk, and
+   * the buttons and the technical lines were drawn onto it.
+   */
+  pip?: boolean;
+  /**
    * The name given to this connection, if it has one.
    *
    * It takes the place of the app's name on the pill at the top: with
@@ -179,8 +202,13 @@ type Props = {
   qualityLabel: string;
   /** the two technical lines under the buttons, off by default */
   showStats: boolean;
-  /** how far the controls step aside: 'dim' | 'faint' | 'hidden' */
-  controls: 'dim' | 'faint' | 'hidden';
+  /** how far the controls step aside; 'none' = they never do */
+  controls: 'none' | 'dim' | 'faint' | 'hidden';
+  /**
+   * A long press on the picture asks to change the fading: the choice
+   * lands here, and whoever sits above saves it like any setting.
+   */
+  onSelectControls?: (v: 'none' | 'dim' | 'faint' | 'hidden') => void;
   /**
    * A piece of news to read: their app died and came back, or they are
    * back after a long absence.
@@ -303,7 +331,7 @@ type Props = {
  */
 export default function ChannelScreen(props: Props) {
   const {
-    connectionName, peerName, peerAvatar, peerPresent, peerDetached, peerTornDown, videoStats, peerSendDelay, peerRecvDelay, delayTotalOnly, qualityLabel, showStats, controls, news, onNewsRead, gain, peerGain, systemVolume, onChangeLevel,
+    connectionName, peerName, peerAvatar, peerPresent, peerDetached, peerTornDown, videoStats, peerSendDelay, peerRecvDelay, delayTotalOnly, qualityLabel, showStats, controls, onSelectControls, news, onNewsRead, gain, peerGain, systemVolume, onChangeLevel,
     versionWarning, frontCamera, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes,
@@ -311,9 +339,11 @@ export default function ChannelScreen(props: Props) {
     onAlarm, onZoom, onOpenSettings,
   } = props;
 
-  // In Picture-in-Picture the window is tiny: no controls.
+  // In Picture-in-Picture the window is tiny: no controls. The width
+  // is kept as a second witness for the phones where the activity's
+  // word arrives late.
   const { width: winWidth, height: winHeight } = useWindowDimensions();
-  const compact = winWidth < COMPACT_WIDTH;
+  const compact = props.pip || winWidth < COMPACT_WIDTH;
 
   /**
    * The rectangle the video really takes up.
@@ -328,6 +358,26 @@ export default function ChannelScreen(props: Props) {
    * so: there is no edge there to line up with.
    */
   const [bigAspect, setBigAspect] = useState<number | null>(null);
+
+  /**
+   * The declared shape, corrected by the frames that really arrive.
+   *
+   * The shape each side declares is the CAMERA's: when the encoder
+   * squeezes the picture under a thin road, the coded frame comes out
+   * a slightly different rectangle (multiples of sixteen: 1920×1072 is
+   * not the shape of 480×256), and the controls stood lined up with
+   * the edge of a picture that was no longer there. The statistics
+   * carry the real measures; only the RATIO is taken from them - the
+   * encoder reports frames unrotated, so which side is up is still the
+   * declaration's to say.
+   */
+  const refine = (declared?: number, real?: { w: number; h: number }) => {
+    if (!declared || !real || !real.w || !real.h) return declared;
+    const ratio = Math.max(real.w, real.h) / Math.min(real.w, real.h);
+    return declared < 1 ? 1 / ratio : ratio;
+  };
+  const localAspectShown = refine(localAspect, videoOn ? videoStats.out : undefined);
+  const remoteAspectShown = refine(remoteAspect, remoteHasVideo ? videoStats.in : undefined);
   /**
    * The last known inset, kept even with no video.
    *
@@ -354,6 +404,8 @@ export default function ChannelScreen(props: Props) {
   const [qualityMenu, setQualityMenu] = useState(false);
   /** the two ways out, by holding "Leave" */
   const [leaveMenu, setLeaveMenu] = useState(false);
+  /** the fading menu, opened by holding a finger on the picture */
+  const [fadeMenu, setFadeMenu] = useState(false);
   /** the sounds for calling the other person back, by holding "Call" */
   const [alarmMenu, setAlarmMenu] = useState(false);
   /** who fills the screen when there is only one video: 'you', 'peer', or nothing */
@@ -777,8 +829,8 @@ export default function ChannelScreen(props: Props) {
         // to say where the other person is: let it say the true thing,
         // not a "waiting" good for all seasons.
         emptyLabel={peerWord(status, peerName, peerPresent, peerDetached)}
-        localAspect={localAspect}
-        remoteAspect={remoteAspect}
+        localAspect={localAspectShown}
+        remoteAspect={remoteAspectShown}
         compact={compact}
         mirror={frontCamera}
         onBigAspect={setBigAspect}
@@ -786,10 +838,14 @@ export default function ChannelScreen(props: Props) {
         insetH={compact ? 0 : inset.h}
         insetBottom={
           !compact && showStats
-            ? statsLineCount(videoStats) * STATS_LINE_H
+            ? statsLineCount(videoStats, localHasVideo || remoteHasVideo) * STATS_LINE_H
             : 0
         }
         onBackground={touch}
+        onBackgroundLong={
+          // Not in the little window: there is nothing to press there.
+          compact || !onSelectControls ? undefined : () => setFadeMenu(true)
+        }
         onOnlyBig={setOnlyBig}
         onZoom={onZoom}
         peerBadge={peerBadge}
@@ -1121,7 +1177,7 @@ export default function ChannelScreen(props: Props) {
           // the buttons moved.
           <View style={[
             styles.statsBox,
-            { height: statsLineCount(videoStats) * STATS_LINE_H },
+            { height: statsLineCount(videoStats, localHasVideo || remoteHasVideo) * STATS_LINE_H },
           ]}>
             <StatsLine
               stats={videoStats}
@@ -1197,6 +1253,34 @@ export default function ChannelScreen(props: Props) {
               </TouchableOpacity>
             ))}
             <Text style={styles.sheetHint}>{t('channel.alarmHint')}</Text>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* How far the buttons step aside: opens by holding a finger on
+          the picture. The same choices as the settings, one list for
+          both, reachable without leaving what one is watching. */}
+      <Modal
+        visible={fadeMenu}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFadeMenu(false)}>
+        <Pressable style={styles.sheetBack} onPress={() => setFadeMenu(false)}>
+          <View style={styles.sheet}>
+            <Text style={styles.sheetTitle}>{t('settings.controlsWhileWatching')}</Text>
+            {FADING_CHOICES().map((c) => (
+              <TouchableOpacity
+                key={c.value}
+                style={styles.sheetRow}
+                onPress={() => { setFadeMenu(false); onSelectControls?.(c.value); }}>
+                <View style={styles.sheetText}>
+                  <Text style={[styles.sheetLabel, c.value === controls && styles.sheetLabelOn]}>
+                    {c.label}
+                  </Text>
+                  <Text style={styles.sheetNote}>{c.note}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
           </View>
         </Pressable>
       </Modal>
@@ -1509,10 +1593,21 @@ function PresenceCard(props: {
  * much: if the two disagree the buttons move under the finger when a
  * number appears. So they ask the same function.
  */
-export function statsLineCount(stats: VideoStats): number {
+/**
+ * How many technical lines there are, so the panel's height never
+ * changes under one's fingers.
+ *
+ * The count follows the layout below: two lines with the voice alone,
+ * three when a picture is flowing - the resolutions fill the first
+ * line, and squeezing the waits in with everything else shrank the
+ * type until the one number worth reading was the smallest thing on
+ * the screen.
+ */
+export function statsLineCount(stats: VideoStats, hasVideo = false): number {
   let n = 1;                                    // the resolution: always there
-  if (stats.path || stats.audioKbps != null || stats.latency != null
-      || stats.recvDelay != null) n += 1;
+  if (stats.path || stats.latency != null || stats.recvDelay != null
+      || (hasVideo && stats.audioKbps != null)) n += 1;
+  if (hasVideo && stats.recvDelay != null) n += 1;
   return n;
 }
 
@@ -1629,6 +1724,21 @@ function StatsLine({
    */
   const together = upDelay != null && downDelay != null ? upDelay + downDelay : null;
 
+  /** A picture is flowing: the lines arrange themselves around it. */
+  const hasVideo = !!(up || down);
+  const voiceSaid = stats.audioKbps != null
+    ? t('channel.audioRate', { rate: bytes(stats.audioKbps) ?? '' })
+    : '';
+  const waitSaid = totalOnly && together != null
+    // Only the total, and it is still called the wait: it is the one
+    // being lived through, the two arrows are its halves.
+    ? t('channel.delay', { ms: together })
+    : upDelay != null && downDelay != null
+      ? t('channel.delayBoth', { up: upDelay, down: downDelay })
+      : downDelay != null
+        ? t('channel.delayDown', { ms: downDelay })
+        : '';
+
   const path = stats.path === 'local'
     ? t('channel.pathLocal')
     : stats.path === 'direct'
@@ -1647,10 +1757,14 @@ function StatsLine({
         adjustsFontSizeToFit
         minimumFontScale={0.6}>
         {t('channel.resolutionLabel', { quality: quality.toLowerCase() })}
+        {/* The voice's bandwidth goes where there is room: up here in
+            the desert of an audio-only line, further down when the
+            resolutions have taken the space. */}
+        {!hasVideo && voiceSaid ? `  ${voiceSaid}` : ''}
         {up ? `  \u2191${up}` : ''}
         {down ? `  \u2193${down}` : ''}
       </Text>
-      {path || stats.audioKbps != null || stats.latency != null || downDelay != null ? (
+      {path || stats.latency != null || (hasVideo ? voiceSaid : waitSaid) ? (
         // Like the line above: with the latency at its end it went off
         // the screen, and a line cut in the middle of a number says
         // nothing.
@@ -1660,20 +1774,17 @@ function StatsLine({
           adjustsFontSizeToFit
           minimumFontScale={0.6}>
           {path ? t('channel.linkLabel', { path }) : ''}
-          {stats.audioKbps != null
-            ? `${path ? '   ' : ''}${t('channel.audioRate', { rate: bytes(stats.audioKbps) ?? '' })}`
-            : ''}
+          {hasVideo && voiceSaid ? `   ${voiceSaid}` : ''}
           {stats.latency != null ? `   ${t('channel.latency', { ms: stats.latency })}` : ''}
-          {totalOnly && together != null
-            // Only the total, and it is still called the wait: it is
-            // the one being lived through, the two arrows are its
-            // halves.
-            ? `   ${t('channel.delay', { ms: together })}`
-            : upDelay != null && downDelay != null
-              ? `   ${t('channel.delayBoth', { up: upDelay, down: downDelay })}`
-              : downDelay != null
-                ? `   ${t('channel.delayDown', { ms: downDelay })}`
-                : ''}
+          {!hasVideo && waitSaid ? `   ${waitSaid}` : ''}
+        </Text>
+      ) : null}
+      {/* With a picture flowing, the waits get a line of their own:
+          crowded in with the rest, the type shrank until the one
+          number worth reading was the smallest thing on the screen. */}
+      {hasVideo && waitSaid ? (
+        <Text style={styles.stats} numberOfLines={1}>
+          {waitSaid}
         </Text>
       ) : null}
     </>

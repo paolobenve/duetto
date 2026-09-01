@@ -62,6 +62,9 @@ declare module 'duetto-platform' {
     subscribe(cb: (what: string) => void): () => void;
     /** "on this network the traffic does not get through, check it now" */
     reportNotCarrying(): Promise<boolean>;
+    /** the emergency lane: mobile data on and every socket bound to it */
+    requestMobile(): Promise<boolean>;
+    releaseMobile(): Promise<boolean>;
   };
 
   /** Android foreground service: keeps presence in the channel alive. */
@@ -98,6 +101,8 @@ declare module 'duetto-platform' {
   export const Pip: {
     isSupported(): Promise<boolean>;
     enter(aspect?: number): Promise<boolean>;
+    /** when the little window begins or ends; gives back the stop */
+    subscribe(cb: (inPip: boolean) => void): () => void;
   };
 
   /** The app's window. */

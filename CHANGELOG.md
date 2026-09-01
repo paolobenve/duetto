@@ -8,6 +8,94 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 0.9.158
+
+**La strada che continua a morire si abbandona per l'autostrada.** Su certe reti cellulari il
+collegamento inciampava ogni quaranta secondi: la strada «economica» attraverso la NAT
+dell'operatore muore e risorge in continuazione. Alla seconda recidiva i due telefoni ora si
+accordano e passano tutto attraverso il proprio relay, da entrambi i lati — la strada che nei
+log restava in piedi mentre le altre morivano. Si torna alle strade aperte al primo cambio di
+rete.
+
+**Chi trasmette molto meglio dell'altro si abbassa un po', e guarda.** Quando le due immagini
+sono assurdamente diseguali, il mittente forte cala il proprio tetto un gradino alla volta
+finché non sono abbastanza pari, e lo rialza appena l'altro tiene il passo. Solo il tetto di
+banda: nessuna camera da riaprire, nessun fotogramma nero.
+
+**Il microfono torna sempre com'era stato lasciato.** Prima valeva per cinque minuti; ora vale
+e basta, anche dopo una notte. La camera conserva la sua finestra di un minuto: riaccendersi da
+sola, quella, è un'altra faccenda.
+
+## 0.9.155
+
+**Uscendo di casa, la conversazione salta sui dati in pochi secondi.** Il wifi che si allontana
+diventa sordo molto prima che il telefono lo lasci, e in mezzo c'era fino a un minuto di
+silenzio. Ora, se il collegamento cade mentre voce o video stanno passando, l'app interroga il
+server: se tace anche lui, la sordità è nostra — e accende da sé la rete dati, portandoci sopra
+tutta la conversazione senza aspettare che il telefono si decida. Quando il wifi torna in salute
+si rientra da soli, con calma. La corsia costa radio e per questo vive solo in conversazione:
+in attesa, o con microfoni e camere spenti, resta la via lenta che non consuma nulla.
+
+**I pulsanti seguono il bordo vero del video.** Quando l'encoder stringe l'immagine per una rete
+magra, il fotogramma esce di un formato leggermente diverso da quello della camera, e i pulsanti
+restavano allineati al bordo di un video che non c'era più. Ora la forma dichiarata viene
+corretta con le misure dei fotogrammi che arrivano davvero.
+
+## 0.9.153
+
+**Cambiando rete, il collegamento cerca le strade nuove da solo.** Il telefono passa spesso da
+una rete all'altra senza che nulla si rompa — la nuova arriva prima che la vecchia se ne vada —
+e il collegamento diretto restava sulla strada vecchia: capitava di stare sulla stessa wifi
+passando ancora dal server, col video schiacciato a niente e la connessione che inciampava ogni
+quaranta secondi. Ora il cambio di rete fa ripartire la ricerca, e riapre anche il tentativo di
+lasciare il relay.
+
+**E una strada marcia viene abbandonata.** Tre inciampi in pochi minuti non sono sfortuna: sono
+un giudizio sulla strada, e si va a cercarne un'altra.
+
+## 0.9.152
+
+**Nella tendina, il presente sta sopra il passato.** Le notifiche di Duetto ora hanno un ordine
+fisso: prima lo stato delle cose («Nel canale con l'altro»), poi gli avvisi, in fondo le notizie.
+Prima l'ordine era per età, e la notizia «è sparito…» restava seduta sopra uno stato che diceva
+il contrario. La notizia del ritorno, inoltre, ora comincia dal ritorno: anche troncata dice la
+cosa giusta.
+
+**Le righe tecniche si dispongono attorno a ciò che viaggia.** Con la sola voce, due righe: la
+banda accanto al profilo, sotto percorso, latenza e attese. Col video, tre: le risoluzioni
+riempiono la prima, e le attese hanno una riga tutta loro invece di rimpicciolirsi con il resto.
+
+**«Sempre visibili» non si dimentica più al riavvio.** Il traduttore delle vecchie impostazioni
+non conosceva il grado nuovo e lo riportava al default a ogni avvio dell'app.
+
+**Percorso e ritardi non spariscono più sulla rete cellulare.** Dopo un cambio di rete il
+telefono non ritrovava la coppia di candidati vincente e il pannello perdeva percorso, latenza e
+attese: ora la chiede nel modo che lo standard prevede, con i vecchi dialetti come ripiego.
+
+## 0.9.150
+
+**Sconfitto lo stallo del «sto stabilendo la connessione».** Da sempre, ogni tanto, i due
+telefoni restavano lì a fissarsi: ognuno convinto che nulla fosse rotto, nessuno dei due
+collegato. Succedeva quando l'offerta di collegamento cadeva in un buco (un riaggancio al
+momento sbagliato) e la connessione rimaneva «nuova» per sempre — mai malata, quindi mai
+curata dalle reti di sicurezza. Ora il silenzio prolungato è riconosciuto per quello che è, e
+dopo dieci secondi scatta la solita medicina.
+
+**La finestrella dice solo l'essenziale.** Andando in Picture-in-Picture col tasto indietro, su
+molti telefoni la finestrella mostrava pulsanti e righe tecniche accatastati su un francobollo:
+l'app non veniva avvisata del rimpicciolimento. Ora è Android stesso a dirglielo, e nella
+finestrella restano la faccia e una parola: c'è, in attesa, non raggiungibile.
+
+**Una pressione lunga sul video sceglie quanto sfumano i pulsanti.** Mezzo secondo col dito fermo
+sull'immagine grande (o sullo schermo, se video non ce n'è) apre il menu con i gradi di
+attenuazione — senza passare dalle impostazioni. E tra i gradi ora c'è anche «Sempre visibili»,
+per chi i pulsanti li vuole lì, fissi.
+
+**Il ritardo scritto è quello di ciò che viaggia.** Solo voce: il ritardo della voce. Col video
+acceso: quello dei fotogrammi, ai quali la voce è tenuta dietro dalla sincronizzazione. Prima i
+due si mescolavano cambiando catena di nascosto, e il numero calava proprio quando accendevi la
+camera.
+
 ## 0.9.146
 
 **In attesa si consuma molto meno.** Il blocco che teneva sveglio il processore, finora tenuto

@@ -17,7 +17,7 @@ import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
 import {
   Foreground, Pip, AppWindow, Visibility, Codecs, Audio, Alerts, Journal, Volume,
-  Heartbeat,
+  Heartbeat, Network,
   Alarm,
 } from 'duetto-platform';
 import { attachWatchdog, Watchdog } from './watchdog';
@@ -197,19 +197,18 @@ const SERVER_GRACE_MS = 5_000;
 const VOLUME_ECHO_MS = 2_000;
 
 /**
- * Within this, coming back counts as carrying on rather than as a fresh
- * entry. Two different waits, because the two do not weigh the same.
+ * Coming back, what was chosen is what one finds - with one exception.
  *
- * The microphone, five minutes: the length of an interruption - a door,
- * a phone call, a glance at another app - and finding it as it was
- * shows nothing to anybody.
+ * The microphone comes back AS IT WAS LEFT, however long ago: it used
+ * to have a five-minute window, and re-entering after an evening meant
+ * re-making a choice already made. A microphone's state shows nothing
+ * to anybody; there is no cost in remembering it for good.
  *
  * The camera, one minute: switching itself back on is another matter,
  * because it films a room and a face. Within the minute it is plainly
  * the same scene as before; beyond it you are starting again, and you
  * start with it off.
  */
-const RESUME_MIC_MS = 5 * 60_000;
 const RESUME_VIDEO_MS = 60_000;
 
 /** How often we look to see whether we are still without a server. */
@@ -475,6 +474,77 @@ export default function App() {
    * other's toes: a repair younger than a beat is left to work.
    */
   const recoveryBegunAt = useRef(0);
+
+  /**
+   * The link's recent stumbles, for the flap counter.
+   *
+   * A rotten road dies and resurrects in half a second, over and over:
+   * each `failed` arms the ladder, each `connected` disarms it, and no
+   * medicine is ever given - the stumbling went on for as long as the
+   * road lasted, once every consent check. Three stumbles in a few
+   * minutes are not bad luck, they are a verdict on the road: an ICE
+   * restart goes looking for a better one.
+   */
+  const flapTimes = useRef<number[]>([]);
+  /** when the flap counter last gave its medicine: the relapse clock */
+  const flapMedicineAt = useRef(0);
+
+  /**
+   * The emergency lane: mobile data while the wifi plays deaf.
+   *
+   * Leaving the house, the wifi stops carrying long before the phone
+   * lets go of it, and mid-conversation a minute of silence is not a
+   * price anyone agreed to. When the link fails while words or
+   * pictures are flowing, the server is probed once: if it answers,
+   * the wifi carries and the trouble is on the other side; if it too
+   * is silent, the deafness is ours - mobile data is switched on and
+   * every socket bound to it, wifi or no wifi. The lane costs radio,
+   * so it closes when the wifi has been back in health for a while
+   * (in no hurry: coming home may wait a few seconds), or when the
+   * conversation ends. While merely waiting, none of this runs - the
+   * slow escalation is enough, and the radio stays cheap.
+   */
+  const laneOpen = useRef(false);
+  const laneProbe = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const laneRelease = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** when the server last answered a presence question: the probe reads it */
+  const lastPresenceAt = useRef(0);
+
+  const closeLane = useCallback((why: string) => {
+    if (laneProbe.current) { clearTimeout(laneProbe.current); laneProbe.current = null; }
+    if (laneRelease.current) { clearTimeout(laneRelease.current); laneRelease.current = null; }
+    if (!laneOpen.current) return;
+    laneOpen.current = false;
+    Journal.mark(`mobile-lane:closed:${why}`).catch(() => { /* noop */ });
+    Network.releaseMobile().catch(() => { /* noop */ });
+  }, []);
+
+  const maybeOpenLane = useCallback(() => {
+    if (laneOpen.current || laneProbe.current) return;
+    if (!inChannelRef.current || !peerActiveRef.current) return;
+    // Only while something is actually flowing: with both microphones
+    // shut and the cameras off, the slow road costs nobody anything.
+    const s = sessionRef.current;
+    const live = (s?.isAudioEnabled() ?? false) || (s?.isVideoEnabled() ?? false)
+      || peerStateRef.current.audio || peerStateRef.current.video;
+    if (!live) return;
+    const asked = Date.now();
+    signalingRef.current?.askPresence();
+    laneProbe.current = setTimeout(() => {
+      laneProbe.current = null;
+      if (connStateRef.current === 'connected') return;
+      // The server answered over the wifi: it carries, the trouble is
+      // on the other side of the road. No lane.
+      if (lastPresenceAt.current > asked) return;
+      laneOpen.current = true;
+      Journal.mark('wifi-deaf:mobile-lane').catch(() => { /* noop */ });
+      // Both words go out: Android is told to check the wifi (it may
+      // demote it by itself), and the lane opens without waiting for
+      // its verdict.
+      Network.reportNotCarrying().catch(() => { /* noop */ });
+      Network.requestMobile().catch(() => { /* noop */ });
+    }, 3000);
+  }, []);
   /** the relay announced by the server, valid while the connection lasts */
   const serverTurnRef = useRef<any[]>([]);
   /** the wait before the light repair of a fallen link */
@@ -1106,7 +1176,7 @@ export default function App() {
         if (!inChannelRef.current || !peerActiveRef.current) return;
         const sess = sessionRef.current;
         if (!sess) return;
-        const sick = !sess.isPeerHealthy();
+        const sick = !sess.isPeerHealthy() || sess.isStalled();
         Heartbeat.fast(sick).catch(() => { /* noop */ });
         if (!sick) return;
         // Not on the ladder's toes: a repair set off moments ago -
@@ -1116,6 +1186,61 @@ export default function App() {
         Journal.mark('heartbeat:peer-sick').catch(() => { /* noop */ });
         if (politeRef.current) signalingRef.current?.sendSignal({ kind: 'renegotiate' });
         else attachPeerRef.current?.(true);
+      },
+      /**
+       * The network changed under our feet: the link goes looking for
+       * the roads the new network may have opened.
+       *
+       * Android often changes network without breaking anything - the
+       * new one comes up before the old goes down - so no outage ever
+       * told the link to look again. It kept walking a dead road
+       * through the relay while the two phones sat on the same wifi:
+       * video squeezed to nothing, the connection stumbling on every
+       * consent check. An ICE restart is exactly the tool for this -
+       * media keeps flowing on the old road until a better one is
+       * ready. Only with a standing socket: with a broken one, the
+       * rejoining already restarts everything.
+       */
+      onNetwork: (what) => {
+        /**
+         * The wifi is back in health while the lane is open: the lane
+         * closes, but in no hurry - twenty seconds of proven health,
+         * so the edge of the wifi's reach does not become a ping-pong.
+         * Coming home a few seconds late was agreed to be no problem.
+         */
+        if (what === 'wifi-back') {
+          if (!laneOpen.current || laneRelease.current) return;
+          laneRelease.current = setTimeout(() => {
+            laneRelease.current = null;
+            closeLane('wifi-healthy-again');
+          }, 20_000);
+          return;
+        }
+        const sig = signalingRef.current;
+        if (!sig?.connected) return;
+        if (!inChannelRef.current || !peerActiveRef.current) return;
+        if (!sessionRef.current?.hasPeer()) return;
+        // A new network is the one moment a direct road may have
+        // appeared: the escape from the relay earns a fresh try, the
+        // flap counter starts from a clean sheet, and the motorway -
+        // chosen against roads that no longer exist - is left.
+        relayRetried.current = false;
+        flapTimes.current = [];
+        flapMedicineAt.current = 0;
+        recoveryBegunAt.current = Date.now();
+        const s = sessionRef.current;
+        if (s?.isRelayOnly()) {
+          Journal.mark('link:relay-only:off').catch(() => { /* noop */ });
+          s.setRelayOnly(false);
+          sig.sendSignal({ kind: 'relayOnly', on: false });
+          // The policy lives in the connection's construction: a
+          // restart is not enough, it has to be remade.
+          if (!politeRef.current) attachPeerRef.current?.(true);
+          return;
+        }
+        Journal.mark('network:ice-restart').catch(() => { /* noop */ });
+        if (politeRef.current) sig.sendSignal({ kind: 'renegotiate' });
+        else sessionRef.current?.restartIce();
       },
     });
     watchdog.current = w;
@@ -1779,8 +1904,10 @@ export default function App() {
           onPresence: ({ peerPresent: present, peerActive, peerName: n }) => {
             // The server has answered: whatever doubt we had about the
             // socket, it is alive. It goes for the probe after a change
-            // of network and for the heartbeat's own.
+            // of network, for the heartbeat's own, and for the
+            // emergency lane's, which reads the time below.
             watchdog.current?.noteAnswer();
+            lastPresenceAt.current = Date.now();
             setPeerPresent(present);
             if (present) {
               setPeerDetached(false);
@@ -2056,6 +2183,7 @@ export default function App() {
         // service stays for the next connection, the wake lock does not.
         Foreground.setInChannel(false).catch(() => {});
       }
+      closeLane('torn-down');
       try { InCallManager.stop(); } catch { /* noop */ }
       Audio.useCallVolumeKeys(false).catch(() => {});
     };
@@ -2202,6 +2330,43 @@ export default function App() {
           if (st === 'connected') { clearRecovery(); return; }
           if (st !== 'failed' && st !== 'disconnected') return;
 
+          // The emergency lane's own clock: mid-conversation a minute
+          // of silence was not agreed to by anybody. See `laneOpen`.
+          maybeOpenLane();
+
+          // The flap counter: see `flapTimes`. Counted on `failed`
+          // alone - `disconnected` also comes from ordinary wobbles.
+          if (st === 'failed' && inChannelRef.current && peerActiveRef.current) {
+            const now = Date.now();
+            flapTimes.current = flapTimes.current.filter((t2) => now - t2 < 180_000);
+            flapTimes.current.push(now);
+            if (flapTimes.current.length >= 3) {
+              flapTimes.current = [];
+              recoveryBegunAt.current = now;
+              const s = sessionRef.current;
+              // A relapse within ten minutes of the last medicine: the
+              // road itself is rotten, and looking for a better one on
+              // the same map keeps finding it. Both sides take the
+              // motorway - everything through our own relay - until
+              // the network changes. See `relayOnly` in webrtc.ts.
+              if (s && !s.isRelayOnly()
+                  && now - flapMedicineAt.current < 10 * 60_000) {
+                Journal.mark('link:relay-only').catch(() => { /* noop */ });
+                s.setRelayOnly(true);
+                signalingRef.current?.sendSignal({ kind: 'relayOnly', on: true });
+                // The offering side rebuilds on the new policy; the
+                // polite side has just told the other, who will.
+                if (!politeRef.current) attachPeer(true);
+                return;
+              }
+              flapMedicineAt.current = now;
+              Journal.mark('link:flapping:ice-restart').catch(() => { /* noop */ });
+              if (politeRef.current) signalingRef.current?.sendSignal({ kind: 'renegotiate' });
+              else sessionRef.current?.restartIce();
+              return;
+            }
+          }
+
           // ICE often recovers by itself, even from "failed": in the
           // log it has been seen going from failed to connected with no
           // help at all. Demolishing at once cut audio and video
@@ -2318,11 +2483,9 @@ export default function App() {
     if (mine && before) { delete howItWas.current[mine]; saveHowItWas(); }
     if (before) {
       const still = Date.now() - before.when;
-      // An app that vanished did not choose to: whatever it was doing
-      // is what it should be doing again. The clock only judges a
-      // channel that was put away on purpose.
-      const vanished = before.live === true;
-      if (!before.audio && (vanished || still < RESUME_MIC_MS)) {
+      // The microphone: as it was left, however long ago. The clock
+      // below judges only the camera.
+      if (!before.audio) {
         Journal.mark(`resume-mic:after ${Math.round(still / 1000)}s`)
           .catch(() => { /* noop */ });
         const on = sessionRef.current?.toggleAudio();
@@ -2373,8 +2536,8 @@ export default function App() {
    * is a wrong touch, or the phone closing the app. And even when it is
    * a choice - I put it down a moment, I am back - finding the video
    * off and having to switch it on by hand is a nuisance. Things resume
-   * as they were, with two different waits for the microphone and for
-   * the camera: see RESUME_MIC_MS.
+   * as they were, the microphone for good and the camera within its minute:
+   * see RESUME_VIDEO_MS.
    *
    * With a name on each drawer, because moving to another connection is
    * a way of leaving too, and there whoever goes out and whoever comes
@@ -2445,15 +2608,12 @@ export default function App() {
         const raw = await AsyncStorage.getItem(HOW_IT_WAS_KEY);
         if (!raw) return;
         const stored = JSON.parse(raw) as Record<string, HowItWas>;
-        const now = Date.now();
         const fresh: Record<string, HowItWas> = {};
         for (const [id, was] of Object.entries(stored)) {
-          // The ones left by an app that vanished do not expire: their
-          // time says when a button was last touched, not when anybody
-          // went away.
-          if (was && (was.live === true || now - was.when < RESUME_MIC_MS)) {
-            fresh[id] = was;
-          }
+          // Nothing expires here any more: the microphone is restored
+          // however long ago it was left, and the camera judges its own
+          // minute at the moment of use.
+          if (was) fresh[id] = was;
         }
         howItWas.current = fresh;
       } catch { /* nothing to take out */ }
@@ -2517,7 +2677,10 @@ export default function App() {
     try { InCallManager.stop(); } catch { /* noop */ }
     Audio.useCallVolumeKeys(false).catch(() => {});
     Foreground.setCameraActive(false).catch(() => {});
-    // Waiting again: the wake lock goes, the watchdog alarm remains.
+    // Waiting again: the wake lock goes, the watchdog alarm remains -
+    // and the emergency lane, which belongs to the conversation, goes
+    // with it.
+    closeLane('left-channel');
     Foreground.setInChannel(false).catch(() => {});
     setLocalStream(null);
     setRemoteStream(null);
@@ -2567,7 +2730,9 @@ export default function App() {
       const sig = signalingRef.current;
       if (!sess || !sig?.connected) return;
       if (!inChannelRef.current || !peerActiveRef.current) return;
-      if (sess.isPeerHealthy()) return;
+      // Sick, or stalled: a connection whose negotiation met silence
+      // stays NEW for ever, which this net used to read as health.
+      if (sess.isPeerHealthy() && !sess.isStalled()) return;
 
       // Noted for the heartbeat's sake: its medicine and this one are
       // the same, and they must not demolish on each other's toes.
@@ -2583,6 +2748,18 @@ export default function App() {
   useEffect(() => {
     Pip.isSupported().then((v) => { pipSupported.current = v; }).catch(() => {});
   }, []);
+
+  /**
+   * Whether we are inside the little window right now.
+   *
+   * The screen used to work it out from its own width, and on a good
+   * many phones React Native goes on reporting the full screen while
+   * the window has shrunk: the buttons and the technical lines were
+   * drawn onto a postage stamp. The activity is the only one told the
+   * truth, and this is where it arrives.
+   */
+  const [inPip, setInPip] = useState(false);
+  useEffect(() => Pip.subscribe(setInPip), []);
 
   const stageAspect =
     (peerState.video ? peerState.aspect : undefined) ??
@@ -3001,6 +3178,7 @@ export default function App() {
     <View style={styles.safe}>
       <StatusBar barStyle="light-content" />
       <ChannelScreen
+        pip={inPip}
         connectionName={connectionName}
         peerName={shownName}
         peerAvatar={face}
@@ -3014,6 +3192,12 @@ export default function App() {
         qualityLabel={t(`quality.${(VIDEO_PROFILES[cfg.videoQuality] ?? VIDEO_PROFILES.standard).key}`)}
         showStats={cfg.diagnostics}
         controls={cfg.controls}
+        onSelectControls={(v) => setCfg((prev) => {
+          if (!prev) return prev;
+          // The same word as from the settings, said from the picture:
+          // saved at once, for this connection like every setting.
+          return saveCfg({ ...prev, controls: v });
+        })}
         news={notice}
         onNewsRead={() => setNotice(null)}
         // The screen is given the LEVEL, not the gain: it is the number

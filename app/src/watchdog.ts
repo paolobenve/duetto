@@ -80,6 +80,19 @@ export function attachWatchdog(
      */
     onBeat?: () => void;
     /**
+     * A change of network, once it has settled.
+     *
+     * The socket's own handling stays in here; this is for whoever has
+     * MORE than the socket standing on the old network - the direct
+     * link between the two phones, above all. Android often changes
+     * network without breaking anything (the new one comes up before
+     * the old one goes), and then no outage ever tells the link to go
+     * looking for the roads the new network has opened: it kept
+     * walking a dead one through the relay while the two phones sat on
+     * the same wifi.
+     */
+    onNetwork?: (what: string) => void;
+    /**
      * Whether the watchdog also sets the heartbeat's pace: one a
      * minute when all is well, one every fifteen seconds while there
      * is something to put right. The app's interface has a pace-setter
@@ -150,10 +163,19 @@ export function attachWatchdog(
 
   const stopNet = Network.subscribe((what: string) => {
     if (what === 'lost') return;
+    // The wifi's health while the emergency lane is open: nothing has
+    // changed for OUR sockets - they are bound to the mobile data - so
+    // no probing and no rebuilding; whoever opened the lane hears the
+    // word and decides at their own pace.
+    if (what === 'wifi-back') {
+      hooks.onNetwork?.(what);
+      return;
+    }
     if (settle) clearTimeout(settle);
     settle = setTimeout(() => {
       settle = null;
       Journal.mark(`network:${what}`).catch(() => { /* noop */ });
+      hooks.onNetwork?.(what);
       const sig = get();
       if (!sig) return;
       // Already without a server: there is nothing to save, we simply

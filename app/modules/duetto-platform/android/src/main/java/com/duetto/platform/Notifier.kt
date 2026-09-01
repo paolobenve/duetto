@@ -38,6 +38,21 @@ object Notifier {
     private const val NOTE_NOTIFICATION_ID = 4713
 
     /**
+     * One group, ordered by hand.
+     *
+     * Left to itself, Android stacks the app's notifications by age:
+     * a piece of news posted at the other's return sat ON TOP of the
+     * standing line that already said the present ("in the channel"),
+     * and whoever glanced at the shade read yesterday first. The sort
+     * keys say the order once and for all: the state of things first,
+     * then the alerts, then the news - the present above the past.
+     */
+    const val GROUP = "duetto"
+    const val SORT_STATE = "0-state"
+    const val SORT_ALERT = "1-alert"
+    const val SORT_NOTE = "2-note"
+
+    /**
      * How long before a piece of news takes itself away: ten minutes.
      *
      * News grows old. "They came back at 8:35" read at noon does not say
@@ -111,6 +126,8 @@ object Notifier {
             .setSilent(true)
             .setTimeoutAfter(NOTE_TIMEOUT_MS)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setGroup(GROUP)
+            .setSortKey(SORT_NOTE)
             .build()
         try {
             NotificationManagerCompat.from(ctx).notify(NOTE_NOTIFICATION_ID, notification)
@@ -143,6 +160,8 @@ object Notifier {
             .setAutoCancel(true)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setGroup(GROUP)
+            .setSortKey(SORT_ALERT)
 
         // Before Android 8 the channels do not exist and these two things
         // are said here. From Android 8 on they are ignored: the channel
@@ -245,6 +264,8 @@ object Notifier {
             // foreground service has to have a notification.
             .setSilent(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setGroup(GROUP)
+            .setSortKey(SORT_STATE)
             .build()
 
         /**

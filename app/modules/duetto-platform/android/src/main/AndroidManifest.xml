@@ -17,6 +17,9 @@
          microphone nor the camera: it holds a connection open and waits. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- The emergency lane: asking for mobile data by name while a deaf
+         wifi is still the default. Normal permission, granted by itself. -->
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
     <!-- Android 13+: needed to show the service's notification -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Coming back after the phone reboots -->

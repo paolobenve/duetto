@@ -63,7 +63,11 @@ const VALUES: Record<string, { table: Record<string, string>; fallback: string }
     fallback: 'better',
   },
   controls: {
-    table: { poco: 'dim', molto: 'faint', nascondi: 'hidden' },
+    // `none` maps to itself: it was born after this bridge, and the
+    // bridge - knowing only the three old degrees - read it as a value
+    // from nowhere and put the default back at every start. Whoever
+    // chose "always visible" found "barely faded" the next morning.
+    table: { poco: 'dim', molto: 'faint', nascondi: 'hidden', none: 'none' },
     fallback: 'dim',
   },
   alertVibration: {

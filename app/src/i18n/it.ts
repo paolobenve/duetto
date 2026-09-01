@@ -67,7 +67,10 @@ export const it: Dictionary = {
     unknown: 'non si sa perché',
     atTime: 'alle {time}',
     onDayAtTime: 'il {date} alle {time}',
-    story: '{who} è sparito {when}: {why}. È tornato alle {back}.',
+    // Il ritorno per primo: la tendina tronca la frase alle prime
+    // parole, e «è sparito» accanto a «nel canale» leggeva come una
+    // smentita del presente. Prima ciò che è vero ora, poi la storia.
+    story: '{who} è tornato alle {back} — era sparito {when}: {why}.',
   },
 
   presence: {
@@ -269,6 +272,8 @@ export const it: Dictionary = {
     delayTotalOnlyNote: 'Un numero invece di due: quello che si vive parlando, le due direzioni sommate. Le frecce vale la pena tenerle quando si cerca una causa, perché dicono quale delle due è quella lenta.',
     controlsWhileWatching: 'I comandi mentre guardi',
     controlsHint: 'Dopo qualche secondo si fanno da parte per lasciare l’immagine. Comunque scelti restano premibili, e un tocco ovunque li richiama: cambia solo quanta immagine lasciano vedere.',
+    controlsNone: 'Sempre visibili',
+    controlsNoneNote: 'Non si spostano mai: restano al 100%.',
     controlsDim: 'Poco sfumati',
     controlsDimNote: 'Restano leggibili, al 40%. È il modo di sempre.',
     controlsFaint: 'Molto sfumati',
