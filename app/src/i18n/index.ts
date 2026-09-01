@@ -10,6 +10,9 @@
 import { Locale } from 'duetto-platform';
 import { en, type Dictionary } from './en';
 import { it } from './it';
+import { es } from './es';
+import { pt } from './pt';
+import { fr } from './fr';
 
 /**
  * The languages the app speaks, and the words it speaks them with.
@@ -24,12 +27,12 @@ import { it } from './it';
  * settings: two people who write to each other in English can keep the
  * app in English, and the same phone can show Italian to somebody else.
  */
-export type Language = 'en' | 'it';
+export type Language = 'en' | 'it' | 'es' | 'pt' | 'fr';
 
-const dictionaries: Record<Language, Dictionary> = { en, it };
+const dictionaries: Record<Language, Dictionary> = { en, it, es, pt, fr };
 
 /** What the picker in the settings offers, in this order. */
-export const LANGUAGES: Language[] = ['en', 'it'];
+export const LANGUAGES: Language[] = ['en', 'it', 'es', 'pt', 'fr'];
 
 /** `auto` means: whatever the phone is set to. */
 export type LanguageChoice = 'auto' | Language;

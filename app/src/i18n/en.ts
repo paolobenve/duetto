@@ -375,6 +375,9 @@ export const en = {
     auto: 'Same as the phone',
     it: 'Italiano',
     en: 'English',
+    es: 'Español',
+    pt: 'Português',
+    fr: 'Français',
   },
 };
 

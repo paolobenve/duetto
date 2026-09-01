@@ -363,5 +363,8 @@ export const it: Dictionary = {
     auto: 'Come il telefono',
     it: 'Italiano',
     en: 'English',
+    es: 'Español',
+    pt: 'Português',
+    fr: 'Français',
   },
 };

@@ -16,6 +16,15 @@ export type ReleaseNote = {
 
 export const CHANGELOG: ReleaseNote[] = [
   {
+    "version": "0.9.2 build 172",
+    "paragraphs": [
+      {
+        "strong": "Duetto parla anche spagnolo, portoghese e francese.",
+        "text": "Tutta l'interfaccia, dagli avvisi alle impostazioni. La lingua resta del collegamento, come sempre: lo stesso telefono può parlare spagnolo con una persona e italiano con un'altra; chi non sceglie ha la lingua del telefono."
+      }
+    ]
+  },
+  {
     "version": "0.9.1 build 171",
     "paragraphs": [
       {

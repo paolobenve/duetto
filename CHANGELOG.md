@@ -8,6 +8,13 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 0.9.2 build 172
+
+**Duetto parla anche spagnolo, portoghese e francese.** Tutta l'interfaccia, dagli
+avvisi alle impostazioni. La lingua resta del collegamento, come sempre: lo stesso
+telefono può parlare spagnolo con una persona e italiano con un'altra; chi non
+sceglie ha la lingua del telefono.
+
 ## 0.9.1 build 171
 
 **Il relay veste i panni del web.** Certe reti mobili falciano a orologeria ogni flusso
