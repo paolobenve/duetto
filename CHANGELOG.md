@@ -8,7 +8,12 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
-## 0.9.1 build 167
+## 0.9.1 build 170
+
+**Un solo orologio per le morti.** Allo scoccare della pazienza partivano due medicine
+insieme — la scala vecchia e il cambio di marcia — e le due negoziazioni si pestavano i piedi:
+era la catena «prima un telefono, poi l'altro». Ora per una morte comanda un orologio solo, che
+ingrana la marcia dove serve e dà la medicina ordinaria dove no.
 
 **Niente scambi di binario mentre si ricuce.** Una caduta fa sfarfallare gli schermi, lo
 sfarfallio faceva rimbalzare il «sta guardando/non sta guardando», e ogni rimbalzo cambiava il

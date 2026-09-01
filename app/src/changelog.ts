@@ -16,8 +16,12 @@ export type ReleaseNote = {
 
 export const CHANGELOG: ReleaseNote[] = [
   {
-    "version": "0.9.1 build 167",
+    "version": "0.9.1 build 170",
     "paragraphs": [
+      {
+        "strong": "Un solo orologio per le morti.",
+        "text": "Allo scoccare della pazienza partivano due medicine insieme — la scala vecchia e il cambio di marcia — e le due negoziazioni si pestavano i piedi: era la catena «prima un telefono, poi l'altro». Ora per una morte comanda un orologio solo, che ingrana la marcia dove serve e dà la medicina ordinaria dove no."
+      },
       {
         "strong": "Niente scambi di binario mentre si ricuce.",
         "text": "Una caduta fa sfarfallare gli schermi, lo sfarfallio faceva rimbalzare il «sta guardando/non sta guardando», e ogni rimbalzo cambiava il binario del video — innescando una rinegoziazione nel bel mezzo della riparazione: era la catena dei singhiozzi doppi, prima un telefono e poi l'altro. Ora il desiderio si annota e si esaudisce a collegamento tornato intero."

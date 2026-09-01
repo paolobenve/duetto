@@ -2403,11 +2403,17 @@ export default function App() {
 
           if (st === 'connected') {
             clearRecovery();
-            // The death undid itself: the gear stays in its box.
+            // The death undid itself: the gear stays in its box, and
+            // the nets' memories of sickness are wiped - "sick twice
+            // in a row" must mean twice in the SAME illness, or the
+            // beat's slow pace aliases across two separate deaths and
+            // hands out medicine at the second one's first breath.
             if (gearTimer.current) {
               clearTimeout(gearTimer.current);
               gearTimer.current = null;
             }
+            beatSickTwice.current = false;
+            netSickTicks.current = 0;
             return;
           }
           if (st !== 'failed' && st !== 'disconnected') return;
@@ -2459,18 +2465,33 @@ export default function App() {
                 if (deadForGood.current.length >= 3) {
                   deadForGood.current = [];
                   shift(false);
+                  return;
                 }
               }
+              // No gear to shift: the ordinary medicine, at the same
+              // patient hour, with the hard rebuild behind it.
+              recoveryBegunAt.current = Date.now();
+              if (politeRef.current) sig0.sendSignal({ kind: 'renegotiate' });
+              else s0.restartIce();
+              hardTimer.current = setTimeout(() => {
+                if (connStateRef.current === 'connected') return;
+                if (inChannelRef.current && peerActiveRef.current) attachPeer(true);
+              }, 8000);
             }, GEAR_PATIENCE_MS);
           }
 
-          // ICE often recovers by itself, even from "failed": in the
-          // log it has been seen going from failed to connected with no
-          // help at all. Demolishing at once cut audio and video
-          // precisely while things were sorting themselves out, and was
-          // the cause of most of the visible interruptions. Now: we
-          // wait, we try the light repair, and only if that is not
-          // enough do we rebuild.
+          // On `failed`, the gear timer above is the ONE clock: it
+          // shifts a gear where a gear helps, and gives the ordinary
+          // medicine where none does. The ladder below fired its own
+          // copy at the very same patient hour, and the two
+          // negotiations tripped on each other - a chain of rebuilds,
+          // one phone and then the other.
+          if (st === 'failed') return;
+
+          // ICE often recovers by itself: demolishing at once cut
+          // audio and video precisely while things were sorting
+          // themselves out. We wait, we try the light repair, and only
+          // if that is not enough do we rebuild.
           clearRecovery();
           recoveryBegunAt.current = Date.now();
           softTimer.current = setTimeout(async () => {
@@ -2490,13 +2511,10 @@ export default function App() {
               if (signalingWasDown.current) return;
               if (inChannelRef.current && peerActiveRef.current) attachPeer(true);
             }, 8000);
-            // The same patience as the gears: four seconds was written
-            // when a death was thought final, and on the networks that
-            // kill on a clock it interrupted the very self-healing it
-            // meant to help - the polite side asked, the other side
-            // demolished, at second four of a stitch that needed two
-            // more. One clock for every medicine.
-          }, st === 'failed' ? GEAR_PATIENCE_MS : 12000);
+            // Only `disconnected` comes this way now - `failed` is the
+            // gear timer's alone - and a wobble deserves the longer
+            // wait it always had.
+          }, 12000);
         },
         onVideoStats: (st) => {
           setVideoStats(st);
@@ -2872,6 +2890,12 @@ export default function App() {
         netSickTicks.current = 0;
         return;
       }
+      // A plain `failed` belongs to the gear timer, which owns the one
+      // patient clock for deaths: this net racing it just moved the
+      // medicine's hour around at random. What is left to this net is
+      // its original prey - the sickness no state ever declares: the
+      // stalled, and the healthy-looking that carry nothing.
+      if (connStateRef.current === 'failed') return;
       // Patience: it rises again by itself within a couple of seconds
       // almost every time, and this net used to demolish the very pair
       // that was stitching itself back together. Two sick rounds in a
