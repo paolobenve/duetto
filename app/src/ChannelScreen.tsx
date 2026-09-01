@@ -1773,7 +1773,10 @@ function StatsLine({
           numberOfLines={1}
           adjustsFontSizeToFit
           minimumFontScale={0.6}>
-          {path ? t('channel.linkLabel', { path }) : ''}
+          {/* On a relayed road, the leg that carries us to the relay:
+              the number that says whether the carrier's NAT has a say. */}
+          {path ? t('channel.linkLabel', { path })
+            + (stats.path === 'relay' && stats.relayLeg ? ` (${stats.relayLeg})` : '') : ''}
           {hasVideo && voiceSaid ? `   ${voiceSaid}` : ''}
           {stats.latency != null ? `   ${t('channel.latency', { ms: stats.latency })}` : ''}
           {!hasVideo && waitSaid ? `   ${waitSaid}` : ''}

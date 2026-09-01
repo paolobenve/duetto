@@ -96,6 +96,18 @@ object Journal {
      */
     @Volatile private var voiceKeys = false
 
+    /**
+     * The level really heard, in percent: the product of the system's
+     * call volume and the app's own gain. The line already carried the
+     * system half (volVoice) - and a journal read the morning after
+     * showed 12/12 while the person had been listening at 46%, with
+     * nobody able to say from the file alone how loud it really was.
+     * -1 = the app has not said yet, and nothing is written.
+     */
+    @Volatile private var heardLevel = -1
+
+    fun level(percent: Int) { heardLevel = percent }
+
     fun voiceKeys(active: Boolean) {
         voiceKeys = active
     }
@@ -363,6 +375,7 @@ object Journal {
                 // you" told over the phone.
                 append(" audio=").append(audioMode(ctx))
                 append(" volVoice=").append(voiceVolume(ctx))
+                if (heardLevel >= 0) append(" level=").append(heardLevel).append('%')
                 append(" volMedia=").append(mediaVolume(ctx))
                 append(" speaker=").append(if (speakerphone(ctx)) "yes" else "no")
                 append(" voiceKeys=").append(if (voiceKeys) "yes" else "no")

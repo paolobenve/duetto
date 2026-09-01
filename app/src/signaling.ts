@@ -87,7 +87,7 @@ export type SignalMessage =
    * half-mixed. An older build ignores it and simply does not comply,
    * which costs nothing worse than today's behaviour.
    */
-  | { kind: 'relayOnly'; on: boolean }
+  | { kind: 'relayOnly'; on: boolean; tcp?: boolean }
   // Video quality belongs to both: changing it on one phone changes it
   // on the other. Whoever receives it does not send it back.
   | { kind: 'quality'; value: string }

@@ -119,6 +119,8 @@ declare module 'duetto-platform' {
   export const Journal: {
     state(s: string): Promise<boolean>;
     mark(why: string): Promise<boolean>;
+    /** the level really heard, in percent: it goes on the periodic line */
+    level(percent: number): Promise<boolean>;
     /** whether to write the periodic line: it follows the diagnostics switch */
     sampling(on: boolean): Promise<boolean>;
     lines(): Promise<number>;

@@ -16,7 +16,62 @@ export type ReleaseNote = {
 
 export const CHANGELOG: ReleaseNote[] = [
   {
-    "version": "0.9.158",
+    "version": "0.9.1 build 167",
+    "paragraphs": [
+      {
+        "strong": "Niente scambi di binario mentre si ricuce.",
+        "text": "Una caduta fa sfarfallare gli schermi, lo sfarfallio faceva rimbalzare il «sta guardando/non sta guardando», e ogni rimbalzo cambiava il binario del video — innescando una rinegoziazione nel bel mezzo della riparazione: era la catena dei singhiozzi doppi, prima un telefono e poi l'altro. Ora il desiderio si annota e si esaudisce a collegamento tornato intero."
+      },
+      {
+        "strong": "Il minuto della camera misura l'interruzione, non l'ultimo tocco.",
+        "text": "Rientrando pochi secondi dopo un aggiornamento, il video non tornava: l'orologio del cassetto partiva dall'ultima pressione del pulsante, magari di minuti prima. Ora il cassetto si rinfresca da solo mentre si è nel canale, e il minuto conta da quando l'app è morta davvero."
+      },
+      {
+        "strong": "Un collegamento sano non si rinegozia per uno starnuto.",
+        "text": "Certi telefoni ruotano gli indirizzi della wifi ogni minuto, e a ogni rotazione si rifaceva la ricerca delle strade: una serata tranquilla in casa si riempiva di scosse tutte nostre. Ora solo il cambio di rete vero rimescola le carte di un collegamento in salute."
+      },
+      {
+        "strong": "Prima la pazienza, poi le marce.",
+        "text": "Sulle reti che uccidono il collegamento a orologeria, quello si ricuce da solo in un paio di secondi quasi ogni volta — e le cure immediate trasformavano ogni rammendo invisibile in una demolizione con lo schermo nero. Ora ogni morte ha otto secondi per disfarsi da sé; solo quella che resta morta fa scattare la marcia successiva. Le reti di sicurezza hanno imparato la stessa calma: agiscono al secondo giro da malato, non al primo."
+      },
+      {
+        "strong": "Le marce si ricordano.",
+        "text": "La marcia che la strada ha insegnato resta in memoria fino al cambio di rete: rientrando nel canale si parte già in quella giusta, senza ripetere la lezione a suon di schermi neri."
+      },
+      {
+        "strong": "Il cambio di marcia rifà la connessione da entrambi i lati.",
+        "text": "Il lato che aspetta le offerte mandava l'ordine e teneva la propria connessione vecchia — politica vecchia e, peggio, socket inchiodati alla rete di prima: tornati sul wifi si continuava a passare dall'operatore. Ora smonta anche la sua, e l'offerta in arrivo la ricostruisce sulla rete giusta."
+      }
+    ]
+  },
+  {
+    "version": "0.9.1 build 161",
+    "paragraphs": [
+      {
+        "strong": "La seconda marcia dell'autostrada: il relay raggiunto in TCP.",
+        "text": "Certe NAT degli operatori falciano ogni percorso UDP ogni quaranta secondi — perfino l'autostrada, il cui tratto verso il relay era UDP anche lui. Se muore pure quella, i due telefoni ora tengono sul tavolo la sola porta TCP del relay: una connessione che la NAT deve rispettare. Nel pannello, accanto a «relay», ora si legge anche il tratto: (udp) o (tcp)."
+      }
+    ]
+  },
+  {
+    "version": "0.9.1 build 160",
+    "paragraphs": [
+      {
+        "strong": "Sull'autostrada al primo inciampo, quando si è già via server.",
+        "text": "La pazienza dei tre inciampi resta per abbandonare una strada diretta, che qualcosa costa; ma se a morire è la strada mista attraverso il relay, non c'è nulla da rimpiangere: si passa subito al percorso tutto-relay."
+      },
+      {
+        "strong": "Il volume che non si muove non viene più creduto.",
+        "text": "Su parecchi telefoni il costruttore inchioda il volume di chiamata in vivavoce: l'app credeva di averlo abbassato, passo dopo passo la sua idea del volume divergeva dalla realtà, e si finiva ad ascoltare al 46% col telefono in verità a palla. Ora dopo ogni mossa si verifica: se il telefono non s'è mosso, il comando passa al guadagno, che obbedisce sempre."
+      },
+      {
+        "strong": "Il journal dice anche quanto forte stavi sentendo.",
+        "text": "Accanto al volume di sistema ora c'è `level=NN%`, il prodotto vero delle due manopole: prima nessuno dei due numeri, da solo, spiegava un «non ti sento»."
+      }
+    ]
+  },
+  {
+    "version": "0.9.1 build 158",
     "paragraphs": [
       {
         "strong": "La strada che continua a morire si abbandona per l'autostrada.",
@@ -33,7 +88,7 @@ export const CHANGELOG: ReleaseNote[] = [
     ]
   },
   {
-    "version": "0.9.155",
+    "version": "0.9.0 build 155",
     "paragraphs": [
       {
         "strong": "Uscendo di casa, la conversazione salta sui dati in pochi secondi.",
@@ -46,7 +101,7 @@ export const CHANGELOG: ReleaseNote[] = [
     ]
   },
   {
-    "version": "0.9.153",
+    "version": "0.9.0 build 153",
     "paragraphs": [
       {
         "strong": "Cambiando rete, il collegamento cerca le strade nuove da solo.",
@@ -59,7 +114,7 @@ export const CHANGELOG: ReleaseNote[] = [
     ]
   },
   {
-    "version": "0.9.152",
+    "version": "0.9.0 build 152",
     "paragraphs": [
       {
         "strong": "Nella tendina, il presente sta sopra il passato.",
@@ -80,7 +135,7 @@ export const CHANGELOG: ReleaseNote[] = [
     ]
   },
   {
-    "version": "0.9.150",
+    "version": "0.9.0 build 150",
     "paragraphs": [
       {
         "strong": "Sconfitto lo stallo del «sto stabilendo la connessione».",
@@ -101,7 +156,7 @@ export const CHANGELOG: ReleaseNote[] = [
     ]
   },
   {
-    "version": "0.9.146",
+    "version": "0.9.0 build 146",
     "paragraphs": [
       {
         "strong": "In attesa si consuma molto meno.",

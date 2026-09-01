@@ -41,6 +41,13 @@ class JournalModule(private val ctx: ReactApplicationContext) :
      * on regardless: they are the ones that explain a report, and they
      * cost a write every now and then.
      */
+    /** The level really heard, in percent: it goes on the periodic line. */
+    @ReactMethod
+    fun level(percent: Int, promise: Promise) {
+        Journal.level(percent)
+        promise.resolve(true)
+    }
+
     @ReactMethod
     fun sampling(on: Boolean, promise: Promise) {
         if (on == Journal.sampling) { promise.resolve(true); return }

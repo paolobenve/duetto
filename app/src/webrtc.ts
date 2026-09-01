@@ -118,6 +118,13 @@ export type VideoStats = {
   audioKbps?: number | null;
   /** which way the traffic is going, worked out at every sample */
   path?: 'local' | 'direct' | 'relay';
+  /**
+   * On a relayed road, which leg carries us to the relay: udp, tcp or
+   * tls. It is invisible from the candidates - their protocol speaks
+   * of the far side - and it is exactly the thing that decides whether
+   * a carrier's NAT can kill the road.
+   */
+  relayLeg?: string;
 };
 
 /** Fallback shape: a 9:16 upright preview, the commonest case. */
@@ -328,9 +335,34 @@ export class ChannelSession {
    */
   private relayOnly = false;
 
-  setRelayOnly(v: boolean) { this.relayOnly = v; }
+  setRelayOnly(v: boolean) {
+    this.relayOnly = v;
+    if (!v) this.relayTcp = false;
+  }
 
   isRelayOnly(): boolean { return this.relayOnly; }
+
+  /**
+   * The second gear of the motorway: the relay reached over TCP alone.
+   *
+   * A carrier's NAT was seen killing every UDP mapping on a
+   * forty-second clock - the motorway included, because its
+   * client-to-relay leg is UDP too. The TCP relay candidate sits in
+   * the deck, but ICE cannot be told to prefer it: for a relayed
+   * candidate the advertised protocol describes the relay-to-peer
+   * leg, and both corridors look alike from outside. So when the
+   * motorway itself dies, the deck is thinned instead: only the TURN
+   * address with transport=tcp is handed to the connection, and the
+   * one relay left rides a leg the NAT has to respect.
+   */
+  private relayTcp = false;
+
+  setRelayTcp(v: boolean) {
+    this.relayTcp = v;
+    if (v) this.relayOnly = true;
+  }
+
+  isRelayTcp(): boolean { return this.relayTcp; }
   /** candidates that arrived before the remote description: they queue up */
   private pendingCandidates: any[] = [];
   /** the relay the server tells us about: no need to set it up on each phone */
@@ -504,7 +536,17 @@ export class ChannelSession {
     if (this.pc || mine !== this.generation) return;
 
     this.polite = polite;
-    const servers = [...iceServers(), ...this.extraIce];
+    // Second gear: only the TCP door of the relay is put on the table.
+    const table = this.relayTcp
+      ? this.extraIce
+        .map((s0: any) => {
+          const urls = (Array.isArray(s0.urls) ? s0.urls : [s0.urls])
+            .filter((u: string) => typeof u === 'string' && u.includes('transport=tcp'));
+          return urls.length ? { ...s0, urls } : null;
+        })
+        .filter(Boolean)
+      : this.extraIce;
+    const servers = [...iceServers(), ...table];
     log('connecting the peer - they offer:', polite, '| ICE servers:',
       servers.map((s2) => s2.urls).join(', '),
       this.relayOnly ? '| RELAY ONLY' : '');
@@ -627,6 +669,9 @@ export class ChannelSession {
       log('connection:', pc.connectionState);
       this.events.onConnectionState?.(pc.connectionState);
       if (pc.connectionState === 'connected') {
+        // The wish held back during the repair is granted now: see
+        // applyPeerWatching.
+        this.applyPeerWatching();
         this.logSelectedPath(pc);
         /**
          * The path is read at once, and again a second later.
@@ -788,9 +833,11 @@ export class ChannelSession {
 
     if (msg.kind === 'relayOnly') {
       const on = msg.on !== false;
-      if (on === this.relayOnly) return;
-      log('the other side says: motorway', on ? 'on' : 'off');
+      const tcp = on && msg.tcp === true;
+      if (on === this.relayOnly && tcp === this.relayTcp) return;
+      log('the other side says: motorway', on ? (tcp ? 'on, tcp' : 'on') : 'off');
       this.relayOnly = on;
+      this.relayTcp = tcp;
       // The policy lives in the connection's construction: the change
       // needs a fresh one. The offering side rebuilds and offers; the
       // polite side tears down and waits for what is coming.
@@ -1256,6 +1303,9 @@ export class ChannelSession {
           l?.candidateType === 'relay' || rr?.candidateType === 'relay' ? 'relay'
             : l?.candidateType === 'host' && rr?.candidateType === 'host' ? 'local'
               : 'direct';
+        if (out.path === 'relay' && typeof l?.relayProtocol === 'string') {
+          out.relayLeg = l.relayProtocol;
+        }
       }
 
       /** Rebuilding the connection restarts the counters from zero: the
@@ -1848,6 +1898,19 @@ export class ChannelSession {
 
   /** Lines up what leaves the channel with `peerWatching`. */
   private async applyPeerWatching() {
+    /**
+     * Never while the link is stitching itself back together.
+     *
+     * A death makes the far side's screens blink, the blinking sends
+     * "watching" flapping, and each flap used to swap the track on the
+     * sender - firing a renegotiation into the middle of the repair.
+     * The logs showed it plainly: `track suspended` a breath before
+     * every avoidable demolition. The wish is kept (`peerWatching`
+     * holds it) and granted when the link is whole again: attachPeer
+     * already re-applies it on every rebuild, and the state message
+     * repeats it within seconds anyway.
+     */
+    if (this.pc?.connectionState !== 'connected') return;
     const sender = this.liveVideoSender();
     if (!sender) return;
     const track = this.localStream?.getVideoTracks()[0] ?? null;

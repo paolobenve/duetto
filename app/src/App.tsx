@@ -211,6 +211,14 @@ const VOLUME_ECHO_MS = 2_000;
  */
 const RESUME_VIDEO_MS = 60_000;
 
+/**
+ * How long a death is given to undo itself before a gear engages: on
+ * the networks that kill a pair on a clock, it rises again by itself
+ * within a couple of seconds almost every time, and a cure given
+ * sooner turns an invisible stitch into a black screen.
+ */
+const GEAR_PATIENCE_MS = 8_000;
+
 /** How often we look to see whether we are still without a server. */
 const SERVER_CHECK_MS = 3_000;
 
@@ -476,18 +484,37 @@ export default function App() {
   const recoveryBegunAt = useRef(0);
 
   /**
-   * The link's recent stumbles, for the flap counter.
+   * Patience before the gears: a death is given time to undo itself.
    *
-   * A rotten road dies and resurrects in half a second, over and over:
-   * each `failed` arms the ladder, each `connected` disarms it, and no
-   * medicine is ever given - the stumbling went on for as long as the
-   * road lasted, once every consent check. Three stumbles in a few
-   * minutes are not bad luck, they are a verdict on the road: an ICE
-   * restart goes looking for a better one.
+   * On the networks that kill a pair on a clock - one carrier was
+   * watched doing it every forty seconds for a whole afternoon, on
+   * every transport - the pair rises again BY ITSELF within a couple
+   * of seconds, almost every time. The first version of the gears
+   * engaged at the instant of death, and turned every invisible
+   * stitch into a demolition with a black screen: the cure hurt more
+   * than the cut, and it took being told three times to hear it. Now
+   * a single timer waits out the death; only one that stays dead
+   * earns a gear.
    */
-  const flapTimes = useRef<number[]>([]);
-  /** when the flap counter last gave its medicine: the relapse clock */
-  const flapMedicineAt = useRef(0);
+  const gearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** deaths that stayed dead, on a direct road: three earn the motorway */
+  const deadForGood = useRef<number[]>([]);
+  /**
+   * The gear the road taught us, kept until the network changes.
+   *
+   * Without it, every re-entry into the channel replayed the whole
+   * lesson - death, motorway, death again, tcp - two black screens to
+   * learn what was already known.
+   */
+  const gearMemory = useRef<{ relayOnly: boolean; relayTcp: boolean }>({
+    relayOnly: false, relayTcp: false,
+  });
+  /** sick rounds of the answerer's net, in a row: two are a sickness */
+  const netSickTicks = useRef(0);
+  /** the heartbeat saw the link sick at the previous beat too */
+  const beatSickTwice = useRef(false);
+  /** the road in use at the last reading of the statistics */
+  const pathRef = useRef<'local' | 'direct' | 'relay' | undefined>(undefined);
 
   /**
    * The emergency lane: mobile data while the wifi plays deaf.
@@ -858,7 +885,24 @@ export default function App() {
       // echo of this, not somebody else's choice.
       ourOwnSet.current = { v, t: Date.now() };
       setSystemVolume({ ...phone, volume: v });
-      Volume.set(v).catch(() => { /* noop */ });
+      /**
+       * Trust, but verify: on a good many phones the maker nails this
+       * stream (speaker above all) and the set does nothing. Believing
+       * it anyway walked our notion of the volume away from the truth,
+       * step by step, until the ladder was attenuating with the phone
+       * really at its top: a journal showed 12/12 beside a level of
+       * 46%, a state no ladder can reach. If the phone did not move,
+       * the truth comes back and the press goes to the gain, which
+       * always obeys.
+       */
+      Volume.set(v).then(async () => {
+        const real = await Volume.read();
+        if (real.volume === v) return;
+        ourOwnSet.current = { v: real.volume, t: Date.now() };
+        setSystemVolume(real);
+        Journal.mark(`volume:nailed at ${real.volume}/${real.max}`).catch(() => { /* noop */ });
+        changeOurGain(direction > 0 ? up : down);
+      }).catch(() => { /* noop */ });
     };
 
     const up = Math.round((ours + GAIN_STEP) * 100) / 100;
@@ -1178,7 +1222,12 @@ export default function App() {
         if (!sess) return;
         const sick = !sess.isPeerHealthy() || sess.isStalled();
         Heartbeat.fast(sick).catch(() => { /* noop */ });
-        if (!sick) return;
+        if (!sick) { beatSickTwice.current = false; return; }
+        // Patience here too: one sick beat may be a stitch halfway
+        // done. Two in a row - fifteen seconds at the quick pace - are
+        // a sickness worth operating on.
+        if (!beatSickTwice.current) { beatSickTwice.current = true; return; }
+        beatSickTwice.current = false;
         // Not on the ladder's toes: a repair set off moments ago -
         // screen on, timers running - is left to work.
         if (Date.now() - recoveryBegunAt.current < 15_000) return;
@@ -1220,22 +1269,47 @@ export default function App() {
         if (!sig?.connected) return;
         if (!inChannelRef.current || !peerActiveRef.current) return;
         if (!sessionRef.current?.hasPeer()) return;
+        /**
+         * A healthy link is not renegotiated over a twitch.
+         *
+         * On some phones the wifi rotates its private IPv6 addresses
+         * every minute or so, and each rotation arrives here as an
+         * `address` event: answering every one with an ICE restart
+         * filled a quiet evening on the home wifi with churn that was
+         * all ours - one side renegotiating, the other stumbling over
+         * it, turn and turn about. Only a change of the DEFAULT
+         * network reshuffles a healthy link's roads; a twitch that
+         * really broke something brings the link down by itself, and
+         * the patient machinery cures that in its own time.
+         */
+        if (what !== 'arrived'
+            && (sessionRef.current?.isPeerHealthy() ?? false)
+            && !sessionRef.current?.isStalled()) return;
         // A new network is the one moment a direct road may have
         // appeared: the escape from the relay earns a fresh try, the
-        // flap counter starts from a clean sheet, and the motorway -
-        // chosen against roads that no longer exist - is left.
+        // deaths are forgiven, and the gear the OLD roads taught us is
+        // forgotten - it was a lesson about them, not about these.
         relayRetried.current = false;
-        flapTimes.current = [];
-        flapMedicineAt.current = 0;
+        deadForGood.current = [];
+        gearMemory.current = { relayOnly: false, relayTcp: false };
         recoveryBegunAt.current = Date.now();
         const s = sessionRef.current;
         if (s?.isRelayOnly()) {
           Journal.mark('link:relay-only:off').catch(() => { /* noop */ });
           s.setRelayOnly(false);
           sig.sendSignal({ kind: 'relayOnly', on: false });
-          // The policy lives in the connection's construction: a
-          // restart is not enough, it has to be remade.
-          if (!politeRef.current) attachPeerRef.current?.(true);
+          /**
+           * The policy lives in the connection's construction: a
+           * restart is not enough, it has to be remade - ON BOTH
+           * SIDES. The polite one sent the word and then kept its old
+           * connection, policy and all, with its sockets still pinned
+           * to the network the gear was chosen against: a phone back
+           * on its wifi went on crossing the carrier's reaper. Now it
+           * tears its own down too, and the offer on its way rebuilds
+           * it right.
+           */
+          if (politeRef.current) s.detachPeer();
+          else attachPeerRef.current?.(true);
           return;
         }
         Journal.mark('network:ice-restart').catch(() => { /* noop */ });
@@ -2327,44 +2401,67 @@ export default function App() {
           setConnState(st);
           connStateRef.current = st;
 
-          if (st === 'connected') { clearRecovery(); return; }
+          if (st === 'connected') {
+            clearRecovery();
+            // The death undid itself: the gear stays in its box.
+            if (gearTimer.current) {
+              clearTimeout(gearTimer.current);
+              gearTimer.current = null;
+            }
+            return;
+          }
           if (st !== 'failed' && st !== 'disconnected') return;
 
           // The emergency lane's own clock: mid-conversation a minute
           // of silence was not agreed to by anybody. See `laneOpen`.
           maybeOpenLane();
 
-          // The flap counter: see `flapTimes`. Counted on `failed`
-          // alone - `disconnected` also comes from ordinary wobbles.
-          if (st === 'failed' && inChannelRef.current && peerActiveRef.current) {
-            const now = Date.now();
-            flapTimes.current = flapTimes.current.filter((t2) => now - t2 < 180_000);
-            flapTimes.current.push(now);
-            if (flapTimes.current.length >= 3) {
-              flapTimes.current = [];
-              recoveryBegunAt.current = now;
-              const s = sessionRef.current;
-              // A relapse within ten minutes of the last medicine: the
-              // road itself is rotten, and looking for a better one on
-              // the same map keeps finding it. Both sides take the
-              // motorway - everything through our own relay - until
-              // the network changes. See `relayOnly` in webrtc.ts.
-              if (s && !s.isRelayOnly()
-                  && now - flapMedicineAt.current < 10 * 60_000) {
-                Journal.mark('link:relay-only').catch(() => { /* noop */ });
-                s.setRelayOnly(true);
-                signalingRef.current?.sendSignal({ kind: 'relayOnly', on: true });
-                // The offering side rebuilds on the new policy; the
-                // polite side has just told the other, who will.
-                if (!politeRef.current) attachPeer(true);
-                return;
+          /**
+           * A gear only for a death that stays dead.
+           *
+           * On this class of network the pair rises again by itself
+           * within a couple of seconds, almost every time: the timer
+           * waits the death out, and if the link is back before it
+           * fires, nobody is ever told. What stays dead earns the next
+           * gear - the motorway from a relayed road, the TCP leg from
+           * the motorway, and from a direct road the motorway only at
+           * the third unhealed death in ten minutes.
+           */
+          if (st === 'failed' && inChannelRef.current && peerActiveRef.current
+              && !gearTimer.current) {
+            gearTimer.current = setTimeout(() => {
+              gearTimer.current = null;
+              if (connStateRef.current === 'connected') return;
+              if (!inChannelRef.current || !peerActiveRef.current) return;
+              const s0 = sessionRef.current;
+              const sig0 = signalingRef.current;
+              if (!s0 || !sig0) return;
+              const shift = (tcp: boolean) => {
+                recoveryBegunAt.current = Date.now();
+                gearMemory.current = { relayOnly: true, relayTcp: tcp };
+                Journal.mark(tcp ? 'link:relay-tcp' : 'link:relay-only')
+                  .catch(() => { /* noop */ });
+                if (tcp) s0.setRelayTcp(true); else s0.setRelayOnly(true);
+                sig0.sendSignal({ kind: 'relayOnly', on: true, tcp });
+                // Both connections are remade: the polite side tears
+                // its own down and lets the offer on its way rebuild
+                // it in the new gear (see the note at the de-escalation).
+                if (politeRef.current) s0.detachPeer();
+                else attachPeer(true);
+              };
+              if (s0.isRelayOnly() && !s0.isRelayTcp()) { shift(true); return; }
+              if (!s0.isRelayOnly() && pathRef.current === 'relay') { shift(false); return; }
+              if (!s0.isRelayOnly()) {
+                const now = Date.now();
+                deadForGood.current = deadForGood.current
+                  .filter((t2) => now - t2 < 10 * 60_000);
+                deadForGood.current.push(now);
+                if (deadForGood.current.length >= 3) {
+                  deadForGood.current = [];
+                  shift(false);
+                }
               }
-              flapMedicineAt.current = now;
-              Journal.mark('link:flapping:ice-restart').catch(() => { /* noop */ });
-              if (politeRef.current) signalingRef.current?.sendSignal({ kind: 'renegotiate' });
-              else sessionRef.current?.restartIce();
-              return;
-            }
+            }, GEAR_PATIENCE_MS);
           }
 
           // ICE often recovers by itself, even from "failed": in the
@@ -2393,9 +2490,20 @@ export default function App() {
               if (signalingWasDown.current) return;
               if (inChannelRef.current && peerActiveRef.current) attachPeer(true);
             }, 8000);
-          }, st === 'failed' ? 4000 : 12000);
+            // The same patience as the gears: four seconds was written
+            // when a death was thought final, and on the networks that
+            // kill on a clock it interrupted the very self-healing it
+            // meant to help - the polite side asked, the other side
+            // demolished, at second four of a stitch that needed two
+            // more. One clock for every medicine.
+          }, st === 'failed' ? GEAR_PATIENCE_MS : 12000);
         },
-        onVideoStats: setVideoStats,
+        onVideoStats: (st) => {
+          setVideoStats(st);
+          // Kept in a ref for the failure handler: which road we were
+          // on when it died decides how patient to be about leaving it.
+          if (st.path) pathRef.current = st.path;
+        },
         onPeerState: (st) => {
           setPeerSeen(true);
           // Only the changes: the state arrives even when nothing has
@@ -2442,6 +2550,21 @@ export default function App() {
       });
     }
     sessionRef.current.setServerIceServers(serverTurnRef.current);
+    /**
+     * The gear the road taught us, applied before the first offer.
+     *
+     * Without it, every re-entry replayed the whole lesson - death,
+     * motorway, death again, tcp - two black screens to relearn what
+     * the afternoon had already written down. The other side is told
+     * too, so the two start in the same gear.
+     */
+    if (gearMemory.current.relayOnly) {
+      if (gearMemory.current.relayTcp) sessionRef.current.setRelayTcp(true);
+      else sessionRef.current.setRelayOnly(true);
+      sig.sendSignal({
+        kind: 'relayOnly', on: true, tcp: gearMemory.current.relayTcp,
+      });
+    }
     // The microphone is not opened here: the session opens it when the
     // other person really arrives. Whoever comes in first may wait a
     // long time, and during that wait there is nothing to send.
@@ -2725,14 +2848,37 @@ export default function App() {
    */
   useEffect(() => {
     if (screen !== 'channel') return;
+    let refresh = 0;
     const timer = setInterval(() => {
+      /**
+       * The drawer is kept fresh while one is in the channel.
+       *
+       * It used to be written only when a button was touched, so its
+       * clock said "last touch", not "last seen alive": an update that
+       * killed the app minutes after the touch read as an interruption
+       * of minutes, and a camera put back on after seconds found its
+       * minute already spent. Refreshed every few ticks, the clock
+       * measures the interruption itself.
+       */
+      refresh += 1;
+      if (inChannelRef.current && refresh % 3 === 0) noteHowItIsRef.current?.();
       const sess = sessionRef.current;
       const sig = signalingRef.current;
       if (!sess || !sig?.connected) return;
       if (!inChannelRef.current || !peerActiveRef.current) return;
       // Sick, or stalled: a connection whose negotiation met silence
       // stays NEW for ever, which this net used to read as health.
-      if (sess.isPeerHealthy() && !sess.isStalled()) return;
+      if (sess.isPeerHealthy() && !sess.isStalled()) {
+        netSickTicks.current = 0;
+        return;
+      }
+      // Patience: it rises again by itself within a couple of seconds
+      // almost every time, and this net used to demolish the very pair
+      // that was stitching itself back together. Two sick rounds in a
+      // row are a real sickness.
+      netSickTicks.current += 1;
+      if (netSickTicks.current < 2) return;
+      netSickTicks.current = 0;
 
       // Noted for the heartbeat's sake: its medicine and this one are
       // the same, and they must not demolish on each other's toes.
@@ -2931,6 +3077,10 @@ export default function App() {
   useEffect(() => { cfgRef.current = cfg; }, [cfg]);
   const levelRef = useRef(level);
   useEffect(() => { levelRef.current = level; }, [level]);
+  // Said to the journal at every change: the periodic line carries the
+  // system half already, and without the product nobody could say from
+  // the file how loud it really was.
+  useEffect(() => { Journal.level(Math.round(level * 100)).catch(() => {}); }, [level]);
   useEffect(() => {
     const c = cfgRef.current;
     if (!c?.pair) return;

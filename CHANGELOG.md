@@ -8,7 +8,64 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
-## 0.9.158
+## 0.9.1 build 167
+
+**Niente scambi di binario mentre si ricuce.** Una caduta fa sfarfallare gli schermi, lo
+sfarfallio faceva rimbalzare il «sta guardando/non sta guardando», e ogni rimbalzo cambiava il
+binario del video — innescando una rinegoziazione nel bel mezzo della riparazione: era la
+catena dei singhiozzi doppi, prima un telefono e poi l'altro. Ora il desiderio si annota e si
+esaudisce a collegamento tornato intero.
+
+**Il minuto della camera misura l'interruzione, non l'ultimo tocco.** Rientrando pochi
+secondi dopo un aggiornamento, il video non tornava: l'orologio del cassetto partiva
+dall'ultima pressione del pulsante, magari di minuti prima. Ora il cassetto si rinfresca da
+solo mentre si è nel canale, e il minuto conta da quando l'app è morta davvero.
+
+**Un collegamento sano non si rinegozia per uno starnuto.** Certi telefoni ruotano gli
+indirizzi della wifi ogni minuto, e a ogni rotazione si rifaceva la ricerca delle strade: una
+serata tranquilla in casa si riempiva di scosse tutte nostre. Ora solo il cambio di rete vero
+rimescola le carte di un collegamento in salute.
+
+**Prima la pazienza, poi le marce.** Sulle reti che uccidono il collegamento a orologeria, quello
+si ricuce da solo in un paio di secondi quasi ogni volta — e le cure immediate trasformavano ogni
+rammendo invisibile in una demolizione con lo schermo nero. Ora ogni morte ha otto secondi per
+disfarsi da sé; solo quella che resta morta fa scattare la marcia successiva. Le reti di
+sicurezza hanno imparato la stessa calma: agiscono al secondo giro da malato, non al primo.
+
+**Le marce si ricordano.** La marcia che la strada ha insegnato resta in memoria fino al cambio
+di rete: rientrando nel canale si parte già in quella giusta, senza ripetere la lezione a suon di
+schermi neri.
+
+**Il cambio di marcia rifà la connessione da entrambi i lati.** Il lato che aspetta le offerte
+mandava l'ordine e teneva la propria connessione vecchia — politica vecchia e, peggio, socket
+inchiodati alla rete di prima: tornati sul wifi si continuava a passare dall'operatore. Ora
+smonta anche la sua, e l'offerta in arrivo la ricostruisce sulla rete giusta.
+
+## 0.9.1 build 161
+
+**La seconda marcia dell'autostrada: il relay raggiunto in TCP.** Certe NAT degli operatori
+falciano ogni percorso UDP ogni quaranta secondi — perfino l'autostrada, il cui tratto verso il
+relay era UDP anche lui. Se muore pure quella, i due telefoni ora tengono sul tavolo la sola
+porta TCP del relay: una connessione che la NAT deve rispettare. Nel pannello, accanto a
+«relay», ora si legge anche il tratto: (udp) o (tcp).
+
+## 0.9.1 build 160
+
+**Sull'autostrada al primo inciampo, quando si è già via server.** La pazienza dei tre inciampi
+resta per abbandonare una strada diretta, che qualcosa costa; ma se a morire è la strada mista
+attraverso il relay, non c'è nulla da rimpiangere: si passa subito al percorso tutto-relay.
+
+**Il volume che non si muove non viene più creduto.** Su parecchi telefoni il costruttore
+inchioda il volume di chiamata in vivavoce: l'app credeva di averlo abbassato, passo dopo passo
+la sua idea del volume divergeva dalla realtà, e si finiva ad ascoltare al 46% col telefono in
+verità a palla. Ora dopo ogni mossa si verifica: se il telefono non s'è mosso, il comando passa
+al guadagno, che obbedisce sempre.
+
+**Il journal dice anche quanto forte stavi sentendo.** Accanto al volume di sistema ora c'è
+`level=NN%`, il prodotto vero delle due manopole: prima nessuno dei due numeri, da solo,
+spiegava un «non ti sento».
+
+## 0.9.1 build 158
 
 **La strada che continua a morire si abbandona per l'autostrada.** Su certe reti cellulari il
 collegamento inciampava ogni quaranta secondi: la strada «economica» attraverso la NAT
@@ -26,7 +83,7 @@ banda: nessuna camera da riaprire, nessun fotogramma nero.
 e basta, anche dopo una notte. La camera conserva la sua finestra di un minuto: riaccendersi da
 sola, quella, è un'altra faccenda.
 
-## 0.9.155
+## 0.9.0 build 155
 
 **Uscendo di casa, la conversazione salta sui dati in pochi secondi.** Il wifi che si allontana
 diventa sordo molto prima che il telefono lo lasci, e in mezzo c'era fino a un minuto di
@@ -41,7 +98,7 @@ magra, il fotogramma esce di un formato leggermente diverso da quello della came
 restavano allineati al bordo di un video che non c'era più. Ora la forma dichiarata viene
 corretta con le misure dei fotogrammi che arrivano davvero.
 
-## 0.9.153
+## 0.9.0 build 153
 
 **Cambiando rete, il collegamento cerca le strade nuove da solo.** Il telefono passa spesso da
 una rete all'altra senza che nulla si rompa — la nuova arriva prima che la vecchia se ne vada —
@@ -53,7 +110,7 @@ lasciare il relay.
 **E una strada marcia viene abbandonata.** Tre inciampi in pochi minuti non sono sfortuna: sono
 un giudizio sulla strada, e si va a cercarne un'altra.
 
-## 0.9.152
+## 0.9.0 build 152
 
 **Nella tendina, il presente sta sopra il passato.** Le notifiche di Duetto ora hanno un ordine
 fisso: prima lo stato delle cose («Nel canale con l'altro»), poi gli avvisi, in fondo le notizie.
@@ -72,7 +129,7 @@ non conosceva il grado nuovo e lo riportava al default a ogni avvio dell'app.
 telefono non ritrovava la coppia di candidati vincente e il pannello perdeva percorso, latenza e
 attese: ora la chiede nel modo che lo standard prevede, con i vecchi dialetti come ripiego.
 
-## 0.9.150
+## 0.9.0 build 150
 
 **Sconfitto lo stallo del «sto stabilendo la connessione».** Da sempre, ogni tanto, i due
 telefoni restavano lì a fissarsi: ognuno convinto che nulla fosse rotto, nessuno dei due
@@ -96,7 +153,7 @@ acceso: quello dei fotogrammi, ai quali la voce è tenuta dietro dalla sincroniz
 due si mescolavano cambiando catena di nascosto, e il numero calava proprio quando accendevi la
 camera.
 
-## 0.9.146
+## 0.9.0 build 146
 
 **In attesa si consuma molto meno.** Il blocco che teneva sveglio il processore, finora tenuto
 sempre, ora si tiene solo dentro al canale: aspettando, il telefono dorme davvero. A vegliare

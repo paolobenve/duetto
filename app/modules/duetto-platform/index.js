@@ -247,6 +247,8 @@ export const Journal = isAndroid && NativeJournal
       state: (s) => call(NativeJournal, 'state', String(s)),
       /** A line right now, to mark a moment that counts. */
       mark: (why) => call(NativeJournal, 'mark', String(why)),
+      /** the level really heard, in percent: it goes on the periodic line */
+      level: (percent) => call(NativeJournal, 'level', Math.round(Number(percent) || 0)),
       /**
        * Whether to write the periodic line as well: it follows the
        * diagnostics switch. The lines written by events go on either
@@ -265,6 +267,7 @@ export const Journal = isAndroid && NativeJournal
       state: unavailable,
       mark: unavailable,
       sampling: unavailable,
+      level: unavailable,
       lines: () => Promise.resolve(0),
       read: () => Promise.resolve(''),
       appendOther: unavailable,
