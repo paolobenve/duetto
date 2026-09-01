@@ -8,8 +8,17 @@
 # coturn forwards packets it cannot read.
 #
 # Copy to /etc/turnserver.conf, replace the THREE upper-case values, then:
+#   sudo chgrp turnserver /etc/turnserver.conf
+#   sudo chmod 640 /etc/turnserver.conf
 #   sudo sed -i 's/#TURNSERVER_ENABLED=1/TURNSERVER_ENABLED=1/' /etc/default/coturn
 #   sudo systemctl enable --now coturn
+#
+# BEWARE the chgrp above: the service runs as the turnserver user, and
+# when that user cannot READ this file coturn does not stop - it starts
+# happily with its built-in defaults, which means no TLS, no
+# credentials and no log, and the only sign is one line in the journal.
+# It happened here, for months. After any change, verify:
+#   journalctl -u coturn -n 50 | grep "Cannot find config"   # must find nothing
 
 # --- Network ------------------------------------------------------------
 listening-port=3478
@@ -54,11 +63,20 @@ lt-cred-mech
 user=duetto:PUT_A_LONG_PASSWORD_HERE
 
 # --- TLS ----------------------------------------------------------------
-# It reuses the certificates you already have. The service runs as the
-# turnserver user, which has to be able to read them:
-#   sudo setfacl -R -m u:turnserver:rX /etc/letsencrypt/live /etc/letsencrypt/archive
-cert=/etc/letsencrypt/live/YOUR_DOMAIN/fullchain.pem
-pkey=/etc/letsencrypt/live/YOUR_DOMAIN/privkey.pem
+# The relay's TLS door: the app reaches it as turns:...:5349. It reuses
+# the certificates you already have - through a copy of their own,
+# because the letsencrypt directories belong to root alone:
+#   sudo mkdir -p /etc/coturn-certs
+#   sudo cp -L /etc/letsencrypt/live/YOUR_DOMAIN/fullchain.pem \
+#              /etc/letsencrypt/live/YOUR_DOMAIN/privkey.pem /etc/coturn-certs/
+#   sudo chown turnserver:turnserver /etc/coturn-certs/*.pem
+#   sudo chmod 600 /etc/coturn-certs/*.pem
+# A copy goes stale at the first renewal: the deploy hook
+# (letsencrypt-coturn-hook.sh, in this directory) refreshes it and
+# restarts coturn. Install it once:
+#   sudo install -m 755 letsencrypt-coturn-hook.sh /etc/letsencrypt/renewal-hooks/deploy/coturn
+cert=/etc/coturn-certs/fullchain.pem
+pkey=/etc/coturn-certs/privkey.pem
 
 # --- Security -----------------------------------------------------------
 # Without these lines the relay could be used by anybody to reach your
@@ -77,6 +95,10 @@ denied-peer-ip=192.168.0.0-192.168.255.255
 user-quota=12
 total-quota=100
 
-# Log
-log-file=/var/log/turnserver.log
+# Log. In a directory of its own, because /var/log itself is not
+# writable by the turnserver user - and a log file coturn cannot open
+# is simply not written, without a word of complaint:
+#   sudo mkdir -p /var/log/coturn
+#   sudo chown turnserver:turnserver /var/log/coturn
+log-file=/var/log/coturn/turnserver.log
 simple-log

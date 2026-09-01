@@ -79,15 +79,6 @@ export type SignalMessage =
   // version somebody is running is their business, not his.
   | { kind: 'hello'; version: string; build?: number }
   | { kind: 'renegotiate' }
-  /**
-   * Both packets through our own relay, or back to the open roads.
-   *
-   * Said by whoever finds the direct road rotten (see the flap
-   * counter): the two sides have to agree, or the pairs would stay
-   * half-mixed. An older build ignores it and simply does not comply,
-   * which costs nothing worse than today's behaviour.
-   */
-  | { kind: 'relayOnly'; on: boolean; tcp?: boolean }
   // Video quality belongs to both: changing it on one phone changes it
   // on the other. Whoever receives it does not send it back.
   | { kind: 'quality'; value: string }

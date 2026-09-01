@@ -8,6 +8,25 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 0.9.1 build 171
+
+**Il relay veste i panni del web.** Certe reti mobili falciano a orologeria ogni flusso
+che non sembri web — quaranta secondi e giù — ed era questa la caduta e ricostruzione al
+minuto, con buchi di audio e video, di chi passava dal server. Ora il relay si raggiunge
+soltanto dentro TLS, l'unico abito che quelle reti rispettano: sul campo il collegamento
+è passato da una vita di quaranta secondi a nessuna caduta. Chi ha una strada diretta non
+paga nulla: lì il relay non trasporta niente.
+
+**Le marce se ne vanno.** La scalata «tutto per il relay», «porta TCP del relay» esisteva
+solo perché il relay aveva gambe falciabili; vestito di TLS, non c'è più marcia migliore
+da ingranare. E con la scalata se ne va la sua memoria, che con una lezione vecchia
+costringeva intere serate a passare dal server: ogni ingresso nel canale ora riparte
+libero e prova davvero le strade dirette.
+
+**Dove la diretta non esiste, non è colpa dell'app.** Su certe reti mobili (IPv4 dietro
+la NAT chiusa dell'operatore, niente IPv6) la strada diretta non può proprio esserci: lì
+la conversazione passa dal server — adesso senza cadute.
+
 ## 0.9.1 build 170
 
 **Un solo orologio per le morti.** Allo scoccare della pazienza partivano due medicine

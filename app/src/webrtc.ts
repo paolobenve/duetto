@@ -319,50 +319,6 @@ export class ChannelSession {
   private offerPendingSince = 0;
   /** When this peer was built: the clock for "nothing ever arrived". */
   private peerBornAt = 0;
-
-  /**
-   * The motorway: every packet through our own relay, both ways.
-   *
-   * On a cellular network behind the operator's shared NAT, the
-   * "cheap" road - our relay straight to the other's home NAT mapping
-   * - kept dying every few minutes, while the pair that lives entirely
-   * inside coturn sat there `succeeded` and unused: the TURN protocol
-   * does its own keeping-alive, and no NAT in the middle gets a say.
-   * When the flap counter finds the same road rotten twice, both sides
-   * agree (the `relayOnly` message) to take the motorway until the
-   * network changes. It costs the server's bandwidth, which is exactly
-   * what the server is for.
-   */
-  private relayOnly = false;
-
-  setRelayOnly(v: boolean) {
-    this.relayOnly = v;
-    if (!v) this.relayTcp = false;
-  }
-
-  isRelayOnly(): boolean { return this.relayOnly; }
-
-  /**
-   * The second gear of the motorway: the relay reached over TCP alone.
-   *
-   * A carrier's NAT was seen killing every UDP mapping on a
-   * forty-second clock - the motorway included, because its
-   * client-to-relay leg is UDP too. The TCP relay candidate sits in
-   * the deck, but ICE cannot be told to prefer it: for a relayed
-   * candidate the advertised protocol describes the relay-to-peer
-   * leg, and both corridors look alike from outside. So when the
-   * motorway itself dies, the deck is thinned instead: only the TURN
-   * address with transport=tcp is handed to the connection, and the
-   * one relay left rides a leg the NAT has to respect.
-   */
-  private relayTcp = false;
-
-  setRelayTcp(v: boolean) {
-    this.relayTcp = v;
-    if (v) this.relayOnly = true;
-  }
-
-  isRelayTcp(): boolean { return this.relayTcp; }
   /** candidates that arrived before the remote description: they queue up */
   private pendingCandidates: any[] = [];
   /** the relay the server tells us about: no need to set it up on each phone */
@@ -536,24 +492,10 @@ export class ChannelSession {
     if (this.pc || mine !== this.generation) return;
 
     this.polite = polite;
-    // Second gear: only the TCP door of the relay is put on the table.
-    const table = this.relayTcp
-      ? this.extraIce
-        .map((s0: any) => {
-          const urls = (Array.isArray(s0.urls) ? s0.urls : [s0.urls])
-            .filter((u: string) => typeof u === 'string' && u.includes('transport=tcp'));
-          return urls.length ? { ...s0, urls } : null;
-        })
-        .filter(Boolean)
-      : this.extraIce;
-    const servers = [...iceServers(), ...table];
+    const servers = [...iceServers(), ...this.extraIce];
     log('connecting the peer - they offer:', polite, '| ICE servers:',
-      servers.map((s2) => s2.urls).join(', '),
-      this.relayOnly ? '| RELAY ONLY' : '');
-    const pc = new RTCPeerConnection({
-      iceServers: servers,
-      ...(this.relayOnly ? { iceTransportPolicy: 'relay' as any } : {}),
-    });
+      servers.map((s2) => s2.urls).join(', '));
+    const pc = new RTCPeerConnection({ iceServers: servers });
     this.pc = pc;
     this.peerBornAt = Date.now();
 
@@ -831,24 +773,6 @@ export class ChannelSession {
       return;
     }
 
-    if (msg.kind === 'relayOnly') {
-      const on = msg.on !== false;
-      const tcp = on && msg.tcp === true;
-      if (on === this.relayOnly && tcp === this.relayTcp) return;
-      log('the other side says: motorway', on ? (tcp ? 'on, tcp' : 'on') : 'off');
-      this.relayOnly = on;
-      this.relayTcp = tcp;
-      // The policy lives in the connection's construction: the change
-      // needs a fresh one. The offering side rebuilds and offers; the
-      // polite side tears down and waits for what is coming.
-      this.detachPeer();
-      if (!this.polite) {
-        await this.attachPeer(this.polite);
-        this.broadcastState();
-      }
-      return;
-    }
-
     if (msg.kind === 'renegotiate') return; // handled by whoever knows the role
 
     const pc = this.pc;
@@ -901,13 +825,6 @@ export class ChannelSession {
     }
 
     if (msg.kind === 'ice') {
-      // On the motorway, side roads are not even listened to: a
-      // reflexive candidate paired with our relay would rebuild the
-      // exact fragile pair the motorway was chosen to escape.
-      if (this.relayOnly && typeof msg.candidate?.candidate === 'string'
-          && !msg.candidate.candidate.includes(' typ relay')) {
-        return;
-      }
       if (this.ignoreOffer) {
         // The flag lives from one description to the next: if the
         // collision it belongs to never completes - the answer to our

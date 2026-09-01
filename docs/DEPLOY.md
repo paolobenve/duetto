@@ -268,10 +268,31 @@ forwards packets it cannot read.
 ```bash
 sudo apt install coturn
 sudo cp /opt/duetto/server/deploy/coturn.conf.example /etc/turnserver.conf
-sudoedit /etc/turnserver.conf     # external-ip, realm, user=..., cert/pkey
+sudoedit /etc/turnserver.conf     # external-ip, realm, user=...
+sudo chgrp turnserver /etc/turnserver.conf && sudo chmod 640 /etc/turnserver.conf
+
+# the relay's TLS door: a copy of the certificates coturn can read,
+# and the hook that keeps the copy fresh at every renewal
+sudo mkdir -p /etc/coturn-certs
+sudo cp -L /etc/letsencrypt/live/YOUR_DOMAIN/fullchain.pem \
+           /etc/letsencrypt/live/YOUR_DOMAIN/privkey.pem /etc/coturn-certs/
+sudo chown turnserver:turnserver /etc/coturn-certs/*.pem && sudo chmod 600 /etc/coturn-certs/*.pem
+sudoedit /opt/duetto/server/deploy/letsencrypt-coturn-hook.sh   # LINEAGE=...
+sudo install -m 755 /opt/duetto/server/deploy/letsencrypt-coturn-hook.sh \
+     /etc/letsencrypt/renewal-hooks/deploy/coturn
+
+# the log directory (/var/log itself is not writable by turnserver)
+sudo mkdir -p /var/log/coturn && sudo chown turnserver:turnserver /var/log/coturn
+
 sudo sed -i 's/#TURNSERVER_ENABLED=1/TURNSERVER_ENABLED=1/' /etc/default/coturn
 sudo systemctl enable --now coturn
+journalctl -u coturn -n 50 | grep "Cannot find config"   # must find NOTHING
 ```
+
+⚠️ That `chgrp` is not cosmetic. The service runs as the `turnserver` user, and when that
+user cannot read `/etc/turnserver.conf`, coturn does not stop: it starts **with its
+built-in defaults** — no TLS, no credentials, no log — and the only sign is one line in
+the journal. Hence the final check.
 
 The firewall: **TCP/UDP 3478**, **TCP 5349**, and the relay range (for two people a few
 dozen ports are enough: `min-port`/`max-port` in `turnserver.conf`).
@@ -301,10 +322,16 @@ node server/tools/stun-check.mjs YOUR_DOMAIN 3478
 Then tell the signalling server, which will pass it on to the phones: in the `.env`
 
 ```
-TURN_URL=turn:YOUR_DOMAIN:3478
+TURN_URL=turns:YOUR_DOMAIN:5349?transport=tcp
+STUN_URL=stun:YOUR_DOMAIN:3478
 TURN_USER=duetto
 TURN_PASS=...        # the password written in /etc/turnserver.conf
 ```
+
+TLS alone, on purpose: certain mobile networks kill every non-web flow on a clock —
+UDP and plain TCP alike — and only a relay leg dressed as web traffic survives. Where
+the road is direct the relay carries nothing, so the dress costs nothing. `STUN_URL` is
+needed with it: it can no longer be derived from the relay's address.
 
 and `sudo systemctl restart duetto-signaling`. The health check has to answer
 `"turn":true`. **On the phones nothing is configured.**

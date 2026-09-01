@@ -16,6 +16,23 @@ export type ReleaseNote = {
 
 export const CHANGELOG: ReleaseNote[] = [
   {
+    "version": "0.9.1 build 171",
+    "paragraphs": [
+      {
+        "strong": "Il relay veste i panni del web.",
+        "text": "Certe reti mobili falciano a orologeria ogni flusso che non sembri web — quaranta secondi e giù — ed era questa la caduta e ricostruzione al minuto, con buchi di audio e video, di chi passava dal server. Ora il relay si raggiunge soltanto dentro TLS, l'unico abito che quelle reti rispettano: sul campo il collegamento è passato da una vita di quaranta secondi a nessuna caduta. Chi ha una strada diretta non paga nulla: lì il relay non trasporta niente."
+      },
+      {
+        "strong": "Le marce se ne vanno.",
+        "text": "La scalata «tutto per il relay», «porta TCP del relay» esisteva solo perché il relay aveva gambe falciabili; vestito di TLS, non c'è più marcia migliore da ingranare. E con la scalata se ne va la sua memoria, che con una lezione vecchia costringeva intere serate a passare dal server: ogni ingresso nel canale ora riparte libero e prova davvero le strade dirette."
+      },
+      {
+        "strong": "Dove la diretta non esiste, non è colpa dell'app.",
+        "text": "Su certe reti mobili (IPv4 dietro la NAT chiusa dell'operatore, niente IPv6) la strada diretta non può proprio esserci: lì la conversazione passa dal server — adesso senza cadute."
+      }
+    ]
+  },
+  {
     "version": "0.9.1 build 170",
     "paragraphs": [
       {
