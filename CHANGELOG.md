@@ -8,6 +8,15 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 0.9.2 build 175
+
+**Tornare sull'app non è cambiare rete.** Su certi telefoni riportare Duetto in primo
+piano fa riannunciare dal sistema la stessa rete di prima, e da ieri quell'annuncio
+passava per un arrivo vero: un collegamento in perfetta salute veniva rinegoziato a
+ogni rientro. Ora l'annuncio si giudica per identità: la stessa rete di prima non è
+un arrivo, e un cambio di rete avvenuto mentre si era altrove continua a far ripartire
+la ricerca delle strade come deve.
+
 ## 0.9.2 build 174
 
 **Il ritardo perde la tilde.** Le righe tecniche dicono «ritardo 250ms» invece di

@@ -66,13 +66,31 @@ class NetworkModule(private val ctx: ReactApplicationContext) :
     private val cm: ConnectivityManager?
         get() = ctx.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
 
+    /**
+     * The default network last announced, by identity.
+     *
+     * Some phones (MIUI above all) re-announce the very same default
+     * network every few minutes - scores, revalidations - and every
+     * announcement used to come out as an arrival: since the arrival
+     * is the one word that restarts a healthy link's search for
+     * roads, a quiet call got a needless renegotiation on a clock.
+     * Only a network that really is ANOTHER one is an arrival; the
+     * identity is forgotten when the network is lost, so a genuine
+     * gone-and-back still counts as one.
+     */
+    private var lastNetwork: String = ""
+
     private val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
+            val id = network.toString()
+            if (id == lastNetwork) return
+            lastNetwork = id
             wasValid = false
             emit("arrived")
         }
 
         override fun onLost(network: Network) {
+            lastNetwork = ""
             lastAddress = ""
             wasValid = false
             emit("lost")

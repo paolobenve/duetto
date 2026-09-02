@@ -16,6 +16,15 @@ export type ReleaseNote = {
 
 export const CHANGELOG: ReleaseNote[] = [
   {
+    "version": "0.9.2 build 175",
+    "paragraphs": [
+      {
+        "strong": "Tornare sull'app non è cambiare rete.",
+        "text": "Su certi telefoni riportare Duetto in primo piano fa riannunciare dal sistema la stessa rete di prima, e da ieri quell'annuncio passava per un arrivo vero: un collegamento in perfetta salute veniva rinegoziato a ogni rientro. Ora l'annuncio si giudica per identità: la stessa rete di prima non è un arrivo, e un cambio di rete avvenuto mentre si era altrove continua a far ripartire la ricerca delle strade come deve."
+      }
+    ]
+  },
+  {
     "version": "0.9.2 build 174",
     "paragraphs": [
       {
