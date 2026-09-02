@@ -1,1098 +1,1093 @@
-# Cambiamenti
+# Changes
 
-Cosa cambia **per chi usa l'app**, versione per versione. I dettagli tecnici stanno nei
-messaggi dei commit; qui c'è solo ciò che si nota usandola.
+What changes **for the people who use the app**, version by version. The technical detail
+lives in the commit messages; here there is only what one notices while using it.
 
-I primi due numeri si alzano a mano, in `app/version.json`, quando cambia davvero cosa
-l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio, e chiedere
-«che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
-cui si nota qualcosa.
+The first two numbers are raised by hand, in `app/version.json`, when what the app *is*
+really changes. The last one moves at every build: that way every APK has a name of its
+own, and asking "which version have you got" is enough to know what is running. There is
+an entry here only for the versions where something is noticeable.
 
 ## 0.9.2 build 177
 
-**La corsia d'emergenza prima chiede, poi si prende tutto.** Quando il collegamento
-cade con voce o video in corso e il server non risponde, finora l'app concludeva «il
-sordo è il mio wifi» e legava ogni socket ai dati mobili — ma da un telefono non si
-distingue un wifi sordo da un server spento per tutti: è successo, e la cura ha rotto
-un collegamento diretto che sarebbe guarito da sé. Ora, prima di legarsi, una sola
-domanda passa dalla radio mobile: «il server, di là, c'è?». Se c'è, il sordo era il
-wifi e la corsia si apre come sempre; se tace anche di là, il guaio è suo, non si
-tocca nulla, e non si torna a chiedere finché il server non si fa risentire. E se
-intanto i pacchetti dell'altro continuano ad arrivare, il wifi non è sordo per
-definizione: nessuna corsia.
+**The emergency lane asks before it takes everything.** When the link failed with voice or
+video flowing and the server did not answer, the app used to conclude "the deaf one is my
+wifi" and bound every socket to mobile data — but from one phone a deaf wifi and a server
+down for everybody are the same silence: it happened, and the cure broke a direct link that
+would have healed by itself. Now, before binding anything, a single question goes out
+through the mobile radio alone: "is the server there, on that road?". If it is, the deafness
+was the wifi's and the lane opens as always; if it is silent there too, the trouble is his,
+nothing is touched, and no more questions until he is heard from again. And if packets from
+the other side are still landing, the wifi is not deaf by definition: no lane.
 
 ## 0.9.2 build 176
 
-**Il volume mosso da fuori non tocca più il guadagno.** Alzare o abbassare il volume
-da un'altra app azzerava l'amplificazione scelta in Duetto — e il rilevatore che doveva
-distinguere i tocchi altrui dai propri si faceva ingannare da una raffica veloce di
-pressioni, azzerando il guadagno a metà della propria stessa scala. Ora il guadagno è
-una scelta di Duetto e la cambia solo Duetto; il livello mostrato resta il prodotto
-delle due manopole, quindi nulla di ciò che si legge è falso. Il muto, come sempre,
-si toglie solo da Duetto.
+**The volume moved from outside no longer touches the gain.** Raising or lowering the volume
+from another app used to clear the amplification chosen in Duetto — and the detector meant to
+tell somebody else's presses from one's own could be fooled by a quick run of them, wiping
+the gain in the middle of one's own ladder. Now the gain is a Duetto choice and only Duetto
+changes it; the level on screen stays the product of both knobs, so nothing one reads is
+false. The mute, as ever, is lifted from Duetto alone.
 
 ## 0.9.2 build 175
 
-**Tornare sull'app non è cambiare rete.** Su certi telefoni riportare Duetto in primo
-piano fa riannunciare dal sistema la stessa rete di prima, e da ieri quell'annuncio
-passava per un arrivo vero: un collegamento in perfetta salute veniva rinegoziato a
-ogni rientro. Ora l'annuncio si giudica per identità: la stessa rete di prima non è
-un arrivo, e un cambio di rete avvenuto mentre si era altrove continua a far ripartire
-la ricerca delle strade come deve.
+**Coming back to the app is not changing network.** On some phones bringing Duetto to the
+foreground makes the system announce the very same network again, and since yesterday that
+announcement passed for a real arrival: a link in perfect health was renegotiated at every
+return. The announcement is now judged by identity: the network already announced is not an
+arrival, and a change of network that happened while one was away still sets the search for
+roads going, as it must.
 
 ## 0.9.2 build 174
 
-**Il ritardo perde la tilde.** Le righe tecniche dicono «ritardo 250ms» invece di
-«~250ms»: più pulito da leggere. Che il numero sia una stima, non una misura esatta,
-ora lo dice la nota nelle impostazioni della diagnostica.
+**The delay loses its tilde.** The technical lines say "delay 250ms" instead of "~250ms":
+cleaner to read. That the number is an estimate and not an exact measurement is now said by
+the note in the diagnostics settings.
 
 ## 0.9.2 build 173
 
-**Il ritorno sul wifi viene visto davvero.** Gli avvisi di rete arrivano a raffica, e
-tenendo l'ultimo della raffica un cambio di rete vero usciva travestito da starnuto —
-proprio ciò che un collegamento in salute ha imparato a ignorare. Così, riacceso il
-wifi, si continuava a parlare attraverso l'operatore e dal server, senza mai cercare
-le strade nuove. Ora nella raffica vince la parola più forte, e il rientro sul wifi
-fa ripartire la ricerca: pochi secondi e si è di nuovo diretti.
+**Coming back onto the wifi is really seen.** Network announcements arrive in a volley, and
+by keeping the last of the volley a real change of network came out dressed as a twitch —
+exactly what a healthy link has learnt to ignore. So, with the wifi switched back on, one
+went on talking through the carrier and through the server, never looking for the new roads.
+Now the strongest word of the volley wins, and coming back onto the wifi sets the search
+going again: a few seconds and the link is direct once more.
 
 ## 0.9.2 build 172
 
-**Duetto parla anche spagnolo, portoghese e francese.** Tutta l'interfaccia, dagli
-avvisi alle impostazioni. La lingua resta del collegamento, come sempre: lo stesso
-telefono può parlare spagnolo con una persona e italiano con un'altra; chi non
-sceglie ha la lingua del telefono.
+**Duetto also speaks Spanish, Portuguese and French.** The whole interface, from the alerts
+to the settings. The language still belongs to the connection, as always: the same phone can
+speak Spanish with one person and Italian with another; whoever does not choose gets the
+phone's own language.
 
-## 0.9.1 build 171
+## 0.9.2 build 171
 
-**Il relay veste i panni del web.** Certe reti mobili falciano a orologeria ogni flusso
-che non sembri web — quaranta secondi e giù — ed era questa la caduta e ricostruzione al
-minuto, con buchi di audio e video, di chi passava dal server. Ora il relay si raggiunge
-soltanto dentro TLS, l'unico abito che quelle reti rispettano: sul campo il collegamento
-è passato da una vita di quaranta secondi a nessuna caduta. Chi ha una strada diretta non
-paga nulla: lì il relay non trasporta niente.
+**The relay dresses as the web.** Certain mobile networks reap every flow that does not look
+like web traffic on a clock — forty seconds and down it goes — and that was the drop and
+rebuild every minute, with holes in the sound and the picture, for anyone going through the
+server. Now the relay is reached over TLS alone, the one dress those networks respect: on the
+field the link went from a life of forty seconds to no drops at all. Whoever has a direct road
+pays nothing: there, the relay carries nothing.
 
-**Le marce se ne vanno.** La scalata «tutto per il relay», «porta TCP del relay» esisteva
-solo perché il relay aveva gambe falciabili; vestito di TLS, non c'è più marcia migliore
-da ingranare. E con la scalata se ne va la sua memoria, che con una lezione vecchia
-costringeva intere serate a passare dal server: ogni ingresso nel canale ora riparte
-libero e prova davvero le strade dirette.
+**The gears retire.** The ladder of "everything through the relay", "the relay's TCP door"
+existed only because the relay had legs that could be reaped; dressed in TLS, there is no
+better gear left to shift into. And with the ladder goes its memory, which on the strength of
+a stale lesson forced whole evenings through the server: every entry into the channel now
+starts free and really tries the direct roads.
 
-**Dove la diretta non esiste, non è colpa dell'app.** Su certe reti mobili (IPv4 dietro
-la NAT chiusa dell'operatore, niente IPv6) la strada diretta non può proprio esserci: lì
-la conversazione passa dal server — adesso senza cadute.
+**Where no direct road exists, it is not the app's fault.** On some mobile networks (IPv4
+behind the operator's closed NAT, no IPv6) a direct road simply cannot exist: there the
+conversation goes through the server — now without drops.
 
 ## 0.9.1 build 170
 
-**Un solo orologio per le morti.** Allo scoccare della pazienza partivano due medicine
-insieme — la scala vecchia e il cambio di marcia — e le due negoziazioni si pestavano i piedi:
-era la catena «prima un telefono, poi l'altro». Ora per una morte comanda un orologio solo, che
-ingrana la marcia dove serve e dà la medicina ordinaria dove no.
+**One clock for every death.** When the patience ran out, two cures set off together — the
+old ladder and the change of gear — and the two negotiations trod on each other: that was the
+chain of "first one phone, then the other". Now one death is commanded by one clock alone,
+which shifts a gear where a gear helps and gives the ordinary medicine where it does not.
 
-**Niente scambi di binario mentre si ricuce.** Una caduta fa sfarfallare gli schermi, lo
-sfarfallio faceva rimbalzare il «sta guardando/non sta guardando», e ogni rimbalzo cambiava il
-binario del video — innescando una rinegoziazione nel bel mezzo della riparazione: era la
-catena dei singhiozzi doppi, prima un telefono e poi l'altro. Ora il desiderio si annota e si
-esaudisce a collegamento tornato intero.
+**No changing tracks while the stitching is under way.** A drop makes the screens flicker,
+the flickering made "watching / not watching" bounce, and every bounce swapped the video's
+track — firing a renegotiation into the middle of the repair: that was the chain of double
+hiccups, first one phone and then the other. Now the wish is noted down and granted once the
+link is whole again.
 
-**Il minuto della camera misura l'interruzione, non l'ultimo tocco.** Rientrando pochi
-secondi dopo un aggiornamento, il video non tornava: l'orologio del cassetto partiva
-dall'ultima pressione del pulsante, magari di minuti prima. Ora il cassetto si rinfresca da
-solo mentre si è nel canale, e il minuto conta da quando l'app è morta davvero.
+**The camera's minute measures the interruption, not the last touch.** Coming back a few
+seconds after an update, the video did not return: the drawer's clock started from the last
+press of the button, perhaps minutes earlier. Now the drawer refreshes itself while one is in
+the channel, and the minute counts from when the app really died.
 
-**Un collegamento sano non si rinegozia per uno starnuto.** Certi telefoni ruotano gli
-indirizzi della wifi ogni minuto, e a ogni rotazione si rifaceva la ricerca delle strade: una
-serata tranquilla in casa si riempiva di scosse tutte nostre. Ora solo il cambio di rete vero
-rimescola le carte di un collegamento in salute.
+**A healthy link is not renegotiated over a sneeze.** Some phones rotate their wifi addresses
+every minute, and every rotation set off a fresh search for roads: a quiet evening at home
+filled up with churn that was all ours. Now only a real change of network reshuffles the cards
+of a link in good health.
 
-**Prima la pazienza, poi le marce.** Sulle reti che uccidono il collegamento a orologeria, quello
-si ricuce da solo in un paio di secondi quasi ogni volta — e le cure immediate trasformavano ogni
-rammendo invisibile in una demolizione con lo schermo nero. Ora ogni morte ha otto secondi per
-disfarsi da sé; solo quella che resta morta fa scattare la marcia successiva. Le reti di
-sicurezza hanno imparato la stessa calma: agiscono al secondo giro da malato, non al primo.
+**Patience first, gears after.** On the networks that kill a link like clockwork, it stitches
+itself back together within a couple of seconds nearly every time — and immediate cures turned
+every invisible stitch into a demolition with a black screen. Now every death is given eight
+seconds to undo itself; only one that stays dead earns the next gear. The safety nets have
+learnt the same calm: they act on the second sick round, not the first.
 
-**Le marce si ricordano.** La marcia che la strada ha insegnato resta in memoria fino al cambio
-di rete: rientrando nel canale si parte già in quella giusta, senza ripetere la lezione a suon di
-schermi neri.
+**The gears are remembered.** The gear the road taught stays in memory until the network
+changes: coming back into the channel one starts in the right one already, without repeating
+the lesson to the tune of black screens.
 
-**Il cambio di marcia rifà la connessione da entrambi i lati.** Il lato che aspetta le offerte
-mandava l'ordine e teneva la propria connessione vecchia — politica vecchia e, peggio, socket
-inchiodati alla rete di prima: tornati sul wifi si continuava a passare dall'operatore. Ora
-smonta anche la sua, e l'offerta in arrivo la ricostruisce sulla rete giusta.
+**Changing gear remakes the connection on both sides.** The side that waits for offers used to
+send the order and keep its own old connection — old policy and, worse, sockets nailed to the
+previous network: back on the wifi one went on going through the carrier. Now it takes its own
+down too, and the offer on its way rebuilds it on the right network.
 
 ## 0.9.1 build 161
 
-**La seconda marcia dell'autostrada: il relay raggiunto in TCP.** Certe NAT degli operatori
-falciano ogni percorso UDP ogni quaranta secondi — perfino l'autostrada, il cui tratto verso il
-relay era UDP anche lui. Se muore pure quella, i due telefoni ora tengono sul tavolo la sola
-porta TCP del relay: una connessione che la NAT deve rispettare. Nel pannello, accanto a
-«relay», ora si legge anche il tratto: (udp) o (tcp).
+**The motorway's second gear: the relay reached over TCP.** Some carriers' NATs mow down
+every UDP path every forty seconds — the motorway included, whose leg towards the relay was
+UDP as well. If that dies too, the two phones now keep only the relay's TCP door on the table:
+a connection the NAT has to respect. In the panel, beside "relay", one now reads the leg too:
+(udp) or (tcp).
 
 ## 0.9.1 build 160
 
-**Sull'autostrada al primo inciampo, quando si è già via server.** La pazienza dei tre inciampi
-resta per abbandonare una strada diretta, che qualcosa costa; ma se a morire è la strada mista
-attraverso il relay, non c'è nulla da rimpiangere: si passa subito al percorso tutto-relay.
+**Onto the motorway at the first stumble, when one is already going through the server.** The
+patience of three stumbles remains for abandoning a direct road, which costs something; but if
+what dies is the mixed road through the relay, there is nothing to regret: one moves to the
+all-relay path at once.
 
-**Il volume che non si muove non viene più creduto.** Su parecchi telefoni il costruttore
-inchioda il volume di chiamata in vivavoce: l'app credeva di averlo abbassato, passo dopo passo
-la sua idea del volume divergeva dalla realtà, e si finiva ad ascoltare al 46% col telefono in
-verità a palla. Ora dopo ogni mossa si verifica: se il telefono non s'è mosso, il comando passa
-al guadagno, che obbedisce sempre.
+**A volume that does not move is no longer believed.** On a good many phones the maker nails
+the call volume in speaker mode: the app believed it had lowered it, step by step its notion of
+the volume drifted from the truth, and one ended up listening at 46% with the phone in fact at
+full blast. Now every move is verified: if the phone did not budge, the press goes to the gain,
+which always obeys.
 
-**Il journal dice anche quanto forte stavi sentendo.** Accanto al volume di sistema ora c'è
-`level=NN%`, il prodotto vero delle due manopole: prima nessuno dei due numeri, da solo,
-spiegava un «non ti sento».
+**The journal also says how loudly you were hearing.** Beside the system volume there is now
+`level=NN%`, the true product of the two knobs: neither number on its own explained an "I can't
+hear you".
 
 ## 0.9.1 build 158
 
-**La strada che continua a morire si abbandona per l'autostrada.** Su certe reti cellulari il
-collegamento inciampava ogni quaranta secondi: la strada «economica» attraverso la NAT
-dell'operatore muore e risorge in continuazione. Alla seconda recidiva i due telefoni ora si
-accordano e passano tutto attraverso il proprio relay, da entrambi i lati — la strada che nei
-log restava in piedi mentre le altre morivano. Si torna alle strade aperte al primo cambio di
-rete.
+**A road that keeps dying is abandoned for the motorway.** On certain mobile networks the link
+stumbled every forty seconds: the "cheap" road through the carrier's NAT dies and rises again
+without end. At the second relapse the two phones now agree and put everything through their own
+relay, on both sides — the road that in the logs stayed up while the others died. The open roads
+come back at the first change of network.
 
-**Chi trasmette molto meglio dell'altro si abbassa un po', e guarda.** Quando le due immagini
-sono assurdamente diseguali, il mittente forte cala il proprio tetto un gradino alla volta
-finché non sono abbastanza pari, e lo rialza appena l'altro tiene il passo. Solo il tetto di
-banda: nessuna camera da riaprire, nessun fotogramma nero.
+**Whoever sends far more than the other lowers a little, and watches.** When the two pictures
+are absurdly unequal, the strong sender lowers its own ceiling a step at a time until they are
+even enough, and raises it again as soon as the other keeps up. The bandwidth ceiling alone: no
+camera to reopen, no black frames.
 
-**Il microfono torna sempre com'era stato lasciato.** Prima valeva per cinque minuti; ora vale
-e basta, anche dopo una notte. La camera conserva la sua finestra di un minuto: riaccendersi da
-sola, quella, è un'altra faccenda.
+**The microphone always comes back as it was left.** Before it held for five minutes; now it
+holds full stop, even after a whole evening. The camera keeps its window of one minute: switching
+itself back on is another matter.
 
 ## 0.9.0 build 155
 
-**Uscendo di casa, la conversazione salta sui dati in pochi secondi.** Il wifi che si allontana
-diventa sordo molto prima che il telefono lo lasci, e in mezzo c'era fino a un minuto di
-silenzio. Ora, se il collegamento cade mentre voce o video stanno passando, l'app interroga il
-server: se tace anche lui, la sordità è nostra — e accende da sé la rete dati, portandoci sopra
-tutta la conversazione senza aspettare che il telefono si decida. Quando il wifi torna in salute
-si rientra da soli, con calma. La corsia costa radio e per questo vive solo in conversazione:
-in attesa, o con microfoni e camere spenti, resta la via lenta che non consuma nulla.
+**Leaving the house, the conversation jumps onto mobile data within seconds.** A wifi that is
+getting away goes deaf long before the phone lets go of it, and in between there was up to a
+minute of silence. Now, if the link falls while voice or video are flowing, the app asks the
+server: if it is silent too, the deafness is ours — and mobile data is switched on by the app
+itself, carrying the whole conversation over it without waiting for the phone to make up its
+mind. When the wifi is back in health one returns to it, unhurried. The lane costs radio and for
+that reason it lives only during a conversation: while merely waiting, or with microphones and
+cameras off, the slow road that costs nothing remains.
 
-**I pulsanti seguono il bordo vero del video.** Quando l'encoder stringe l'immagine per una rete
-magra, il fotogramma esce di un formato leggermente diverso da quello della camera, e i pulsanti
-restavano allineati al bordo di un video che non c'era più. Ora la forma dichiarata viene
-corretta con le misure dei fotogrammi che arrivano davvero.
+**The buttons follow the video's real edge.** When the encoder squeezes the picture for a lean
+network, the frame comes out in a slightly different shape from the camera's, and the buttons
+stayed lined up with the edge of a video that was no longer there. Now the declared shape is
+corrected with the measurements of the frames that really arrive.
 
 ## 0.9.0 build 153
 
-**Cambiando rete, il collegamento cerca le strade nuove da solo.** Il telefono passa spesso da
-una rete all'altra senza che nulla si rompa — la nuova arriva prima che la vecchia se ne vada —
-e il collegamento diretto restava sulla strada vecchia: capitava di stare sulla stessa wifi
-passando ancora dal server, col video schiacciato a niente e la connessione che inciampava ogni
-quaranta secondi. Ora il cambio di rete fa ripartire la ricerca, e riapre anche il tentativo di
-lasciare il relay.
+**Changing network, the link looks for the new roads by itself.** A phone often moves from one
+network to another without anything breaking — the new one arrives before the old one goes — and
+the direct link stayed on the old road: it happened to be on the same wifi and still go through
+the server, with the video squeezed to nothing and the connection stumbling every forty seconds.
+Now a change of network sets the search going again, and reopens the attempt to leave the relay.
 
-**E una strada marcia viene abbandonata.** Tre inciampi in pochi minuti non sono sfortuna: sono
-un giudizio sulla strada, e si va a cercarne un'altra.
+**And a rotten road is abandoned.** Three stumbles in a few minutes are not bad luck: they are
+a judgement on the road, and one goes looking for another.
 
 ## 0.9.0 build 152
 
-**Nella tendina, il presente sta sopra il passato.** Le notifiche di Duetto ora hanno un ordine
-fisso: prima lo stato delle cose («Nel canale con l'altro»), poi gli avvisi, in fondo le notizie.
-Prima l'ordine era per età, e la notizia «è sparito…» restava seduta sopra uno stato che diceva
-il contrario. La notizia del ritorno, inoltre, ora comincia dal ritorno: anche troncata dice la
-cosa giusta.
+**In the shade, the present comes above the past.** Duetto's notifications now have a fixed
+order: first the state of things ("In the channel with the other person"), then the alerts, and
+the news at the bottom. Before, the order was by age, and the news "they have disappeared…" sat
+above a state that said the opposite. The news of a return, moreover, now begins with the
+return: even truncated it says the right thing.
 
-**Le righe tecniche si dispongono attorno a ciò che viaggia.** Con la sola voce, due righe: la
-banda accanto al profilo, sotto percorso, latenza e attese. Col video, tre: le risoluzioni
-riempiono la prima, e le attese hanno una riga tutta loro invece di rimpicciolirsi con il resto.
+**The technical lines arrange themselves around what is travelling.** With voice alone, two
+lines: the bandwidth beside the profile, and below it the road, the latency and the waits. With
+video, three: the resolutions fill the first, and the waits have a line of their own instead of
+shrinking with the rest.
 
-**«Sempre visibili» non si dimentica più al riavvio.** Il traduttore delle vecchie impostazioni
-non conosceva il grado nuovo e lo riportava al default a ogni avvio dell'app.
+**"Always visible" is no longer forgotten at start-up.** The translator of the old settings did
+not know the new degree and took it back to the default at every start of the app.
 
-**Percorso e ritardi non spariscono più sulla rete cellulare.** Dopo un cambio di rete il
-telefono non ritrovava la coppia di candidati vincente e il pannello perdeva percorso, latenza e
-attese: ora la chiede nel modo che lo standard prevede, con i vecchi dialetti come ripiego.
+**Road and delays no longer vanish on the mobile network.** After a change of network the phone
+could not find the winning pair of candidates again and the panel lost the road, the latency and
+the waits: now it asks for it the way the standard prescribes, with the older dialects as a
+fallback.
 
 ## 0.9.0 build 150
 
-**Sconfitto lo stallo del «sto stabilendo la connessione».** Da sempre, ogni tanto, i due
-telefoni restavano lì a fissarsi: ognuno convinto che nulla fosse rotto, nessuno dei due
-collegato. Succedeva quando l'offerta di collegamento cadeva in un buco (un riaggancio al
-momento sbagliato) e la connessione rimaneva «nuova» per sempre — mai malata, quindi mai
-curata dalle reti di sicurezza. Ora il silenzio prolungato è riconosciuto per quello che è, e
-dopo dieci secondi scatta la solita medicina.
+**The "establishing the connection" deadlock is beaten.** For as long as anyone remembers, every
+now and then the two phones stood there staring at each other: each convinced nothing was broken,
+neither of them connected. It happened when the connection offer fell into a hole (a reconnection
+at the wrong moment) and the connection stayed "new" for ever — never sick, therefore never cured
+by the safety nets. Now a prolonged silence is recognised for what it is, and after ten seconds
+the usual medicine is given.
 
-**La finestrella dice solo l'essenziale.** Andando in Picture-in-Picture col tasto indietro, su
-molti telefoni la finestrella mostrava pulsanti e righe tecniche accatastati su un francobollo:
-l'app non veniva avvisata del rimpicciolimento. Ora è Android stesso a dirglielo, e nella
-finestrella restano la faccia e una parola: c'è, in attesa, non raggiungibile.
+**The little window says only the essentials.** Going into Picture-in-Picture with the back
+button, on many phones the little window showed buttons and technical lines stacked on a postage
+stamp: the app was never told it had been shrunk. Now Android itself tells it, and in the little
+window there remain a face and one word: here, waiting, unreachable.
 
-**Una pressione lunga sul video sceglie quanto sfumano i pulsanti.** Mezzo secondo col dito fermo
-sull'immagine grande (o sullo schermo, se video non ce n'è) apre il menu con i gradi di
-attenuazione — senza passare dalle impostazioni. E tra i gradi ora c'è anche «Sempre visibili»,
-per chi i pulsanti li vuole lì, fissi.
+**A long press on the video chooses how much the buttons fade.** Half a second with the finger
+still on the big picture (or on the screen, if there is no video) opens the menu with the degrees
+of fading — without going through the settings. And among them there is now "Always visible" too,
+for those who want the buttons right there, fixed.
 
-**Il ritardo scritto è quello di ciò che viaggia.** Solo voce: il ritardo della voce. Col video
-acceso: quello dei fotogrammi, ai quali la voce è tenuta dietro dalla sincronizzazione. Prima i
-due si mescolavano cambiando catena di nascosto, e il numero calava proprio quando accendevi la
-camera.
+**The delay written down is the delay of what is travelling.** Voice alone: the voice's delay.
+With the video on: the frames' delay, to which the voice is held by synchronisation. Before, the
+two got mixed up as the chain changed unseen, and the number dropped exactly when you switched
+the camera on.
 
 ## 0.9.0 build 146
 
-**In attesa si consuma molto meno.** Il blocco che teneva sveglio il processore, finora tenuto
-sempre, ora si tiene solo dentro al canale: aspettando, il telefono dorme davvero. A vegliare
-restano gli annunci della rete, i rari pacchetti del server — che svegliano il telefono da soli —
-e una sveglia di sistema che ogni dieci minuti guarda che la presenza ci sia ancora. La sveglia è
-anche la rete di sicurezza che mancava: se il telefono uccide il servizio d'ascolto, entro dieci
-minuti viene rimesso in piedi, cosa che prima non faceva nessuno.
+**Waiting costs far less.** The lock that kept the processor awake, held until now at all times,
+is held only inside the channel: while waiting, the phone really sleeps. What keeps watch are the
+network's announcements, the server's rare packets — which wake the phone by themselves — and a
+system alarm that every ten minutes looks to see that the presence is still there. The alarm is
+also the safety net that was missing: if the phone kills the listening service, within ten
+minutes it is put back on its feet, which nobody used to do.
 
-**L'ascolto senza interfaccia ha le stesse orecchie dell'app.** Dopo un riavvio, o quando il
-sistema smonta l'app, la connessione era sorvegliata solo dai timer di JavaScript — che a schermo
-spento non suonano. Ora il battito nativo e gli annunci della rete vegliano anche lì: un socket
-morto in silenzio viene rifatto in secondi, non scoperto dopo minuti.
+**Listening without an interface has the same ears as the app.** After a restart, or when the
+system takes the app apart, the connection was watched over only by JavaScript's timers — which
+do not ring with the screen off. Now the native heartbeat and the network's announcements keep
+watch there too: a socket that died in silence is remade within seconds, not discovered after
+minutes.
 
-**Una chiamata che muore in tasca si ripara in tasca.** Ogni riparazione del collegamento diretto
-dipendeva da timer che a schermo spento stanno fermi: la cura partiva nell'istante in cui si
-riaccendeva lo schermo. Ora la dà anche il battito, che nel canale suona pure a schermo spento, e
-mentre il collegamento sta male accelera: la riparazione arriva in una quindicina di secondi.
+**A call that dies in a pocket is repaired in a pocket.** Every repair of the direct link
+depended on timers that stand still with the screen off: the cure set off the instant the screen
+came back on. Now the heartbeat gives it too, which in the channel ticks with the screen off as
+well, and while the link is unwell it quickens: the repair arrives within some fifteen seconds.
 
-**Chi cade e torna subito non «esce» più.** Un cambio di rete faceva lampeggiare «si è
-disconnesso» sull'altro telefono, per poi smentirlo un attimo dopo. Ora il server aspetta qualche
-secondo prima di annunciare una caduta: se sei già tornato, nessuno si accorge di niente. E una
-bussata arrivata proprio in quel buco non sparisce più: ti aspetta sulla soglia e ti viene
-consegnata al rientro.
+**Whoever falls and comes straight back no longer "leaves".** A change of network made "they have
+disconnected" flash on the other phone, only to deny it a moment later. Now the server waits a few
+seconds before announcing a drop: if you are already back, nobody notices anything. And a knock
+that arrived in exactly that gap no longer disappears: it waits for you on the doorstep and is
+delivered when you return.
 
-**I fatti non si perdono più nei buchi.** Il diario, il «non me ne sono andato», il suono per
-richiamarti: se partivano mentre il server era irraggiungibile o l'altro stava riagganciando,
-sparivano in silenzio. Ora aspettano in tasca e vengono consegnati appena c'è di nuovo qualcuno
-ad ascoltare.
+**Facts no longer get lost in the gaps.** The journal, the "I have not gone away", the sound for
+calling you back: if they set off while the server was unreachable or the other side was
+reconnecting, they vanished in silence. Now they wait in one's pocket and are delivered as soon as
+there is somebody listening again.
 
-**«Esci e diventa irraggiungibile» sopravvive al riavvio.** La scelta viveva solo nella memoria
-dell'app: riavviando il telefono tornavi raggiungibile senza volerlo. Ora resta scritta dove il
-riavvio non la cancella.
+**"Leave and become unreachable" survives a restart.** The choice lived only in the app's memory:
+restarting the phone made you reachable again without your wanting it. Now it stays written where
+a restart does not erase it.
 
-**Negare il microfono non ti rende più invisibile.** Rifiutando il permesso, l'app rinunciava
-anche ad ascoltare: restavi irraggiungibile senza saperlo. Per ascoltare il microfono non serve —
-serve solo per entrare nel canale — e ora l'ascolto resta.
+**Refusing the microphone no longer makes you invisible.** By refusing the permission, the app
+also gave up listening: you stayed unreachable without knowing. Listening does not need the
+microphone — only entering the channel does — and now the listening remains.
 
-**Se le restrizioni batteria tornano, te lo dice.** Il permesso chiesto alla prima installazione
-può essere revocato in silenzio dal sistema o da un «ottimizzatore»: era il modo classico di
-diventare irraggiungibili senza saperlo. Ora l'app se ne accorge quando la riapri e te lo dice.
+**If the battery restrictions come back, it tells you.** The permission asked for at the first
+installation can be quietly revoked by the system or by an "optimiser": it was the classic way of
+becoming unreachable without knowing. Now the app notices when you reopen it, and tells you.
 
-**Niente più server di Google.** Per anni un indirizzo STUN pubblico di Google faceva da ripiego
-nei telefoni: l'unica dipendenza esterna di un progetto che si regge da solo. Non serviva: il tuo
-relay risponde già anche a quello, e ora i telefoni usano solo indirizzi tuoi.
+**No more of Google's servers.** For years a public Google STUN address served as a fallback in
+the phones: the only outside dependency of a project that stands on its own. It was not needed:
+your relay already answers that too, and now the phones use only addresses of yours.
 
 ## 1.1.122
 
-**Un telefono in tasca non preme più niente.** Finché qualcosa copre lo schermo - una tasca, una
-cover chiusa - i comandi non rispondono. Con il vivavoce acceso il sistema non spegne il display,
-e tutto quello che tocca il vetro arrivava ai pulsanti: è così che sono comparse uscite dal canale
-che nessuno aveva premuto.
+**A phone in a pocket no longer presses anything.** As long as something covers the screen — a
+pocket, a closed cover — the controls do not respond. With the speaker on, the system does not
+switch the display off, and everything that touched the glass reached the buttons: that is how
+exits from the channel appeared that nobody had pressed.
 
 ## 1.1.121
 
-**Il volume regolato da un'altra app diventa quello di Duetto.** Se muovi il volume di chiamata da
-fuori, l'amplificazione di Duetto torna a 1: mettendolo a metà ti ritrovi a metà, non a tre
-quarti. Il muto invece resiste: lo si toglie da Duetto, e allora si riparte dal volume che il
-telefono ha in quel momento.
+**A volume set from another app becomes Duetto's.** If you move the call volume from outside,
+Duetto's amplification goes back to 1: setting it to half you find yourself at half, not at three
+quarters. The mute, on the other hand, resists: it is lifted from Duetto, and then one starts
+again from whatever volume the phone has at that moment.
 
-**«Il suo telefono gli ha chiuso l'app» solo quando conta.** Su certi telefoni la finestra viene
-smontata pochi secondi dopo ogni uscita: dirlo anche allora faceva leggere quella frase - vera, ma
-fuorviante - subito dopo un'uscita che l'altro aveva scelto.
+**"Their phone closed the app on them" only when it counts.** On some phones the window is taken
+apart a few seconds after every exit: saying it then too made that sentence — true, but
+misleading — appear right after an exit the other person had chosen.
 
 ## 1.1.120
 
-**Uscendo di casa si torna in linea prima.** Il wifi che si allontana smette di far passare dati
-molto prima che il telefono lo molli - a schermo spento anche per mezzo minuto - e in quel tempo
-Duetto restava scollegato. Ora, dopo due tentativi a vuoto, chiede ad Android di verificare quella
-rete: se non porta a internet, il traffico passa ai dati da sé.
+**Leaving the house one is back online sooner.** A wifi that is getting away stops carrying data
+long before the phone lets go of it — with the screen off, for as much as half a minute — and in
+that time Duetto stayed disconnected. Now, after two attempts that come to nothing, it asks
+Android to check that network: if it does not lead to the internet, the traffic moves to mobile
+data by itself.
 
-**E ci riprova quattro volte più spesso.** A schermo spento l'unico motore che gira è il battito,
-quindi il suo passo è anche il passo dei tentativi: resta di un minuto quando va tutto bene, e
-scende a quindici secondi finché non si è tornati in linea.
+**And it tries again four times as often.** With the screen off the only engine running is the
+heartbeat, so its pace is also the pace of the attempts: it stays at one a minute when all is
+well, and drops to fifteen seconds until one is back online.
 
-**Il microfono e la camera si riprendono con due attese diverse** dopo un'uscita: cinque minuti il
-microfono, un minuto la camera. Una camera che si riaccende da sola riprende una stanza e una
-faccia, e dopo un minuto non è più chiaramente la stessa scena di prima.
+**The microphone and the camera come back with two different waits** after an exit: five minutes
+the microphone, one minute the camera. A camera that switches itself back on films a room and a
+face, and after a minute it is no longer plainly the same scene as before.
 
 ## 1.1.119
 
-**Via il venticinque per cento di troppo.** Diventando il prodotto delle due metà, il volume di
-Duetto ha cambiato significato: il moltiplicatore di prima, traghettato sulle quattro uscite,
-restava come un'amplificazione fissa sopra qualunque cosa - e sulla cornetta suonava come un
-vivavoce. Ora riparte da 1 dappertutto, e il livello è quello del volume di chiamata del
-telefono, che ha già una memoria per ogni uscita.
+**Away with the twenty-five per cent too many.** By becoming the product of the two halves,
+Duetto's volume changed meaning: the old multiplier, ferried across to the four outputs, stayed
+on as a fixed amplification over anything at all — and on the earpiece it sounded like a
+loudspeaker. Now it starts again from 1 everywhere, and the level is that of the phone's call
+volume, which already has a memory for each output.
 
-**Il tocco su «Esci» non esce**: apre lo stesso pannello della pressione lunga, con le due uscite
-scritte per esteso e una riga «Resta nel canale». La conferma piccola sotto l'icona non si
-vedeva, ed era proprio nel caso in cui serve - quando quel tocco non l'hai fatto tu.
+**Touching "Leave" does not leave**: it opens the same panel as the long press, with the two ways
+out written out in full and a line saying "Stay in the channel". The little confirmation under
+the icon could not be seen, and that was precisely in the case where it is needed — when you did
+not make that touch yourself.
 
 ## 1.1.118
 
-**Il volume scende fino al silenzio, e sotto il minimo del telefono.** In vivavoce il primo
-scalino di certi telefoni è ancora fortissimo, e più giù Android non va: da lì in poi attenua
-Duetto, fino a un quarto, e un altro tocco zittisce del tutto. Dal silenzio, il primo tocco in su
-riporta al minimo del telefono.
+**The volume goes down to silence, and below the phone's lowest step.** On speaker, the first
+step of some phones is still very loud, and Android goes no lower: from there on Duetto
+attenuates, down to a quarter, and one more touch silences it altogether. From silence, the first
+touch upwards goes back to the phone's lowest step.
 
-**Uscendo e rientrando entro dieci secondi si riprende com'era**, microfono e camera compresi:
-un'uscita e un rientro immediati quasi sempre non sono una scelta, e ritrovarsi il video da
-riaccendere a mano era una punizione per qualcosa che non si è fatto.
+**Leaving and coming back within ten seconds one picks up where one was**, microphone and camera
+included: an exit and an immediate return are almost never a choice, and finding the video to be
+switched on again by hand was a punishment for something one had not done.
 
 ## 1.1.117
 
-**Uscire dal canale chiede conferma.** Il primo tocco su «Esci» arma il pulsante - diventa
-«Sicuro?» per tre secondi - e solo il secondo esce. Sono comparse uscite dal canale che nessuno
-aveva premuto, di notte e in pieno giorno: qualunque cosa le produca, un tocco solo non basta
-più. Tenendo premuto, il menu con le due uscite resta com'era.
+**Leaving the channel asks for confirmation.** The first touch on "Leave" arms the button — it
+becomes "Sure?" for three seconds — and only the second one leaves. Exits from the channel
+appeared that nobody had pressed, at night and in broad daylight: whatever produces them, one
+touch alone is no longer enough. On a long press, the menu with the two ways out stays as it was.
 
-**Il diario registra ogni pressione dei comandi** con il punto dello schermo e quanto è durato il
-contatto. Su un telefono lontano è l'unico modo di sapere cosa è arrivato davvero all'app.
+**The journal records every press of the controls** with the point on the screen and how long the
+contact lasted. On a distant phone it is the only way to know what really reached the app.
 
-**La notifica fissa si può scacciare** su Android 13 e successivi: il servizio continua a girare e
-resti raggiungibile lo stesso.
+**The fixed notification can be swiped away** on Android 13 and later: the service goes on running
+and you stay reachable all the same.
 
 ## 1.1.116
 
-**Il volume adesso è un numero solo, e dice la verità.** Prima Duetto mostrava soltanto la
-propria parte, e il volume di chiamata del telefono - che ha una manopola per ogni uscita e la
-muovono anche le altre app - non lo guardava: potevi leggere 150% mentre il telefono stava a uno
-su otto. Ora il livello è il prodotto dei due, si aggiorna anche quando lo cambi da fuori, ed è
-quello che viaggia all'altro: «ti sente 25%» è diventata una frase esatta.
+**The volume is now a single number, and it tells the truth.** Before, Duetto showed only its own
+half, and did not look at the phone's call volume — which has a knob for each output and is moved
+by other apps too: you could read 150% while the phone stood at one out of eight. Now the level is
+the product of the two, it updates even when you change it from outside, and it is what travels to
+the other person: "hears you 25%" has become an exact statement.
 
-**E ogni uscita ha il suo.** Salendo, i tasti portano prima al massimo il volume di chiamata -
-che Android ricorda già separato per cornetta, vivavoce, cuffie e bluetooth - e solo dopo
-moltiplicano; scendendo fanno il contrario. Quello che avevi impostato vale ora per tutte e
-quattro le uscite, e da lì in poi si separano.
+**And every output has its own.** Going up, the keys first take the call volume to its top —
+which Android already remembers separately for earpiece, speaker, headphones and bluetooth — and
+only then multiply; going down they do the opposite. What you had set now holds for all four
+outputs, and from there on they part ways.
 
-**Quando il telefono ti chiude l'app, l'altro lo sa.** Su certi telefoni Duetto viene smontato da
-solo, anche di notte: all'altro compariva «in attesa», identico a quando esci tu. Ora dice «in
-attesa (app chiusa dal telefono)», nel riquadro e nella notifica.
+**When the phone closes the app on somebody, the other one knows.** On some phones Duetto is taken
+apart by itself, at night too: the other person saw "waiting", identical to when you leave. Now it
+says "waiting (app closed by the phone)", in the panel and in the notification.
 
-**La connessione si controlla ogni minuto, anche a schermo spento.** I cronometri di React Native
-seguono il ritmo dei fotogrammi: a schermo spento non scadono, e nessuna delle reti di sicurezza
-partiva - una notte la connessione è rimasta caduta otto minuti e mezzo, fino al momento in cui
-lo schermo si è acceso. Ora il controllo lo sveglia un battito nativo.
+**The connection is checked every minute, with the screen off too.** React Native's stopwatches
+follow the rhythm of the frames: with the screen off they never run out, and none of the safety
+nets set off — one night the connection stayed down for eight and a half minutes, until the moment
+the screen came on. Now a native heartbeat wakes the check.
 
 ## 1.1.115
 
-**Correzione di un guaio introdotto dalla 1.1.114**: i due telefoni si vedevano sparire a
-vicenda ogni pochi secondi. L'ascolto dei cambi di rete era troppo nervoso e rifaceva
-connessioni sanissime. Ora, quando la rete cambia, prima si chiede al server se il collegamento
-è ancora vivo, e lo si rifà solo se non risponde.
+**A fix for trouble introduced in 1.1.114**: the two phones saw each other disappear every few
+seconds. The listening to network changes was too nervous and remade perfectly healthy
+connections. Now, when the network changes, the server is asked first whether the link is still
+alive, and it is remade only if it does not answer.
 
 ## 1.1.114
 
-**Il cambio di cella non si vede più.** Duetto ora si accorge da sé quando la rete del telefono
-cambia - cella, wifi, indirizzo nuovo - e rifà subito il collegamento invece di aspettare che
-qualcuno inciampi in un socket morto. E la scritta «senza collegamento al server» aspetta cinque
-secondi prima di comparire: un cambio di rete si sistema in uno o due, e non merita un allarme.
+**A change of cell is no longer noticeable.** Duetto now notices by itself when the phone's
+network changes — cell, wifi, new address — and remakes the link at once instead of waiting for
+somebody to stumble over a dead socket. And the line "no link to the server" waits five seconds
+before appearing: a change of network sorts itself out in one or two, and does not deserve an
+alarm.
 
 ## 1.1.113
 
-**«Senza collegamento al server» quando il collegamento c'era.** Cambiando cella o passando dal
-wifi ai dati, la connessione muore e l'app ne apre subito un'altra - ma la notizia della morte
-della prima arriva con minuti di ritardo, e finiva per dichiarare scollegata una connessione
-nuova e funzionante. Ora chi parla deve essere la connessione in uso, e quella abbandonata si
-chiude sul serio.
+**"No link to the server" when the link was there.** Changing cell or moving from wifi to mobile
+data, the connection dies and the app opens another at once — but the news of the first one's
+death arrives minutes later, and ended up declaring a new and perfectly working connection
+disconnected. Now whoever speaks has to be the connection in use, and the abandoned one is really
+closed.
 
-**La rete di sicurezza adesso scatta davvero.** Doveva rifare tutto da capo dopo qualche secondo
-senza server, e in giorni di diario non è mai partita: il conto ripartiva a ogni tentativo. Ora
-conta dall'ultima connessione funzionante, e dopo dieci secondi di buio rifà da capo.
+**The safety net now really does trip.** It was meant to rebuild everything after a few seconds
+without a server, and in days of journal it never once set off: the count restarted at every
+attempt. Now it counts from the last working connection, and after ten seconds of darkness it
+rebuilds.
 
-**L'avviso della morte dice l'ora vera del ritorno.** «È tornato alle 17:04», mandata da chi è
-tornato: prima diceva l'ora in cui la notizia arrivava a te, che se eri scollegato è tutt'altra
-cosa.
+**The notice of a death gives the true time of the return.** "They came back at 17:04", sent by
+whoever came back: before, it gave the time the news reached you, which if you were disconnected
+is quite another thing.
 
 ## 1.1.112
 
-**Un tocco distratto non ti fa più uscire dal canale.** Con un video acceso i comandi sbiadiscono,
-e se non li tocchi da un minuto adesso dormono: il primo tocco li riaccende e basta, senza premere
-niente. Vale anche per «Esci», che prima usciva al primo tocco senza chiedere.
-
-**Il diario diceva «schermo acceso» anche a schermo spento.** Chiedeva ad Android una cosa che
-somiglia ma non è: durante una conversazione il telefono resta «interattivo» mentre il sensore di
-prossimità spegne il display. Ora si guarda lo stato del display vero - acceso, spento, o
-l'orologio sempre visibile.
+**An absent-minded touch no longer makes you leave the channel.** With a video on the controls
+fade, and if you have not touched them for a minute they now sleep: the first touch wakes them and
+nothing more, without pressing anything. It holds for "Leave" too, which used to leave at the
+first touch without asking.
 
 ## 1.1.111
 
-**L'uscita audio non torna più indietro da sola.** Dopo un aggiornamento il vivavoce poteva
-ridiventare cornetta: una vecchia memoria, rimasta da quando l'uscita era una sola per tutta
-l'app, veniva ritravasata a ogni avvio ogni volta che la scelta era quella di partenza. Ora si
-legge una volta e si cancella. Valeva anche per il volume della voce dell'altro.
+**The journal said "screen on" with the screen off.** It asked Android for something that
+resembles it but is not: during a conversation the phone stays "interactive" while the proximity
+sensor switches the display off. Now the state of the real display is read — on, off, or the
+always-on clock.
+
+**The audio output no longer goes back by itself.** After an update the speaker could turn back
+into the earpiece: an old memory, left over from when there was one output for the whole app, was
+poured back at every start whenever the choice was the default one. Now it is read once and
+erased. The same held for the volume of the other person's voice.
 
 ## 1.1.110
 
-**Il riquadrino non salta più.** Spegnendo e riaccendendo il video, al trascinamento successivo
-saltava in un'altra posizione e ripartiva da lì - e nei casi peggiori finiva fuori dallo
-schermo. Ora resta dove lo lasci, sempre.
+**The little square no longer jumps.** Switching the video off and on again, at the next drag it
+jumped somewhere else and carried on from there — and in the worst cases ended up off the screen.
+Now it stays where you leave it, always.
 
 ## 1.1.107
 
-**Chi bussa sente bussare.** Al posto del rullo di tamburi, due colpi su una porta: mezzo
-secondo, il riscontro che l'avviso è partito davvero. Il rullo resta fra i suoni da mandare
-all'altro.
+**Whoever knocks hears knocking.** In place of the drum roll, two knocks on a door: half a second,
+the confirmation that the alert really did set off. The roll remains among the sounds to send to
+the other person.
 
-**«Avvisa» si spegne quando non c'è dove bussare.** Grigio e non premibile quando il telefono
-dell'altro al server non è collegato - staccato di proposito, o senza rete - perché lì l'avviso
-non ha dove arrivare. Resta acceso quando è in attesa e anche quando siete tutti e due nel
-canale, che è il caso in cui insistere serve. Con lui è sparita la finestrella «Non
-raggiungibile», che diceva a cose fatte quello che ora si vede prima.
+**"Call" goes out when there is nowhere to knock.** Grey and unpressable when the other person's
+phone is not connected to the server — detached on purpose, or without a network — because there
+the alert has nowhere to arrive. It stays lit when they are waiting and also when you are both in
+the channel, which is the case where insisting is worth something. With it has gone the little
+"Unreachable" window, which said after the fact what one now sees beforehand.
 
 ## 1.1.105
 
-**Il nome del collegamento si vede in ogni notifica**, in corsivo, in testa al testo: «*Casa* ·
-Sei nel canale · Anna in attesa». Stava nel titolo, che con la notifica ripiegata su parecchi
-telefoni non si vede - e «Sei nel canale», con più collegamenti configurati, non dice in quale.
-Lo stesso nome, sempre in corsivo, nella pastiglia in alto e nel riepilogo al centro.
+**The connection's name is visible in every notification**, in italics, at the head of the text:
+"*Home* · You are in the channel · Anna waiting". It used to be in the title, which with the
+notification folded is invisible on a good many phones — and "You are in the channel", with
+several connections configured, does not say which one. The same name, always in italics, on the
+pill at the top and in the summary in the middle.
 
-**Una notifica scacciata non torna più.** Veniva riscritta ogni minuto per rimediare a un
-aggiornamento perso, e una notifica riscritta rinasce: ora si riscrive solo quando il testo
-cambia davvero, e riprova soltanto se la scrittura è fallita.
+**A notification swiped away no longer comes back.** It was rewritten every minute to make up for
+a lost update, and a rewritten notification is reborn: now it is rewritten only when the text
+really changes, and it tries again only if the writing failed.
 
 ## 1.1.101
 
-**Il riquadrino non si perde più fuori dallo schermo.** Si poteva trascinare ovunque e rientrava
-solo alla fine del gesto: se quella fine non arrivava - gesto rubato da un altro tocco - restava
-fuori, e niente lo recuperava. Adesso il bordo lo ferma mentre lo muovi, come le finestrelle di
-WhatsApp o FaceTime, e lo stesso vale allargandolo.
+**The little square no longer gets lost off the screen.** It could be dragged anywhere and came
+back only at the end of the gesture: if that end never arrived — the gesture stolen by another
+touch — it stayed outside, and nothing brought it back. Now the edge stops it while you move it,
+like the little windows of WhatsApp or FaceTime, and the same holds while enlarging it.
 
 ## 1.1.100
 
-**Con la camera accesa da solo puoi andare a schermo intero.** Un tocco sul riquadrino porta la
-tua immagine grande, un altro ti riporta al riepilogo; prima la scelta cadeva nello stesso
-istante in cui la facevi. Il riquadrino resta lì vuoto, e dice com'è messo l'altro con le
-parole vere - il suo nome se è nel canale, «in attesa», «si è staccato», «non raggiungibile» -
-invece di un «in attesa» buono per tutte le stagioni.
+**With the camera on alone you can go full screen.** A touch on the little square brings your own
+picture up big, another takes you back to the summary; before, the choice fell in the very instant
+you made it. The little square stays there empty, and says how the other person is doing in real
+words — their name if they are in the channel, "waiting", "disconnected", "unreachable" — instead
+of a "waiting" good for all seasons.
 
-**Niente più versioni vecchie inventate.** Quando l'altro usciva dal canale, l'app continuava a
-dire «di là una più vecchia»: è il segno con cui si riconosce un Duetto vecchio, cioè non
-dichiarare la versione, ma uscendo non la dichiara nessuno.
+**No more invented old versions.** When the other person left the channel, the app went on saying
+"an older one over there": that is the sign by which an old Duetto is recognised, namely not
+declaring its version, but on leaving nobody declares it.
 
 ## 1.1.99
 
-**I volumi si leggono anche quando ha il video solo lui.** Prima, con il suo video a tutto
-schermo, sparivano insieme il riepilogo al centro (coperto) e il riquadrino (che non c'è): con
-le righe tecniche accese compare una seconda pastiglia in alto, «Tu», con la tua uscita audio e
-il tuo volume accanto alla sua.
+**The volumes can be read even when only they have video.** Before, with their video full screen,
+the summary in the middle (covered) and the little square (which is not there) disappeared
+together: with the technical lines on, a second pill appears at the top, "You", with your audio
+output and your volume beside theirs.
 
-**Nel riepilogo ogni volume ha il segno di chi ascolta**: il suo davanti a «ti sente», il tuo
-dopo «lo senti». Prima ce n'era uno solo in testa alla riga, e sembrava valere per tutti e due.
+**In the summary each volume carries the sign of who is listening**: theirs before "hears you",
+yours after "you hear". Before there was only one at the head of the line, and it looked as if it
+held for both.
 
 ## 1.1.98
 
-**Una notizia sola.** «È di nuovo raggiungibile» compariva sia nella tendina di Android sia
-nel riquadro dentro l'app: adesso solo nella tendina.
+**One piece of news only.** "They are reachable again" appeared both in Android's shade and in
+the panel inside the app: now only in the shade.
 
-**Le righe tecniche non escono più dallo schermo.** «andata e ritorno 42 ms» è diventato
-«latenza a/r 42 ms», e quella riga si rimpicciolisce da sola quando serve, come già faceva
-quella della risoluzione.
+**The technical lines no longer run off the screen.** "round trip 42 ms" has become "latency r/t
+42 ms", and that line shrinks by itself when needed, as the resolution one already did.
 
-**Il volume che viaggia è giusto dal primo istante.** La sessione nasceva annunciando 100% e
-si correggeva un attimo dopo: se quella correzione si perdeva, dall'altra parte restava un
-numero mai stato vero.
+**The volume that travels is right from the first instant.** The session was born announcing 100%
+and corrected itself a moment later: if that correction got lost, a number that had never been
+true stayed on the other side.
 
 ## 1.1.97
 
-**Sai a che volume l'altro ti sente.** Con le righe tecniche accese, ogni pastiglia dice come
-suona il telefono di cui porta il nome: accanto a «Non tu» da dove esce il suo suono e a che
-volume lui sta ascoltando **te**, accanto a «Tu» la tua uscita e il tuo volume. Il numero che
-conta è il suo: era l'unica cosa che non potevi sapere in nessun modo, e spiega da sola i «non
-ti sento» — se ti ha al 25%, adesso si vede. Il dato viaggia da sé e si aggiorna appena lui
-tocca i tasti del volume.
+**You know at what volume the other person hears you.** With the technical lines on, every pill
+says how the phone whose name it carries sounds: beside "Not you", where their sound comes out and
+at what volume they are listening to **you**; beside "You", your output and your volume. The
+number that counts is theirs: it was the one thing you could not know in any way, and it explains
+the "I can't hear you" all by itself — if they have you at 25%, now it shows. The figure travels
+by itself and updates as soon as they touch the volume keys.
 
-**Se l'altro non ha il video, nel riquadrino c'è il tuo.** Prima, accendendo il video da solo,
-non restava niente a dire che dall'altra parte c'era qualcuno: ora il posto grande tiene il
-riepilogo di com'è messo lui, e il tuo video sta nel riquadrino.
+**If the other person has no video, the little square holds yours.** Before, switching the video
+on alone, nothing was left to say that there was somebody on the other side: now the big place
+holds the summary of how they are doing, and your video sits in the little square.
 
-**Il rullo di tamburi lo senti anche tu.** Bussando all'altro, il suono suona anche qui: è il
-riscontro che l'avviso è partito davvero.
+**You hear the drum roll too.** Knocking on the other person's door, the sound plays here as well:
+it is the confirmation that the alert really did set off.
 
-**La latenza tra le righe tecniche.** «Andata e ritorno 42 ms»: quanto ci mette la voce a fare
-il giro.
+**The latency among the technical lines.** "Round trip 42 ms": how long the voice takes to do the
+loop.
 
-**Le notifiche parlano tutte allo stesso modo, e non invecchiano.** Il nome del collegamento sta
-nel titolo — «Duetto · Casa» — e non più a volte lì e a volte in mezzo al testo. «È di nuovo
-raggiungibile» sparisce appena risparisce; «ti aspetta nel canale» sparisce quando esce dal
-canale; e ogni notizia si toglie comunque da sola dopo dieci minuti, invece di restare a
-raccontare una cosa di stamattina. La riga fissa si riscrive ogni minuto: se un aggiornamento
-va perso — capita, il sistema può rifiutarlo — non resta più appeso un «senza collegamento al
-server» a collegamento tornato.
+**The notifications all speak the same way, and do not grow old.** The connection's name sits in
+the title — "Duetto · Home" — and no longer sometimes there and sometimes in the middle of the
+text. "They are reachable again" disappears as soon as they disappear again; "is waiting for you
+in the channel" disappears when they leave the channel; and every piece of news removes itself
+after ten minutes anyway, instead of staying on to tell of something that happened this morning.
+The fixed line is rewritten every minute: if an update gets lost — it happens, the system can
+refuse it — a "no link to the server" no longer hangs there with the link long since back.
 
-**I riquadri dentro l'app sbiadiscono.** Dopo dieci secondi se ne vanno da soli; toccarli li
-toglie subito, come prima.
+**The panels inside the app fade.** After ten seconds they go by themselves; touching them removes
+them at once, as before.
 
 ## 1.1.95
 
-**La presenza sopravvive al telefono che mette via l'app.** Su certi telefoni — un Motorola
-recente, per esempio — l'app viene smantellata **tre secondi** dopo essere finita in secondo
-piano, senza che nessuno l'abbia chiusa: da lì l'altro ti vedeva «non raggiungibile» finché
-non riaprivi Duetto. Ora in quel momento la presenza passa all'ascolto senza interfaccia,
-che riapre la connessione da solo, e il servizio non si spegne più insieme alla finestra.
+**The presence survives a phone that puts the app away.** On some phones — a recent Motorola, for
+instance — the app is dismantled **three seconds** after going into the background, without
+anybody having closed it: from then on the other person saw you as "unreachable" until you
+reopened Duetto. Now, at that moment, the presence passes to the listening without an interface,
+which reopens the connection by itself, and the service no longer goes out together with the
+window.
 
-**Ogni collegamento ricorda le sue impostazioni.** Nome con cui ti presenti, qualità del
-video, voce più ricca, righe tecniche, sfumatura dei comandi, suono e vibrazione
-dell'avviso, uscita audio, volume della voce dell'altro, camera: cambiando collegamento
-tornano quelle di quella persona. Prima erano una sola per tutta l'app, e con la seconda
-persona ti ritrovavi addosso le scelte fatte per la prima. La camera, poi, non era ricordata
-affatto: ogni volta si ripartiva dalla frontale.
+**Every connection remembers its own settings.** The name you go by, the video quality, the richer
+voice, the technical lines, the fading of the controls, the sound and the vibration of the alert,
+the audio output, the volume of the other person's voice, the camera: changing connection brings
+back the ones belonging to that person. Before there was one set for the whole app, and with the
+second person you found yourself wearing the choices made for the first. The camera, moreover, was
+not remembered at all: every time one started again from the front one.
 
-**Uscendo, il diario parte prima di chiudere.** Premendo «Esci» compare «Sto uscendo, un
-momento…» per una frazione di secondo: è il tempo di mandare all'altro telefono le ultime
-righe, finché la connessione è ancora aperta. Prima restavano lì fino al collegamento
-successivo, e se l'app moriva nel frattempo raccontavano una storia che non arrivava a
-nessuno.
+**On leaving, the journal sets off before the closing.** Pressing "Leave", "Leaving, one moment…"
+appears for a fraction of a second: that is the time to send the other phone the last lines, while
+the connection is still open. Before they stayed there until the next connection, and if the app
+died in the meantime they told a story that never reached anybody.
 
-**L'ingrandimento del video non torna più indietro come un elastico.** Il numero
-dell'ingrandimento lo teneva il sistema e noi ne avevamo una copia che smetteva di
-aggiornarsi: lo schermo ingrandiva, il codice credeva di no, e al rilascio riportava tutto a
-schermo pieno. Ora il pizzico riparte da dove sei, il rilascio tiene, e il doppio tocco fa
-avanti e indietro. E l'ingrandimento non si azzera più quando l'immagine dell'altro si
-interrompe e ricompare.
+**The video's zoom no longer springs back like elastic.** The zoom figure was held by the system
+and we had a copy of it that stopped updating: the screen zoomed, the code believed otherwise, and
+on release it took everything back to full screen. Now the pinch starts again from where you are,
+the release holds, and a double tap goes back and forth. And the zoom is no longer cleared when
+the other person's picture breaks off and reappears.
 
-**Il diario racconta cosa fate.** Microfono, camera, qualità, avvisi, ingrandimento, uscite:
-le tue azioni e le sue, ciascuna con la sua riga, più una riga d'apertura che dice con che
-impostazioni quel collegamento è partito. Serve a ricostruire dopo cos'è successo, e a
-capire cosa vuol dire non aver cambiato niente.
+**The journal tells what you do.** Microphone, camera, quality, alerts, zoom, exits: your actions
+and theirs, each with its own line, plus an opening line saying with which settings that
+connection started. It serves to reconstruct afterwards what happened, and to understand what
+"I didn't change anything" means.
 
-**Chi si stacca apposta lo si vede.** Il server distingue chi saluta da chi sparisce, e per
-chi resta la differenza è tutta: da un tunnel si esce, da una scelta no. Se l'altro sceglie
-«esci e renditi non disponibile», ora leggi «si è reso non raggiungibile: ha staccato Duetto
-di proposito», invece di un «non raggiungibile» che sembra un guasto da aspettare.
+**Whoever detaches on purpose can be seen.** The server tells whoever says goodbye from whoever
+disappears, and for the one left behind the difference is everything: one comes out of a tunnel,
+one does not come out of a decision. If the other person chooses "leave and become unavailable",
+you now read "has made themselves unreachable: they disconnected Duetto on purpose", instead of an
+"unreachable" that looks like a fault to be waited out.
 
-**Tenendo premuto «Esci» si sceglie come uscire.** Il tocco fa quello di sempre — chiudi il
-canale ma resti raggiungibile, e il suo avviso ti arriva. La pressione lunga aggiunge
-l'altra: *esci e renditi non disponibile*, che stacca Duetto del tutto — niente
-connessione, niente notifica, niente avvisi, e all'altro risulti non raggiungibile, che è
-la verità. Dura finché non riapri l'app: riaprirla è già dire «ci sono».
+**A long press on "Leave" chooses how to leave.** The touch does what it always did — you close
+the channel but stay reachable, and their alert still reaches you. The long press adds the other:
+*leave and become unavailable*, which disconnects Duetto altogether — no connection, no
+notification, no alerts, and to the other person you are unreachable, which is the truth. It lasts
+until you reopen the app: reopening it is already saying "I am here".
 
-**Dalla schermata «Collega i due telefoni» si può tornare indietro.** Chi ci arrivava per
-aggiungere un collegamento non aveva nessun modo di cambiare idea: il tasto Indietro
-chiudeva l'app, e l'unica via era «Cambia server», che promette tutt'altro. Ora c'è
-«Annulla», e il tasto Indietro riporta alle impostazioni.
+**From the "Connect the two phones" screen one can go back.** Whoever got there to add a
+connection had no way of changing their mind: the Back key closed the app, and the only road was
+"Change server", which promises something else entirely. Now there is "Cancel", and the Back key
+takes you back to the settings.
 
-**Se l'app di uno dei due muore, l'altro lo viene a sapere.** Nessuno può avvisare mentre
-muore — un processo ucciso dal sistema non riceve nessun preavviso — ma riaccendendosi il
-telefono si ricorda com'è andata, e allora lo dice: «Anna è sparita alle 23:04: il telefono
-era senza memoria. Adesso è tornata». Arriva come notizia silenziosa, non come avviso: non
-suona e non vibra. E se l'assenza è durata più di un minuto senza essere una morte, il
-ritorno viene annunciato lo stesso, qualche secondo dopo — giusto il tempo di lasciar
-passare avanti il racconto, quando c'è. La stessa frase compare anche dentro l'app, in un
-cartellino in alto che va via toccandolo: la tendina delle notifiche non la apre chi sta
-già guardando lo schermo.
+**If the app of one of the two dies, the other one gets to know.** Nobody can give notice while
+dying — a process killed by the system receives no warning at all — but on coming back up the
+phone remembers how it went, and then says so: "Anna disappeared at 23:04: the phone had run out
+of memory. She is back now". It arrives as silent news, not as an alert: it does not sound and
+does not vibrate. And if the absence lasted more than a minute without being a death, the return
+is announced all the same, a few seconds later — just the time to let the story go first, when
+there is one. The same sentence appears inside the app too, on a little card at the top that goes
+away when touched: whoever is already looking at the screen does not open the notification shade.
 
-**L'app pesa 28 MB invece di 43.** Dentro c'erano le librerie native per due architetture:
-arm64, che è ogni telefono degli ultimi dieci anni, e quella a 32 bit, che non usa più
-nessuno. Tolta la seconda, il file da passare all'altra persona è quasi la metà, si installa
-prima, e sul telefono c'è meno codice da tenere in memoria.
+**The app weighs 28 MB instead of 43.** Inside were the native libraries for two architectures:
+arm64, which is every phone of the last ten years, and the 32-bit one, which nobody uses any more.
+With the second taken out, the file to hand to the other person is nearly half the size, it
+installs faster, and there is less code to keep in memory on the phone.
 
-**Nelle impostazioni c'è scritto da dove vengono i suoni.** Sono registrazioni di altri, e
-chi le ha fatte va nominato: la fanfara lo chiede la sua licenza (CC BY-NC 4.0), gli altri
-tre no — ma citare solo quello obbligatorio sarebbe una cortesia a metà.
+**In the settings it says where the sounds come from.** They are other people's recordings, and
+whoever made them deserves naming: the fanfare's licence asks for it (CC BY-NC 4.0), the other
+three do not — but naming only the compulsory one would be a courtesy by halves.
 
-**Cinque suoni per richiamare, e sono registrazioni vere**: tamburi, batteria, fanfara,
-strombazzata, canto del gallo. Solo la strombazzata resta fatta in casa — un clacson sono
-letteralmente due note con le armoniche dispari, e viene meglio così che cercandone una
-registrazione pulita. Gli altri quattro erano sintetizzati e si sentiva: un «chicchirichì»
-costruito resta una macchietta, una batteria costruita è un tonfo senza pelle.
+**Five sounds for calling somebody back, and they are real recordings**: drums, drum kit, fanfare,
+car horn, rooster. Only the car horn is still homemade — a horn is literally two notes with odd
+harmonics, and it comes out better that way than by hunting for a clean recording. The other four
+were synthesised and it showed: a built "cock-a-doodle-doo" stays a caricature, a built drum kit
+is a thud with no skin.
 
-**Tenendo premuto «Avvisa», quando siete tutti e due nel canale, puoi richiamarlo con un
-suono.** Serve per quando c'è ma non risponde: si è addormentato, o ha lasciato il telefono
-dall'altra parte della stanza e a voce non lo raggiungi. Cinque suoni, ben diversi fra loro —
-**tamburi**, **batteria**, **fanfara**, **strombazzata**, **canto del gallo** — e suonano sul suo telefono al volume
-della sveglia, non a quello della conversazione: si sentono anche se la voce era bassa.
-Viaggiano dentro la busta cifrata della conversazione, quindi il server non sa nemmeno che è
-successo.
+**Holding "Call" down, when you are both in the channel, you can call them back with a sound.** It
+is for when they are there but do not answer: they have fallen asleep, or left the phone on the
+other side of the room where your voice does not reach. Five sounds, well apart from one
+another — **drums**, **drum kit**, **fanfare**, **car horn**, **rooster** — and they play on their
+phone at the alarm volume, not the conversation's: they are heard even if the voice was low. They
+travel inside the conversation's encrypted envelope, so the server does not even know it happened.
 
-**Nel canale, i tasti del volume regolano la voce dell'altro.** Non il volume del telefono:
-quanto Duetto alza quella voce prima di suonarla, cosa che nessun telefono può ignorare.
-Premendo compare «Voce dell'altro 75%» al posto della barretta di sistema. Lo stesso comando
-c'è anche a mano, tenendo premuto «Audio».
+**In the channel, the volume keys set the other person's voice.** Not the phone's volume: how much
+Duetto raises that voice before playing it, something no phone can ignore. On pressing, "Their
+voice 75%" appears in place of the system bar. The same control is there by hand too, holding
+"Audio" down.
 
-Il motivo è nei dati: su un Motorola Edge 50 Fusion i tasti arrivavano al posto giusto e
-l'indice del volume di chiamata scendeva da 4/8 a 2/8 — il sistema si muoveva eccome — e
-all'orecchio non cambiava niente. Il telefono registra il numero e lo ignora, e da fuori un
-volume che scende senza effetto è indistinguibile da uno che scende davvero. Il volume di
-sistema resta dov'è e si regola fuori dal canale, come ogni altro volume.
+The reason is in the data: on a Motorola Edge 50 Fusion the keys arrived at the right place and
+the call volume index went down from 4/8 to 2/8 — the system was moving all right — and to the ear
+nothing changed. The phone records the number and ignores it, and from outside a volume that goes
+down with no effect is indistinguishable from one that really goes down. The system volume stays
+where it is and is set outside the channel, like every other volume.
 
-**Il diario dice di che telefono è**: marca, modello e versione di Android, sulla riga
-d'avvio. Leggendo il diario di qualcun altro è la prima domanda, perché metà del
-comportamento dell'audio dipende da quello.
+**The journal says which phone it belongs to**: make, model and Android version, on the start-up
+line. Reading somebody else's journal it is the first question, because half of the audio's
+behaviour depends on it.
 
-**Le barre di sistema, sopra e sotto, sono nere come l'app.** Su un telefono in tema chiaro
-la barra di stato veniva grigia e quella dei tasti bianca con i tasti scuri: due fasce
-chiare ai bordi che spezzavano l'immagine proprio dove dovrebbe continuare. Ora il fondo è
-lo stesso nero dell'app e i simboli sono chiari, tema del telefono o no.
+**The system bars, top and bottom, are black like the app.** On a phone in a light theme the
+status bar came out grey and the navigation one white with dark keys: two light bands at the edges
+breaking the picture exactly where it should carry on. Now the ground is the same black as the
+app's and the symbols are light, whatever the phone's theme.
 
-**Il simbolo della videocamera ha gli angoli tondi come il suo pulsante.** Erano appena
-smussati, e a video acceso — dove il disegno è scuro su una pastiglia chiara e riempie quasi
-tutto — quel rettangolo quasi retto faceva sembrare che fosse il pulsante ad avere gli
-spigoli vivi, diverso da tutti gli altri della fila.
+**The camcorder symbol has round corners like its button.** They were barely bevelled, and with
+the video on — where the drawing is dark on a light pill and nearly fills it — that almost-square
+rectangle made it look as if the button were the one with sharp corners, different from all the
+others in the row.
 
-**Il diario registra anche come sta il suono**: da che modo passa l'audio del telefono, a
-che punto stanno il volume della voce e quello del multimedia, se il suono esce dal
-vivavoce, e se i tasti laterali comandano la voce. Su un telefono
-lontano quelle tre cose non si possono guardare, e senza di esse un «non si sente» resta
-un'ipotesi.
+**The journal also records how the sound is doing**: which mode the phone's audio goes through,
+where the voice volume and the media volume stand, whether the sound comes out of the speaker, and
+whether the side keys command the voice. On a distant phone those three things cannot be looked
+at, and without them an "I can't hear anything" stays a guess.
 
-**Le righe tecniche sotto ai pulsanti si leggono anche attenuate.** Erano di un grigio da
-nota a piè di pagina: appena i comandi cominciavano a farsi da parte sparivano, perché
-l'attenuazione moltiplica quel poco contrasto che c'era. Ora sono più chiare, con un'ombra
-sotto che le stacca dall'immagine.
+**The technical lines under the buttons can be read even when faded.** They were a grey fit for a
+footnote: as soon as the controls began to step aside they disappeared, because the fading
+multiplies what little contrast there was. Now they are lighter, with a shadow underneath that
+lifts them off the picture.
 
-**I comandi che si fanno da parte adesso hanno tre modi.** «Poco sfumati» è quello di sempre
-(40%, restano leggibili), «molto sfumati» li riduce a un'ombra (15%), «nascosti» li toglie
-del tutto. In tutti e tre restano premibili e un tocco ovunque li richiama: cambia solo
-quanta immagine lasciano vedere. Chi aveva acceso «Nascondi i comandi» si ritrova su
-«nascosti», senza riscegliere niente.
+**The controls that step aside now have three modes.** "Barely faded" is the usual one (40%, they
+stay legible), "well faded" reduces them to a shadow (15%), "hidden" takes them away altogether.
+In all three they stay pressable and a touch anywhere calls them back: only how much picture they
+leave visible changes. Whoever had switched "Hide the controls" on finds themselves on "hidden",
+without choosing anything again.
 
-**Con il video acceso la voce si fa ricca da sé.** L'audio migliore costa 4 kB/s per
-direzione: accanto a mezzo megabit di video non si notano, e rinunciare alla voce buona per
-risparmiarli è un cattivo affare. Ora, quando il video supera i 320 kbit/s, il tetto
-dell'audio si alza da solo; torna all'impostazione quando il video scende sotto i 160 o si
-spegne. L'impostazione non viene toccata, e se l'hai accesa tu resta accesa comunque.
+**With the video on, the voice turns rich by itself.** The better audio costs 4 kB/s per
+direction: beside half a megabit of video it goes unnoticed, and giving up a good voice to save it
+is a poor bargain. Now, when the video goes over 320 kbit/s, the audio ceiling rises by itself; it
+goes back to the setting when the video drops below 160 or is switched off. The setting is not
+touched, and if you switched it on it stays on anyway.
 
-**Scartare l'app dai recenti non ti rende più irraggiungibile.** Era una scorciatoia che
-sembrava ragionevole — chi butta via l'app vuole chiuderla — ma i diari di tre telefoni
-diversi raccontano un'altra storia: dopo quel gesto il processo restava lì senza servizio, e
-mezz'ora dopo Android lo riciclava per far posto ad altro. Chi aveva scartato l'app solo per
-riordinare i recenti si ritrovava irraggiungibile senza averlo chiesto e senza modo di
-accorgersene. Per non essere raggiungibili c'è «esci e renditi non disponibile», che lo dice
-con parole sue — e quando quella scorciatoia è stata scritta non esisteva ancora.
+**Swiping the app away from the recents no longer makes you unreachable.** It was a shortcut that
+looked reasonable — whoever throws the app away wants to close it — but the journals of three
+different phones tell another story: after that gesture the process stayed there without a
+service, and half an hour later Android recycled it to make room for something else. Whoever had
+swiped the app away merely to tidy up the recents found themselves unreachable without having
+asked for it and with no way of noticing. For not being reachable there is "leave and become
+unavailable", which says so in its own words — and when that shortcut was written it did not exist
+yet.
 
-**Basta con «si è staccato» detto di chi non si è staccato affatto.** Il saluto che dice
-all'altro «me ne vado di proposito» partiva a ogni chiusura della connessione — anche quando
-si chiudeva per riaprirla un istante dopo, cosa che succede ogni volta che riprendi in mano
-il telefono e l'app subentra all'ascolto senza interfaccia. Chi guardava leggeva che l'altro
-aveva staccato apposta, e smetteva di aspettarlo. Ora il saluto parte solo quando è vero:
-«esci e renditi non disponibile», o lo scioglimento di un collegamento. Tutto il resto è una
-caduta, dopo la quale è normale tornare.
+**Enough of "they have disconnected" said of somebody who has not disconnected at all.** The
+goodbye that tells the other person "I am going on purpose" set off at every closing of the
+connection — even when it closed to reopen an instant later, which happens every time you pick the
+phone up again and the app takes over from the listening without an interface. Whoever was
+watching read that the other had detached deliberately, and stopped waiting for them. Now the
+goodbye sets off only when it is true: "leave and become unavailable", or the breaking of a
+connection. Everything else is a fall, after which coming back is normal.
 
-**Con la camera posteriore l'immagine non è più rovesciata.** Lo specchio ha senso per la
-camera frontale — chi si guarda si aspetta lo specchio, ed è così che ci si sistema i
-capelli — ma inquadrando il mondo è sbagliato e basta: le scritte si leggono al contrario e
-ci si muove dalla parte opposta a quella che si vede. L'altro riceveva comunque l'immagine
-giusta: lo specchio era solo nell'anteprima.
+**With the rear camera the picture is no longer flipped.** The mirror makes sense for the front
+camera — whoever looks at themselves expects a mirror, and that is how one does one's hair — but
+framing the world it is simply wrong: writing reads backwards and one moves the opposite way from
+what one sees. The other person received the right picture anyway: the mirror was only in the
+preview.
 
-**Anche le notifiche hanno l'icona nuova.** Erano rimaste con un simbolo di sistema, uguale
-a quello di cento altre app.
+**The notifications have the new icon too.** They had been left with a system symbol, the same as
+a hundred other apps'.
 
-**L'icona dell'app.** Due cornette di telefono, una blu e una verde, una di fronte all'altra
-e unite dal filo attorcigliato. Al posto del robottino del modello, che era rimasto lì dal
-primo giorno.
+**The app's icon.** Two telephone handsets, one blue and one green, facing each other and joined
+by the twisted cord. In place of the template's little robot, which had been there since day one.
 
-**Se i comandi sono spariti del tutto, non si premono.** Con «nascosti» restavano premibili
-anche invisibili, e un dito appoggiato dove prima c'era un pulsante spegneva il video o
-usciva dal canale senza che niente lo annunciasse. Ora il primo tocco li richiama e basta:
-poi si decide guardando. Sbiaditi al 15% invece si premono, che si vedono ancora.
+**If the controls have gone altogether, they cannot be pressed.** With "hidden" they stayed
+pressable even while invisible, and a finger resting where a button used to be switched the video
+off or left the channel with nothing to announce it. Now the first touch merely calls them back:
+then one decides, looking. Faded to 15%, on the other hand, they can be pressed, since they can
+still be seen.
 
-**Con più collegamenti, l'avviso dice su quale è arrivato.** «Duetto · Casa» invece di
-«Duetto»: chi ti cerca è uno solo dei due o tre che conosci, e prima per sapere quale
-bisognava aprire l'app.
+**With several connections, the alert says which one it arrived on.** "Duetto · Home" instead of
+"Duetto": whoever is looking for you is one of the two or three you know, and before, to know
+which, one had to open the app.
 
-**Nella finestrella, aspettando l'altro, ora c'è una faccia e una parola.** Premendo
-Indietro l'app resta in un rettangolo grande come un pollice, e lì il riepilogo «Sei nel
-canale…» non ci stava: usciva dai bordi e si leggeva mezza parola. Chi ha premuto Indietro
-non sta leggendo, sta tenendo d'occhio.
+**In the little window, while waiting for the other person, there is now a face and one word.**
+Pressing Back the app stays in a rectangle the size of a thumb, and there the summary "You are in
+the channel…" did not fit: it ran off the edges and half a word could be read. Whoever pressed
+Back is not reading, they are keeping an eye.
 
-**Se i due telefoni hanno versioni diverse di Duetto, le righe tecniche lo dicono.** In
-giallo, sotto ai pulsanti: «Versioni diverse: qui 1.1.65, di là 1.1.55». È la spiegazione di
-metà delle stranezze — una cosa che qui c'è e lì no, un pulsante che si comporta in due modi
-— e prima bisognava chiederselo a voce. Se le versioni sono uguali non compare niente. Chi
-ha una versione più vecchia di questa non dichiara la sua: allora si legge «di là una più
-vecchia», che è comunque la cosa che conta.
+**If the two phones have different versions of Duetto, the technical lines say so.** In yellow,
+under the buttons: "Different versions: 1.1.65 here, 1.1.55 over there". It is the explanation for
+half the oddities — something that is here and not there, a button behaving in two ways — and
+before, one had to ask about it out loud. If the versions are the same nothing appears. Whoever
+has a version older than this one does not declare theirs: then one reads "an older one over
+there", which is the thing that counts anyway.
 
-**Ogni collegamento ha il suo diario, separato dagli altri.** Con più collegamenti
-configurati finiva tutto in un file solo: righe identiche fra loro, di telefoni diversi, e
-nessun modo di separarle dopo, perché le righe non dicono di chi sono. Ora il file porta il
-nome che hai dato al collegamento. Anche il conto delle righe già spedite è per
-collegamento: prima era uno solo, e quello che avevi mandato a uno risultava mandato pure
-all'altro, che quelle righe non le avrebbe viste mai.
+**Every connection has its own journal, separate from the others.** With several connections
+configured everything ended up in a single file: lines identical to one another, from different
+phones, and no way of separating them afterwards, because the lines do not say whose they are. Now
+the file carries the name you gave the connection. The count of the lines already sent is per
+connection too: before there was only one, and what you had sent to one counted as sent to the
+other as well, who would never see those lines.
 
-**Il diario non si perde più quando l'altro sta ascoltando senza app aperta.** Dopo un
-riavvio del telefono — o dopo che il sistema ha ucciso l'app e la presenza è ripartita da
-sé — l'altro è raggiungibile ma senza interfaccia, e lì il diario che gli mandavi arrivava a
-un pezzo di app che non lo guardava: chi l'aveva mandato aveva già segnato quelle righe come
-spedite, e sparivano. Erano proprio le righe che raccontano perché quel telefono era morto.
-Ora vengono raccolte anche lì, e lì arriva anche la notizia della morte.
+**The journal no longer gets lost when the other person is listening without the app open.** After
+a restart of the phone — or after the system has killed the app and the presence has started again
+by itself — the other person is reachable but without an interface, and there the journal you sent
+them reached a piece of the app that was not looking at it: whoever had sent it had already marked
+those lines as sent, and they disappeared. They were precisely the lines that tell why that phone
+had died. Now they are collected there too, and the news of the death arrives there too.
 
-**Il diario passa all'altro telefono ogni cinque minuti** invece che ogni ora: un diario che
-arriva subito racconta cos'è appena successo dall'altra parte, uno che arriva con un'ora di
-ritardo racconta una storia vecchia.
+**The journal goes across to the other phone every five minutes** instead of every hour: a journal
+that arrives at once tells what has just happened on the other side, one that arrives an hour late
+tells an old story.
 
-**Quando l'app sparisce, adesso resta scritto perché.** Android sa sempre come è morto un
-processo — memoria finita, errore, blocco, arresto forzato, o una decisione del gestore
-batteria del produttore — ma non lo dice a nessuno finché non glielo si chiede. Ora Duetto
-glielo chiede a ogni avvio e mette la risposta nel diario, con quanta memoria occupava e
-quanto contava agli occhi del sistema in quel momento. E siccome il diario i due telefoni se
-lo scambiano, si scopre anche perché è sparita sul telefono dell'altro, senza cavi e senza
-doverglielo chiedere.
+**When the app disappears, it now stays written down why.** Android always knows how a process
+died — out of memory, an error, a freeze, a force-stop, or a decision by the maker's battery
+manager — but tells nobody until it is asked. Now Duetto asks at every start and puts the answer
+in the journal, with how much memory it took up and how much it counted in the system's eyes at
+that moment. And since the two phones exchange the journal, one also discovers why it disappeared
+on the other person's phone, with no cables and without having to ask them.
 
-**Se il sistema uccide l'app, la presenza torna da sé.** Quando Android chiude Duetto per
-fare posto ad altro, il servizio ripartiva mostrando la notifica ma senza connessione: una
-presenza dichiarata e inesistente. Ora in quel caso riparte anche il motore che tiene la
-connessione, per la stessa strada che si usa dopo il riavvio del telefono. Se invece sei tu
-a togliere l'app dai recenti, resta chiusa: quella è una decisione, non un incidente.
+**If the system kills the app, the presence comes back by itself.** When Android closes Duetto to
+make room for something else, the service started again showing the notification but without a
+connection: a presence declared and non-existent. Now in that case the engine that holds the
+connection starts again too, by the same road used after a restart of the phone. If instead it is
+you who removes the app from the recents, it stays closed: that is a decision, not an accident.
 
-**A ogni collegamento puoi dare un nome.** Non è il nome della persona — quello se lo dà
-lei, o non ce l'ha — è il nome del filo che vi unisce: «Casa», «Ufficio». Con più
-collegamenti in elenco diventavano tutti «Senza nome» e non si distinguevano; ora la matita
-accanto a ciascuno apre il campo dove scriverlo. Il nome compare sulla pastiglia in alto, al
-posto di «Duetto», e in testa alla notifica fissa, così sai sempre in quale collegamento
-sei. Resta su questo telefono: l'altro non lo vede e non lo saprà mai. Nel riquadro di ogni
-collegamento c'è anche il server su cui è stato fatto.
+**You can give every connection a name.** It is not the person's name — they give themselves
+that, or they have none — it is the name of the thread that joins you: "Home", "Office". With
+several connections in a list they all became "Unnamed" and could not be told apart; now the
+pencil beside each one opens the field to write it in. The name appears on the pill at the top, in
+place of "Duetto", and at the head of the fixed notification, so you always know which connection
+you are in. It stays on this phone: the other person does not see it and will never know it. In
+each connection's panel there is also the server it was made on.
 
-**Un telefono può tenere più collegamenti e passare dall'uno all'altro.** Prima accoppiarsi
-con qualcun altro voleva dire buttare via il collegamento di prima, e per tornare indietro
-rifare tutto da capo — con l'altra persona presente, il telefono in mano e il codice da
-dettarsi a voce. Ora ogni accoppiamento resta: nelle impostazioni c'è l'elenco, quello in
-uso è il primo e ha il bordo acceso, e toccarne un altro ci passa. All'avvio si riprende
-sempre l'ultimo usato, quindi chi ne ha uno solo non si accorge di niente.
+**One phone can hold several connections and move from one to another.** Before, pairing with
+somebody else meant throwing away the earlier connection, and to go back one had to do it all
+again — with the other person present, the phone in hand and the code to dictate out loud. Now
+every pairing remains: in the settings there is the list, the one in use is first and has a lit
+border, and touching another moves to it. At start-up the last one used is always taken up again,
+so whoever has only one notices nothing.
 
-Ogni collegamento si ricorda anche il server su cui è nato, e se lo porta dietro quando lo
-si riprende. Il nome dell'altro si aggiorna da sé a ogni ingresso: in un elenco è l'unica
-cosa che distingue un collegamento dall'altro.
+Every connection also remembers the server it was born on, and carries it along when it is taken
+up again. The other person's name updates by itself at every entry: in a list it is the one thing
+that tells one connection from another.
 
-**La schermata d'attesa ora dice se l'altro è in attesa o non è raggiungibile.** Prima
-diceva soltanto «non c'è ancora», che sono due cose molto diverse: se è in attesa non è nel
-canale ma l'avviso gli arriva; se non è raggiungibile il suo telefono al server non è
-collegato, e l'avviso non ha dove andare — quindi non ti si propone nemmeno di bussare.
+**The waiting screen now says whether the other person is waiting or unreachable.** Before it said
+only "they are not here yet", which are two very different things: if they are waiting they are
+not in the channel but the alert reaches them; if they are unreachable their phone is not
+connected to the server, and the alert has nowhere to go — so you are not even offered the knock.
 
-**Lo stato si rinfresca da sé**: ogni minuto nel primo quarto d'ora, poi ogni cinque, e
-subito ogni volta che riaccendi lo schermo. Serve perché la caduta di chi sta solo in
-attesa il server la scopre con comodo — il suo battito è di quattro minuti, ed è così
-apposta per non tenere sveglia la radio tutta la notte — e fino ad allora la riga direbbe
-«in attesa» di qualcuno che non c'è più.
+**The state refreshes itself**: every minute for the first quarter of an hour, then every five,
+and at once every time you switch the screen back on. It is needed because a drop of somebody who
+is merely waiting is discovered by the server at its leisure — its heartbeat is four minutes, and
+that is deliberate, so as not to keep the radio awake all night — and until then the line would
+say "waiting" of somebody who is no longer there.
 
-**Anche la notifica fissa lo dice**, e «In ascolto» è diventato «In attesa»: «In attesa
-tutti e due» quando ci siete entrambi e nessuno è ancora entrato, «In attesa · Anna è nel
-canale» quando ti sta aspettando dentro, «Sei nel canale · Anna in attesa» quando sei
-entrato tu e lei no, «Nel canale con Anna» quando ci siete tutti e due, e «non
-raggiungibile» al posto dell'attesa quando il suo telefono non è collegato. Vale anche per
-la notifica che compare da sola dopo un riavvio del telefono, che è l'unica cosa che parla
-finché non apri l'app.
+**The fixed notification says it too**, and "Listening" has become "Waiting": "Both waiting" when
+you are both there and neither has come in, "Waiting · Anna is in the channel" when she is waiting
+for you inside, "You are in the channel · Anna waiting" when you have come in and she has not, "In
+the channel with Anna" when you are both there, and "unreachable" in place of the waiting when
+their phone is not connected. It holds for the notification that appears by itself after a restart
+of the phone too, which is the only thing that speaks until you open the app.
 
-**Nel riquadro «Non tu» ora si vede come ti sta ascoltando l'altro.** Accanto alla scritta
-c'è il segno della sua uscita audio — vivavoce, orecchio, cuffie, bluetooth — e se ha il
-microfono spento il segno è sbarrato. Sono le due cose che durante una conversazione ci si
-chiede a voce di continuo, «mi senti?», «sei in vivavoce?», e che il telefono sa già. Quando
-non c'è nessun video, il segno sta nel riepilogo al centro, sopra la riga dell'audio.
+**In the "Not you" panel one can now see how the other person is listening to you.** Beside the
+words there is the sign of their audio output — speaker, ear, headphones, bluetooth — and if their
+microphone is off the sign is crossed out. They are the two things one asks about out loud all the
+time during a conversation, "can you hear me?", "are you on speaker?", and which the phone already
+knows. When there is no video at all, the sign sits in the summary in the middle, above the audio
+line.
 
-**Il pulsante «Avvisa» resta acceso anche quando siete tutti e due nel canale.** Prima si
-spegneva, con l'idea che lì non ci fosse più nulla da avvisare; ma il pulsante lì è
-premibile eccome, ed è anzi il caso in cui serve di più — l'altro c'è e non risponde.
-Sembrava guasto un pulsante che funzionava.
+**The "Call" button stays lit even when you are both in the channel.** Before it went out, on the
+thought that there was nothing left to alert about; but the button there is very much pressable,
+and it is in fact the case where it is needed most — the other person is there and does not
+answer. A working button looked broken.
 
-**Il riquadrino non salta più appena lo si prende.** All'inizio del movimento schizzava
-altrove, e solo dopo seguiva il dito: al primo spostamento si portava dietro il residuo dei
-tocchi precedenti. Ora il conto parte da dove il dito si è posato davvero. Lo stesso valeva
-per la maniglia che lo ridimensiona.
+**The little square no longer jumps as soon as one takes hold of it.** At the start of the
+movement it shot elsewhere, and only afterwards followed the finger: at the first move it carried
+along the residue of the previous touches. Now the count starts from where the finger really
+landed. The same held for the handle that resizes it.
 
 ## 1.1.38
 
-**La vibrazione dell'avviso ora funziona anche se il telefono non vibra per le altre
-notifiche.** Era il caso che conta di più: chi tiene il telefono muto e fermo per tutto il
-resto, e vuole sentire solo questo. La vibrazione stava nel canale di notifica, e da lì
-un'impostazione di sistema la può spegnere; ora la fa l'app, dichiarandola per quello che
-è — qualcuno che ti sta cercando, non una notifica qualunque.
+**The alert's vibration now works even if the phone does not vibrate for other notifications.** It
+was the case that counts most: whoever keeps the phone mute and still for everything else, and
+wants to feel only this. The vibration was in the notification channel, and from there a system
+setting can switch it off; now the app does it, declaring it for what it is — somebody looking for
+you, not just any notification.
 
-**E l'avviso si sente anche mentre siete già collegati.** Prima restava muto proprio nel
-momento in cui serve di più — l'altro c'è ma non risponde — perché durante una
-conversazione il telefono silenzia le notifiche, come fa quando sei al telefono. Ora il
-suono passa dalla via della conversazione, quella dell'avviso di chiamata in attesa.
+**And the alert is heard even while you are already connected.** Before it stayed mute at exactly
+the moment it is needed most — the other person is there but does not answer — because during a
+conversation the phone silences notifications, as it does when you are on a call. Now the sound
+goes by the conversation's road, the one used for call-waiting.
 
 ## 1.1.37
 
-**Il video dell'altro compariva a fatica, e a volte solo riavviando l'app.** Colpa di una
-modifica di due versioni fa: da quando il microfono si apre solo all'arrivo dell'altro,
-fra il controllo «la connessione c'è già?» e la sua creazione passava mezzo secondo, e in
-quel mezzo secondo ne nascevano due. La seconda vinceva, la prima restava viva a ricevere
-un video che nessuno guardava più. Ora chi arriva mentre la connessione si sta creando
-aspetta quella, invece di farne un'altra.
+**The other person's video appeared with difficulty, and sometimes only by restarting the app.**
+The fault of a change two versions ago: since the microphone opens only when the other person
+arrives, half a second passed between the check "is the connection already there?" and its
+creation, and in that half second two of them were born. The second won, the first stayed alive
+receiving a video nobody was looking at any more. Now whoever arrives while the connection is
+being created waits for that one, instead of making another.
 
 ## 1.1.35
 
-**L'app tiene un diario dei consumi.** Una riga ogni cinque minuti — livello della batteria,
-schermo acceso o spento, rete, e cosa stava facendo Duetto — per capire quanto costa
-davvero tenerla in ascolto, invece di discuterne. Ogni telefono manda il proprio diario
-all'altro una volta all'ora, dentro la stessa busta cifrata di tutto il resto: così
-collegandone uno solo a un computer si leggono tutti e due. Nel diario non c'è nulla di
-personale: numeri della batteria e stato dell'app, nessun contenuto di quello che vi dite.
+**The app keeps a journal of consumption.** One line every five minutes — battery level, screen on
+or off, network, and what Duetto was doing — to work out what keeping it listening really costs,
+instead of arguing about it. Every phone sends its own journal to the other once an hour, inside
+the same encrypted envelope as everything else: that way, by connecting just one to a computer,
+one can read them both. There is nothing personal in the journal: battery figures and the app's
+state, none of the content of what you say to each other.
 
 ## 1.1.33
 
-**Il promemoria «Sei nel canale, tocca Avvisa per farglielo sapere» si vede anche con la
-camera accesa.** Prima stava solo al posto del video: accendendo la propria camera spariva, e restava la propria
-immagine senza niente che spiegasse perché non succedeva nulla. Ora compare in
-sovrimpressione, senza la faccia dell'altro — sopra l'immagine peserebbe, e chi guarda sa
-già chi sta aspettando — e si attenua insieme ai comandi, perché è un promemoria e non un
-allarme.
+**The reminder "You are in the channel, touch Call to let them know" is visible with the camera on
+too.** Before it sat only in the video's place: switching your own camera on it disappeared, and
+your own picture was left with nothing to explain why nothing was happening. Now it appears
+overlaid, without the other person's face — over the picture it would weigh too much, and whoever
+is looking already knows who they are waiting for — and it fades together with the controls,
+because it is a reminder and not an alarm.
 
 ## 1.1.32
 
-**Si sceglie come deve farsi sentire l'avviso.** Nelle impostazioni, sotto «Quando l'altro
-ti avvisa»: vibrazione — come decide il telefono, sempre, mai — e suono — quello di
-notifica, nessuno, oppure uno scelto fra quelli del telefono. Un suono diverso dagli altri
-fa capire chi è senza guardare. Vale per gli avvisi che arrivi tu: quello che sente l'altro
-lo decide lui.
+**One chooses how the alert should make itself heard.** In the settings, under "When the other
+person calls you": vibration — as the phone decides, always, never — and sound — the notification
+one, none, or one chosen from the phone's own. A sound unlike the others tells you who it is
+without looking. It holds for the alerts that reach you: what the other person hears is their own
+decision.
 
-**"Avvisa" risponde al dito.** Premendolo la campanella si mette a suonare — inclinata, con
-le onde ai lati — e il pulsante perde l'azzurro per un attimo, per poi riaccendersi: prima
-cambiava solo la scritta sotto, l'azzurro restava spento due secondi buoni, e bussando di
-nuovo in quell'intervallo non tornava affatto — sembrava un pulsante guastatosi in mano. Il
-segno parte al tocco, senza aspettare la conferma del server, che può tardare proprio
-quando la rete va piano.
+**"Call" answers the finger.** On pressing it, the bell starts ringing — tilted, with waves at the
+sides — and the button loses its blue for a moment, then lights up again: before, only the words
+underneath changed, the blue stayed out for a good two seconds, and knocking again in that gap did
+not bring it back at all — it looked like a button that had broken in one's hand. The sign sets
+off at the touch, without waiting for the server's confirmation, which can be late precisely when
+the network is slow.
 
-**Quando l'altro esce, il tuo video torna subito a schermo intero.** Restava piccolo, in
-attesa di un video che non sarebbe più arrivato: uscendo, il suo stato — microfono e camera
-accesi — rimaneva scritto da qualche parte come se fosse ancora lì. Ora si distingue chi se
-n'è andato da chi è caduto: a chi cade il posto resta per sei secondi, che è il tempo di un
-cambio di rete, così non si vede il proprio video salire a schermo intero e tornare indietro
-per niente. Lo dice il server, che sa se il telefono ha salutato o è sparito.
+**When the other person leaves, your video goes back to full screen at once.** It stayed small,
+waiting for a video that would never arrive: on leaving, their state — microphone and camera on —
+stayed written down somewhere as if they were still there. Now whoever has gone is told from
+whoever has fallen: for whoever falls the place is kept for six seconds, which is the time of a
+change of network, so one does not see one's own video go full screen and come back for nothing.
+The server says which, since it knows whether the phone said goodbye or disappeared.
 
-**"Gira" si accende quando riprende la camera frontale.** Pastiglia bianca con la frontale,
-spenta con quella dietro: la sola differenza fra le due sagome — una persona o più — si
-coglie leggendola, mentre il pieno o il vuoto si vede da lontano.
-
-**Nella schermata dell'accoppiamento, accanto a «Cambia server» c'è scritto qual è.** Era
-l'unica cosa che si voleva sapere prima di toccare quella riga, e bisognava entrarci per
-scoprirlo.
+**"Flip" lights up when the front camera is filming.** A white pill with the front one, out with
+the rear: the only difference between the two shapes — one person or more — is caught by reading
+them, while full or empty can be seen from a distance.
 
 ## 1.1.31
 
-**Aspettare costa molto meno.** Entrando nel canale il microfono non si apre più subito:
-si apre quando dall'altra parte arriva davvero qualcuno. Chi entra per primo può aspettare
-a lungo, e in quell'attesa il telefono registrava per nessuno — con l'indicatore di
-ascolto acceso, per giunta. Insieme a questa, una modifica sul server: il colpetto che
-tiene viva la connessione era ogni 30 secondi anche di notte, cioè 120 risvegli della
-radio ogni ora per non fare niente, e ora si dirada finché si sta soltanto in ascolto. Si
-infittisce da solo quando si entra nel canale, e quando qualcuno bussa l'altro viene
-interrogato all'istante: se non c'è più, lo si scopre subito invece di restare davanti a
-un "avvisato" rivolto a nessuno.
+**Waiting costs far less.** On entering the channel the microphone no longer opens at once: it
+opens when somebody really arrives on the other side. Whoever comes in first may wait a long time,
+and during that wait the phone was recording for nobody — with the listening indicator on, into
+the bargain. Along with this, a change on the server: the tap that keeps the connection alive was
+every 30 seconds at night too, that is 120 wakings of the radio every hour to do nothing, and now
+it thins out while one is merely listening. It thickens by itself when one enters the channel, and
+when somebody knocks the other side is questioned at once: if they are no longer there, one finds
+out immediately instead of sitting in front of a "called" addressed to nobody.
 
-**"Gira" si può premere anche a video spento.** Non gira niente lì per lì: sceglie con
-quale camera si accenderà, e l'icona lo mostra. Così si inquadra qualcosa senza far vedere
-prima, per un istante, la propria faccia. Nello stesso giro sparisce un fastidio: cambiando
-risoluzione mentre si riprendeva con la camera posteriore, la ripresa tornava sulla
-frontale da sé.
+**"Flip" can be pressed with the video off too.** It flips nothing there and then: it chooses
+which camera will be switched on, and the icon shows it. That way one frames something without
+showing one's own face first, for an instant. In the same round a nuisance disappears: changing
+resolution while filming with the rear camera, the filming went back to the front one by itself.
 
 ## 1.1.30
 
-**I tasti del volume ora regolano la voce dell'altro.** Su certi telefoni — il Motorola
-Edge 50 Fusion fra questi — premerli non cambiava nulla: il suono della conversazione esce
-dal volume "chiamata", mentre i tasti agivano su quello multimedia, e chi ascoltava se lo
-teneva com'era, spesso altissimo. Su altri telefoni funzionava già, perché Android tirava a
-indovinare bene; ora glielo diciamo, invece di sperare.
+**The volume keys now set the other person's voice.** On some phones — the Motorola Edge 50 Fusion
+among them — pressing them changed nothing: the conversation's sound comes out of the "call"
+volume, while the keys acted on the media one, and whoever was listening kept it as it was, often
+very high indeed. On other phones it already worked, because Android guessed well; now we tell it,
+instead of hoping.
 
 ## 1.1.29
 
-**L'app si chiama Duetto.** Cambia il nome dappertutto: l'icona, la notifica fissa, gli
-avvisi, l'indirizzo del server. Per Android però non è la stessa app con un nome nuovo, è
-un'app diversa: la vecchia DuoTalk resta installata finché non la togli a mano, e Duetto
-parte vuota. Vanno rifatti l'abbinamento — dettandosi di nuovo il codice a voce o di
-persona — e le impostazioni, comprese quelle di sistema (batteria senza limiti, avvio
-automatico), perché Android le tiene legate all'app e non le trasferisce.
+**The app is called Duetto.** The name changes everywhere: the icon, the fixed notification, the
+alerts, the server's address. For Android, though, it is not the same app with a new name, it is a
+different app: the old DuoTalk stays installed until you remove it by hand, and Duetto starts
+empty. The pairing has to be done again — dictating the code out loud or in person once more — and
+so do the settings, the system ones included (unrestricted battery, automatic start), because
+Android keeps them tied to the app and does not transfer them.
 
 ## 1.0.28
 
-**L'avvio automatico ora dice la verità.** La spunta si accendeva solo perché avevi aperto
-la schermata di sistema, anche senza toccare niente: dichiarava «a posto» senza saperlo.
-Quell'autorizzazione nessuna app può leggerla — è una schermata del produttore — ma si può
-sapere se ha funzionato: l'app si annota quando riparte da sola dopo un riavvio, e la spunta
-si accende solo allora. Finché non riavvii il telefono resta aperta, ed è onesto.
+**The automatic start now tells the truth.** The tick lit up merely because you had opened the
+system screen, even without touching anything: it declared "all set" without knowing. No app can
+read that authorisation — it is a screen belonging to the maker — but one can know whether it
+worked: the app notes down when it starts again by itself after a restart, and only then does the
+tick light up. Until you restart the phone it stays open, and that is honest.
 
 ## 1.0.27
 
-**Tolti anche i campi del relay** dalle impostazioni avanzate: indirizzo e credenziali li
-manda il server nel messaggio di ingresso, quindi digitarli sul telefono non serviva più. Ne
-resta una sola da mantenere, sul server, e cambiando la password non si tocca nessun
-telefono.
+**The relay's fields have been taken out too** from the advanced settings: the address and the
+credentials are sent by the server in the entry message, so typing them on the phone was no longer
+needed. One place is left to maintain, on the server, and changing the password touches no phone.
 
 ## 1.0.26
 
-**Tolto l'access token.** Era un campo nelle impostazioni avanzate e un controllo sul
-server, pensato contro gli abusi; sul server era già disattivo da tempo, e la protezione
-vera è altrove — l'identificativo della coppia nasce da un codice di otto cifre e nulla di
-ciò che passa dal server è leggibile. Una impostazione in meno da capire.
+**The access token is gone.** It was a field in the advanced settings and a check on the server,
+meant against abuse; on the server it had long been off, and the real protection is elsewhere —
+the pair's identifier is born of an eight-digit code and nothing that passes through the server
+is readable. One setting less to understand.
 
 ## 1.0.25
 
-**L'app pesa la metà e si installa molto più in fretta.** L'APK conteneva le librerie per
-quattro architetture: due vere e due che servono solo agli emulatori da PC — 46 MB su 88 che
-il telefono doveva comunque verificare e scompattare, ed erano i trenta secondi di «app in
-preparazione». Ora ci sono solo quelle dei telefoni.
+**The app weighs half as much and installs far faster.** The APK contained the libraries for four
+architectures: two real ones and two that serve only PC emulators — 46 MB out of 88 that the phone
+had to verify and unpack all the same, and they were the thirty seconds of "preparing the app".
+Now only the phones' ones are there.
 
 ## 1.0.24
 
-**Tolta l'alta fedeltà**: non faceva niente. In react-native-webrtc soppressione del rumore
-e livellamento si configurano una volta per tutta l'app, non sulla singola presa audio, e i
-vincoli passati al microfono su Android vengono ignorati. L'interruttore riapriva davvero il
-microfono, ma con gli stessi identici parametri. Resta **Voce più ricca**, che si misura e
-si sente.
+**High fidelity is gone**: it did nothing. In react-native-webrtc, noise suppression and
+levelling are configured once for the whole app, not on the individual audio capture, and the
+constraints passed to the microphone on Android are ignored. The switch really did reopen the
+microphone, but with exactly the same parameters. **Richer voice** remains, which can be measured
+and heard.
 
 ## 1.0.23
 
-**Spegnendo «voce più ricca» l'audio torna davvero giù.** Prima si toglieva il tetto invece
-di riportarlo al valore normale, e togliere un limite non fa scendere nessuno: restava a 64
-kbit/s come se l'opzione non avesse ritorno.
+**Switching "richer voice" off really does bring the audio back down.** Before, the ceiling was
+removed instead of being taken back to the normal value, and removing a limit brings nobody down:
+it stayed at 64 kbit/s as if the option had no way back.
 
 ## 1.0.22
 
-**Le opzioni audio valgono per tutti e due i telefoni**, come già la risoluzione.
-Cambiandole da uno cambiano anche all'altro — ed è necessario: la voce che senti la manda
-lui, quindi alzarla solo dalla tua parte non ti fa sentire nessuna differenza.
+**The audio options hold for both phones**, as the resolution already did. Changing them on one
+changes them on the other — and it is necessary: the voice you hear is sent by them, so raising it
+only on your side makes no difference you can hear.
 
 ## 1.0.21
 
-**Correzione**: attivando l'alta fedeltà il microfono si riapriva muto e l'altro smetteva di
-sentirti. Si leggeva se era acceso dopo averlo fermato, e fermarlo lo spegne.
+**Fix**: switching high fidelity on reopened the microphone mute and the other person stopped
+hearing you. Whether it was on was read after stopping it, and stopping it switches it off.
 
-**La riga tecnica mostra anche l'audio in uscita**, così «voce più ricca» si può verificare
-invece di crederci: da spenta sta intorno ai 30 kbit/s, da accesa sale.
+**The technical line also shows the outgoing audio**, so "richer voice" can be verified instead of
+believed: switched off it sits around 30 kbit/s, switched on it rises.
 
-**Le impostazioni sono divise per sezione**: le opzioni della schermata non stanno più sotto
-il titolo «Audio», dove sembravano riguardare il suono.
+**The settings are divided by section**: the screen's options no longer sit under the heading
+"Audio", where they looked as if they concerned the sound.
 
 ## 1.0.20
 
-**Un'opzione per l'audio**, spenta di default, nelle impostazioni.
+**An option for the audio**, off by default, in the settings.
 
-**Voce più ricca** raddoppia il tetto dell'audio, da circa 32 a 64 kbit/s: su Opus la
-differenza si sente, la voce smette di suonare telefonica. Costa 4 kB/s in più per
-direzione, niente rispetto al video.
+**Richer voice** doubles the audio ceiling, from about 32 to 64 kbit/s: on Opus the difference can
+be heard, the voice stops sounding like a telephone. It costs 4 kB/s more per direction, nothing
+compared with the video.
 
 ## 1.0.19
 
-**Il microfono torna a restare preso** finché sei nel canale, muto compreso. Rilasciarlo
-quando lo spegni sembrava giusto — lo lasciava usare alle altre app — ma riprendendolo il
-sistema non restituisce la precedenza, e la dettatura della tastiera se lo prendeva anche a
-microfono acceso. Su Android l'esclusiva non si può imporre: una presa continua è l'unica
-cosa che le somiglia.
+**The microphone goes back to staying held** for as long as you are in the channel, mute included.
+Releasing it when you switch it off seemed right — it let the other apps use it — but on taking it
+back the system does not return the precedence, and the keyboard's dictation took it even with the
+microphone on. On Android exclusivity cannot be imposed: an unbroken hold is the only thing that
+resembles it.
 
 ## 1.0.18
 
-**Riprendendo il microfono, Duetto se lo riprende davvero.** Rilasciandolo si lasciava
-cadere anche il regime audio della conversazione, che è ciò che tiene il microfono per noi:
-riaccendendolo restava disponibile ad altre app — la tastiera se lo prendeva. Ora il regime
-viene ridichiarato, insieme all'uscita audio scelta.
+**Taking the microphone back, Duetto really takes it back.** By releasing it, the conversation's
+audio mode was let go as well, and that is what holds the microphone for us: on switching it back
+on it stayed available to other apps — the keyboard took it. Now the mode is declared again,
+together with the chosen audio output.
 
 ## 1.0.17
 
-**Il microfono viene rilasciato quando lo spegni**: prima restava occupato — l'indicatore di
-registrazione di Android restava acceso e nessun'altra app poteva usarlo finché eri nel
-canale. Ora spegnerlo lo libera davvero, e riaccenderlo lo riprende.
+**The microphone is released when you switch it off**: before it stayed occupied — Android's
+recording indicator stayed on and no other app could use it while you were in the channel. Now
+switching it off really frees it, and switching it on takes it back.
 
-**L'etichetta sul riquadrino** è una pastiglia come quella del video grande, non più una
-fascia grigia da bordo a bordo che copriva una fetta di immagine.
+**The label on the little square** is a pill like the big video's, no longer a grey band from edge
+to edge covering a slice of the picture.
 
 ## 1.0.16
 
-**Cambiare risoluzione riapre la camera**, con mezzo secondo di nero, su tutti i telefoni
-allo stesso modo. Il tentativo di evitarlo scendendo — ridurre solo ciò che esce
-dall'encoder — non funziona ovunque, e riconoscere i telefoni che lo onorano richiedeva una
-misura che si è rivelata inaffidabile: dava per sordo anche un telefono che ubbidiva. Un
-meccanismo che non si attiva mai e non lo dice è peggio del difetto che voleva evitare.
+**Changing resolution reopens the camera**, with half a second of black, on every phone in the
+same way. The attempt to avoid it by going down — reducing only what leaves the encoder — does not
+work everywhere, and recognising the phones that honour it required a measurement that proved
+unreliable: it declared deaf even a phone that was obeying. A mechanism that never sets off and
+does not say so is worse than the flaw it meant to avoid.
 
 ## 1.0.14
 
-**I comandi si spengono piano**, con un calo continuo di dieci secondi che parte subito.
-Prima restavano fermi qualche secondo e poi calavano di colpo: un salto che attira l'occhio
-proprio mentre si vuole guardare altro.
+**The controls go out slowly**, with a continuous ten-second fall that starts at once. Before they
+stood still for a few seconds and then dropped all at once: a jump that catches the eye precisely
+when one wants to look at something else.
 
 ## 1.0.11
 
-**Correzione urgente**: accendendo il video l'app si chiudeva. La rete di sicurezza che
-tiene il riquadrino dentro i bordi scriveva la posizione dentro l'ascoltatore della
-posizione stessa, che la faceva riscattare all'infinito.
+**Urgent fix**: switching the video on closed the app. The safety net that keeps the little square
+inside the edges wrote the position inside the listener of the position itself, which set it off
+again for ever.
 
 ## 1.0.10
 
-**Il riquadrino non può più uscire dai bordi**, comunque ci sia arrivato: prima veniva
-rimesso dentro solo alla fine di un gesto, e ogni strada che lo spostava senza passare di lì
-lo lasciava fuori.
+**The little square can no longer leave the edges**, however it got there: before it was put back
+inside only at the end of a gesture, and every road that moved it without passing through there
+left it outside.
 
 ## 1.0.9
 
-**Al ritorno della rete l'immagine resta ferma** sull'ultimo fotogramma invece di diventare
-nera: il collegamento si riaccende senza smontare il video. È lo stesso motivo per cui le
-altre app di videochiamata non mostrano il nero — non salvano nulla, semplicemente non
-distruggono niente.
+**When the network comes back the picture stays still** on the last frame instead of going black:
+the link comes back on without taking the video apart. It is the same reason the other video-call
+apps do not show black — they save nothing, they simply destroy nothing.
 
 ## 1.0.8
 
-**Tenendo premuto «Video»** si scelgono le quattro risoluzioni, come già si fa con «Audio»
-per l'uscita del suono. La qualità si giudica guardando, e andarla a cercare nelle
-impostazioni fa perdere di vista proprio ciò che si sta valutando.
+**Holding "Video" down** one chooses among the four resolutions, as one already does with "Audio"
+for the sound's output. Quality is judged by looking, and going to hunt for it in the settings
+means losing sight of the very thing one is assessing.
 
 ## 1.0.7
 
-**«Tu» / «Non tu» si attenua** insieme agli altri comandi, invece di restare acceso sopra
-l'immagine. Non sparisce mai del tutto: chi si sta guardando è l'unica cosa che non si
-ricava osservando lo schermo.
+**"You" / "Not you" fades** together with the other controls, instead of staying lit over the
+picture. It never disappears completely: who one is looking at is the one thing that cannot be
+worked out by watching the screen.
 
 ## 1.0.6
 
-**Le note di rilascio scorrono** e stanno dentro lo schermo. Non si chiudono più toccando
-lo sfondo — era proprio quella comodità a contendere il gesto allo scorrimento, che infatti
-funzionava solo a tratti.
+**The release notes scroll** and stay inside the screen. They no longer close when the background
+is touched — it was that very convenience that contended the gesture with the scrolling, which
+indeed worked only now and then.
 
 ## 1.0.5
 
-**«Tu» / «Non tu» sempre in alto a sinistra**, anche con due video: toccando il riquadrino i
-due si scambiano, ed è facile perdere il conto di chi si sta guardando. Non si attenua mai
-insieme agli altri comandi.
+**"You" / "Not you" always at the top left**, with two videos too: touching the little square the
+two swap over, and it is easy to lose track of who one is looking at. It never fades with the
+other controls.
 
-**Audio e video accesi sono pastiglie bianche**, spenti restano scuri: a doversi vedere di
-più è ciò che sta funzionando.
+**Audio and video switched on are white pills**, switched off they stay dark: what has to be seen
+more is what is working.
 
 ## 1.0.3
 
-**Icone leggibili.** I comandi non usano più le emoji, che hanno colori propri e una forma
-decisa dal produttore del telefono: videocamera e microfono, in piccolo, si distinguevano
-male. Ora sono disegni a tratto bianco, uguali ovunque, con una barra diagonale quando la
-funzione è spenta. L'ingranaggio delle impostazioni è diventato tre cursori: a raggi, in
-piccolo, sembrava un sole.
+**Legible icons.** The controls no longer use emoji, which have colours of their own and a shape
+decided by the phone's maker: camcorder and microphone, at small sizes, were hard to tell apart.
+Now they are white line drawings, the same everywhere, with a diagonal bar when the function is
+off. The settings cog has become three sliders: with its rays, at small sizes, it looked like a
+sun.
 
-**Niente più scheda durante un cambio di rete.** Cambiando wifi o cella ricompariva
-«L'altro è nel canale», che a ogni transizione diventava un lampeggio. Ora resta il nero: il
-video sta per tornare, e non è successo nulla che valga la pena raccontare.
+**No more card during a change of network.** Changing wifi or cell, "The other person is in the
+channel" reappeared, which at every transition became a flicker. Now the black remains: the video
+is about to come back, and nothing has happened that is worth telling.
 
-**Il tuo video resta nel riquadrino** quando la rete cambia, invece di salire a schermo
-intero e tornare indietro un istante dopo.
+**Your video stays in the little square** when the network changes, instead of going full screen
+and coming back an instant later.
 
-**Un tocco sull'immagine** nasconde i comandi, invece di limitarsi a richiamarli.
+**A touch on the picture** hides the controls, instead of merely calling them back.
 
-**Il pulsante «Gira» dice quale camera è accesa**: una persona sola per la frontale, più
-persone per quella dietro. Prima la freccia circolare diceva solo cosa avrebbe fatto il
-pulsante, e per sapere da che parte si era bisognava guardare l'immagine.
+**The "Flip" button says which camera is on**: one person alone for the front one, several people
+for the rear. Before, the circular arrow said only what the button would do, and to know which
+side one was on one had to look at the picture.
 
-**Con un solo video a schermo intero** compare «Tu» o «Non tu»: senza riquadrino manca il
-termine di paragone, e inquadrando una stanza vuota non si capisce chi si sta guardando.
+**With a single video full screen** "You" or "Not you" appears: without the little square there is
+no term of comparison, and framing an empty room one cannot tell who one is looking at.
 
-**Toccando il nome dell'app** si leggono le note di questa versione e delle precedenti.
+**Touching the app's name** one reads the notes for this version and the earlier ones.
 
-**Nelle impostazioni**: la qualità si applica al tocco senza «Salva», il server si vede ma
-si modifica solo chiedendolo, e si possono nascondere del tutto i comandi invece di
-attenuarli. Le due righe tecniche sotto ai pulsanti — risoluzione, banda, percorso — sono
-ora facoltative e spente di default.
+**In the settings**: the quality is applied at the touch without "Save", the server is visible but
+is changed only on request, and the controls can be hidden altogether instead of faded. The two
+technical lines under the buttons — resolution, bandwidth, road — are now optional and off by
+default.
 
-**Ogni compilazione ha il suo numero di versione**: l'ultimo numero avanza da sé, così
-chiedere «che versione hai» basta a sapere esattamente cosa sta girando.
+**Every build has its own version number**: the last number moves by itself, so asking "which
+version have you got" is enough to know exactly what is running.
 
 ## 1.0.0
 
-Prima versione completa.
+The first complete version.
 
-**Un canale, non una chiamata.** Apri l'app e sei dentro; se c'è anche l'altro vi collegate
-da soli, altrimenti resti raggiungibile e vieni avvisato appena arriva — anche dopo un
-riavvio del telefono.
+**A channel, not a call.** You open the app and you are inside; if the other person is there too
+you connect by yourselves, otherwise you stay reachable and are alerted as soon as they arrive —
+after a restart of the phone as well.
 
-**Audio e video cifrati end-to-end** direttamente fra i due telefoni. Il server serve solo a
-farvi trovare, e quando le vostre reti impediscono il collegamento diretto fa da ponte senza
-poter leggere nulla.
+**Audio and video encrypted end-to-end** straight between the two phones. The server only serves
+to let you find each other, and when your networks prevent the direct link it acts as a bridge
+without being able to read anything.
 
-**Accoppiamento con otto cifre** dettate a voce, una volta sola e per sempre. Da un telefono
-già accoppiato si può rifare l'accoppiamento senza sciogliere anche dall'altra parte.
+**Pairing with eight digits** dictated out loud, once and for all. From an already paired phone
+the pairing can be done again without breaking it on the other side too.
 
-**Quattro profili di qualità**, sincronizzati fra i due telefoni: cambiandolo da uno cambia
-anche all'altro.
+**Four quality profiles**, synchronised between the two phones: changing it on one changes it on
+the other.
 
-**Il video**: chi è a schermo intero non viene mai tagliato, il riquadrino ha le proporzioni
-della sua camera, è trascinabile e ridimensionabile, e resta dove l'hai messo anche dopo
-aver chiuso l'app. Il tasto Indietro mette l'app nella finestrella di sistema invece di
-farti uscire.
+**The video**: whoever is full screen is never cropped, the little square has the proportions of
+its own camera, it can be dragged and resized, and it stays where you put it even after closing
+the app. The Back key puts the app into the system's little window instead of making you leave.
