@@ -1,35 +1,36 @@
 ---
-description: Cerca una parola in tutto ciò che è stato scritto - conversazioni, commit, codice e documentazione
+description: Search a word across everything that has been written - conversations, commits, code and documentation
 ---
 
-Cerca `$ARGUMENTS` in tutti i posti dove resta traccia del lavoro su questo
-progetto, e riporta i risultati in italiano, raggruppati per fonte.
+Search for `$ARGUMENTS` everywhere work on this project leaves a trace, and report what
+you find grouped by source.
 
-Cerca in quest'ordine, e **fermati quando hai abbastanza** per rispondere:
+Search in this order, and **stop as soon as you have enough** to answer:
 
-1. **Messaggi dei commit** — è la fonte migliore, perché ogni commit spiega
-   perché una cosa è stata fatta:
+1. **Commit messages** — the best source, because every commit explains why a thing was
+   done:
    `git -C /home/paolo/git/duetto log --grep="$ARGUMENTS" -i --oneline`
 
-2. **Storia del codice** — chi ha introdotto o tolto quella stringa:
+2. **The code's history** — who introduced that string, or took it away:
    `git -C /home/paolo/git/duetto log -S "$ARGUMENTS" -i --oneline`
 
-3. **Codice e documentazione attuali** — i commenti sono in italiano:
+3. **The code and documentation as they are now** — the comments are long and explain the
+   why, so a search here often answers on its own:
    `grep -rn -i "$ARGUMENTS" /home/paolo/git/duetto/app/src /home/paolo/git/duetto/server/src /home/paolo/git/duetto/docs /home/paolo/git/duetto/README.md /home/paolo/git/duetto/CHANGELOG.md`
 
-4. **Conversazioni passate**, solo se le prime tre non bastano: sono file
-   JSON grossi, quindi estrai il contesto attorno alla parola invece di
-   stampare righe intere:
-   `grep -hoi ".\{250\}$ARGUMENTS.\{350\}" /home/paolo/.claude/projects/-home-paolo-git/*.jsonl | head -5`
+4. **Past conversations**, only if the first three are not enough. They live in three
+   directories — the current sessions, the older ones, and the DuoTalk days before the
+   rename — and they are big JSON files, so pull the context around the word instead of
+   printing whole lines:
+   `grep -hoi ".\{250\}$ARGUMENTS.\{350\}" /home/paolo/.claude/projects/-home-paolo/*.jsonl /home/paolo/.claude/projects/-home-paolo-git/*.jsonl /home/paolo/.claude/projects/-home-paolo-git-duotalk/*.jsonl | head -5`
 
-Presentando i risultati:
+When presenting the results:
 
-- Metti prima **la risposta**, poi da dove viene. Chi cerca vuole sapere
-  cosa è stato deciso, non leggere un elenco di righe.
-- Se trovi la spiegazione di *perché* una cosa è stata fatta, riportala:
-  è quella che serve, e vive nei messaggi dei commit.
-- Se le conversazioni contengono ipotesi poi rivelatesi sbagliate, dillo:
-  senza quella distinzione si rischia di ripescare una diagnosi scartata
-  credendola una conclusione.
-- Se non trovi nulla, dillo in una riga invece di elencare dove hai
-  guardato.
+- Put **the answer** first, then where it comes from. Whoever searches wants to know what
+  was decided, not to read a list of lines.
+- If you find the explanation of *why* something was done, report it: that is what is
+  wanted, and it lives in the commit messages.
+- If the conversations contain guesses that later turned out to be wrong, say so: without
+  that distinction one risks fishing out a discarded diagnosis and taking it for a
+  conclusion.
+- If you find nothing, say so in one line instead of listing where you looked.
