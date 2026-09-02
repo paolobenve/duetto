@@ -193,9 +193,6 @@ const NOTICE_RETRY_MS = 5_000;
  */
 const SERVER_GRACE_MS = 5_000;
 
-/** Within this, an announced volume change is the echo of our own. */
-const VOLUME_ECHO_MS = 2_000;
-
 /**
  * Coming back, what was chosen is what one finds - with one exception.
  *
@@ -759,47 +756,22 @@ export default function App() {
     };
     reread();
     /**
-     * If somebody else moves the volume, our gain goes away.
+     * A volume moved from outside leaves our gain alone.
      *
-     * Whoever adjusts the volume from another app - or from the system
-     * panel - is saying how loudly they want to hear, right now. Our
-     * multiplier is the leftover of an earlier choice, and leaving it
-     * there to multiply the new one falsifies it: you set the voice to
-     * half and find yourself at three quarters, with no way of seeing
-     * why. Cleared, Duetto's level goes back to being exactly the
-     * phone's.
-     *
-     * Our own change does not count: when it is us moving the knob we
-     * remember it for a moment, and let that announcement through.
+     * The gain used to be cleared here, on the thought that an outside
+     * choice should not be multiplied by the leftover of an earlier
+     * one. In practice the clearing did more harm than the falsity it
+     * prevented: telling our own presses from somebody else's needed
+     * an echo detector, a quick run of presses slipped past it, and
+     * the gain vanished in the middle of one's own ladder - the
+     * journal caught it doing exactly that. The gain is a choice made
+     * in Duetto and only Duetto changes it; the level on screen is the
+     * product of both knobs, so nothing shown is ever false. The mute
+     * (gain zero) stays a Duetto matter for the same reason it always
+     * did: nobody else lifts it.
      */
-    const stop = Volume.listenToSystem((value) => {
+    const stop = Volume.listenToSystem(() => {
       reread();
-      const ours = ourOwnSet.current;
-      const fromUs = ours
-        && Math.abs(ours.v - value) < 0.5
-        && Date.now() - ours.t < VOLUME_ECHO_MS;
-      if (fromUs) return;
-      setCfg((prev) => {
-        if (!prev) return prev;
-        const output = audioRouteRef.current;
-        const now = prev.gains?.[output] ?? 1;
-        if (now === 1) return prev;
-        /**
-         * Nobody else lifts the mute.
-         *
-         * Clearing the gain means going back to the phone's volume, and
-         * for somebody who has silenced the other person that would be
-         * making them speak again by the hand of any app at all. The
-         * mute is lifted from Duetto, and then one starts again from
-         * whatever volume the phone has at that moment.
-         */
-        if (now === 0) return prev;
-        Journal.mark('gain-cleared:volume-from-outside').catch(() => { /* noop */ });
-        return saveCfg({
-          ...prev,
-          gains: { ...(prev.gains ?? {}), [output]: 1 },
-        });
-      });
     });
     return () => { alive = false; stop(); };
   }, [inChannel, audio.route, saveCfg]);
@@ -873,9 +845,6 @@ export default function App() {
     };
 
     const movePhoneVolume = (v: number) => {
-      // We remember it: the announcement the system will send is the
-      // echo of this, not somebody else's choice.
-      ourOwnSet.current = { v, t: Date.now() };
       setSystemVolume({ ...phone, volume: v });
       /**
        * Trust, but verify: on a good many phones the maker nails this
@@ -890,7 +859,6 @@ export default function App() {
       Volume.set(v).then(async () => {
         const real = await Volume.read();
         if (real.volume === v) return;
-        ourOwnSet.current = { v: real.volume, t: Date.now() };
         setSystemVolume(real);
         Journal.mark(`volume:nailed at ${real.volume}/${real.max}`).catch(() => { /* noop */ });
         changeOurGain(direction > 0 ? up : down);
@@ -1173,14 +1141,6 @@ export default function App() {
     if (!peerPresent || status === 'together') setPeerTornDown(false);
   }, [peerPresent, status]);
 
-  /**
-   * The last system volume we set, with the time.
-   *
-   * It is there to recognise the echo: the system announces every
-   * change, ours included, and without this comparison every press of
-   * the keys would look like another app's choice.
-   */
-  const ourOwnSet = useRef<{ v: number; t: number } | null>(null);
 
   /**
    * The watchdog watches over the connection: the network's changes and

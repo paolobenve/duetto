@@ -8,6 +8,16 @@ l'app è. L'ultimo avanza a ogni compilazione: così ogni APK ha un nome proprio
 «che versione hai» basta a sapere cosa sta girando. Qui c'è una voce solo per le versioni in
 cui si nota qualcosa.
 
+## 0.9.2 build 176
+
+**Il volume mosso da fuori non tocca più il guadagno.** Alzare o abbassare il volume
+da un'altra app azzerava l'amplificazione scelta in Duetto — e il rilevatore che doveva
+distinguere i tocchi altrui dai propri si faceva ingannare da una raffica veloce di
+pressioni, azzerando il guadagno a metà della propria stessa scala. Ora il guadagno è
+una scelta di Duetto e la cambia solo Duetto; il livello mostrato resta il prodotto
+delle due manopole, quindi nulla di ciò che si legge è falso. Il muto, come sempre,
+si toglie solo da Duetto.
+
 ## 0.9.2 build 175
 
 **Tornare sull'app non è cambiare rete.** Su certi telefoni riportare Duetto in primo

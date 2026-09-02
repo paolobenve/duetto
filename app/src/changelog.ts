@@ -16,6 +16,15 @@ export type ReleaseNote = {
 
 export const CHANGELOG: ReleaseNote[] = [
   {
+    "version": "0.9.2 build 176",
+    "paragraphs": [
+      {
+        "strong": "Il volume mosso da fuori non tocca più il guadagno.",
+        "text": "Alzare o abbassare il volume da un'altra app azzerava l'amplificazione scelta in Duetto — e il rilevatore che doveva distinguere i tocchi altrui dai propri si faceva ingannare da una raffica veloce di pressioni, azzerando il guadagno a metà della propria stessa scala. Ora il guadagno è una scelta di Duetto e la cambia solo Duetto; il livello mostrato resta il prodotto delle due manopole, quindi nulla di ciò che si legge è falso. Il muto, come sempre, si toglie solo da Duetto."
+      }
+    ]
+  },
+  {
     "version": "0.9.2 build 175",
     "paragraphs": [
       {
