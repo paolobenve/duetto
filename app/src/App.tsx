@@ -1053,7 +1053,12 @@ export default function App() {
     name: shownName,
     server: shownStatus === 'offline' ? 'down'
       : shownStatus === 'connecting' ? 'connecting' : 'ok',
-  }), [inChannel, shownStatus, peerPresent, peerDetached, peerTornDown, shownName]);
+    // `status` is READ here, so it belongs in this list: without it a
+    // change of status alone left the line on its old words until
+    // something else happened to move. It was masked - `shownStatus`
+    // follows `status` a breath later and dragged the line along - but
+    // masked is not cured.
+  }), [inChannel, status, shownStatus, peerPresent, peerDetached, peerTornDown, shownName]);
 
   /**
    * Since when we have been without a server, or 0 when we have one.
@@ -1095,35 +1100,73 @@ export default function App() {
    * that does not exist.
    */
   const presenceLive = !!cfg && isPaired(cfg) && isServerConfigured(cfg) && available;
+  const presenceLiveRef = useRef(presenceLive);
+  /**
+   * The line we know is really on the screen, or null if none is.
+   *
+   * The difference between this and `noticeTextRef` is the whole point:
+   * one is what we want said, the other what was actually written down.
+   * They came apart for a whole morning - the app knew perfectly well
+   * that the other person was in the channel, and the shade went on
+   * saying they were waiting - and nothing could ever notice, because
+   * writing was attempted only when the words changed.
+   */
+  const writtenNotice = useRef<string | null>(null);
+  const noticeRetry = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /**
+   * Writes the line, and remembers whether the writing took.
+   *
+   * A failed write is retried a few times - the system can refuse to
+   * start the service while the app is in the background - and what is
+   * written is always read afresh from the ref, so a retry carries the
+   * words of the moment it fires rather than the ones that failed.
+   */
+  const writeNotice = useCallback((left = 3) => {
+    if (noticeRetry.current) { clearTimeout(noticeRetry.current); noticeRetry.current = null; }
+    if (!presenceLiveRef.current) return;
+    const text = noticeTextRef.current;
+    Foreground.setText(text, alertNameRef.current).then(() => {
+      writtenNotice.current = text;
+    }).catch(() => {
+      if (left <= 0) return;
+      noticeRetry.current = setTimeout(() => writeNotice(left - 1), NOTICE_RETRY_MS);
+    });
+  }, []);
+
+  /**
+   * Says again what the shade should be saying, if it is not saying it.
+   *
+   * Called where there is reason to believe the writing can succeed now
+   * and may not have succeeded before: coming back to the foreground,
+   * and at the heartbeat. A line identical to the one really written is
+   * never written again - that is what keeps a notification somebody
+   * swept away from being born again a minute later, which is the trap
+   * the old rewrite-every-minute fell into. Only a line that DIFFERS
+   * from what we managed to write is worth another try.
+   */
+  const catchUpNotice = useCallback(() => {
+    if (!presenceLiveRef.current) return;
+    if (writtenNotice.current === noticeTextRef.current) return;
+    Journal.mark(`notice:again:${noticeTextRef.current}`).catch(() => { /* noop */ });
+    writeNotice();
+  }, [writeNotice]);
+  const catchUpNoticeRef = useRef(catchUpNotice);
+  useEffect(() => { catchUpNoticeRef.current = catchUpNotice; }, [catchUpNotice]);
+
   useEffect(() => {
     noticeTextRef.current = noticeText;
+    presenceLiveRef.current = presenceLive;
     if (!presenceLive) return;
-    let alive = true;
-    let retry: ReturnType<typeof setTimeout> | null = null;
-    /**
-     * If the write does not succeed it is tried again - but a line
-     * identical to the one already there is never rewritten.
-     *
-     * It used to be rewritten every minute regardless, to make up for a
-     * lost update: but a rewritten notification is a notification that
-     * is BORN AGAIN, and whoever had swept it away found it back a
-     * minute later. The only case worth covering was the failed write -
-     * the system can refuse to start the service with the app in the
-     * background - and that one announces itself, without disturbing
-     * everybody else.
-     */
-    const write = (left: number) => {
-      Foreground.setText(noticeText, alertName).catch(() => {
-        if (!alive || left <= 0) return;
-        retry = setTimeout(() => write(left - 1), NOTICE_RETRY_MS);
-      });
-    };
-    write(3);
+    // Into the journal, because it is the one thing the journal never
+    // said: what the shade was told to show. Without it, a line that
+    // stayed behind cannot be told from a line that was never sent.
+    Journal.mark(`notice:${noticeText}`).catch(() => { /* noop */ });
+    writeNotice();
     return () => {
-      alive = false;
-      if (retry) clearTimeout(retry);
+      if (noticeRetry.current) { clearTimeout(noticeRetry.current); noticeRetry.current = null; }
     };
-  }, [noticeText, alertName, presenceLive]);
+  }, [noticeText, alertName, presenceLive, writeNotice]);
 
   /**
    * If we stay without a server too long, everything is rebuilt.
@@ -1211,6 +1254,9 @@ export default function App() {
        * repair comes within seconds, not within the minute.
        */
       onBeat: () => {
+        // The one clock that ticks with the screen off: if the shade
+        // stayed behind, this is where it is caught up with.
+        catchUpNoticeRef.current?.();
         if (!inChannelRef.current || !peerActiveRef.current) return;
         const sess = sessionRef.current;
         if (!sess) return;
@@ -1632,6 +1678,10 @@ export default function App() {
       if (s !== 'active') return;
 
       Foreground.clearNotification().catch(() => {});
+      // The fixed line, if the shade is not showing what it should: a
+      // write refused while we were in the background, or a service
+      // put back on its feet underneath us with the words of before.
+      catchUpNoticeRef.current?.();
       // Opening the app again is already saying "I am here": if you had
       // detached, the presence comes back by itself. Whoever wants to
       // stay invisible does not open it. Said to the native side too,

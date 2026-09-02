@@ -16,6 +16,19 @@ export type ReleaseNote = {
 
 export const CHANGELOG: ReleaseNote[] = [
   {
+    "version": "0.9.2 build 178",
+    "paragraphs": [
+      {
+        "strong": "The fixed notification catches up when it has stayed behind.",
+        "text": "One morning the app knew perfectly well that the other person was in the channel, and the shade went on saying they were waiting: the line was written only at the moment the words changed, so a write the system refused — or a service put back on its feet underneath with the words of before — left it frozen on the old sentence with nothing able to notice. Now the app remembers what was really written down, and says it again where there is reason to think it can be heard: coming back to the app, and at the heartbeat, which ticks with the screen off too. A line identical to the one already showing is still never rewritten, so a notification swept away stays away."
+      },
+      {
+        "strong": "And the journal writes down what the shade was told to show.",
+        "text": "It was the one thing it never said, and without it a line that stayed behind cannot be told from one that was never sent."
+      }
+    ]
+  },
+  {
     "version": "0.9.2 build 177",
     "paragraphs": [
       {
