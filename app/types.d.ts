@@ -64,6 +64,7 @@ declare module 'duetto-platform' {
     reportNotCarrying(): Promise<boolean>;
     /** the emergency lane: mobile data on and every socket bound to it */
     requestMobile(): Promise<boolean>;
+    probeViaMobile(host: string, port: number, timeoutMs: number): Promise<boolean>;
     releaseMobile(): Promise<boolean>;
   };
 

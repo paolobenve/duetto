@@ -257,6 +257,62 @@ class NetworkModule(private val ctx: ReactApplicationContext) :
         }
     }
 
+    /**
+     * One question through the mobile radio alone: is this host
+     * reachable over there?
+     *
+     * From the wifi, a wifi gone deaf and a server down for everybody
+     * are the same silence; only another road can tell them apart.
+     * The cellular network is requested WITHOUT binding anything to
+     * it, the host is resolved and dialled through that network only,
+     * and the request is let go as soon as the answer is in. True
+     * means the server answered over mobile - the deafness is ours.
+     */
+    @ReactMethod
+    fun probeViaMobile(host: String, port: Int, timeoutMs: Int, promise: Promise) {
+        val c = cm
+        if (c == null) { promise.resolve(false); return }
+        val done = java.util.concurrent.atomic.AtomicBoolean(false)
+        var probeCb: ConnectivityManager.NetworkCallback? = null
+        fun finish(ok: Boolean) {
+            if (!done.compareAndSet(false, true)) return
+            try { probeCb?.let { c.unregisterNetworkCallback(it) } } catch (_: Exception) { /* noop */ }
+            promise.resolve(ok)
+        }
+        probeCb = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                if (done.get()) return
+                Thread {
+                    val ok = try {
+                        val addr = network.getAllByName(host).firstOrNull()
+                        if (addr == null) false else {
+                            val s = network.socketFactory.createSocket()
+                            try {
+                                s.connect(java.net.InetSocketAddress(addr, port), timeoutMs)
+                                true
+                            } finally {
+                                try { s.close() } catch (_: Exception) { /* noop */ }
+                            }
+                        }
+                    } catch (_: Exception) { false }
+                    finish(ok)
+                }.start()
+            }
+        }
+        try {
+            val request = NetworkRequest.Builder()
+                .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build()
+            c.requestNetwork(request, probeCb)
+        } catch (_: Exception) { finish(false); return }
+        // No cellular coming - aeroplane mode, no SIM, no coverage: the
+        // callback never fires and the answer is no. (The timeout-taking
+        // requestNetwork exists only from API 26; minSdk is 24.)
+        android.os.Handler(android.os.Looper.getMainLooper())
+            .postDelayed({ finish(false) }, (timeoutMs + 2000).toLong())
+    }
+
     @ReactMethod
     fun releaseMobile(promise: Promise) {
         val lane = mobileLane

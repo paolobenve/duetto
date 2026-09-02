@@ -422,12 +422,22 @@ export const Network = isAndroid && NativeNetwork
        */
       requestMobile: () => call(NativeNetwork, 'requestMobile'),
       releaseMobile: () => call(NativeNetwork, 'releaseMobile'),
+
+      /**
+       * One question through the mobile radio alone, with nothing
+       * bound to it: is this host reachable over there? It tells a
+       * deaf wifi from a server that is down for everybody - from the
+       * wifi's side the two are the same silence. See NetworkModule.
+       */
+      probeViaMobile: (host, port, timeoutMs) =>
+        call(NativeNetwork, 'probeViaMobile', String(host), Number(port), Number(timeoutMs)),
     }
   : {
       subscribe: () => () => {},
       reportNotCarrying: unavailable,
       requestMobile: unavailable,
       releaseMobile: unavailable,
+      probeViaMobile: unavailable,
     };
 
 /**

@@ -233,6 +233,14 @@ export class ChannelSession {
   /** the last samples, to work out the real bitrate between two reads */
   private lastOutbound: { ts: number; bytes: number } | null = null;
   private lastInbound: { ts: number; bytes: number } | null = null;
+  /**
+   * When bytes from the other side last landed here, by the clock of
+   * the statistics walk. It answers one question - "is the wifi
+   * really deaf?" - for the emergency lane: packets that keep landing
+   * are the proof it is not, whatever the server's silence means.
+   */
+  private lastMediaAt = 0;
+  private inboundBytesSeen = 0;
   private lastAudioOut: { ts: number; bytes: number } | null = null;
   /**
    * What the wait counters said last time, one entry per stream.
@@ -989,6 +997,11 @@ export class ChannelSession {
    * arrived at all (the answering side). After a good while, that
    * silence is a verdict - and the ordinary medicine applies.
    */
+  /** Bytes from the other side landed here within the last `ms`. */
+  mediaArrivedWithin(ms: number): boolean {
+    return this.lastMediaAt > 0 && Date.now() - this.lastMediaAt < ms;
+  }
+
   isStalled(): boolean {
     const pc: any = this.pc;
     if (!pc || pc.connectionState !== 'new') return false;
@@ -1246,6 +1259,13 @@ export class ChannelSession {
           const kind = String(r.kind);
           step(kind, 'buffer', r.jitterBufferDelay, r.jitterBufferEmittedCount);
           step(kind, 'decode', r.totalDecodeTime, r.framesDecoded);
+          // Any movement of the received-bytes counter - growth, or the
+          // reset of a rebuilt connection - is a packet that landed.
+          const got = Number(r.bytesReceived ?? 0);
+          if (got > 0 && got !== this.inboundBytesSeen) {
+            this.inboundBytesSeen = got;
+            this.lastMediaAt = Date.now();
+          }
         }
         // What this phone adds before letting a frame go: the encoder,
         // and the wait in the queue behind it.

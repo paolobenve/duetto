@@ -16,6 +16,15 @@ export type ReleaseNote = {
 
 export const CHANGELOG: ReleaseNote[] = [
   {
+    "version": "0.9.2 build 177",
+    "paragraphs": [
+      {
+        "strong": "La corsia d'emergenza prima chiede, poi si prende tutto.",
+        "text": "Quando il collegamento cade con voce o video in corso e il server non risponde, finora l'app concludeva «il sordo è il mio wifi» e legava ogni socket ai dati mobili — ma da un telefono non si distingue un wifi sordo da un server spento per tutti: è successo, e la cura ha rotto un collegamento diretto che sarebbe guarito da sé. Ora, prima di legarsi, una sola domanda passa dalla radio mobile: «il server, di là, c'è?». Se c'è, il sordo era il wifi e la corsia si apre come sempre; se tace anche di là, il guaio è suo, non si tocca nulla, e non si torna a chiedere finché il server non si fa risentire. E se intanto i pacchetti dell'altro continuano ad arrivare, il wifi non è sordo per definizione: nessuna corsia."
+      }
+    ]
+  },
+  {
     "version": "0.9.2 build 176",
     "paragraphs": [
       {

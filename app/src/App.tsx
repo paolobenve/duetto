@@ -525,6 +525,12 @@ export default function App() {
   const laneRelease = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** when the server last answered a presence question: the probe reads it */
   const lastPresenceAt = useRef(0);
+  /**
+   * When a lane was refused because the server was silent on the
+   * mobile road too. Until he is heard from again there is no point
+   * asking the radio every few seconds whether he is still silent.
+   */
+  const laneRefusedAt = useRef(0);
 
   const closeLane = useCallback((why: string) => {
     if (laneProbe.current) { clearTimeout(laneProbe.current); laneProbe.current = null; }
@@ -538,6 +544,9 @@ export default function App() {
   const maybeOpenLane = useCallback(() => {
     if (laneOpen.current || laneProbe.current) return;
     if (!inChannelRef.current || !peerActiveRef.current) return;
+    // After a lane that bought nothing, none until the server has been
+    // heard from again: see laneRefusedAt.
+    if (laneRefusedAt.current && lastPresenceAt.current <= laneRefusedAt.current) return;
     // Only while something is actually flowing: with both microphones
     // shut and the cameras off, the slow road costs nobody anything.
     const s = sessionRef.current;
@@ -546,19 +555,52 @@ export default function App() {
     if (!live) return;
     const asked = Date.now();
     signalingRef.current?.askPresence();
+    // The timer stays marked busy through the whole judgement, probe
+    // included: a second failure knocking meanwhile must not start a
+    // second one.
     laneProbe.current = setTimeout(() => {
-      laneProbe.current = null;
-      if (connStateRef.current === 'connected') return;
+      const done = () => { laneProbe.current = null; };
+      if (connStateRef.current === 'connected') { done(); return; }
       // The server answered over the wifi: it carries, the trouble is
       // on the other side of the road. No lane.
-      if (lastPresenceAt.current > asked) return;
-      laneOpen.current = true;
-      Journal.mark('wifi-deaf:mobile-lane').catch(() => { /* noop */ });
-      // Both words go out: Android is told to check the wifi (it may
-      // demote it by itself), and the lane opens without waiting for
-      // its verdict.
-      Network.reportNotCarrying().catch(() => { /* noop */ });
-      Network.requestMobile().catch(() => { /* noop */ });
+      if (lastPresenceAt.current > asked) { done(); return; }
+      // Packets from the other side still landing here are the same
+      // proof: a wifi that delivers is not deaf, whatever the server's
+      // silence means.
+      if (sessionRef.current?.mediaArrivedWithin(4000)) { done(); return; }
+      /**
+       * The server is silent on our road - but silence does not say
+       * whose the deafness is: from here, a wifi gone deaf and a
+       * server down for everybody sound exactly the same. It happened:
+       * the server rebooted mid-call, the lane concluded "the deaf one
+       * is me", bound every socket to the carrier's network and broke
+       * a direct link that would have healed by itself. So one
+       * question goes out through the mobile radio alone, with nothing
+       * bound to it: is the server alive over there?
+       */
+      const url = String(cfgRef.current?.serverUrl ?? '');
+      const host = url.replace(/^wss?:\/\//, '').split('/')[0].split(':')[0];
+      if (!host) { done(); return; }
+      Network.probeViaMobile(host, 443, 4000).then((alive: boolean) => {
+        done();
+        if (!alive) {
+          // Silent on both roads: the trouble is his, and a lane would
+          // buy nothing at the price of breaking what can heal alone.
+          laneRefusedAt.current = Date.now();
+          Journal.mark('mobile-lane:refused:server-down-everywhere')
+            .catch(() => { /* noop */ });
+          return;
+        }
+        if (connStateRef.current === 'connected') return;
+        if (!inChannelRef.current || !peerActiveRef.current) return;
+        laneOpen.current = true;
+        Journal.mark('wifi-deaf:mobile-lane').catch(() => { /* noop */ });
+        // Both words go out: Android is told to check the wifi (it may
+        // demote it by itself), and the lane opens without waiting for
+        // its verdict.
+        Network.reportNotCarrying().catch(() => { /* noop */ });
+        Network.requestMobile().catch(() => { /* noop */ });
+      }).catch(() => { done(); });
     }, 3000);
   }, []);
   /** the relay announced by the server, valid while the connection lasts */
