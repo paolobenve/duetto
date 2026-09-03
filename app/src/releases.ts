@@ -37,52 +37,42 @@ export const RELEASES: Release[] = [
         'Coming home, the direct link resumes by itself, phone in a pocket included.',
         'If the phone closes the app, it comes back to listening on its own.',
         'The words about reconnecting appear only when the conversation has really stopped.',
+        'The volume keys outside Duetto no longer touch the volume chosen inside Duetto.',
       ],
       it: [
         'Tornando a casa, il collegamento diretto riprende da solo, anche col telefono in tasca.',
         'Se il telefono chiude l’app, torna in ascolto da sé.',
         'Le scritte sulla riconnessione compaiono solo se la conversazione si è davvero fermata.',
+        'I tasti del volume fuori da Duetto non toccano più il volume scelto dentro Duetto.',
       ],
       es: [
         'Al volver a casa, la conexión directa se reanuda sola, incluso con el teléfono en el bolsillo.',
         'Si el teléfono cierra la app, vuelve a la escucha por sí misma.',
         'Los avisos de reconexión aparecen solo cuando la conversación se ha detenido de verdad.',
+        'Las teclas de volumen fuera de Duetto ya no tocan el volumen elegido dentro de Duetto.',
       ],
       pt: [
         'Ao voltar para casa, a ligação direta retoma sozinha, mesmo com o telefone no bolso.',
         'Se o telefone fecha o app, ele volta à escuta por conta própria.',
         'Os avisos de reconexão aparecem só quando a conversa parou de verdade.',
+        'As teclas de volume fora do Duetto não mexem mais no volume escolhido dentro do Duetto.',
       ],
       fr: [
         'En rentrant à la maison, la liaison directe reprend toute seule, même le téléphone dans la poche.',
         'Si le téléphone ferme l’app, elle se remet à l’écoute d’elle-même.',
         'Les mots sur la reconnexion n’apparaissent que si la conversation s’est vraiment arrêtée.',
+        'Les touches de volume hors de Duetto ne touchent plus au volume choisi dans Duetto.',
       ],
     },
   },
   {
     version: '0.9.2',
     notes: {
-      en: [
-        'Duetto also speaks Spanish, Portuguese and French.',
-        'The volume keys outside Duetto no longer touch the volume chosen inside Duetto.',
-      ],
-      it: [
-        'Duetto parla anche spagnolo, portoghese e francese.',
-        'I tasti del volume fuori da Duetto non toccano più il volume scelto dentro Duetto.',
-      ],
-      es: [
-        'Duetto también habla español, portugués y francés.',
-        'Las teclas de volumen fuera de Duetto ya no tocan el volumen elegido dentro de Duetto.',
-      ],
-      pt: [
-        'O Duetto também fala espanhol, português e francês.',
-        'As teclas de volume fora do Duetto não mexem mais no volume escolhido dentro do Duetto.',
-      ],
-      fr: [
-        'Duetto parle aussi espagnol, portugais et français.',
-        'Les touches de volume hors de Duetto ne touchent plus au volume choisi dans Duetto.',
-      ],
+      en: ['Duetto also speaks Spanish, Portuguese and French.'],
+      it: ['Duetto parla anche spagnolo, portoghese e francese.'],
+      es: ['Duetto también habla español, portugués y francés.'],
+      pt: ['O Duetto também fala espanhol, português e francês.'],
+      fr: ['Duetto parle aussi espagnol, portugais et français.'],
     },
   },
   {

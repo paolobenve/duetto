@@ -14,10 +14,11 @@ version, in the app's five languages, with nothing of what is underneath - it li
 
 ## 0.9.3 build 186
 
-**Version 0.9.3.** The 0.9.2 handed over is build 178; what came after it - coming home in
-a pocket, the listening that rises again by itself, the reconnecting words that wait for a
-real stop - belongs to 0.9.3, and "What is new" in the app now says so, in a handful of
-lines per version and nothing more.
+**Version 0.9.3.** Version 0.9.2 is build 172, the one that brought the languages; all that
+came after it - coming home in a pocket, the listening that rises again by itself, the
+reconnecting words that wait for a real stop, the volume keys that leave Duetto's own gain
+alone - belongs to 0.9.3, and "What is new" in the app now says so, in a handful of lines
+per version and nothing more.
 
 ## 0.9.2 build 185
 
