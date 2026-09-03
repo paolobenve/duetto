@@ -12,6 +12,13 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
+## 0.9.3 build 186
+
+**Version 0.9.3.** The 0.9.2 handed over is build 178; what came after it - coming home in
+a pocket, the listening that rises again by itself, the reconnecting words that wait for a
+real stop - belongs to 0.9.3, and "What is new" in the app now says so, in a handful of
+lines per version and nothing more.
+
 ## 0.9.2 build 185
 
 **"What is new" inside the app is now a short summary per version, in your language.** It
