@@ -74,9 +74,19 @@
              moment presence has to stay. Whoever does not want to be
              reachable has "leave and become unavailable", which says so
              in so many words. -->
+        <!-- "specialUse" as well: while merely waiting the service holds
+             the notification and nothing else, and from Android 14 a
+             service put up from the background - by the watchdog after
+             a death - is granted no microphone. It asks for this type
+             then, and the type has to be declared here or the request
+             is refused before it is even judged. -->
         <service
             android:name=".ChannelForegroundService"
             android:exported="false"
-            android:foregroundServiceType="microphone|camera" />
+            android:foregroundServiceType="microphone|camera|specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Stay reachable for the other person's call" />
+        </service>
     </application>
 </manifest>
