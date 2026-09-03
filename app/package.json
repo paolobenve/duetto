@@ -12,7 +12,7 @@
     "lint": "eslint .",
     "tsc": "tsc --noEmit",
     "postinstall": "node scripts/sync-local-modules.js",
-    "bump": "node scripts/bump-build.js && node scripts/build-changelog.js"
+    "bump": "node scripts/bump-build.js"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.1.0",

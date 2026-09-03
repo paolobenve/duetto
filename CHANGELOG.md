@@ -8,6 +8,18 @@ really changes. The last one moves at every build: that way every APK has a name
 own, and asking "which version have you got" is enough to know what is running. There is
 an entry here only for the versions where something is noticeable.
 
+What the app itself shows under "What is new" is another thing: a short summary per
+version, in the app's five languages, with nothing of what is underneath - it lives in
+`app/src/releases.ts` and is written by hand at each new version.
+
+## 0.9.2 build 185
+
+**"What is new" inside the app is now a short summary per version, in your language.** It
+used to reproduce this whole file, build by build, in one language: for whoever uses the
+app that was a wall of text about things underneath. Now each version has a few sentences
+about what one notices, in the five languages the app speaks. This file remains, for
+whoever wants the whole story.
+
 ## 0.9.2 build 184
 
 **A change of network goes through at once, screen off included.** The word did reach the

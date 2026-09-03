@@ -12,17 +12,19 @@ import {
   View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity,
   useWindowDimensions,
 } from 'react-native';
-import { CHANGELOG } from './changelog';
+import { RELEASES } from './releases';
 import { VERSION_FULL } from './version';
-import { t } from './i18n';
+import { t, currentLanguage } from './i18n';
 
 /**
- * The release notes, from a touch on the app's name.
+ * What is new, from a touch on the app's name.
  *
  * Whoever uses the app notices that something has changed - a different
- * icon, a new behaviour - and has nowhere to ask why. The notes live
+ * icon, a new behaviour - and has nowhere to ask what. The notes live
  * behind the thing that already declares the version, which is where
- * one would go and look.
+ * one would go and look: one short entry per version, in the language
+ * the app is speaking. The full story, build by build, is CHANGELOG.md
+ * in the repository, which is where whoever wants the why goes.
  */
 export default function ChangelogModal({ visible, onClose }: {
   visible: boolean;
@@ -57,14 +59,11 @@ export default function ChangelogModal({ visible, onClose }: {
             style={{ height: listHeight }}
             contentContainerStyle={styles.scrollBody}
             nestedScrollEnabled>
-            {CHANGELOG.map((v) => (
-              <View key={v.version} style={styles.block}>
-                <Text style={styles.version}>{v.version}</Text>
-                {v.paragraphs.map((p, i) => (
-                  <Text key={i} style={styles.paragraph}>
-                    {p.strong ? <Text style={styles.strong}>{p.strong} </Text> : null}
-                    {p.text}
-                  </Text>
+            {RELEASES.map((r) => (
+              <View key={r.version} style={styles.block}>
+                <Text style={styles.version}>{r.version}</Text>
+                {r.notes[currentLanguage()].map((note, i) => (
+                  <Text key={i} style={styles.paragraph}>{note}</Text>
                 ))}
               </View>
             ))}
@@ -96,7 +95,6 @@ const styles = StyleSheet.create({
     color: '#2f7cf6', fontSize: 15, fontWeight: '800', marginBottom: 8,
   },
   paragraph: { color: '#a9b3c0', fontSize: 14, lineHeight: 21, marginBottom: 10 },
-  strong: { color: '#e6ebf1', fontWeight: '700' },
   button: {
     marginTop: 18, borderRadius: 12, paddingVertical: 13, alignItems: 'center',
     backgroundColor: '#2f7cf6',
