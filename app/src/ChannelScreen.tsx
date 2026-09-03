@@ -1586,7 +1586,7 @@ function PresenceCard(props: {
           ? (peerAudio ? t('channel.audioLinkedNoVideo') : t('channel.micMuted'))
           : connectionState === 'failed'
             ? t('channel.directFailed')
-            : t('channel.establishingDirect')}
+            : t('channel.establishing')}
       </Text>
       {/* The raw state helps to see where it stopped. */}
       {linked ? null : (

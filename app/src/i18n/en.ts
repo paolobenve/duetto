@@ -173,7 +173,9 @@ export const en = {
     audioLinkedNoVideo: 'Audio connected · video off',
     micMuted: 'Their microphone is muted',
     directFailed: 'The direct link failed.\nWithout a TURN server some networks prevent it.',
-    establishingDirect: 'Establishing the direct link…',
+    // Not "the direct link": while the link is being rebuilt nobody
+    // knows yet which road it will find, and it is often the relay's.
+    establishing: 'Establishing the link…',
     state: 'state: {state}',
     resolutionLabel: 'Resolution: {quality}',
     linkLabel: 'Link: {path}',

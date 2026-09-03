@@ -161,7 +161,7 @@ export const it: Dictionary = {
     audioLinkedNoVideo: 'Audio collegato · video non attivo',
     micMuted: 'Ha il microfono muto',
     directFailed: 'Collegamento diretto non riuscito.\nSenza un server TURN certe reti lo impediscono.',
-    establishingDirect: 'Sto stabilendo la connessione diretta…',
+    establishing: 'Sto stabilendo il collegamento…',
     state: 'stato: {state}',
     resolutionLabel: 'Risoluzione: {quality}',
     linkLabel: 'Collegamento: {path}',

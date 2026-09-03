@@ -162,7 +162,7 @@ export const fr: Dictionary = {
     audioLinkedNoVideo: 'Audio connecté · vidéo éteinte',
     micMuted: 'Son micro est en muet',
     directFailed: 'La liaison directe a échoué.\nSans serveur TURN certains réseaux l’empêchent.',
-    establishingDirect: 'J’établis la liaison directe…',
+    establishing: 'J’établis la liaison…',
     state: 'état : {state}',
     resolutionLabel: 'Résolution : {quality}',
     linkLabel: 'Liaison : {path}',

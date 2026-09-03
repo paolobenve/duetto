@@ -8,6 +8,16 @@ really changes. The last one moves at every build: that way every APK has a name
 own, and asking "which version have you got" is enough to know what is running. There is
 an entry here only for the versions where something is noticeable.
 
+## 0.9.2 build 180
+
+**No promise of a direct link while the link is being rebuilt.** "Establishing the direct
+link" was said at every rebuild, the ones that end up going through the server included:
+at that moment nobody knows yet which road will be found, so the word has gone.
+
+**The journal says who noticed a change of network.** The system's announcement and the
+change the heartbeat went and found for itself used to look identical afterwards, which
+made it impossible to tell a cure that worked from one that never got its turn.
+
 ## 0.9.2 build 179
 
 **Coming home, the wifi is taken at once — screen off and all.** The phone switched to the

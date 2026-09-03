@@ -171,7 +171,14 @@ export function attachWatchdog(
      * screen off, so the question is asked here; a change answers
      * with the usual "arrived", through the usual door.
      */
-    Network.recheck().catch(() => { /* noop */ });
+    Network.recheck().then((changed: boolean) => {
+      // Said apart from the system's own word, because the two cannot
+      // be told from each other afterwards: `network:arrived` is the
+      // announcement heard, this one is the change nobody announced
+      // and the beat went to look for.
+      if (!changed) return;
+      Journal.mark('network:by-beat').catch(() => { /* noop */ });
+    }).catch(() => { /* noop */ });
     if (hooks.driveFast) Heartbeat.fast(!sig.connected).catch(() => { /* noop */ });
     if (!sig.connected) { rebuild('no-socket'); return; }
     // The previous question went unanswered: the socket looks alive

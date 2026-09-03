@@ -16,6 +16,19 @@ export type ReleaseNote = {
 
 export const CHANGELOG: ReleaseNote[] = [
   {
+    "version": "0.9.2 build 180",
+    "paragraphs": [
+      {
+        "strong": "No promise of a direct link while the link is being rebuilt.",
+        "text": "\"Establishing the direct link\" was said at every rebuild, the ones that end up going through the server included: at that moment nobody knows yet which road will be found, so the word has gone."
+      },
+      {
+        "strong": "The journal says who noticed a change of network.",
+        "text": "The system's announcement and the change the heartbeat went and found for itself used to look identical afterwards, which made it impossible to tell a cure that worked from one that never got its turn."
+      }
+    ]
+  },
+  {
     "version": "0.9.2 build 179",
     "paragraphs": [
       {
