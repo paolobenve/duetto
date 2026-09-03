@@ -8,6 +8,20 @@ really changes. The last one moves at every build: that way every APK has a name
 own, and asking "which version have you got" is enough to know what is running. There is
 an entry here only for the versions where something is noticeable.
 
+## 0.9.2 build 184
+
+**A change of network goes through at once, screen off included.** The word did reach the
+app — the previous fix made sure of that — and then sat in a timer, because with the screen
+off the app's timers stand still: it came out when the screen woke, however long that took.
+Now an arrival is acted on the moment it is heard; the timer remains only for the small
+words that follow it, which describe the network that has just arrived.
+
+## 0.9.2 build 183
+
+**Build 182 did not start on Android 14 and later.** The type it asked for while waiting
+was not declared for the service, and the system killed the app for it at every start.
+Declared now; nothing else changed.
+
 ## 0.9.2 build 182
 
 **After a death, the listening really comes back — without anybody opening the app.** The

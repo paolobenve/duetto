@@ -16,6 +16,24 @@ export type ReleaseNote = {
 
 export const CHANGELOG: ReleaseNote[] = [
   {
+    "version": "0.9.2 build 184",
+    "paragraphs": [
+      {
+        "strong": "A change of network goes through at once, screen off included.",
+        "text": "The word did reach the app — the previous fix made sure of that — and then sat in a timer, because with the screen off the app's timers stand still: it came out when the screen woke, however long that took. Now an arrival is acted on the moment it is heard; the timer remains only for the small words that follow it, which describe the network that has just arrived."
+      }
+    ]
+  },
+  {
+    "version": "0.9.2 build 183",
+    "paragraphs": [
+      {
+        "strong": "Build 182 did not start on Android 14 and later.",
+        "text": "The type it asked for while waiting was not declared for the service, and the system killed the app for it at every start. Declared now; nothing else changed."
+      }
+    ]
+  },
+  {
     "version": "0.9.2 build 182",
     "paragraphs": [
       {
