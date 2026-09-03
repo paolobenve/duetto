@@ -193,6 +193,33 @@ export function attachWatchdog(
     hooks.onBeat?.();
   });
 
+  /** When the last arrival went through: the weaker words that trail it are its own. */
+  let arrivedAt = 0;
+
+  /** What a word of the network sets going, once it is the word to act on. */
+  const deliver = (word: string) => {
+    Journal.mark(`network:${word}`).catch(() => { /* noop */ });
+    hooks.onNetwork?.(word);
+    const sig = get();
+    if (!sig) return;
+    // Already without a server: there is nothing to save, we simply
+    // rebuild.
+    if (!sig.connected) {
+      hooks.onNoServer?.();
+      sig.rebuild();
+      return;
+    }
+    // It looks alive: first we ask whether it really is.
+    stopProbe();
+    sig.askPresence();
+    probe = setTimeout(() => {
+      probe = null;
+      Journal.mark('network:silent').catch(() => { /* noop */ });
+      hooks.onNoServer?.();
+      get()?.rebuild();
+    }, PROBE_WAIT_MS);
+  };
+
   const stopNet = Network.subscribe((what: string) => {
     if (what === 'lost') return;
     // The wifi's health while the emergency lane is open: nothing has
@@ -203,32 +230,33 @@ export function attachWatchdog(
       hooks.onNetwork?.(what);
       return;
     }
+    /**
+     * An arrival goes through at once, with no timer in between.
+     *
+     * The settling below is a JavaScript timer, and with the screen off
+     * those stand still: an arrival that came in a pocket was delivered
+     * all right - the native side rightly counted it as told - and then
+     * sat in the timer until the screen woke, however many beats went
+     * by. Since the native module no longer announces the same network
+     * twice there is no volley of arrivals left to settle, so the word
+     * is acted on now; the weaker words that trail it for a moment
+     * describe the network that has just arrived, and are let go.
+     */
+    if (what === 'arrived') {
+      if (settle) { clearTimeout(settle); settle = null; }
+      settleWord = '';
+      arrivedAt = Date.now();
+      deliver('arrived');
+      return;
+    }
+    if (Date.now() - arrivedAt < NETWORK_SETTLE_MS * 2) return;
     if (settle) clearTimeout(settle);
     if ((WORD_RANK[what] ?? 0) >= (WORD_RANK[settleWord] ?? -1)) settleWord = what;
     settle = setTimeout(() => {
       settle = null;
       const word = settleWord;
       settleWord = '';
-      Journal.mark(`network:${word}`).catch(() => { /* noop */ });
-      hooks.onNetwork?.(word);
-      const sig = get();
-      if (!sig) return;
-      // Already without a server: there is nothing to save, we simply
-      // rebuild.
-      if (!sig.connected) {
-        hooks.onNoServer?.();
-        sig.rebuild();
-        return;
-      }
-      // It looks alive: first we ask whether it really is.
-      stopProbe();
-      sig.askPresence();
-      probe = setTimeout(() => {
-        probe = null;
-        Journal.mark('network:silent').catch(() => { /* noop */ });
-        hooks.onNoServer?.();
-        get()?.rebuild();
-      }, PROBE_WAIT_MS);
+      deliver(word);
     }, NETWORK_SETTLE_MS);
   });
 
