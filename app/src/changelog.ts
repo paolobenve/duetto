@@ -16,6 +16,15 @@ export type ReleaseNote = {
 
 export const CHANGELOG: ReleaseNote[] = [
   {
+    "version": "0.9.2 build 181",
+    "paragraphs": [
+      {
+        "strong": "Coming home with the screen off, now it really is noticed.",
+        "text": "Yesterday's cure did not work, and the reason was worth finding: the app wrote the change of network down as announced even when the announcement had been thrown away for want of anybody awake to hear it — so the heartbeat, going to look for changes nobody had told it about, found the books in order and said nothing. Six and a half minutes on the carrier with the wifi right there. Now what was seen and what was actually said are two different things, and the beat compares itself against the second."
+      }
+    ]
+  },
+  {
     "version": "0.9.2 build 180",
     "paragraphs": [
       {

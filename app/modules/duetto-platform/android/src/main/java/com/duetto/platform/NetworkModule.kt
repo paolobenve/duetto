@@ -80,17 +80,35 @@ class NetworkModule(private val ctx: ReactApplicationContext) :
      */
     private var lastNetwork: String = ""
 
+    /**
+     * The network JavaScript was actually TOLD about.
+     *
+     * Kept apart from the one merely seen, and the difference is the
+     * whole point: the announcement of a change can be made while no
+     * JavaScript is alive to hear it, and writing the change down as
+     * announced left the phone convinced it had said something nobody
+     * heard. The beat's recheck compares against THIS one, so a word
+     * that fell on deaf ears is said again when there are ears.
+     */
+    private var announced: String = ""
+
+    /** Announces the network now carrying us, if it can be heard. */
+    private fun announce(id: String) {
+        lastNetwork = id
+        wasValid = false
+        if (emit("arrived")) announced = id
+    }
+
     private val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             val id = network.toString()
             if (id == lastNetwork) return
-            lastNetwork = id
-            wasValid = false
-            emit("arrived")
+            announce(id)
         }
 
         override fun onLost(network: Network) {
             lastNetwork = ""
+            announced = ""
             lastAddress = ""
             wasValid = false
             emit("lost")
@@ -119,14 +137,25 @@ class NetworkModule(private val ctx: ReactApplicationContext) :
         }
     }
 
-    private fun emit(what: String) {
-        if (!ctx.hasActiveReactInstance()) return
-        try {
+    /**
+     * Says the word, and answers whether anybody was there to hear it.
+     *
+     * With the screen off the app's JavaScript may be gone, and then
+     * the word is not delivered - it is not queued anywhere, nothing
+     * repeats it. Whoever announces a network has to KNOW that, or
+     * they will write the change down as told when it was told to
+     * nobody: see `announced`.
+     */
+    private fun emit(what: String): Boolean {
+        if (!ctx.hasActiveReactInstance()) return false
+        return try {
             ctx.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
                 .emit(EVENT, what)
+            true
         } catch (_: Exception) {
             // A lost event costs a later reconnection; it is not worth
             // bringing the app down for.
+            false
         }
     }
 
@@ -368,11 +397,12 @@ class NetworkModule(private val ctx: ReactApplicationContext) :
             val now = c.activeNetwork
             if (now == null) { promise.resolve(false); return }
             val id = now.toString()
-            if (id == lastNetwork) { promise.resolve(false); return }
-            lastNetwork = id
-            wasValid = false
-            emit("arrived")
-            promise.resolve(true)
+            // Against what was HEARD, not against what was seen: the
+            // callback may have seen this very network and had its
+            // word thrown away, and then there is everything to say.
+            if (id == announced) { promise.resolve(false); return }
+            announce(id)
+            promise.resolve(announced == id)
         } catch (e: Exception) {
             promise.resolve(false)
         }
