@@ -54,12 +54,61 @@ function narrowProperties() {
 }
 
 const file = path.join(__dirname, '..', 'android', 'app', 'build.gradle');
+
+/**
+ * The release build signed with a key of its own, when there is one.
+ *
+ * The template signs the release with the DEBUG keystore - password
+ * "android", the same on every React Native project on earth - which
+ * for an app handed from one phone to the other was indifferent, and
+ * for an app anybody can download is not: whoever holds that key can
+ * sign an "update" Android accepts as ours. The real key lives outside
+ * the repository, and Gradle learns of it from ~/.gradle/gradle.properties:
+ *
+ *   DUETTO_STORE_FILE=/home/you/.config/duetto/release.keystore
+ *   DUETTO_STORE_PASSWORD=...
+ *   DUETTO_KEY_ALIAS=duetto
+ *   DUETTO_KEY_PASSWORD=...
+ *
+ * Without those properties - somebody building from a fresh clone - the
+ * release falls back to the debug key as before, so the build never
+ * breaks: it is just not ours.
+ */
+function signRelease() {
+  let g = fs.readFileSync(file, 'utf8');
+  if (g.includes('DUETTO_STORE_FILE')) return;
+  const marker = /(    signingConfigs \{\n        debug \{[\s\S]*?\n        \}\n)(    \})/;
+  const swap = 'signingConfig signingConfigs.debug\n            minifyEnabled';
+  if (!marker.test(g) || !g.includes(swap)) {
+    console.error('signing block not found in build.gradle: touching nothing');
+    return;
+  }
+  const release = `        release {
+            // The real key, from ~/.gradle/gradle.properties; see
+            // patch-android-gradle.js. Absent, the debug one stands.
+            if (project.hasProperty('DUETTO_STORE_FILE')) {
+                storeFile file(DUETTO_STORE_FILE)
+                storePassword DUETTO_STORE_PASSWORD
+                keyAlias DUETTO_KEY_ALIAS
+                keyPassword DUETTO_KEY_PASSWORD
+            }
+        }
+`;
+  g = g.replace(marker, `$1${release}$2`);
+  g = g.replace(
+    swap,
+    "signingConfig project.hasProperty('DUETTO_STORE_FILE') ? signingConfigs.release : signingConfigs.debug\n            minifyEnabled",
+  );
+  fs.writeFileSync(file, g);
+  console.log('release signing: our own key when ~/.gradle/gradle.properties names one');
+}
 if (!fs.existsSync(file)) {
   console.log('build.gradle not generated yet: nothing to do');
   process.exit(0);
 }
 
 narrowProperties();
+signRelease();
 
 let gradle = fs.readFileSync(file, 'utf8');
 

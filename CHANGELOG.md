@@ -12,6 +12,15 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
+## 0.9.3 build 188
+
+**The app is now signed with a key of its own.** Until now the release carried the debug
+key of the React Native template - the same on every project on earth - which was
+indifferent for an app handed from one phone to the other and is not for one anybody can
+download. The change of key means one reinstall, and a new pairing, on the phones that had
+the app: Android does not accept an update signed by another hand, which is the whole
+point.
+
 ## 0.9.3 build 186
 
 **Version 0.9.3.** Version 0.9.2 is build 172, the one that brought the languages; all that
