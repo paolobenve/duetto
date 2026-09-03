@@ -161,6 +161,17 @@ export function attachWatchdog(
   const stopBeat = Heartbeat.subscribe(() => {
     const sig = get();
     if (!sig) return;
+    /**
+     * Which network is carrying us, asked and not waited for.
+     *
+     * The system's announcement can be made while no JavaScript is
+     * alive to hear it, and then it is lost for good: a phone that
+     * came home with the screen off kept its link over the carrier
+     * until somebody touched the screen. The beat rings with the
+     * screen off, so the question is asked here; a change answers
+     * with the usual "arrived", through the usual door.
+     */
+    Network.recheck().catch(() => { /* noop */ });
     if (hooks.driveFast) Heartbeat.fast(!sig.connected).catch(() => { /* noop */ });
     if (!sig.connected) { rebuild('no-socket'); return; }
     // The previous question went unanswered: the socket looks alive

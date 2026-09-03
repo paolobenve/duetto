@@ -413,6 +413,19 @@ export default function ChannelScreen(props: Props) {
 
   const together = status === 'together';
   const linked = connectionState === 'connected';
+  /**
+   * The link carries, whatever its state is called.
+   *
+   * An ICE restart - the search for a road the new network may have
+   * opened - takes the state away from "connected" while the old road
+   * goes on carrying every word: the screen said "establishing the
+   * connection" over a conversation nobody had interrupted. Coming
+   * home, where the phone changes network two or three times on the
+   * doorstep, it said it three times. What is said now follows the
+   * packets, which are the thing one actually lives through.
+   */
+  const carrying = videoStats.carrying === true;
+  const speaking = linked || carrying;
 
   /**
    * An interruption under way: they are there but the direct connection
@@ -435,7 +448,7 @@ export default function ChannelScreen(props: Props) {
    * ICE says when the packets really are not arriving.
    */
   const broken = connectionState === 'failed' || connectionState === 'disconnected';
-  const notConnected = serverLost || (together && broken);
+  const notConnected = serverLost || (together && broken && !carrying);
 
   /**
    * An interruption is declared only if it lasts.
@@ -893,7 +906,11 @@ export default function ChannelScreen(props: Props) {
             peerDetached={peerDetached}
             peerTornDown={peerTornDown}
             status={status}
-            linked={linked}
+            // What the card calls "linked" is the link CARRYING: during
+            // a restart the state leaves "connected" while every word
+            // still gets through, and the card used to deny a
+            // conversation that was going on.
+            linked={speaking}
             connectionState={connectionState}
             peerName={peerName}
             peerAvatar={peerAvatar}
@@ -1470,6 +1487,7 @@ function PresenceMini(props: {
 
 function PresenceCard(props: {
   status: PresenceStatus;
+  /** the link is carrying: connected, or still delivering packets */
   linked: boolean;
   connectionState: string;
   peerName: string;

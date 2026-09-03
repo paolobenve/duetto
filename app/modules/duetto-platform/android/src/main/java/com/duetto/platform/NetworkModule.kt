@@ -342,6 +342,42 @@ class NetworkModule(private val ctx: ReactApplicationContext) :
         }
     }
 
+    /**
+     * Looks at which network is carrying us NOW, instead of waiting to
+     * be told.
+     *
+     * The announcement of a change can simply not arrive: when it is
+     * made there may be no JavaScript alive to hear it, and `emit`
+     * drops it in silence - nothing queues it, nothing repeats it. A
+     * phone that reached home with the screen off was seen holding its
+     * link over the carrier until the screen came back on, minutes
+     * later, although the wifi had been the default network all along.
+     *
+     * So the heartbeat, which rings with the screen off, asks this
+     * instead: the default network is read from the system, and if it
+     * is not the one already announced, the arrival is announced now.
+     * Being the same word, everything downstream - the search for new
+     * roads, the escape from the relay - happens exactly as it would
+     * have then.
+     */
+    @ReactMethod
+    fun recheck(promise: Promise) {
+        val c = cm
+        if (c == null) { promise.resolve(false); return }
+        try {
+            val now = c.activeNetwork
+            if (now == null) { promise.resolve(false); return }
+            val id = now.toString()
+            if (id == lastNetwork) { promise.resolve(false); return }
+            lastNetwork = id
+            wasValid = false
+            emit("arrived")
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.resolve(false)
+        }
+    }
+
     @ReactMethod fun addListener(eventName: String) {}
     @ReactMethod fun removeListeners(count: Int) {}
 

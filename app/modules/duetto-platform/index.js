@@ -416,6 +416,14 @@ export const Network = isAndroid && NativeNetwork
       reportNotCarrying: () => call(NativeNetwork, 'reportNotCarrying'),
 
       /**
+       * Looks at which network is carrying us now, and announces the
+       * change if the announcement never came. It is what the
+       * heartbeat asks with the screen off, when nobody was awake to
+       * hear the system's word. See NetworkModule.
+       */
+      recheck: () => call(NativeNetwork, 'recheck'),
+
+      /**
        * The emergency lane: mobile data switched on and every socket
        * bound to it, deaf wifi or not. Costs radio - whoever opens it
        * closes it. See NetworkModule.
@@ -435,6 +443,7 @@ export const Network = isAndroid && NativeNetwork
   : {
       subscribe: () => () => {},
       reportNotCarrying: unavailable,
+      recheck: unavailable,
       requestMobile: unavailable,
       releaseMobile: unavailable,
       probeViaMobile: unavailable,

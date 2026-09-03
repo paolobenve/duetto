@@ -8,6 +8,25 @@ really changes. The last one moves at every build: that way every APK has a name
 own, and asking "which version have you got" is enough to know what is running. There is
 an entry here only for the versions where something is noticeable.
 
+## 0.9.2 build 179
+
+**Coming home, the wifi is taken at once — screen off and all.** The phone switched to the
+home wifi while it was still in a pocket, and the app went on talking through the carrier
+until somebody woke the screen: the system's announcement of the change is made whether or
+not there is anybody awake to hear it, and when there is not, it is lost for good. So the
+app stops waiting to be told and looks for itself: at every heartbeat — and the heartbeat
+rings with the screen off — it asks which network is carrying it now, and a change is acted
+on there and then. Within a minute of getting home the link is direct again, with nothing
+touched.
+
+**"Establishing the connection" is not said over a conversation that is going on.** Looking
+for the roads a new network has opened takes the link's state away from "connected" for a
+few seconds, while the old road carries every word as before — and the screen announced an
+interruption that nobody was living through. On the doorstep, where the phone changes
+network two or three times, it announced it two or three times. Now the words follow the
+packets: as long as they land, nothing is said; when they really stop, the notice comes as
+it always did.
+
 ## 0.9.2 build 178
 
 **The fixed notification catches up when it has stayed behind.** One morning the app knew

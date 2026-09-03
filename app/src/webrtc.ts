@@ -119,6 +119,16 @@ export type VideoStats = {
   /** which way the traffic is going, worked out at every sample */
   path?: 'local' | 'direct' | 'relay';
   /**
+   * Packets from the other side landed here a moment ago.
+   *
+   * The difference between a link that is being rebuilt and one that
+   * has stopped carrying: during an ICE restart the old road keeps
+   * working until a new one is nominated, and the screen used to cry
+   * "establishing the connection" over a conversation that had never
+   * stopped.
+   */
+  carrying?: boolean;
+  /**
    * On a relayed road, which leg carries us to the relay: udp, tcp or
    * tls. It is invisible from the candidates - their protocol speaks
    * of the far side - and it is exactly the thing that decides whether
@@ -617,6 +627,8 @@ export class ChannelSession {
     pc.addEventListener('connectionstatechange', () => {
       if (!isCurrent()) return;
       log('connection:', pc.connectionState);
+      // The measuring changes pace with the state: see startStats.
+      if (this.statsTimer && isCurrent()) this.startStats();
       this.events.onConnectionState?.(pc.connectionState);
       if (pc.connectionState === 'connected') {
         // The wish held back during the repair is granted now: see
@@ -1132,12 +1144,33 @@ export class ChannelSession {
    * relay - but ten seconds is plenty for both: the one has a hysteresis
    * of its own, the other happens once per link.
    */
+  /**
+   * How long without a packet before the link is called silent.
+   *
+   * Comfortably more than the fast sampling interval below, because
+   * the arrival is only noticed when the walk goes past: less than
+   * that and a link in perfect health would be called silent between
+   * one reading and the next.
+   */
+  private static readonly CARRYING_MS = 4000;
+
   private static readonly STATS_MS = 2000;
   private static readonly STATS_SLOW_MS = 10000;
 
   private startStats() {
     if (this.statsTimer) clearInterval(this.statsTimer);
-    const every = this.diagnostics ? ChannelSession.STATS_MS : ChannelSession.STATS_SLOW_MS;
+    /**
+     * The quick pace also while the link is not whole.
+     *
+     * There the measurement answers a question that is being asked on
+     * screen: are packets still landing? Ten seconds are far too
+     * coarse for it - the answer would be older than the thing it
+     * describes - and an interruption does not last long enough for
+     * the cost to matter.
+     */
+    const unwell = !!this.pc && this.pc.connectionState !== 'connected';
+    const every = this.diagnostics || unwell
+      ? ChannelSession.STATS_MS : ChannelSession.STATS_SLOW_MS;
     this.statsTimer = setInterval(() => { this.logOutboundVideo(); }, every);
   }
 
@@ -1401,6 +1434,7 @@ export class ChannelSession {
         this.broadcastState();
       }
 
+      out.carrying = this.mediaArrivedWithin(ChannelSession.CARRYING_MS);
       this.events.onVideoStats?.(out);
       this.weighVideo((out.out?.kbps ?? 0) + (out.in?.kbps ?? 0));
       this.weighBalance(out.out?.kbps ?? null, out.in?.kbps ?? null);
