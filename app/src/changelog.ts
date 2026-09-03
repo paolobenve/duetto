@@ -16,6 +16,15 @@ export type ReleaseNote = {
 
 export const CHANGELOG: ReleaseNote[] = [
   {
+    "version": "0.9.2 build 182",
+    "paragraphs": [
+      {
+        "strong": "After a death, the listening really comes back — without anybody opening the app.",
+        "text": "The watchdog was doing its job, and its work was being refused: the presence it put back on its feet asked the system for the microphone as a matter of course, and from Android 14 that is not granted to a service started from the background. Refused, stopped, tried again every minute — 51 minutes one evening, 24 the next — until somebody opened the app by hand. Now the microphone is asked for only in the channel, which is entered with a touch, that is in the foreground, that is when it is granted; while merely waiting it is never used, so there is nothing to ask for. The listening rises again at the first ring of the watchdog."
+      }
+    ]
+  },
+  {
     "version": "0.9.2 build 181",
     "paragraphs": [
       {

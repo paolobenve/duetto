@@ -210,7 +210,22 @@ class ChannelForegroundService : Service() {
         if (intent.hasExtra(EXTRA_IN_CHANNEL)) {
             inChannel = intent.getBooleanExtra(EXTRA_IN_CHANNEL, false)
         }
-        goForeground()
+        /**
+         * The microphone type only in the channel.
+         *
+         * The rule below - from Android 14 that type is granted only to
+         * a service started while the app is in the foreground - was
+         * honoured when the SYSTEM put the service back up, and not when
+         * OUR watchdog did: the presence it resurrected asked for the
+         * microphone by default, was refused, stopped, and tried again
+         * every minute for as long as nobody opened the app - 51 minutes
+         * one evening, 24 the next. While merely waiting the microphone
+         * is never used, so there is nothing to ask for; the channel is
+         * entered with a touch, that is in the foreground, that is when
+         * the type is granted - and once granted it stays for the whole
+         * stay, screen off included, as it always did.
+         */
+        goForeground(mayUseMicrophone = inChannel)
         if (inChannel) acquireWakeLock() else releaseWakeLock()
         // The net under the waiting: see WatchdogAlarm.
         WatchdogAlarm.schedule(this)
