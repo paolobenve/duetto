@@ -14,7 +14,15 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
-## 0.9.6 build 261
+## 0.9.7 build 273
+
+**Version 0.9.7.** With the diagnostics on, the battery of both phones - each told to the
+other in the state, with the rest of what each measures at home - in one short line,
+charger included, under the card and on the third line of the statistics with the video on;
+the output marks flank the voices alone. A touch on the picture while the screen counts as
+covered is said too, instead of waking nothing in silence. And between one release and the
+next the builds read `-pre`: the version they are on their way to, not yet the version.
+
 
 **Version 0.9.6.** The listening on Android 10 to 13 comes back by itself again: since the
 manifest declared the presence service as «specialUse», the code went on asking for

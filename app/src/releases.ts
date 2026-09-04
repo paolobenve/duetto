@@ -33,11 +33,31 @@ export const RELEASES: Release[] = [
   {
     version: '0.9.7',
     notes: {
-      en: ['A touch on the picture while the screen counts as covered is said too, instead of doing nothing.'],
-      it: ['Anche un tocco sull’immagine, mentre lo schermo risulta coperto, viene detto, invece di non fare nulla.'],
-      es: ['Un toque en la imagen mientras la pantalla cuenta como cubierta también se avisa, en vez de no hacer nada.'],
-      pt: ['Um toque na imagem enquanto a tela conta como coberta também é avisado, em vez de não fazer nada.'],
-      fr: ['Une touche sur l’image pendant que l’écran compte comme couvert est dite aussi, au lieu de ne rien faire.'],
+      en: [
+        'With the diagnostics on, the battery of both phones in one line, charger included, under the card and beside the video.',
+        'A touch on the picture while the screen counts as covered is said too, instead of doing nothing.',
+        'Between one release and the next the version reads «-pre».',
+      ],
+      it: [
+        'Con la diagnostica accesa, la batteria di tutti e due i telefoni in una riga, caricatore compreso, sotto la carta e accanto al video.',
+        'Anche un tocco sull’immagine, mentre lo schermo risulta coperto, viene detto, invece di non fare nulla.',
+        'Fra una release e l’altra la versione si legge «-pre».',
+      ],
+      es: [
+        'Con el diagnóstico activo, la batería de los dos teléfonos en una línea, cargador incluido, bajo la tarjeta y junto al vídeo.',
+        'Un toque en la imagen mientras la pantalla cuenta como cubierta también se avisa, en vez de no hacer nada.',
+        'Entre una versión y la siguiente, la versión se lee «-pre».',
+      ],
+      pt: [
+        'Com o diagnóstico ligado, a bateria dos dois telefones numa linha, carregador incluído, sob o cartão e ao lado do vídeo.',
+        'Um toque na imagem enquanto a tela conta como coberta também é avisado, em vez de não fazer nada.',
+        'Entre uma versão e a seguinte, a versão se lê «-pre».',
+      ],
+      fr: [
+        'Avec le diagnostic actif, la batterie des deux téléphones sur une ligne, chargeur compris, sous la carte et à côté de la vidéo.',
+        'Une touche sur l’image pendant que l’écran compte comme couvert est dite aussi, au lieu de ne rien faire.',
+        'Entre une version et la suivante, la version se lit « -pre ».',
+      ],
     },
   },
   {
