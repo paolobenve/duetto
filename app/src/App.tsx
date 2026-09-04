@@ -3477,7 +3477,9 @@ export default function App() {
           }}
           // From the settings there is somewhere to go back to; at the
           // first start there is not.
-          onClose={isServerConfigured(cfg) ? () => setScreen(isPaired(cfg) ? 'settings' : 'pairing') : undefined}
+          // Back is the settings, paired or not: a phone with no pair
+          // used to be sent to the pairing, which opened on a code.
+          onClose={isServerConfigured(cfg) ? () => setScreen('settings') : undefined}
         />
       </View>
     );
