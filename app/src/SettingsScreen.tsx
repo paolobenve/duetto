@@ -217,6 +217,33 @@ export default function SettingsScreen({
     setNaming(null);
   };
 
+  /**
+   * Taking somebody off the list is a whole thing - their connections
+   * and the people they brought along go with them - and a touch is
+   * not a decision. The same for an invitation, which is less, but the
+   * word is the same and so must the manner be.
+   */
+  const confirmForget = (person: PersonOnServer) => {
+    Alert.alert(
+      t('settings.forgetPersonTitle', { who: person.name }),
+      t('settings.forgetPersonBody'),
+      [
+        { text: t('settings.cancel'), style: 'cancel' },
+        { text: t('settings.takeAway'), style: 'destructive', onPress: () => onForget?.(person.name) },
+      ],
+    );
+  };
+  const confirmForgetInvitation = (i: InvitationOnServer) => {
+    Alert.alert(
+      t('settings.forgetInvitationTitle', { who: i.name }),
+      t('settings.forgetInvitationBody'),
+      [
+        { text: t('settings.cancel'), style: 'cancel' },
+        { text: t('settings.takeAway'), style: 'destructive', onPress: () => onForgetInvitation?.(i.code) },
+      ],
+    );
+  };
+
   const confirmBreakUp = (p: PairInfo) => {
     const active = p.id === inUse;
     const left = connections.filter((q) => q.id !== p.id);
@@ -407,7 +434,7 @@ export default function SettingsScreen({
                     </Text>
                   </View>
                   {!person.you ? (
-                    <TouchableOpacity onPress={() => onForget?.(person.name)}>
+                    <TouchableOpacity onPress={() => confirmForget(person)}>
                       <Text style={styles.linkInline}>{t('settings.forgetPerson')}</Text>
                     </TouchableOpacity>
                   ) : null}
@@ -424,7 +451,7 @@ export default function SettingsScreen({
                       who: i.name, date: longDate(i.expires) })}
                   </Text>
                 </View>
-                <TouchableOpacity onPress={() => onForgetInvitation?.(i.code)}>
+                <TouchableOpacity onPress={() => confirmForgetInvitation(i)}>
                   <Text style={styles.linkInline}>{t('settings.forgetPerson')}</Text>
                 </TouchableOpacity>
               </View>
