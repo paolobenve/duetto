@@ -7,7 +7,7 @@
  * the LICENSE file at the root of the project, and at
  * <https://www.gnu.org/licenses/>.
  */
-import { deviceKey, deviceModel, signNonce } from './device';
+import { deviceKey, deviceModel, deviceName, signNonce } from './device';
 import type { ServerRole } from './config';
 
 /**
@@ -113,6 +113,7 @@ function visit(serverUrl: string, ask: DoorRequest): Promise<Visit> {
       if (msg.type === 'hello' && !settled) {
         let card: { pub: string; sig: string } | null = null;
         try {
+          await deviceName();
           const key = await deviceKey();
           card = { pub: key.pub, sig: signNonce(key, String(msg.nonce || '')) };
         } catch { /* unable to sign: the server will say so */ }

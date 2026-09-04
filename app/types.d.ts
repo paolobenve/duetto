@@ -91,6 +91,7 @@ declare module 'duetto-platform' {
     /** starts listening without an interface, when the app is about to go */
     resumePresence(): Promise<boolean>;
     clearNotification(): Promise<boolean>;
+    deviceName(): Promise<string>;
     isBatteryUnrestricted(): Promise<boolean>;
     requestBatteryUnrestricted(): Promise<boolean>;
     lastAutoStart(): Promise<number>;

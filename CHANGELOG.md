@@ -12,6 +12,18 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
+## 0.9.4 build 198
+
+**The list calls your phone by its name, and your pairs by theirs.** "On the POCO
+2511FPC34G" was the maker's name for the hardware; now it is the name the phone goes by in
+its own settings, the one Bluetooth shows. And your own row no longer counts your
+connections: it names them - "pair with Anna (the other person came in as a guest)" - by
+the names you gave them. Other people's are still a number, which is all this phone knows
+of them.
+
+**«Take away» asks first**, for a person and for an invitation alike. And «Invite
+somebody» now says what it is for: to use the server with pairs of their own.
+
 ## 0.9.4 build 195
 
 **"Who may use this server" says who, on what.** The owner's own phone read "Someone,

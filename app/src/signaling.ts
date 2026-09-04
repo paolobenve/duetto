@@ -9,7 +9,7 @@
  */
 import { SignalCrypto } from './crypto';
 import { logger } from './log';
-import { deviceKey, deviceModel, signNonce } from './device';
+import { deviceKey, deviceModel, deviceName, signNonce } from './device';
 
 /**
  * The connection to the signalling server.
@@ -252,6 +252,8 @@ export type PersonOnServer = {
   model: string;
   /** this very phone */
   you: boolean;
+  /** their rooms: the id is the pair's, known to the phone that opened it */
+  theirs: { room: string; guest: boolean }[];
 };
 
 export type InvitationOnServer = { name: string; code: string; expires: string };
@@ -442,6 +444,7 @@ export class Signaling {
     let card: { pub: string; sig: string } | null = null;
     if (this.nonce) {
       try {
+        await deviceName();
         const key = await deviceKey();
         card = { pub: key.pub, sig: signNonce(key, this.nonce) };
       } catch {
@@ -514,6 +517,9 @@ export class Signaling {
             owner: p.owner === true,
             model: String(p.model || ''),
             you: p.you === true,
+            theirs: Array.isArray(p.theirs)
+              ? p.theirs.map((r: any) => ({ room: String(r.room || ''), guest: r.guest === true }))
+              : [],
           })),
           msg.invitations ?? [],
         );

@@ -128,6 +128,9 @@ export const Foreground = isAndroid && NativeForeground
       /** Takes the alert away, when one comes back into the app. */
       clearNotification: () => call(NativeForeground, 'clearNotification'),
 
+      /** The phone's name as its owner sees it, or '' */
+      deviceName: () => call(NativeForeground, 'deviceName'),
+
       /** True if the app may stay active with no battery limits. */
       isBatteryUnrestricted: () => call(NativeForeground, 'isBatteryUnrestricted'),
 
@@ -170,6 +173,7 @@ export const Foreground = isAndroid && NativeForeground
       clearNote: unavailable,
       resumePresence: unavailable,
       clearNotification: unavailable,
+      deviceName: unavailable,
       isBatteryUnrestricted: unavailable,
       requestBatteryUnrestricted: unavailable,
       lastAutoStart: unavailable,

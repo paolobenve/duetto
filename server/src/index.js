@@ -933,6 +933,11 @@ function ownersBusiness(ws, msg) {
       you: !!ws.pub && d.pub === ws.pub,
       rooms: theirRooms.filter((r) => r.owner === d.name).length,
       brought: theirRooms.filter((r) => r.owner === d.name && r.guest).length,
+      // The rooms themselves, by name: the phone asking knows its own
+      // by the names it gave them, and can say "the pair with Anna"
+      // where a count says "1".
+      theirs: theirRooms.filter((r) => r.owner === d.name)
+        .map((r) => ({ room: r.room, guest: !!r.guest })),
     })),
     invitations: invitations
       .filter((i) => Date.parse(i.expires) > Date.now())

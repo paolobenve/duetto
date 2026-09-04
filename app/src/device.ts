@@ -10,6 +10,7 @@
 
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Foreground } from 'duetto-platform';
 import nacl from 'tweetnacl';
 import { encodeBase64, decodeBase64 } from 'tweetnacl-util';
 
@@ -92,7 +93,25 @@ export function signNonce(key: DeviceKey, nonce: string): string {
  * the server beside the card, and shown back in "who may use this
  * server", where a name alone does not tell two phones apart.
  */
+let knownName: string | null = null;
+
+/**
+ * Asks the phone what it is called, once. `deviceModel` below answers
+ * from this when it has been asked, so whoever sends the name awaits
+ * this first - the same await that fetches the card.
+ */
+export async function deviceName(): Promise<string> {
+  if (knownName !== null) return knownName || deviceModel();
+  try {
+    knownName = String(await Foreground.deviceName() || '').trim();
+  } catch {
+    knownName = '';
+  }
+  return knownName || deviceModel();
+}
+
 export function deviceModel(): string {
+  if (knownName) return knownName;
   try {
     const c: any = (Platform as any).constants || {};
     const model = String(c.Model || '').trim();

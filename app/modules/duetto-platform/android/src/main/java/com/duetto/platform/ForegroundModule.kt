@@ -146,6 +146,24 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
 
     // --- The settings that staying reachable depends on ---------------
 
+    /**
+     * The name the phone goes by, as its owner sees it.
+     *
+     * Build.MODEL is what the maker calls the hardware - "2511FPC34G"
+     * for a POCO F5 - and nobody recognises their phone in it. The
+     * device name in the system settings, the one shown in Bluetooth,
+     * is what they would write themselves. Empty where there is none.
+     */
+    @ReactMethod
+    fun deviceName(promise: Promise) {
+        val resolver = ctx.contentResolver
+        val name = try {
+            android.provider.Settings.Global.getString(resolver, "device_name")
+                ?: android.provider.Settings.Secure.getString(resolver, "bluetooth_name")
+        } catch (e: Exception) { null }
+        promise.resolve(name?.trim() ?: "")
+    }
+
     @ReactMethod
     fun isBatteryUnrestricted(promise: Promise) {
         promise.resolve(StartupHelper.isIgnoringBatteryOptimizations(ctx))

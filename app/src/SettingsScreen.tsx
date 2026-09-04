@@ -417,10 +417,23 @@ export default function SettingsScreen({
                 ? t(person.owner ? 'settings.youOwner' : 'settings.youMember')
                 : `${person.name} · ${t(person.owner ? 'settings.isOwner' : 'settings.isMember')}`;
               const where = person.model ? `, ${t('settings.onPhone', { model: person.model })}` : '';
-              const rooms = !person.rooms ? ''
-                : person.rooms === 1 ? t('settings.personRoomsOne')
-                  : t('settings.personRoomsMany', { n: person.rooms });
-              const brought = !person.brought ? ''
+              // Our own rooms by the names we gave them; other people's
+              // we know only by number.
+              const mine = person.you
+                ? person.theirs
+                  .map((r) => {
+                    const p = connections.find((c) => c.id === r.room);
+                    const name = p ? nameOf(p) : t('settings.unnamed');
+                    return r.guest ? `${name} (${t('settings.guestCame')})` : name;
+                  })
+                : [];
+              const rooms = mine.length
+                ? t(mine.length === 1 ? 'settings.yourPairOne' : 'settings.yourPairMany',
+                  { list: mine.join(', ') })
+                : !person.rooms ? ''
+                  : person.rooms === 1 ? t('settings.personRoomsOne')
+                    : t('settings.personRoomsMany', { n: person.rooms });
+              const brought = mine.length || !person.brought ? ''
                 : person.brought === 1 ? t('settings.personBroughtOne')
                   : t('settings.personBroughtMany', { n: person.brought });
               return (
