@@ -31,6 +31,16 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.9.7',
+    notes: {
+      en: ['A touch on the picture while the screen counts as covered is said too, instead of doing nothing.'],
+      it: ['Anche un tocco sull’immagine, mentre lo schermo risulta coperto, viene detto, invece di non fare nulla.'],
+      es: ['Un toque en la imagen mientras la pantalla cuenta como cubierta también se avisa, en vez de no hacer nada.'],
+      pt: ['Um toque na imagem enquanto a tela conta como coberta também é avisado, em vez de não fazer nada.'],
+      fr: ['Une touche sur l’image pendant que l’écran compte comme couvert est dite aussi, au lieu de ne rien faire.'],
+    },
+  },
+  {
     version: '0.9.6',
     notes: {
       en: [
