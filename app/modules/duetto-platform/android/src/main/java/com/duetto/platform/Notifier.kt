@@ -285,13 +285,15 @@ object Notifier {
                     notification,
                     android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
                 )
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                service.startForeground(
-                    PRESENCE_NOTIFICATION_ID,
-                    notification,
-                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE,
-                )
             } else {
+                // Before Android 14 the type is not asked for here, and
+                // the manifest's holds. Asking for "microphone" - as it
+                // used to - was refused on Android 10 to 13 as soon as
+                // the manifest said "specialUse": a type that is not a
+                // subset of the declared one. On a phone with Android 13
+                // the presence refused itself ten times a day, at every
+                // boot and at every ring of the watchdog, while the very
+                // same code went through on Android 14 and later.
                 service.startForeground(PRESENCE_NOTIFICATION_ID, notification)
             }
         } catch (e: Exception) {
