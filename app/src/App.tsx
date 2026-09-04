@@ -286,6 +286,8 @@ async function requestAllPermissions(): Promise<{ mic: boolean; camera: boolean 
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('loading');
+  /** a pairing code typed at the welcome, handed to the pairing screen */
+  const [pairingCode, setPairingCode] = useState('');
   const [cfg, setCfg] = useState<DuoConfig | null>(null);
 
   /**
@@ -3070,6 +3072,7 @@ export default function App() {
 
   const onPaired = useCallback(async (pair: PairInfo) => {
     if (!cfg) return;
+    setPairingCode('');
     // It does not replace the previous connection: it stands beside it,
     // and moves to the front. Pairing with somebody else is not saying
     // you want to forget the first one.
@@ -3269,8 +3272,9 @@ export default function App() {
         <StatusBar barStyle="light-content" />
         <WelcomeScreen
           initial={cfg}
-          onDone={(next) => {
+          onDone={(next, _answer, code) => {
             Journal.mark(`door:${next.serverRole || 'unknown'}`).catch(() => { /* noop */ });
+            setPairingCode(code || '');
             setCfg(saveCfg(alignPairServer(next)));
             // Already paired: the pair has just moved to the new server
             // with us, and there is nothing to do but go back in.
@@ -3358,6 +3362,7 @@ export default function App() {
         <PairingScreen
           cfg={cfg}
           role={cfg.serverRole}
+          joinWith={pairingCode}
           onPaired={onPaired}
           // Before the first pairing, "change server" means the
           // welcome: there is nothing in the settings yet worth going

@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { DuoConfig, displayServer, normalizeServerUrl, isServerConfigured } from './config';
 import { knock, DoorAnswer } from './door';
+import { normalizeCode, formatCode, isCodeComplete } from './pairing';
 import { VERSION_LABEL } from './version';
 import { t } from './i18n';
 
@@ -38,8 +39,12 @@ import { t } from './i18n';
  */
 type Props = {
   initial: DuoConfig;
-  /** the server is written, the role is known: on to the pairing */
-  onDone: (cfg: DuoConfig, answer: DoorAnswer) => void;
+  /**
+   * The server is written, the role is known: on to the pairing. With
+   * a code, the pairing starts at once with it: somebody's guest has
+   * typed the eight digits here, and has nothing else to press.
+   */
+  onDone: (cfg: DuoConfig, answer: DoorAnswer, code?: string) => void;
   /** goes back without touching anything; absent at the first start, which has nowhere to go */
   onClose?: () => void;
 };
@@ -50,6 +55,8 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
   const [server, setServer] = useState(displayServer(initial.serverUrl));
   const [key, setKey] = useState(initial.serverKey || '');
   const [invitation, setInvitation] = useState(initial.invitation || '');
+  /** the pairing code somebody is reading out, typed right here */
+  const [code, setCode] = useState('');
   const [step, setStep] = useState<Step>('server');
   /** a line under the field: what went wrong, or what the server said */
   const [note, setNote] = useState('');
@@ -58,14 +65,14 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
   const resolved = normalizeServerUrl(server);
   const ready = isServerConfigured({ ...initial, serverUrl: server });
 
-  const finish = useCallback((a: DoorAnswer) => {
+  const finish = useCallback((a: DoorAnswer, withCode?: string) => {
     onDone({
       ...initial,
       serverUrl: resolved,
       serverKey: key.trim(),
       invitation: invitation.trim(),
       serverRole: a.role,
-    }, a);
+    }, a, withCode);
   }, [initial, resolved, key, invitation, onDone]);
 
   /** Knocks with what is written now, and goes where the answer says. */
@@ -158,13 +165,28 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
           <Text style={styles.title}>{t('welcome.strangerTitle')}</Text>
           <Text style={styles.body}>{t('welcome.strangerBody')}</Text>
 
-          {/* The common case first: somebody is calling, and their
-              code is all that is needed. */}
+          {/* The common case first: somebody is reading a code out,
+              and the eight digits are all that is needed - typed here,
+              and the pairing starts with them. */}
           <Text style={styles.section}>{t('welcome.calledTitle')}</Text>
           <Text style={styles.hint}>{t('welcome.calledHint')}</Text>
+          <TextInput
+            style={styles.codeInput}
+            value={formatCode(code)}
+            onChangeText={(v) => setCode(normalizeCode(v))}
+            placeholder={t('pairing.codePlaceholder')}
+            placeholderTextColor="#3a4353"
+            keyboardType="number-pad"
+            autoCorrect={false}
+            maxLength={9}
+          />
           <Primary
-            label={t('welcome.called')}
-            onPress={() => finish({ ...(answer || { hasOwner: true, needsKey: withKey }), role: 'guest' })}
+            label={t('pairing.pair')}
+            disabled={!isCodeComplete(code)}
+            onPress={() => finish(
+              { ...(answer || { hasOwner: true, needsKey: withKey }), role: 'guest' },
+              code,
+            )}
           />
 
           <Text style={styles.section}>{t('welcome.invitedTitle')}</Text>
@@ -317,6 +339,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#151a23', color: '#fff', borderRadius: 12,
     paddingVertical: 14, paddingHorizontal: 16, fontSize: 17,
     borderWidth: 1, borderColor: '#2a313d',
+  },
+  codeInput: {
+    backgroundColor: '#151a23', color: '#fff', borderRadius: 14,
+    paddingVertical: 14, paddingHorizontal: 20, fontSize: 30, fontWeight: '700',
+    letterSpacing: 5, textAlign: 'center', borderWidth: 1, borderColor: '#2a313d',
+    width: '100%', marginTop: 8, fontVariant: ['tabular-nums'],
   },
   hint: { color: '#6b7686', fontSize: 13, lineHeight: 19, marginTop: 8, alignSelf: 'flex-start' },
   note: { color: '#ffb454', fontSize: 14, lineHeight: 20, marginTop: 10, alignSelf: 'flex-start' },

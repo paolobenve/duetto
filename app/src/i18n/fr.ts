@@ -367,7 +367,7 @@ export const fr: Dictionary = {
     calledTitle: 'Si quelqu’un veut te donner un code',
     calledHint: 'Celui qui te fait entrer crée le code d’appairage sur son téléphone et te le dicte. Il ne faut rien d’autre.',
     called: 'Je saisis son code',
-    invitedTitle: 'Tu as une invitation',
+    invitedTitle: 'Si quelqu’un t’a envoyé une invitation',
     invitationHint: 'C’est le propriétaire du serveur qui la fait, pour qui doit ouvrir ses propres liaisons. Elle sert une seule fois.',
     invitationWrong: 'Cette invitation ne marche pas : fausse, déjà utilisée ou expirée.',
     ownKeyHint: 'Si le serveur est à toi et que ce téléphone a été réinstallé, la clé du serveur te ramène à la maison.',

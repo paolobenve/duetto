@@ -380,7 +380,7 @@ export const en = {
     calledTitle: 'If somebody wants to give you a code',
     calledHint: 'Whoever lets you in creates the pairing code on their phone and reads it to you. Nothing else is needed.',
     called: 'I will type their code',
-    invitedTitle: 'You have an invitation',
+    invitedTitle: 'If somebody has sent you an invitation',
     invitationHint: 'Made by the owner of the server, for connections of your own here. It is used once.',
     invitationWrong: 'That invitation does not work: wrong, already used, or expired.',
     ownKeyHint: 'If the server is yours and this phone has been reinstalled, the server\'s key brings you home.',

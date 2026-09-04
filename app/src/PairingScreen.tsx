@@ -33,6 +33,8 @@ type Props = {
    * open it - so the button is not there; only the owner may invite.
    */
   role?: ServerRole;
+  /** a code typed at the welcome: the pairing starts with it, at once */
+  joinWith?: string;
 };
 
 type Step = 'choose' | 'preparing' | 'create' | 'join' | 'exchanging' | 'error'
@@ -50,7 +52,9 @@ const TIMEOUT_MS = 90_000;
  */
 const RETRY_WAIT_S = 20;
 
-export default function PairingScreen({ cfg, onPaired, onBack, role = 'unknown' }: Props) {
+export default function PairingScreen({
+  cfg, onPaired, onBack, role = 'unknown', joinWith,
+}: Props) {
   const [step, setStep] = useState<Step>('choose');
   const [code, setCode] = useState('');
   const [typed, setTyped] = useState('');
@@ -207,6 +211,15 @@ export default function PairingScreen({ cfg, onPaired, onBack, role = 'unknown' 
     if (!isCodeComplete(typed)) return;
     startExchange(typed, 'B');
   }, [typed, startExchange]);
+
+  // The eight digits were typed at the welcome: nothing to press here.
+  const startedWith = useRef('');
+  useEffect(() => {
+    if (!joinWith || !isCodeComplete(joinWith) || startedWith.current === joinWith) return;
+    startedWith.current = joinWith;
+    setTyped(joinWith);
+    startExchange(joinWith, 'B');
+  }, [joinWith, startExchange]);
 
   const reset = useCallback(() => {
     cleanup();
