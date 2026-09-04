@@ -6,7 +6,9 @@ lives in the commit messages; here there is only what one notices while using it
 The first two numbers are raised by hand, in `app/version.json`, when what the app *is*
 really changes. The last one moves at every build: that way every APK has a name of its
 own, and asking "which version have you got" is enough to know what is running. There is
-an entry here only for the versions where something is noticeable.
+an entry here only for the versions where something is noticeable. Between one release and
+the next the builds read `0.9.7-pre`: the version they are on their way to, not yet the
+version itself; the `-pre` goes for the build that is released.
 
 What the app itself shows under "What is new" is another thing: a short summary per
 version, in the app's five languages, with nothing of what is underneath - it lives in

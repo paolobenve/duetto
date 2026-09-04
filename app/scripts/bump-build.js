@@ -34,7 +34,12 @@ const appDir = path.join(__dirname, '..');
  * beside the version in the settings, and why reporting a problem means
  * saying it too.
  */
-const { major, minor, patch } = JSON.parse(
+// `pre` marks a build made on the way to the version named, and not
+// yet the version itself: it reads "0.9.7-pre" wherever the version is
+// shown, the way Zed does it, and the flag goes to false for the build
+// that is released. The bare number - what the two phones compare -
+// stays the same either way.
+const { major, minor, patch, pre } = JSON.parse(
   fs.readFileSync(path.join(appDir, 'version.json'), 'utf8'),
 );
 const counterFile = path.join(appDir, 'build-number.json');
@@ -50,6 +55,7 @@ n += 1;
 fs.writeFileSync(counterFile, JSON.stringify({ build: n }, null, 2) + '\n');
 
 const VERSION = `${major}.${minor}.${patch}`;
+const SHOWN = pre ? `${VERSION}-pre` : VERSION;
 
 const now = new Date();
 const stamp = `${String(now.getDate()).padStart(2, '0')}/` +
@@ -75,9 +81,9 @@ export const VERSION = '${VERSION}';
 export const BUILD = ${n};
 export const BUILT_AT = '${stamp}';
 /** What is shown in the app. */
-export const VERSION_LABEL = '${VERSION}';
+export const VERSION_LABEL = '${SHOWN}';
 /** For the settings: it tells two APKs of the same version apart. */
-export const VERSION_FULL = '${VERSION} · build ${n} · ${stamp}';
+export const VERSION_FULL = '${SHOWN} · build ${n} · ${stamp}';
 `);
 
 /**
@@ -103,10 +109,10 @@ if (fs.existsSync(gradle)) {
   const before = fs.readFileSync(gradle, 'utf8');
   const after = before
     .replace(/versionCode\s+\d+/, `versionCode ${n}`)
-    .replace(/versionName\s+"[^"]*"/, `versionName "${VERSION}"`);
+    .replace(/versionName\s+"[^"]*"/, `versionName "${SHOWN}"`);
   if (after !== before) {
     fs.writeFileSync(gradle, after);
-    console.log(`android: versionName ${VERSION}, versionCode ${n}`);
+    console.log(`android: versionName ${SHOWN}, versionCode ${n}`);
   }
 }
 
