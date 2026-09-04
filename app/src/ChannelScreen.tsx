@@ -893,7 +893,13 @@ export default function ChannelScreen(props: Props) {
                   <>
                     {/* One text, the items joined by a dot: as separate
                         texts the row's gap added air around every dot. */}
-                    <Text style={styles.cardVolume}>
+                    <Text
+                      style={[styles.cardVolume, styles.cardVolumeLine]}
+                      numberOfLines={1}
+                      // One line, shrunk rather than cut: with the
+                      // battery beside the two volumes it may not fit.
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.7}>
                       {[
                         battery
                           ? t(battery.charging ? 'channel.batteryCharging' : 'channel.battery',
@@ -2048,6 +2054,7 @@ const styles = StyleSheet.create({
   cardMark: { marginTop: 12 },
   cardMarkRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   cardVolume: { color: '#7d8794', fontSize: 13 },
+  cardVolumeLine: { flexShrink: 1 },
 
   miniCard: { alignItems: 'center', paddingHorizontal: 10 },
   miniFace: {
