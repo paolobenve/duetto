@@ -278,7 +278,11 @@ type Props = {
     audio: boolean; video: boolean; aspect?: number; output?: string;
     /** how loud they are hearing US: 1 = as we send it */
     volume?: number;
+    /** in another call on their phone */
+    busy?: boolean;
   };
+  /** in another call on THIS phone: Duetto is silent until it ends */
+  onCall?: boolean;
   /** the other person's video track really arriving */
   remoteHasVideo: boolean;
   /** changes at every restart of the remote video, to rebuild the view */
@@ -336,7 +340,7 @@ export default function ChannelScreen(props: Props) {
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes,
     onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, leaving,
-    onAlarm, onZoom, onOpenSettings,
+    onAlarm, onZoom, onOpenSettings, onCall,
   } = props;
 
   // In Picture-in-Picture the window is tiny: no controls. The width
@@ -915,6 +919,8 @@ export default function ChannelScreen(props: Props) {
             peerName={peerName}
             peerAvatar={peerAvatar}
             peerAudio={peerState.audio}
+            peerBusy={peerState.busy === true}
+            onCall={onCall}
           />
         )}
       />
@@ -1493,6 +1499,10 @@ function PresenceCard(props: {
   peerName: string;
   peerAvatar: Avatar;
   peerAudio: boolean;
+  /** in another call on their phone: nothing is heard either way */
+  peerBusy?: boolean;
+  /** in another call on THIS phone: Duetto is silent until it ends */
+  onCall?: boolean;
   peerPresent: boolean;
   peerDetached: boolean;
   /** waiting because the phone closed the app on them, not by choice */
@@ -1503,7 +1513,7 @@ function PresenceCard(props: {
   connectionName?: string;
 }) {
   const {
-    status, linked, connectionState, peerName, peerAvatar, peerAudio, peerPresent,
+    status, linked, connectionState, peerName, peerAvatar, peerAudio, peerBusy, onCall, peerPresent,
     peerDetached, peerTornDown, peerMark, connectionName,
   } = props;
 
@@ -1583,11 +1593,15 @@ function PresenceCard(props: {
       {linked ? <View style={styles.cardMark}>{peerMark}</View> : null}
       <Text style={styles.cardSub}>
         {linked
-          ? (peerAudio ? t('channel.audioLinkedNoVideo') : t('channel.micMuted'))
+          ? peerBusy
+            ? t('channel.peerOnCall', { who: peerName || t('channel.theOther') })
+            : (peerAudio ? t('channel.audioLinkedNoVideo') : t('channel.micMuted'))
           : connectionState === 'failed'
             ? t('channel.directFailed')
             : t('channel.establishing')}
       </Text>
+      {/* Our own call: said here, where the silence is felt. */}
+      {onCall ? <Text style={styles.cardOnCall}>{t('channel.onPhoneCall')}</Text> : null}
       {/* The raw state helps to see where it stopped. */}
       {linked ? null : (
         <Text style={styles.cardTiny}>{t('channel.state', { state: connectionState })}</Text>
@@ -1972,6 +1986,7 @@ const styles = StyleSheet.create({
   avatarGhost: { fontSize: 54, marginBottom: 16 },
   cardTitle: { color: '#e6ebf1', fontSize: 21, fontWeight: '700', textAlign: 'center' },
   cardSub: { color: '#8892a0', fontSize: 15, textAlign: 'center', marginTop: 10, lineHeight: 22 },
+  cardOnCall: { color: '#ffb454', fontSize: 14, marginTop: 6, textAlign: 'center' },
   bold: { color: '#c9d2de', fontWeight: '700' },
   // Like VideoStage's notice: a pill in the middle, not a band, so
   // that as much of the picture as possible stays visible under it.

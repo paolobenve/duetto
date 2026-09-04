@@ -59,7 +59,9 @@ export type SignalMessage =
   // other the pieces they measure at home, and both do the sum.
   | { kind: 'state'; audio: boolean; video: boolean; aspect?: number; watching?: boolean;
       hwVp9?: boolean; output?: string; version?: string; build?: number; camera?: string;
-      volume?: number; sendDelay?: number; recvDelay?: number }
+      volume?: number; sendDelay?: number; recvDelay?: number;
+      /** in another call on the phone: silent both ways until it ends */
+      busy?: boolean }
   // "I did not leave: the phone closed the window on me."
   //
   // Sent by the headless presence when it takes the place of an app

@@ -9,7 +9,7 @@
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  StatusBar, Platform, PermissionsAndroid, Alert, View, AppState,
+  StatusBar, Platform, PermissionsAndroid, Alert, View, AppState, DeviceEventEmitter,
   ActivityIndicator, StyleSheet, BackHandler, Dimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -317,6 +317,36 @@ export default function App() {
   }, []);
 
   const [inChannel, setInChannel] = useState(false);
+  /**
+   * Whether the phone is in another call.
+   *
+   * Android takes the audio away from us for a telephone call or a
+   * WhatsApp one and says so - the library passed the word on, and
+   * nobody was listening: the other person's voice went on playing
+   * over the call, and the microphone went on sending it. Now the
+   * session is hushed both ways for as long as the call lasts, and
+   * lowered for the lighter case, a sound of the phone's own that asks
+   * only for room.
+   */
+  const [onCall, setOnCall] = useState(false);
+  useEffect(() => {
+    if (!inChannel) { setOnCall(false); return; }
+    const sub = DeviceEventEmitter.addListener('onAudioFocusChange', (data: any) => {
+      const what = String(data?.eventText || '');
+      const lost = what === 'AUDIOFOCUS_LOSS' || what === 'AUDIOFOCUS_LOSS_TRANSIENT';
+      const duck = what === 'AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK';
+      const sess = sessionRef.current;
+      sess?.hush(lost);
+      sess?.duck(duck);
+      setOnCall(lost);
+      Journal.mark(`audio-focus:${lost ? 'lost' : duck ? 'duck' : 'back'}`).catch(() => {});
+    });
+    return () => {
+      sub.remove();
+      sessionRef.current?.hush(false);
+      sessionRef.current?.duck(false);
+    };
+  }, [inChannel]);
   /** where to go back to when the system-settings screen is closed */
   const [setupFrom, setSetupFrom] = useState<'start' | 'settings'>('start');
 
@@ -444,6 +474,8 @@ export default function App() {
   const [frontCamera, setFrontCamera] = useState(true);
   const [peerState, setPeerState] = useState<{
     audio: boolean; video: boolean; aspect?: number;
+    /** in another call on their phone: silent both ways until it ends */
+    busy?: boolean;
     /** where the sound comes out over there: they say so */
     output?: string;
     /** which Duetto they have; missing if older than this field */
@@ -737,7 +769,7 @@ export default function App() {
    * thing.
    */
   const peerStateRef = useRef<{
-    audio?: boolean; video?: boolean; camera?: string; output?: string;
+    audio?: boolean; video?: boolean; camera?: string; output?: string; busy?: boolean;
   }>({});
 
   /**
@@ -2583,8 +2615,12 @@ export default function App() {
           if (st.output && before.output !== st.output) {
             Journal.mark(`peer-audio-output:${st.output}`).catch(() => {});
           }
+          if ((before.busy === true) !== (st.busy === true)) {
+            Journal.mark(`peer-busy:${st.busy ? 'on' : 'off'}`).catch(() => {});
+          }
           peerStateRef.current = {
             audio: st.audio, video: st.video, camera: st.camera, output: st.output,
+            busy: st.busy,
           };
           // If they send us their state they are back, whatever the
           // countdown was saying: without stopping it, a moment later
@@ -3504,6 +3540,7 @@ export default function App() {
             .catch(() => {});
         }}
         onOpenSettings={() => setScreen('settings')}
+        onCall={onCall}
       />
     </View>
   );

@@ -62,6 +62,8 @@ export type ChannelEvents = {
     camera?: string;
     /** how loudly they are listening to US: 1 = as we send it */
     volume?: number;
+    /** in another call on the phone */
+    busy?: boolean;
   }) => void;
   /**
    * Whether we are receiving a video track.
@@ -304,6 +306,19 @@ export class ChannelSession {
    * person there is no track yet, but there is a choice.
    */
   private audioDesired = true;
+  /**
+   * Silent both ways, because the phone is in another call.
+   *
+   * A telephone call, a WhatsApp call: Android takes the audio away
+   * from us and says so, and going on as if nothing had happened means
+   * the other person hears your call and you hear them over it. The
+   * microphone goes off and their voice to zero, without touching what
+   * you chose - Mute stays as it was - and both come back when the call
+   * ends. `ducked` is the lighter case: a sound of the phone's own that
+   * asks only for room, and gets their voice lowered for a moment.
+   */
+  private hushed = false;
+  private ducked = false;
 
   /**
    * Where the sound comes out on this side: speaker, earpiece,
@@ -391,7 +406,7 @@ export class ChannelSession {
     // waiting, and that choice has to hold for the track that did not
     // exist yet.
     const track = stream.getAudioTracks()[0];
-    if (track) track.enabled = this.audioDesired;
+    if (track) track.enabled = this.audioDesired && !this.hushed;
     this.localStream = stream;
     this.events.onLocalStream?.(stream);
   }
@@ -785,6 +800,7 @@ export class ChannelSession {
         recvDelay: msg.recvDelay,
         camera: msg.camera,
         volume: msg.volume,
+        busy: msg.busy === true,
       });
       this.setPeerWatching(msg.watching !== false);
       // What the other side declares goes into the judgement on
@@ -1577,9 +1593,30 @@ export class ChannelSession {
     // work anyway and the choice has to hold for when it is.
     this.audioDesired = !this.audioDesired;
     const track = this.localStream?.getAudioTracks()[0];
-    if (track) track.enabled = this.audioDesired;
+    if (track) track.enabled = this.audioDesired && !this.hushed;
     this.broadcastState();
     return this.audioDesired;
+  }
+
+  /** Silent both ways while the phone is in another call, and back after. */
+  hush(on: boolean) {
+    if (on === this.hushed) return;
+    this.hushed = on;
+    const track = this.localStream?.getAudioTracks()[0];
+    if (track) track.enabled = this.audioDesired && !this.hushed;
+    this.applyGain();
+    this.broadcastState();
+  }
+
+  /** Their voice lowered while a sound of the phone's own asks for room. */
+  duck(on: boolean) {
+    if (on === this.ducked) return;
+    this.ducked = on;
+    this.applyGain();
+  }
+
+  isHushed(): boolean {
+    return this.hushed;
   }
 
   /** Switches the camera on: puts the track into the open channel. */
@@ -1986,6 +2023,7 @@ export class ChannelSession {
       aspect: this.getLocalVideoAspect(),
       watching: this.localWatching,
       hwVp9: this.localVp9,
+      busy: this.hushed,
     });
   }
 
@@ -2024,9 +2062,10 @@ export class ChannelSession {
 
   private applyGain() {
     const tracks = this.remoteStream?.getAudioTracks?.() ?? [];
+    const gain = this.hushed ? 0 : this.ducked ? this.peerGain * 0.25 : this.peerGain;
     for (const t of tracks) {
       try {
-        (t as any)._setVolume?.(this.peerGain);
+        (t as any)._setVolume?.(gain);
       } catch { /* an unadjusted voice is not worth an error */ }
     }
   }

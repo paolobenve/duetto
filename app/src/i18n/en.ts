@@ -175,6 +175,8 @@ export const en = {
     untilBackNoCall: 'Until they are back, the call cannot reach them.',
     peerInChannel: '{who} is in the channel',
     audioLinkedNoVideo: 'Audio connected · video off',
+    onPhoneCall: 'A call on the phone: Duetto is silent until it ends.',
+    peerOnCall: '{who} is in another call',
     micMuted: 'Their microphone is muted',
     directFailed: 'The direct link failed.\nWithout a TURN server some networks prevent it.',
     // Not "the direct link": while the link is being rebuilt nobody

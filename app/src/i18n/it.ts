@@ -163,6 +163,8 @@ export const it: Dictionary = {
     untilBackNoCall: 'Finché non torna, l’avviso non può raggiungerlo.',
     peerInChannel: '{who} è nel canale',
     audioLinkedNoVideo: 'Audio collegato · video non attivo',
+    onPhoneCall: 'Chiamata in corso sul telefono: Duetto tace finché non finisce.',
+    peerOnCall: '{who} è in un’altra chiamata',
     micMuted: 'Ha il microfono muto',
     directFailed: 'Collegamento diretto non riuscito.\nSenza un server TURN certe reti lo impediscono.',
     establishing: 'Sto stabilendo il collegamento…',

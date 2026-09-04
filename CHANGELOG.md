@@ -12,6 +12,25 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
+## 0.9.4 build 212
+
+**During a call on the phone, Duetto is silent.** A telephone call, a WhatsApp call:
+Android takes the audio away from the app and says so — and nobody was listening: the
+other person's voice went on playing over the call, and the microphone went on sending the
+call to them. Now the session is hushed both ways for as long as the call lasts, without
+touching what you chose (Mute stays as it was), the screen says «A call on the phone:
+Duetto is silent until it ends», and on the other side «… is in another call» instead of an
+unexplained silence. When the call ends everything comes back. A sound of the phone's own
+that asks only for room — a notification, the navigator — lowers their voice for a moment
+and touches nothing else.
+
+**The settings, the welcome and the list, said better** — builds 199 to 211: the code typed
+at the welcome and the pairing started with it; whoever may open connections opens on the
+code itself; a refusal from the server tells the phone what it is now; the invitation's row
+names the person and says what to give them, with a copy button and a confirmation before
+taking anything away; the dash typed by itself; and the dead rooms of broken pairs told to
+the server, which drops them.
+
 ## 0.9.4 build 198
 
 **The list calls your phone by its name, and your pairs by theirs.** "On the POCO
