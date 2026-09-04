@@ -2258,6 +2258,9 @@ export default function App() {
               // somebody with the wrong key, and an invitation that did
               // not work is not a missing one.
               if (reason === 'stranger') {
+                // And the word is kept true: the buttons hang on it.
+                setCfg((prev) => (prev && prev.serverRole !== 'stranger'
+                  ? saveCfg({ ...prev, serverRole: 'stranger' }) : prev));
                 Alert.alert(t('errors.stranger'), t('errors.strangerBody'));
               } else if (reason === 'bad-invite') {
                 Alert.alert(t('errors.badInvite'), t('errors.badInviteBody'));
@@ -3366,6 +3369,14 @@ export default function App() {
           cfg={cfg}
           role={cfg.serverRole}
           joinWith={pairingCode}
+          onRefused={(reason) => {
+            // Not what we thought we were here: the welcome knocks
+            // again and finds out what we are now.
+            Journal.mark(`refused:${reason}`).catch(() => { /* noop */ });
+            setCfg((prev) => (prev ? saveCfg({ ...prev, serverRole: 'stranger' }) : prev));
+            setPairingCode('');
+            setScreen('welcome');
+          }}
           onPaired={onPaired}
           // Before the first pairing, "change server" means the
           // welcome: there is nothing in the settings yet worth going

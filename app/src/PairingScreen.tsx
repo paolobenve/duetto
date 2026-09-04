@@ -35,6 +35,12 @@ type Props = {
   role?: ServerRole;
   /** a code typed at the welcome: the pairing starts with it, at once */
   joinWith?: string;
+  /**
+   * The server turned this phone away: it is not what the phone thought
+   * it was here - taken off the list, say - and whoever holds the word
+   * has to hear it, or the buttons stay wrong for good.
+   */
+  onRefused?: (reason: string) => void;
 };
 
 type Step = 'choose' | 'preparing' | 'create' | 'join' | 'exchanging' | 'error'
@@ -53,7 +59,7 @@ const TIMEOUT_MS = 90_000;
 const RETRY_WAIT_S = 20;
 
 export default function PairingScreen({
-  cfg, onPaired, onBack, role = 'unknown', joinWith,
+  cfg, onPaired, onBack, role = 'unknown', joinWith, onRefused,
 }: Props) {
   const [step, setStep] = useState<Step>('choose');
   const [code, setCode] = useState('');
@@ -185,9 +191,13 @@ export default function PairingScreen({
           }
         },
 
-        onError: (err) => {
+        onError: (err, reason) => {
           if (err === 'room-full') {
             fail(t('pairing.codeInUse'));
+          } else if (err === 'not-allowed') {
+            cleanup();
+            doneRef.current = true;
+            onRefused?.(reason || 'stranger');
           }
         },
       },
