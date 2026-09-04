@@ -110,11 +110,12 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
       setStep(from);
       return;
     }
-    if (a.role !== 'stranger') {
+    if (a.role === 'owner' || a.role === 'member' || a.role === 'unknown') {
       finish(a);
       return;
     }
-    // A stranger: what is missing depends on the house.
+    // A stranger, or somebody's guest with no pair to go to: what is
+    // missing depends on the house.
     if (!a.hasOwner && a.needsKey) { setStep('key'); return; }
     if (a.hasOwner) { setStep('stranger'); return; }
     // Free, no key wanted, and still not taken: the server could not

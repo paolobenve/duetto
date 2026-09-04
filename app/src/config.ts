@@ -637,15 +637,16 @@ export function isServerConfigured(cfg: DuoConfig): boolean {
 }
 
 /**
- * Whether the server has told this phone what it is to it.
+ * Whether this phone may open connections of its own on its server.
  *
- * Without that word the pairing screen cannot know which buttons can
- * work, and a phone that never knocked - one whose settings Android put
- * back at a reinstall, say - would be offered "Create the code" on a
- * server that is somebody else's. Not known: the welcome first.
+ * Only then does the pairing screen have something to do by itself:
+ * create the code. Anybody else with no pair yet - a guest whose pair
+ * was broken, a stranger, a phone that never knocked because Android
+ * put its settings back at a reinstall - has two ways in, a code or an
+ * invitation, and that is the welcome's screen, not the pairing's.
  */
-export function roleKnown(cfg: DuoConfig): boolean {
-  return cfg.serverRole === 'owner' || cfg.serverRole === 'member' || cfg.serverRole === 'guest';
+export function opensHere(cfg: DuoConfig): boolean {
+  return cfg.serverRole === 'owner' || cfg.serverRole === 'member';
 }
 
 /** True when a pair already exists: straight into the channel. */
