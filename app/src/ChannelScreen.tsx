@@ -1252,7 +1252,7 @@ export default function ChannelScreen(props: Props) {
           // the buttons moved.
           <View style={[
             styles.statsBox,
-            { height: statsLineCount(videoStats, localHasVideo || remoteHasVideo) * STATS_LINE_H },
+            { height: statsLineCount(videoStats, localHasVideo || remoteHasVideo, !!battery) * STATS_LINE_H },
           ]}>
             <StatsLine
               stats={videoStats}
@@ -1697,11 +1697,11 @@ function PresenceCard(props: {
  * type until the one number worth reading was the smallest thing on
  * the screen.
  */
-export function statsLineCount(stats: VideoStats, hasVideo = false): number {
+export function statsLineCount(stats: VideoStats, hasVideo = false, withBattery = false): number {
   let n = 1;                                    // the resolution: always there
   if (stats.path || stats.latency != null || stats.recvDelay != null
       || (hasVideo && stats.audioKbps != null)) n += 1;
-  if (hasVideo && stats.recvDelay != null) n += 1;
+  if (hasVideo && (stats.recvDelay != null || withBattery)) n += 1;
   return n;
 }
 
@@ -1859,11 +1859,7 @@ function StatsLine({
         {!hasVideo && voiceSaid ? ` · ${voiceSaid}` : ''}
         {up ? ` · \u2191${up}` : ''}
         {down ? ` · \u2193${down}` : ''}
-        {/* With the video on the card is gone, and the battery with
-            it: it comes here, at the end of the first line. */}
-        {hasVideo && battery
-          ? ` · ${t(battery.charging ? 'channel.batteryCharging' : 'channel.battery', { pct: battery.percent })}`
-          : ''}
+
       </Text>
       {path || stats.latency != null || (hasVideo ? voiceSaid : waitSaid) ? (
         // Like the line above: with the latency at its end it went off
@@ -1886,9 +1882,16 @@ function StatsLine({
       {/* With a picture flowing, the waits get a line of their own:
           crowded in with the rest, the type shrank until the one
           number worth reading was the smallest thing on the screen. */}
-      {hasVideo && waitSaid ? (
+      {/* The third line: the waits, and - with the video on, the card
+          gone and the battery with it - the battery beside them. */}
+      {hasVideo && (waitSaid || battery) ? (
         <Text style={styles.stats} numberOfLines={1}>
-          {waitSaid}
+          {[
+            waitSaid,
+            battery
+              ? t(battery.charging ? 'channel.batteryCharging' : 'channel.battery', { pct: battery.percent })
+              : '',
+          ].filter(Boolean).join(' · ')}
         </Text>
       ) : null}
     </>
