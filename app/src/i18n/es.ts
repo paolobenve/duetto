@@ -120,10 +120,11 @@ export const es: Dictionary = {
 
   channel: {
     screenCovered: 'Pantalla cubierta: botones bloqueados. Toca tres veces para insistir.',
-    battery: 'tu batería {pct}% sin cargar',
-    batteryCharging: 'tu batería {pct}% cargando',
-    batteryTheirs: 'su batería {pct}% sin cargar',
-    batteryTheirsCharging: 'su batería {pct}% cargando',
+    charging: 'cargando',
+    notCharging: 'sin cargar',
+    batteryBoth: 'batería: tú {mine} · el otro {theirs}',
+    batteryMine: 'batería: tú {mine}',
+    batteryTheirsOnly: 'batería: el otro {theirs}',
     pairBrokenTitle: '{who} deshizo la pareja',
     pairBrokenAsk: '{who} deshizo la pareja por su lado: ya no puede funcionar. ¿La quitas también aquí?',
     pairBrokenKeep: 'Mantenerla',

@@ -943,17 +943,8 @@ export default function ChannelScreen(props: Props) {
                   {showStats ? ownOutputMark(17, '#0b0e14') : null}
                 </View>
                 {showStats && (battery || peerState.battery) ? (
-                  <Text style={styles.cardVolume} numberOfLines={1}>
-                    {[
-                      battery
-                        ? t(battery.charging ? 'channel.batteryCharging' : 'channel.battery',
-                          { pct: battery.percent })
-                        : '',
-                      peerState.battery
-                        ? t(peerState.battery.charging ? 'channel.batteryTheirsCharging' : 'channel.batteryTheirs',
-                          { pct: peerState.battery.percent })
-                        : '',
-                    ].filter(Boolean).join(' · ')}
+                  <Text style={styles.cardVolume} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+                    {batteryLine(battery, peerState.battery)}
                   </Text>
                 ) : null}
               </View>
@@ -1710,6 +1701,21 @@ export function statsLineCount(stats: VideoStats, hasVideo = false, withBattery 
 /** One line of the box is this tall; the height comes from the count. */
 export const STATS_LINE_H = 18;
 
+/**
+ * "battery: you 57% charging · the other 56% not charging" - one short
+ * line, mine first, theirs after when they say.
+ */
+function batteryLine(
+  mine: { percent: number; charging: boolean } | null | undefined,
+  theirs: { percent: number; charging: boolean } | null | undefined,
+): string {
+  const part = (b: { percent: number; charging: boolean }) =>
+    `${b.percent}% ${t(b.charging ? 'channel.charging' : 'channel.notCharging')}`;
+  if (mine && theirs) return t('channel.batteryBoth', { mine: part(mine), theirs: part(theirs) });
+  if (mine) return t('channel.batteryMine', { mine: part(mine) });
+  return theirs ? t('channel.batteryTheirsOnly', { theirs: part(theirs) }) : '';
+}
+
 function StatsLine({
   stats, quality, showUp, showDown, peerSend, peerRecv, totalOnly, battery, peerBattery,
 }: {
@@ -1889,15 +1895,10 @@ function StatsLine({
       {/* The third line: the waits, and - with the video on, the card
           gone and the battery with it - the battery beside them. */}
       {hasVideo && (waitSaid || battery || peerBattery) ? (
-        <Text style={styles.stats} numberOfLines={1}>
+        <Text style={styles.stats} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
           {[
             waitSaid,
-            battery
-              ? t(battery.charging ? 'channel.batteryCharging' : 'channel.battery', { pct: battery.percent })
-              : '',
-            peerBattery
-              ? t(peerBattery.charging ? 'channel.batteryTheirsCharging' : 'channel.batteryTheirs', { pct: peerBattery.percent })
-              : '',
+            battery || peerBattery ? batteryLine(battery, peerBattery) : '',
           ].filter(Boolean).join(' · ')}
         </Text>
       ) : null}
