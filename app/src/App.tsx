@@ -23,7 +23,7 @@ import {
 import { attachWatchdog, Watchdog } from './watchdog';
 import {
   DuoConfig, PairInfo, loadConfig, saveConfig,
-  isServerConfigured, isPaired, opensHere, VIDEO_PROFILES,
+  isServerConfigured, isPaired, displayServer, opensHere, VIDEO_PROFILES,
   addPair, switchToPair, forgetPair, markPairBroken, rememberPeerName,
   alignPairServer, renamePair, pairFileKey, pairName,
   storeSettingsInPair,
@@ -2323,9 +2323,11 @@ export default function App() {
           // and to the welcome, which knocks and finds out.
           onRemoved: () => {
             Journal.mark('removed-from-server').catch(() => { /* noop */ });
+            const server = displayServer(cfgRef.current?.serverUrl || '');
             setCfg((prev) => (prev ? saveCfg({ ...prev, serverRole: 'stranger' }) : prev));
             leaveChannelRef.current?.();
             setScreen('welcome');
+            Alert.alert(t('errors.removed'), t('errors.removedBody', { server }));
           },
           onPeople: (list, waiting) => {
             setPeople(list);
@@ -2760,7 +2762,11 @@ export default function App() {
         const on = sessionRef.current?.toggleAudio();
         if (on !== undefined) setAudioOn(on);
       }
-      if (before.video && still < RESUME_VIDEO_MS) {
+      // The camera's minute is for whoever left and came back: a live
+      // drawer - written at a touch, left behind by an app that was
+      // killed - says how the channel WAS, and the time since the last
+      // touch says nothing.
+      if (before.video && (before.live || still < RESUME_VIDEO_MS)) {
         Journal.mark(`resume-video:after ${Math.round(still / 1000)}s`)
           .catch(() => { /* noop */ });
         setTimeout(() => { turnVideoBackOnRef.current?.(); }, 300);
@@ -3281,8 +3287,11 @@ export default function App() {
     // else, and their first messages are not "changes" with respect to
     // the previous one.
     peerStateRef.current = {};
-    setVideoOn(false);
-    setAudioOn(true);
+    // Our own buttons say what OUR session is doing, which may have
+    // been put back already - the camera restored after an update
+    // showed a lit picture under a dark button.
+    setVideoOn(sessionRef.current?.isVideoEnabled() === true);
+    setAudioOn(sessionRef.current?.isAudioEnabled() ?? true);
     setLocalStream(null);
     setLocalAspect(undefined);
     setRemoteStream(null);
@@ -3410,6 +3419,7 @@ export default function App() {
         Journal.mark(`door-watch:${word}`).catch(() => { /* noop */ });
         setCfg((prev) => (prev ? saveCfg({ ...prev, serverRole: 'stranger' }) : prev));
         setScreen('welcome');
+        Alert.alert(t('errors.removed'), t('errors.removedBody', { server: displayServer(cfg.serverUrl) }));
       })
       : () => { /* nothing to watch */ };
     return () => { gone = true; stop(); };

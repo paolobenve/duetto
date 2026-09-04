@@ -12,6 +12,8 @@ import type { Dictionary } from './en';
 /** Le parole italiane. La struttura la detta `en`, che è il riferimento. */
 export const it: Dictionary = {
   errors: {
+    removed: 'Tolto dal server',
+    removedBody: 'Il proprietario di {server} ha tolto questo telefono dall’elenco: qui non puoi più aprire collegamenti tuoi, e le coppie fatte qui non funzionano più. Per tornare servirebbe un nuovo invito.',
     leaveFailed: 'Non sono riuscito a lasciare il server',
     leaveFailedBody: 'Il server non ha lasciato andare ({why}).',
     stranger: 'Questo server non conosce questo telefono',

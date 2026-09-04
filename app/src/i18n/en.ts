@@ -22,6 +22,8 @@
  */
 export const en = {
   errors: {
+    removed: 'Taken off the server',
+    removedBody: 'The owner of {server} has taken this phone off the list: you can no longer open connections of your own there, and the pairs made there no longer work. To come back you would need a new invitation.',
     leaveFailed: 'Could not leave the server',
     leaveFailedBody: 'The server did not let go ({why}).',
     stranger: 'This server does not know this phone',
