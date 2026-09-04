@@ -559,6 +559,8 @@ export default function App() {
   const enterChannelRef = useRef<(() => void) | null>(null);
   /** leaving, for whoever is born before the function that does it */
   const leaveChannelRef = useRef<(() => void) | null>(null);
+  /** and forgetting a pair, for the same reason */
+  const onForgetPairRef = useRef<((id: string) => void) | null>(null);
   /** attachPeer too: the watchdog's beat is born before it */
   const attachPeerRef = useRef<((force?: boolean) => void) | null>(null);
   /**
@@ -2317,6 +2319,19 @@ export default function App() {
             if (!id || !pair || pair.brokenByPeer) return;
             Journal.mark(`pair-broken:${pair.peerName || id.slice(0, 8)}`).catch(() => { /* noop */ });
             setCfg((prev) => (prev ? saveCfg(markPairBroken(prev, id)) : prev));
+            // Said out loud, with the choice: a line under the card was
+            // easy to miss, and a pair that cannot work is worth a
+            // decision.
+            const who = pairName(pair) || t('channel.theOther');
+            Alert.alert(
+              t('channel.pairBrokenTitle', { who }),
+              t('channel.pairBrokenAsk', { who }),
+              [
+                { text: t('channel.pairBrokenKeep'), style: 'cancel' },
+                { text: t('channel.pairBrokenRemove'), style: 'destructive',
+                  onPress: () => onForgetPairRef.current?.(id) },
+              ],
+            );
           },
           // Taken off the list by the owner: what this phone is here
           // has changed, and the buttons hang on it. Out of the channel
@@ -3472,6 +3487,7 @@ export default function App() {
       setScreen(isPaired(next) ? 'channel' : 'settings');
     }
   }, [cfg, resetPeerMemory]);
+  useEffect(() => { onForgetPairRef.current = (id) => { onForgetPair(id); }; }, [onForgetPair]);
 
   // --- what is drawn -------------------------------------------------------
   if (screen === 'loading' || !cfg) {

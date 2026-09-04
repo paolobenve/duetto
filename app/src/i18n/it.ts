@@ -115,6 +115,10 @@ export const it: Dictionary = {
   },
 
   channel: {
+    pairBrokenTitle: '{who} ha sciolto la coppia',
+    pairBrokenAsk: '{who} ha sciolto la coppia dalla sua parte: non può più funzionare. La togli anche qui?',
+    pairBrokenKeep: 'Tienila',
+    pairBrokenRemove: 'Togli anche qui',
     pairBrokenByPeer: '{who} ha sciolto la coppia dalla sua parte: toglila dalle impostazioni, o rifate l’accoppiamento.',
     connectionLost: 'Connessione persa, mi sto ricollegando…',
     linkLost: 'Collegamento perso, sto ricollegando…',

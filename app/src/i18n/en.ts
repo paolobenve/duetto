@@ -127,6 +127,10 @@ export const en = {
   },
 
   channel: {
+    pairBrokenTitle: '{who} broke the pair',
+    pairBrokenAsk: '{who} broke the pair from their side: it cannot work any more. Take it away here too?',
+    pairBrokenKeep: 'Keep it',
+    pairBrokenRemove: 'Take it away',
     pairBrokenByPeer: '{who} broke the pair from their side: take it away in the settings, or pair again.',
     connectionLost: 'Connection lost, reconnecting…',
     linkLost: 'Link lost, reconnecting…',

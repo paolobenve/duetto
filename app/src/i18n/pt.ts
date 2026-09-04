@@ -116,6 +116,10 @@ export const pt: Dictionary = {
   },
 
   channel: {
+    pairBrokenTitle: '{who} desfez o par',
+    pairBrokenAsk: '{who} desfez o par do lado dele: não pode mais funcionar. Tirar aqui também?',
+    pairBrokenKeep: 'Manter',
+    pairBrokenRemove: 'Tirar aqui também',
     pairBrokenByPeer: '{who} desfez o par do lado dele: tire-o nos ajustes, ou façam o pareamento de novo.',
     connectionLost: 'Conexão perdida, reconectando…',
     linkLost: 'Ligação perdida, reconectando…',
