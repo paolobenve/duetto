@@ -178,9 +178,13 @@ const isRole = (v: any): v is ServerRole =>
  * dash is put in after four letters so that what one sees is what was
  * handed over.
  */
-export function formatInvitation(raw: string): string {
+export function formatInvitation(raw: string, before = ''): string {
   const clean = (raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
-  return clean.length > 4 ? `${clean.slice(0, 4)}-${clean.slice(4)}` : clean;
+  if (clean.length > 4) return `${clean.slice(0, 4)}-${clean.slice(4)}`;
+  // The dash comes with the fourth letter, while typing forward; while
+  // deleting it goes with the fifth, or the fourth could never go.
+  if (clean.length === 4 && raw.length > before.length) return `${clean}-`;
+  return clean;
 }
 
 /** What is this server to me? One knock, one word. */

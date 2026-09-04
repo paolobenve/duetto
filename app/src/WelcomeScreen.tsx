@@ -194,7 +194,7 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
           <Field
             label={t('settings.invitation')}
             value={invitation}
-            onChange={(v) => setInvitation(formatInvitation(v))}
+            onChange={(v) => setInvitation(formatInvitation(v, invitation))}
             placeholder={t('settings.invitationPlaceholder')}
             hint={t('welcome.invitationHint')}
           />
