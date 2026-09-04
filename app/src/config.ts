@@ -235,6 +235,8 @@ export type DuoConfig = {
   pairs: PairInfo[];
   /** the system settings have already been offered once */
   setupShown: boolean;
+  /** the settings tab last looked at: it is where one comes back to */
+  settingsTab?: 'links' | 'use';
   /** how much to spend on video: bandwidth and battery */
   videoQuality: VideoQuality;
   /**

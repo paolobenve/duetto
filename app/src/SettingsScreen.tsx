@@ -175,7 +175,12 @@ export default function SettingsScreen({
    * Which tab is open. Once paired, the one touched most often: how the
    * app behaves. Before that, there is nothing to set but the server.
    */
-  const [tab, setTab] = useState<Tab>(isPaired(initial) ? 'use' : 'links');
+  const [tab, setTabState] = useState<Tab>(
+    initial.settingsTab ?? (isPaired(initial) ? 'use' : 'links'),
+  );
+  // Remembered in the configuration: it holds through the session and
+  // through an update, which kills the app.
+  const setTab = (k: Tab) => { setTabState(k); onLive?.({ settingsTab: k }); };
   const set = (k: keyof DuoConfig) => (v: string) => setCfg({ ...cfg, [k]: v });
 
   const paired = isPaired(cfg);
