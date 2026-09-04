@@ -41,4 +41,4 @@ server/devices.json
 
 # Personal Claude Code commands: they point at conversation transcripts on
 # one machine, which are private and exist nowhere else.
-.claude/commands/
+.claude/
