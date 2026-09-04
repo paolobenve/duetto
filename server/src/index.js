@@ -526,6 +526,21 @@ wss.on('connection', (ws, req) => {
       return;
     }
 
+    // --- 0) The door, before coming in ------------------------------------
+    // A phone may show its card and ask what this server is to it,
+    // without joining any room: it is how the first screen learns what
+    // to ask for. And having shown it, an owner's phone may do the
+    // owner's business - invite, look at the list - with no room to
+    // join yet, which is exactly the case of a server just taken.
+    if (!ws.joined && msg.type === 'door') {
+      answerDoor(ws, msg);
+      return;
+    }
+    if (!ws.joined && ws.atDoor && isOwnersBusiness(msg.type)) {
+      ownersBusiness(ws, msg);
+      return;
+    }
+
     // --- 1) Handshake ---------------------------------------------------
     if (!ws.joined) {
       if (msg.type !== 'join') {
@@ -598,7 +613,10 @@ wss.on('connection', (ws, req) => {
         if (!who) {
           console.log(`[duetto] turned away: ${String(msg.pub || 'no key').slice(0, 12)}`
             + ` from ${ws.ip}`);
-          send(ws, { type: 'error', error: 'not-allowed' });
+          // The same "no" as always, with the reason beside it: an
+          // invitation that did not work is not a missing invitation,
+          // and the app can only say so if it is told.
+          send(ws, { type: 'error', error: 'not-allowed', reason: refusalReason(msg) });
           ws.close(4006, 'not-allowed');
           return;
         }
@@ -614,7 +632,7 @@ wss.on('connection', (ws, req) => {
         ws.invites = true;
         noteRoom(roomId, adopted);
       } else if (!keyIsRight(msg.key)) {
-        send(ws, { type: 'error', error: 'not-allowed' });
+        send(ws, { type: 'error', error: 'not-allowed', reason: 'bad-key' });
         ws.close(4006, 'not-allowed');
         return;
       } else {
@@ -822,38 +840,8 @@ wss.on('connection', (ws, req) => {
      * by an invitation is a guest: they can talk to whoever they like,
      * and hand out nothing.
      */
-    if (msg.type === 'invite' || msg.type === 'people' || msg.type === 'forget') {
-      if (!ws.invites) {
-        send(ws, { type: 'error', error: 'not-yours' });
-        return;
-      }
-      if (msg.type === 'invite') {
-        const name = String(msg.name || '').trim().slice(0, 32);
-        if (!name) { send(ws, { type: 'error', error: 'no-name' }); return; }
-        const made = addInvitation(name);
-        console.log(`[duetto] ${ws.who} invites ${name}`);
-        send(ws, { type: 'invited', name, code: made.code, days: made.days });
-        // And the list right after, without being asked: the invitation
-        // just made belongs in it, and one round trip is enough.
-      }
-      if (msg.type === 'forget') {
-        const name = String(msg.name || '').trim();
-        const gone = removePerson(name);
-        console.log(`[duetto] ${ws.who} takes ${name} off the list (${gone})`);
-      }
-      const { devices: list, invitations, rooms: theirRooms } = read();
-      send(ws, {
-        type: 'people',
-        people: list.map((d) => ({
-          name: d.name,
-          since: d.since,
-          rooms: theirRooms.filter((r) => r.owner === d.name).length,
-          brought: theirRooms.filter((r) => r.owner === d.name && r.guest).length,
-        })),
-        invitations: invitations
-          .filter((i) => Date.parse(i.expires) > Date.now())
-          .map((i) => ({ name: i.name, code: i.code, expires: i.expires })),
-      });
+    if (isOwnersBusiness(msg.type)) {
+      ownersBusiness(ws, msg);
       return;
     }
 
@@ -867,6 +855,144 @@ wss.on('connection', (ws, req) => {
   ws.on('close', () => leaveRoom(ws));
   ws.on('error', () => leaveRoom(ws));
 });
+
+function isOwnersBusiness(type) {
+  return type === 'invite' || type === 'people' || type === 'forget';
+}
+
+/**
+ * Inviting somebody, seeing who is in, taking somebody off: the
+ * owner's business, from the app.
+ *
+ * The one asking has already shown a card this server recognised - at
+ * the door, or on joining - and the server knows whether it is one of
+ * the owner's. So there is nothing new to prove, no page to expose, no
+ * secret in a URL: the authority is the same key that opened the door
+ * a moment ago. Somebody let in by an invitation is a guest: they can
+ * talk to whoever they like, and hand out nothing.
+ */
+function ownersBusiness(ws, msg) {
+  if (!ws.invites) {
+    send(ws, { type: 'error', error: 'not-yours' });
+    return;
+  }
+  if (msg.type === 'invite') {
+    const name = String(msg.name || '').trim().slice(0, 32);
+    if (!name) { send(ws, { type: 'error', error: 'no-name' }); return; }
+    const made = addInvitation(name);
+    console.log(`[duetto] ${ws.who} invites ${name}`);
+    send(ws, { type: 'invited', name, code: made.code, days: made.days });
+    // And the list right after, without being asked: the invitation
+    // just made belongs in it, and one round trip is enough.
+  }
+  if (msg.type === 'forget') {
+    const name = String(msg.name || '').trim();
+    const gone = removePerson(name);
+    console.log(`[duetto] ${ws.who} takes ${name} off the list (${gone})`);
+  }
+  const { devices: list, invitations, rooms: theirRooms } = read();
+  send(ws, {
+    type: 'people',
+    people: list.map((d) => ({
+      name: d.name,
+      since: d.since,
+      rooms: theirRooms.filter((r) => r.owner === d.name).length,
+      brought: theirRooms.filter((r) => r.owner === d.name && r.guest).length,
+    })),
+    invitations: invitations
+      .filter((i) => Date.parse(i.expires) > Date.now())
+      .map((i) => ({ name: i.name, code: i.code, expires: i.expires })),
+  });
+}
+
+/**
+ * Why a knock was turned away, for whoever is holding the phone.
+ *
+ * Three different "no"s used to be the same word, and the app could
+ * only say "the key does not fit" - to somebody who had written an
+ * invitation, or nothing at all.
+ */
+function refusalReason(msg) {
+  if (msg.invite) return 'bad-invite';
+  if (SERVER_KEY && String(msg.key || '') !== '') return 'bad-key';
+  return 'stranger';
+}
+
+/**
+ * What this server is to the phone at the door.
+ *
+ * The phone shows its card, signed, and says what it has - the key of
+ * the server, an invitation - and is told one word: `owner`, `member`,
+ * `guest` or `stranger`, with whether the house has an owner and
+ * whether it asks for a key. From that word alone the first screen
+ * knows what to ask for and what not to: nothing on a free server, the
+ * key where one is wanted, and for a stranger at an owned house the two
+ * ways in.
+ *
+ * It is not only a question. A free house is taken here, by the first
+ * card shown - with the key, if the operator set one - and an
+ * invitation carried here is spent here. A phone that comes home with
+ * the key after a reinstall is written down again as the owner. What
+ * the join does on its own remains, for apps that never knock first.
+ */
+function answerDoor(ws, msg) {
+  const pub = String(msg.pub || '');
+  const hasOwner = doorIsShut();
+  const needsKey = !!SERVER_KEY;
+  const reply = (rest) => send(ws, { type: 'door', hasOwner, needsKey, ...rest });
+
+  if (!pub || !signed(pub, msg.sig, ws.nonce)) {
+    reply({ role: 'stranger', error: 'bad-signature' });
+    return;
+  }
+  // Knocking counts like joining: keys and invitations are not to be
+  // guessed at the door any more than in the room.
+  if (tooManyJoins(ws.ip)) {
+    send(ws, { type: 'error', error: 'too-many-attempts' });
+    ws.close(4004, 'too-many-attempts');
+    return;
+  }
+
+  const known = whoIsThere(msg, ws.nonce);
+  if (known) {
+    ws.who = known.name;
+    ws.opens = known.opens === true;
+    ws.invites = known.invites === true;
+    ws.atDoor = true;
+    reply({ role: ws.invites ? 'owner' : 'member', name: known.name });
+    return;
+  }
+  // An invitation that whoIsThere did not spend is no invitation.
+  if (msg.invite) {
+    reply({ role: 'stranger', error: 'bad-invite' });
+    return;
+  }
+  const keySaid = String(msg.key || '') !== '';
+  if (needsKey && keySaid && !keyIsRight(msg.key)) {
+    reply({ role: 'stranger', error: 'bad-key' });
+    return;
+  }
+  // The house is taken by the first card - with the key, if one is
+  // wanted - and the key brings the owner home to a house already
+  // taken.
+  const mayAdopt = hasOwner ? (needsKey && keySaid) : (!needsKey || keySaid);
+  if (mayAdopt) {
+    const name = adopt(cleanName(msg.name) || 'the first phone', pub);
+    if (name) {
+      console.log(`[duetto] ${name} takes the server at the door: `
+        + `phone ${pub.slice(0, 12)}…`);
+      ws.who = name;
+      ws.opens = true;
+      ws.invites = true;
+      ws.atDoor = true;
+      reply({ role: 'owner', name, adopted: true });
+      return;
+    }
+  }
+  // Somebody's guest is known in their room alone, and only there.
+  const rooms = read().rooms.filter((r) => r.guest === pub).length;
+  reply({ role: rooms > 0 ? 'guest' : 'stranger' });
+}
 
 /** How often this phone is to be asked. */
 function heartbeatInterval(ws) {

@@ -24,7 +24,6 @@ import { peerAvatar } from './avatar';
 import { isRealName } from './presence';
 import { VERSION_FULL } from './version';
 import { Alerts } from 'duetto-platform';
-import { deviceKey } from './device';
 
 /**
  * The choices for the call's vibration.
@@ -195,21 +194,11 @@ export default function SettingsScreen({
    */
   const hasOwnSound = !!(cfg.alertSoundName || cfg.alertSoundUri);
 
-  /**
-   * The public half of this phone's key, for whoever runs a server.
-   *
-   * Read once when the screen opens: it is made at the first ask and
-   * then never changes.
-   */
+  /** the name of the person being invited, while it is typed */
   const [inviteName, setInviteName] = useState('');
   // The list is asked for when this screen opens: it lives on the
   // server, and it may have changed since the last look.
   useEffect(() => { if (canInvite) onAskPeople?.(); }, [canInvite]);
-
-  const [deviceCard, setDeviceCard] = useState('');
-  useEffect(() => {
-    deviceKey().then((k) => setDeviceCard(k.pub)).catch(() => { /* noop */ });
-  }, []);
 
   /** the connection being named, and the name in progress */
   const [naming, setNaming] = useState<PairInfo | null>(null);
@@ -290,19 +279,6 @@ export default function SettingsScreen({
           </Text>
         </View>
         )}
-
-        {/* The card of this phone: shown next to the address, because
-            it is the same conversation - who may come in. It is the
-            public half, so it can travel by any road: a message, a
-            piece of paper. Only the phone that made it can sign with
-            the other half. */}
-        {deviceCard ? (
-          <Copyable
-            label={t('settings.deviceCard')}
-            value={deviceCard}
-            hint={t('settings.deviceCardHint')}
-          />
-        ) : null}
 
         {/* The invitation, next to the card it goes with: one is what
             this phone is, the other is who said it could come in. Once

@@ -12,6 +12,36 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
+## 0.9.4 build 190
+
+**The first time, the app asks for the server and for nothing else.** It used to open on
+the settings, every field on show — this phone's card, the invitation, the server's key —
+and a first evening went on working out which of them mattered. None of them can be known
+in advance: it depends on what the server is to this phone, and the server is the one that
+knows. So now the phone knocks, and the answer decides the next step. A server nobody has
+taken is taken there and then, and the door shuts behind you. A server that wants a key
+asks for the key, and only that. A server with an owner who does not know this phone says
+so, and offers the two ways in: the pairing code of whoever is calling, which needs nothing
+else, or an invitation, for connections of one's own.
+
+**The pairing screen shows only what can work.** Somebody's guest cannot create a code —
+the room would have nobody to open it — and the button is not there; the owner has one more,
+«Invite somebody onto this server», which makes the invitation right there, with no room to
+join first. The card of this phone has gone from the settings: it is the app's business,
+not yours.
+
+**The server says why it said no.** "Does not know this phone", "the invitation does not
+work" and "wrong key" used to be one and the same word, and the app could only talk about a
+key to somebody who had written an invitation, or nothing at all.
+
+**A key or an invitation written after connecting now reaches the server.** They went in
+the first message, and the connection was not rebuilt for them: written one evening, they
+were used the next time the connection happened to be made, whenever that was.
+
+**The server's key is the way home.** A reinstalled phone is known by a new card, and until
+now the owner of their own server was locked out of it with no way in but a terminal. With
+the key, the phone is written down as the owner again.
+
 ## 0.9.4 build 189
 
 **A bluetooth earpiece is seen again.** From Android 12 an app needs a permission of its

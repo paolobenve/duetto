@@ -161,7 +161,8 @@ export type SignalingEvents = {
   onSignal?: (msg: SignalMessage) => void;
   onPair?: (msg: PairMessage) => void;
   onKnockResult?: (ok: boolean, error?: string) => void;
-  onError?: (code: string) => void;
+  /** @param reason with `not-allowed`: 'stranger', 'bad-invite' or 'bad-key' */
+  onError?: (code: string, reason?: string) => void;
 };
 
 /**
@@ -586,7 +587,8 @@ export class Signaling {
           this.pausedUntil = Date.now() + TOO_MANY_WAIT_MS;
           log('too many knocks: waiting a minute before trying again');
         }
-        this.events.onError?.(msg.error || 'unknown');
+        this.events.onError?.(msg.error || 'unknown',
+          typeof msg.reason === 'string' ? msg.reason : undefined);
         break;
     }
   }

@@ -93,26 +93,29 @@ from the file manager.
 
 ### From nothing to talking
 
-The whole thing, in order, for whoever is setting up both ends. It matters that the door
-is shut last: a server that already asks who you are, before the phones have anything to
-show, locks out the very person installing it.
+The whole thing, in order, for whoever is setting up both ends. Nothing is copied from
+one place to another: the first phone that knocks at a server nobody has taken becomes its
+owner, and the door shuts behind it.
 
-1. **Put the server up** with the door open — no `SERVER_KEY`, no `AUTHORISED_KEYS` — and
-   check it answers: `curl -s https://YOUR_DOMAIN/duetto/healthz`.
-2. **Install the app** on both phones. It opens on the settings, because there is nothing
-   it could do before knowing where to go.
+1. **Put the server up** and check it answers: `curl -s https://YOUR_DOMAIN/duetto/healthz`.
+   If you want the first knock to have to know a word — a server on a public address — set
+   a `SERVER_KEY`; otherwise nothing.
+2. **Install the app** on a phone of yours. It opens on one question: which server.
 3. **Write the name of the server** — the domain alone is enough, the app builds the rest
-   of the address — and save. Nothing else needs typing.
-4. **Pair the two phones**: «Create the code» on one, the eight digits typed on the other.
+   of the address. The phone knocks; a server nobody has taken is yours from that moment,
+   and if you set a key it asks for it first. Nothing else is asked.
+4. **Pair the two phones**: «Create the code» on yours. The other person installs the
+   app, writes the same server, is told it has an owner, chooses «I will type their code»
+   and types the eight digits. Their phone is let in beside yours, for that connection.
    From this moment they are a pair for good.
 5. **Grant the two system settings** the app offers at the end of the pairing: unrestricted
    battery, and auto-start where the maker asks for it. Without them presence does not
    survive the night.
-6. **Then, if you want, shut the door.** Take each phone's card from *the cogwheel → This
-   phone's card*, put them in `AUTHORISED_KEYS`, and restart the server. From then on only
-   those phones get in, and any one of them can be taken away without touching the others.
 
-Adding a third phone later is the same from step 2, plus its card in the list.
+Another phone of yours, or a person who is to open connections of their own on your
+server, is invited: from the pairing screen, or from *the cogwheel → Who may use this
+server*. And should your phone be reinstalled — the card it is known by is made anew — the
+server's key brings it home as the owner, which is the other reason to set one.
 
 Whoever you let in brings their own people: the person they pair with has nothing to ask
 anybody — they install the app, write the address, and pair. That phone is let in beside

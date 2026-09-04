@@ -34,9 +34,10 @@ npm run test:smoke        # it has to print ALL OK
 
 ### The key of the house
 
-A server with no key can be used by anybody who learns its address — and, worse, hands
-them the TURN credentials in the very first message, which is your bandwidth paid by you.
-One line in the `.env` closes the door:
+The door shuts by itself: the first phone that knocks at a server nobody has taken becomes
+its owner, and from then on a stranger is turned away before being told anything — the TURN
+credentials included. On a public address, though, "the first phone that knocks" may not
+be yours. One line in the `.env` makes the first knock have to know a word:
 
 ```bash
 openssl rand -hex 12          # something like 3f9c1a77e4b20d58c6a1
@@ -46,14 +47,14 @@ openssl rand -hex 12          # something like 3f9c1a77e4b20d58c6a1
 SERVER_KEY=3f9c1a77e4b20d58c6a1
 ```
 
-Then say it out loud to the people who use your server, as you would the key of a house:
-in the app it goes under the address, in the settings. To take it away from somebody,
-change it here and tell the others the new one.
+The app asks for it when the server does, and only then. It does two things: it decides
+who may take the house, and it brings the owner home — a reinstalled phone is known by a
+new card, and with the key it is written down as the owner again. Without a key the owner
+of a server they have lost the card to has no way in but a terminal.
 
-It is not an identity and it protects nothing of the conversation: whoever has it can
-knock at this door, and no further. What keeps a pair apart from everybody else is the
-pairing code, which never reaches the server. And left empty, the server lets everybody in,
-as it always did.
+It is not an identity and it protects nothing of the conversation: whoever has it can take
+this house, and no further. What keeps a pair apart from everybody else is the pairing
+code, which never reaches the server.
 
 ### One key per phone
 
@@ -61,18 +62,21 @@ A key of the house is a word, and a word gets repeated: it cannot be taken back 
 person without changing it for everybody, and when it turns up elsewhere there is no
 telling who passed it on.
 
-A phone can carry a key of its own instead. It makes one the first time it is asked for,
-and the secret half never leaves it; the app shows the other half under *the cogwheel →
-This phone's card*. That half can travel by any road — a message, a piece of paper — since
-with it alone nobody gets in. At every connection the server picks a number and the phone
-signs it.
+A phone carries a key of its own. It makes one the first time it is asked for, and the
+secret half never leaves it; the other half — the card — is what the server writes down,
+and at every connection the server picks a number and the phone signs it. Normally the
+server writes it down by itself: the first card at the door takes the house, the others
+come in by invitation. The list lives in `devices.json`, beside the server.
+
+The same can be written by hand in the `.env`, for whoever prefers to see the list in a
+file of their own:
 
 ```
 AUTHORISED_KEYS=anna:kK9v…Q=,bruno:7Yt2…w=
 ```
 
-To take one phone away, its entry goes and nobody else notices. The log says which name
-came in. With this set, `SERVER_KEY` is ignored: the door is the signature.
+The cards are in `devices.json` and in the log. To take one phone away, its entry goes and
+nobody else notices.
 
 ### Inviting somebody
 
@@ -85,22 +89,21 @@ made **from the app**, on a phone of yours: *the cogwheel → Who may use this s
 Invite somebody*. Write the name, touch, and the code appears, ready to be handed over.
 Below it is the list of who is in, with «take away» beside each name.
 
-Nothing new proves who you are: the phone asking is at the other end of a connection this
-server has just let in by signature, so it already knows whose it is. Only the phones
-written in `AUTHORISED_KEYS` may do it — those are yours, and writing them there took
-being at the server once.
+Nothing new proves who you are: the phone asking has just shown a card this server
+recognised, so it already knows whose it is. Only the owner's phones may do it — the one
+that took the server, and those written in `AUTHORISED_KEYS`.
 
 So there are three ways to be on this server, and it is worth keeping them apart:
 
 | | may open connections | may invite |
 |---|---|---|
-| written in `AUTHORISED_KEYS` | yes | yes |
+| took the server, or written in `AUTHORISED_KEYS` | yes | yes |
 | came in with an invitation | yes | no |
 | the other half of somebody's connection | no — that one room | no |
 
-Which means only the phones that have to hand out invitations belong in the `.env`. The
-people you talk to do not: they are the other half of your connections, and they are let
-in beside you without asking anybody for anything.
+The people you talk to need none of it: they are the other half of your connections, and
+they are let in beside you without asking anybody for anything. The app says as much at
+the door — "this server has an owner" — and offers the two ways in.
 
 The same from a terminal, when the app is not at hand — or when you have shut yourself
 out and the app cannot connect at all:
@@ -153,10 +156,10 @@ user too:
 sudo -u duetto npm run invite -- anna
 ```
 
-⚠️ The door is shut as soon as **one** phone is on the list — from the `.env` or from an
-invitation. So put your own phones in first, or make an invitation for each of them and
-use them yourself: otherwise the first person to accept an invitation shuts the door on
-you. `npm run invite` says so when the list is still empty.
+⚠️ The door is shut as soon as **one** phone is on the list — the one that took the
+server, one from the `.env`, or one from an invitation. So knock with a phone of yours
+first: otherwise the first phone to arrive shuts the door on you. On a public address,
+set a `SERVER_KEY` before starting, and only whoever knows it can take the house.
 
 ### Starting it for good
 
@@ -355,8 +358,9 @@ For presence to really hold:
 | `Upgrade Required` from healthz | the proxy forwards a path the server does not recognise | update the server: it accepts any prefix |
 | healthz answers but the app does not connect | the WebSocket rules are never reached | check the **order** of the rules in the proxy |
 | Presence drops every ~50 seconds | `timeout tunnel` not set | set it to 3600s |
-| "This server does not let you in" | `SERVER_KEY` set on the server and missing, or wrong, on the phone | write it in the app under the address |
-| "This server does not let you in", with `AUTHORISED_KEYS` | that phone's card is not in the list, or is in it wrongly | copy it again from *the cogwheel → This phone's card* |
+| "This server does not let you in" | `SERVER_KEY` set on the server and wrong on the phone | write the right one in the app under the address |
+| "This server does not know this phone" | the server has an owner, and this phone is not on its list | an invitation from the owner, or their pairing code; if the server is yours, its key brings you home |
+| "The invitation does not work" | wrong, already spent, or expired | make another one |
 | "No answer from the other phone" | a different code, or the other one is not connected | do the pairing again with a new code |
 | "The code does not match" | digits typed wrong | that is the check doing its job: generate the code again |
 | They connect but there is no sound | the network blocks P2P | configure coturn |

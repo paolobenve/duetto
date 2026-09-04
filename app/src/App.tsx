@@ -38,6 +38,7 @@ import type { VideoStats } from './webrtc';
 import SettingsScreen from './SettingsScreen';
 import SetupScreen from './SetupScreen';
 import PairingScreen from './PairingScreen';
+import WelcomeScreen from './WelcomeScreen';
 import ChannelScreen from './ChannelScreen';
 import { loadPipPosition } from './VideoStage';
 import { useAudioRoute } from './audioRoute';
@@ -49,7 +50,7 @@ import { avatarFor, peerAvatar } from './avatar';
 // No screen in between: either you are setting things up, or pairing,
 // or in the channel. Opening the app - from the icon or from a
 // notification - means going in.
-type Screen = 'loading' | 'settings' | 'pairing' | 'setup' | 'channel';
+type Screen = 'loading' | 'welcome' | 'settings' | 'pairing' | 'setup' | 'channel';
 
 /**
  * How long the other person's seat is kept when their network drops.
@@ -1785,7 +1786,9 @@ export default function App() {
       // sound and vibration inside it, and creating it at the first
       // alert would mean creating it while it is being used.
       Alerts.configure(c.alertVibration, c.alertSound, c.alertSoundUri).catch(() => {});
-      if (!isServerConfigured(c)) setScreen('settings');
+      // No server yet: the welcome, which asks for the server and
+      // for nothing else until the server says what it needs.
+      if (!isServerConfigured(c)) setScreen('welcome');
       else if (!isPaired(c)) setScreen('pairing');
       // The system settings are offered once, as soon as there is a
       // pair: before that there would be no sense explaining them.
@@ -1805,9 +1808,13 @@ export default function App() {
    * other side read "link interrupted", and the preferences closed by
    * themselves because going back into the channel changes screen.
    */
+  // The key and the invitation go in the first message to the
+  // server: written after the connection was made, they reached it
+  // only at the next one, whenever that was - which is how an
+  // invitation typed one evening was never used.
   const connKey = cfg
     ? [
-        cfg.serverUrl, cfg.displayName,
+        cfg.serverUrl, cfg.serverKey, cfg.invitation, cfg.displayName,
         cfg.pair?.id, cfg.pair?.side, cfg.pair?.key,
       ].join('|')
     : '';
@@ -1929,6 +1936,12 @@ export default function App() {
           }) => {
             setCanInvite(owner);
             setCanAddPair(opens);
+            // The word the door gave is kept true by every join: what
+            // the pairing screen shows next time hangs on it.
+            const role = owner ? 'owner' : opens ? 'member' : 'guest';
+            setCfg((prev) => (prev && prev.serverRole !== role
+              ? saveCfg({ ...prev, serverRole: role })
+              : prev));
             // Finding them connected, whatever they had done before no
             // longer counts.
             if (present) {
@@ -2223,7 +2236,7 @@ export default function App() {
             setFreshInvite({ name, code });
           },
 
-          onError: (code) => {
+          onError: (code, reason) => {
             if (code === 'room-full' || code === 'replaced') {
               // Nearly always transient: the previous connection has
               // not been declared dead yet, or the phone reattached
@@ -2237,7 +2250,16 @@ export default function App() {
             // pair, and trying again would change nothing until
             // somebody writes the key down.
             else if (code === 'not-allowed') {
-              Alert.alert(t('errors.notAllowed'), t('errors.notAllowedBody'));
+              // The server says why, when it can: a stranger is not
+              // somebody with the wrong key, and an invitation that did
+              // not work is not a missing one.
+              if (reason === 'stranger') {
+                Alert.alert(t('errors.stranger'), t('errors.strangerBody'));
+              } else if (reason === 'bad-invite') {
+                Alert.alert(t('errors.badInvite'), t('errors.badInviteBody'));
+              } else {
+                Alert.alert(t('errors.notAllowed'), t('errors.notAllowedBody'));
+              }
             }
           },
         },
@@ -3050,7 +3072,12 @@ export default function App() {
     // the app alone, coming back here from another connection would
     // drag the old address along.
     const next = alignPairServer(written);
-    setCfg(saveCfg(next));
+    // Another server is another house: what this phone was to the old
+    // one says nothing about the new one, and the pairing screen must
+    // not hide buttons on the strength of it.
+    setCfg((prev) => saveCfg(
+      prev && prev.serverUrl !== next.serverUrl ? { ...next, serverRole: 'unknown' } : next,
+    ));
     // The quality has already been applied on the touch, but applying
     // it again costs nothing and covers the case of a config that came
     // from somewhere else.
@@ -3253,6 +3280,22 @@ export default function App() {
     );
   }
 
+  if (screen === 'welcome') {
+    return (
+      <View style={styles.safe}>
+        <StatusBar barStyle="light-content" />
+        <WelcomeScreen
+          initial={cfg}
+          onDone={(next) => {
+            Journal.mark(`door:${next.serverRole || 'unknown'}`).catch(() => { /* noop */ });
+            setCfg(saveCfg(alignPairServer(next)));
+            setScreen('pairing');
+          }}
+        />
+      </View>
+    );
+  }
+
   if (screen === 'settings') {
     return (
       <View style={styles.safe}>
@@ -3325,8 +3368,12 @@ export default function App() {
         <StatusBar barStyle="light-content" />
         <PairingScreen
           cfg={cfg}
+          role={cfg.serverRole}
           onPaired={onPaired}
-          onBack={() => setScreen('settings')}
+          // Before the first pairing, "change server" means the
+          // welcome: there is nothing in the settings yet worth going
+          // back to.
+          onBack={() => setScreen(isPaired(cfg) ? 'settings' : 'welcome')}
         />
       </View>
     );

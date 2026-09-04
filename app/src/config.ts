@@ -91,6 +91,8 @@ export type PairInfo = {
  * (`pair`/`pairs`), which are the list itself, and `setupShown`, which
  * remembers a screen shown once in the life of the phone.
  */
+export type ServerRole = 'owner' | 'member' | 'guest' | 'stranger' | 'unknown';
+
 export type PairSettings = {
   displayName: string;
   videoQuality: VideoQuality;
@@ -202,6 +204,18 @@ export type DuoConfig = {
    * go and delete something.
    */
   invitation: string;
+  /**
+   * What the server in use is to this phone, in one word.
+   *
+   * `owner`: the server is ours, and we may invite. `member`: let in by
+   * an invitation, free to open connections of our own. `guest`: let in
+   * beside somebody else, for their connection alone. `stranger`: not
+   * known there. `unknown`: never asked, or a server too old to say.
+   * The pairing screen shows only what can work for that word: a guest
+   * cannot create a code, and the button that would fail is not there.
+   * Learnt at the door, and kept up to date at every join.
+   */
+  serverRole?: ServerRole;
   /** how the other person sees me */
   displayName: string;
   /** the connection in use; null until a pairing has been made */

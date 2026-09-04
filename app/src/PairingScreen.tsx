@@ -10,9 +10,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator,
-  ScrollView, KeyboardAvoidingView, Platform,
+  ScrollView, KeyboardAvoidingView, Platform, Clipboard,
 } from 'react-native';
-import { DuoConfig, PairInfo, displayServer, isPaired } from './config';
+import { DuoConfig, PairInfo, ServerRole, displayServer, isPaired } from './config';
+import { makeInvitation } from './door';
 import { Signaling, PairMessage } from './signaling';
 import {
   generateCode, normalizeCode, formatCode, isCodeComplete,
@@ -26,9 +27,16 @@ type Props = {
   cfg: DuoConfig;
   onPaired: (pair: PairInfo) => void;
   onBack: () => void;
+  /**
+   * What the server is to this phone: it decides which buttons can
+   * work. A guest cannot create a code - the room would have nobody to
+   * open it - so the button is not there; only the owner may invite.
+   */
+  role?: ServerRole;
 };
 
-type Step = 'choose' | 'preparing' | 'create' | 'join' | 'exchanging' | 'error';
+type Step = 'choose' | 'preparing' | 'create' | 'join' | 'exchanging' | 'error'
+  | 'invite' | 'invited';
 
 /** If nothing happens in a minute and a half, better say so than spin. */
 const TIMEOUT_MS = 90_000;
@@ -42,12 +50,18 @@ const TIMEOUT_MS = 90_000;
  */
 const RETRY_WAIT_S = 20;
 
-export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
+export default function PairingScreen({ cfg, onPaired, onBack, role = 'unknown' }: Props) {
   const [step, setStep] = useState<Step>('choose');
   const [code, setCode] = useState('');
   const [typed, setTyped] = useState('');
   const [message, setMessage] = useState('');
   const [retryIn, setRetryIn] = useState(0);
+  /** the invitation being made: whose, and the one just made */
+  const [person, setPerson] = useState('');
+  const [inviting, setInviting] = useState(false);
+  const [inviteNote, setInviteNote] = useState('');
+  const [invited, setInvited] = useState<{ name: string; code: string; days: number } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const signalingRef = useRef<Signaling | null>(null);
   const keysRef = useRef(newKeyPair());
@@ -202,7 +216,88 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
     setStep('choose');
   }, [cleanup]);
 
+  /**
+   * An invitation, made at the door.
+   *
+   * It goes through the door and not through a room, because a server
+   * just taken has no room yet - and the card shown at the door is
+   * authority enough. The server answers only an owner's card.
+   */
+  const startInvite = useCallback(async () => {
+    const who = person.trim();
+    if (!who || inviting) return;
+    setInviting(true);
+    setInviteNote('');
+    try {
+      const made = await makeInvitation(
+        cfg.serverUrl.trim(),
+        { key: cfg.serverKey, name: cfg.displayName },
+        who,
+      );
+      setInvited(made);
+      setPerson('');
+      setCopied(false);
+      setStep('invited');
+    } catch (e: any) {
+      setInviteNote(t('pairing.inviteFailed', { why: String(e?.message || '') }));
+    } finally {
+      setInviting(false);
+    }
+  }, [person, inviting, cfg]);
+
   // --- the screens --------------------------------------------------------
+  if (step === 'invite') {
+    return (
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <Screen>
+          <Text style={styles.title}>{t('pairing.inviteTitle')}</Text>
+          <Text style={styles.body}>{t('pairing.inviteBody')}</Text>
+          <TextInput
+            style={styles.nameInput}
+            value={person}
+            onChangeText={setPerson}
+            placeholder={t('pairing.inviteName')}
+            placeholderTextColor="#4a5462"
+            autoCorrect={false}
+            autoFocus
+          />
+          <Text style={styles.hint}>{t('pairing.inviteNameHint')}</Text>
+          {inviteNote ? <Text style={styles.note}>{inviteNote}</Text> : null}
+          <Primary
+            label={t('pairing.makeInvite')}
+            disabled={!person.trim() || inviting}
+            onPress={startInvite}
+          />
+          <Secondary label={t('pairing.back')} onPress={() => setStep('choose')} />
+        </Screen>
+      </KeyboardAvoidingView>
+    );
+  }
+
+  if (step === 'invited' && invited) {
+    return (
+      <Screen>
+        <Text style={styles.title}>{t('pairing.invitedTitle')}</Text>
+        <Text style={styles.body}>
+          {t('pairing.invitedBody', { who: invited.name, days: invited.days })}
+        </Text>
+        <View style={styles.codeBox}>
+          <Text style={styles.inviteCode} selectable>{invited.code}</Text>
+        </View>
+        <Primary
+          label={copied ? t('pairing.copied') : t('pairing.copy')}
+          outline
+          onPress={() => {
+            Clipboard.setString(invited.code);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+          }}
+        />
+        <Secondary label={t('pairing.back')} onPress={() => setStep('choose')} />
+      </Screen>
+    );
+  }
+
 
   if (step === 'error') {
     return (
@@ -287,13 +382,29 @@ export default function PairingScreen({ cfg, onPaired, onBack }: Props) {
     );
   }
 
+  // Only what can work here. A guest's room is opened by whoever let
+  // them in: "Create the code" would make one nobody can open, and try
+  // in silence until it gave up.
+  const guest = role === 'guest';
   return (
     <Screen>
       <Text style={styles.big}>{'\u{1F517}'}</Text>
       <Text style={styles.title}>{t('pairing.connectTitle')}</Text>
-      <Text style={styles.body}>{t('pairing.connectBody')}</Text>
-      <Primary label={t('pairing.createCode')} onPress={startCreate} />
-      <Primary label={t('pairing.haveCode')} outline onPress={() => setStep('join')} />
+      <Text style={styles.body}>{guest ? t('pairing.roleGuest') : t('pairing.connectBody')}</Text>
+      {role === 'owner' || role === 'member' ? (
+        <Text style={styles.role}>
+          {t(role === 'owner' ? 'pairing.roleOwner' : 'pairing.roleMember')}
+        </Text>
+      ) : null}
+      {!guest ? <Primary label={t('pairing.createCode')} onPress={startCreate} /> : null}
+      <Primary label={t('pairing.haveCode')} outline={!guest} onPress={() => setStep('join')} />
+      {role === 'owner' ? (
+        <Primary
+          label={t('pairing.invite')}
+          outline
+          onPress={() => { setInviteNote(''); setStep('invite'); }}
+        />
+      ) : null}
       {/* Whoever is already paired is here to add a connection, not
           because they must: they have to be able to change their mind.
           Whoever is not paired yet has nowhere to go back to, and the
@@ -378,6 +489,16 @@ const styles = StyleSheet.create({
     letterSpacing: 5, textAlign: 'center', borderWidth: 1, borderColor: '#2a313d',
     width: '100%', marginBottom: 22, fontVariant: ['tabular-nums'],
   },
+  inviteCode: {
+    color: '#7cc4ff', fontSize: 36, fontWeight: '800', letterSpacing: 4,
+  },
+  nameInput: {
+    backgroundColor: '#151a23', color: '#fff', borderRadius: 12,
+    paddingVertical: 14, paddingHorizontal: 16, fontSize: 17,
+    borderWidth: 1, borderColor: '#2a313d', width: '100%',
+  },
+  role: { color: '#c9d2de', fontSize: 14, textAlign: 'center', marginBottom: 14, marginTop: -10 },
+  note: { color: '#ffb454', fontSize: 14, lineHeight: 20, marginTop: 10, alignSelf: 'flex-start' },
   waitRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18 },
   waitText: { color: '#c9d2de', fontSize: 15 },
   hint: { color: '#6b7686', fontSize: 13, textAlign: 'center', lineHeight: 19 },
