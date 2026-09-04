@@ -12,11 +12,16 @@ server is only there to let you find each other: **it cannot read anything**.
 
 Duetto is at version 0.9: it works, two people use it all day, and it needs more phones,
 more networks and more eyes before 1.0. If you would like to try it with somebody - a
-partner, a parent, a friend on the other side of the world - **open an issue from the
-«Beta tester» template** on GitLab and say what phone you have. You get an invitation to a
-server that is already running, or a pairing code, and the APK from the
-[releases](https://gitlab.com/paolobenve/duetto/-/releases). No account, no e-mail, no
-service of anybody's: the app talks to that one server and to the other phone.
+partner, a parent, a friend on the other side of the world - **[open a work item on
+GitLab](https://gitlab.com/paolobenve/duetto/-/issues/new?issuable_template=Beta_tester)**:
+the link opens it with the form already there; say what phone you have. (GitLab is where
+the project lives; GitHub is a read-only mirror.) You get an invitation to a server that is
+already running, or a pairing code, and the APK from the
+[releases](https://gitlab.com/paolobenve/duetto/-/releases). No account beyond GitLab's, no
+e-mail, no service of anybody's: the app talks to that one server and to the other phone.
+From then on that work item is yours: whatever you notice - a bug, a doubt, a wish - goes
+there as a follow-up, and the app's own journal (Settings → Use → Diagnostics) is the best
+thing you can attach.
 
 Two things to know. Android only, 7.0 or later. And on mobile data where the direct link
 between the phones is not possible - some carriers only allow the relay - a video
