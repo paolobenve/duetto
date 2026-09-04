@@ -260,7 +260,15 @@ export default function PairingScreen({
     }
     if (!text) return;
     const link = parseLink(text);
-    if (!link || link.kind !== 'pair') { setScanNote(t('qr.notOurs')); return; }
+    if (!link) { setScanNote(t('qr.notOurs')); return; }
+    if (link.kind === 'invite') {
+      // An invitation, where a pairing code was expected: said for
+      // what it is. Already in, one has no use for it.
+      setScanNote(role === 'owner' || role === 'member'
+        ? t('qr.inviteAlreadyIn')
+        : t('qr.inviteNotHere'));
+      return;
+    }
     if (displayServer(link.serverUrl) !== displayServer(cfg.serverUrl)) {
       setScanNote(t('qr.otherServer', { server: displayServer(link.serverUrl) }));
       return;

@@ -413,6 +413,8 @@ export const en = {
   },
 
   qr: {
+    inviteAlreadyIn: 'That is an invitation to use the server, and this phone is already in: it has no use for it. A pairing code is what goes here.',
+    inviteNotHere: 'That is an invitation to use the server, not a pairing code: it goes in the first screen, from «Change server».',
     scan: 'Point the camera at a QR code',
     hint: 'Point the camera at the QR code on the other phone',
     show: 'QR',

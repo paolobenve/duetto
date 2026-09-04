@@ -400,6 +400,8 @@ export const pt: Dictionary = {
   },
 
   qr: {
+    inviteAlreadyIn: 'Isso é um convite para usar o servidor, e este telefone já está dentro: não precisa dele. Aqui vai um código de par.',
+    inviteNotHere: 'Isso é um convite para usar o servidor, não um código de par: escreve-se na primeira tela, por «Mudar servidor».',
     scan: 'Aponte a câmera para um código QR',
     hint: 'Aponte a câmera para o código QR do outro telefone',
     show: 'QR',
