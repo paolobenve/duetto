@@ -62,6 +62,10 @@ type Visit = {
   /** sends one more message and waits for one reply */
   ask: (obj: unknown) => Promise<any>;
   close: () => void;
+  /** whatever the server says unasked, after the answer */
+  onWord?: (msg: any) => void;
+  /** the socket went, after the answer */
+  onGone?: () => void;
 };
 
 /**
@@ -106,7 +110,10 @@ function visit(serverUrl: string, ask: DoorRequest): Promise<Visit> {
     };
 
     ws.onerror = () => finish(() => reject(new Error('unreachable')));
-    ws.onclose = () => finish(() => reject(new Error('unreachable')));
+    ws.onclose = () => {
+      if (settled) { result.onGone?.(); return; }
+      finish(() => reject(new Error('unreachable')));
+    };
     ws.onmessage = async (ev: any) => {
       let msg: any;
       try { msg = JSON.parse(String(ev.data)); } catch { return; }
@@ -162,9 +169,56 @@ function visit(serverUrl: string, ask: DoorRequest): Promise<Visit> {
         const fn = waiting;
         waiting = null;
         fn(msg);
+      } else {
+        result.onWord?.(msg);
       }
     };
   });
+}
+
+/**
+ * A thread kept at the door, for a phone with no pair.
+ *
+ * Such a phone never joins a room, and so never hears what the server
+ * has to say - that it was taken off the list, first of all: it went
+ * on offering connections it could not open. Kept at the door, it
+ * hears. The word comes as 'removed' from the server, or as 'stranger'
+ * from the door's own answer on reopening; the caller does the rest.
+ * Returns what stops the watching.
+ */
+export function watchDoor(
+  serverUrl: string,
+  ask: DoorRequest,
+  onWord: (word: 'removed' | 'stranger') => void,
+): () => void {
+  let stopped = false;
+  let current: Visit | null = null;
+  let again: ReturnType<typeof setTimeout> | null = null;
+  const later = () => {
+    if (stopped || again) return;
+    again = setTimeout(() => { again = null; open(); }, 15_000);
+  };
+  const open = async () => {
+    if (stopped) return;
+    let v: Visit;
+    try {
+      v = await visit(serverUrl, ask);
+    } catch {
+      later();
+      return;
+    }
+    if (stopped) { v.close(); return; }
+    current = v;
+    if (v.answer.role === 'stranger') { onWord('stranger'); return; }
+    v.onWord = (msg) => { if (msg?.type === 'removed') onWord('removed'); };
+    v.onGone = () => { current = null; later(); };
+  };
+  open();
+  return () => {
+    stopped = true;
+    if (again) clearTimeout(again);
+    current?.close();
+  };
 }
 
 const isRole = (v: any): v is ServerRole =>

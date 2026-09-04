@@ -39,7 +39,7 @@ import SettingsScreen from './SettingsScreen';
 import SetupScreen from './SetupScreen';
 import PairingScreen from './PairingScreen';
 import WelcomeScreen from './WelcomeScreen';
-import { leaveServer, knock } from './door';
+import { leaveServer, knock, watchDoor } from './door';
 import ChannelScreen from './ChannelScreen';
 import { loadPipPosition } from './VideoStage';
 import { useAudioRoute } from './audioRoute';
@@ -3400,8 +3400,19 @@ export default function App() {
       if (gone || a.role === 'unknown' || a.role === cfg.serverRole) return;
       Journal.mark(`door:${a.role}:refreshed`).catch(() => { /* noop */ });
       setCfg((prev) => (prev ? saveCfg({ ...prev, serverRole: a.role }) : prev));
+      if (a.role === 'stranger') setScreen('welcome');
     }).catch(() => { /* not reachable: the word stays as it was */ });
-    return () => { gone = true; };
+    // And a thread kept at the door while one stays here: taken off
+    // the list meanwhile, the screen resets by itself.
+    const stop = opensHere(cfg)
+      ? watchDoor(cfg.serverUrl, { key: cfg.serverKey, name: cfg.displayName }, (word) => {
+        if (gone) return;
+        Journal.mark(`door-watch:${word}`).catch(() => { /* noop */ });
+        setCfg((prev) => (prev ? saveCfg({ ...prev, serverRole: 'stranger' }) : prev));
+        setScreen('welcome');
+      })
+      : () => { /* nothing to watch */ };
+    return () => { gone = true; stop(); };
   }, [screen]);
 
   useEffect(() => { leaveChannelRef.current = () => { leaveChannel(true); }; }, [leaveChannel]);

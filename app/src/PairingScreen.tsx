@@ -209,6 +209,13 @@ export default function PairingScreen({
           }
         },
 
+        // Taken off the list while creating a code: the same as a
+        // refusal, and the welcome finds out what we are now.
+        onRemoved: () => {
+          cleanup();
+          doneRef.current = true;
+          onRefused?.('stranger');
+        },
         onError: (err, reason) => {
           if (err === 'room-full') {
             fail(t('pairing.codeInUse'));
