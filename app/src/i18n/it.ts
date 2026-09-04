@@ -194,6 +194,8 @@ export const it: Dictionary = {
 
   settings: {
     subtitle: 'Un canale solo per voi due. Entri e resti: quando entra anche l’altro, vi collegate da soli.',
+    tabLinks: 'Server e coppie',
+    tabUse: 'Uso',
     server: 'Server',
     changeServer: 'Cambia server',
     copy: 'copia',

@@ -83,6 +83,8 @@ const CONTROLS = (): {
   { value: 'hidden', label: t('settings.controlsHidden'), note: t('settings.controlsHiddenNote') },
 ];
 
+type Tab = 'links' | 'use';
+
 type Props = {
   /** whether this phone may invite: the server says so */
   canInvite?: boolean;
@@ -165,6 +167,11 @@ export default function SettingsScreen({
     () => ({ ...initial, serverUrl: displayServer(initial.serverUrl) }),
   );
   const [advanced, setAdvanced] = useState(false);
+  /**
+   * Which tab is open. Once paired, the one touched most often: how the
+   * app behaves. Before that, there is nothing to set but the server.
+   */
+  const [tab, setTab] = useState<Tab>(isPaired(initial) ? 'use' : 'links');
   /** the server field appears only on request, once paired */
   const [changingServer, setChangingServer] = useState(false);
   const set = (k: keyof DuoConfig) => (v: string) => setCfg({ ...cfg, [k]: v });
@@ -247,6 +254,25 @@ export default function SettingsScreen({
         </View>
         <Text style={styles.subtitle}>{t('settings.subtitle')}</Text>
 
+        {/* Two tabs: with whom and through what one talks, and how the
+            app behaves. One screen held both, and the things touched
+            most often - the sound, the quality - sat under the list of
+            connections and the server, which are touched once. */}
+        <View style={styles.tabs}>
+          {(['links', 'use'] as Tab[]).map((k) => (
+            <TouchableOpacity
+              key={k}
+              style={[styles.tab, tab === k && styles.tabPicked]}
+              onPress={() => setTab(k)}>
+              <Text style={[styles.tabText, tab === k && styles.tabTextPicked]}>
+                {t(k === 'links' ? 'settings.tabLinks' : 'settings.tabUse')}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {tab === 'links' ? (
+          <>
         {paired && !changingServer ? (
           // Once paired the server is hardly ever touched: showing it
           // as an editable field invites a mistake that would
@@ -401,6 +427,81 @@ export default function SettingsScreen({
           </>
         ) : null}
 
+        {/* The people this server lets in - only on a phone of the
+            owner's, which the server itself says. A guest never sees
+            this: they can talk to whoever they like, and hand out
+            nothing. */}
+        {canInvite ? (
+          <>
+            <Text style={styles.section}>{t('settings.people')}</Text>
+            <Text style={styles.sectionHint}>{t('settings.peopleHint')}</Text>
+
+            {people.map((person) => (
+              <View key={person.name} style={styles.choice}>
+                <View style={styles.choiceText}>
+                  <Text style={styles.choiceLabel}>{person.name}</Text>
+                  <Text style={styles.choiceNote}>
+                    {t('settings.personSince', { date: person.since.slice(0, 10) })}
+                    {person.rooms
+                      ? `  ·  ${t('settings.personRooms', {
+                        n: person.rooms, guests: person.brought })}`
+                      : ''}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => onForget?.(person.name)}>
+                  <Text style={styles.linkInline}>{t('settings.forgetPerson')}</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+
+            {invitations.map((i) => (
+              <View key={i.code} style={styles.choice}>
+                <View style={styles.choiceText}>
+                  <Text style={styles.choiceLabel}>{i.code}</Text>
+                  <Text style={styles.choiceNote}>
+                    {t('settings.inviteWaiting', {
+                      who: i.name, date: i.expires.slice(0, 10) })}
+                  </Text>
+                </View>
+              </View>
+            ))}
+
+            {/* The code just made, big and selectable: it is about to be
+                read out or pasted into a message. */}
+            {freshInvite ? (
+              <Copyable
+                label={freshInvite.code}
+                value={freshInvite.code}
+                hint={t('settings.inviteMade', { who: freshInvite.name })}
+              />
+            ) : null}
+
+            <Field
+              label={t('settings.invitePerson')}
+              value={inviteName}
+              onChange={setInviteName}
+              placeholder={t('settings.invitePersonPlaceholder')}
+              hint={t('settings.invitePersonHint')}
+            />
+            <TouchableOpacity
+              style={[styles.rowButton, styles.rowAfterChoices]}
+              onPress={() => {
+                const name = inviteName.trim();
+                if (!name) return;
+                onInvite?.(name);
+                setInviteName('');
+              }}>
+              <Text style={styles.rowButtonText}>{t('settings.makeInvitation')}</Text>
+              <Text style={styles.rowButtonArrow}>{'\u203A'}</Text>
+            </TouchableOpacity>
+          </>
+        ) : null}
+
+          </>
+        ) : null}
+
+        {tab === 'use' ? (
+          <>
         <Text style={styles.subsection}>{t('settings.videoQuality')}</Text>
         <Text style={styles.sectionHint}>{t('settings.videoQualityHint')}</Text>
         <Text style={styles.sectionHint}>{t('settings.bandwidthHint')}</Text>
@@ -613,76 +714,6 @@ export default function SettingsScreen({
             not to the person: the journal is one file and the log one
             stream. That is why they sit here among the app's own things
             and not among the settings that travel with a connection. */}
-        {/* The people this server lets in - only on a phone of the
-            owner's, which the server itself says. A guest never sees
-            this: they can talk to whoever they like, and hand out
-            nothing. */}
-        {canInvite ? (
-          <>
-            <Text style={styles.section}>{t('settings.people')}</Text>
-            <Text style={styles.sectionHint}>{t('settings.peopleHint')}</Text>
-
-            {people.map((person) => (
-              <View key={person.name} style={styles.choice}>
-                <View style={styles.choiceText}>
-                  <Text style={styles.choiceLabel}>{person.name}</Text>
-                  <Text style={styles.choiceNote}>
-                    {t('settings.personSince', { date: person.since.slice(0, 10) })}
-                    {person.rooms
-                      ? `  ·  ${t('settings.personRooms', {
-                        n: person.rooms, guests: person.brought })}`
-                      : ''}
-                  </Text>
-                </View>
-                <TouchableOpacity onPress={() => onForget?.(person.name)}>
-                  <Text style={styles.linkInline}>{t('settings.forgetPerson')}</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-
-            {invitations.map((i) => (
-              <View key={i.code} style={styles.choice}>
-                <View style={styles.choiceText}>
-                  <Text style={styles.choiceLabel}>{i.code}</Text>
-                  <Text style={styles.choiceNote}>
-                    {t('settings.inviteWaiting', {
-                      who: i.name, date: i.expires.slice(0, 10) })}
-                  </Text>
-                </View>
-              </View>
-            ))}
-
-            {/* The code just made, big and selectable: it is about to be
-                read out or pasted into a message. */}
-            {freshInvite ? (
-              <Copyable
-                label={freshInvite.code}
-                value={freshInvite.code}
-                hint={t('settings.inviteMade', { who: freshInvite.name })}
-              />
-            ) : null}
-
-            <Field
-              label={t('settings.invitePerson')}
-              value={inviteName}
-              onChange={setInviteName}
-              placeholder={t('settings.invitePersonPlaceholder')}
-              hint={t('settings.invitePersonHint')}
-            />
-            <TouchableOpacity
-              style={[styles.rowButton, styles.rowAfterChoices]}
-              onPress={() => {
-                const name = inviteName.trim();
-                if (!name) return;
-                onInvite?.(name);
-                setInviteName('');
-              }}>
-              <Text style={styles.rowButtonText}>{t('settings.makeInvitation')}</Text>
-              <Text style={styles.rowButtonArrow}>{'\u203A'}</Text>
-            </TouchableOpacity>
-          </>
-        ) : null}
-
         <Text style={styles.section}>{t('settings.diagnostics')}</Text>
         <Text style={styles.sectionHint}>{t('settings.diagnosticsHint')}</Text>
         <TouchableOpacity
@@ -743,6 +774,9 @@ export default function SettingsScreen({
             compulsory one would be half a courtesy. */}
         <Text style={styles.subsection}>{t('settings.soundsOrigin')}</Text>
         <Text style={styles.sectionHint}>{t('settings.soundsOriginText')}</Text>
+
+          </>
+        ) : null}
 
         <Text style={styles.version}>{VERSION_FULL}</Text>
       </ScrollView>
@@ -866,6 +900,17 @@ const styles = StyleSheet.create({
   backText: { color: '#c9d2de', fontSize: 26, lineHeight: 30, marginTop: -4 },
   title: { fontSize: 34, fontWeight: '800', color: '#fff' },
   subtitle: { color: '#8892a0', marginTop: 8, marginBottom: 28, lineHeight: 21 },
+  tabs: {
+    flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#2a313d',
+    marginBottom: 4,
+  },
+  tab: {
+    flex: 1, paddingVertical: 12, alignItems: 'center',
+    borderBottomWidth: 2, borderBottomColor: 'transparent', marginBottom: -1,
+  },
+  tabPicked: { borderBottomColor: '#2f7cf6' },
+  tabText: { color: '#6b7686', fontSize: 15, fontWeight: '700' },
+  tabTextPicked: { color: '#fff' },
   section: { color: '#7cc4ff', fontWeight: '700', fontSize: 16, marginTop: 24 },
   subsection: { color: '#c9d2de', fontWeight: '700', fontSize: 15, marginTop: 18 },
   secondary: {

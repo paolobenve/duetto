@@ -12,6 +12,15 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
+## 0.9.4 build 191
+
+**The settings are in two tabs.** *Server and pairs* holds what one touches once - the
+server, the connections, who may use the server and the invitations; *Use* holds how the
+app behaves - video quality, voice, the call's sound and vibration, the controls, the
+language, staying reachable, diagnostics. One screen held both, and the things touched
+most often sat under a list of connections that never changes. Once paired it opens on
+*Use*; before that there is nothing to set but the server.
+
 ## 0.9.4 build 190
 
 **The first time, the app asks for the server and for nothing else.** It used to open on
