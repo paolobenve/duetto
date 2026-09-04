@@ -1812,9 +1812,9 @@ function StatsLine({
         {/* The voice's bandwidth goes where there is room: up here in
             the desert of an audio-only line, further down when the
             resolutions have taken the space. */}
-        {!hasVideo && voiceSaid ? `  ${voiceSaid}` : ''}
-        {up ? `  \u2191${up}` : ''}
-        {down ? `  \u2193${down}` : ''}
+        {!hasVideo && voiceSaid ? ` · ${voiceSaid}` : ''}
+        {up ? ` · \u2191${up}` : ''}
+        {down ? ` · \u2193${down}` : ''}
       </Text>
       {path || stats.latency != null || (hasVideo ? voiceSaid : waitSaid) ? (
         // Like the line above: with the latency at its end it went off
@@ -1829,9 +1829,9 @@ function StatsLine({
               the number that says whether the carrier's NAT has a say. */}
           {path ? t('channel.linkLabel', { path })
             + (stats.path === 'relay' && stats.relayLeg ? ` (${stats.relayLeg})` : '') : ''}
-          {hasVideo && voiceSaid ? `   ${voiceSaid}` : ''}
-          {stats.latency != null ? `   ${t('channel.latency', { ms: stats.latency })}` : ''}
-          {!hasVideo && waitSaid ? `   ${waitSaid}` : ''}
+          {hasVideo && voiceSaid ? ` · ${voiceSaid}` : ''}
+          {stats.latency != null ? ` · ${t('channel.latency', { ms: stats.latency })}` : ''}
+          {!hasVideo && waitSaid ? ` · ${waitSaid}` : ''}
         </Text>
       ) : null}
       {/* With a picture flowing, the waits get a line of their own:
