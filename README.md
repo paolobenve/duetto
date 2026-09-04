@@ -19,6 +19,8 @@ the project lives; GitHub is a read-only mirror.) You get an invitation to a ser
 already running, or a pairing code, and the APK from the
 [releases](https://gitlab.com/paolobenve/duetto/-/releases). No account beyond GitLab's, no
 e-mail, no service of anybody's: the app talks to that one server and to the other phone.
+And whoever takes part keeps the use of that server **for good**: the invitation does not
+expire with the beta.
 From then on that work item is yours: whatever you notice - a bug, a doubt, a wish - goes
 there as a follow-up, and the app's own journal (Settings → Use → Diagnostics) is the best
 thing you can attach.
