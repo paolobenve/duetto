@@ -797,7 +797,10 @@ try {
     'and whoever used it is in the list by name');
 
   a1.send({ type: 'forget', name: 'carla' });
-  const shorter = await a1.expect('people');
+  // The list now comes unasked at every change, and the one sent when
+  // Carla came in may still be in the queue: the next one is the answer.
+  let shorter = await a1.expect('people');
+  if (shorter.people.some((p) => p.name === 'carla')) shorter = await a1.expect('people');
   check(!shorter.people.some((p) => p.name === 'carla'), 'taking somebody away, from the app');
   a1.close();
 

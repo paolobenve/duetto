@@ -235,6 +235,8 @@ function whoIsThere(msg, nonce) {
     if (name) {
       console.log(`[duetto] ${name} comes in with an invitation, `
         + `phone ${pub.slice(0, 12)}…`);
+      // The owner's list has just changed: told, wherever they are.
+      setTimeout(tellOwners, 0);
       return { name, opens: true, invites: false };
     }
   }
@@ -941,6 +943,7 @@ function leaveServer(ws) {
   const gone = removePerson(ws.who);
   console.log(`[duetto] ${ws.who} leaves the server (${gone})`);
   send(ws, { type: 'left' });
+  tellOwners();
 }
 
 function isOwnersBusiness(type) {
@@ -1001,8 +1004,13 @@ function ownersBusiness(ws, msg) {
       }
     }
   }
+  tellOwners();
+}
+
+/** The list as this socket is to see it: which row is "you" depends on who asks. */
+function peopleMessage(ws) {
   const { devices: list, invitations, rooms: theirRooms } = read();
-  send(ws, {
+  return {
     type: 'people',
     people: list.map((d) => ({
       name: d.name,
@@ -1024,7 +1032,21 @@ function ownersBusiness(ws, msg) {
     invitations: invitations
       .filter((i) => Date.parse(i.expires) > Date.now())
       .map((i) => ({ name: i.name, code: i.code, expires: i.expires })),
-  });
+  };
+}
+
+/**
+ * The list, to every phone of the owner's that is connected.
+ *
+ * It used to be answered only when asked - on opening the screen - and
+ * then stood still: an invitation accepted, a member gone, showed only
+ * on leaving the screen and coming back. Now every change sends it,
+ * to whoever may see it, wherever they are.
+ */
+function tellOwners() {
+  for (const peer of wss.clients) {
+    if (peer.invites && (peer.joined || peer.atDoor)) send(peer, peopleMessage(peer));
+  }
 }
 
 /**
@@ -1105,6 +1127,7 @@ function answerDoor(ws, msg) {
     if (name) {
       console.log(`[duetto] ${name} takes the server at the door: `
         + `phone ${pub.slice(0, 12)}…`);
+      setTimeout(tellOwners, 0);
       ws.pub = pub;
       ws.who = name;
       ws.opens = true;
