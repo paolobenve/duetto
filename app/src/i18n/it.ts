@@ -211,6 +211,7 @@ export const it: Dictionary = {
     leave: 'Lascia',
     subtitle: 'Un canale solo per voi due. Entri e resti: quando entra anche l’altro, vi collegate da soli.',
     haveCode: 'Qualcuno mi offre un collegamento',
+    waysIn: 'Collegati con qualcuno',
     connectWithSomebody: 'Offri il collegamento a qualcuno',
     tabLinks: 'Server e coppie',
     tabUse: 'Uso',

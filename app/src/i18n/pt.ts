@@ -212,6 +212,7 @@ export const pt: Dictionary = {
     leave: 'Sair',
     subtitle: 'Um canal só para vocês dois. Você entra e fica: quando o outro entra também, vocês se conectam sozinhos.',
     haveCode: 'Alguém está me oferecendo uma ligação',
+    waysIn: 'Conecte-se com alguém',
     connectWithSomebody: 'Ofereça uma ligação a alguém',
     tabLinks: 'Servidor e pares',
     tabUse: 'Uso',

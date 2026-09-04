@@ -225,6 +225,7 @@ export const en = {
     leave: 'Leave',
     subtitle: 'A channel for the two of you alone. You come in and you stay: when the other person comes in too, you connect by yourselves.',
     haveCode: 'Somebody is offering me a connection',
+    waysIn: 'Connect with somebody',
     connectWithSomebody: 'Offer somebody a connection',
     tabLinks: 'Server and pairs',
     tabUse: 'Use',

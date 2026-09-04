@@ -356,7 +356,9 @@ export default function SettingsScreen({
         {!paired ? (
           <>
             <TouchableOpacity style={styles.button} onPress={onRepair}>
-              <Text style={styles.buttonText}>{t('settings.connectWithSomebody')}</Text>
+              <Text style={styles.buttonText}>
+                {opensHere(initial) ? t('settings.connectWithSomebody') : t('settings.waysIn')}
+              </Text>
             </TouchableOpacity>
             {/* Whoever may create a code may also have been read one,
                 by another phone like this one: the way to type it is

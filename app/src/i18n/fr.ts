@@ -212,6 +212,7 @@ export const fr: Dictionary = {
     leave: 'Quitter',
     subtitle: 'Un canal rien que pour vous deux. Tu entres et tu restes : quand l’autre entre aussi, vous vous connectez tout seuls.',
     haveCode: 'Quelqu’un m’offre une liaison',
+    waysIn: 'Relie-toi à quelqu’un',
     connectWithSomebody: 'Offre une liaison à quelqu’un',
     tabLinks: 'Serveur et paires',
     tabUse: 'Usage',
