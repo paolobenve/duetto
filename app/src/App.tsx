@@ -3277,8 +3277,11 @@ export default function App() {
             setPairingCode(code || '');
             setCfg(saveCfg(alignPairServer(next)));
             // Already paired: the pair has just moved to the new server
-            // with us, and there is nothing to do but go back in.
-            setScreen(isPaired(next) ? 'channel' : 'pairing');
+            // with us, and there is nothing to do but go back in. With
+            // a code typed, the pairing, which runs it. Otherwise the
+            // settings, where one sees where one has come in, and how,
+            // before dictating a code.
+            setScreen(isPaired(next) ? 'channel' : code ? 'pairing' : 'settings');
           }}
           // From the settings there is somewhere to go back to; at the
           // first start there is not.

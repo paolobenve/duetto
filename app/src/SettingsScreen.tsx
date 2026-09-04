@@ -309,6 +309,15 @@ export default function SettingsScreen({
             <Text style={styles.linkInline}>{t('settings.changeServer')}</Text>
           </TouchableOpacity>
         </View>
+        {/* What this server is to this phone, in a line: it is the
+            first thing one wants to know on coming in. */}
+        {initial.serverRole === 'owner' || initial.serverRole === 'member'
+          || initial.serverRole === 'guest' ? (
+            <Text style={styles.roleLine}>
+              {t(initial.serverRole === 'owner' ? 'pairing.roleOwner'
+                : initial.serverRole === 'member' ? 'pairing.roleMember' : 'pairing.roleGuest')}
+            </Text>
+          ) : null}
         {initial.serverKey ? (
           <View style={styles.field}>
             <Text style={styles.label}>{t('settings.serverKey')}</Text>
@@ -920,6 +929,7 @@ const styles = StyleSheet.create({
   tabTextPicked: { color: '#fff' },
   section: { color: '#7cc4ff', fontWeight: '700', fontSize: 16, marginTop: 24 },
   afterList: { height: 18 },
+  roleLine: { color: '#c9d2de', fontSize: 14, lineHeight: 20, marginTop: -6, marginBottom: 14 },
   subsection: { color: '#c9d2de', fontWeight: '700', fontSize: 15, marginTop: 18 },
   secondary: {
     marginTop: 16, borderRadius: 12, paddingVertical: 14, alignItems: 'center',
