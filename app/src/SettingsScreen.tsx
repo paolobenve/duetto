@@ -487,12 +487,11 @@ export default function SettingsScreen({
             {invitations.map((i) => (
               <View key={i.code} style={styles.choice}>
                 <View style={styles.choiceText}>
-                  <Text style={styles.choiceLabel} selectable>{i.code}</Text>
-                  <Text style={styles.choiceNote}>
-                    {freshInvite?.code === i.code
-                      // Just made: how to hand it over, right under it.
-                      ? t('settings.inviteMade', { who: i.name })
-                      : t('settings.inviteWaiting', { who: i.name, date: longDate(i.expires) })}
+                  {/* The person first, as in the rows above: the code
+                      is what one does about them. */}
+                  <Text style={styles.choiceLabel}>{i.name}</Text>
+                  <Text style={styles.choiceNote} selectable>
+                    {t('settings.inviteLine', { code: i.code, date: longDate(i.expires) })}
                   </Text>
                 </View>
                 <View style={styles.rowLinks}>
