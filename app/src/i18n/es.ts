@@ -355,6 +355,13 @@ export const es: Dictionary = {
   },
 
   welcome: {
+    inOwnerTitle: 'Este servidor es tuyo',
+    inOwnerBody: 'Nadie había tomado aún {server}: desde ahora entra solo quien tú invites, y con quien te emparejes. Ahora conecta los dos teléfonos: creas un código y se lo dictas a la otra persona, o dejas que lo lea con la cámara.',
+    inOwnerBackTitle: 'Bienvenido de nuevo',
+    inOwnerBackBody: '{server} vuelve a reconocerte como propietario, gracias a la clave. Tus parejas son las que tenía este teléfono; las otras se hicieron con otra tarjeta.',
+    inMemberTitle: 'Estás dentro',
+    inMemberBody: 'La invitación era para «{name}»: {server} te conoce por ese nombre, y te deja abrir conexiones propias. Ahora ofrece una conexión a alguien, o escribe el código que te dicten.',
+    go: 'Siguiente',
     serverTitle: '¿Qué servidor?',
     serverBody: 'Duetto funciona en un servidor tuyo, o de quien te dejó entrar. Basta el nombre: el resto se entiende desde aquí.',
     next: 'Siguiente',
@@ -389,6 +396,11 @@ export const es: Dictionary = {
   },
 
   pairing: {
+    doneTitle: 'Conectados',
+    doneGuest: 'Desde ahora tú y {who} sois una pareja: al abrir la app os encontráis. En este servidor eres invitado de {who}: hablas con esa persona, y con nadie más.',
+    doneOpens: 'Desde ahora tú y {who} sois una pareja: al abrir la app os encontráis. Otras parejas se añaden desde los ajustes.',
+    go: 'Siguiente',
+    theOtherPerson: 'la otra persona',
     roleOwner: 'Este servidor es tuyo.',
     roleMember: 'En este servidor puedes abrir conexiones propias.',
     roleGuest: 'Aquí eres invitado de alguien: el código lo crea esa persona, tú lo escribes.',

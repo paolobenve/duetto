@@ -355,6 +355,13 @@ export const fr: Dictionary = {
   },
 
   welcome: {
+    inOwnerTitle: 'Ce serveur est à toi',
+    inOwnerBody: 'Personne n’avait encore pris {server} : désormais n’entre que qui tu invites, et avec qui tu t’appaires. Maintenant relie les deux téléphones : tu crées un code et tu le dictes à l’autre personne, ou tu le lui fais lire avec la caméra.',
+    inOwnerBackTitle: 'Bon retour',
+    inOwnerBackBody: '{server} te reconnaît de nouveau comme propriétaire, grâce à la clé. Tes paires sont celles que ce téléphone avait ; les autres ont été faites avec une autre carte.',
+    inMemberTitle: 'Tu es entré',
+    inMemberBody: 'L’invitation était pour « {name} » : {server} te connaît sous ce nom, et te laisse ouvrir tes propres liaisons. Maintenant offre une liaison à quelqu’un, ou saisis le code qu’on te dicte.',
+    go: 'Suivant',
     serverTitle: 'Quel serveur ?',
     serverBody: 'Duetto tourne sur un serveur à toi, ou de qui t’a fait entrer. Le nom suffit : le reste se comprend d’ici.',
     next: 'Suivant',
@@ -389,6 +396,11 @@ export const fr: Dictionary = {
   },
 
   pairing: {
+    doneTitle: 'Reliés',
+    doneGuest: 'Désormais toi et {who} formez une paire : en ouvrant l’app vous vous retrouvez. Sur ce serveur tu es l’invité de {who} : tu parles avec cette personne, et avec personne d’autre.',
+    doneOpens: 'Désormais toi et {who} formez une paire : en ouvrant l’app vous vous retrouvez. D’autres paires s’ajoutent depuis les réglages.',
+    go: 'Suivant',
+    theOtherPerson: 'l’autre personne',
     roleOwner: 'Ce serveur est à toi.',
     roleMember: 'Sur ce serveur tu peux ouvrir tes propres liaisons.',
     roleGuest: 'Ici tu es l’invité de quelqu’un : c’est lui qui crée le code, toi tu le saisis.',

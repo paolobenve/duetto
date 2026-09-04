@@ -49,7 +49,7 @@ type Props = {
 };
 
 type Step = 'choose' | 'preparing' | 'create' | 'join' | 'exchanging' | 'error'
-  | 'invite' | 'invited';
+  | 'invite' | 'invited' | 'done';
 
 /** If nothing happens in a minute and a half, better say so than spin. */
 const TIMEOUT_MS = 90_000;
@@ -77,6 +77,8 @@ export default function PairingScreen({
   const [inviteNote, setInviteNote] = useState('');
   const [invited, setInvited] = useState<{ name: string; code: string; days: number } | null>(null);
   const [copied, setCopied] = useState(false);
+  /** the pair just made, shown and explained before it is handed over */
+  const [made, setMade] = useState<PairInfo | null>(null);
 
   const signalingRef = useRef<Signaling | null>(null);
   const keysRef = useRef(newKeyPair());
@@ -186,13 +188,17 @@ export default function PairingScreen({
             }
             doneRef.current = true;
             cleanup();
-            onPaired({
+            // Not handed over yet: first a word on what has just
+            // happened, which whoever was merely reading digits out
+            // has no way of knowing.
+            setMade({
               id: pairIdRef.current,
               key: keyToBase64(key),
               side,
               peerName: peerNameRef.current,
               pairedAt: new Date().toISOString(),
             });
+            setStep('done');
           }
         },
 
@@ -310,6 +316,22 @@ export default function PairingScreen({
   }, [person, inviting, cfg]);
 
   // --- the screens --------------------------------------------------------
+  if (step === 'done' && made) {
+    const who = made.peerName || t('pairing.theOtherPerson');
+    return (
+      <Screen>
+        <Text style={styles.big}>{'\u{1F517}'}</Text>
+        <Text style={styles.title}>{t('pairing.doneTitle')}</Text>
+        <Text style={styles.body}>
+          {role === 'guest'
+            ? t('pairing.doneGuest', { who })
+            : t('pairing.doneOpens', { who })}
+        </Text>
+        <Primary label={t('pairing.go')} onPress={() => onPaired(made)} />
+      </Screen>
+    );
+  }
+
   if (step === 'invite') {
     return (
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>

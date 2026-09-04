@@ -368,6 +368,13 @@ export const en = {
   },
 
   welcome: {
+    inOwnerTitle: 'This server is yours',
+    inOwnerBody: 'Nobody had taken {server} yet: from now on only whoever you invite, and whoever you pair with, gets in. Next, connect the two phones: you create a code and read it to the other person, or let them read it with the camera.',
+    inOwnerBackTitle: 'Welcome back',
+    inOwnerBackBody: '{server} knows you as its owner again, by the key. Your pairs are the ones this phone had; the others were made on another card.',
+    inMemberTitle: 'You are in',
+    inMemberBody: 'The invitation was for «{name}»: {server} knows you by that name, and lets you open connections of your own. Now offer somebody a connection, or type the code you are read.',
+    go: 'Next',
     serverTitle: 'Which server?',
     serverBody: 'Duetto runs on a server of your own, or of somebody who let you in. The name is enough: the rest is worked out from here.',
     next: 'Next',
@@ -402,6 +409,11 @@ export const en = {
   },
 
   pairing: {
+    doneTitle: 'Connected',
+    doneGuest: 'From now on you and {who} are a pair: open the app and you find each other. On this server you are the guest of {who}: you talk to them, and to nobody else.',
+    doneOpens: 'From now on you and {who} are a pair: open the app and you find each other. Other pairs can be added from the settings.',
+    go: 'Next',
+    theOtherPerson: 'the other person',
     roleOwner: 'This server is yours.',
     roleMember: 'You may open connections of your own on this server.',
     roleGuest: 'You are here as somebody\'s guest: they create the code, you type it in.',

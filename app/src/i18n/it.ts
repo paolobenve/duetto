@@ -354,6 +354,13 @@ export const it: Dictionary = {
   },
 
   welcome: {
+    inOwnerTitle: 'Questo server è tuo',
+    inOwnerBody: 'Nessuno aveva ancora preso {server}: da ora entra solo chi inviti tu, e chi accoppi tu. Adesso collega i due telefoni: crei un codice e lo detti all’altra persona, o glielo fai inquadrare.',
+    inOwnerBackTitle: 'Bentornato',
+    inOwnerBackBody: '{server} ti riconosce di nuovo come proprietario, grazie alla chiave. Le tue coppie sono quelle che questo telefono aveva; le altre erano fatte con un’altra carta.',
+    inMemberTitle: 'Sei dentro',
+    inMemberBody: 'L’invito era per «{name}»: {server} ti conosce con quel nome, e ti lascia aprire collegamenti tuoi. Ora offri un collegamento a qualcuno, o scrivi il codice che ti dettano.',
+    go: 'Avanti',
     serverTitle: 'Quale server?',
     serverBody: 'Duetto gira su un server tuo, o di chi ti ha fatto entrare. Basta il nome: il resto si capisce da qui.',
     next: 'Avanti',
@@ -388,6 +395,11 @@ export const it: Dictionary = {
   },
 
   pairing: {
+    doneTitle: 'Collegati',
+    doneGuest: 'Da ora tu e {who} siete una coppia: aprendo l’app vi trovate. Su questo server sei ospite di {who}: parli con lui, e con nessun altro.',
+    doneOpens: 'Da ora tu e {who} siete una coppia: aprendo l’app vi trovate. Altre coppie si aggiungono dalle impostazioni.',
+    go: 'Avanti',
+    theOtherPerson: 'l’altra persona',
     roleOwner: 'Questo server è tuo.',
     roleMember: 'Su questo server puoi aprire collegamenti tuoi.',
     roleGuest: 'Qui sei ospite di qualcuno: il codice lo crea lui, tu lo scrivi.',

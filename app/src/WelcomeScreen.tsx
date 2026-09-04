@@ -51,7 +51,7 @@ type Props = {
   onClose?: () => void;
 };
 
-type Step = 'server' | 'knocking' | 'key' | 'stranger';
+type Step = 'server' | 'knocking' | 'key' | 'stranger' | 'welcomed';
 
 export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
   const [server, setServer] = useState(displayServer(initial.serverUrl));
@@ -63,6 +63,8 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
   /** a line under the field: what went wrong, or what the server said */
   const [note, setNote] = useState('');
   const [answer, setAnswer] = useState<DoorAnswer | null>(null);
+  /** what just happened at the door, kept for the screen that says so */
+  const [welcomed, setWelcomed] = useState<{ a: DoorAnswer; at: string; inv: string } | null>(null);
 
   const resolved = normalizeServerUrl(server);
   const ready = isServerConfigured({ ...initial, serverUrl: server });
@@ -132,8 +134,17 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
       setStep(from);
       return;
     }
-    if (a.role === 'owner' || a.role === 'member' || a.role === 'unknown') {
+    // An older server, which cannot say what we are: on as before.
+    if (a.role === 'unknown') {
       finishWith(a, undefined, at, inv);
+      return;
+    }
+    // In: said in so many words before going on. Whoever has just
+    // taken a server, or come in with an invitation, deserves to be
+    // told what that means, not to land on a settings screen.
+    if (a.role === 'owner' || a.role === 'member') {
+      setWelcomed({ a, at, inv });
+      setStep('welcomed');
       return;
     }
     // A stranger, or somebody's guest with no pair to go to: what is
@@ -170,6 +181,29 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
   }, [knockNow]);
 
   // --- the screens --------------------------------------------------------
+  if (step === 'welcomed' && welcomed) {
+    const { a } = welcomed;
+    const title = a.role === 'owner'
+      ? (a.adopted ? t('welcome.inOwnerTitle') : t('welcome.inOwnerBackTitle'))
+      : t('welcome.inMemberTitle');
+    const body = a.role === 'owner'
+      ? (a.adopted
+        ? t('welcome.inOwnerBody', { server: displayServer(welcomed.at) })
+        : t('welcome.inOwnerBackBody', { server: displayServer(welcomed.at) }))
+      : t('welcome.inMemberBody', { server: displayServer(welcomed.at), name: a.name || '' });
+    return (
+      <Screen>
+        <Text style={styles.big}>{a.role === 'owner' ? '\u{1F3E0}' : '\u{1F91D}'}</Text>
+        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.body}>{body}</Text>
+        <Primary
+          label={t('welcome.go')}
+          onPress={() => finishWith(welcomed.a, undefined, welcomed.at, welcomed.inv)}
+        />
+      </Screen>
+    );
+  }
+
   if (step === 'knocking') {
     return (
       <Screen>
