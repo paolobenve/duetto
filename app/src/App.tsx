@@ -1866,7 +1866,10 @@ export default function App() {
       if (!isServerConfigured(c)) setScreen('welcome');
       // No pair yet: the pairing, if the server has said what we are
       // to it; otherwise the welcome, which knocks and finds out.
-      else if (!isPaired(c)) setScreen(opensHere(c) ? 'pairing' : 'welcome');
+      // No pair yet: the settings, where the server is and the two
+      // ways to a pair - not the code itself, which opens a room on
+      // the server at every start and leaves it there if nobody comes.
+      else if (!isPaired(c)) setScreen(opensHere(c) ? 'settings' : 'welcome');
       // The system settings are offered once, as soon as there is a
       // pair: before that there would be no sense explaining them.
       else if (!c.setupShown) setScreen('setup');

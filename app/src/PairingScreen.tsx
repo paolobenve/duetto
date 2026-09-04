@@ -92,6 +92,13 @@ export default function PairingScreen({
 
   const cleanup = useCallback(() => {
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+    // A code created and not completed leaves a room on the server:
+    // told to forget it, before the socket goes. Completed, the room
+    // is the pair's, and stays.
+    if (!doneRef.current && pairIdRef.current && signalingRef.current) {
+      signalingRef.current.forgetRoom(pairIdRef.current);
+      pairIdRef.current = '';
+    }
     signalingRef.current?.close();
     signalingRef.current = null;
     sentPubRef.current = false;
