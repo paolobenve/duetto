@@ -12,6 +12,15 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
+## 0.9.4 build 189
+
+**A bluetooth earpiece is seen again.** From Android 12 an app needs a permission of its
+own simply to SEE the headset a phone is playing through — and this one declared it in the
+manifest and never asked for it, which is the same as not having it. The earpiece worked,
+the phone played through it, and the app knew nothing: it did not appear among the outputs
+and there was nothing to choose. It is now asked for with the others; refusing it costs the
+bluetooth's name in the list, and nothing else.
+
 ## 0.9.3 build 188
 
 **The app is now signed with a key of its own.** Until now the release carried the debug

@@ -259,6 +259,19 @@ async function requestAllPermissions(): Promise<{ mic: boolean; camera: boolean 
   if (Number(Platform.Version) >= 33) {
     wanted.push(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
   }
+  /**
+   * The bluetooth one, from Android 12, is what lets the app SEE a
+   * headset - not use it: the phone plays through it either way. Denied
+   * or never asked for, the earpiece one has connected does not appear
+   * among the outputs at all, and there is nothing to choose. It was
+   * declared in the manifest and never asked for, which is the same as
+   * not having it; a reinstall brought that to light. Refusing it costs
+   * only the bluetooth's name in the list, like refusing the microphone
+   * costs the channel and not the listening.
+   */
+  if (Number(Platform.Version) >= 31) {
+    wanted.push('android.permission.BLUETOOTH_CONNECT' as any);
+  }
   try {
     const res = await PermissionsAndroid.requestMultiple(wanted);
     return {

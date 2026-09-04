@@ -43,7 +43,8 @@ import {
   createHash, createPublicKey, randomBytes, randomUUID, timingSafeEqual, verify,
 } from 'node:crypto';
 import {
-  addInvitation, noteGuest, noteRoom, read, remove as removePerson, roomOf, useInvitation,
+  addInvitation, adopt, noteGuest, noteRoom, read, remove as removePerson, roomOf,
+  useInvitation,
 } from './devices.js';
 
 const PORT = parseInt(process.env.PORT || '8787', 10);
@@ -224,7 +225,10 @@ function whoIsThere(msg, nonce) {
   if (fromEnv) return { name: fromEnv, opens: true, invites: true };
 
   const known = listed().find((d) => d.pub === pub);
-  if (known) return { name: known.name, opens: true, invites: false };
+  // Whoever adopted the server hands out invitations like the phones
+  // written in the .env: they are the owner, and the only difference
+  // is that they never had to be at the server to say so.
+  if (known) return { name: known.name, opens: true, invites: known.owner === true };
 
   if (msg.invite) {
     const name = useInvitation(msg.invite, pub);
@@ -560,7 +564,36 @@ wss.on('connection', (ws, req) => {
         return;
       }
 
-      if (doorIsShut()) {
+      /**
+       * The first phone adopts the server; the key of the server brings
+       * one back.
+       *
+       * Setting a server up ended at a command line: the first phone's
+       * card had to be copied into the `.env` by hand, and until then
+       * the door stood open to anybody at all. Now a knock at a server
+       * with nobody on its list writes that phone down as its owner,
+       * and the door shuts behind it.
+       *
+       * The key of the server, when the operator has set one, does two
+       * things at once: it closes that first window - only whoever
+       * knows it can be adopted - and it is the way home for a phone
+       * that has lost its card, which is what a reinstall does. Without
+       * it the owner is locked out of their own house with no way in
+       * but ssh, which is exactly the command line this is here to
+       * remove. The name is provisional: the phone says what it is
+       * called at the first hello.
+       */
+      const adopted = !known && signed(String(msg.pub || ''), msg.sig, ws.nonce)
+        && keyIsRight(msg.key)
+        && (!doorIsShut() || (SERVER_KEY && String(msg.key || '') !== ''))
+        ? adopt(cleanName(msg.name) || 'the first phone', String(msg.pub))
+        : null;
+      if (adopted) {
+        console.log(`[duetto] ${adopted} takes the server: `
+          + `phone ${String(msg.pub).slice(0, 12)}…`);
+      }
+
+      if (doorIsShut() && !adopted) {
         const who = known;
         if (!who) {
           console.log(`[duetto] turned away: ${String(msg.pub || 'no key').slice(0, 12)}`
@@ -575,6 +608,11 @@ wss.on('connection', (ws, req) => {
         // The room belongs to whoever may open one: it is written down
         // now, so that the other half can be let in beside them.
         if (ws.opens) noteRoom(roomId, who.name);
+      } else if (adopted) {
+        ws.who = adopted;
+        ws.opens = true;
+        ws.invites = true;
+        noteRoom(roomId, adopted);
       } else if (!keyIsRight(msg.key)) {
         send(ws, { type: 'error', error: 'not-allowed' });
         ws.close(4006, 'not-allowed');

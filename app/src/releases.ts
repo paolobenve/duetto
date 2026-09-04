@@ -31,6 +31,26 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.9.4',
+    notes: {
+      en: [
+        'A bluetooth earpiece is seen again: the app asks for the permission it needs to see one, which it had been forgetting.',
+      ],
+      it: [
+        'Un auricolare bluetooth si vede di nuovo: l’app chiede il permesso che le serve per vederlo, che si dimenticava.',
+      ],
+      es: [
+        'Un auricular bluetooth se vuelve a ver: la app pide el permiso que necesita para verlo, y que olvidaba.',
+      ],
+      pt: [
+        'Um fone bluetooth volta a ser visto: o app pede a permissão de que precisa para vê-lo, que estava esquecendo.',
+      ],
+      fr: [
+        'Une oreillette bluetooth est de nouveau vue : l’app demande la permission qu’il lui faut pour la voir, et qu’elle oubliait.',
+      ],
+    },
+  },
+  {
     version: '0.9.3',
     notes: {
       en: [

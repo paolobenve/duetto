@@ -184,6 +184,35 @@ export function useInvitation(code, pub) {
 }
 
 /**
+ * The phone that adopts a server nobody has claimed, or comes back to
+ * one with the key of the server in hand.
+ *
+ * Setting a server up used to end at a command line: the first phone's
+ * card had to be copied and written into the `.env` by hand, on the
+ * server, and until then the door stood open to anybody. Now the first
+ * phone to knock at a server with nobody on its list is written down
+ * as its owner, and from that instant the door is shut for everybody
+ * else. The same road brings a phone back when it has lost its card -
+ * a reinstall makes a new one - as long as it carries the key of the
+ * server: without it the owner would be locked out of their own house
+ * with no way in but ssh.
+ *
+ * `owner` may hand out invitations; a guest brought in by one may not.
+ */
+export function adopt(name, pub, owner = true) {
+  const data = read();
+  data.devices = data.devices
+    .filter((d) => d.pub !== pub)
+    .concat({
+      name,
+      pub,
+      owner: owner === true,
+      since: new Date().toISOString(),
+    });
+  return write(data) ? name : null;
+}
+
+/**
  * The rooms of the people on the list, and who they let in.
  *
  * A connection lives in a room, and two phones live in a connection. If
