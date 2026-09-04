@@ -1262,6 +1262,7 @@ export default function ChannelScreen(props: Props) {
               peerSend={peerSendDelay}
               peerRecv={peerRecvDelay}
               totalOnly={delayTotalOnly}
+              battery={battery}
             />
           </View>
         ) : null}
@@ -1708,10 +1709,12 @@ export function statsLineCount(stats: VideoStats, hasVideo = false): number {
 export const STATS_LINE_H = 18;
 
 function StatsLine({
-  stats, quality, showUp, showDown, peerSend, peerRecv, totalOnly,
+  stats, quality, showUp, showDown, peerSend, peerRecv, totalOnly, battery,
 }: {
   stats: VideoStats;
   quality: string;
+  /** the battery, with the diagnostics on: with the video the card is gone, and this is where it shows */
+  battery?: { percent: number; charging: boolean } | null;
   /** cameras really on: the statistics lag by one sample */
   showUp: boolean;
   showDown: boolean;
@@ -1856,6 +1859,11 @@ function StatsLine({
         {!hasVideo && voiceSaid ? ` · ${voiceSaid}` : ''}
         {up ? ` · \u2191${up}` : ''}
         {down ? ` · \u2193${down}` : ''}
+        {/* With the video on the card is gone, and the battery with
+            it: it comes here, at the end of the first line. */}
+        {hasVideo && battery
+          ? ` · ${t(battery.charging ? 'channel.batteryCharging' : 'channel.battery', { pct: battery.percent })}`
+          : ''}
       </Text>
       {path || stats.latency != null || (hasVideo ? voiceSaid : waitSaid) ? (
         // Like the line above: with the latency at its end it went off
