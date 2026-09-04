@@ -13,7 +13,7 @@ server is only there to let you find each other: **it cannot read anything**.
 Duetto is at version 0.9: it works, two people use it all day, and it needs more phones,
 more networks and more eyes before 1.0. If you would like to try it with somebody - a
 partner, a parent, a friend on the other side of the world - **[open a work item on
-GitLab](https://gitlab.com/paolobenve/duetto/-/issues/new?issuable_template=Beta_tester&issue%5Btitle%5D=Beta%20tester)**:
+GitLab](https://gitlab.com/paolobenve/duetto/-/issues/new?issuable_template=Beta_tester&issue%5Btitle%5D=Beta%20tester%3A%20%3Cadd%20here%20your%20%28nick%29name%3E)**:
 the link opens it with the form already there; say what phone you have. (GitLab is where
 the project lives; GitHub is a read-only mirror.) You get an invitation to a server that is
 already running, or a pairing code, and the APK from the
