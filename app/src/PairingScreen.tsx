@@ -212,6 +212,20 @@ export default function PairingScreen({
     startExchange(typed, 'B');
   }, [typed, startExchange]);
 
+  /**
+   * Whoever may open connections here creates the code, and that is
+   * all: the screen opens on the code itself, with nothing to press.
+   * Typing somebody else's code stays possible, as a line under it,
+   * for the one case where two such phones pair with each other.
+   */
+  const opens = role === 'owner' || role === 'member';
+  const autoCreated = useRef(false);
+  useEffect(() => {
+    if (!opens || joinWith || autoCreated.current) return;
+    autoCreated.current = true;
+    startCreate();
+  }, [opens, joinWith, startCreate]);
+
   // The eight digits were typed at the welcome: nothing to press here.
   const startedWith = useRef('');
   useEffect(() => {
@@ -350,7 +364,10 @@ export default function PairingScreen({
           <Text style={styles.waitText}>{t('pairing.waitingOther')}</Text>
         </View>
         <Text style={styles.hint}>{t('pairing.dictateHint')}</Text>
-        <Secondary label={t('pairing.cancel')} onPress={reset} />
+        {opens ? (
+          <Secondary label={t('pairing.haveCodeInstead')} onPress={() => { cleanup(); doneRef.current = true; setCode(''); setStep('join'); }} />
+        ) : null}
+        <Secondary label={t('pairing.cancel')} onPress={opens ? onBack : reset} />
       </Screen>
     );
   }

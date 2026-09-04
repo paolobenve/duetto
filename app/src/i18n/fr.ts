@@ -413,6 +413,7 @@ export const fr: Dictionary = {
     connectTitle: 'Relie les deux téléphones',
     connectBody: 'À faire une seule fois. Sur un téléphone appuie sur « Créer le code », sur l’autre tape les chiffres qui apparaissent.',
     createCode: 'Créer le code',
+    haveCodeInstead: 'Ou saisis le code d’un autre téléphone comme celui-ci',
     haveCode: 'J’ai un code',
     changeServer: 'Changer de serveur',
   },

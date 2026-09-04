@@ -412,6 +412,7 @@ export const it: Dictionary = {
     connectTitle: 'Collega i due telefoni',
     connectBody: 'Da fare una volta sola. Su un telefono premi «Crea il codice», sull’altro digita le cifre che appaiono.',
     createCode: 'Crea il codice',
+    haveCodeInstead: 'Oppure scrivi il codice di un altro telefono come questo',
     haveCode: 'Ho un codice',
     changeServer: 'Cambia server',
   },

@@ -413,6 +413,7 @@ export const pt: Dictionary = {
     connectTitle: 'Conecte os dois telefones',
     connectBody: 'Faz-se uma vez só. Num telefone aperte «Criar o código», no outro digite os algarismos que aparecerem.',
     createCode: 'Criar o código',
+    haveCodeInstead: 'Ou digite o código de outro telefone como este',
     haveCode: 'Tenho um código',
     changeServer: 'Trocar de servidor',
   },

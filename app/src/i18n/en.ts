@@ -426,6 +426,7 @@ export const en = {
     connectTitle: 'Connect the two phones',
     connectBody: 'To be done once only. On one phone press "Create the code", on the other type in the digits that appear.',
     createCode: 'Create the code',
+    haveCodeInstead: 'Or type in the code of another phone like this one',
     haveCode: 'I have a code',
     changeServer: 'Change server',
   },
