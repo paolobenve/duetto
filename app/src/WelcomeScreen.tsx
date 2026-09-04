@@ -7,13 +7,13 @@
  * the LICENSE file at the root of the project, and at
  * <https://www.gnu.org/licenses/>.
  */
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator,
   ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { DuoConfig, displayServer, normalizeServerUrl, isServerConfigured } from './config';
-import { knock, formatInvitation, DoorAnswer } from './door';
+import { knock, watchDoor, formatInvitation, DoorAnswer } from './door';
 import { parseLink } from './links';
 import { Scanner } from 'duetto-platform';
 import { normalizeCode, formatCode, isCodeComplete } from './pairing';
@@ -184,6 +184,24 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
       knockNow(from, { server: link.serverUrl, code: link.code });
     }
   }, [knockNow]);
+
+  /**
+   * On "you are in", a thread at the door: taken off the list while
+   * still reading the words, one is told here and not at the next
+   * step, when the buttons would already be wrong.
+   */
+  useEffect(() => {
+    if (step !== 'welcomed' || !welcomed) return;
+    const stop = watchDoor(welcomed.at, {
+      key: key.trim() || undefined,
+      name: initial.displayName || undefined,
+    }, () => {
+      setWelcomed(null);
+      setNote(t('welcome.removedMeanwhile'));
+      setStep('server');
+    });
+    return stop;
+  }, [step, welcomed, key, initial.displayName]);
 
   // --- the screens --------------------------------------------------------
   if (step === 'welcomed' && welcomed) {

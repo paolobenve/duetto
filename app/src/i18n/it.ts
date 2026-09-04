@@ -364,6 +364,7 @@ export const it: Dictionary = {
   },
 
   welcome: {
+    removedMeanwhile: 'Nel frattempo il proprietario ha tolto questo telefono dall’elenco.',
     inOwnerTitle: 'Questo server è tuo',
     inOwnerBody: 'Nessuno aveva ancora preso {server}: da ora entra solo chi inviti tu, e chi accoppi tu. Adesso collega i due telefoni: crei un codice e lo detti all’altra persona, o glielo fai inquadrare.',
     inOwnerBackTitle: 'Bentornato',

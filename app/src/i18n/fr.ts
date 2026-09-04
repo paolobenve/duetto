@@ -365,6 +365,7 @@ export const fr: Dictionary = {
   },
 
   welcome: {
+    removedMeanwhile: 'Entre-temps le propriétaire a retiré ce téléphone de la liste.',
     inOwnerTitle: 'Ce serveur est à toi',
     inOwnerBody: 'Personne n’avait encore pris {server} : désormais n’entre que qui tu invites, et avec qui tu t’appaires. Maintenant relie les deux téléphones : tu crées un code et tu le dictes à l’autre personne, ou tu le lui fais lire avec la caméra.',
     inOwnerBackTitle: 'Bon retour',

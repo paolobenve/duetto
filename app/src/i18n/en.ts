@@ -378,6 +378,7 @@ export const en = {
   },
 
   welcome: {
+    removedMeanwhile: 'Meanwhile the owner has taken this phone off the list.',
     inOwnerTitle: 'This server is yours',
     inOwnerBody: 'Nobody had taken {server} yet: from now on only whoever you invite, and whoever you pair with, gets in. Next, connect the two phones: you create a code and read it to the other person, or let them read it with the camera.',
     inOwnerBackTitle: 'Welcome back',
