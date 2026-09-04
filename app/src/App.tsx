@@ -2970,7 +2970,12 @@ export default function App() {
   }, [sendJournal]);
 
   /** Leaving the channel, after putting the journal in a safe place. */
-  const leaveChannel = useCallback(async (stayAvailable = true) => {
+  /**
+   * @param quiet the app stays in front: the leaving was not asked for
+   *   with the button - the other side broke the pair, the server took
+   *   us off - and there is something on the screen to read.
+   */
+  const leaveChannel = useCallback(async (stayAvailable = true, quiet = false) => {
     await putAwayChannel(
       stayAvailable ? 'left-channel' : 'unavailable', cfg?.pair?.id,
     );
@@ -3014,7 +3019,7 @@ export default function App() {
     // The process stays alive, though, so that you remain reachable and
     // get the notification when the other person comes in. Opening the
     // app again brings you straight back into the channel.
-    AppWindow.minimize().catch(() => {});
+    if (!quiet) AppWindow.minimize().catch(() => {});
   }, [putAwayChannel, cfg?.pair?.id]);
 
   /**
@@ -3118,6 +3123,7 @@ export default function App() {
       }
       if (screen !== 'channel') return false;
       if (!pipSupported.current) return false;
+      Journal.mark('back:pip').catch(() => { /* noop */ });
       Pip.enter(stageAspect).catch(() => {});
       return true;
     });
@@ -3467,7 +3473,7 @@ export default function App() {
     return () => { gone = true; stop(); };
   }, [screen]);
 
-  useEffect(() => { leaveChannelRef.current = () => { leaveChannel(true); }; }, [leaveChannel]);
+  useEffect(() => { leaveChannelRef.current = () => { leaveChannel(true, true); }; }, [leaveChannel]);
 
   const onForgetPair = useCallback(async (id: string) => {
     if (!cfg) return;
