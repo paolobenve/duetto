@@ -190,7 +190,7 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
     const { a } = welcomed;
     const title = a.role === 'owner'
       ? (a.adopted ? t('welcome.inOwnerTitle') : t('welcome.inOwnerBackTitle'))
-      : t('welcome.inMemberTitle');
+      : t('welcome.inMemberTitle', { name: a.name || '' });
     const body = a.role === 'owner'
       ? (a.adopted
         ? t('welcome.inOwnerBody', { server: displayServer(welcomed.at) })
