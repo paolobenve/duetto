@@ -924,46 +924,37 @@ export default function ChannelScreen(props: Props) {
           <PresenceCard
             connectionName={connectionName}
             peerMark={
-              <View style={styles.cardMarkRow}>
-                {peerMark(17, '#0b0e14')}
-                {showStats ? (
-                  <>
-                    {/* Two pieces on a line that may wrap: the battery,
-                        and the two volumes joined by a dot. Too long,
-                        the volumes go to a line of their own, whole. */}
-                    <View style={styles.cardVolumeWrap}>
-                      {/* Two lines: the voices, and under them the two
-                          batteries - each a whole, never wrapped. */}
-                      <Text style={styles.cardVolume} numberOfLines={1}>
-                        {[
-                          peerState.volume != null
-                            ? t('channel.hearsYou', { pct: percent(peerState.volume) })
-                            : '',
-                          t('channel.youHear', { pct: percent(peerGain) }),
-                        ].filter(Boolean).join(' · ')}
-                      </Text>
-                      {battery || peerState.battery ? (
-                        <Text style={styles.cardVolume} numberOfLines={1}>
-                          {[
-                            battery
-                              ? t(battery.charging ? 'channel.batteryCharging' : 'channel.battery',
-                                { pct: battery.percent })
-                              : '',
-                            peerState.battery
-                              ? t(peerState.battery.charging ? 'channel.batteryTheirsCharging' : 'channel.batteryTheirs',
-                                { pct: peerState.battery.percent })
-                              : '',
-                          ].filter(Boolean).join(' · ')}
-                        </Text>
-                      ) : null}
-                    </View>
-                    {/* The output's mark stands beside the number of
-                        whoever is listening: theirs before theirs, mine
-                        after mine. There used to be a single one, at
-                        the head, and it looked as though it held for
-                        the whole line. */}
-                    {ownOutputMark(17, '#0b0e14')}
-                  </>
+              <View style={styles.cardMarkCol}>
+                {/* The two output marks flank the voices alone - theirs
+                    before "hears you", mine after "you hear" - and the
+                    batteries sit on a line of their own underneath. */}
+                <View style={styles.cardMarkRow}>
+                  {peerMark(17, '#0b0e14')}
+                  {showStats ? (
+                    <Text style={styles.cardVolume} numberOfLines={1}>
+                      {[
+                        peerState.volume != null
+                          ? t('channel.hearsYou', { pct: percent(peerState.volume) })
+                          : '',
+                        t('channel.youHear', { pct: percent(peerGain) }),
+                      ].filter(Boolean).join(' · ')}
+                    </Text>
+                  ) : null}
+                  {showStats ? ownOutputMark(17, '#0b0e14') : null}
+                </View>
+                {showStats && (battery || peerState.battery) ? (
+                  <Text style={styles.cardVolume} numberOfLines={1}>
+                    {[
+                      battery
+                        ? t(battery.charging ? 'channel.batteryCharging' : 'channel.battery',
+                          { pct: battery.percent })
+                        : '',
+                      peerState.battery
+                        ? t(peerState.battery.charging ? 'channel.batteryTheirsCharging' : 'channel.batteryTheirs',
+                          { pct: peerState.battery.percent })
+                        : '',
+                    ].filter(Boolean).join(' · ')}
+                  </Text>
                 ) : null}
               </View>
             }
@@ -2123,7 +2114,7 @@ const styles = StyleSheet.create({
   cardMark: { marginTop: 12 },
   cardMarkRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   cardVolume: { color: '#7d8794', fontSize: 13 },
-  cardVolumeWrap: { flexDirection: 'column', flexShrink: 1, alignItems: 'center' },
+  cardMarkCol: { alignItems: 'center', gap: 4 },
 
   miniCard: { alignItems: 'center', paddingHorizontal: 10 },
   miniFace: {
