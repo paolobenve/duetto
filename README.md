@@ -8,12 +8,28 @@ they arrive.
 Audio and video travel **end-to-end encrypted straight between the two phones**. Your
 server is only there to let you find each other: **it cannot read anything**.
 
+## Beta testers wanted
+
+Duetto is at version 0.9: it works, two people use it all day, and it needs more phones,
+more networks and more eyes before 1.0. If you would like to try it with somebody - a
+partner, a parent, a friend on the other side of the world - **open an issue from the
+«Beta tester» template** on GitLab and say what phone you have. You get an invitation to a
+server that is already running, or a pairing code, and the APK from the
+[releases](https://gitlab.com/paolobenve/duetto/-/releases). No account, no e-mail, no
+service of anybody's: the app talks to that one server and to the other phone.
+
+Two things to know. Android only, 7.0 or later. And on mobile data where the direct link
+between the phones is not possible - some carriers only allow the relay - a video
+conversation costs *your* data plan, at the rate of the quality chosen in the app: from
+about 130 MB an hour at «Saver» to about 1.8 GB an hour at «Best», per direction.
+
 ## How it is installed, from the point of view of whoever uses it
 
 1. You install the app
-2. You write the name of your server, and the key it asks for, if it asks for one
+2. You write the name of your server - or point the camera at the QR code the other phone
+   shows you, and you write nothing at all
 3. On one phone you press «Create the code», on the other you type in the eight digits
-   that appear
+   that appear, or read them with the camera
 4. You grant two system settings, which the app explains and opens for you
 
 Done, for good. No other service to install, no password to invent, no channel or

@@ -12,6 +12,14 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
+## 0.9.5 build 250
+
+**Version 0.9.5.** A member who leaves is announced to the owner and the pairs with them
+are broken for the other side; the welcome's Back key does what its own «Back» does, «Next»
+on the two ways in is enabled only by what is on the screen, a spent invitation is not
+remembered, and a bad one is said at the top, in a box, with why. The README now asks for
+beta testers, and the repository has an issue template for them.
+
 ## 0.9.5 build 247
 
 **A member who leaves is announced to the owner**, in words - «Moto has left the server» -
