@@ -895,6 +895,7 @@ export default function ChannelScreen(props: Props) {
                       <Text style={styles.cardVolume}>
                         {t(battery.charging ? 'channel.batteryCharging' : 'channel.battery',
                           { pct: battery.percent })}
+                        {' · '}
                       </Text>
                     ) : null}
                     {peerState.volume != null ? (
