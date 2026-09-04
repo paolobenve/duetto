@@ -12,6 +12,12 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
+## 0.9.5 build 247
+
+**A member who leaves is announced to the owner**, in words - «Moto has left the server» -
+and not only by a shorter list. The pairs they had, as owner or as second party, are marked
+broken for whoever was on the other side of them, wherever they are.
+
 ## 0.9.4 build 246
 
 **Version 0.9.4.** Everything since 0.9.3: the first access that asks for the server and for

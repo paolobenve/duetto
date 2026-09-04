@@ -343,6 +343,11 @@ export function remove(name) {
   const gone = data.rooms.filter((r) => r.owner === name);
   data.rooms = data.rooms.filter((r) => r.owner !== name);
   for (const r of gone) noteBroken(data, r.room);
+  // And the rooms where they were the second party: those stay with
+  // their owner, but the pair in them is broken all the same.
+  for (const r of data.rooms) {
+    if (r.partner === name) { noteBroken(data, r.room); r.partner = null; }
+  }
   write(data);
   return before - data.devices.length;
 }

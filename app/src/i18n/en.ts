@@ -22,6 +22,8 @@
  */
 export const en = {
   errors: {
+    memberLeft: '{who} has left the server',
+    memberLeftBody: '{who} gave up using {server} for their connections. The pairs with them no longer work; to come back they would need a new invitation.',
     removed: 'Taken off the server',
     removedBody: 'The owner of {server} has taken away your possibility of using this server for your connections: the pairs made there no longer work. To come back you would need a new invitation.',
     leaveFailed: 'Could not leave the server',

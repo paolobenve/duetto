@@ -16,6 +16,8 @@ import type { Dictionary } from './en';
  */
 export const pt: Dictionary = {
   errors: {
+    memberLeft: '{who} saiu do servidor',
+    memberLeftBody: '{who} desistiu de usar {server} para as suas ligações. Os pares com essa pessoa não funcionam mais; para voltar precisaria de um novo convite.',
     removed: 'Tirado do servidor',
     removedBody: 'O dono de {server} tirou de você a possibilidade de usar este servidor para as suas ligações: os pares feitos lá não funcionam mais. Para voltar seria preciso um novo convite.',
     leaveFailed: 'Não deu para sair do servidor',

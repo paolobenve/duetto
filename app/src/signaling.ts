@@ -167,6 +167,8 @@ export type SignalingEvents = {
   onPairBroken?: (room?: string) => void;
   /** taken off this server's list, by its owner */
   onRemoved?: () => void;
+  /** a member left the server by themselves: only the owner is told */
+  onMemberLeft?: (name: string) => void;
   /** @param reason with `not-allowed`: 'stranger', 'bad-invite' or 'bad-key' */
   onError?: (code: string, reason?: string) => void;
 };
@@ -628,6 +630,10 @@ export class Signaling {
 
       case 'removed':
         this.events.onRemoved?.();
+        break;
+
+      case 'member-left':
+        this.events.onMemberLeft?.(String(msg.name || ''));
         break;
 
       case 'pair-broken':

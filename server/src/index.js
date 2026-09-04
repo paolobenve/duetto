@@ -910,6 +910,12 @@ function pairBroken(ws, msg) {
   const room = typeof msg.room === 'string' ? msg.room.trim() : '';
   if (!room || room.length > 128) return;
   markBroken(room);
+  const told = tellPairBroken(room, ws);
+  console.log(`[duetto] ${ws.who || ws.name} breaks a pair (${told} told now)`);
+}
+
+/** Tells the parties of a room, other than `ws`, that its pair is broken. */
+function tellPairBroken(room, ws) {
   // Told now: whoever is in that room, and - since the server knows
   // who the two parties of a noted room are - the other party wherever
   // they are connected, in another room with somebody else included.
@@ -927,7 +933,7 @@ function pairBroken(ws, msg) {
     }
   }
   for (const peer of told) send(peer, { type: 'pair-broken', room });
-  console.log(`[duetto] ${ws.who || ws.name} breaks a pair (${told.size} told now)`);
+  return told.size;
 }
 
 /**
@@ -941,9 +947,19 @@ function pairBroken(ws, msg) {
 function leaveServer(ws) {
   if (!ws.who) { send(ws, { type: 'error', error: 'not-yours' }); return; }
   if (ws.invites) { send(ws, { type: 'error', error: 'not-for-owner' }); return; }
+  // Their rooms, before they go: whoever was in a pair with them is
+  // told that it is broken, wherever they are.
+  const theirs = read().rooms.filter((r) => r.owner === ws.who || r.partner === ws.who);
   const gone = removePerson(ws.who);
   console.log(`[duetto] ${ws.who} leaves the server (${gone})`);
   send(ws, { type: 'left' });
+  for (const r of theirs) tellPairBroken(r.room, ws);
+  // And the owner is told in words, not only by a shorter list.
+  for (const peer of wss.clients) {
+    if (peer !== ws && peer.invites && (peer.joined || peer.atDoor)) {
+      send(peer, { type: 'member-left', name: ws.who });
+    }
+  }
   tellOwners();
 }
 

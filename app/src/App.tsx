@@ -2350,6 +2350,13 @@ export default function App() {
             setScreen('welcome');
             Alert.alert(t('errors.removed'), t('errors.removedBody', { server }));
           },
+          onMemberLeft: (name) => {
+            Journal.mark(`member-left:${name}`).catch(() => { /* noop */ });
+            Alert.alert(
+              t('errors.memberLeft', { who: name }),
+              t('errors.memberLeftBody', { who: name, server: displayServer(cfgRef.current?.serverUrl || '') }),
+            );
+          },
           onPeople: (list, waiting) => {
             setPeople(list);
             setInvitations(waiting);

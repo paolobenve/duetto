@@ -31,6 +31,26 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.9.5',
+    notes: {
+      en: [
+        'When somebody leaves your server, you are told, and the pairs with them are marked as broken.',
+      ],
+      it: [
+        'Quando qualcuno lascia il tuo server, te lo dice, e le coppie con lui risultano sciolte.',
+      ],
+      es: [
+        'Cuando alguien deja tu servidor, te lo dice, y las parejas con esa persona quedan deshechas.',
+      ],
+      pt: [
+        'Quando alguém sai do seu servidor, você fica sabendo, e os pares com essa pessoa ficam desfeitos.',
+      ],
+      fr: [
+        'Quand quelqu’un quitte ton serveur, tu en es informé, et les paires avec cette personne sont rompues.',
+      ],
+    },
+  },
+  {
     version: '0.9.4',
     notes: {
       en: [
