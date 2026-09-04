@@ -113,7 +113,7 @@ export const fr: Dictionary = {
     muted: 'Muet',
     flip: 'Tourner',
     call: 'Prévenir',
-    called: 'On me donne le code',
+    called: 'Prévenu',
     leave: 'Sortir',
   },
 
@@ -394,7 +394,7 @@ export const fr: Dictionary = {
     strangerBody: 'Et il ne connaît pas encore ce téléphone. On entre de deux façons.',
     calledTitle: 'Si quelqu’un veut te donner un code',
     calledHint: 'Celui qui te fait entrer crée le code d’appairage sur son téléphone et te le dicte. Il ne faut rien d’autre.',
-    called: 'Je saisis son code',
+    called: 'On me donne le code',
     invitedTitle: 'Si quelqu’un t’a envoyé une invitation',
     invitationHint: 'C’est le propriétaire du serveur qui la fait, pour qui doit ouvrir ses propres liaisons. Elle sert une seule fois.',
     invitationWrong: 'L’invitation {code} ne vaut pas : elle a déjà été utilisée, ou elle est fausse ou expirée. Une invitation ne sert qu’une fois : demandes-en une nouvelle au propriétaire du serveur.',

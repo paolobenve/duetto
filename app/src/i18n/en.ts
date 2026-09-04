@@ -124,7 +124,7 @@ export const en = {
     muted: 'Muted',
     flip: 'Flip',
     call: 'Call',
-    called: 'They are giving me the code',
+    called: 'Called',
     leave: 'Leave',
   },
 
@@ -407,7 +407,7 @@ export const en = {
     strangerBody: 'And it does not know this phone yet. There are two ways in.',
     calledTitle: 'If somebody wants to give you a code',
     calledHint: 'Whoever lets you in creates the pairing code on their phone and reads it to you. Nothing else is needed.',
-    called: 'I will type their code',
+    called: 'They are giving me the code',
     invitedTitle: 'If somebody has sent you an invitation',
     invitationHint: 'Made by the owner of the server, for connections of your own here. It is used once.',
     invitationWrong: 'The invitation {code} is no good: it has already been used, or it is wrong or expired. An invitation works once; ask the owner of the server for a new one.',

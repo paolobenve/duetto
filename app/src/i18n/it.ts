@@ -112,7 +112,7 @@ export const it: Dictionary = {
     muted: 'Muto',
     flip: 'Gira',
     call: 'Avvisa',
-    called: 'Mi sta dando il codice',
+    called: 'Avvisato',
     leave: 'Esci',
   },
 
@@ -393,7 +393,7 @@ export const it: Dictionary = {
     strangerBody: 'E non conosce ancora questo telefono. Si entra in due modi.',
     calledTitle: 'Se qualcuno ti vuol dare un codice',
     calledHint: 'Chi ti fa entrare crea il codice di accoppiamento sul suo telefono e te lo detta. Non serve altro.',
-    called: 'Scrivo il suo codice',
+    called: 'Mi sta dando il codice',
     invitedTitle: 'Se qualcuno ti ha inviato un invito',
     invitationHint: 'Lo fa il proprietario del server, per chi deve aprire collegamenti propri. Si usa una volta sola.',
     invitationWrong: 'L’invito {code} non vale: è già stato usato, oppure è sbagliato o scaduto. Un invito funziona una volta sola: chiedine uno nuovo a chi possiede il server.',
