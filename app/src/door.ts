@@ -100,8 +100,12 @@ function visit(serverUrl: string, ask: DoorRequest): Promise<Visit> {
     const send = (obj: unknown) => {
       try { ws.send(JSON.stringify(obj)); } catch { /* noop */ }
     };
-    const result: Omit<Visit, 'answer'> = {
+    // One object, handed back as it is: whoever sets `onWord` on it
+    // afterwards must be setting it on the one the socket reads. A
+    // copy made at resolve time listened to nobody.
+    const result: Visit = {
       ws,
+      answer: { role: 'unknown', hasOwner: false, needsKey: false },
       ask: (obj) => new Promise((res) => {
         waiting = res;
         send(obj);
@@ -137,25 +141,20 @@ function visit(serverUrl: string, ask: DoorRequest): Promise<Visit> {
       }
       if (!settled) {
         if (msg.type === 'door') {
-          finish(() => resolve({
-            ...result,
-            answer: {
-              role: isRole(msg.role) ? msg.role : 'unknown',
-              hasOwner: msg.hasOwner === true,
-              needsKey: msg.needsKey === true,
-              name: typeof msg.name === 'string' ? msg.name : undefined,
-              adopted: msg.adopted === true,
-              error: typeof msg.error === 'string' ? msg.error : undefined,
-            },
-          }));
+          result.answer = {
+            role: isRole(msg.role) ? msg.role : 'unknown',
+            hasOwner: msg.hasOwner === true,
+            needsKey: msg.needsKey === true,
+            name: typeof msg.name === 'string' ? msg.name : undefined,
+            adopted: msg.adopted === true,
+            error: typeof msg.error === 'string' ? msg.error : undefined,
+          };
+          finish(() => resolve(result));
         } else if (msg.type === 'error') {
           // An older server: it does not know the question. Not a
           // refusal - the app goes on as it always did.
           if (msg.error === 'expected-join') {
-            finish(() => resolve({
-              ...result,
-              answer: { role: 'unknown', hasOwner: false, needsKey: false },
-            }));
+            finish(() => resolve(result));
           } else {
             finish(() => {
               result.close();
