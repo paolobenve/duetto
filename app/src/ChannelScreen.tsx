@@ -895,21 +895,22 @@ export default function ChannelScreen(props: Props) {
                         and the two volumes joined by a dot. Too long,
                         the volumes go to a line of their own, whole. */}
                     <View style={styles.cardVolumeWrap}>
-                      {battery ? (
-                        <Text style={styles.cardVolume}>
-                          {t(battery.charging ? 'channel.batteryCharging' : 'channel.battery',
-                            { pct: battery.percent })}
-                          {' · '}
+                      {[
+                        peerState.volume != null
+                          ? t('channel.hearsYou', { pct: percent(peerState.volume) })
+                          : '',
+                        battery
+                          ? t(battery.charging ? 'channel.batteryCharging' : 'channel.battery',
+                            { pct: battery.percent })
+                          : '',
+                        t('channel.youHear', { pct: percent(peerGain) }),
+                      ].filter(Boolean).map((piece, i, all) => (
+                        // Each piece a text of its own, so the line may
+                        // wrap between them and never inside one.
+                        <Text key={i} style={styles.cardVolume}>
+                          {piece}{i < all.length - 1 ? ' · ' : ''}
                         </Text>
-                      ) : null}
-                      <Text style={styles.cardVolume}>
-                        {[
-                          peerState.volume != null
-                            ? t('channel.hearsYou', { pct: percent(peerState.volume) })
-                            : '',
-                          t('channel.youHear', { pct: percent(peerGain) }),
-                        ].filter(Boolean).join(' · ')}
-                      </Text>
+                      ))}
                     </View>
                     {/* The output's mark stands beside the number of
                         whoever is listening: theirs before theirs, mine
