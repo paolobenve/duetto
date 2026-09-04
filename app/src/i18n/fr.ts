@@ -107,7 +107,7 @@ export const fr: Dictionary = {
     muted: 'Muet',
     flip: 'Tourner',
     call: 'Prévenir',
-    called: 'Prévenu',
+    called: 'On me donne le code',
     leave: 'Sortir',
   },
 
@@ -364,7 +364,7 @@ export const fr: Dictionary = {
     keyWrong: 'Ce n’est pas la clé.',
     strangerTitle: 'Ce serveur a un propriétaire',
     strangerBody: 'Et il ne connaît pas encore ce téléphone. On entre de deux façons.',
-    calledTitle: 'Quelqu’un t’appelle',
+    calledTitle: 'Si quelqu’un veut te donner un code',
     calledHint: 'Celui qui te fait entrer crée le code d’appairage sur son téléphone et te le dicte. Il ne faut rien d’autre.',
     called: 'Je saisis son code',
     invitedTitle: 'Tu as une invitation',

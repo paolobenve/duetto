@@ -118,7 +118,7 @@ export const en = {
     muted: 'Muted',
     flip: 'Flip',
     call: 'Call',
-    called: 'Called',
+    called: 'They are giving me the code',
     leave: 'Leave',
   },
 
@@ -377,7 +377,7 @@ export const en = {
     keyWrong: 'That is not the key.',
     strangerTitle: 'This server has an owner',
     strangerBody: 'And it does not know this phone yet. There are two ways in.',
-    calledTitle: 'Somebody is calling you',
+    calledTitle: 'If somebody wants to give you a code',
     calledHint: 'Whoever lets you in creates the pairing code on their phone and reads it to you. Nothing else is needed.',
     called: 'I will type their code',
     invitedTitle: 'You have an invitation',
