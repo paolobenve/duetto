@@ -141,8 +141,13 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
     }
     // In: said in so many words before going on. Whoever has just
     // taken a server, or come in with an invitation, deserves to be
-    // told what that means, not to land on a settings screen.
+    // told what that means, not to land on a settings screen. Not
+    // when nothing has happened, though: the same server confirmed
+    // from the settings, and the same word as before, is a look and
+    // not an arrival.
     if (a.role === 'owner' || a.role === 'member') {
+      const nothingNew = at === initial.serverUrl && a.role === initial.serverRole && !a.adopted;
+      if (nothingNew) { finishWith(a, undefined, at, inv); return; }
       setWelcomed({ a, at, inv });
       setStep('welcomed');
       return;
