@@ -3497,7 +3497,7 @@ export default function App() {
       // Breaking up the last one leaves nothing to connect to, and one
       // stays in the settings, where the two ways to a pair are; if
       // another one remains, we have already moved to it.
-      setScreen(isPaired(next) ? 'channel' : 'settings');
+      setScreen(isPaired(next) ? 'channel' : opensHere(next) ? 'settings' : 'welcome');
     }
   }, [cfg, resetPeerMemory]);
   useEffect(() => { onForgetPairRef.current = (id) => { onForgetPair(id); }; }, [onForgetPair]);
