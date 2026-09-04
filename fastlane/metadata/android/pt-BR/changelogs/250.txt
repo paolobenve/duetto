@@ -1,0 +1,1 @@
+Quem sai do servidor é anunciado ao dono, e os pares com essa pessoa ficam desfeitos do outro lado. A tecla Voltar na tela de boas-vindas se comporta bem; um convite já usado não é lembrado, e um errado é explicado no alto.

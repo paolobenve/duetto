@@ -1,0 +1,1 @@
+A member who leaves the server is announced to the owner, and the pairs with them are broken for the other side. The welcome's Back key behaves; a spent invitation is not remembered, and a bad one is explained at the top.

@@ -1,0 +1,1 @@
+Quien deja el servidor se anuncia al propietario, y las parejas con esa persona quedan deshechas del otro lado. La tecla Atrás en la bienvenida se comporta bien; una invitación ya usada no se recuerda, y una incorrecta se explica arriba.

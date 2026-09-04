@@ -1,0 +1,12 @@
+O Duetto é um pequeno «Discord» feito sob medida para duas pessoas apenas. Não é um app para ligar: é um canal permanente. Você abre o app e está dentro; se a outra pessoa também está, vocês se conectam sozinhos, senão você continua alcançável e é avisado assim que ela chega.
+
+Áudio e vídeo viajam cifrados de ponta a ponta, direto entre os dois telefones. O servidor - seu, ou de quem deixou você entrar - serve só para vocês se encontrarem, e não consegue ler nada. Sem conta, sem número de telefone, sem serviço de terceiros.
+
+- Um toque e você está no canal, e fica: o app sobrevive à noite, ao bolso, à troca de rede.
+- Vídeo quando quiser, com a qualidade escolhida para os dois telefones.
+- A outra pessoa pode chamar você com um som que chega mesmo com a campainha baixa.
+- Pareamento com um código de oito dígitos ou um código QR mostrado ao outro telefone; convites para quem precisa abrir ligações próprias no seu servidor.
+- Fica em silêncio durante uma chamada telefônica, e volta quando ela acaba.
+- Software livre, GPL-3, e um servidor que você mesmo administra: um pequeno processo Node.js e o coturn.
+
+É preciso Android 7 ou mais recente, e um servidor: o README explica como montar um em quinze minutos.

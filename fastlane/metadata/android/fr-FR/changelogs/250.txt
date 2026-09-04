@@ -1,0 +1,1 @@
+Qui quitte le serveur est annoncé au propriétaire, et les paires avec cette personne sont rompues de l'autre côté. La touche Retour de l'accueil se comporte bien ; une invitation déjà utilisée n'est pas retenue, et une mauvaise est expliquée en haut.

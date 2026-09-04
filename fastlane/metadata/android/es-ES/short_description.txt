@@ -1,0 +1,1 @@
+Un canal de voz y vídeo permanente para dos personas, en tu propio servidor.

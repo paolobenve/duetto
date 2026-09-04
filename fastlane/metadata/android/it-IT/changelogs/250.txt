@@ -1,0 +1,1 @@
+Chi lascia il server viene annunciato al proprietario, e le coppie con lui risultano sciolte dall'altra parte. Il tasto Indietro nel Benvenuto si comporta bene; un invito già usato non viene ricordato, e uno sbagliato viene spiegato in cima.
