@@ -233,7 +233,7 @@ export const en = {
     inUseSince: 'In use · since ',
     since: 'Since ',
     addConnection: 'Add a connection',
-    addConnectionHint: 'To connect with another person: you create a new code, or type in theirs. The pairs you have stay: the new one is added and comes into use. It is also for when the other side has broken the pair, because from here there is no way of noticing.',
+    addConnectionHint: 'To connect with another person: you create a new code and read it to them, and they type it into their phone. The pairs you have stay: the new one is added and comes into use. It is also for when the other side has broken the pair, because from here there is no way of noticing.',
     cannotAddHere: 'This server lets you talk to whoever let you in, and to nobody new: a connection of your own would need an invitation from them.',
     forgetTitle: 'Break the connection with {who}?',
     forgetBody: 'To have it back you will both have to pair again with a new code.\n\nThere is no need to break it on the other phone too: from there "Add a connection" is enough.',

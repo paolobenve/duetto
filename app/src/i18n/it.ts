@@ -219,7 +219,7 @@ export const it: Dictionary = {
     inUseSince: 'In uso · dal ',
     since: 'Dal ',
     addConnection: 'Aggiungi un collegamento',
-    addConnectionHint: 'Per collegarti con un’altra persona: crei un codice nuovo, o scrivi il suo. Le coppie che hai restano: la nuova si aggiunge e passa in uso. Serve anche se l’altro ha sciolto la coppia dalla sua parte, perché da qui non c’è modo di accorgersene.',
+    addConnectionHint: 'Per collegarti con un’altra persona: crei un codice nuovo e glielo detti, e lei lo scrive sul suo telefono. Le coppie che hai restano: la nuova si aggiunge e passa in uso. Serve anche se l’altro ha sciolto la coppia dalla sua parte, perché da qui non c’è modo di accorgersene.',
     cannotAddHere: 'Questo server ti fa parlare con chi ti ha fatto entrare, e con nessun altro: per un collegamento tuo ci vuole un suo invito.',
     forgetTitle: 'Sciogliere il collegamento con {who}?',
     forgetBody: 'Per riaverlo dovrete rifare l’accoppiamento con un codice nuovo.\n\nNon serve sciogliere anche sull’altro telefono: da lì basta «Aggiungi un collegamento».',

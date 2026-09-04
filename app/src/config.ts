@@ -636,6 +636,18 @@ export function isServerConfigured(cfg: DuoConfig): boolean {
   return /^wss?:\/\/[^/]+\/.+/.test(url);
 }
 
+/**
+ * Whether the server has told this phone what it is to it.
+ *
+ * Without that word the pairing screen cannot know which buttons can
+ * work, and a phone that never knocked - one whose settings Android put
+ * back at a reinstall, say - would be offered "Create the code" on a
+ * server that is somebody else's. Not known: the welcome first.
+ */
+export function roleKnown(cfg: DuoConfig): boolean {
+  return cfg.serverRole === 'owner' || cfg.serverRole === 'member' || cfg.serverRole === 'guest';
+}
+
 /** True when a pair already exists: straight into the channel. */
 export function isPaired(cfg: DuoConfig): boolean {
   return !!cfg.pair && !!cfg.pair.id && !!cfg.pair.key;

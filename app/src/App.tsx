@@ -23,7 +23,7 @@ import {
 import { attachWatchdog, Watchdog } from './watchdog';
 import {
   DuoConfig, PairInfo, loadConfig, saveConfig,
-  isServerConfigured, isPaired, VIDEO_PROFILES,
+  isServerConfigured, isPaired, roleKnown, VIDEO_PROFILES,
   addPair, switchToPair, forgetPair, rememberPeerName,
   alignPairServer, renamePair, pairFileKey, pairName,
   storeSettingsInPair,
@@ -1789,7 +1789,9 @@ export default function App() {
       // No server yet: the welcome, which asks for the server and
       // for nothing else until the server says what it needs.
       if (!isServerConfigured(c)) setScreen('welcome');
-      else if (!isPaired(c)) setScreen('pairing');
+      // No pair yet: the pairing, if the server has said what we are
+      // to it; otherwise the welcome, which knocks and finds out.
+      else if (!isPaired(c)) setScreen(roleKnown(c) ? 'pairing' : 'welcome');
       // The system settings are offered once, as soon as there is a
       // pair: before that there would be no sense explaining them.
       else if (!c.setupShown) setScreen('setup');
@@ -3294,7 +3296,7 @@ export default function App() {
           onRenamePair={onRenamePair}
           // No existing connection is touched: the new one is added, if
           // and when it succeeds.
-          onRepair={() => setScreen('pairing')}
+          onRepair={() => setScreen(roleKnown(cfg) ? 'pairing' : 'welcome')}
           onClose={isPaired(cfg) ? () => setScreen('channel') : undefined}
           onOpenSetup={() => { setSetupFrom('settings'); setScreen('setup'); }}
           onQualityChange={(q) => applyQuality(q, true)}

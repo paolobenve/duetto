@@ -220,7 +220,7 @@ export const es: Dictionary = {
     inUseSince: 'En uso · desde el ',
     since: 'Desde el ',
     addConnection: 'Añadir una conexión',
-    addConnectionHint: 'Para conectarte con otra persona: creas un código nuevo, o escribes el suyo. Las parejas que tienes se quedan: la nueva se añade y pasa a estar en uso. Sirve también si el otro deshizo la pareja por su lado, porque desde aquí no hay manera de notarlo.',
+    addConnectionHint: 'Para conectarte con otra persona: creas un código nuevo y se lo dictas, y ella lo escribe en su teléfono. Las parejas que tienes se quedan: la nueva se añade y pasa a estar en uso. Sirve también si el otro deshizo la pareja por su lado, porque desde aquí no hay manera de notarlo.',
     cannotAddHere: 'Este servidor te deja hablar con quien te hizo entrar, y con nadie más: para una conexión tuya haría falta una invitación suya.',
     forgetTitle: '¿Deshacer la conexión con {who}?',
     forgetBody: 'Para recuperarla tendrán que emparejarse otra vez con un código nuevo.\n\nNo hace falta deshacerla también en el otro teléfono: desde allí basta «Añadir una conexión».',

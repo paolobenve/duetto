@@ -220,7 +220,7 @@ export const pt: Dictionary = {
     inUseSince: 'Em uso · desde ',
     since: 'Desde ',
     addConnection: 'Acrescentar uma ligação',
-    addConnectionHint: 'Para se ligar com outra pessoa: você cria um código novo, ou digita o dela. Os pares que você tem ficam: o novo se acrescenta e passa a estar em uso. Serve também se o outro desfez o par do lado dele, porque daqui não há como perceber.',
+    addConnectionHint: 'Para se ligar com outra pessoa: você cria um código novo e dita para ela, e ela digita no telefone dela. Os pares que você tem ficam: o novo se acrescenta e passa a estar em uso. Serve também se o outro desfez o par do lado dele, porque daqui não há como perceber.',
     cannotAddHere: 'Este servidor deixa você falar com quem o fez entrar, e com mais ninguém: para uma ligação sua seria preciso um convite dele.',
     forgetTitle: 'Desfazer a ligação com {who}?',
     forgetBody: 'Para tê-la de volta vocês terão de refazer o pareamento com um código novo.\n\nNão é preciso desfazer também no outro telefone: de lá basta «Acrescentar uma ligação».',
