@@ -13,7 +13,7 @@ import {
   ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { DuoConfig, displayServer, normalizeServerUrl, isServerConfigured } from './config';
-import { knock, DoorAnswer } from './door';
+import { knock, formatInvitation, DoorAnswer } from './door';
 import { normalizeCode, formatCode, isCodeComplete } from './pairing';
 import { VERSION_LABEL } from './version';
 import { t } from './i18n';
@@ -194,7 +194,7 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
           <Field
             label={t('settings.invitation')}
             value={invitation}
-            onChange={setInvitation}
+            onChange={(v) => setInvitation(formatInvitation(v))}
             placeholder={t('settings.invitationPlaceholder')}
             hint={t('welcome.invitationHint')}
           />

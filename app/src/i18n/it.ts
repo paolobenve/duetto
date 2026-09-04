@@ -194,8 +194,8 @@ export const it: Dictionary = {
 
   settings: {
     subtitle: 'Un canale solo per voi due. Entri e resti: quando entra anche l’altro, vi collegate da soli.',
-    haveCode: 'Ho ricevuto un codice',
-    connectWithSomebody: 'Collegati con qualcuno',
+    haveCode: 'Qualcuno mi offre un collegamento',
+    connectWithSomebody: 'Offri il collegamento a qualcuno',
     tabLinks: 'Server e coppie',
     tabUse: 'Uso',
     server: 'Server',
@@ -204,7 +204,7 @@ export const it: Dictionary = {
     copied: 'copiata',
     invitation: 'L\'invito',
     invitationPlaceholder: 'ABCD-2345',
-    invitationHint: 'Un server che tiene un elenco di telefoni fa entrare solo quelli che conosce. Chi lo tiene ti fa un invito e te lo dà come si dà un codice di accoppiamento: lo scrivi qui, una volta, prima di collegarti. Si consuma al primo uso, e da lì in poi questo telefono è conosciuto dalla sua carta, qui sopra.',
+    invitationHint: 'Un server che tiene un elenco di telefoni fa entrare solo quelli che conosce. Chi lo tiene ti fa un invito e te lo dà come si dà un codice di accoppiamento: lo scrivi qui, una volta, prima di collegarti. Si consuma al primo uso, e da lì in poi questo telefono è conosciuto dalla sua carta, qui sopra. Maiuscole o minuscole, è lo stesso.',
     serverKey: 'La chiave del server',
     serverKeyShownHint: 'L’ha chiesta il server alla porta: è la chiave di casa, la stessa per chiunque entri.',
     serverKeyPlaceholder: 'vuota, se non ne chiede',

@@ -195,8 +195,8 @@ export const fr: Dictionary = {
 
   settings: {
     subtitle: 'Un canal rien que pour vous deux. Tu entres et tu restes : quand l’autre entre aussi, vous vous connectez tout seuls.',
-    haveCode: 'On m’a donné un code',
-    connectWithSomebody: 'Relie-toi à quelqu’un',
+    haveCode: 'Quelqu’un m’offre une liaison',
+    connectWithSomebody: 'Offre une liaison à quelqu’un',
     tabLinks: 'Serveur et paires',
     tabUse: 'Usage',
     server: 'Serveur',
@@ -205,7 +205,7 @@ export const fr: Dictionary = {
     copied: 'copiée',
     invitation: 'L’invitation',
     invitationPlaceholder: 'ABCD-2345',
-    invitationHint: 'Un serveur qui tient une liste de téléphones ne laisse entrer que ceux qu’il connaît. Celui qui le tient te fait une invitation et te la donne comme on donne un code d’appairage : tu l’écris ici, une fois, avant de te connecter. Elle s’épuise au premier usage, et dès lors ce téléphone est reconnu par sa carte, ci-dessus.',
+    invitationHint: 'Un serveur qui tient une liste de téléphones ne laisse entrer que ceux qu’il connaît. Celui qui le tient te fait une invitation et te la donne comme on donne un code d’appairage : tu l’écris ici, une fois, avant de te connecter. Elle s’épuise au premier usage, et dès lors ce téléphone est reconnu par sa carte, ci-dessus. Majuscules ou minuscules, c’est pareil.',
     serverKey: 'La clé du serveur',
     serverKeyShownHint: 'Le serveur l’a demandée à la porte : c’est la clé de la maison, la même pour qui entre.',
     serverKeyPlaceholder: 'vide, s’il n’en demande pas',

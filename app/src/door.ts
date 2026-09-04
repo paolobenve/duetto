@@ -170,6 +170,19 @@ function visit(serverUrl: string, ask: DoorRequest): Promise<Visit> {
 const isRole = (v: any): v is ServerRole =>
   v === 'owner' || v === 'member' || v === 'guest' || v === 'stranger' || v === 'unknown';
 
+/**
+ * An invitation as one types it: ABCD-2345.
+ *
+ * Read out or pasted, it comes in any case and with or without the
+ * dash; the server does not mind, and neither should the field. The
+ * dash is put in after four letters so that what one sees is what was
+ * handed over.
+ */
+export function formatInvitation(raw: string): string {
+  const clean = (raw || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+  return clean.length > 4 ? `${clean.slice(0, 4)}-${clean.slice(4)}` : clean;
+}
+
 /** What is this server to me? One knock, one word. */
 export async function knock(serverUrl: string, ask: DoorRequest): Promise<DoorAnswer> {
   const v = await visit(serverUrl, ask);

@@ -208,8 +208,8 @@ export const en = {
 
   settings: {
     subtitle: 'A channel for the two of you alone. You come in and you stay: when the other person comes in too, you connect by yourselves.',
-    haveCode: 'I have been given a code',
-    connectWithSomebody: 'Connect with somebody',
+    haveCode: 'Somebody is offering me a connection',
+    connectWithSomebody: 'Offer somebody a connection',
     tabLinks: 'Server and pairs',
     tabUse: 'Use',
     server: 'Server',
@@ -218,7 +218,7 @@ export const en = {
     copied: 'copied',
     invitation: 'The invitation',
     invitationPlaceholder: 'ABCD-2345',
-    invitationHint: 'A server that keeps a list of phones lets in only the ones it knows. Whoever runs it makes an invitation for you and hands it over as one hands over a pairing code: you write it here, once, before connecting. It is spent at the first use and from then on this phone is known by its own card, above.',
+    invitationHint: 'A server that keeps a list of phones lets in only the ones it knows. Whoever runs it makes an invitation for you and hands it over as one hands over a pairing code: you write it here, once, before connecting. It is spent at the first use and from then on this phone is known by its own card, above. Upper or lower case, it makes no difference.',
     serverKey: 'The server\'s key',
     serverKeyShownHint: 'The server asked for it at the door: it is the key of the house, the same for whoever is let in.',
     serverKeyPlaceholder: 'empty, if it asks for none',
