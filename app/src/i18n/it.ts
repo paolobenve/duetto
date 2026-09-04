@@ -118,6 +118,7 @@ export const it: Dictionary = {
   },
 
   channel: {
+    screenCovered: 'Schermo coperto: pulsanti bloccati. Tocca tre volte per insistere.',
     battery: 'batteria {pct}%',
     batteryCharging: 'batteria {pct}% in carica',
     pairBrokenTitle: '{who} ha sciolto la coppia',

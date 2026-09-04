@@ -119,6 +119,7 @@ export const pt: Dictionary = {
   },
 
   channel: {
+    screenCovered: 'Tela coberta: botões travados. Toque três vezes para insistir.',
     battery: 'bateria {pct}%',
     batteryCharging: 'bateria {pct}% carregando',
     pairBrokenTitle: '{who} desfez o par',

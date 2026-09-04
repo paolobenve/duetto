@@ -673,11 +673,8 @@ export default function ChannelScreen(props: Props) {
   const press = useCallback(
     (action: () => void) => () => {
       // The screen is covered: whatever touched the glass, it is
-      // nobody's choice.
-      if (coveredRef.current) {
-        Journal.mark('command:ignored-screen-covered').catch(() => { /* noop */ });
-        return;
-      }
+      // nobody's choice - unless somebody insists, see `blocked`.
+      if (blocked()) return;
       const still = Date.now() - lastTouch.current;
       lastTouch.current = Date.now();
       const faded = toWatch && (CONTROLS_OPACITY[controls] ?? 0.4) < 1;
@@ -814,11 +811,38 @@ export default function ChannelScreen(props: Props) {
   }, []);
 
   /** True if the touch is to be dropped: the screen is covered. */
-  const toIgnore = useCallback(() => {
+  /**
+   * Whether a touch is to be dropped because the screen is covered -
+   * with a way out.
+   *
+   * Some phones have no proximity sensor but an ultrasonic one, which
+   * takes a hand over the top of the phone for a pocket, and the
+   * buttons went dead with nobody saying why. So the refusal is said
+   * on the screen, and three touches within four seconds - which a
+   * pocket does not do, and a person does - set the guard aside for a
+   * minute.
+   */
+  const [coveredNotice, setCoveredNotice] = useState(false);
+  const coveredTaps = useRef<number[]>([]);
+  const coveredOverrideUntil = useRef(0);
+  const blocked = useCallback(() => {
     if (!coveredRef.current) return false;
+    const now = Date.now();
+    if (now < coveredOverrideUntil.current) return false;
+    coveredTaps.current = coveredTaps.current.filter((at) => now - at < 4000).concat(now);
+    if (coveredTaps.current.length >= 3) {
+      coveredTaps.current = [];
+      coveredOverrideUntil.current = now + 60_000;
+      setCoveredNotice(false);
+      Journal.mark('covered:overridden').catch(() => { /* noop */ });
+      return false;
+    }
     Journal.mark('command:ignored-screen-covered').catch(() => { /* noop */ });
+    setCoveredNotice(true);
+    setTimeout(() => setCoveredNotice(false), 2000);
     return true;
   }, []);
+  const toIgnore = blocked;
 
   /** The flash of the bell: it says something really left. */
   const knockFlash = useCallback(() => {
@@ -837,6 +861,13 @@ export default function ChannelScreen(props: Props) {
     // alone: on the little square it already means swapping the two
     // videos, and on the controls it means pressing them.
     <View style={styles.root}>
+      {/* "Screen covered": the refusal said, instead of buttons that
+          seem dead. */}
+      {coveredNotice ? (
+        <View style={styles.coveredNotice} pointerEvents="none">
+          <Text style={styles.coveredNoticeText}>{t('channel.screenCovered')}</Text>
+        </View>
+      ) : null}
       <VideoStage
         localStream={localStream}
         remoteStream={remoteStream}
@@ -2013,6 +2044,12 @@ const styles = StyleSheet.create({
   cardTitle: { color: '#e6ebf1', fontSize: 21, fontWeight: '700', textAlign: 'center' },
   cardSub: { color: '#8892a0', fontSize: 15, textAlign: 'center', marginTop: 10, lineHeight: 22 },
   cardOnCall: { color: '#ffb454', fontSize: 14, marginTop: 6, textAlign: 'center' },
+  coveredNotice: {
+    position: 'absolute', top: 90, left: 24, right: 24, zIndex: 50,
+    backgroundColor: '#2a2114', borderColor: '#ffb454', borderWidth: 1, borderRadius: 12,
+    padding: 12, alignItems: 'center',
+  },
+  coveredNoticeText: { color: '#ffd28a', fontSize: 14, textAlign: 'center' },
   bold: { color: '#c9d2de', fontWeight: '700' },
   // Like VideoStage's notice: a pill in the middle, not a band, so
   // that as much of the picture as possible stays visible under it.

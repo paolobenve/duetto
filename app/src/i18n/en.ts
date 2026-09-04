@@ -130,6 +130,7 @@ export const en = {
   },
 
   channel: {
+    screenCovered: 'Screen covered: the buttons are held. Touch three times to insist.',
     battery: 'battery {pct}%',
     batteryCharging: 'battery {pct}% charging',
     pairBrokenTitle: '{who} broke the pair',
