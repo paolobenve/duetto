@@ -12,6 +12,22 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
+## 0.9.4 build 195
+
+**"Who may use this server" says who, on what.** The owner's own phone read "Someone,
+since 2026-09-04, 1 connections, 1 with somebody along": the name a phone with no name set
+had said at the door, written down for good, and the rest in machine. Now the name follows
+the phone - set it in the settings and the list follows, rooms included - and the model
+travels beside it; the row reads "You, the owner, on the POCO F5", "since Thursday 4
+September 2026", "1 connection", "in 1 the other person was let in as a guest". Somebody
+invited keeps the name the owner chose: the invitation promised that name would be the
+owner's alone to see. An unused invitation can be taken back, with the same «take away»
+as a person.
+
+**A few sentences said better.** The one under «Add a connection», the one that opens
+"Who may use this server" - it is the owner who sees it, not "phones of yours" - and room
+above «Invite somebody», which is a new thing and not one more row of the list above it.
+
 ## 0.9.4 build 193
 
 **The settings no longer ask for the key and the invitation blind.** They showed both

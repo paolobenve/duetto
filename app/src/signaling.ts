@@ -9,7 +9,7 @@
  */
 import { SignalCrypto } from './crypto';
 import { logger } from './log';
-import { deviceKey, signNonce } from './device';
+import { deviceKey, deviceModel, signNonce } from './device';
 
 /**
  * The connection to the signalling server.
@@ -246,6 +246,12 @@ export type PersonOnServer = {
   /** how many connections they have opened, and how many brought somebody */
   rooms: number;
   brought: number;
+  /** the owner of the server, or somebody let in by an invitation */
+  owner: boolean;
+  /** the phone's make and model, when it said */
+  model: string;
+  /** this very phone */
+  you: boolean;
 };
 
 export type InvitationOnServer = { name: string; code: string; expires: string };
@@ -453,6 +459,7 @@ export class Signaling {
       sig: card?.sig,
       invite: this.opts.invitation || undefined,
       name: this.opts.displayName || 'Someone',
+      model: deviceModel(),
       mode: this.mode,
       side: this.opts.side,
     });
@@ -471,6 +478,11 @@ export class Signaling {
   /** Takes somebody off the list, with their rooms and their guests. */
   forgetPerson(name: string) {
     this.rawSend({ type: 'forget', name });
+  }
+
+  /** Takes back an invitation not yet used. */
+  forgetInvitation(code: string) {
+    this.rawSend({ type: 'forget', code });
   }
 
   private handle(data: any) {
@@ -493,7 +505,18 @@ export class Signaling {
       // Who is let in, and an invitation just made: only a phone of the
       // owner's is ever answered these.
       case 'people':
-        this.events.onPeople?.(msg.people ?? [], msg.invitations ?? []);
+        this.events.onPeople?.(
+          (msg.people ?? []).map((p: any) => ({
+            name: String(p.name || ''),
+            since: String(p.since || ''),
+            rooms: Number(p.rooms) || 0,
+            brought: Number(p.brought) || 0,
+            owner: p.owner === true,
+            model: String(p.model || ''),
+            you: p.you === true,
+          })),
+          msg.invitations ?? [],
+        );
         break;
 
       case 'invited':

@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import type { DuoConfig, PairInfo, VideoQuality } from './config';
 import type { PersonOnServer, InvitationOnServer } from './signaling';
-import { t, LANGUAGES } from './i18n';
+import { t, LANGUAGES, longDate } from './i18n';
 import type { LanguageChoice } from './i18n';
 import {
   isPaired, displayServer, VIDEO_PROFILES,
@@ -96,6 +96,7 @@ type Props = {
   onAskPeople?: () => void;
   onInvite?: (name: string) => void;
   onForget?: (name: string) => void;
+  onForgetInvitation?: (code: string) => void;
   initial: DuoConfig;
   /** opens the welcome, which knocks at the new door and asks what it needs */
   onChangeServer: () => void;
@@ -152,7 +153,7 @@ export default function SettingsScreen({
   initial, onForgetPair, onSwitchPair, onRenamePair, onChangeServer, onRepair, onClose, onOpenSetup,
   vp9Here, vp9Peer, onQualityChange, onLive,
   canInvite, canAddPair, people = [], invitations = [], freshInvite,
-  onAskPeople, onInvite, onForget,
+  onAskPeople, onInvite, onForget, onForgetInvitation,
 }: Props) {
   const vp9Available = !!vp9Here && !!vp9Peer;
   const vp9Why = vp9Available
@@ -382,23 +383,37 @@ export default function SettingsScreen({
             <Text style={styles.section}>{t('settings.people')}</Text>
             <Text style={styles.sectionHint}>{t('settings.peopleHint')}</Text>
 
-            {people.map((person) => (
-              <View key={person.name} style={styles.choice}>
-                <View style={styles.choiceText}>
-                  <Text style={styles.choiceLabel}>{person.name}</Text>
-                  <Text style={styles.choiceNote}>
-                    {t('settings.personSince', { date: person.since.slice(0, 10) })}
-                    {person.rooms
-                      ? `  ·  ${t('settings.personRooms', {
-                        n: person.rooms, guests: person.brought })}`
-                      : ''}
-                  </Text>
+            {people.map((person) => {
+              // "You, the owner, on the POCO": who they are here, on
+              // what phone. A name alone may not even have been set.
+              const who = person.you
+                ? t(person.owner ? 'settings.youOwner' : 'settings.youMember')
+                : `${person.name} · ${t(person.owner ? 'settings.isOwner' : 'settings.isMember')}`;
+              const where = person.model ? `, ${t('settings.onPhone', { model: person.model })}` : '';
+              const rooms = !person.rooms ? ''
+                : person.rooms === 1 ? t('settings.personRoomsOne')
+                  : t('settings.personRoomsMany', { n: person.rooms });
+              const brought = !person.brought ? ''
+                : person.brought === 1 ? t('settings.personBroughtOne')
+                  : t('settings.personBroughtMany', { n: person.brought });
+              return (
+                <View key={person.name} style={styles.choice}>
+                  <View style={styles.choiceText}>
+                    <Text style={styles.choiceLabel}>{who + where}</Text>
+                    <Text style={styles.choiceNote}>
+                      {t('settings.personSince', { date: longDate(person.since) })}
+                      {rooms ? `  ·  ${rooms}` : ''}
+                      {brought ? `  ·  ${brought}` : ''}
+                    </Text>
+                  </View>
+                  {!person.you ? (
+                    <TouchableOpacity onPress={() => onForget?.(person.name)}>
+                      <Text style={styles.linkInline}>{t('settings.forgetPerson')}</Text>
+                    </TouchableOpacity>
+                  ) : null}
                 </View>
-                <TouchableOpacity onPress={() => onForget?.(person.name)}>
-                  <Text style={styles.linkInline}>{t('settings.forgetPerson')}</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
+              );
+            })}
 
             {invitations.map((i) => (
               <View key={i.code} style={styles.choice}>
@@ -406,9 +421,12 @@ export default function SettingsScreen({
                   <Text style={styles.choiceLabel}>{i.code}</Text>
                   <Text style={styles.choiceNote}>
                     {t('settings.inviteWaiting', {
-                      who: i.name, date: i.expires.slice(0, 10) })}
+                      who: i.name, date: longDate(i.expires) })}
                   </Text>
                 </View>
+                <TouchableOpacity onPress={() => onForgetInvitation?.(i.code)}>
+                  <Text style={styles.linkInline}>{t('settings.forgetPerson')}</Text>
+                </TouchableOpacity>
               </View>
             ))}
 
@@ -422,6 +440,9 @@ export default function SettingsScreen({
               />
             ) : null}
 
+            {/* Room above: it is a new thing, not one more row of the
+                list it follows. */}
+            <View style={styles.afterList} />
             <Field
               label={t('settings.invitePerson')}
               value={inviteName}
@@ -858,6 +879,7 @@ const styles = StyleSheet.create({
   tabText: { color: '#6b7686', fontSize: 15, fontWeight: '700' },
   tabTextPicked: { color: '#fff' },
   section: { color: '#7cc4ff', fontWeight: '700', fontSize: 16, marginTop: 24 },
+  afterList: { height: 18 },
   subsection: { color: '#c9d2de', fontWeight: '700', fontSize: 15, marginTop: 18 },
   secondary: {
     marginTop: 16, borderRadius: 12, paddingVertical: 14, alignItems: 'center',

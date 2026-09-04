@@ -67,6 +67,13 @@ try {
   const annaWs = r.ws;
   // Same phone again: still the owner, no second adoption.
   r = await knock(PORT, anna); check('owner knocks again: owner', r.answer.role === 'owner' && !r.answer.adopted, r.answer); r.ws.close();
+  // The name follows the phone: said later, it is written down.
+  r = await knock(PORT, anna, { name: 'anna', model: 'POCO F5' });
+  check('the name follows the phone', r.answer.name === 'anna', r.answer);
+  const list = await ask(r.ws, { type: 'people' });
+  check('the list says who, on what, and that it is you',
+    list.type === 'people' && list.people[0].name === 'anna' && list.people[0].model === 'POCO F5' && list.people[0].you === true && list.people[0].owner === true, list);
+  r.ws.close();
   // A stranger at an owned house.
   r = await knock(PORT, bruno);
   check('stranger at owned house', r.answer.role === 'stranger' && r.answer.hasOwner === true && r.answer.needsKey === false && !r.answer.error, r.answer); r.ws.close();

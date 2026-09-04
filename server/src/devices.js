@@ -167,7 +167,7 @@ function liveInvitation(data, code) {
  * finds it spent - which is the cheapest way of noticing that it was
  * passed on.
  */
-export function useInvitation(code, pub) {
+export function useInvitation(code, pub, model = '') {
   const data = read();
   const invitation = liveInvitation(data, code);
   if (!invitation) return null;
@@ -177,10 +177,55 @@ export function useInvitation(code, pub) {
     .concat({
       name: invitation.name,
       pub,
+      model: model || undefined,
       since: new Date().toISOString(),
     });
   write(data);
   return invitation.name;
+}
+
+/** Takes an unused invitation back. */
+export function removeInvitation(code) {
+  const data = read();
+  const said = String(code || '').trim().toUpperCase();
+  const before = data.invitations.length;
+  data.invitations = data.invitations.filter((i) => i.code !== said);
+  if (data.invitations.length !== before) write(data);
+  return before - data.invitations.length;
+}
+
+/**
+ * What the phone says of itself, kept up to date.
+ *
+ * The name it was written down under is whatever it said at the door,
+ * and a phone with no name set said nothing: "Someone" on the list, for
+ * good, was the result. Now the name follows the phone - and a room's
+ * owner is a name, so the rooms follow too - and the model is kept
+ * beside it, which is what tells two phones of one person apart.
+ *
+ * Only the owner's phones are renamed. Somebody let in by an
+ * invitation is on the list under the name the owner chose, which the
+ * invitation promised would be theirs alone to see: what the invited
+ * person calls themselves does not touch it.
+ * Returns the name the phone is known by now, or null if unknown.
+ */
+export function refresh(pub, name, model) {
+  const data = read();
+  const known = data.devices.find((d) => d.pub === pub);
+  if (!known) return null;
+  let changed = false;
+  if (name && name !== known.name && known.owner === true) {
+    const old = known.name;
+    known.name = name;
+    for (const r of data.rooms) if (r.owner === old) r.owner = name;
+    changed = true;
+  }
+  if (model && model !== known.model) {
+    known.model = model;
+    changed = true;
+  }
+  if (changed) write(data);
+  return known.name;
 }
 
 /**
@@ -199,7 +244,7 @@ export function useInvitation(code, pub) {
  *
  * `owner` may hand out invitations; a guest brought in by one may not.
  */
-export function adopt(name, pub, owner = true) {
+export function adopt(name, pub, owner = true, model = '') {
   const data = read();
   data.devices = data.devices
     .filter((d) => d.pub !== pub)
@@ -207,6 +252,7 @@ export function adopt(name, pub, owner = true) {
       name,
       pub,
       owner: owner === true,
+      model: model || undefined,
       since: new Date().toISOString(),
     });
   return write(data) ? name : null;

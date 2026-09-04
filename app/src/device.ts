@@ -8,6 +8,7 @@
  * <https://www.gnu.org/licenses/>.
  */
 
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import nacl from 'tweetnacl';
 import { encodeBase64, decodeBase64 } from 'tweetnacl-util';
@@ -84,6 +85,26 @@ export function signNonce(key: DeviceKey, nonce: string): string {
  * is the head and the tail of it, enough to tell one phone from another
  * by eye when looking at a list.
  */
+/**
+ * What this phone is, for a list that may hold two of one person's.
+ *
+ * The model as Android reports it - "POCO F5", "moto g82 5G". Sent to
+ * the server beside the card, and shown back in "who may use this
+ * server", where a name alone does not tell two phones apart.
+ */
+export function deviceModel(): string {
+  try {
+    const c: any = (Platform as any).constants || {};
+    const model = String(c.Model || '').trim();
+    const brand = String(c.Brand || '').trim();
+    if (!model) return brand;
+    return model.toLowerCase().startsWith(brand.toLowerCase()) || !brand
+      ? model : `${brand} ${model}`;
+  } catch {
+    return '';
+  }
+}
+
 export function shortKey(pub: string): string {
   return pub.length > 16 ? `${pub.slice(0, 8)}…${pub.slice(-6)}` : pub;
 }

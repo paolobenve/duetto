@@ -43,8 +43,8 @@ import {
   createHash, createPublicKey, randomBytes, randomUUID, timingSafeEqual, verify,
 } from 'node:crypto';
 import {
-  addInvitation, adopt, noteGuest, noteRoom, read, remove as removePerson, roomOf,
-  useInvitation,
+  addInvitation, adopt, noteGuest, noteRoom, read, refresh, remove as removePerson,
+  removeInvitation, roomOf, useInvitation,
 } from './devices.js';
 
 const PORT = parseInt(process.env.PORT || '8787', 10);
@@ -231,7 +231,7 @@ function whoIsThere(msg, nonce) {
   if (known) return { name: known.name, opens: true, invites: known.owner === true };
 
   if (msg.invite) {
-    const name = useInvitation(msg.invite, pub);
+    const name = useInvitation(msg.invite, pub, cleanModel(msg.model));
     if (name) {
       console.log(`[duetto] ${name} comes in with an invitation, `
         + `phone ${pub.slice(0, 12)}…`);
@@ -465,6 +465,25 @@ function cleanName(raw) {
   return s.replace(/[\r\n]/g, ' ').slice(0, 32);
 }
 
+/**
+ * The name the phone gave, or nothing.
+ *
+ * `cleanName` fills an empty name with "Someone", which is right for
+ * the notifications and wrong for the list: a phone with no name set
+ * was written down as "Someone" for good. Here an empty name stays
+ * empty, and the list keeps what it had.
+ */
+function saidName(raw) {
+  const s = cleanName(raw);
+  return s === 'Someone' ? '' : s;
+}
+
+/** The make and model the phone says it is, for telling two apart. */
+function cleanModel(raw) {
+  const s = typeof raw === 'string' ? raw.trim() : '';
+  return s.replace(/[\r\n]/g, ' ').slice(0, 40);
+}
+
 const httpServer = createServer((req, res) => {
   // We accept both /healthz and /any/prefix/healthz: in front there may
   // be a proxy that forwards the path without rewriting it (HAProxy) or
@@ -601,7 +620,8 @@ wss.on('connection', (ws, req) => {
       const adopted = !known && signed(String(msg.pub || ''), msg.sig, ws.nonce)
         && keyIsRight(msg.key)
         && (!doorIsShut() || (SERVER_KEY && String(msg.key || '') !== ''))
-        ? adopt(cleanName(msg.name) || 'the first phone', String(msg.pub))
+        ? adopt(saidName(msg.name) || 'the first phone', String(msg.pub), true,
+          cleanModel(msg.model))
         : null;
       if (adopted) {
         console.log(`[duetto] ${adopted} takes the server: `
@@ -620,13 +640,16 @@ wss.on('connection', (ws, req) => {
           ws.close(4006, 'not-allowed');
           return;
         }
-        ws.who = who.name;
+        // What the phone says of itself now, kept on the list.
+        ws.pub = String(msg.pub || '');
+        ws.who = refresh(ws.pub, saidName(msg.name), cleanModel(msg.model)) || who.name;
         ws.opens = who.opens === true;
         ws.invites = who.invites === true;
         // The room belongs to whoever may open one: it is written down
         // now, so that the other half can be let in beside them.
-        if (ws.opens) noteRoom(roomId, who.name);
+        if (ws.opens) noteRoom(roomId, ws.who);
       } else if (adopted) {
+        ws.pub = String(msg.pub || '');
         ws.who = adopted;
         ws.opens = true;
         ws.invites = true;
@@ -886,9 +909,15 @@ function ownersBusiness(ws, msg) {
     // just made belongs in it, and one round trip is enough.
   }
   if (msg.type === 'forget') {
-    const name = String(msg.name || '').trim();
-    const gone = removePerson(name);
-    console.log(`[duetto] ${ws.who} takes ${name} off the list (${gone})`);
+    if (msg.code) {
+      // An unused invitation, taken back.
+      const gone = removeInvitation(msg.code);
+      console.log(`[duetto] ${ws.who} takes back an invitation (${gone})`);
+    } else {
+      const name = String(msg.name || '').trim();
+      const gone = removePerson(name);
+      console.log(`[duetto] ${ws.who} takes ${name} off the list (${gone})`);
+    }
   }
   const { devices: list, invitations, rooms: theirRooms } = read();
   send(ws, {
@@ -896,6 +925,12 @@ function ownersBusiness(ws, msg) {
     people: list.map((d) => ({
       name: d.name,
       since: d.since,
+      // Who they are on this server, on what phone, and whether it is
+      // the one asking: "you, the owner, on the POCO" reads better than
+      // a name one may not even have set.
+      owner: d.owner === true,
+      model: d.model || '',
+      you: !!ws.pub && d.pub === ws.pub,
       rooms: theirRooms.filter((r) => r.owner === d.name).length,
       brought: theirRooms.filter((r) => r.owner === d.name && r.guest).length,
     })),
@@ -955,11 +990,12 @@ function answerDoor(ws, msg) {
 
   const known = whoIsThere(msg, ws.nonce);
   if (known) {
-    ws.who = known.name;
+    ws.pub = pub;
+    ws.who = refresh(pub, saidName(msg.name), cleanModel(msg.model)) || known.name;
     ws.opens = known.opens === true;
     ws.invites = known.invites === true;
     ws.atDoor = true;
-    reply({ role: ws.invites ? 'owner' : 'member', name: known.name });
+    reply({ role: ws.invites ? 'owner' : 'member', name: ws.who });
     return;
   }
   // An invitation that whoIsThere did not spend is no invitation.
@@ -977,10 +1013,12 @@ function answerDoor(ws, msg) {
   // taken.
   const mayAdopt = hasOwner ? (needsKey && keySaid) : (!needsKey || keySaid);
   if (mayAdopt) {
-    const name = adopt(cleanName(msg.name) || 'the first phone', pub);
+    const name = adopt(saidName(msg.name) || 'the first phone', pub, true,
+      cleanModel(msg.model));
     if (name) {
       console.log(`[duetto] ${name} takes the server at the door: `
         + `phone ${pub.slice(0, 12)}…`);
+      ws.pub = pub;
       ws.who = name;
       ws.opens = true;
       ws.invites = true;

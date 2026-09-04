@@ -7,7 +7,7 @@
  * the LICENSE file at the root of the project, and at
  * <https://www.gnu.org/licenses/>.
  */
-import { deviceKey, signNonce } from './device';
+import { deviceKey, deviceModel, signNonce } from './device';
 import type { ServerRole } from './config';
 
 /**
@@ -123,6 +123,7 @@ function visit(serverUrl: string, ask: DoorRequest): Promise<Visit> {
           key: ask.key || undefined,
           invite: ask.invite || undefined,
           name: ask.name || undefined,
+          model: deviceModel(),
         });
         return;
       }

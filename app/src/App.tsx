@@ -3306,6 +3306,7 @@ export default function App() {
         onAskPeople={() => signalingRef.current?.askPeople()}
         onInvite={(name) => signalingRef.current?.askInvite(name)}
         onForget={(name) => signalingRef.current?.forgetPerson(name)}
+        onForgetInvitation={(code) => signalingRef.current?.forgetInvitation(code)}
         onLive={(patch) => setCfg((prev) => {
             if (!prev) return prev;
             const next = saveCfg({ ...prev, ...patch });

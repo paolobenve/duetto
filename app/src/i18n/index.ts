@@ -87,6 +87,23 @@ function look(dictionary: Dictionary, path: string): string {
  * in the wrong language still says something, and a key printed raw
  * says nothing.
  */
+/**
+ * A date as one would say it: "Thursday 4 September 2026", in the
+ * app's language. Where the phone cannot, the plain day stays.
+ */
+export function longDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const locale = { en: 'en-GB', it: 'it-IT', es: 'es-ES', pt: 'pt-BR', fr: 'fr-FR' }[current];
+  try {
+    return d.toLocaleDateString(locale, {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    });
+  } catch {
+    return iso.slice(0, 10);
+  }
+}
+
 export function t(path: string, values?: Record<string, string | number>): string {
   let text = look(dictionaries[current], path);
   if (text === path && current !== 'en') text = look(en, path);
