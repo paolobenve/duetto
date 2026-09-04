@@ -131,9 +131,9 @@ export const en = {
 
   channel: {
     screenCovered: 'Screen covered: the buttons are held. Touch three times to insist.',
-    battery: 'your battery {pct}%',
+    battery: 'your battery {pct}% not charging',
     batteryCharging: 'your battery {pct}% charging',
-    batteryTheirs: 'their battery {pct}%',
+    batteryTheirs: 'their battery {pct}% not charging',
     batteryTheirsCharging: 'their battery {pct}% charging',
     pairBrokenTitle: '{who} broke the pair',
     pairBrokenAsk: '{who} broke the pair from their side: it cannot work any more. Take it away here too?',
