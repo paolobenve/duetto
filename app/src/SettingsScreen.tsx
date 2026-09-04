@@ -17,7 +17,7 @@ import type { PersonOnServer, InvitationOnServer } from './signaling';
 import { t, LANGUAGES, longDate } from './i18n';
 import type { LanguageChoice } from './i18n';
 import {
-  isPaired, displayServer, VIDEO_PROFILES,
+  isPaired, opensHere, displayServer, VIDEO_PROFILES,
   pairName,
 } from './config';
 import { peerAvatar } from './avatar';
@@ -112,6 +112,8 @@ type Props = {
    * and there is no way of knowing here.
    */
   onRepair: () => void;
+  /** the pairing, opened on typing a code somebody read out */
+  onHaveCode?: () => void;
   /** goes back without saving; absent when there is nowhere to go back to */
   onClose?: () => void;
   /** opens the screen of system settings again */
@@ -150,7 +152,7 @@ type Props = {
  * All the rest is optional and sits under "Other settings".
  */
 export default function SettingsScreen({
-  initial, onForgetPair, onSwitchPair, onRenamePair, onChangeServer, onRepair, onClose, onOpenSetup,
+  initial, onForgetPair, onSwitchPair, onRenamePair, onChangeServer, onRepair, onHaveCode, onClose, onOpenSetup,
   vp9Here, vp9Peer, onQualityChange, onLive,
   canInvite, canAddPair, people = [], invitations = [], freshInvite,
   onAskPeople, onInvite, onForget, onForgetInvitation,
@@ -329,9 +331,19 @@ export default function SettingsScreen({
         {/* Not paired yet: the step forward is the pairing, and it
             belongs right here, under the server it will be made on. */}
         {!paired ? (
-          <TouchableOpacity style={styles.button} onPress={onRepair}>
-            <Text style={styles.buttonText}>{t('settings.connectWithSomebody')}</Text>
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity style={styles.button} onPress={onRepair}>
+              <Text style={styles.buttonText}>{t('settings.connectWithSomebody')}</Text>
+            </TouchableOpacity>
+            {/* Whoever may create a code may also have been read one,
+                by another phone like this one: the way to type it is
+                here, beside the decision, and not under the code. */}
+            {opensHere(initial) ? (
+              <TouchableOpacity style={styles.secondary} onPress={onHaveCode}>
+                <Text style={styles.secondaryText}>{t('settings.haveCode')}</Text>
+              </TouchableOpacity>
+            ) : null}
+          </>
         ) : null}
 
         {paired ? (

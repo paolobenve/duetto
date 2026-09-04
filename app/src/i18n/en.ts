@@ -208,6 +208,7 @@ export const en = {
 
   settings: {
     subtitle: 'A channel for the two of you alone. You come in and you stay: when the other person comes in too, you connect by yourselves.',
+    haveCode: 'I have been given a code',
     connectWithSomebody: 'Connect with somebody',
     tabLinks: 'Server and pairs',
     tabUse: 'Use',

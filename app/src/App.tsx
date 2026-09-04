@@ -288,6 +288,8 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>('loading');
   /** a pairing code typed at the welcome, handed to the pairing screen */
   const [pairingCode, setPairingCode] = useState('');
+  /** the pairing opened on typing a code, from the settings */
+  const [pairingTyping, setPairingTyping] = useState(false);
   const [cfg, setCfg] = useState<DuoConfig | null>(null);
 
   /**
@@ -3306,7 +3308,8 @@ export default function App() {
           onRenamePair={onRenamePair}
           // No existing connection is touched: the new one is added, if
           // and when it succeeds.
-          onRepair={() => setScreen(opensHere(cfg) ? 'pairing' : 'welcome')}
+          onRepair={() => { setPairingTyping(false); setScreen(opensHere(cfg) ? 'pairing' : 'welcome'); }}
+          onHaveCode={() => { setPairingTyping(true); setScreen('pairing'); }}
           onClose={isPaired(cfg) ? () => setScreen('channel') : undefined}
           onOpenSetup={() => { setSetupFrom('settings'); setScreen('setup'); }}
           onQualityChange={(q) => applyQuality(q, true)}
@@ -3369,6 +3372,7 @@ export default function App() {
           cfg={cfg}
           role={cfg.serverRole}
           joinWith={pairingCode}
+          startTyping={pairingTyping}
           onRefused={(reason) => {
             // Not what we thought we were here: the welcome knocks
             // again and finds out what we are now.

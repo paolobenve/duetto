@@ -35,6 +35,8 @@ type Props = {
   role?: ServerRole;
   /** a code typed at the welcome: the pairing starts with it, at once */
   joinWith?: string;
+  /** open on typing a code, for whoever may create one but was given one */
+  startTyping?: boolean;
   /**
    * The server turned this phone away: it is not what the phone thought
    * it was here - taken off the list, say - and whoever holds the word
@@ -59,9 +61,9 @@ const TIMEOUT_MS = 90_000;
 const RETRY_WAIT_S = 20;
 
 export default function PairingScreen({
-  cfg, onPaired, onBack, role = 'unknown', joinWith, onRefused,
+  cfg, onPaired, onBack, role = 'unknown', joinWith, onRefused, startTyping,
 }: Props) {
-  const [step, setStep] = useState<Step>('choose');
+  const [step, setStep] = useState<Step>(startTyping ? 'join' : 'choose');
   const [code, setCode] = useState('');
   const [typed, setTyped] = useState('');
   const [message, setMessage] = useState('');
@@ -231,10 +233,10 @@ export default function PairingScreen({
   const opens = role === 'owner' || role === 'member';
   const autoCreated = useRef(false);
   useEffect(() => {
-    if (!opens || joinWith || autoCreated.current) return;
+    if (!opens || joinWith || startTyping || autoCreated.current) return;
     autoCreated.current = true;
     startCreate();
-  }, [opens, joinWith, startCreate]);
+  }, [opens, joinWith, startTyping, startCreate]);
 
   // The eight digits were typed at the welcome: nothing to press here.
   const startedWith = useRef('');
@@ -374,12 +376,6 @@ export default function PairingScreen({
           <Text style={styles.waitText}>{t('pairing.waitingOther')}</Text>
         </View>
         <Text style={styles.hint}>{t('pairing.dictateHint')}</Text>
-        {/* The owner creates, and that is all. A member - invited by
-            the owner - is the one who types when the two of them pair:
-            the line stays for them alone. */}
-        {role === 'member' ? (
-          <Secondary label={t('pairing.haveCodeInstead')} onPress={() => { cleanup(); doneRef.current = true; setCode(''); setStep('join'); }} />
-        ) : null}
         <Secondary label={t('pairing.cancel')} onPress={opens ? onBack : reset} />
       </Screen>
     );
