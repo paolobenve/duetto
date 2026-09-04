@@ -163,8 +163,8 @@ export type SignalingEvents = {
   onSignal?: (msg: SignalMessage) => void;
   onPair?: (msg: PairMessage) => void;
   onKnockResult?: (ok: boolean, error?: string) => void;
-  /** the other side broke this pair: told now, or found on joining */
-  onPairBroken?: () => void;
+  /** the other side broke this pair: told now, or found on joining; the room, when said */
+  onPairBroken?: (room?: string) => void;
   /** @param reason with `not-allowed`: 'stranger', 'bad-invite' or 'bad-key' */
   onError?: (code: string, reason?: string) => void;
 };
@@ -625,7 +625,7 @@ export class Signaling {
         break;
 
       case 'pair-broken':
-        this.events.onPairBroken?.();
+        this.events.onPairBroken?.(typeof msg.room === 'string' ? msg.room : undefined);
         break;
 
       case 'error':

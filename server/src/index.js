@@ -650,7 +650,9 @@ wss.on('connection', (ws, req) => {
           ws.close(4006, 'not-allowed');
           return;
         }
-        // What the phone says of itself now, kept on the list.
+        // What the phone says of itself now, kept on the list. A guest
+        // is known by their card alone: it is kept too, so that a pair
+        // broken from the other side can find them.
         ws.pub = String(msg.pub || '');
         ws.who = refresh(ws.pub, saidName(msg.name), cleanModel(msg.model)) || who.name;
         ws.opens = who.opens === true;
@@ -906,14 +908,23 @@ function pairBroken(ws, msg) {
   const room = typeof msg.room === 'string' ? msg.room.trim() : '';
   if (!room || room.length > 128) return;
   markBroken(room);
+  // Told now: whoever is in that room, and - since the server knows
+  // who the two parties of a noted room are - the other party wherever
+  // they are connected, in another room with somebody else included.
+  const told = new Set();
   const here = rooms.get(room);
-  let told = 0;
-  if (here) {
-    for (const peer of here) {
-      if (peer !== ws) { send(peer, { type: 'pair-broken' }); told++; }
+  if (here) for (const peer of here) if (peer !== ws) told.add(peer);
+  const noted = roomOf(room);
+  if (noted) {
+    for (const peer of wss.clients) {
+      if (peer === ws || !peer.joined) continue;
+      const isOwner = peer.who && peer.who === noted.owner && peer.opens;
+      const isGuest = peer.pub && peer.pub === noted.guest;
+      if (isOwner || isGuest) told.add(peer);
     }
   }
-  console.log(`[duetto] ${ws.who || ws.name} breaks a pair (${told} told now)`);
+  for (const peer of told) send(peer, { type: 'pair-broken', room });
+  console.log(`[duetto] ${ws.who || ws.name} breaks a pair (${told.size} told now)`);
 }
 
 /**

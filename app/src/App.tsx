@@ -2304,10 +2304,13 @@ export default function App() {
           // The other side broke this pair: it cannot work any more,
           // and the screen must stop saying "waiting" for somebody who
           // is not coming.
-          onPairBroken: () => {
-            const id = cfgRef.current?.pair?.id;
-            if (!id || cfgRef.current?.pair?.brokenByPeer) return;
-            Journal.mark('pair-broken').catch(() => { /* noop */ });
+          onPairBroken: (room) => {
+            // The room named, when it is: one may be told of a pair
+            // other than the one in use, from another room.
+            const id = room || cfgRef.current?.pair?.id;
+            const pair = cfgRef.current?.pairs.find((p) => p.id === id);
+            if (!id || !pair || pair.brokenByPeer) return;
+            Journal.mark(`pair-broken:${pair.peerName || id.slice(0, 8)}`).catch(() => { /* noop */ });
             setCfg((prev) => (prev ? saveCfg(markPairBroken(prev, id)) : prev));
           },
           onPeople: (list, waiting) => {
