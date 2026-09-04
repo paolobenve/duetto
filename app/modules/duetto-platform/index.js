@@ -132,6 +132,9 @@ export const Foreground = isAndroid && NativeForeground
       /** The phone's name as its owner sees it, or '' */
       deviceName: () => call(NativeForeground, 'deviceName'),
 
+      /** The battery: { percent, charging }, for the diagnostics */
+      battery: () => call(NativeForeground, 'battery'),
+
       /** True if the app may stay active with no battery limits. */
       isBatteryUnrestricted: () => call(NativeForeground, 'isBatteryUnrestricted'),
 
@@ -175,6 +178,7 @@ export const Foreground = isAndroid && NativeForeground
       resumePresence: unavailable,
       clearNotification: unavailable,
       deviceName: unavailable,
+      battery: () => Promise.resolve({ percent: -1, charging: false }),
       isBatteryUnrestricted: unavailable,
       requestBatteryUnrestricted: unavailable,
       lastAutoStart: unavailable,

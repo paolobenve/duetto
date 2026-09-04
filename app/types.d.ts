@@ -97,6 +97,7 @@ declare module 'duetto-platform' {
     resumePresence(): Promise<boolean>;
     clearNotification(): Promise<boolean>;
     deviceName(): Promise<string>;
+    battery(): Promise<{ percent: number; charging: boolean }>;
     isBatteryUnrestricted(): Promise<boolean>;
     requestBatteryUnrestricted(): Promise<boolean>;
     lastAutoStart(): Promise<number>;

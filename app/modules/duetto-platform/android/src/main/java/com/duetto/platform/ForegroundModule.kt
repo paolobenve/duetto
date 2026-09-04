@@ -164,6 +164,26 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
         promise.resolve(name?.trim() ?: "")
     }
 
+    /**
+     * The battery, for the diagnostics on screen: percent, and whether
+     * the charger is in. The journal has had them all along; whoever is
+     * reading the numbers on the phone wants them there too.
+     */
+    @ReactMethod
+    fun battery(promise: Promise) {
+        val bm = ctx.getSystemService(android.content.Context.BATTERY_SERVICE)
+            as? android.os.BatteryManager
+        val percent = bm?.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
+        val status = ctx.registerReceiver(
+            null, android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED),
+        )
+        val plugged = (status?.getIntExtra(android.os.BatteryManager.EXTRA_PLUGGED, 0) ?: 0) != 0
+        val map = com.facebook.react.bridge.Arguments.createMap()
+        map.putInt("percent", percent)
+        map.putBoolean("charging", plugged)
+        promise.resolve(map)
+    }
+
     @ReactMethod
     fun isBatteryUnrestricted(promise: Promise) {
         promise.resolve(StartupHelper.isIgnoringBatteryOptimizations(ctx))

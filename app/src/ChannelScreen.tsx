@@ -285,6 +285,8 @@ type Props = {
   onCall?: boolean;
   /** the other side broke this pair: it cannot work any more */
   pairBroken?: boolean;
+  /** the battery, with the diagnostics on: percent and charger */
+  battery?: { percent: number; charging: boolean } | null;
   /** the other person's video track really arriving */
   remoteHasVideo: boolean;
   /** changes at every restart of the remote video, to rebuild the view */
@@ -342,7 +344,7 @@ export default function ChannelScreen(props: Props) {
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes,
     onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, leaving,
-    onAlarm, onZoom, onOpenSettings, onCall, pairBroken,
+    onAlarm, onZoom, onOpenSettings, onCall, pairBroken, battery,
   } = props;
 
   // In Picture-in-Picture the window is tiny: no controls. The width
@@ -889,6 +891,12 @@ export default function ChannelScreen(props: Props) {
                 {peerMark(17, '#0b0e14')}
                 {showStats ? (
                   <>
+                    {battery ? (
+                      <Text style={styles.cardVolume}>
+                        {t(battery.charging ? 'channel.batteryCharging' : 'channel.battery',
+                          { pct: battery.percent })}
+                      </Text>
+                    ) : null}
                     {peerState.volume != null ? (
                       <Text style={styles.cardVolume}>
                         {t('channel.hearsYou', { pct: percent(peerState.volume) })}

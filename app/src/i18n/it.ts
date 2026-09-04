@@ -117,6 +117,8 @@ export const it: Dictionary = {
   },
 
   channel: {
+    battery: 'batteria {pct}%',
+    batteryCharging: 'batteria {pct}%, in carica',
     pairBrokenTitle: '{who} ha sciolto la coppia',
     pairBrokenAsk: '{who} ha sciolto la coppia dalla sua parte: non può più funzionare. La togli anche qui?',
     pairBrokenKeep: 'Tienila',

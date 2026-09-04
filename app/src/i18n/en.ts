@@ -129,6 +129,8 @@ export const en = {
   },
 
   channel: {
+    battery: 'battery {pct}%',
+    batteryCharging: 'battery {pct}%, charging',
     pairBrokenTitle: '{who} broke the pair',
     pairBrokenAsk: '{who} broke the pair from their side: it cannot work any more. Take it away here too?',
     pairBrokenKeep: 'Keep it',

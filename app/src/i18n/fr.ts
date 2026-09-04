@@ -118,6 +118,8 @@ export const fr: Dictionary = {
   },
 
   channel: {
+    battery: 'batterie {pct}%',
+    batteryCharging: 'batterie {pct}%, en charge',
     pairBrokenTitle: '{who} a rompu la paire',
     pairBrokenAsk: '{who} a rompu la paire de son côté : elle ne peut plus marcher. La retirer ici aussi ?',
     pairBrokenKeep: 'La garder',

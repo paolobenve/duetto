@@ -447,6 +447,21 @@ export default function App() {
    * at it - it showed its own number as if that were the whole truth.
    */
   const [systemVolume, setSystemVolume] = useState({ volume: 0, max: 0 });
+  /** the battery, shown with the diagnostics beside the volumes */
+  const [battery, setBattery] = useState<{ percent: number; charging: boolean } | null>(null);
+  useEffect(() => {
+    if (!inChannel || !cfg?.diagnostics) { setBattery(null); return; }
+    let alive = true;
+    const read = () => {
+      Foreground.battery().then((b) => {
+        if (alive && b && b.percent >= 0) setBattery({ percent: b.percent, charging: b.charging === true });
+      }).catch(() => { /* not this time */ });
+    };
+    read();
+    const timer = setInterval(read, 30_000);
+    const sub = AppState.addEventListener('change', (st) => { if (st === 'active') read(); });
+    return () => { alive = false; clearInterval(timer); sub.remove(); };
+  }, [inChannel, cfg?.diagnostics]);
 
   /** shown for a moment while pressing: otherwise the effect is invisible */
   const [levelShowing, setLevelShowing] = useState(false);
@@ -3744,6 +3759,7 @@ export default function App() {
         onOpenSettings={() => setScreen('settings')}
         onCall={onCall}
         pairBroken={!!cfg.pair?.brokenByPeer}
+        battery={battery}
       />
     </View>
   );
