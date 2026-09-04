@@ -891,26 +891,26 @@ export default function ChannelScreen(props: Props) {
                 {peerMark(17, '#0b0e14')}
                 {showStats ? (
                   <>
-                    {/* One text, the items joined by a dot: as separate
-                        texts the row's gap added air around every dot. */}
-                    <Text
-                      style={[styles.cardVolume, styles.cardVolumeLine]}
-                      numberOfLines={1}
-                      // One line, shrunk rather than cut: with the
-                      // battery beside the two volumes it may not fit.
-                      adjustsFontSizeToFit
-                      minimumFontScale={0.7}>
-                      {[
-                        battery
-                          ? t(battery.charging ? 'channel.batteryCharging' : 'channel.battery',
-                            { pct: battery.percent })
-                          : '',
-                        peerState.volume != null
-                          ? t('channel.hearsYou', { pct: percent(peerState.volume) })
-                          : '',
-                        t('channel.youHear', { pct: percent(peerGain) }),
-                      ].filter(Boolean).join(' · ')}
-                    </Text>
+                    {/* Two pieces on a line that may wrap: the battery,
+                        and the two volumes joined by a dot. Too long,
+                        the volumes go to a line of their own, whole. */}
+                    <View style={styles.cardVolumeWrap}>
+                      {battery ? (
+                        <Text style={styles.cardVolume}>
+                          {t(battery.charging ? 'channel.batteryCharging' : 'channel.battery',
+                            { pct: battery.percent })}
+                          {' · '}
+                        </Text>
+                      ) : null}
+                      <Text style={styles.cardVolume}>
+                        {[
+                          peerState.volume != null
+                            ? t('channel.hearsYou', { pct: percent(peerState.volume) })
+                            : '',
+                          t('channel.youHear', { pct: percent(peerGain) }),
+                        ].filter(Boolean).join(' · ')}
+                      </Text>
+                    </View>
                     {/* The output's mark stands beside the number of
                         whoever is listening: theirs before theirs, mine
                         after mine. There used to be a single one, at
@@ -2054,7 +2054,7 @@ const styles = StyleSheet.create({
   cardMark: { marginTop: 12 },
   cardMarkRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   cardVolume: { color: '#7d8794', fontSize: 13 },
-  cardVolumeLine: { flexShrink: 1 },
+  cardVolumeWrap: { flexDirection: 'row', flexWrap: 'wrap', flexShrink: 1, alignItems: 'center' },
 
   miniCard: { alignItems: 'center', paddingHorizontal: 10 },
   miniFace: {
