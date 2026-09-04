@@ -328,10 +328,13 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
             />
           ) : null}
           {note ? <Text style={styles.note}>{note}</Text> : null}
+          {/* Enabled by what is on the screen: a key remembered from
+              before, in a field that is not shown, must not make a
+              button that only knocks again. */}
           <Primary
             label={t('welcome.next')}
             outline
-            disabled={!invitation.trim() && !key.trim()}
+            disabled={!invitation.trim() && !(withKey && key.trim())}
             onPress={() => knockNow('stranger')}
           />
           <Secondary label={t('welcome.back')} onPress={() => { setNote(''); setStep('server'); }} />
@@ -489,7 +492,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', width: '100%', marginTop: 16,
   },
   buttonOutline: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#2f7cf6' },
-  buttonDisabled: { backgroundColor: '#333c4a', borderColor: '#333c4a' },
+  buttonDisabled: { backgroundColor: '#333c4a', borderColor: '#333c4a', opacity: 0.55 },
   buttonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
   buttonOutlineText: { color: '#7cc4ff' },
   link: { marginTop: 22, padding: 10 },
