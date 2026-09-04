@@ -23,7 +23,7 @@ import {
   pairIdFromCode, newKeyPair, deriveSharedKey, confirmationFor,
   keyToBase64, pubToBase64, pubFromBase64,
 } from './pairing';
-import { VERSION_LABEL } from './version';
+import { VERSION_FULL } from './version';
 import { t } from './i18n';
 
 type Props = {
@@ -529,7 +529,7 @@ export default function PairingScreen({
         value={displayServer(cfg.serverUrl)}
         onPress={onBack}
       />
-      <Text style={styles.version}>{VERSION_LABEL}</Text>
+      <Text style={styles.version}>{VERSION_FULL}</Text>
     </Screen>
   );
 }

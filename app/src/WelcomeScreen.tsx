@@ -17,7 +17,7 @@ import { knock, watchDoor, formatInvitation, DoorAnswer } from './door';
 import { parseLink } from './links';
 import { Scanner } from 'duetto-platform';
 import { normalizeCode, formatCode, isCodeComplete } from './pairing';
-import { VERSION_LABEL } from './version';
+import { VERSION_FULL } from './version';
 import { t } from './i18n';
 
 /**
@@ -355,7 +355,7 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
             and the server comes with it. */}
         <Primary label={t('qr.scan')} outline onPress={() => scanQr('server')} />
         {onClose ? <Secondary label={t('welcome.back')} onPress={onClose} /> : null}
-        <Text style={styles.version}>{VERSION_LABEL}</Text>
+        <Text style={styles.version}>{VERSION_FULL}</Text>
       </Screen>
     </Keyboard>
   );
