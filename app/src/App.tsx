@@ -2319,6 +2319,12 @@ export default function App() {
             if (!id || !pair || pair.brokenByPeer) return;
             Journal.mark(`pair-broken:${pair.peerName || id.slice(0, 8)}`).catch(() => { /* noop */ });
             setCfg((prev) => (prev ? saveCfg(markPairBroken(prev, id)) : prev));
+            // In the channel of that very pair: out of it. There is
+            // nobody to wait for there, and staying in would keep the
+            // microphone open for nobody.
+            if (id === cfgRef.current?.pair?.id && inChannelRef.current) {
+              leaveChannelRef.current?.();
+            }
             // Said out loud, with the choice: a line under the card was
             // easy to miss, and a pair that cannot work is worth a
             // decision.
