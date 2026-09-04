@@ -488,6 +488,11 @@ export class Signaling {
     this.rawSend({ type: 'forget', code });
   }
 
+  /** A connection this phone has broken: its room on the server goes. */
+  forgetRoom(room: string) {
+    this.rawSend({ type: 'forget', room });
+  }
+
   private handle(data: any) {
     let msg: any;
     try {

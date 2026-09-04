@@ -235,6 +235,14 @@ export default function SettingsScreen({
       ],
     );
   };
+  /** the invitation copied a moment ago, for the word to say so */
+  const [copiedCode, setCopiedCode] = useState('');
+  const copyCode = (code: string) => {
+    Clipboard.setString(code);
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode(''), 2000);
+  };
+
   const confirmForgetInvitation = (i: InvitationOnServer) => {
     Alert.alert(
       t('settings.forgetInvitationTitle', { who: i.name }),
@@ -479,27 +487,26 @@ export default function SettingsScreen({
             {invitations.map((i) => (
               <View key={i.code} style={styles.choice}>
                 <View style={styles.choiceText}>
-                  <Text style={styles.choiceLabel}>{i.code}</Text>
+                  <Text style={styles.choiceLabel} selectable>{i.code}</Text>
                   <Text style={styles.choiceNote}>
-                    {t('settings.inviteWaiting', {
-                      who: i.name, date: longDate(i.expires) })}
+                    {freshInvite?.code === i.code
+                      // Just made: how to hand it over, right under it.
+                      ? t('settings.inviteMade', { who: i.name })
+                      : t('settings.inviteWaiting', { who: i.name, date: longDate(i.expires) })}
                   </Text>
                 </View>
-                <TouchableOpacity onPress={() => confirmForgetInvitation(i)}>
-                  <Text style={styles.linkInline}>{t('settings.forgetPerson')}</Text>
-                </TouchableOpacity>
+                <View style={styles.rowLinks}>
+                  <TouchableOpacity onPress={() => copyCode(i.code)}>
+                    <Text style={styles.linkInline}>
+                      {copiedCode === i.code ? t('settings.copied') : t('settings.copy')}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => confirmForgetInvitation(i)}>
+                    <Text style={styles.linkInline}>{t('settings.forgetPerson')}</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             ))}
-
-            {/* The code just made, big and selectable: it is about to be
-                read out or pasted into a message. */}
-            {freshInvite ? (
-              <Copyable
-                label={freshInvite.code}
-                value={freshInvite.code}
-                hint={t('settings.inviteMade', { who: freshInvite.name })}
-              />
-            ) : null}
 
             {/* Room above: it is a new thing, not one more row of the
                 list it follows. */}
@@ -860,36 +867,6 @@ export default function SettingsScreen({
  * Android a tap inside selects the lot, which leaves the old way open
  * for whoever prefers it.
  */
-function Copyable(props: { label: string; value: string; hint?: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <View style={styles.field}>
-      <Text style={styles.label}>{props.label}</Text>
-      <View style={styles.copyRow}>
-        <TextInput
-          style={[styles.copyable, styles.copyableGrows]}
-          value={props.value}
-          editable={false}
-          multiline
-          selectTextOnFocus
-        />
-        <TouchableOpacity
-          style={styles.copyButton}
-          onPress={() => {
-            Clipboard.setString(props.value);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-          }}>
-          <Text style={styles.copyButtonText}>
-            {copied ? t('settings.copied') : t('settings.copy')}
-          </Text>
-        </TouchableOpacity>
-      </View>
-      {props.hint ? <Text style={styles.hint}>{props.hint}</Text> : null}
-    </View>
-  );
-}
-
 function Field(props: {
   label: string;
   value: string;
@@ -941,6 +918,7 @@ const styles = StyleSheet.create({
   tabTextPicked: { color: '#fff' },
   section: { color: '#7cc4ff', fontWeight: '700', fontSize: 16, marginTop: 24 },
   afterList: { height: 18 },
+  rowLinks: { alignItems: 'flex-end', gap: 10 },
   roleLine: { color: '#c9d2de', fontSize: 14, lineHeight: 20, marginTop: -6, marginBottom: 14 },
   subsection: { color: '#c9d2de', fontWeight: '700', fontSize: 15, marginTop: 18 },
   secondary: {

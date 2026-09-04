@@ -404,7 +404,7 @@ export default function PairingScreen({
             disabled={!isCodeComplete(typed)}
             onPress={startJoin}
           />
-          <Secondary label={t('pairing.back')} onPress={reset} />
+          <Secondary label={t('pairing.back')} onPress={startTyping ? onBack : reset} />
         </Screen>
       </KeyboardAvoidingView>
     );

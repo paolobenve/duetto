@@ -297,6 +297,22 @@ export function noteGuest(room, pub) {
 }
 
 /** The name this key is written down under, or null. */
+/**
+ * A room its owner no longer has.
+ *
+ * A pair broken on the phone left its room on the server: the guest
+ * written in it could still be let in, to a room the owner never
+ * comes to. The owner's phone says so, and the room goes - with its
+ * guest, whose key was worth something in that room alone.
+ */
+export function removeRoom(room, owner) {
+  const data = read();
+  const before = data.rooms.length;
+  data.rooms = data.rooms.filter((r) => !(r.room === room && r.owner === owner));
+  if (data.rooms.length !== before) write(data);
+  return before - data.rooms.length;
+}
+
 export function nameOf(pub) {
   const found = read().devices.find((d) => d.pub === pub);
   return found ? found.name : null;

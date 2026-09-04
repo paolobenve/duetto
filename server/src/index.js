@@ -44,7 +44,7 @@ import {
 } from 'node:crypto';
 import {
   addInvitation, adopt, noteGuest, noteRoom, read, refresh, remove as removePerson,
-  removeInvitation, roomOf, useInvitation,
+  removeInvitation, removeRoom, roomOf, useInvitation,
 } from './devices.js';
 
 const PORT = parseInt(process.env.PORT || '8787', 10);
@@ -895,7 +895,14 @@ function isOwnersBusiness(type) {
  * talk to whoever they like, and hand out nothing.
  */
 function ownersBusiness(ws, msg) {
-  if (!ws.invites) {
+  // Forgetting a room of one's own is anybody's who may open one; the
+  // rest is the owner's.
+  if (msg.type === 'forget' && msg.room) {
+    if (!ws.opens) { send(ws, { type: 'error', error: 'not-yours' }); return; }
+    const gone = removeRoom(String(msg.room), ws.who);
+    console.log(`[duetto] ${ws.who} forgets a room of theirs (${gone})`);
+    if (!ws.invites) return;
+  } else if (!ws.invites) {
     send(ws, { type: 'error', error: 'not-yours' });
     return;
   }
@@ -909,7 +916,9 @@ function ownersBusiness(ws, msg) {
     // just made belongs in it, and one round trip is enough.
   }
   if (msg.type === 'forget') {
-    if (msg.code) {
+    if (msg.room) {
+      // done above
+    } else if (msg.code) {
       // An unused invitation, taken back.
       const gone = removeInvitation(msg.code);
       console.log(`[duetto] ${ws.who} takes back an invitation (${gone})`);

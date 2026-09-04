@@ -426,6 +426,8 @@ export default function App() {
   const [people, setPeople] = useState<PersonOnServer[]>([]);
   const [invitations, setInvitations] = useState<InvitationOnServer[]>([]);
   const [freshInvite, setFreshInvite] = useState<{ name: string; code: string } | null>(null);
+  /** rooms already told to the server as gone: once is enough */
+  const forgottenRooms = useRef<Set<string>>(new Set());
   const [connState, setConnState] = useState('new');
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
@@ -2235,6 +2237,17 @@ export default function App() {
           onPeople: (list, waiting) => {
             setPeople(list);
             setInvitations(waiting);
+            // Rooms of ours the server still keeps and this phone no
+            // longer has a pair for: broken here, never told there. The
+            // list that comes back after has them gone.
+            const me = list.find((p) => p.you);
+            const pairs = cfgRef.current?.pairs ?? [];
+            for (const r of me?.theirs ?? []) {
+              if (r.room && !pairs.some((p) => p.id === r.room) && !forgottenRooms.current.has(r.room)) {
+                forgottenRooms.current.add(r.room);
+                sig.forgetRoom(r.room);
+              }
+            }
           },
           onInvited: (name, code) => {
             // The list follows on its own: the server sends it right
@@ -3246,6 +3259,12 @@ export default function App() {
     // the other side must know it was not a drop.
     if (cfg.pair?.id === id) sayGoodbye.current = true;
     const next = forgetPair(cfg, id);
+    // The room on the server goes with it, if we are the one who
+    // opened it: a guest cannot, and the server would say so.
+    if (opensHere(cfg)) {
+      forgottenRooms.current.add(id);
+      signalingRef.current?.forgetRoom(id);
+    }
     // With nothing left to connect to, the presence ends here; if
     // another connection remains, the phone stays reachable there.
     if (cfg.pair?.id === id && !isPaired(next)) stopService.current = true;
