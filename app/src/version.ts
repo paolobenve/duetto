@@ -8,10 +8,10 @@
  * <https://www.gnu.org/licenses/>.
  */
 // Written by scripts/bump-build.js at every build: do not edit by hand.
-export const VERSION = '0.9.6';
-export const BUILD = 262;
-export const BUILT_AT = '04/09 22:28';
+export const VERSION = '0.9.7';
+export const BUILD = 263;
+export const BUILT_AT = '04/09 22:29';
 /** What is shown in the app. */
-export const VERSION_LABEL = '0.9.6';
+export const VERSION_LABEL = '0.9.7';
 /** For the settings: it tells two APKs of the same version apart. */
-export const VERSION_FULL = '0.9.6 · build 262 · 04/09 22:28';
+export const VERSION_FULL = '0.9.7 · build 263 · 04/09 22:29';
