@@ -3438,7 +3438,9 @@ export default function App() {
    * open. Opening the settings with no pair is the moment to ask.
    */
   useEffect(() => {
-    if (screen !== 'settings' || !cfg || isPaired(cfg) || !isServerConfigured(cfg)) return;
+    // The settings, and the pairing screen as well: typing a code, a
+    // phone has no socket at all, and would be the last to know.
+    if ((screen !== 'settings' && screen !== 'pairing') || !cfg || isPaired(cfg) || !isServerConfigured(cfg)) return;
     let gone = false;
     knock(cfg.serverUrl, { key: cfg.serverKey, name: cfg.displayName }).then((a) => {
       if (gone || a.role === 'unknown' || a.role === cfg.serverRole) return;
