@@ -2684,8 +2684,11 @@ export default function App() {
      * its place.
      */
     const mine = cfg.pair?.id;
+    // The drawers are read from disk at start-up, and the entry into
+    // the channel is automatic: the two raced, and on a quick phone the
+    // entry could win and find nothing. Not before the reading is done.
+    await howItWasLoading.current;
     const before = mine ? howItWas.current[mine] : undefined;
-    if (mine && before) { delete howItWas.current[mine]; saveHowItWas(); }
     if (before) {
       const still = Date.now() - before.when;
       // The microphone: as it was left, however long ago. The clock
@@ -2701,6 +2704,12 @@ export default function App() {
           .catch(() => { /* noop */ });
         setTimeout(() => { turnVideoBackOnRef.current?.(); }, 300);
       }
+      // The drawer used to be emptied here, and filled again only at
+      // the next touch of a button: two updates in a row with nothing
+      // touched in between, and the second one found it empty - the
+      // mute survived the first and died at the second. Written again
+      // now, with how things stand after the restoring.
+      noteHowItIsRef.current?.();
     }
   }, [cfg, attachPeer, stopWaiting]);
 
@@ -2807,8 +2816,10 @@ export default function App() {
    * used by anybody: keeping it would only mean carrying it around for
    * ever.
    */
+  /** the reading of the drawers, for whoever must not get there first */
+  const howItWasLoading = useRef<Promise<void>>(Promise.resolve());
   useEffect(() => {
-    (async () => {
+    howItWasLoading.current = (async () => {
       try {
         const raw = await AsyncStorage.getItem(HOW_IT_WAS_KEY);
         if (!raw) return;
