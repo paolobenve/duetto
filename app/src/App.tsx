@@ -3202,17 +3202,6 @@ export default function App() {
     if (tell) signalingRef.current?.sendSignal({ kind: 'audio', richer });
   }, [saveCfg]);
 
-  const onPaired = useCallback(async (pair: PairInfo) => {
-    if (!cfg) return;
-    setPairingCode('');
-    // It does not replace the previous connection: it stands beside it,
-    // and moves to the front. Pairing with somebody else is not saying
-    // you want to forget the first one.
-    const next = addPair(cfg, pair);
-    setCfg(saveCfg(next));
-    setPeerName(pair.peerName);
-    setScreen(next.setupShown ? 'channel' : 'setup');
-  }, [cfg]);
 
   /**
    * What settings this connection started with.
@@ -3369,6 +3358,31 @@ export default function App() {
     Alarm.play(sound, true).catch(() => {});
     Journal.mark(`alarm-sent:${sound}`).catch(() => {});
   }, []);
+
+  const onPaired = useCallback(async (pair: PairInfo) => {
+    if (!cfg) return;
+    setPairingCode('');
+    // Moving to the new pair is leaving the one in use, exactly as a
+    // switch is: the channel put away, its memory written under its
+    // own name. Without this the session went on as it was - camera
+    // on - into a pair that had never seen it, and the new pair opened
+    // on video nobody had asked for.
+    if (isPaired(cfg)) {
+      await putAwayChannel('paired', cfg.pair?.id);
+      sayGoodbye.current = true;
+    }
+    // It does not replace the previous connection: it stands beside it,
+    // and moves to the front. Pairing with somebody else is not saying
+    // you want to forget the first one.
+    const next = addPair(cfg, pair);
+    setCfg(saveCfg(next));
+    setPeerName(pair.peerName);
+    setPeerPresent(false);
+    peerActiveRef.current = false;
+    resetPeerMemory();
+    stopWaiting();
+    setScreen(next.setupShown ? 'channel' : 'setup');
+  }, [cfg, putAwayChannel, resetPeerMemory, stopWaiting]);
 
   /**
    * Leaving the server, as a member: the pairs made on it go too,
