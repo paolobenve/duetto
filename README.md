@@ -8,6 +8,30 @@ they arrive.
 Audio and video travel **end-to-end encrypted straight between the two phones**. Your
 server is only there to let you find each other: **it cannot read anything**.
 
+## What it is for
+
+A channel that is always there, between two phones you trust, is a different thing from an
+app for calling. Some of the shapes it takes:
+
+- **Two people who live apart** - a couple, a parent and a grown child, a friend on the
+  other side of the world: the phone on the table, the voice in the room, the video when
+  you want to look at each other. Nobody calls: you are simply there.
+- **A baby monitor**, from an old phone left in the child's room: you hear, you look in
+  when you like, and the call sound reaches you even with the ringer down.
+- **An elderly parent who lives alone**: one touch on their side, none if they prefer, and
+  you drop in with voice or video without them having to do anything.
+- **Somebody who struggles with phones**: the app is always open on theirs; you appear,
+  and there is nothing to answer.
+- **A cheap watching eye**: an old phone pointed at the front door, the garage, the boat,
+  the shop's back room. You enter the channel and see what is there, on your own server,
+  with nothing sent to anybody else.
+- **An intercom** between two rooms, the workshop and the kitchen, the counter and the
+  storeroom, a hospital bed and home.
+- **A dog left alone**, if you must know.
+
+All of it end-to-end encrypted, with no service in the middle: what the camera sees goes
+to the other phone and nowhere else.
+
 ## Beta testers wanted
 
 Duetto is at version 0.9: it works, two people use it all day, and it needs more phones,
