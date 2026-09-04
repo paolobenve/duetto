@@ -339,20 +339,6 @@ export default function SettingsScreen({
                 : initial.serverRole === 'member' ? 'pairing.roleMember' : 'pairing.roleGuest')}
             </Text>
           ) : null}
-        {/* A member may leave by themselves, as one breaks a pair: being
-            taken off was the owner's alone. */}
-        {initial.serverRole === 'member' ? (
-          <TouchableOpacity onPress={() => Alert.alert(
-            t('settings.leaveServerTitle', { server: displayServer(initial.serverUrl) }),
-            t('settings.leaveServerBody'),
-            [
-              { text: t('settings.cancel'), style: 'cancel' },
-              { text: t('settings.leave'), style: 'destructive', onPress: () => onLeaveServer?.() },
-            ],
-          )}>
-            <Text style={styles.linkInline}>{t('settings.leaveServer')}</Text>
-          </TouchableOpacity>
-        ) : null}
         {initial.serverKey ? (
           <View style={styles.field}>
             <Text style={styles.label}>{t('settings.serverKey')}</Text>
@@ -562,6 +548,25 @@ export default function SettingsScreen({
           </>
         ) : null}
 
+
+            {/* A member may leave by themselves, as one breaks a pair:
+                being taken off was the owner's alone. At the end, as an
+                action and not a setting. */}
+            {initial.serverRole === 'member' ? (
+              <TouchableOpacity
+                style={[styles.rowButton, styles.rowAfterChoices]}
+                onPress={() => Alert.alert(
+                  t('settings.leaveServerTitle', { server: displayServer(initial.serverUrl) }),
+                  t('settings.leaveServerBody'),
+                  [
+                    { text: t('settings.cancel'), style: 'cancel' },
+                    { text: t('settings.leave'), style: 'destructive', onPress: () => onLeaveServer?.() },
+                  ],
+                )}>
+                <Text style={styles.rowButtonText}>{t('settings.leaveServer')}</Text>
+                <Text style={styles.rowButtonArrow}>{'\u203A'}</Text>
+              </TouchableOpacity>
+            ) : null}
           </>
         ) : null}
 
