@@ -354,7 +354,7 @@ export default function SettingsScreen({
         {paired ? (
           <>
             <Text style={styles.section}>
-              {connections.length > 1 ? t('settings.connections') : t('settings.pair')}
+              {t('settings.pairs')}
             </Text>
             {connections.length > 1 ? (
               <Text style={styles.sectionHint}>{t('settings.connectionsHint')}</Text>
