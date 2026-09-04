@@ -1,0 +1,1 @@
+Listening comes back by itself again on Android 10-13. After a reboot, a notification takes you back into the channel with one touch. A covered screen holding the buttons is said, and three touches let you through. Battery and charger beside the volumes with the diagnostics on.

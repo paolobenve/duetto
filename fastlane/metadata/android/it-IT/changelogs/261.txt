@@ -1,0 +1,1 @@
+L'ascolto torna da solo anche su Android 10-13. Dopo un riavvio, una notifica ti riporta nel canale con un tocco. Se lo schermo risulta coperto e blocca i pulsanti, l'app lo dice e tre tocchi ti fanno passare. Batteria e caricatore accanto ai volumi con la diagnostica accesa.

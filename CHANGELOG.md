@@ -12,7 +12,18 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
-## 0.9.6 build 252
+## 0.9.6 build 261
+
+**Version 0.9.6.** The listening on Android 10 to 13 comes back by itself again: since the
+manifest declared the presence service as «specialUse», the code went on asking for
+«microphone» there, and the system refused it at every boot and at every ring of the
+watchdog. A notification after a reboot says you were in the channel and takes you back in
+with one touch, since nothing started in the background may open the microphone. The
+screen counted as covered - by the ultrasonic proximity of some phones, which takes a hand
+for a pocket - no longer holds the buttons in silence: it says so, and three touches let
+you through. With the diagnostics on, the battery and the charger beside the volumes; the
+stats line separates its items with a dot; «Called» says «Called» again.
+
 
 **«Called» says «Called» again.** A replacement meant for the welcome had hit the first
 «called» in each language file, which was the button's: pressing «Call» read «They are

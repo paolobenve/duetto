@@ -1,0 +1,1 @@
+La escucha vuelve a reanudarse sola en Android 10-13. Tras un reinicio, una notificación te devuelve al canal con un toque. Si la pantalla cuenta como cubierta y bloquea los botones, la app lo dice y tres toques te dejan pasar. Batería y cargador junto a los volúmenes con el diagnóstico activo.

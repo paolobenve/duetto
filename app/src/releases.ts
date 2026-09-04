@@ -33,11 +33,36 @@ export const RELEASES: Release[] = [
   {
     version: '0.9.6',
     notes: {
-      en: ['The «Call» button says «Called» again after a touch, in every language.'],
-      it: ['Il pulsante «Avvisa» dopo il tocco dice di nuovo «Avvisato», in tutte le lingue.'],
-      es: ['El botón «Avisar» vuelve a decir «Avisado» después del toque, en todos los idiomas.'],
-      pt: ['O botão «Avisar» volta a dizer «Avisado» depois do toque, em todas as línguas.'],
-      fr: ['Le bouton « Prévenir » redit « Prévenu » après la touche, dans toutes les langues.'],
+      en: [
+        'On Android 10 to 13 the listening comes back by itself again, after a reboot and after the phone closes the app.',
+        'After a reboot, a notification says you were in the channel: one touch takes you back in.',
+        'When the screen counts as covered and the buttons are held, the app says so; three touches let you through.',
+        'With the diagnostics on, the battery and the charger are shown beside the volumes.',
+      ],
+      it: [
+        'Su Android da 10 a 13 l’ascolto torna di nuovo da solo, dopo un riavvio e dopo che il telefono chiude l’app.',
+        'Dopo un riavvio, una notifica dice che eri nel canale: un tocco ti riporta dentro.',
+        'Quando lo schermo risulta coperto e i pulsanti sono bloccati, l’app lo dice; tre tocchi ti fanno passare.',
+        'Con la diagnostica accesa, batteria e caricatore compaiono accanto ai volumi.',
+      ],
+      es: [
+        'En Android 10 a 13 la escucha vuelve a reanudarse sola, tras un reinicio y cuando el teléfono cierra la app.',
+        'Tras un reinicio, una notificación dice que estabas en el canal: un toque te devuelve dentro.',
+        'Cuando la pantalla cuenta como cubierta y los botones están bloqueados, la app lo dice; tres toques te dejan pasar.',
+        'Con el diagnóstico activo, la batería y el cargador aparecen junto a los volúmenes.',
+      ],
+      pt: [
+        'No Android 10 a 13 a escuta volta a retomar sozinha, depois de um reinício e quando o telefone fecha o app.',
+        'Depois de um reinício, uma notificação diz que você estava no canal: um toque leva você de volta.',
+        'Quando a tela conta como coberta e os botões estão travados, o app avisa; três toques deixam você passar.',
+        'Com o diagnóstico ligado, bateria e carregador aparecem ao lado dos volumes.',
+      ],
+      fr: [
+        'Sur Android 10 à 13 l’écoute revient de nouveau toute seule, après un redémarrage et quand le téléphone ferme l’app.',
+        'Après un redémarrage, une notification dit que tu étais dans le canal : une touche t’y ramène.',
+        'Quand l’écran compte comme couvert et que les boutons sont bloqués, l’app le dit ; trois touches te laissent passer.',
+        'Avec le diagnostic actif, la batterie et le chargeur apparaissent à côté des volumes.',
+      ],
     },
   },
   {

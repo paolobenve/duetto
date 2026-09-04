@@ -1,0 +1,1 @@
+A escuta volta sozinha também no Android 10-13. Depois de um reinício, uma notificação leva você de volta ao canal com um toque. Se a tela conta como coberta e trava os botões, o app avisa e três toques deixam você passar. Bateria e carregador ao lado dos volumes com o diagnóstico ligado.

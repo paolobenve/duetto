@@ -1,0 +1,1 @@
+L'écoute revient toute seule aussi sur Android 10-13. Après un redémarrage, une notification te ramène dans le canal d'une touche. Si l'écran compte comme couvert et bloque les boutons, l'app le dit et trois touches te laissent passer. Batterie et chargeur à côté des volumes avec le diagnostic actif.
