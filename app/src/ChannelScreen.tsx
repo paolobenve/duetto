@@ -891,21 +891,19 @@ export default function ChannelScreen(props: Props) {
                 {peerMark(17, '#0b0e14')}
                 {showStats ? (
                   <>
-                    {battery ? (
-                      <Text style={styles.cardVolume}>
-                        {t(battery.charging ? 'channel.batteryCharging' : 'channel.battery',
-                          { pct: battery.percent })}
-                        {' · '}
-                      </Text>
-                    ) : null}
-                    {peerState.volume != null ? (
-                      <Text style={styles.cardVolume}>
-                        {t('channel.hearsYou', { pct: percent(peerState.volume) })}
-                      </Text>
-                    ) : null}
+                    {/* One text, the items joined by a dot: as separate
+                        texts the row's gap added air around every dot. */}
                     <Text style={styles.cardVolume}>
-                      {peerState.volume != null ? '· ' : ''}
-                      {t('channel.youHear', { pct: percent(peerGain) })}
+                      {[
+                        battery
+                          ? t(battery.charging ? 'channel.batteryCharging' : 'channel.battery',
+                            { pct: battery.percent })
+                          : '',
+                        peerState.volume != null
+                          ? t('channel.hearsYou', { pct: percent(peerState.volume) })
+                          : '',
+                        t('channel.youHear', { pct: percent(peerGain) }),
+                      ].filter(Boolean).join(' · ')}
                     </Text>
                     {/* The output's mark stands beside the number of
                         whoever is listening: theirs before theirs, mine

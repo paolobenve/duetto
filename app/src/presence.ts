@@ -7,6 +7,7 @@
  * the LICENSE file at the root of the project, and at
  * <https://www.gnu.org/licenses/>.
  */
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
 import { Foreground, Journal, Alarm } from 'duetto-platform';
 import { loadConfig, isPaired, isServerConfigured, pairFileKey, pairName } from './config';
@@ -246,6 +247,27 @@ export async function startListening(): Promise<boolean> {
    * goes in front of the text, in italics, and Android puts it there.
    */
   const connectionName = cfg.pairs.length > 1 ? pairName(pair) || '' : '';
+  /**
+   * "You were in the channel: touch to go back in."
+   *
+   * The presence comes up by itself after a reboot, or after the phone
+   * tore the app down - but the channel needs the app open, and from
+   * Android 14 the microphone is refused to anything started in the
+   * background: nobody can put you back in but your own finger. So
+   * the drawer the app writes at every touch is read here: if it says
+   * "in the channel" - written by an app that was killed, not by one
+   * that left - a notification says so, and one touch opens the app
+   * straight into the channel.
+   */
+  try {
+    const raw = await AsyncStorage.getItem('duetto.how-it-was');
+    const was = raw ? (JSON.parse(raw)?.[pair.id] ?? null) : null;
+    if (was && was.live === true) {
+      const who = pair.peerName || t('presence.theOther');
+      Foreground.note(connectionName, t('presence.wereInChannel', { who })).catch(() => { /* noop */ });
+      Journal.mark('note:were-in-channel').catch(() => { /* noop */ });
+    }
+  } catch { /* an unreadable drawer says nothing */ }
 
   /**
    * How the other side is doing, for the notification alone.

@@ -85,6 +85,7 @@ export const pt: Dictionary = {
   },
 
   presence: {
+    wereInChannel: 'Você estava no canal com {who}: toque para voltar.',
     theOther: 'o outro',
     inChannel: 'Você está no canal',
     waiting: 'À espera',
@@ -119,7 +120,7 @@ export const pt: Dictionary = {
 
   channel: {
     battery: 'bateria {pct}%',
-    batteryCharging: 'bateria {pct}%, carregando',
+    batteryCharging: 'bateria {pct}% carregando',
     pairBrokenTitle: '{who} desfez o par',
     pairBrokenAsk: '{who} desfez o par do lado dele: não pode mais funcionar. Tirar aqui também?',
     pairBrokenKeep: 'Manter',

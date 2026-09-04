@@ -96,6 +96,7 @@ export const en = {
   },
 
   presence: {
+    wereInChannel: 'You were in the channel with {who}: touch to go back in.',
     theOther: 'the other phone',
     inChannel: 'You are in the channel',
     waiting: 'Waiting',
@@ -130,7 +131,7 @@ export const en = {
 
   channel: {
     battery: 'battery {pct}%',
-    batteryCharging: 'battery {pct}%, charging',
+    batteryCharging: 'battery {pct}% charging',
     pairBrokenTitle: '{who} broke the pair',
     pairBrokenAsk: '{who} broke the pair from their side: it cannot work any more. Take it away here too?',
     pairBrokenKeep: 'Keep it',
