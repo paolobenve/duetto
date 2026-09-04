@@ -120,8 +120,10 @@ export const fr: Dictionary = {
 
   channel: {
     screenCovered: 'Écran couvert : boutons bloqués. Touche trois fois pour insister.',
-    battery: 'batterie {pct}%',
-    batteryCharging: 'batterie {pct}% en charge',
+    battery: 'ta batterie {pct}%',
+    batteryCharging: 'ta batterie {pct}% en charge',
+    batteryTheirs: 'sa batterie {pct}%',
+    batteryTheirsCharging: 'sa batterie {pct}% en charge',
     pairBrokenTitle: '{who} a rompu la paire',
     pairBrokenAsk: '{who} a rompu la paire de son côté : elle ne peut plus marcher. La retirer ici aussi ?',
     pairBrokenKeep: 'La garder',

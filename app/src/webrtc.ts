@@ -64,6 +64,8 @@ export type ChannelEvents = {
     volume?: number;
     /** in another call on the phone */
     busy?: boolean;
+    /** their battery, when they say */
+    battery?: { percent: number; charging: boolean } | null;
   }) => void;
   /**
    * Whether we are receiving a video track.
@@ -319,6 +321,16 @@ export class ChannelSession {
    */
   private hushed = false;
   private ducked = false;
+  /** the battery, told to the other side for their diagnostics */
+  private battery: { percent: number; charging: boolean } | null = null;
+
+  setBattery(b: { percent: number; charging: boolean } | null) {
+    const same = (!!b === !!this.battery)
+      && (!b || (b.percent === this.battery!.percent && b.charging === this.battery!.charging));
+    if (same) return;
+    this.battery = b;
+    this.broadcastState();
+  }
 
   /**
    * Where the sound comes out on this side: speaker, earpiece,
@@ -801,6 +813,9 @@ export class ChannelSession {
         camera: msg.camera,
         volume: msg.volume,
         busy: msg.busy === true,
+        battery: typeof msg.batteryPct === 'number'
+          ? { percent: msg.batteryPct, charging: msg.charging === true }
+          : null,
       });
       this.setPeerWatching(msg.watching !== false);
       // What the other side declares goes into the judgement on
@@ -2024,6 +2039,8 @@ export class ChannelSession {
       watching: this.localWatching,
       hwVp9: this.localVp9,
       busy: this.hushed,
+      batteryPct: this.battery?.percent,
+      charging: this.battery?.charging,
     });
   }
 

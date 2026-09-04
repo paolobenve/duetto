@@ -120,8 +120,10 @@ export const pt: Dictionary = {
 
   channel: {
     screenCovered: 'Tela coberta: botões travados. Toque três vezes para insistir.',
-    battery: 'bateria {pct}%',
-    batteryCharging: 'bateria {pct}% carregando',
+    battery: 'sua bateria {pct}%',
+    batteryCharging: 'sua bateria {pct}% carregando',
+    batteryTheirs: 'a bateria dele {pct}%',
+    batteryTheirsCharging: 'a bateria dele {pct}% carregando',
     pairBrokenTitle: '{who} desfez o par',
     pairBrokenAsk: '{who} desfez o par do lado dele: não pode mais funcionar. Tirar aqui também?',
     pairBrokenKeep: 'Manter',

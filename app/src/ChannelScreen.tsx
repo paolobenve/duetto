@@ -280,6 +280,8 @@ type Props = {
     volume?: number;
     /** in another call on their phone */
     busy?: boolean;
+    /** their battery, when they say */
+    battery?: { percent: number; charging: boolean } | null;
   };
   /** in another call on THIS phone: Duetto is silent until it ends */
   onCall?: boolean;
@@ -934,11 +936,15 @@ export default function ChannelScreen(props: Props) {
                         peerState.volume != null
                           ? t('channel.hearsYou', { pct: percent(peerState.volume) })
                           : '',
+                        peerState.battery
+                          ? t(peerState.battery.charging ? 'channel.batteryTheirsCharging' : 'channel.batteryTheirs',
+                            { pct: peerState.battery.percent })
+                          : '',
+                        t('channel.youHear', { pct: percent(peerGain) }),
                         battery
                           ? t(battery.charging ? 'channel.batteryCharging' : 'channel.battery',
                             { pct: battery.percent })
                           : '',
-                        t('channel.youHear', { pct: percent(peerGain) }),
                       ].filter(Boolean).map((piece, i, all) => (
                         // Each piece a text of its own, so the line may
                         // wrap between them and never inside one.
@@ -1252,7 +1258,7 @@ export default function ChannelScreen(props: Props) {
           // the buttons moved.
           <View style={[
             styles.statsBox,
-            { height: statsLineCount(videoStats, localHasVideo || remoteHasVideo, !!battery) * STATS_LINE_H },
+            { height: statsLineCount(videoStats, localHasVideo || remoteHasVideo, !!battery || !!peerState.battery) * STATS_LINE_H },
           ]}>
             <StatsLine
               stats={videoStats}
@@ -1263,6 +1269,7 @@ export default function ChannelScreen(props: Props) {
               peerRecv={peerRecvDelay}
               totalOnly={delayTotalOnly}
               battery={battery}
+              peerBattery={peerState.battery}
             />
           </View>
         ) : null}
@@ -1709,12 +1716,14 @@ export function statsLineCount(stats: VideoStats, hasVideo = false, withBattery 
 export const STATS_LINE_H = 18;
 
 function StatsLine({
-  stats, quality, showUp, showDown, peerSend, peerRecv, totalOnly, battery,
+  stats, quality, showUp, showDown, peerSend, peerRecv, totalOnly, battery, peerBattery,
 }: {
   stats: VideoStats;
   quality: string;
   /** the battery, with the diagnostics on: with the video the card is gone, and this is where it shows */
   battery?: { percent: number; charging: boolean } | null;
+  /** and the other side's, when they say */
+  peerBattery?: { percent: number; charging: boolean } | null;
   /** cameras really on: the statistics lag by one sample */
   showUp: boolean;
   showDown: boolean;
@@ -1884,12 +1893,15 @@ function StatsLine({
           number worth reading was the smallest thing on the screen. */}
       {/* The third line: the waits, and - with the video on, the card
           gone and the battery with it - the battery beside them. */}
-      {hasVideo && (waitSaid || battery) ? (
+      {hasVideo && (waitSaid || battery || peerBattery) ? (
         <Text style={styles.stats} numberOfLines={1}>
           {[
             waitSaid,
             battery
               ? t(battery.charging ? 'channel.batteryCharging' : 'channel.battery', { pct: battery.percent })
+              : '',
+            peerBattery
+              ? t(peerBattery.charging ? 'channel.batteryTheirsCharging' : 'channel.batteryTheirs', { pct: peerBattery.percent })
               : '',
           ].filter(Boolean).join(' · ')}
         </Text>

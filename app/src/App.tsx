@@ -454,7 +454,12 @@ export default function App() {
     let alive = true;
     const read = () => {
       Foreground.battery().then((b) => {
-        if (alive && b && b.percent >= 0) setBattery({ percent: b.percent, charging: b.charging === true });
+        if (alive && b && b.percent >= 0) {
+          const mine = { percent: b.percent, charging: b.charging === true };
+          setBattery(mine);
+          // Told to the other side too: their diagnostics show it.
+          sessionRef.current?.setBattery(mine);
+        }
       }).catch(() => { /* not this time */ });
     };
     read();
@@ -526,6 +531,8 @@ export default function App() {
     audio: boolean; video: boolean; aspect?: number;
     /** in another call on their phone: silent both ways until it ends */
     busy?: boolean;
+    /** their battery, when they say */
+    battery?: { percent: number; charging: boolean } | null;
     /** where the sound comes out over there: they say so */
     output?: string;
     /** which Duetto they have; missing if older than this field */
