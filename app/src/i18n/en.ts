@@ -390,6 +390,17 @@ export const en = {
     notTaken: 'The server could not write this phone down. Whoever runs it should look at its log.',
   },
 
+  qr: {
+    scan: 'Point the camera at a QR code',
+    hint: 'Point the camera at the QR code on the other phone',
+    show: 'QR',
+    orScanThis: 'Or let the other phone read this',
+    notOurs: 'That is not a Duetto code.',
+    otherServer: 'That code belongs to another server ({server}).',
+    noCamera: 'The camera permission is needed to read a code.',
+    inviteHint: 'The other phone reads it from its first screen, or from «Point the camera at a QR code»: the server comes with it.',
+  },
+
   pairing: {
     roleOwner: 'This server is yours.',
     roleMember: 'You may open connections of your own on this server.',

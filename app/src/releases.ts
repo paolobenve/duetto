@@ -39,6 +39,7 @@ export const RELEASES: Release[] = [
         'A bluetooth earpiece is seen again: the app asks for the permission it needs to see one, which it had been forgetting.',
         'The settings are in two tabs: server and pairs, and use.',
         'During a call on the phone, Duetto is silent both ways, and the other person is told.',
+        'A QR code for whoever is near: the pairing code and the invitation can be read with the camera, server included.',
       ],
       it: [
         'La prima volta l’app chiede il server e nient’altro: un server che nessuno ha preso diventa tuo, e la porta si chiude dietro di te.',
@@ -46,6 +47,7 @@ export const RELEASES: Release[] = [
         'Un auricolare bluetooth si vede di nuovo: l’app chiede il permesso che le serve per vederlo, che si dimenticava.',
         'Le impostazioni sono in due schede: server e coppie, e uso.',
         'Durante una chiamata sul telefono, Duetto tace in tutte e due le direzioni, e l’altro lo sa.',
+        'Un codice QR per chi è vicino: il codice di accoppiamento e l’invito si leggono con la camera, server compreso.',
       ],
       es: [
         'La primera vez la app pide el servidor y nada más: un servidor que nadie ha tomado pasa a ser tuyo, y la puerta se cierra detrás de ti.',
@@ -53,6 +55,7 @@ export const RELEASES: Release[] = [
         'Un auricular bluetooth se vuelve a ver: la app pide el permiso que necesita para verlo, y que olvidaba.',
         'Los ajustes están en dos pestañas: servidor y parejas, y uso.',
         'Durante una llamada en el teléfono, Duetto calla en las dos direcciones, y el otro lo sabe.',
+        'Un código QR para quien está cerca: el código de emparejamiento y la invitación se leen con la cámara, servidor incluido.',
       ],
       pt: [
         'Na primeira vez o app pede o servidor e mais nada: um servidor que ninguém tomou passa a ser seu, e a porta se fecha atrás de você.',
@@ -60,6 +63,7 @@ export const RELEASES: Release[] = [
         'Um fone bluetooth volta a ser visto: o app pede a permissão de que precisa para vê-lo, que estava esquecendo.',
         'Os ajustes estão em duas abas: servidor e pares, e uso.',
         'Durante uma chamada no telefone, o Duetto fica em silêncio nas duas direções, e o outro fica sabendo.',
+        'Um código QR para quem está perto: o código de pareamento e o convite se leem com a câmera, servidor incluído.',
       ],
       fr: [
         'La première fois, l’app demande le serveur et rien d’autre : un serveur que personne n’a pris devient le tien, et la porte se ferme derrière toi.',
@@ -67,6 +71,7 @@ export const RELEASES: Release[] = [
         'Une oreillette bluetooth est de nouveau vue : l’app demande la permission qu’il lui faut pour la voir, et qu’elle oubliait.',
         'Les réglages sont en deux onglets : serveur et paires, et usage.',
         'Pendant un appel sur le téléphone, Duetto se tait dans les deux sens, et l’autre le sait.',
+        'Un code QR pour qui est à côté : le code d’appairage et l’invitation se lisent avec la caméra, serveur compris.',
       ],
     },
   },

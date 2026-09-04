@@ -18,6 +18,7 @@ const NativeHeartbeat = NativeModules.DuettoHeartbeat;
 const NativeProximity = NativeModules.DuettoProximity;
 const NativeLocale = NativeModules.DuettoLocale;
 const NativeCodecs = NativeModules.DuettoCodecs;
+const NativeScanner = NativeModules.DuettoScanner;
 const NativeAudio = NativeModules.DuettoAudio;
 const NativeAlerts = NativeModules.DuettoAlerts;
 const NativeJournal = NativeModules.DuettoJournal;
@@ -330,6 +331,14 @@ export const Audio = isAndroid && NativeAudio
  * It arrives ready at start-up, without waiting for an answer: the first
  * screen has to be writable straight away. See LocaleModule.
  */
+/**
+ * Reading a QR code with the camera: the text it says, or '' if the
+ * screen was left without reading one. Rejects 'no-camera-permission'.
+ */
+export const Scanner = isAndroid && NativeScanner
+  ? { scan: (hint) => NativeScanner.scan(String(hint || '')) }
+  : { scan: () => Promise.resolve('') };
+
 export const Locale = isAndroid && NativeLocale
   ? {
       language: String(NativeLocale.language || 'en').toLowerCase(),

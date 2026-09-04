@@ -28,6 +28,14 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application>
+        <!-- The screen that reads a QR code: a pairing code or an
+             invitation held up by the phone next to this one. -->
+        <activity
+            android:name=".ScanActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
+
         <!-- Presence with no interface: it puts the connection back up
              after a reboot, without opening the app (forbidden from
              Android 10).

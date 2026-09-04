@@ -14,6 +14,8 @@ import {
 } from 'react-native';
 import { DuoConfig, displayServer, normalizeServerUrl, isServerConfigured } from './config';
 import { knock, formatInvitation, DoorAnswer } from './door';
+import { parseLink } from './links';
+import { Scanner } from 'duetto-platform';
 import { normalizeCode, formatCode, isCodeComplete } from './pairing';
 import { VERSION_LABEL } from './version';
 import { t } from './i18n';
@@ -65,25 +67,38 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
   const resolved = normalizeServerUrl(server);
   const ready = isServerConfigured({ ...initial, serverUrl: server });
 
-  const finish = useCallback((a: DoorAnswer, withCode?: string) => {
+  const finishWith = useCallback((
+    a: DoorAnswer, withCode: string | undefined, at: string, inv: string,
+  ) => {
     onDone({
       ...initial,
-      serverUrl: resolved,
+      serverUrl: at,
       serverKey: key.trim(),
-      invitation: invitation.trim(),
+      invitation: inv,
       serverRole: a.role,
     }, a, withCode);
-  }, [initial, resolved, key, invitation, onDone]);
+  }, [initial, key, onDone]);
+  const finish = useCallback((a: DoorAnswer, withCode?: string) => {
+    finishWith(a, withCode, resolved, invitation.trim());
+  }, [finishWith, resolved, invitation]);
 
-  /** Knocks with what is written now, and goes where the answer says. */
-  const knockNow = useCallback(async (from: Step) => {
+  /**
+   * Knocks with what is written now - or with what a QR code has just
+   * said, handed in directly, since the fields would not have caught
+   * up yet - and goes where the answer says.
+   */
+  const knockNow = useCallback(async (from: Step, over?: {
+    server?: string; invitation?: string; code?: string;
+  }) => {
+    const at = over?.server ? normalizeServerUrl(over.server) : resolved;
+    const inv = (over?.invitation ?? invitation).trim();
     setStep('knocking');
     setNote('');
     let a: DoorAnswer;
     try {
-      a = await knock(resolved, {
+      a = await knock(at, {
         key: key.trim() || undefined,
-        invite: invitation.trim() || undefined,
+        invite: inv || undefined,
         name: initial.displayName || undefined,
       });
     } catch (e: any) {
@@ -95,6 +110,13 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
       return;
     }
     setAnswer(a);
+    // A pairing code read from a QR: the two ways in are settled, and
+    // the pairing starts with it, as somebody's guest unless the
+    // server already knows us.
+    if (over?.code && !a.error) {
+      finishWith(a.role === 'stranger' ? { ...a, role: 'guest' } : a, over.code, at, inv);
+      return;
+    }
     if (a.error === 'bad-key') {
       setNote(t('welcome.keyWrong'));
       setStep(a.hasOwner ? 'stranger' : 'key');
@@ -111,7 +133,7 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
       return;
     }
     if (a.role === 'owner' || a.role === 'member' || a.role === 'unknown') {
-      finish(a);
+      finishWith(a, undefined, at, inv);
       return;
     }
     // A stranger, or somebody's guest with no pair to go to: what is
@@ -122,7 +144,30 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
     // write the list. Nothing to do from here but say so.
     setNote(t('welcome.notTaken'));
     setStep('server');
-  }, [resolved, key, invitation, initial.displayName, finish]);
+  }, [resolved, key, invitation, initial.displayName, finishWith]);
+
+  /** A QR code held up by the other phone: server and code, typed by nobody. */
+  const scanQr = useCallback(async (from: Step) => {
+    setNote('');
+    let text = '';
+    try {
+      text = await Scanner.scan(t('qr.hint'));
+    } catch {
+      setNote(t('qr.noCamera'));
+      return;
+    }
+    if (!text) return;
+    const link = parseLink(text);
+    if (!link) { setNote(t('qr.notOurs')); return; }
+    setServer(displayServer(link.serverUrl));
+    if (link.kind === 'invite') {
+      setInvitation(link.code);
+      knockNow(from, { server: link.serverUrl, invitation: link.code });
+    } else {
+      setCode(link.code);
+      knockNow(from, { server: link.serverUrl, code: link.code });
+    }
+  }, [knockNow]);
 
   // --- the screens --------------------------------------------------------
   if (step === 'knocking') {
@@ -189,6 +234,7 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
               code,
             )}
           />
+          <Primary label={t('qr.scan')} outline onPress={() => scanQr('stranger')} />
 
           <Text style={styles.section}>{t('welcome.invitedTitle')}</Text>
           <Field
@@ -239,6 +285,9 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
         />
         {note ? <Text style={styles.note}>{note}</Text> : null}
         <Primary label={t('welcome.next')} disabled={!ready} onPress={() => knockNow('server')} />
+        {/* Or nothing typed at all: the other phone holds its code up,
+            and the server comes with it. */}
+        <Primary label={t('qr.scan')} outline onPress={() => scanQr('server')} />
         {onClose ? <Secondary label={t('welcome.back')} onPress={onClose} /> : null}
         <Text style={styles.version}>{VERSION_LABEL}</Text>
       </Screen>

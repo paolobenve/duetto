@@ -377,6 +377,17 @@ export const pt: Dictionary = {
     notTaken: 'O servidor não conseguiu anotar este telefone. Quem cuida dele deveria olhar o registro.',
   },
 
+  qr: {
+    scan: 'Aponte a câmera para um código QR',
+    hint: 'Aponte a câmera para o código QR do outro telefone',
+    show: 'QR',
+    orScanThis: 'Ou deixe o outro telefone ler isto',
+    notOurs: 'Isso não é um código do Duetto.',
+    otherServer: 'Esse código é de outro servidor ({server}).',
+    noCamera: 'É preciso a permissão da câmera para ler um código.',
+    inviteHint: 'O outro telefone lê da primeira tela dele, ou de «Aponte a câmera para um código QR»: o servidor vai junto.',
+  },
+
   pairing: {
     roleOwner: 'Este servidor é seu.',
     roleMember: 'Neste servidor você pode abrir ligações próprias.',

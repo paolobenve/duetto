@@ -38,6 +38,11 @@ declare module 'duetto-platform' {
     listenToSystem(cb: (value: number) => void): () => void;
   };
 
+  /** Reading a QR code with the camera: its text, or '' if none was read. */
+  export const Scanner: {
+    scan(hint: string): Promise<string>;
+  };
+
   /** The language the phone is set to, as a two-letter code. */
   export const Locale: {
     language: string;

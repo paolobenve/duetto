@@ -376,6 +376,17 @@ export const it: Dictionary = {
     notTaken: 'Il server non è riuscito a segnarsi questo telefono. Chi lo gestisce guardi il suo log.',
   },
 
+  qr: {
+    scan: 'Inquadra un codice QR',
+    hint: 'Inquadra il codice QR sull’altro telefono',
+    show: 'QR',
+    orScanThis: 'Oppure fallo inquadrare all’altro telefono',
+    notOurs: 'Non è un codice di Duetto.',
+    otherServer: 'Questo codice è di un altro server ({server}).',
+    noCamera: 'Per inquadrare serve il permesso della camera.',
+    inviteHint: 'L’altro telefono lo inquadra dalla sua prima schermata, o da «Inquadra un codice QR»: il server viaggia insieme.',
+  },
+
   pairing: {
     roleOwner: 'Questo server è tuo.',
     roleMember: 'Su questo server puoi aprire collegamenti tuoi.',

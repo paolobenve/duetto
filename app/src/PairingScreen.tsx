@@ -14,6 +14,9 @@ import {
 } from 'react-native';
 import { DuoConfig, PairInfo, ServerRole, displayServer, isPaired } from './config';
 import { makeInvitation } from './door';
+import { pairLink, parseLink } from './links';
+import QrCode from './QrCode';
+import { Scanner } from 'duetto-platform';
 import { Signaling, PairMessage } from './signaling';
 import {
   generateCode, normalizeCode, formatCode, isCodeComplete,
@@ -224,6 +227,28 @@ export default function PairingScreen({
     startExchange(typed, 'B');
   }, [typed, startExchange]);
 
+  /** The other phone's code read with the camera, and the pairing started. */
+  const [scanNote, setScanNote] = useState('');
+  const scanCode = useCallback(async () => {
+    setScanNote('');
+    let text = '';
+    try {
+      text = await Scanner.scan(t('qr.hint'));
+    } catch {
+      setScanNote(t('qr.noCamera'));
+      return;
+    }
+    if (!text) return;
+    const link = parseLink(text);
+    if (!link || link.kind !== 'pair') { setScanNote(t('qr.notOurs')); return; }
+    if (displayServer(link.serverUrl) !== displayServer(cfg.serverUrl)) {
+      setScanNote(t('qr.otherServer', { server: displayServer(link.serverUrl) }));
+      return;
+    }
+    setTyped(link.code);
+    startExchange(link.code, 'B');
+  }, [cfg.serverUrl, startExchange]);
+
   /**
    * Whoever may open connections here creates the code, and that is
    * all: the screen opens on the code itself, with nothing to press.
@@ -371,6 +396,10 @@ export default function PairingScreen({
         <View style={styles.codeBox}>
           <Text style={styles.code}>{formatCode(code)}</Text>
         </View>
+        {/* The same code to be looked at: whoever is near holds their
+            phone up, and types nothing - the server travels in it. */}
+        <QrCode text={pairLink(cfg.serverUrl, code)} size={180} />
+        <Text style={styles.qrHint}>{t('qr.orScanThis')}</Text>
         <View style={styles.waitRow}>
           <ActivityIndicator color="#2f7cf6" />
           <Text style={styles.waitText}>{t('pairing.waitingOther')}</Text>
@@ -404,6 +433,8 @@ export default function PairingScreen({
             disabled={!isCodeComplete(typed)}
             onPress={startJoin}
           />
+          <Primary label={t('qr.scan')} outline onPress={scanCode} />
+          {scanNote ? <Text style={styles.note}>{scanNote}</Text> : null}
           <Secondary label={t('pairing.back')} onPress={startTyping ? onBack : reset} />
         </Screen>
       </KeyboardAvoidingView>
@@ -537,6 +568,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#2a313d', width: '100%',
   },
   role: { color: '#c9d2de', fontSize: 14, textAlign: 'center', marginBottom: 14, marginTop: -10 },
+  qrHint: { color: '#6b7686', fontSize: 13, textAlign: 'center', marginTop: 8, marginBottom: 18 },
   note: { color: '#ffb454', fontSize: 14, lineHeight: 20, marginTop: 10, alignSelf: 'flex-start' },
   waitRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18 },
   waitText: { color: '#c9d2de', fontSize: 15 },

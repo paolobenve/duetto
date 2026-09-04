@@ -17,6 +17,7 @@
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.1.0",
     "duetto-platform": "file:modules/duetto-platform",
+    "qrcode": "^1.5.4",
     "react": "18.3.1",
     "react-native": "0.76.5",
     "react-native-get-random-values": "^1.11.0",
@@ -36,6 +37,7 @@
     "@react-native/eslint-config": "0.76.5",
     "@react-native/metro-config": "0.76.5",
     "@react-native/typescript-config": "0.76.5",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^18.3.12",
     "eslint": "^8.57.0",
     "prettier": "^3.3.3",

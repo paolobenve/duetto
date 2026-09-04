@@ -15,6 +15,8 @@ import {
 import type { DuoConfig, PairInfo, VideoQuality } from './config';
 import type { PersonOnServer, InvitationOnServer } from './signaling';
 import { t, LANGUAGES, longDate } from './i18n';
+import { inviteLink } from './links';
+import QrCode from './QrCode';
 import type { LanguageChoice } from './i18n';
 import {
   isPaired, opensHere, displayServer, VIDEO_PROFILES,
@@ -242,6 +244,8 @@ export default function SettingsScreen({
   };
   /** the invitation copied a moment ago, for the word to say so */
   const [copiedCode, setCopiedCode] = useState('');
+  /** the invitation shown as a QR code, big, for the phone next to this one */
+  const [qrFor, setQrFor] = useState<InvitationOnServer | null>(null);
   const copyCode = (code: string) => {
     Clipboard.setString(code);
     setCopiedCode(code);
@@ -500,6 +504,9 @@ export default function SettingsScreen({
                   </Text>
                 </View>
                 <View style={styles.rowLinks}>
+                  <TouchableOpacity onPress={() => setQrFor(i)}>
+                    <Text style={styles.linkInline}>{t('qr.show')}</Text>
+                  </TouchableOpacity>
                   <TouchableOpacity onPress={() => copyCode(i.code)}>
                     <Text style={styles.linkInline}>
                       {copiedCode === i.code ? t('settings.copied') : t('settings.copy')}
@@ -820,6 +827,29 @@ export default function SettingsScreen({
         <Text style={styles.version}>{VERSION_FULL}</Text>
       </ScrollView>
 
+      {/* The invitation held up to the other phone. */}
+      <Modal
+        visible={!!qrFor}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setQrFor(null)}>
+        <Pressable style={styles.sheetBack} onPress={() => setQrFor(null)}>
+          <Pressable style={styles.sheet} onPress={() => { /* hold it */ }}>
+            <Text style={styles.sheetTitle}>{qrFor?.name}</Text>
+            <View style={styles.qrWrap}>
+              {qrFor ? <QrCode text={inviteLink(initial.serverUrl, qrFor.code)} size={240} /> : null}
+            </View>
+            <Text style={styles.qrCode}>{qrFor?.code}</Text>
+            <Text style={styles.hint}>{t('qr.inviteHint')}</Text>
+            <View style={styles.sheetActions}>
+              <TouchableOpacity style={styles.sheetAction} onPress={() => setQrFor(null)}>
+                <Text style={styles.sheetOk}>{t('news.close')}</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* The name to give a connection: it opens from the pencil. */}
       <Modal
         visible={!!naming}
@@ -923,6 +953,8 @@ const styles = StyleSheet.create({
   section: { color: '#7cc4ff', fontWeight: '700', fontSize: 16, marginTop: 24 },
   afterList: { height: 18 },
   rowLinks: { alignItems: 'flex-end', gap: 10 },
+  qrWrap: { alignItems: 'center', marginVertical: 14 },
+  qrCode: { color: '#7cc4ff', fontSize: 24, fontWeight: '800', letterSpacing: 3, textAlign: 'center', marginBottom: 8 },
   roleLine: { color: '#c9d2de', fontSize: 14, lineHeight: 20, marginTop: -6, marginBottom: 14 },
   subsection: { color: '#c9d2de', fontWeight: '700', fontSize: 15, marginTop: 18 },
   secondary: {

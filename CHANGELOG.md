@@ -12,6 +12,16 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
+## 0.9.4 build 215
+
+**A QR code, for whoever is near.** The pairing code is shown as a QR code beside the
+digits, and an invitation has a «QR» beside it that opens one big; the other phone reads it
+with «Point the camera at a QR code», on its first screen or wherever a code is typed. The
+server travels inside the code, so whoever is called or invited types nothing at all, not
+even the address. The camera and the decoder are the phone's own - CameraX and ZXing, free
+software with no services of anybody's behind them - and the code is drawn by the app
+itself: nothing was added that would keep Duetto off F-Droid.
+
 ## 0.9.4 build 212
 
 **During a call on the phone, Duetto is silent.** A telephone call, a WhatsApp call:
