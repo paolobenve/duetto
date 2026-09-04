@@ -3466,9 +3466,10 @@ export default function App() {
       setPeerPresent(false);
       peerActiveRef.current = false;
       resetPeerMemory();
-      // Breaking up the last one leaves nothing to connect to; if
+      // Breaking up the last one leaves nothing to connect to, and one
+      // stays in the settings, where the two ways to a pair are; if
       // another one remains, we have already moved to it.
-      setScreen(isPaired(next) ? 'channel' : 'pairing');
+      setScreen(isPaired(next) ? 'channel' : 'settings');
     }
   }, [cfg, resetPeerMemory]);
 
