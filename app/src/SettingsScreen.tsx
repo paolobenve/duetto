@@ -323,22 +323,26 @@ export default function SettingsScreen({
             at another door, and the welcome is the one that knows what
             that door asks for. What the server asked here - the key -
             is shown when there is one, and only then. */}
-        <View style={styles.field}>
-          <Text style={styles.label}>{t('settings.server')}</Text>
-          <Text style={styles.readonly}>{displayServer(initial.serverUrl)}</Text>
-          <TouchableOpacity onPress={onChangeServer}>
-            <Text style={styles.linkInline}>{t('settings.changeServer')}</Text>
+        <Text style={styles.label}>{t('settings.server')}</Text>
+        {/* A box like a pair's, with the pencil beside it: the server
+            and what it is to this phone, and the one way to touch it. */}
+        <View style={styles.pairRow}>
+          <View style={styles.pairBox}>
+            <View style={styles.pairWho}>
+              <Text style={styles.pairName}>{displayServer(initial.serverUrl)}</Text>
+              {initial.serverRole === 'owner' || initial.serverRole === 'member'
+                || initial.serverRole === 'guest' ? (
+                  <Text style={styles.pairMeta}>
+                    {t(initial.serverRole === 'owner' ? 'pairing.roleOwner'
+                      : initial.serverRole === 'member' ? 'pairing.roleMember' : 'pairing.roleGuest')}
+                  </Text>
+                ) : null}
+            </View>
+          </View>
+          <TouchableOpacity style={styles.pairAway} onPress={onChangeServer}>
+            <Text style={styles.pairNameText}>{'\u270E'}</Text>
           </TouchableOpacity>
         </View>
-        {/* What this server is to this phone, in a line: it is the
-            first thing one wants to know on coming in. */}
-        {initial.serverRole === 'owner' || initial.serverRole === 'member'
-          || initial.serverRole === 'guest' ? (
-            <Text style={styles.roleLine}>
-              {t(initial.serverRole === 'owner' ? 'pairing.roleOwner'
-                : initial.serverRole === 'member' ? 'pairing.roleMember' : 'pairing.roleGuest')}
-            </Text>
-          ) : null}
         {initial.serverKey ? (
           <View style={styles.field}>
             <Text style={styles.label}>{t('settings.serverKey')}</Text>
