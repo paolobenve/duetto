@@ -12,6 +12,12 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
+## 0.9.6 build 252
+
+**«Called» says «Called» again.** A replacement meant for the welcome had hit the first
+«called» in each language file, which was the button's: pressing «Call» read «They are
+giving me the code» for two seconds, in all five languages.
+
 ## 0.9.5 build 250
 
 **Version 0.9.5.** A member who leaves is announced to the owner and the pairs with them

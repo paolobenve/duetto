@@ -31,6 +31,16 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.9.6',
+    notes: {
+      en: ['The «Call» button says «Called» again after a touch, in every language.'],
+      it: ['Il pulsante «Avvisa» dopo il tocco dice di nuovo «Avvisato», in tutte le lingue.'],
+      es: ['El botón «Avisar» vuelve a decir «Avisado» después del toque, en todos los idiomas.'],
+      pt: ['O botão «Avisar» volta a dizer «Avisado» depois do toque, em todas as línguas.'],
+      fr: ['Le bouton « Prévenir » redit « Prévenu » après la touche, dans toutes les langues.'],
+    },
+  },
+  {
     version: '0.9.5',
     notes: {
       en: [
