@@ -102,6 +102,8 @@ type Props = {
   initial: DuoConfig;
   /** opens the welcome, which knocks at the new door and asks what it needs */
   onChangeServer: () => void;
+  /** leaves the server, as a member: the pairs made on it go too */
+  onLeaveServer?: () => void;
   /** forgets a connection, in use or not */
   onForgetPair: (id: string) => void;
   /** brings a connection already set up into use */
@@ -154,7 +156,7 @@ type Props = {
  * All the rest is optional and sits under "Other settings".
  */
 export default function SettingsScreen({
-  initial, onForgetPair, onSwitchPair, onRenamePair, onChangeServer, onRepair, onHaveCode, onClose, onOpenSetup,
+  initial, onForgetPair, onSwitchPair, onRenamePair, onChangeServer, onLeaveServer, onRepair, onHaveCode, onClose, onOpenSetup,
   vp9Here, vp9Peer, onQualityChange, onLive,
   canInvite, canAddPair, people = [], invitations = [], freshInvite,
   onAskPeople, onInvite, onForget, onForgetInvitation,
@@ -337,6 +339,20 @@ export default function SettingsScreen({
                 : initial.serverRole === 'member' ? 'pairing.roleMember' : 'pairing.roleGuest')}
             </Text>
           ) : null}
+        {/* A member may leave by themselves, as one breaks a pair: being
+            taken off was the owner's alone. */}
+        {initial.serverRole === 'member' ? (
+          <TouchableOpacity onPress={() => Alert.alert(
+            t('settings.leaveServerTitle', { server: displayServer(initial.serverUrl) }),
+            t('settings.leaveServerBody'),
+            [
+              { text: t('settings.cancel'), style: 'cancel' },
+              { text: t('settings.leave'), style: 'destructive', onPress: () => onLeaveServer?.() },
+            ],
+          )}>
+            <Text style={styles.linkInline}>{t('settings.leaveServer')}</Text>
+          </TouchableOpacity>
+        ) : null}
         {initial.serverKey ? (
           <View style={styles.field}>
             <Text style={styles.label}>{t('settings.serverKey')}</Text>
@@ -398,6 +414,9 @@ export default function SettingsScreen({
                         {active ? t('settings.inUseSince') : t('settings.since')}
                         {p.pairedAt ? new Date(p.pairedAt).toLocaleDateString() : '—'}
                       </Text>
+                      {p.brokenByPeer ? (
+                        <Text style={styles.pairBroken}>{t('settings.pairBrokenByPeer')}</Text>
+                      ) : null}
                       {/* The server is part of the connection's
                           identity: the room is there, and moving to
                           another connection moves you to another server
@@ -953,6 +972,7 @@ const styles = StyleSheet.create({
   section: { color: '#7cc4ff', fontWeight: '700', fontSize: 16, marginTop: 24 },
   afterList: { height: 18 },
   rowLinks: { alignItems: 'flex-end', gap: 10 },
+  pairBroken: { color: '#ffb454', fontSize: 12, marginTop: 4 },
   qrWrap: { alignItems: 'center', marginVertical: 14 },
   qrCode: { color: '#7cc4ff', fontSize: 24, fontWeight: '800', letterSpacing: 3, textAlign: 'center', marginBottom: 8 },
   roleLine: { color: '#c9d2de', fontSize: 14, lineHeight: 20, marginTop: -6, marginBottom: 14 },

@@ -24,7 +24,7 @@ import { attachWatchdog, Watchdog } from './watchdog';
 import {
   DuoConfig, PairInfo, loadConfig, saveConfig,
   isServerConfigured, isPaired, opensHere, VIDEO_PROFILES,
-  addPair, switchToPair, forgetPair, rememberPeerName,
+  addPair, switchToPair, forgetPair, markPairBroken, rememberPeerName,
   alignPairServer, renamePair, pairFileKey, pairName,
   storeSettingsInPair,
 } from './config';
@@ -39,6 +39,7 @@ import SettingsScreen from './SettingsScreen';
 import SetupScreen from './SetupScreen';
 import PairingScreen from './PairingScreen';
 import WelcomeScreen from './WelcomeScreen';
+import { leaveServer } from './door';
 import ChannelScreen from './ChannelScreen';
 import { loadPipPosition } from './VideoStage';
 import { useAudioRoute } from './audioRoute';
@@ -331,18 +332,52 @@ export default function App() {
   const [onCall, setOnCall] = useState(false);
   useEffect(() => {
     if (!inChannel) { setOnCall(false); return; }
+    /**
+     * Three losses, and they are not the same thing.
+     *
+     * A call - the telephone, WhatsApp - takes the audio for a while
+     * and gives it back: "transient". That is the one to be silent for,
+     * both ways. Somebody playing a voice message or a video takes it
+     * for good - "loss", full stop - and Android never says "back":
+     * the first build treated that as a call and stayed mute, saying
+     * "in another call" to somebody who had only listened to a message.
+     * Now a plain loss only lowers the other voice, and says nothing;
+     * and in both cases the focus is asked for again every few seconds,
+     * so that the way back does not depend on anybody's courtesy.
+     */
+    let retry: ReturnType<typeof setInterval> | null = null;
+    const back = (why: string) => {
+      if (retry) { clearInterval(retry); retry = null; }
+      sessionRef.current?.hush(false);
+      sessionRef.current?.duck(false);
+      setOnCall(false);
+      Journal.mark(`audio-focus:back:${why}`).catch(() => {});
+    };
+    const keepAsking = () => {
+      if (retry) return;
+      retry = setInterval(async () => {
+        try {
+          const res = String(await (InCallManager as any).requestAudioFocus?.() ?? '');
+          if (res.includes('GRANTED')) back('asked');
+        } catch { /* asked again in a moment */ }
+      }, 4000);
+    };
     const sub = DeviceEventEmitter.addListener('onAudioFocusChange', (data: any) => {
       const what = String(data?.eventText || '');
-      const lost = what === 'AUDIOFOCUS_LOSS' || what === 'AUDIOFOCUS_LOSS_TRANSIENT';
+      const call = what === 'AUDIOFOCUS_LOSS_TRANSIENT';
+      const media = what === 'AUDIOFOCUS_LOSS';
       const duck = what === 'AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK';
+      if (!call && !media && !duck) { back('told'); return; }
       const sess = sessionRef.current;
-      sess?.hush(lost);
-      sess?.duck(duck);
-      setOnCall(lost);
-      Journal.mark(`audio-focus:${lost ? 'lost' : duck ? 'duck' : 'back'}`).catch(() => {});
+      sess?.hush(call);
+      sess?.duck(!call);
+      setOnCall(call);
+      Journal.mark(`audio-focus:${call ? 'call' : media ? 'media' : 'duck'}`).catch(() => {});
+      if (call || media) keepAsking();
     });
     return () => {
       sub.remove();
+      if (retry) clearInterval(retry);
       sessionRef.current?.hush(false);
       sessionRef.current?.duck(false);
     };
@@ -2266,6 +2301,15 @@ export default function App() {
             // one was doing.
           },
 
+          // The other side broke this pair: it cannot work any more,
+          // and the screen must stop saying "waiting" for somebody who
+          // is not coming.
+          onPairBroken: () => {
+            const id = cfgRef.current?.pair?.id;
+            if (!id || cfgRef.current?.pair?.brokenByPeer) return;
+            Journal.mark('pair-broken').catch(() => { /* noop */ });
+            setCfg((prev) => (prev ? saveCfg(markPairBroken(prev, id)) : prev));
+          },
           onPeople: (list, waiting) => {
             setPeople(list);
             setInvitations(waiting);
@@ -3300,12 +3344,41 @@ export default function App() {
     Journal.mark(`alarm-sent:${sound}`).catch(() => {});
   }, []);
 
+  /**
+   * Leaving the server, as a member: the pairs made on it go too,
+   * because without the list they cannot work, and the welcome is
+   * where one lands, as a stranger.
+   */
+  const onLeaveServer = useCallback(async () => {
+    if (!cfg) return;
+    try {
+      await leaveServer(cfg.serverUrl, { key: cfg.serverKey, name: cfg.displayName });
+    } catch (e: any) {
+      Alert.alert(t('errors.leaveFailed'), t('errors.leaveFailedBody', { why: String(e?.message || '') }));
+      return;
+    }
+    Journal.mark('left-server').catch(() => { /* noop */ });
+    let next = cfg;
+    for (const p of cfg.pairs) {
+      if (!p.serverUrl || p.serverUrl === cfg.serverUrl) next = forgetPair(next, p.id);
+    }
+    if (!isPaired(next)) stopService.current = true;
+    setCfg(saveCfg({ ...next, serverUrl: cfg.serverUrl, serverRole: 'stranger' }));
+    setPeerName('');
+    setPeerPresent(false);
+    setScreen('welcome');
+  }, [cfg]);
+
   const onForgetPair = useCallback(async (id: string) => {
     if (!cfg) return;
     // Breaking up a connection is a real goodbye: whoever is left on
     // the other side must know it was not a drop.
     if (cfg.pair?.id === id) sayGoodbye.current = true;
     const next = forgetPair(cfg, id);
+    // The other side is told - now if they are there, at their next
+    // join if not: a pair broken from one side alone went on looking
+    // alive on the other, with no way of noticing.
+    signalingRef.current?.tellBroken(id);
     // The room on the server goes with it, if we are the one who
     // opened it: a guest cannot, and the server would say so.
     if (opensHere(cfg)) {
@@ -3369,6 +3442,7 @@ export default function App() {
         <SettingsScreen
           initial={cfg}
           onChangeServer={() => setScreen('welcome')}
+          onLeaveServer={onLeaveServer}
           onForgetPair={onForgetPair}
           onSwitchPair={onSwitchPair}
           onRenamePair={onRenamePair}
@@ -3552,6 +3626,7 @@ export default function App() {
         }}
         onOpenSettings={() => setScreen('settings')}
         onCall={onCall}
+        pairBroken={!!cfg.pair?.brokenByPeer}
       />
     </View>
   );

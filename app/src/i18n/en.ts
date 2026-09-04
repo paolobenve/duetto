@@ -22,6 +22,8 @@
  */
 export const en = {
   errors: {
+    leaveFailed: 'Could not leave the server',
+    leaveFailedBody: 'The server did not let go ({why}).',
     stranger: 'This server does not know this phone',
     strangerBody: 'It has an owner, and this phone is not on its list. Ask them for an invitation, or have them create a pairing code for you.',
     badInvite: 'The invitation does not work',
@@ -123,6 +125,7 @@ export const en = {
   },
 
   channel: {
+    pairBrokenByPeer: '{who} broke the pair from their side: take it away in the settings, or pair again.',
     connectionLost: 'Connection lost, reconnecting…',
     linkLost: 'Link lost, reconnecting…',
     linkInterrupted: 'Link interrupted, waiting…',
@@ -209,6 +212,11 @@ export const en = {
   },
 
   settings: {
+    pairBrokenByPeer: 'broken from the other side',
+    leaveServer: 'Leave this server',
+    leaveServerTitle: 'Leave {server}?',
+    leaveServerBody: 'The server takes this phone off its list. The pairs made here go with it, and the people you brought along lose theirs. To come back you would need a new invitation.',
+    leave: 'Leave',
     subtitle: 'A channel for the two of you alone. You come in and you stay: when the other person comes in too, you connect by yourselves.',
     haveCode: 'Somebody is offering me a connection',
     connectWithSomebody: 'Offer somebody a connection',

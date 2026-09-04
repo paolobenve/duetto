@@ -92,6 +92,15 @@ try {
   check('a spent invitation: bad-invite', r.answer.error === 'bad-invite', r.answer); r.ws.close();
   // Bruno knocks again: member by his card.
   r = await knock(PORT, bruno); check('member knocks again: member', r.answer.role === 'member', r.answer); r.ws.close();
+  // A member leaves by themselves; the owner may not.
+  r = await knock(PORT, bruno);
+  const left = await ask(r.ws, { type: 'leave' });
+  check('a member leaves the server', left.type === 'left', left); r.ws.close();
+  r = await knock(PORT, bruno); check('gone: a stranger again', r.answer.role === 'stranger', r.answer); r.ws.close();
+  r = await knock(PORT, anna);
+  const notLeft = await ask(r.ws, { type: 'leave' });
+  check('the owner may not leave', notLeft.type === 'error' && notLeft.error === 'not-for-owner', notLeft); r.ws.close();
+
   // A stranger at the door cannot do the owner business.
   r = await knock(PORT, carla);
   const biz = await ask(r.ws, { type: 'invite', name: 'x' });

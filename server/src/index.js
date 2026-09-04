@@ -43,8 +43,8 @@ import {
   createHash, createPublicKey, randomBytes, randomUUID, timingSafeEqual, verify,
 } from 'node:crypto';
 import {
-  addInvitation, adopt, noteGuest, noteRoom, read, refresh, remove as removePerson,
-  removeInvitation, removeRoom, roomOf, useInvitation,
+  addInvitation, adopt, isBroken, markBroken, noteGuest, noteRoom, read, refresh,
+  remove as removePerson, removeInvitation, removeRoom, roomOf, useInvitation,
 } from './devices.js';
 
 const PORT = parseInt(process.env.PORT || '8787', 10);
@@ -559,6 +559,16 @@ wss.on('connection', (ws, req) => {
       ownersBusiness(ws, msg);
       return;
     }
+    // And the two things anybody known may say, from the door or from
+    // a room: "this pair is broken", and "I am leaving this server".
+    if (msg.type === 'broken' && (ws.joined || ws.atDoor)) {
+      pairBroken(ws, msg);
+      return;
+    }
+    if (msg.type === 'leave' && (ws.joined || ws.atDoor)) {
+      leaveServer(ws);
+      return;
+    }
 
     // --- 1) Handshake ---------------------------------------------------
     if (!ws.joined) {
@@ -707,6 +717,10 @@ wss.on('connection', (ws, req) => {
       send(ws, {
         type: 'joined',
         peerId: ws.peerId,
+        // The other side broke this pair while this phone was away:
+        // said now, or it would go on waiting for somebody who is not
+        // coming.
+        broken: isBroken(roomId),
         // Whether this phone may invite: it is one of those written in
         // the .env. The app shows or hides a whole section on it.
         owner: ws.invites === true,
@@ -878,6 +892,45 @@ wss.on('connection', (ws, req) => {
   ws.on('close', () => leaveRoom(ws));
   ws.on('error', () => leaveRoom(ws));
 });
+
+/**
+ * One side has broken a pair: the other is told, now or later.
+ *
+ * Now, if they are in the room; later, at their next join, from the
+ * list of broken rooms. Whoever says it must be somebody - a card the
+ * server recognised, at the door or in a room - and anybody may say it
+ * of any room: a guest breaks a pair as much as an owner does, and
+ * saying it of a room one was never in does no harm.
+ */
+function pairBroken(ws, msg) {
+  const room = typeof msg.room === 'string' ? msg.room.trim() : '';
+  if (!room || room.length > 128) return;
+  markBroken(room);
+  const here = rooms.get(room);
+  let told = 0;
+  if (here) {
+    for (const peer of here) {
+      if (peer !== ws) { send(peer, { type: 'pair-broken' }); told++; }
+    }
+  }
+  console.log(`[duetto] ${ws.who || ws.name} breaks a pair (${told} told now)`);
+}
+
+/**
+ * Leaving the server, from the app: the member's own decision.
+ *
+ * Being taken off the list was the owner's alone; being in a pair one
+ * can break oneself, and this is the same courtesy. The owner cannot:
+ * leaving the house would leave it to nobody. Their rooms go, and the
+ * guests in them are told at their next knock.
+ */
+function leaveServer(ws) {
+  if (!ws.who) { send(ws, { type: 'error', error: 'not-yours' }); return; }
+  if (ws.invites) { send(ws, { type: 'error', error: 'not-for-owner' }); return; }
+  const gone = removePerson(ws.who);
+  console.log(`[duetto] ${ws.who} leaves the server (${gone})`);
+  send(ws, { type: 'left' });
+}
 
 function isOwnersBusiness(type) {
   return type === 'invite' || type === 'people' || type === 'forget';

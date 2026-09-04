@@ -195,6 +195,22 @@ export async function knock(serverUrl: string, ask: DoorRequest): Promise<DoorAn
 }
 
 /**
+ * Leaving the server, as a member: one's own decision, like breaking a
+ * pair. The owner cannot; the server says so.
+ */
+export async function leaveServer(serverUrl: string, ask: DoorRequest): Promise<void> {
+  const v = await visit(serverUrl, ask);
+  try {
+    if (v.answer.role === 'owner') throw new Error('not-for-owner');
+    if (v.answer.role !== 'member') throw new Error('not-a-member');
+    const reply = await v.ask({ type: 'leave' });
+    if (reply?.type !== 'left') throw new Error(String(reply?.error || 'refused'));
+  } finally {
+    v.close();
+  }
+}
+
+/**
  * An invitation for somebody, made at the door.
  *
  * Only an owner's card is answered; anybody else gets 'not-yours'. The

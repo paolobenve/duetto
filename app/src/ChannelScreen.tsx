@@ -283,6 +283,8 @@ type Props = {
   };
   /** in another call on THIS phone: Duetto is silent until it ends */
   onCall?: boolean;
+  /** the other side broke this pair: it cannot work any more */
+  pairBroken?: boolean;
   /** the other person's video track really arriving */
   remoteHasVideo: boolean;
   /** changes at every restart of the remote video, to rebuild the view */
@@ -340,7 +342,7 @@ export default function ChannelScreen(props: Props) {
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes,
     onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, leaving,
-    onAlarm, onZoom, onOpenSettings, onCall,
+    onAlarm, onZoom, onOpenSettings, onCall, pairBroken,
   } = props;
 
   // In Picture-in-Picture the window is tiny: no controls. The width
@@ -921,6 +923,7 @@ export default function ChannelScreen(props: Props) {
             peerAudio={peerState.audio}
             peerBusy={peerState.busy === true}
             onCall={onCall}
+            pairBroken={pairBroken}
           />
         )}
       />
@@ -1503,6 +1506,8 @@ function PresenceCard(props: {
   peerBusy?: boolean;
   /** in another call on THIS phone: Duetto is silent until it ends */
   onCall?: boolean;
+  /** the other side broke this pair: it cannot work any more */
+  pairBroken?: boolean;
   peerPresent: boolean;
   peerDetached: boolean;
   /** waiting because the phone closed the app on them, not by choice */
@@ -1513,7 +1518,7 @@ function PresenceCard(props: {
   connectionName?: string;
 }) {
   const {
-    status, linked, connectionState, peerName, peerAvatar, peerAudio, peerBusy, onCall, peerPresent,
+    status, linked, connectionState, peerName, peerAvatar, peerAudio, peerBusy, onCall, pairBroken, peerPresent,
     peerDetached, peerTornDown, peerMark, connectionName,
   } = props;
 
@@ -1602,6 +1607,13 @@ function PresenceCard(props: {
       </Text>
       {/* Our own call: said here, where the silence is felt. */}
       {onCall ? <Text style={styles.cardOnCall}>{t('channel.onPhoneCall')}</Text> : null}
+      {/* The pair broken from the other side: nothing here can bring
+          them back, and waiting would be waiting for nobody. */}
+      {pairBroken ? (
+        <Text style={styles.cardOnCall}>
+          {t('channel.pairBrokenByPeer', { who: peerName || t('channel.theOther') })}
+        </Text>
+      ) : null}
       {/* The raw state helps to see where it stopped. */}
       {linked ? null : (
         <Text style={styles.cardTiny}>{t('channel.state', { state: connectionState })}</Text>

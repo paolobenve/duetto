@@ -163,6 +163,8 @@ export type SignalingEvents = {
   onSignal?: (msg: SignalMessage) => void;
   onPair?: (msg: PairMessage) => void;
   onKnockResult?: (ok: boolean, error?: string) => void;
+  /** the other side broke this pair: told now, or found on joining */
+  onPairBroken?: () => void;
   /** @param reason with `not-allowed`: 'stranger', 'bad-invite' or 'bad-key' */
   onError?: (code: string, reason?: string) => void;
 };
@@ -495,6 +497,11 @@ export class Signaling {
     this.rawSend({ type: 'forget', room });
   }
 
+  /** The other side is told, now or at their next join, that the pair is broken. */
+  tellBroken(room: string) {
+    this.rawSend({ type: 'broken', room });
+  }
+
   private handle(data: any) {
     let msg: any;
     try {
@@ -543,6 +550,7 @@ export class Signaling {
         // born, before anything the handlers below decide to say.
         if (this.peerThere) this.flushOutbox();
         this.events.onStatus?.(msg.peerActive ? 'together' : 'alone');
+        if (msg.broken === true) this.events.onPairBroken?.();
         this.events.onJoined?.({
           polite: !!msg.polite,
           owner: !!msg.owner,
@@ -614,6 +622,10 @@ export class Signaling {
 
       case 'knock-result':
         this.events.onKnockResult?.(!!msg.ok, msg.error);
+        break;
+
+      case 'pair-broken':
+        this.events.onPairBroken?.();
         break;
 
       case 'error':

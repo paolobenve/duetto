@@ -39,7 +39,9 @@ const FILE = process.env.DEVICES_FILE
 /** A week. Long enough to be handed over calmly, short enough to expire. */
 const INVITE_DAYS = Number(process.env.INVITE_DAYS || 7);
 
-const EMPTY = { devices: [], invitations: [], rooms: [] };
+const EMPTY = { devices: [], invitations: [], rooms: [], broken: [] };
+/** How long a broken room is remembered, for the side that has not heard. */
+const BROKEN_DAYS = 30;
 
 export function fileName() {
   return FILE;
@@ -80,6 +82,7 @@ export function read() {
       devices: Array.isArray(parsed.devices) ? parsed.devices : [],
       invitations: Array.isArray(parsed.invitations) ? parsed.invitations : [],
       rooms: Array.isArray(parsed.rooms) ? parsed.rooms : [],
+      broken: Array.isArray(parsed.broken) ? parsed.broken : [],
     };
     return cached;
   } catch {
@@ -326,8 +329,39 @@ export function remove(name) {
   data.invitations = data.invitations.filter((i) => i.name !== name);
   // Their rooms go with them, and the people they had brought along:
   // those keys were worth something in those rooms alone, and the rooms
-  // are not there any more.
+  // are not there any more. The guests are told, the next time they
+  // knock: their pair is broken from the other side.
+  const gone = data.rooms.filter((r) => r.owner === name);
   data.rooms = data.rooms.filter((r) => r.owner !== name);
+  for (const r of gone) noteBroken(data, r.room);
   write(data);
   return before - data.devices.length;
+}
+
+/**
+ * A pair broken by one side, remembered for the other.
+ *
+ * Breaking a pair is one phone's act, and the other went on showing a
+ * pair that could not work any more, with no way of noticing. Now the
+ * room is written down as broken, and whoever joins it next is told.
+ * Nobody ever takes the line away by hand: it expires.
+ */
+function noteBroken(data, room) {
+  const now = Date.now();
+  data.broken = (data.broken || []).filter((b) => now - Date.parse(b.at) < BROKEN_DAYS * 86400_000);
+  if (!data.broken.some((b) => b.room === room)) {
+    data.broken.push({ room, at: new Date(now).toISOString() });
+  }
+}
+
+export function markBroken(room) {
+  const data = read();
+  noteBroken(data, room);
+  write(data);
+}
+
+export function isBroken(room) {
+  const now = Date.now();
+  return (read().broken || []).some((b) =>
+    b.room === room && now - Date.parse(b.at) < BROKEN_DAYS * 86400_000);
 }

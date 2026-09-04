@@ -12,6 +12,27 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
+## 0.9.4 build 217
+
+**A pair broken from one side is now known on the other.** The phone that breaks a pair
+tells the server, which tells the other phone - at once if it is in the room, at its next
+join if not - and there the pair reads «broken from the other side», in the settings and
+in the channel, instead of waiting for somebody who is not coming.
+
+**A member may leave the server by themselves**, from «Server and pairs»: the same
+courtesy as breaking a pair. Their pairs go with them and their guests are told. The
+owner cannot - leaving the house would leave it to nobody.
+
+**"In another call" only for a call.** Build 212 went silent, and said so, at any loss of
+the audio - somebody listening to a voice message, a video - and since Android never says
+"back" after that kind of loss, it stayed that way. Now a call (the telephone, WhatsApp)
+is the only thing Duetto goes silent for; a voice message or a video only lowers the other
+voice for as long as it lasts; and in both cases the app asks for the audio back every few
+seconds, so the way back does not depend on anybody's courtesy.
+
+**A word on what has just happened**, after taking a server, accepting an invitation, or
+being paired: what it means, and the one thing to do next.
+
 ## 0.9.4 build 215
 
 **A QR code, for whoever is near.** The pairing code is shown as a QR code beside the

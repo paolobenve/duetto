@@ -16,6 +16,8 @@ import type { Dictionary } from './en';
  */
 export const fr: Dictionary = {
   errors: {
+    leaveFailed: 'Impossible de quitter le serveur',
+    leaveFailedBody: 'Le serveur n’a pas lâché ({why}).',
     stranger: 'Ce serveur ne connaît pas ce téléphone',
     strangerBody: 'Il a un propriétaire, et ce téléphone n’est pas sur sa liste. Demande-lui une invitation, ou qu’il crée un code d’appairage pour toi.',
     badInvite: 'L’invitation ne marche pas',
@@ -112,6 +114,7 @@ export const fr: Dictionary = {
   },
 
   channel: {
+    pairBrokenByPeer: '{who} a rompu la paire de son côté : retire-la dans les réglages, ou refaites l’appairage.',
     connectionLost: 'Connexion perdue, je me reconnecte…',
     linkLost: 'Liaison perdue, je reconnecte…',
     linkInterrupted: 'Liaison interrompue, en attente…',
@@ -196,6 +199,11 @@ export const fr: Dictionary = {
   },
 
   settings: {
+    pairBrokenByPeer: 'rompue de l’autre côté',
+    leaveServer: 'Quitter ce serveur',
+    leaveServerTitle: 'Quitter {server} ?',
+    leaveServerBody: 'Le serveur retire ce téléphone de sa liste. Les paires faites ici s’en vont, et les personnes que tu avais fait entrer perdent la leur. Pour revenir il faudrait une nouvelle invitation.',
+    leave: 'Quitter',
     subtitle: 'Un canal rien que pour vous deux. Tu entres et tu restes : quand l’autre entre aussi, vous vous connectez tout seuls.',
     haveCode: 'Quelqu’un m’offre une liaison',
     connectWithSomebody: 'Offre une liaison à quelqu’un',

@@ -16,6 +16,8 @@ import type { Dictionary } from './en';
  */
 export const es: Dictionary = {
   errors: {
+    leaveFailed: 'No se pudo dejar el servidor',
+    leaveFailedBody: 'El servidor no soltó ({why}).',
     stranger: 'Este servidor no conoce este teléfono',
     strangerBody: 'Tiene propietario, y este teléfono no está en su lista. Pídele una invitación, o que cree un código de emparejamiento para ti.',
     badInvite: 'La invitación no funciona',
@@ -112,6 +114,7 @@ export const es: Dictionary = {
   },
 
   channel: {
+    pairBrokenByPeer: '{who} deshizo la pareja por su lado: quítala en los ajustes, o volved a emparejaros.',
     connectionLost: 'Conexión perdida, reconectando…',
     linkLost: 'Enlace perdido, reconectando…',
     linkInterrupted: 'Enlace interrumpido, a la espera…',
@@ -196,6 +199,11 @@ export const es: Dictionary = {
   },
 
   settings: {
+    pairBrokenByPeer: 'deshecha desde el otro lado',
+    leaveServer: 'Dejar este servidor',
+    leaveServerTitle: '¿Dejar {server}?',
+    leaveServerBody: 'El servidor quita este teléfono de su lista. Las parejas hechas aquí se van con él, y las personas que dejaste entrar pierden la suya. Para volver haría falta una nueva invitación.',
+    leave: 'Dejar',
     subtitle: 'Un canal solo para ustedes dos. Entras y te quedas: cuando entra también el otro, se conectan solos.',
     haveCode: 'Alguien me ofrece una conexión',
     connectWithSomebody: 'Ofrece una conexión a alguien',

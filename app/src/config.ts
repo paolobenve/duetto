@@ -28,6 +28,12 @@ export type PairInfo = {
   key: string;
   /** which of the two sides we are: only used to tell the proofs apart */
   side: 'A' | 'B';
+  /**
+   * When the other side broke this pair, if the server said so. The
+   * pair cannot work any more; it is shown as such until it is taken
+   * away here too, or made again.
+   */
+  brokenByPeer?: string;
   /** what the other person is called, to show it in the notifications */
   peerName: string;
   /**
@@ -490,6 +496,17 @@ export function switchToPair(cfg: DuoConfig, id: string): DuoConfig {
  * asking for a fresh pairing from somebody who has others ready would
  * be asking them to redo something already done.
  */
+/** The other side has broken this pair: written on it. */
+export function markPairBroken(cfg: DuoConfig, id: string): DuoConfig {
+  const at = new Date().toISOString();
+  const mark = (p: PairInfo) => (p.id === id && !p.brokenByPeer ? { ...p, brokenByPeer: at } : p);
+  return {
+    ...cfg,
+    pair: cfg.pair ? mark(cfg.pair) : cfg.pair,
+    pairs: cfg.pairs.map(mark),
+  };
+}
+
 export function forgetPair(cfg: DuoConfig, id: string): DuoConfig {
   const left = cfg.pairs.filter((p) => p.id !== id);
   if (cfg.pair?.id !== id) return { ...cfg, pairs: left };

@@ -12,6 +12,8 @@ import type { Dictionary } from './en';
 /** Le parole italiane. La struttura la detta `en`, che è il riferimento. */
 export const it: Dictionary = {
   errors: {
+    leaveFailed: 'Non sono riuscito a lasciare il server',
+    leaveFailedBody: 'Il server non ha lasciato andare ({why}).',
     stranger: 'Questo server non conosce questo telefono',
     strangerBody: 'Ha un proprietario, e questo telefono non è nel suo elenco. Chiedigli un invito, o fatti creare un codice di accoppiamento.',
     badInvite: 'L’invito non funziona',
@@ -111,6 +113,7 @@ export const it: Dictionary = {
   },
 
   channel: {
+    pairBrokenByPeer: '{who} ha sciolto la coppia dalla sua parte: toglila dalle impostazioni, o rifate l’accoppiamento.',
     connectionLost: 'Connessione persa, mi sto ricollegando…',
     linkLost: 'Collegamento perso, sto ricollegando…',
     linkInterrupted: 'Collegamento interrotto, in attesa…',
@@ -195,6 +198,11 @@ export const it: Dictionary = {
   },
 
   settings: {
+    pairBrokenByPeer: 'sciolta dall’altra parte',
+    leaveServer: 'Lascia questo server',
+    leaveServerTitle: 'Lasciare {server}?',
+    leaveServerBody: 'Il server toglie questo telefono dal suo elenco. Le coppie fatte qui se ne vanno, e le persone che avevi fatto entrare perdono la loro. Per tornare servirebbe un nuovo invito.',
+    leave: 'Lascia',
     subtitle: 'Un canale solo per voi due. Entri e resti: quando entra anche l’altro, vi collegate da soli.',
     haveCode: 'Qualcuno mi offre un collegamento',
     connectWithSomebody: 'Offri il collegamento a qualcuno',
