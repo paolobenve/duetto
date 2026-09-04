@@ -330,7 +330,7 @@ export default function SettingsScreen({
             belongs right here, under the server it will be made on. */}
         {!paired ? (
           <TouchableOpacity style={styles.button} onPress={onRepair}>
-            <Text style={styles.buttonText}>{t('settings.next')}</Text>
+            <Text style={styles.buttonText}>{t('settings.connectWithSomebody')}</Text>
           </TouchableOpacity>
         ) : null}
 

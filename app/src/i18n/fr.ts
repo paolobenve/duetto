@@ -195,6 +195,7 @@ export const fr: Dictionary = {
 
   settings: {
     subtitle: 'Un canal rien que pour vous deux. Tu entres et tu restes : quand l’autre entre aussi, vous vous connectez tout seuls.',
+    connectWithSomebody: 'Relie-toi à quelqu’un',
     tabLinks: 'Serveur et paires',
     tabUse: 'Usage',
     server: 'Serveur',
