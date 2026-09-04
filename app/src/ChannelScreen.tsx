@@ -602,6 +602,39 @@ export default function ChannelScreen(props: Props) {
    */
   const toWatch = localHasVideo || remoteHasVideo;
 
+  /**
+   * Whether a touch is to be dropped because the screen is covered -
+   * with a way out.
+   *
+   * Some phones have no proximity sensor but an ultrasonic one, which
+   * takes a hand over the top of the phone for a pocket, and the
+   * buttons went dead with nobody saying why. So the refusal is said
+   * on the screen, and three touches within four seconds - which a
+   * pocket does not do, and a person does - set the guard aside for a
+   * minute.
+   */
+  const [coveredNotice, setCoveredNotice] = useState(false);
+  const coveredTaps = useRef<number[]>([]);
+  const coveredOverrideUntil = useRef(0);
+  const blocked = useCallback(() => {
+    if (!coveredRef.current) return false;
+    const now = Date.now();
+    if (now < coveredOverrideUntil.current) return false;
+    coveredTaps.current = coveredTaps.current.filter((at) => now - at < 4000).concat(now);
+    if (coveredTaps.current.length >= 3) {
+      coveredTaps.current = [];
+      coveredOverrideUntil.current = now + 60_000;
+      setCoveredNotice(false);
+      Journal.mark('covered:overridden').catch(() => { /* noop */ });
+      return false;
+    }
+    Journal.mark('command:ignored-screen-covered').catch(() => { /* noop */ });
+    setCoveredNotice(true);
+    setTimeout(() => setCoveredNotice(false), 2000);
+    return true;
+  }, []);
+  const toIgnore = blocked;
+
   const wake = useCallback(() => {
     setGone(false);
     fadeEnd.current = 0;
@@ -635,6 +668,9 @@ export default function ChannelScreen(props: Props) {
    * is to look at the picture, is a small imprisonment.
    */
   const touch = useCallback(() => {
+    // Covered, a touch on the picture is said too, and wakes nothing:
+    // the buttons refused in silence were this touch, most of the time.
+    if (blocked()) return;
     const still = Date.now() - lastTouch.current;
     lastTouch.current = Date.now();
     // A touch on the picture counts as a waking too, and if it came
@@ -647,7 +683,7 @@ export default function ChannelScreen(props: Props) {
     // Asking for them to go is not the same as letting them fade: here
     // one wants to see the picture now.
     if (Date.now() < fadeEnd.current) fade(400); else wake();
-  }, [fade, wake]);
+  }, [fade, wake, blocked]);
 
   // `wake` changes when `toWatch` changes: switching the last camera
   // off brings the controls back to full and there they stay.
@@ -811,38 +847,6 @@ export default function ChannelScreen(props: Props) {
   }, []);
 
   /** True if the touch is to be dropped: the screen is covered. */
-  /**
-   * Whether a touch is to be dropped because the screen is covered -
-   * with a way out.
-   *
-   * Some phones have no proximity sensor but an ultrasonic one, which
-   * takes a hand over the top of the phone for a pocket, and the
-   * buttons went dead with nobody saying why. So the refusal is said
-   * on the screen, and three touches within four seconds - which a
-   * pocket does not do, and a person does - set the guard aside for a
-   * minute.
-   */
-  const [coveredNotice, setCoveredNotice] = useState(false);
-  const coveredTaps = useRef<number[]>([]);
-  const coveredOverrideUntil = useRef(0);
-  const blocked = useCallback(() => {
-    if (!coveredRef.current) return false;
-    const now = Date.now();
-    if (now < coveredOverrideUntil.current) return false;
-    coveredTaps.current = coveredTaps.current.filter((at) => now - at < 4000).concat(now);
-    if (coveredTaps.current.length >= 3) {
-      coveredTaps.current = [];
-      coveredOverrideUntil.current = now + 60_000;
-      setCoveredNotice(false);
-      Journal.mark('covered:overridden').catch(() => { /* noop */ });
-      return false;
-    }
-    Journal.mark('command:ignored-screen-covered').catch(() => { /* noop */ });
-    setCoveredNotice(true);
-    setTimeout(() => setCoveredNotice(false), 2000);
-    return true;
-  }, []);
-  const toIgnore = blocked;
 
   /** The flash of the bell: it says something really left. */
   const knockFlash = useCallback(() => {
