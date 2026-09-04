@@ -379,7 +379,7 @@ export const es: Dictionary = {
     inMemberBody: 'Se te ha dado la posibilidad de crear conexiones en el servidor {server}. Ahora puedes ofrecer una conexión a alguien - creas un código y se lo dictas, o dejas que lo lea con la cámara - o escribir el código que te dicten.',
     go: 'Siguiente',
     serverTitle: '¿Qué servidor?',
-    serverBody: 'Duetto funciona en un servidor tuyo, o de quien te dejó entrar. Basta el nombre: el resto se entiende desde aquí.',
+    serverBody: 'Duetto funciona en un servidor tuyo, o de quien te dejó entrar. Escribe su nombre, o apunta la cámara al código QR que te muestra el otro teléfono: el servidor viene con él.',
     next: 'Siguiente',
     back: 'Atrás',
     knocking: 'Llamando a la puerta del servidor…',

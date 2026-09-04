@@ -379,7 +379,7 @@ export const pt: Dictionary = {
     inMemberBody: 'Você recebeu a possibilidade de criar ligações no servidor {server}. Agora pode oferecer uma ligação a alguém - cria um código e dita para ela, ou deixa que ela leia com a câmera - ou digitar o código que ditarem para você.',
     go: 'Avançar',
     serverTitle: 'Qual servidor?',
-    serverBody: 'O Duetto roda num servidor seu, ou de quem deixou você entrar. Basta o nome: o resto se entende daqui.',
+    serverBody: 'O Duetto roda num servidor seu, ou de quem deixou você entrar. Escreva o nome dele, ou aponte a câmera para o código QR que o outro telefone mostra: o servidor vem junto.',
     next: 'Avançar',
     back: 'Voltar',
     knocking: 'Batendo na porta do servidor…',

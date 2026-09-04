@@ -378,7 +378,7 @@ export const it: Dictionary = {
     inMemberBody: 'Ti è stata data la possibilità di creare connessioni sul server {server}. Ora puoi offrire un collegamento a qualcuno - crei un codice e glielo detti, o glielo fai inquadrare - oppure scrivere il codice che ti dettano.',
     go: 'Avanti',
     serverTitle: 'Quale server?',
-    serverBody: 'Duetto gira su un server tuo, o di chi ti ha fatto entrare. Basta il nome: il resto si capisce da qui.',
+    serverBody: 'Duetto gira su un server tuo, o di chi ti ha fatto entrare. Scrivi il suo nome, oppure inquadra il codice QR che ti mostra l’altro telefono: il server arriva insieme.',
     next: 'Avanti',
     back: 'Indietro',
     knocking: 'Busso al server…',

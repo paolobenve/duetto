@@ -392,7 +392,7 @@ export const en = {
     inMemberBody: 'You have been given the possibility of creating connections on {server}. Now you can offer somebody a connection - create a code and read it to them, or let them read it with the camera - or type the code somebody reads to you.',
     go: 'Next',
     serverTitle: 'Which server?',
-    serverBody: 'Duetto runs on a server of your own, or of somebody who let you in. The name is enough: the rest is worked out from here.',
+    serverBody: 'Duetto runs on a server of your own, or of somebody who let you in. Write its name, or point the camera at the QR code the other phone shows you: the server comes with it.',
     next: 'Next',
     back: 'Back',
     knocking: 'Knocking at the server…',

@@ -379,7 +379,7 @@ export const fr: Dictionary = {
     inMemberBody: 'On t’a donné la possibilité de créer des liaisons sur le serveur {server}. Maintenant tu peux offrir une liaison à quelqu’un - tu crées un code et tu le lui dictes, ou tu le lui fais lire avec la caméra - ou saisir le code qu’on te dicte.',
     go: 'Suivant',
     serverTitle: 'Quel serveur ?',
-    serverBody: 'Duetto tourne sur un serveur à toi, ou de qui t’a fait entrer. Le nom suffit : le reste se comprend d’ici.',
+    serverBody: 'Duetto tourne sur un serveur à toi, ou de qui t’a fait entrer. Écris son nom, ou vise le code QR que l’autre téléphone te montre : le serveur vient avec.',
     next: 'Suivant',
     back: 'Retour',
     knocking: 'Je frappe à la porte du serveur…',
