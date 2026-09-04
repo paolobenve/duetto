@@ -205,6 +205,7 @@ export const es: Dictionary = {
     invitationPlaceholder: 'ABCD-2345',
     invitationHint: 'Un servidor que guarda una lista de teléfonos solo deja entrar a los que conoce. Quien lo lleva te hace una invitación y te la da como se da un código de emparejamiento: la escribes aquí, una vez, antes de conectarte. Se gasta con el primer uso, y desde entonces este teléfono se reconoce por su tarjeta, aquí arriba.',
     serverKey: 'La llave del servidor',
+    serverKeyShownHint: 'La pidió el servidor en la puerta: es la llave de la casa, la misma para quien entre.',
     serverKeyPlaceholder: 'vacía, si no pide ninguna',
     serverKeyHint: 'Algunos servidores piden una en la puerta, para que no los use cualquiera que haya sabido la dirección. No es un secreto tuyo y no protege la conversación — de eso se ocupa el código de emparejamiento: es la llave de la casa, igual para todos los que entran. Quien montó el servidor dice cuál es.',
     serverPlaceholder: 'tuservidor.org',

@@ -40,11 +40,13 @@ type Props = {
   initial: DuoConfig;
   /** the server is written, the role is known: on to the pairing */
   onDone: (cfg: DuoConfig, answer: DoorAnswer) => void;
+  /** goes back without touching anything; absent at the first start, which has nowhere to go */
+  onClose?: () => void;
 };
 
 type Step = 'server' | 'knocking' | 'key' | 'stranger';
 
-export default function WelcomeScreen({ initial, onDone }: Props) {
+export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
   const [server, setServer] = useState(displayServer(initial.serverUrl));
   const [key, setKey] = useState(initial.serverKey || '');
   const [invitation, setInvitation] = useState(initial.invitation || '');
@@ -214,6 +216,7 @@ export default function WelcomeScreen({ initial, onDone }: Props) {
         />
         {note ? <Text style={styles.note}>{note}</Text> : null}
         <Primary label={t('welcome.next')} disabled={!ready} onPress={() => knockNow('server')} />
+        {onClose ? <Secondary label={t('welcome.back')} onPress={onClose} /> : null}
         <Text style={styles.version}>{VERSION_LABEL}</Text>
       </Screen>
     </Keyboard>

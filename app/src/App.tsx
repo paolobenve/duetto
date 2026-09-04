@@ -3066,25 +3066,6 @@ export default function App() {
     if (tell) signalingRef.current?.sendSignal({ kind: 'audio', richer });
   }, [saveCfg]);
 
-  const onSaveSettings = useCallback(async (written: DuoConfig) => {
-    Journal.mark('settings-saved').catch(() => { /* noop */ });
-    // The server just written is this pair's server: if it stayed in
-    // the app alone, coming back here from another connection would
-    // drag the old address along.
-    const next = alignPairServer(written);
-    // Another server is another house: what this phone was to the old
-    // one says nothing about the new one, and the pairing screen must
-    // not hide buttons on the strength of it.
-    setCfg((prev) => saveCfg(
-      prev && prev.serverUrl !== next.serverUrl ? { ...next, serverRole: 'unknown' } : next,
-    ));
-    // The quality has already been applied on the touch, but applying
-    // it again costs nothing and covers the case of a config that came
-    // from somewhere else.
-    applyQuality(next.videoQuality, true);
-    setScreen(isPaired(next) ? 'channel' : 'pairing');
-  }, [applyQuality]);
-
   const onPaired = useCallback(async (pair: PairInfo) => {
     if (!cfg) return;
     // It does not replace the previous connection: it stands beside it,
@@ -3289,8 +3270,13 @@ export default function App() {
           onDone={(next) => {
             Journal.mark(`door:${next.serverRole || 'unknown'}`).catch(() => { /* noop */ });
             setCfg(saveCfg(alignPairServer(next)));
-            setScreen('pairing');
+            // Already paired: the pair has just moved to the new server
+            // with us, and there is nothing to do but go back in.
+            setScreen(isPaired(next) ? 'channel' : 'pairing');
           }}
+          // From the settings there is somewhere to go back to; at the
+          // first start there is not.
+          onClose={isServerConfigured(cfg) ? () => setScreen(isPaired(cfg) ? 'settings' : 'pairing') : undefined}
         />
       </View>
     );
@@ -3302,7 +3288,7 @@ export default function App() {
         <StatusBar barStyle="light-content" />
         <SettingsScreen
           initial={cfg}
-          onSave={onSaveSettings}
+          onChangeServer={() => setScreen('welcome')}
           onForgetPair={onForgetPair}
           onSwitchPair={onSwitchPair}
           onRenamePair={onRenamePair}

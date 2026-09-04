@@ -17,7 +17,7 @@ import type { PersonOnServer, InvitationOnServer } from './signaling';
 import { t, LANGUAGES } from './i18n';
 import type { LanguageChoice } from './i18n';
 import {
-  isServerConfigured, isPaired, normalizeServerUrl, displayServer, VIDEO_PROFILES,
+  isPaired, displayServer, VIDEO_PROFILES,
   pairName,
 } from './config';
 import { peerAvatar } from './avatar';
@@ -97,7 +97,8 @@ type Props = {
   onInvite?: (name: string) => void;
   onForget?: (name: string) => void;
   initial: DuoConfig;
-  onSave: (cfg: DuoConfig) => void;
+  /** opens the welcome, which knocks at the new door and asks what it needs */
+  onChangeServer: () => void;
   /** forgets a connection, in use or not */
   onForgetPair: (id: string) => void;
   /** brings a connection already set up into use */
@@ -148,7 +149,7 @@ type Props = {
  * All the rest is optional and sits under "Other settings".
  */
 export default function SettingsScreen({
-  initial, onForgetPair, onSwitchPair, onRenamePair, onSave, onRepair, onClose, onOpenSetup,
+  initial, onForgetPair, onSwitchPair, onRenamePair, onChangeServer, onRepair, onClose, onOpenSetup,
   vp9Here, vp9Peer, onQualityChange, onLive,
   canInvite, canAddPair, people = [], invitations = [], freshInvite,
   onAskPeople, onInvite, onForget,
@@ -172,13 +173,9 @@ export default function SettingsScreen({
    * app behaves. Before that, there is nothing to set but the server.
    */
   const [tab, setTab] = useState<Tab>(isPaired(initial) ? 'use' : 'links');
-  /** the server field appears only on request, once paired */
-  const [changingServer, setChangingServer] = useState(false);
   const set = (k: keyof DuoConfig) => (v: string) => setCfg({ ...cfg, [k]: v });
 
-  const ready = isServerConfigured(cfg);
   const paired = isPaired(cfg);
-  const resolved = normalizeServerUrl(cfg.serverUrl);
 
   /**
    * The connections, the one in use first.
@@ -273,82 +270,23 @@ export default function SettingsScreen({
 
         {tab === 'links' ? (
           <>
-        {paired && !changingServer ? (
-          // Once paired the server is hardly ever touched: showing it
-          // as an editable field invites a mistake that would
-          // disconnect everything. The value is shown, and changed if
-          // one asks.
-          <View style={styles.field}>
-            <Text style={styles.label}>{t('settings.server')}</Text>
-            <Text style={styles.readonly}>{displayServer(initial.serverUrl)}</Text>
-            <TouchableOpacity onPress={() => setChangingServer(true)}>
-              <Text style={styles.linkInline}>{t('settings.changeServer')}</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
+        {/* The server is shown, not edited: changing it means knocking
+            at another door, and the welcome is the one that knows what
+            that door asks for. What the server asked here - the key -
+            is shown when there is one, and only then. */}
         <View style={styles.field}>
           <Text style={styles.label}>{t('settings.server')}</Text>
-          <TextInput
-            style={styles.input}
-            value={cfg.serverUrl}
-            onChangeText={set('serverUrl')}
-            placeholder={t('settings.serverPlaceholder')}
-            placeholderTextColor="#4a5462"
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="url"
-          />
-          <Text style={styles.hint}>
-            {cfg.serverUrl.trim()
-              ? t('settings.willConnectTo', { url: resolved })
-              : t('settings.justTheName')}
-          </Text>
+          <Text style={styles.readonly}>{displayServer(initial.serverUrl)}</Text>
+          <TouchableOpacity onPress={onChangeServer}>
+            <Text style={styles.linkInline}>{t('settings.changeServer')}</Text>
+          </TouchableOpacity>
         </View>
-        )}
-
-        {/* The invitation, next to the card it goes with: one is what
-            this phone is, the other is who said it could come in. Once
-            spent it counts for nothing, so it is not taken away from
-            under anybody's eyes. */}
-        {!paired || changingServer || cfg.invitation ? (
-          <Field
-            label={t('settings.invitation')}
-            value={cfg.invitation}
-            onChange={set('invitation')}
-            placeholder={t('settings.invitationPlaceholder')}
-            hint={t('settings.invitationHint')}
-            autoCapitalize="none"
-          />
-        ) : null}
-
-        {/* The key of the house, under the address it opens.
-            Shown while the server is being written and, once paired,
-            only if there is one: a server that asks for nothing would
-            otherwise offer an empty field for something nobody has. */}
-        {!paired || changingServer || cfg.serverKey ? (
-          <Field
-            label={t('settings.serverKey')}
-            value={cfg.serverKey}
-            onChange={set('serverKey')}
-            placeholder={t('settings.serverKeyPlaceholder')}
-            hint={t('settings.serverKeyHint')}
-            autoCapitalize="none"
-          />
-        ) : null}
-
-        {/* The step forward belongs here, not at the bottom: right
-            under what one has just written. Below are settings that
-            apply by themselves or that concern a pairing already
-            made. */}
-        {!paired || changingServer ? (
-        <TouchableOpacity
-          style={[styles.button, !ready && styles.buttonDisabled]}
-          disabled={!ready}
-          onPress={() => onSave({ ...cfg, serverUrl: resolved })}>
-          <Text style={styles.buttonText}>
-            {paired ? t('settings.save') : t('settings.next')}
-          </Text>
-        </TouchableOpacity>
+        {initial.serverKey ? (
+          <View style={styles.field}>
+            <Text style={styles.label}>{t('settings.serverKey')}</Text>
+            <Text style={styles.readonly}>{initial.serverKey}</Text>
+            <Text style={styles.hint}>{t('settings.serverKeyShownHint')}</Text>
+          </View>
         ) : null}
 
         {paired ? (

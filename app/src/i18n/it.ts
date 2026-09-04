@@ -204,6 +204,7 @@ export const it: Dictionary = {
     invitationPlaceholder: 'ABCD-2345',
     invitationHint: 'Un server che tiene un elenco di telefoni fa entrare solo quelli che conosce. Chi lo tiene ti fa un invito e te lo dà come si dà un codice di accoppiamento: lo scrivi qui, una volta, prima di collegarti. Si consuma al primo uso, e da lì in poi questo telefono è conosciuto dalla sua carta, qui sopra.',
     serverKey: 'La chiave del server',
+    serverKeyShownHint: 'L’ha chiesta il server alla porta: è la chiave di casa, la stessa per chiunque entri.',
     serverKeyPlaceholder: 'vuota, se non ne chiede',
     serverKeyHint: 'Certi server ne chiedono una alla porta, così non può usarli chiunque ne abbia saputo l\'indirizzo. Non è un tuo segreto e non protegge la conversazione - a quello pensa il codice di accoppiamento: è la chiave di casa, uguale per tutti quelli che si fanno entrare. Chi ha messo su il server dice qual è.',
     serverPlaceholder: 'iltuoserver.org',

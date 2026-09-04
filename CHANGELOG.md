@@ -12,6 +12,15 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
+## 0.9.4 build 193
+
+**The settings no longer ask for the key and the invitation blind.** They showed both
+fields to any phone not yet paired, «empty, if it asks for none» - to somebody whose server
+had never been asked. Now the settings show the server and, when the server asked for one
+at the door, the key; «Change server» leads to the welcome, which knocks at the new door
+and asks for what that door wants, exactly as at the first start. Already paired, the
+pair moves to the new server and you go straight back in.
+
 ## 0.9.4 build 191
 
 **The settings are in two tabs.** *Server and pairs* holds what one touches once - the

@@ -205,6 +205,7 @@ export const pt: Dictionary = {
     invitationPlaceholder: 'ABCD-2345',
     invitationHint: 'Um servidor que guarda uma lista de telefones só deixa entrar os que conhece. Quem cuida dele faz um convite para você e o entrega como se entrega um código de pareamento: você o escreve aqui, uma vez, antes de conectar. Gasta-se no primeiro uso, e daí em diante este telefone é reconhecido pelo próprio cartão, aqui em cima.',
     serverKey: 'A chave do servidor',
+    serverKeyShownHint: 'O servidor pediu na porta: é a chave da casa, a mesma para quem entrar.',
     serverKeyPlaceholder: 'vazia, se ele não pedir nenhuma',
     serverKeyHint: 'Certos servidores pedem uma na porta, para que não os use qualquer um que tenha sabido o endereço. Não é um segredo seu e não protege a conversa — disso cuida o código de pareamento: é a chave da casa, igual para todos os que entram. Quem montou o servidor diz qual é.',
     serverPlaceholder: 'seuservidor.org',

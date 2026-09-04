@@ -218,6 +218,7 @@ export const en = {
     invitationPlaceholder: 'ABCD-2345',
     invitationHint: 'A server that keeps a list of phones lets in only the ones it knows. Whoever runs it makes an invitation for you and hands it over as one hands over a pairing code: you write it here, once, before connecting. It is spent at the first use and from then on this phone is known by its own card, above.',
     serverKey: 'The server\'s key',
+    serverKeyShownHint: 'The server asked for it at the door: it is the key of the house, the same for whoever is let in.',
     serverKeyPlaceholder: 'empty, if it asks for none',
     serverKeyHint: 'Some servers ask for one at the door, so that not everybody who has learnt the address can use them. It is not a secret of yours and it does not protect the conversation - the pairing code does that: it is the key of the house, the same for whoever is let in. Whoever set the server up says what it is.',
     serverPlaceholder: 'yourserver.org',

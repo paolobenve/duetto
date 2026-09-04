@@ -205,6 +205,7 @@ export const fr: Dictionary = {
     invitationPlaceholder: 'ABCD-2345',
     invitationHint: 'Un serveur qui tient une liste de téléphones ne laisse entrer que ceux qu’il connaît. Celui qui le tient te fait une invitation et te la donne comme on donne un code d’appairage : tu l’écris ici, une fois, avant de te connecter. Elle s’épuise au premier usage, et dès lors ce téléphone est reconnu par sa carte, ci-dessus.',
     serverKey: 'La clé du serveur',
+    serverKeyShownHint: 'Le serveur l’a demandée à la porte : c’est la clé de la maison, la même pour qui entre.',
     serverKeyPlaceholder: 'vide, s’il n’en demande pas',
     serverKeyHint: 'Certains serveurs en demandent une à la porte, pour que n’importe qui ayant appris l’adresse ne puisse pas s’en servir. Ce n’est pas un secret à toi et elle ne protège pas la conversation — le code d’appairage s’en occupe : c’est la clé de la maison, la même pour tous ceux qu’on laisse entrer. Celui qui a monté le serveur dit laquelle c’est.',
     serverPlaceholder: 'tonserveur.org',
