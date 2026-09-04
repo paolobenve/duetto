@@ -289,6 +289,14 @@ export default function SettingsScreen({
           </View>
         ) : null}
 
+        {/* Not paired yet: the step forward is the pairing, and it
+            belongs right here, under the server it will be made on. */}
+        {!paired ? (
+          <TouchableOpacity style={styles.button} onPress={onRepair}>
+            <Text style={styles.buttonText}>{t('settings.next')}</Text>
+          </TouchableOpacity>
+        ) : null}
+
         {paired ? (
           <>
             <Text style={styles.section}>
