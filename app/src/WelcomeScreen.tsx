@@ -56,7 +56,10 @@ type Step = 'server' | 'knocking' | 'key' | 'stranger' | 'welcomed';
 export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
   const [server, setServer] = useState(displayServer(initial.serverUrl));
   const [key, setKey] = useState(initial.serverKey || '');
-  const [invitation, setInvitation] = useState(initial.invitation || '');
+  // Never the one remembered: an invitation is spent at its first
+  // use, and the old one in the field made a "Next" that only knocked
+  // again, to be told it was no good.
+  const [invitation, setInvitation] = useState('');
   /** the pairing code somebody is reading out, typed right here */
   const [code, setCode] = useState('');
   const [step, setStep] = useState<Step>('server');
@@ -125,7 +128,8 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
       return;
     }
     if (a.error === 'bad-invite') {
-      setNote(t('welcome.invitationWrong'));
+      setNote(t('welcome.invitationWrong', { code: inv }));
+      setInvitation('');
       setStep('stranger');
       return;
     }
@@ -282,6 +286,9 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
           <Text style={styles.big}>{'\u{1F6AA}'}</Text>
           <Text style={styles.title}>{t('welcome.strangerTitle')}</Text>
           <Text style={styles.body}>{t('welcome.strangerBody')}</Text>
+          {/* What went wrong, at the top and in a box: under the field
+              it was below the fold of a page that looked reloaded. */}
+          {note ? <Text style={styles.noteBox}>{note}</Text> : null}
           {/* The camera first: it takes either - a pairing code or an
               invitation - and whoever is near has nothing to type. */}
           <Primary label={t('qr.scan')} onPress={() => scanQr('stranger')} />
@@ -327,7 +334,6 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
               hint={t('welcome.ownKeyHint')}
             />
           ) : null}
-          {note ? <Text style={styles.note}>{note}</Text> : null}
           {/* Enabled by what is on the screen: a key remembered from
               before, in a field that is not shown, must not make a
               button that only knocks again. */}
@@ -487,6 +493,11 @@ const styles = StyleSheet.create({
   },
   hint: { color: '#6b7686', fontSize: 13, lineHeight: 19, marginTop: 8, alignSelf: 'flex-start' },
   note: { color: '#ffb454', fontSize: 14, lineHeight: 20, marginTop: 10, alignSelf: 'flex-start' },
+  noteBox: {
+    color: '#ffd28a', fontSize: 15, lineHeight: 21, width: '100%',
+    backgroundColor: '#2a2114', borderColor: '#ffb454', borderWidth: 1, borderRadius: 12,
+    padding: 14, marginBottom: 14,
+  },
   button: {
     backgroundColor: '#2f7cf6', borderRadius: 12, paddingVertical: 16,
     alignItems: 'center', width: '100%', marginTop: 16,

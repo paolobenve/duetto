@@ -410,7 +410,7 @@ export const en = {
     called: 'I will type their code',
     invitedTitle: 'If somebody has sent you an invitation',
     invitationHint: 'Made by the owner of the server, for connections of your own here. It is used once.',
-    invitationWrong: 'That invitation does not work: wrong, already used, or expired.',
+    invitationWrong: 'The invitation {code} is no good: it has already been used, or it is wrong or expired. An invitation works once; ask the owner of the server for a new one.',
     ownKeyHint: 'If the server is yours and this phone has been reinstalled, the server\'s key brings you home.',
     notTaken: 'The server could not write this phone down. Whoever runs it should look at its log.',
   },

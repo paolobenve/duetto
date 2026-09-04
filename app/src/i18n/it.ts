@@ -396,7 +396,7 @@ export const it: Dictionary = {
     called: 'Scrivo il suo codice',
     invitedTitle: 'Se qualcuno ti ha inviato un invito',
     invitationHint: 'Lo fa il proprietario del server, per chi deve aprire collegamenti propri. Si usa una volta sola.',
-    invitationWrong: 'Questo invito non funziona: sbagliato, già usato o scaduto.',
+    invitationWrong: 'L’invito {code} non vale: è già stato usato, oppure è sbagliato o scaduto. Un invito funziona una volta sola: chiedine uno nuovo a chi possiede il server.',
     ownKeyHint: 'Se il server è tuo e questo telefono è stato reinstallato, la chiave del server ti riporta a casa.',
     notTaken: 'Il server non è riuscito a segnarsi questo telefono. Chi lo gestisce guardi il suo log.',
   },

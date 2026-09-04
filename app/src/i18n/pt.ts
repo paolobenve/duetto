@@ -397,7 +397,7 @@ export const pt: Dictionary = {
     called: 'Vou digitar o código dele',
     invitedTitle: 'Se alguém mandou um convite para você',
     invitationHint: 'Quem faz é o dono do servidor, para quem precisa abrir ligações próprias. Usa-se uma vez só.',
-    invitationWrong: 'Esse convite não funciona: errado, já usado ou vencido.',
+    invitationWrong: 'O convite {code} não vale: já foi usado, ou está errado ou vencido. Um convite funciona uma vez só: peça um novo ao dono do servidor.',
     ownKeyHint: 'Se o servidor é seu e este telefone foi reinstalado, a chave do servidor traz você de volta para casa.',
     notTaken: 'O servidor não conseguiu anotar este telefone. Quem cuida dele deveria olhar o registro.',
   },
