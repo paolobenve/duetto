@@ -3440,7 +3440,12 @@ export default function App() {
   useEffect(() => {
     // The settings, and the pairing screen as well: typing a code, a
     // phone has no socket at all, and would be the last to know.
-    if ((screen !== 'settings' && screen !== 'pairing') || !cfg || isPaired(cfg) || !isServerConfigured(cfg)) return;
+    // Only for whoever may open connections: it is the owner and the
+    // members that can be taken off. A guest typing a code is a
+    // stranger to the server until the pair is made, and that is not
+    // a revocation.
+    if ((screen !== 'settings' && screen !== 'pairing') || !cfg || isPaired(cfg)
+      || !isServerConfigured(cfg) || !opensHere(cfg)) return;
     let gone = false;
     knock(cfg.serverUrl, { key: cfg.serverKey, name: cfg.displayName }).then((a) => {
       if (gone || a.role === 'unknown' || a.role === cfg.serverRole) return;
