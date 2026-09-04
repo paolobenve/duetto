@@ -284,8 +284,17 @@ export function noteRoom(room, owner) {
   // The first one on the list who uses it owns it, and it does not
   // change hands: two people on the list can share a room - two phones
   // of the same person, say - and passing it back and forth at every
-  // knock would only make the file restless.
-  if (data.rooms.some((r) => r.room === room)) return;
+  // knock would only make the file restless. The second one, when it
+  // is a phone of the list too, is written down as the partner: a pair
+  // broken from one side has to find the other, wherever they are.
+  const known = data.rooms.find((r) => r.room === room);
+  if (known) {
+    if (known.owner !== owner && !known.partner) {
+      known.partner = owner;
+      write(data);
+    }
+    return;
+  }
   data.rooms.push({ room, owner, guest: null, since: new Date().toISOString() });
   write(data);
 }

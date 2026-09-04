@@ -921,8 +921,9 @@ function pairBroken(ws, msg) {
     for (const peer of wss.clients) {
       if (peer === ws || !peer.joined) continue;
       const isOwner = peer.who && peer.who === noted.owner && peer.opens;
+      const isPartner = peer.who && noted.partner && peer.who === noted.partner && peer.opens;
       const isGuest = peer.pub && peer.pub === noted.guest;
-      if (isOwner || isGuest) told.add(peer);
+      if (isOwner || isPartner || isGuest) told.add(peer);
     }
   }
   for (const peer of told) send(peer, { type: 'pair-broken', room });
