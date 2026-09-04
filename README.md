@@ -23,6 +23,13 @@ From then on that work item is yours: whatever you notice - a bug, a doubt, a wi
 there as a follow-up, and the app's own journal (Settings → Use → Diagnostics) is the best
 thing you can attach.
 
+**Installing and updating.** The [releases](https://gitlab.com/paolobenve/duetto/-/releases)
+page has the APK; open it on the phone and Android installs it. The easier way, once
+Duetto is listed in the [IzzyOnDroid](https://apt.izzysoft.de/fdroid/) repository (the
+request is under way), is an F-Droid client that knows that repository -
+[Droid-ify](https://github.com/Droid-ify/client) and [Neo Store](https://github.com/NeoApplications/Neo-Store)
+come with it already - which shows the app and keeps it up to date by itself.
+
 Two things to know. Android only, 7.0 or later. And on mobile data where the direct link
 between the phones is not possible - some carriers only allow the relay - a video
 conversation costs *your* data plan, at the rate of the quality chosen in the app: from
