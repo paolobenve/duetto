@@ -17,7 +17,7 @@ import type { Dictionary } from './en';
 export const fr: Dictionary = {
   errors: {
     removed: 'Retiré du serveur',
-    removedBody: 'Le propriétaire de {server} a retiré ce téléphone de la liste : tu ne peux plus y ouvrir tes propres liaisons, et les paires faites là ne marchent plus. Pour revenir il faudrait une nouvelle invitation.',
+    removedBody: 'Le propriétaire de {server} t’a retiré la possibilité d’utiliser ce serveur pour tes liaisons : les paires faites là ne marchent plus. Pour revenir il faudrait une nouvelle invitation.',
     leaveFailed: 'Impossible de quitter le serveur',
     leaveFailedBody: 'Le serveur n’a pas lâché ({why}).',
     stranger: 'Ce serveur ne connaît pas ce téléphone',
@@ -365,7 +365,7 @@ export const fr: Dictionary = {
   },
 
   welcome: {
-    removedMeanwhile: 'Entre-temps le propriétaire a retiré ce téléphone de la liste.',
+    removedMeanwhile: 'Entre-temps le propriétaire t’a retiré la possibilité d’utiliser ce serveur pour tes liaisons.',
     inOwnerTitle: 'Ce serveur est à toi',
     inOwnerBody: 'Personne n’avait encore pris {server} : désormais n’entre que qui tu invites, et avec qui tu t’appaires. Maintenant relie les deux téléphones : tu crées un code et tu le dictes à l’autre personne, ou tu le lui fais lire avec la caméra.',
     inOwnerBackTitle: 'Bon retour',

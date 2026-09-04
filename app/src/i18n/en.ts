@@ -23,7 +23,7 @@
 export const en = {
   errors: {
     removed: 'Taken off the server',
-    removedBody: 'The owner of {server} has taken this phone off the list: you can no longer open connections of your own there, and the pairs made there no longer work. To come back you would need a new invitation.',
+    removedBody: 'The owner of {server} has taken away your possibility of using this server for your connections: the pairs made there no longer work. To come back you would need a new invitation.',
     leaveFailed: 'Could not leave the server',
     leaveFailedBody: 'The server did not let go ({why}).',
     stranger: 'This server does not know this phone',
@@ -378,7 +378,7 @@ export const en = {
   },
 
   welcome: {
-    removedMeanwhile: 'Meanwhile the owner has taken this phone off the list.',
+    removedMeanwhile: 'Meanwhile the owner has taken away your possibility of using this server for your connections.',
     inOwnerTitle: 'This server is yours',
     inOwnerBody: 'Nobody had taken {server} yet: from now on only whoever you invite, and whoever you pair with, gets in. Next, connect the two phones: you create a code and read it to the other person, or let them read it with the camera.',
     inOwnerBackTitle: 'Welcome back',

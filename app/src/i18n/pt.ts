@@ -17,7 +17,7 @@ import type { Dictionary } from './en';
 export const pt: Dictionary = {
   errors: {
     removed: 'Tirado do servidor',
-    removedBody: 'O dono de {server} tirou este telefone da lista: você não pode mais abrir ligações próprias lá, e os pares feitos lá não funcionam mais. Para voltar seria preciso um novo convite.',
+    removedBody: 'O dono de {server} tirou de você a possibilidade de usar este servidor para as suas ligações: os pares feitos lá não funcionam mais. Para voltar seria preciso um novo convite.',
     leaveFailed: 'Não deu para sair do servidor',
     leaveFailedBody: 'O servidor não soltou ({why}).',
     stranger: 'Este servidor não conhece este telefone',
@@ -365,7 +365,7 @@ export const pt: Dictionary = {
   },
 
   welcome: {
-    removedMeanwhile: 'Enquanto isso o dono tirou este telefone da lista.',
+    removedMeanwhile: 'Enquanto isso o dono tirou de você a possibilidade de usar este servidor para as suas ligações.',
     inOwnerTitle: 'Este servidor é seu',
     inOwnerBody: 'Ninguém tinha tomado {server} ainda: de agora em diante só entra quem você convida, e com quem você se pareia. Agora conecte os dois telefones: você cria um código e dita para a outra pessoa, ou deixa que ela leia com a câmera.',
     inOwnerBackTitle: 'Bem-vindo de volta',
