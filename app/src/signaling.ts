@@ -165,6 +165,8 @@ export type SignalingEvents = {
   onKnockResult?: (ok: boolean, error?: string) => void;
   /** the other side broke this pair: told now, or found on joining; the room, when said */
   onPairBroken?: (room?: string) => void;
+  /** taken off this server's list, by its owner */
+  onRemoved?: () => void;
   /** @param reason with `not-allowed`: 'stranger', 'bad-invite' or 'bad-key' */
   onError?: (code: string, reason?: string) => void;
 };
@@ -622,6 +624,10 @@ export class Signaling {
 
       case 'knock-result':
         this.events.onKnockResult?.(!!msg.ok, msg.error);
+        break;
+
+      case 'removed':
+        this.events.onRemoved?.();
         break;
 
       case 'pair-broken':

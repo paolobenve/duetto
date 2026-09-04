@@ -39,7 +39,7 @@ import SettingsScreen from './SettingsScreen';
 import SetupScreen from './SetupScreen';
 import PairingScreen from './PairingScreen';
 import WelcomeScreen from './WelcomeScreen';
-import { leaveServer } from './door';
+import { leaveServer, knock } from './door';
 import ChannelScreen from './ChannelScreen';
 import { loadPipPosition } from './VideoStage';
 import { useAudioRoute } from './audioRoute';
@@ -557,6 +557,8 @@ export default function App() {
   const batteryWarned = useRef(false);
   /** enterChannel is needed inside an effect that is born before it */
   const enterChannelRef = useRef<(() => void) | null>(null);
+  /** leaving, for whoever is born before the function that does it */
+  const leaveChannelRef = useRef<(() => void) | null>(null);
   /** attachPeer too: the watchdog's beat is born before it */
   const attachPeerRef = useRef<((force?: boolean) => void) | null>(null);
   /**
@@ -2313,6 +2315,15 @@ export default function App() {
             Journal.mark(`pair-broken:${pair.peerName || id.slice(0, 8)}`).catch(() => { /* noop */ });
             setCfg((prev) => (prev ? saveCfg(markPairBroken(prev, id)) : prev));
           },
+          // Taken off the list by the owner: what this phone is here
+          // has changed, and the buttons hang on it. Out of the channel
+          // and to the welcome, which knocks and finds out.
+          onRemoved: () => {
+            Journal.mark('removed-from-server').catch(() => { /* noop */ });
+            setCfg((prev) => (prev ? saveCfg({ ...prev, serverRole: 'stranger' }) : prev));
+            leaveChannelRef.current?.();
+            setScreen('welcome');
+          },
           onPeople: (list, waiting) => {
             setPeople(list);
             setInvitations(waiting);
@@ -3371,6 +3382,26 @@ export default function App() {
     setPeerPresent(false);
     setScreen('welcome');
   }, [cfg]);
+
+  /**
+   * The word kept true while nobody is watching.
+   *
+   * A phone with no pair never joins, and so never hears that it was
+   * taken off the list: it went on offering connections it could not
+   * open. Opening the settings with no pair is the moment to ask.
+   */
+  useEffect(() => {
+    if (screen !== 'settings' || !cfg || isPaired(cfg) || !isServerConfigured(cfg)) return;
+    let gone = false;
+    knock(cfg.serverUrl, { key: cfg.serverKey, name: cfg.displayName }).then((a) => {
+      if (gone || a.role === 'unknown' || a.role === cfg.serverRole) return;
+      Journal.mark(`door:${a.role}:refreshed`).catch(() => { /* noop */ });
+      setCfg((prev) => (prev ? saveCfg({ ...prev, serverRole: a.role }) : prev));
+    }).catch(() => { /* not reachable: the word stays as it was */ });
+    return () => { gone = true; };
+  }, [screen]);
+
+  useEffect(() => { leaveChannelRef.current = () => { leaveChannel(true); }; }, [leaveChannel]);
 
   const onForgetPair = useCallback(async (id: string) => {
     if (!cfg) return;

@@ -988,8 +988,17 @@ function ownersBusiness(ws, msg) {
       console.log(`[duetto] ${ws.who} takes back an invitation (${gone})`);
     } else {
       const name = String(msg.name || '').trim();
+      // Their card first: whoever is connected with it is told, and
+      // let go, so the phone learns at once and not at its next try.
+      const pubs = read().devices.filter((d) => d.name === name).map((d) => d.pub);
       const gone = removePerson(name);
       console.log(`[duetto] ${ws.who} takes ${name} off the list (${gone})`);
+      for (const peer of wss.clients) {
+        if (peer !== ws && peer.pub && pubs.includes(peer.pub)) {
+          send(peer, { type: 'removed' });
+          try { peer.close(4006, 'removed'); } catch { /* noop */ }
+        }
+      }
     }
   }
   const { devices: list, invitations, rooms: theirRooms } = read();
