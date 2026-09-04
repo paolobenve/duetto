@@ -443,6 +443,12 @@ export default function SettingsScreen({
                   <Text style={styles.secondaryText}>{t('settings.addConnection')}</Text>
                 </TouchableOpacity>
                 <Text style={styles.sectionHint}>{t('settings.addConnectionHint')}</Text>
+                {/* And the other way round: a code somebody else made -
+                    another phone of the owner's, a member - typed or
+                    read with the camera. */}
+                <TouchableOpacity style={styles.secondary} onPress={onHaveCode}>
+                  <Text style={styles.secondaryText}>{t('settings.haveCode')}</Text>
+                </TouchableOpacity>
               </>
             )}
           </>
