@@ -323,7 +323,16 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
           autoFocus
         />
         {note ? <Text style={styles.note}>{note}</Text> : null}
-        <Primary label={t('welcome.next')} disabled={!ready} onPress={() => knockNow('server')} />
+        <Primary
+          label={t('welcome.next')}
+          disabled={!ready}
+          // The same server, already known: nothing to ask, nothing to
+          // rebuild - back where one came from.
+          onPress={() => (onClose && resolved === initial.serverUrl
+            && (initial.serverRole === 'owner' || initial.serverRole === 'member' || initial.serverRole === 'guest')
+            ? onClose()
+            : knockNow('server'))}
+        />
         {/* Or nothing typed at all: the other phone holds its code up,
             and the server comes with it. */}
         <Primary label={t('qr.scan')} outline onPress={() => scanQr('server')} />
