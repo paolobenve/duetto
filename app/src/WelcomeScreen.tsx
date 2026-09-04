@@ -346,8 +346,11 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
           disabled={!ready}
           // The same server, already known: nothing to ask, nothing to
           // rebuild - back where one came from.
+          // Only for whoever may open connections there: a guest or a
+          // stranger with no pair has the two ways in to see, and going
+          // back to the settings would only send them here again.
           onPress={() => (onClose && resolved === initial.serverUrl
-            && (initial.serverRole === 'owner' || initial.serverRole === 'member' || initial.serverRole === 'guest')
+            && (initial.serverRole === 'owner' || initial.serverRole === 'member')
             ? onClose()
             : knockNow('server'))}
         />
