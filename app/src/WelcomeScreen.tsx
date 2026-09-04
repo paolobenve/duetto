@@ -10,7 +10,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator,
-  ScrollView, KeyboardAvoidingView, Platform,
+  ScrollView, KeyboardAvoidingView, Platform, BackHandler,
 } from 'react-native';
 import { DuoConfig, displayServer, normalizeServerUrl, isServerConfigured } from './config';
 import { knock, watchDoor, formatInvitation, DoorAnswer } from './door';
@@ -184,6 +184,21 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
       knockNow(from, { server: link.serverUrl, code: link.code });
     }
   }, [knockNow]);
+
+  /**
+   * The phone's Back key does what the screen's own "Back" does: from
+   * an inner step to the first one, from the first one to wherever one
+   * came from. Without this it closed the app.
+   */
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (step === 'knocking') return true;
+      if (step !== 'server') { setNote(''); setWelcomed(null); setStep('server'); return true; }
+      if (onClose) { onClose(); return true; }
+      return false;
+    });
+    return () => sub.remove();
+  }, [step, onClose]);
 
   /**
    * On "you are in", a thread at the door: taken off the list while
