@@ -12,6 +12,24 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
+## 0.9.4 build 246
+
+**Version 0.9.4.** Everything since 0.9.3: the first access that asks for the server and for
+nothing else, the door and what it says, invitations and guests, the settings in two tabs,
+the QR code, silence during a call, the mute and the camera that survive an update.
+
+**The last stretch - builds 218 to 246.** A pair broken on one side reaches the other
+wherever they are, is said out loud with the choice to take it away here too, and closes the
+channel without sending the app to the background. A member taken off the list is told at
+once, in the channel or with a thread kept at the door while they sit on a screen that
+supposes them in - and a guest typing a code is not mistaken for one. The owner's list
+comes at every change, unasked; the server is a box with a pencil, «Leave this server» a
+row at the end, and one may be offered a connection even when already paired. A new pair
+puts the channel in use away first, so it no longer opens on video nobody asked for. The
+welcome mentions the QR code, puts the camera first among the ways in, says the build,
+greets whoever comes in with an invitation by name, and confirming the same server is a
+look and not an arrival.
+
 ## 0.9.4 build 217
 
 **A pair broken from one side is now known on the other.** The phone that breaks a pair
