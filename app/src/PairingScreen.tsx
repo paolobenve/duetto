@@ -364,7 +364,10 @@ export default function PairingScreen({
           <Text style={styles.waitText}>{t('pairing.waitingOther')}</Text>
         </View>
         <Text style={styles.hint}>{t('pairing.dictateHint')}</Text>
-        {opens ? (
+        {/* The owner creates, and that is all. A member - invited by
+            the owner - is the one who types when the two of them pair:
+            the line stays for them alone. */}
+        {role === 'member' ? (
           <Secondary label={t('pairing.haveCodeInstead')} onPress={() => { cleanup(); doneRef.current = true; setCode(''); setStep('join'); }} />
         ) : null}
         <Secondary label={t('pairing.cancel')} onPress={opens ? onBack : reset} />
