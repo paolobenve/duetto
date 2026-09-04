@@ -9,9 +9,9 @@
  */
 // Written by scripts/bump-build.js at every build: do not edit by hand.
 export const VERSION = '0.9.6';
-export const BUILD = 252;
-export const BUILT_AT = '04/09 20:34';
+export const BUILD = 253;
+export const BUILT_AT = '04/09 20:38';
 /** What is shown in the app. */
 export const VERSION_LABEL = '0.9.6';
 /** For the settings: it tells two APKs of the same version apart. */
-export const VERSION_FULL = '0.9.6 · build 252 · 04/09 20:34';
+export const VERSION_FULL = '0.9.6 · build 253 · 04/09 20:38';
