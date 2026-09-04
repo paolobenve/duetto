@@ -267,6 +267,9 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
           <Text style={styles.big}>{'\u{1F6AA}'}</Text>
           <Text style={styles.title}>{t('welcome.strangerTitle')}</Text>
           <Text style={styles.body}>{t('welcome.strangerBody')}</Text>
+          {/* The camera first: it takes either - a pairing code or an
+              invitation - and whoever is near has nothing to type. */}
+          <Primary label={t('qr.scan')} onPress={() => scanQr('stranger')} />
 
           {/* The common case first: somebody is reading a code out,
               and the eight digits are all that is needed - typed here,
@@ -291,7 +294,6 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
               code,
             )}
           />
-          <Primary label={t('qr.scan')} outline onPress={() => scanQr('stranger')} />
 
           <Text style={styles.section}>{t('welcome.invitedTitle')}</Text>
           <Field
