@@ -50,11 +50,12 @@ there as a follow-up, and the app's own journal (Settings → Use → Diagnostic
 thing you can attach.
 
 **Installing and updating.** The [releases](https://gitlab.com/paolobenve/duetto/-/releases)
-page has the APK; open it on the phone and Android installs it. The easier way, once
-Duetto is listed in the [IzzyOnDroid](https://apt.izzysoft.de/fdroid/) repository (the
-request is under way), is an F-Droid client that knows that repository -
-[Droid-ify](https://github.com/Droid-ify/client) and [Neo Store](https://github.com/NeoApplications/Neo-Store)
-come with it already - which shows the app and keeps it up to date by itself.
+page has the APK; open it on the phone and Android installs it. To be kept up to date by
+itself, add Duetto to [Obtainium](https://github.com/ImranR98/Obtainium) - a free app that
+watches GitLab and GitHub for new releases - with the address of this repository:
+`https://gitlab.com/paolobenve/duetto`. (Duetto is not on F-Droid: its code was written
+with an AI assistant, which the IzzyOnDroid repository rules out, and the official
+repository needs a build from source that is still to be worked out.)
 
 Two things to know. Android only, 7.0 or later. And on mobile data where the direct link
 between the phones is not possible - some carriers only allow the relay - a video
