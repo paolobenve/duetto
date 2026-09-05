@@ -14,13 +14,16 @@ Changelog: https://gitlab.com/paolobenve/duetto/-/blob/master/CHANGELOG.md
 
 AutoName: Duetto
 
+Binaries: https://gitlab.com/api/v4/projects/86073650/packages/generic/duetto/%v/duetto-%v-build%c.apk
+AllowedAPKSigningKeys: f4ad697fca93635926457bca101bd893cbb2ff67fdb53c3181baa95bd3da3c14
+
 RepoType: git
 Repo: https://gitlab.com/paolobenve/duetto.git
 
 Builds:
   - versionName: 0.9.7
-    versionCode: 273
-    commit: f4a7887b09b24c78843c1f331b585e5e8f63d5e9
+    versionCode: 274
+    commit: v0.9.8
     subdir: app/android/app
     sudo:
       - apt-get update
@@ -45,5 +48,5 @@ Builds:
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^v[0-9.]+$
-CurrentVersion: 0.9.7
-CurrentVersionCode: 273
+CurrentVersion: 0.9.8
+CurrentVersionCode: 274
