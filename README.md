@@ -53,9 +53,10 @@ thing you can attach.
 page has the APK; open it on the phone and Android installs it. To be kept up to date by
 itself, add Duetto to [Obtainium](https://github.com/ImranR98/Obtainium) - a free app that
 watches GitLab and GitHub for new releases - with the address of this repository:
-`https://gitlab.com/paolobenve/duetto`. (Duetto is not on F-Droid: its code was written
-with an AI assistant, which the IzzyOnDroid repository rules out, and the official
-repository needs a build from source that is still to be worked out.)
+`https://gitlab.com/paolobenve/duetto`. (Duetto is not on F-Droid yet: it has been proposed to the official
+repository, which builds every app from source on its own servers - the [merge
+request](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/47896) is under review. The
+IzzyOnDroid repository rules it out, because its code was written with an AI assistant.)
 
 Two things to know. Android only, 7.0 or later. And on mobile data where the direct link
 between the phones is not possible - some carriers only allow the relay - a video
