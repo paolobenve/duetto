@@ -181,6 +181,24 @@ sudo systemctl enable --now duetto-signaling
 curl -s http://127.0.0.1:8787/healthz      # {"ok":true,"rooms":0}
 ```
 
+### A copy of the list
+
+`devices.json` is the phones, the invitations and the rooms: losing it means pairing
+everybody again. A timer in `deploy/` copies it once a day into `/var/backups/duetto/`,
+dated, and keeps a month of copies. It runs as root, which may read the file whoever owns
+it; the path in the unit is the server's folder, to adjust if yours is elsewhere:
+
+```bash
+sudo cp /opt/duetto/server/deploy/duetto-backup.{service,timer} /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now duetto-backup.timer
+sudo systemctl start duetto-backup.service     # the first copy, now
+ls -l /var/backups/duetto/
+```
+
+To put a copy back: stop the service, copy the file over `devices.json` with the same owner
+and mode, start the service.
+
 The `g+s` bit on the folders avoids a recurring problem: without it, files copied later
 with rsync are born with a group the service cannot read.
 

@@ -1,0 +1,10 @@
+[Unit]
+Description=Duetto: daily copy of devices.json
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=1h
+
+[Install]
+WantedBy=timers.target

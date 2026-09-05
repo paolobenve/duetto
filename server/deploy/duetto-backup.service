@@ -1,0 +1,10 @@
+# A copy of the list, once a day: devices.json is the phones, the
+# invitations and the rooms, and losing it means pairing everybody
+# again. Run by root, which may read the file whoever owns it.
+# The path below is the server's folder: adjust it when installing.
+[Unit]
+Description=Duetto: daily copy of devices.json
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'install -d -m 750 /var/backups/duetto && cp -p /opt/duetto/server/devices.json /var/backups/duetto/devices-$(date +%%F).json && find /var/backups/duetto -name "devices-*.json" -mtime +30 -delete'
