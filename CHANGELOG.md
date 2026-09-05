@@ -14,7 +14,15 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
-## 0.9.8 build 274
+## 0.9.9 build 275
+
+**Version 0.9.9: packaged as F-Droid asks.** The APK no longer carries the «dependency
+metadata» block that the Android plugin adds for Google Play - a binary blob F-Droid's
+scanner rejects - and the release build starts from clean generated assets, so that what
+F-Droid builds from the source is the same APK, byte for byte, as the one released here:
+F-Droid can then ship it with the project's own signature. Nothing changes for whoever uses
+the app.
+
 
 **Version 0.9.8: the same app, built the way F-Droid needs it.** The native folder
 (`app/android`) is in the repository now, generated once and patched, instead of being

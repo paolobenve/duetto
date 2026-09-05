@@ -74,6 +74,25 @@ const file = path.join(__dirname, '..', 'android', 'app', 'build.gradle');
  * release falls back to the debug key as before, so the build never
  * breaks: it is just not ours.
  */
+/**
+ * No "dependency metadata" block in the signing block: a binary blob
+ * for Google Play that F-Droid's scanner rejects. Idempotent.
+ */
+function noDependencyMetadata() {
+  let g = fs.readFileSync(file, 'utf8');
+  if (g.includes('dependenciesInfo')) return;
+  const at = g.indexOf('    namespace "com.duetto"\n');
+  if (at < 0) { console.error('namespace line not found: dependency metadata left as is'); return; }
+  const end = at + '    namespace "com.duetto"\n'.length;
+  g = g.slice(0, end) + `    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
+` + g.slice(end);
+  fs.writeFileSync(file, g);
+  console.log('dependency metadata: left out of the APK');
+}
+
 function signRelease() {
   let g = fs.readFileSync(file, 'utf8');
   if (g.includes('DUETTO_STORE_FILE')) return;
@@ -118,6 +137,7 @@ if (!fs.existsSync(file)) {
 
 narrowProperties();
 signRelease();
+noDependencyMetadata();
 
 let gradle = fs.readFileSync(file, 'utf8');
 

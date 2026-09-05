@@ -1,0 +1,1 @@
+La même app que la 0.9.7, empaquetée comme F-Droid le demande : sans le blob de métadonnées de dépendances, build propre, reproductible octet par octet.

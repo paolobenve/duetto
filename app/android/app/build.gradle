@@ -78,6 +78,13 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace "com.duetto"
+    // No "dependency metadata" block in the APK's signing block: it is
+    // a binary blob meant for Google Play, and F-Droid's scanner rejects
+    // an APK that carries it. The files of the APK are the same without.
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
     defaultConfig {
         applicationId "com.duetto"
         minSdkVersion rootProject.ext.minSdkVersion

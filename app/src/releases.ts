@@ -31,6 +31,16 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.9.9',
+    notes: {
+      en: ['Nothing new to use: the same app as 0.9.7, packaged as F-Droid asks.'],
+      it: ['Niente di nuovo da usare: la stessa app della 0.9.7, impacchettata come chiede F-Droid.'],
+      es: ['Nada nuevo que usar: la misma app que la 0.9.7, empaquetada como pide F-Droid.'],
+      pt: ['Nada de novo para usar: o mesmo app da 0.9.7, empacotado como o F-Droid pede.'],
+      fr: ['Rien de nouveau à utiliser : la même app que la 0.9.7, empaquetée comme F-Droid le demande.'],
+    },
+  },
+  {
     version: '0.9.8',
     notes: {
       en: ['Nothing new to use: the same app as 0.9.7, built the way F-Droid needs it.'],

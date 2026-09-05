@@ -1,0 +1,1 @@
+The same app as 0.9.7, packaged as F-Droid asks: no dependency-metadata blob, a clean build, reproducible byte for byte.

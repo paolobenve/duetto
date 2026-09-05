@@ -1,0 +1,1 @@
+La stessa app della 0.9.7, impacchettata come chiede F-Droid: senza il blob dei metadati delle dipendenze, build pulita, riproducibile byte per byte.
