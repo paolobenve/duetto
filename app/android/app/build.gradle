@@ -82,8 +82,8 @@ android {
         applicationId "com.duetto"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 273
-        versionName "0.9.7"
+        versionCode 274
+        versionName "0.9.8"
         ndk {
             // Solo architetture reali: gli emulatori x86 raddoppiavano
             // l'APK e i tempi di installazione. Vedi patch-android-gradle.js
