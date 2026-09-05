@@ -1,0 +1,49 @@
+# The recipe for F-Droid's fdroiddata repository (metadata/com.duetto.yml), kept
+# here as a reference: the copy that counts lives there. Verified with
+# `fdroid build -l com.duetto` on 2026-09-05: scanner, signing stripped, gradle
+# under JDK 17, APK found. For each release, a Builds entry with the tag, its
+# versionName and its versionCode (the build number in app/android/app/build.gradle).
+Categories:
+  - Connectivity
+  - Phone & SMS
+License: GPL-3.0-or-later
+AuthorName: Paolo Benvenuto
+SourceCode: https://gitlab.com/paolobenve/duetto
+IssueTracker: https://gitlab.com/paolobenve/duetto/-/issues
+Changelog: https://gitlab.com/paolobenve/duetto/-/blob/master/CHANGELOG.md
+
+AutoName: Duetto
+
+RepoType: git
+Repo: https://gitlab.com/paolobenve/duetto.git
+
+Builds:
+  - versionName: 0.9.7
+    versionCode: 273
+    commit: f4a7887b09b24c78843c1f331b585e5e8f63d5e9
+    subdir: app/android/app
+    sudo:
+      - apt-get update
+      - apt-get install -y openjdk-17-jdk-headless
+      - update-alternatives --auto java
+      - curl -Lo node.tar.gz https://nodejs.org/dist/v20.19.4/node-v20.19.4-linux-x64.tar.gz
+      - echo "d80a33707605ced9a31b8f543cea9ab512bc3d2fef2c148f31a50e939ff07560  node.tar.gz" | sha256sum -c -
+      - tar xzf node.tar.gz --strip-components=1 -C /usr/local/
+    init:
+      - cd ../..
+      - npm ci --no-audit --no-fund
+    gradle:
+      - yes
+    scanignore:
+      - app/node_modules/react-native/sdks/hermesc/linux64-bin/hermesc
+      - app/node_modules/@react-native-async-storage/async-storage/android/build.gradle
+      - app/node_modules/react-native-get-random-values/android/build.gradle
+      - app/node_modules/react-native-svg/android/build.gradle
+      - app/node_modules/react-native/ReactAndroid/publish.gradle
+    scandelete:
+      - app/node_modules
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags ^v[0-9.]+$
+CurrentVersion: 0.9.7
+CurrentVersionCode: 273
