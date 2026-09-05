@@ -1,0 +1,1 @@
+La misma app que la 0.9.7, construida como lo necesita F-Droid: la carpeta nativa en el repositorio, la firma en la forma que F-Droid elimina. La primera versión propuesta a F-Droid.

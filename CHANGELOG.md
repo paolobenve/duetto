@@ -14,7 +14,15 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
-## 0.9.7 build 273
+## 0.9.8 build 274
+
+**Version 0.9.8: the same app, built the way F-Droid needs it.** The native folder
+(`app/android`) is in the repository now, generated once and patched, instead of being
+fetched from npm at every build; and the release signing is written in the plain form that
+F-Droid's tools know how to strip before signing with their own key. Nothing changes for
+whoever uses the app. This is the first version proposed to the official F-Droid
+repository.
+
 
 **Version 0.9.7.** With the diagnostics on, the battery of both phones - each told to the
 other in the state, with the rest of what each measures at home - in one short line,
