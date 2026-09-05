@@ -85,19 +85,28 @@ function signRelease() {
   }
   const release = `        release {
             // The real key, from ~/.gradle/gradle.properties; see
-            // patch-android-gradle.js. Absent, the debug one stands.
+            // patch-android-gradle.js. Absent, the debug one stands -
+            // put here, inside the block, so that the release build
+            // type below can name signingConfigs.release plainly:
+            // F-Droid strips signing blocks and that plain line before
+            // building with its own key, and an expression escaped it.
             if (project.hasProperty('DUETTO_STORE_FILE')) {
                 storeFile file(DUETTO_STORE_FILE)
                 storePassword DUETTO_STORE_PASSWORD
                 keyAlias DUETTO_KEY_ALIAS
                 keyPassword DUETTO_KEY_PASSWORD
+            } else {
+                storeFile file('debug.keystore')
+                storePassword 'android'
+                keyAlias 'androiddebugkey'
+                keyPassword 'android'
             }
         }
 `;
   g = g.replace(marker, `$1${release}$2`);
   g = g.replace(
     swap,
-    "signingConfig project.hasProperty('DUETTO_STORE_FILE') ? signingConfigs.release : signingConfigs.debug\n            minifyEnabled",
+    'signingConfig signingConfigs.release\n            minifyEnabled',
   );
   fs.writeFileSync(file, g);
   console.log('release signing: our own key when ~/.gradle/gradle.properties names one');
