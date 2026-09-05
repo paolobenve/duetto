@@ -10,11 +10,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator,
-  ScrollView, KeyboardAvoidingView, Platform, BackHandler,
+  ScrollView, KeyboardAvoidingView, Platform, BackHandler, Linking,
 } from 'react-native';
 import { DuoConfig, displayServer, normalizeServerUrl, isServerConfigured } from './config';
 import { knock, watchDoor, formatInvitation, DoorAnswer } from './door';
-import { parseLink } from './links';
+import { parseLink, BETA_TESTER_LINK } from './links';
 import { Scanner } from 'duetto-platform';
 import { normalizeCode, formatCode, isCodeComplete } from './pairing';
 import { VERSION_FULL } from './version';
@@ -383,6 +383,17 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
         {/* Or nothing typed at all: the other phone holds its code up,
             and the server comes with it. */}
         <Primary label={t('qr.scan')} outline onPress={() => scanQr('server')} />
+        {/* No server at all: Duetto's own is open to beta testers, who
+            ask on GitLab and get an invitation with the server inside. */}
+        <View style={styles.betaBox}>
+          <Text style={styles.betaTitle}>{t('welcome.betaTitle')}</Text>
+          <Text style={styles.betaBody}>{t('welcome.betaBody')}</Text>
+          <TouchableOpacity
+            style={styles.betaButton}
+            onPress={() => { Linking.openURL(BETA_TESTER_LINK).catch(() => {}); }}>
+            <Text style={styles.betaButtonText}>{t('welcome.betaButton')}</Text>
+          </TouchableOpacity>
+        </View>
         {onClose ? <Secondary label={t('welcome.back')} onPress={onClose} /> : null}
         <Text style={styles.version}>{VERSION_FULL}</Text>
       </Screen>
@@ -498,6 +509,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#2a2114', borderColor: '#ffb454', borderWidth: 1, borderRadius: 12,
     padding: 14, marginBottom: 14,
   },
+  betaBox: {
+    width: '100%', marginTop: 28, padding: 16, borderRadius: 12,
+    backgroundColor: '#121a27', borderColor: '#27405f', borderWidth: 1,
+  },
+  betaTitle: { color: '#e6ebf2', fontSize: 16, fontWeight: '700', marginBottom: 6 },
+  betaBody: { color: '#aab4c2', fontSize: 14, lineHeight: 20 },
+  betaButton: {
+    marginTop: 12, alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 14,
+    borderRadius: 10, borderWidth: 1, borderColor: '#2f7cf6',
+  },
+  betaButtonText: { color: '#7cc4ff', fontSize: 15, fontWeight: '700' },
   button: {
     backgroundColor: '#2f7cf6', borderRadius: 12, paddingVertical: 16,
     alignItems: 'center', width: '100%', marginTop: 16,

@@ -31,6 +31,16 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.9.10',
+    notes: {
+      en: ['No server? The first screen now says how to ask to be a beta tester, and takes you there.'],
+      it: ['Non hai un server? La prima schermata ora dice come chiedere di fare da beta tester, e ti ci porta.'],
+      es: ['¿Sin servidor? La primera pantalla ahora dice cómo pedir ser beta tester, y te lleva allí.'],
+      pt: ['Sem servidor? A primeira tela agora diz como pedir para ser beta tester, e leva você até lá.'],
+      fr: ['Pas de serveur ? Le premier écran dit maintenant comment demander à être bêta-testeur, et t’y emmène.'],
+    },
+  },
+  {
     version: '0.9.9',
     notes: {
       en: ['Nothing new to use: the same app as 0.9.7, packaged as F-Droid asks.'],
