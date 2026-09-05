@@ -1,8 +1,7 @@
 # The recipe for F-Droid's fdroiddata repository (metadata/com.duetto.yml), kept
 # here as a reference: the copy that counts lives there. Verified with
-# `fdroid build -l com.duetto` on 2026-09-05: scanner, signing stripped, gradle
-# under JDK 17, APK found. For each release, a Builds entry with the tag, its
-# versionName and its versionCode (the build number in app/android/app/build.gradle).
+# `fdroid build -l com.duetto` on 2026-09-05. For each release, a Builds entry with
+# the tag, its versionName and its versionCode (the build number).
 Categories:
   - Connectivity
   - Phone & SMS
@@ -21,7 +20,7 @@ RepoType: git
 Repo: https://gitlab.com/paolobenve/duetto.git
 
 Builds:
-  - versionName: 0.9.7
+  - versionName: 0.9.8
     versionCode: 274
     commit: v0.9.8
     subdir: app/android/app
