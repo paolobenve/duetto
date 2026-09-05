@@ -8,7 +8,7 @@
     "patch": "node scripts/patch-android-manifest.js && node scripts/patch-android-gradle.js && node scripts/patch-android-theme.js && node scripts/patch-android-mainactivity.js && node scripts/patch-android-icon.js",
     "android": "npm run sync && npm run patch && npm run bump && react-native run-android",
     "start": "react-native start",
-    "build:apk": "npm run sync && npm run patch && npm run bump && cd android && ./gradlew assembleRelease",
+    "build:apk": "npm run sync && npm run patch && npm run bump && rm -rf android/app/build/generated/assets android/app/build/intermediates/assets && cd android && ./gradlew assembleRelease",
     "lint": "eslint .",
     "tsc": "tsc --noEmit",
     "postinstall": "node scripts/sync-local-modules.js",
