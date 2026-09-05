@@ -434,6 +434,16 @@ export class Signaling {
       log('down after', Math.round((Date.now() - openedAt) / 1000), 's',
         '- code', e?.code ?? '?', e?.reason ? `(${e.reason})` : '');
       this.events.onStatus?.('offline', `${e?.code ?? '?'}${e?.reason ? `/${e.reason}` : ''}`);
+      // 4006 is the server's "no" to this phone - not allowed, or
+      // removed - and knocking again changes nothing until somebody
+      // does something: an invitation, a key, another code. Trying
+      // every few seconds would only fill the server's log with
+      // refusals, and get the address banned along with whoever
+      // shares it at home.
+      if (e?.code === 4006) {
+        log('refused for good: not trying again by myself');
+        return;
+      }
       if (!this.closedByUser) this.scheduleReconnect();
     };
   }

@@ -199,6 +199,27 @@ ls -l /var/backups/duetto/
 To put a copy back: stop the service, copy the file over `devices.json` with the same owner
 and mode, start the service.
 
+### Keeping the insistent out
+
+The server counts the attempts at its door by itself (`JOIN_LIMIT` per address,
+`JOIN_LIMIT_ALL` for everybody together) and turns away whoever exceeds them. With
+fail2ban the block can move to the firewall, so that whoever keeps trying does not even
+reach node: every phone turned away is one line in the log, with its address, and the
+filter and jail in `deploy/fail2ban/` read them from the journal:
+
+```bash
+sudo cp /opt/duetto/server/deploy/fail2ban/duetto-door.conf /etc/fail2ban/filter.d/
+sudo cp /opt/duetto/server/deploy/fail2ban/duetto-door-jail.conf /etc/fail2ban/jail.d/duetto-door.conf
+sudo fail2ban-regex systemd-journal /etc/fail2ban/filter.d/duetto-door.conf   # a dry run
+sudo fail2ban-client reload
+sudo fail2ban-client status duetto-door
+```
+
+Thirty refusals in ten minutes ban the address for an hour. The app stops knocking after
+one refusal, so that is somebody trying codes - but an address is often a whole household,
+and a phone with an old version of the app, retrying every few seconds, would ban the
+family along with it. Keep the numbers generous.
+
 The `g+s` bit on the folders avoids a recurring problem: without it, files copied later
 with rsync are born with a group the service cannot read.
 
