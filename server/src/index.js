@@ -343,6 +343,12 @@ const ANSWER_WAIT_MS = ms(process.env.ANSWER_WAIT_MS, 20_000);
  * one address.
  */
 const JOIN_LIMIT = Number(process.env.JOIN_LIMIT || 120);
+/**
+ * And for everybody together: a limit per address is no limit for
+ * whoever has many addresses. Well above what the phones of a small
+ * server ever do in a minute, and well below what guessing needs.
+ */
+const JOIN_LIMIT_ALL = Number(process.env.JOIN_LIMIT_ALL || 600);
 const JOIN_WINDOW_MS = 60_000;
 
 /** @type {Map<string, number[]>} moments of the recent attempts per IP */
@@ -355,13 +361,21 @@ function clientIp(req) {
   return req.socket?.remoteAddress || 'unknown';
 }
 
-/** True if this address has already used up the attempts allowed. */
+/** @type {number[]} moments of the recent attempts, from everywhere */
+let allAttempts = [];
+
+/**
+ * True if this address, or everybody together, has already used up
+ * the attempts allowed.
+ */
 function tooManyJoins(ip) {
   const now = Date.now();
   const recent = (joinAttempts.get(ip) || []).filter((t) => now - t < JOIN_WINDOW_MS);
   recent.push(now);
   joinAttempts.set(ip, recent);
-  return recent.length > JOIN_LIMIT;
+  allAttempts = allAttempts.filter((t) => now - t < JOIN_WINDOW_MS);
+  allAttempts.push(now);
+  return recent.length > JOIN_LIMIT || allAttempts.length > JOIN_LIMIT_ALL;
 }
 
 // Every now and then we tidy up, so as not to keep old addresses in
