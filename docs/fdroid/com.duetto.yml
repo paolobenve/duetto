@@ -13,7 +13,7 @@ AutoName: Duetto
 
 RepoType: git
 Repo: https://gitlab.com/paolobenve/duetto.git
-Binaries:
+Binaries: 
   https://gitlab.com/api/v4/projects/86073650/packages/generic/duetto/%v/duetto-%v-build%c.apk
 
 Builds:
