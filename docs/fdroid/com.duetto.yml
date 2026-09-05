@@ -13,7 +13,8 @@ AutoName: Duetto
 
 RepoType: git
 Repo: https://gitlab.com/paolobenve/duetto.git
-Binaries: https://gitlab.com/api/v4/projects/86073650/packages/generic/duetto/%v/duetto-%v-build%c.apk
+Binaries:
+  https://gitlab.com/api/v4/projects/86073650/packages/generic/duetto/%v/duetto-%v-build%c.apk
 
 Builds:
   - versionName: 0.9.8
@@ -21,6 +22,10 @@ Builds:
     commit: v0.9.8
     subdir: app/android/app
     sudo:
+      - echo "deb https://deb.debian.org/debian bookworm main" > /etc/apt/sources.list.d/bookworm.list
+      - apt-get update
+      - apt-get install -y -t bookworm openjdk-17-jdk-headless
+      - update-java-alternatives -s java-1.17.0-openjdk-amd64
       - curl -Lo node.tar.gz https://nodejs.org/dist/v20.19.4/node-v20.19.4-linux-x64.tar.gz
       - echo "d80a33707605ced9a31b8f543cea9ab512bc3d2fef2c148f31a50e939ff07560  node.tar.gz"
         | sha256sum -c -
