@@ -1,7 +1,5 @@
 # The recipe for F-Droid's fdroiddata repository (metadata/com.duetto.yml), kept
-# here as a reference: the copy that counts lives there. Verified with
-# `fdroid build -l com.duetto` on 2026-09-05. For each release, a Builds entry with
-# the tag, its versionName and its versionCode (the build number).
+# here as a reference: the copy that counts lives there (MR fdroiddata!47896).
 Categories:
   - Connectivity
   - Phone & SMS
@@ -13,11 +11,9 @@ Changelog: https://gitlab.com/paolobenve/duetto/-/blob/master/CHANGELOG.md
 
 AutoName: Duetto
 
-Binaries: https://gitlab.com/api/v4/projects/86073650/packages/generic/duetto/%v/duetto-%v-build%c.apk
-AllowedAPKSigningKeys: f4ad697fca93635926457bca101bd893cbb2ff67fdb53c3181baa95bd3da3c14
-
 RepoType: git
 Repo: https://gitlab.com/paolobenve/duetto.git
+Binaries: https://gitlab.com/api/v4/projects/86073650/packages/generic/duetto/%v/duetto-%v-build%c.apk
 
 Builds:
   - versionName: 0.9.8
@@ -25,11 +21,9 @@ Builds:
     commit: v0.9.8
     subdir: app/android/app
     sudo:
-      - apt-get update
-      - apt-get install -y openjdk-17-jdk-headless
-      - update-alternatives --auto java
       - curl -Lo node.tar.gz https://nodejs.org/dist/v20.19.4/node-v20.19.4-linux-x64.tar.gz
-      - echo "d80a33707605ced9a31b8f543cea9ab512bc3d2fef2c148f31a50e939ff07560  node.tar.gz" | sha256sum -c -
+      - echo "d80a33707605ced9a31b8f543cea9ab512bc3d2fef2c148f31a50e939ff07560  node.tar.gz"
+        | sha256sum -c -
       - tar xzf node.tar.gz --strip-components=1 -C /usr/local/
     init:
       - cd ../..
@@ -44,6 +38,8 @@ Builds:
       - app/node_modules/react-native/ReactAndroid/publish.gradle
     scandelete:
       - app/node_modules
+
+AllowedAPKSigningKeys: f4ad697fca93635926457bca101bd893cbb2ff67fdb53c3181baa95bd3da3c14
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^v[0-9.]+$
