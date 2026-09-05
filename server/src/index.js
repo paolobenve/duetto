@@ -43,7 +43,7 @@ import {
   createHash, createPublicKey, randomBytes, randomUUID, timingSafeEqual, verify,
 } from 'node:crypto';
 import {
-  addInvitation, adopt, isBroken, markBroken, noteGuest, noteRoom, read, refresh,
+  addInvitation, adopt, isBroken, markBroken, noteGuest, noteRoom, mayOpen, read, refresh,
   remove as removePerson, removeInvitation, removeRoom, roomOf, useInvitation,
 } from './devices.js';
 
@@ -660,14 +660,23 @@ wss.on('connection', (ws, req) => {
         ws.opens = who.opens === true;
         ws.invites = who.invites === true;
         // The room belongs to whoever may open one: it is written down
-        // now, so that the other half can be let in beside them.
-        if (ws.opens) noteRoom(roomId, ws.who);
+        // now, so that the other half can be let in beside them. But
+        // not somebody else's room: see mayOpen.
+        if (ws.opens) {
+          if (!mayOpen(roomId, ws.who, ws.pub, set)) {
+            console.log(`[duetto] ${ws.who} turned away from a room that is not theirs`);
+            send(ws, { type: 'error', error: 'not-allowed', reason: 'taken-room' });
+            ws.close(4006, 'not-allowed');
+            return;
+          }
+          noteRoom(roomId, ws.who, ws.pub);
+        }
       } else if (adopted) {
         ws.pub = String(msg.pub || '');
         ws.who = adopted;
         ws.opens = true;
         ws.invites = true;
-        noteRoom(roomId, adopted);
+        noteRoom(roomId, adopted, ws.pub);
       } else if (!keyIsRight(msg.key)) {
         send(ws, { type: 'error', error: 'not-allowed', reason: 'bad-key' });
         ws.close(4006, 'not-allowed');
@@ -994,6 +1003,10 @@ function ownersBusiness(ws, msg) {
     const name = String(msg.name || '').trim().slice(0, 32);
     if (!name) { send(ws, { type: 'error', error: 'no-name' }); return; }
     const made = addInvitation(name);
+    if (!made) {
+      send(ws, { type: 'error', error: 'name-taken' });
+      return;
+    }
     console.log(`[duetto] ${ws.who} invites ${name}`);
     send(ws, { type: 'invited', name, code: made.code, days: made.days });
     // And the list right after, without being asked: the invitation

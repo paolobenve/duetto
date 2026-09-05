@@ -2424,6 +2424,10 @@ export default function App() {
                 Alert.alert(t('errors.stranger'), t('errors.strangerBody'));
               } else if (reason === 'bad-invite') {
                 Alert.alert(t('errors.badInvite'), t('errors.badInviteBody'));
+              } else if (reason === 'taken-room') {
+                // Somebody else's room, with both seats spoken for: a
+                // pairing code typed wrong, or a code of the past.
+                Alert.alert(t('errors.takenRoom'), t('errors.takenRoomBody'));
               } else {
                 Alert.alert(t('errors.notAllowed'), t('errors.notAllowedBody'));
               }

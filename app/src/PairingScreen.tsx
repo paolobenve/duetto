@@ -331,7 +331,9 @@ export default function PairingScreen({
       setCopied(false);
       setStep('invited');
     } catch (e: any) {
-      setInviteNote(t('pairing.inviteFailed', { why: String(e?.message || '') }));
+      setInviteNote(e?.message === 'name-taken'
+        ? t('errors.nameTaken')
+        : t('pairing.inviteFailed', { why: String(e?.message || '') }));
     } finally {
       setInviting(false);
     }

@@ -171,7 +171,7 @@ export type SignalingEvents = {
   onRemoved?: () => void;
   /** a member left the server by themselves: only the owner is told */
   onMemberLeft?: (name: string) => void;
-  /** @param reason with `not-allowed`: 'stranger', 'bad-invite' or 'bad-key' */
+  /** @param reason with `not-allowed`: 'stranger', 'bad-invite', 'bad-key' or 'taken-room' */
   onError?: (code: string, reason?: string) => void;
 };
 

@@ -142,6 +142,13 @@ export function makeCode() {
 
 export function addInvitation(name) {
   const data = read();
+  // One name, one phone: the list, the rooms and the leaving all go by
+  // name, and two people under the same one would be taken off
+  // together. Null, when the name is already somebody's.
+  const now = Date.now();
+  const taken = data.devices.some((d) => d.name === name)
+    || data.invitations.some((i) => i.name === name && Date.parse(i.expires) > now);
+  if (taken) return null;
   const code = makeCode();
   data.invitations.push({
     code,
@@ -279,7 +286,7 @@ export function roomOf(room) {
 }
 
 /** Writes down that this room belongs to somebody on the list. */
-export function noteRoom(room, owner) {
+export function noteRoom(room, owner, pub = '') {
   const data = read();
   // The first one on the list who uses it owns it, and it does not
   // change hands: two people on the list can share a room - two phones
@@ -287,16 +294,55 @@ export function noteRoom(room, owner) {
   // knock would only make the file restless. The second one, when it
   // is a phone of the list too, is written down as the partner: a pair
   // broken from one side has to find the other, wherever they are.
+  //
+  // Beside the names, the cards: a name is what a phone says of itself,
+  // and two phones may say the same; the card is the phone. Rooms
+  // written down before the cards were kept get them the next time
+  // their people come in.
   const known = data.rooms.find((r) => r.room === room);
   if (known) {
-    if (known.owner !== owner && !known.partner) {
+    let changed = false;
+    if (known.owner === owner) {
+      if (pub && !known.ownerPub) { known.ownerPub = pub; changed = true; }
+    } else if (!known.partner) {
       known.partner = owner;
-      write(data);
+      if (pub) known.partnerPub = pub;
+      changed = true;
+    } else if (known.partner === owner && pub && !known.partnerPub) {
+      known.partnerPub = pub; changed = true;
     }
+    if (changed) write(data);
     return;
   }
-  data.rooms.push({ room, owner, guest: null, since: new Date().toISOString() });
+  data.rooms.push({
+    room, owner, ownerPub: pub || undefined, guest: null, since: new Date().toISOString(),
+  });
   write(data);
+}
+
+/**
+ * Whether this phone, one that may open rooms, may come into this one.
+ *
+ * Its own rooms, always: the ones it opened and the ones it is the
+ * partner of. A room of somebody else's, only for the second seat,
+ * only while it is free, and only while the owner is in the room at
+ * that moment - the pairing, made with both phones awake. Otherwise a
+ * phone on the list could sit in a stranger's room by learning its
+ * name while the other half is away, and be taken for them.
+ *
+ * `here` are the peers in the room right now: {opens, who, pub}.
+ */
+export function mayOpen(room, who, pub, here) {
+  const known = roomOf(room);
+  if (!known) return true;
+  const isOwner = known.ownerPub ? known.ownerPub === pub : known.owner === who;
+  const isPartner = known.partnerPub
+    ? known.partnerPub === pub
+    : (!!known.partner && known.partner === who);
+  if (isOwner || isPartner) return true;
+  if (known.partner || known.guest) return false;
+  return [...here].some((p) => p.opens && p.who === known.owner
+    && (!known.ownerPub || p.pub === known.ownerPub));
 }
 
 /** And that this phone is the other half of it. */

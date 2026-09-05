@@ -46,6 +46,21 @@ function knock(port, ph, extra = {}) {
     ws.on('error', reject);
   });
 }
+/** Joins a room, and hands back `joined` or the error, keeping the socket. */
+function join(port, ph, room, name) {
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket(`ws://127.0.0.1:${port}`);
+    ws.on('message', (d) => {
+      const m = JSON.parse(d.toString());
+      if (m.type === 'hello') {
+        ws.send(JSON.stringify({ type: 'join', room, pub: ph.pub, sig: ph.signs(m.nonce), name, mode: 'listening' }));
+        return;
+      }
+      if (m.type === 'joined' || m.type === 'error') resolve({ ws, answer: m });
+    });
+    ws.on('error', reject);
+  });
+}
 function ask(ws, obj) {
   return new Promise((resolve) => {
     ws.once('message', (d) => resolve(JSON.parse(d.toString())));
@@ -100,6 +115,38 @@ try {
   r = await knock(PORT, anna);
   const notLeft = await ask(r.ws, { type: 'leave' });
   check('the owner may not leave', notLeft.type === 'error' && notLeft.error === 'not-for-owner', notLeft); r.ws.close();
+
+  // Rooms are the two phones that made them. Anna opens one; Bruno,
+  // back on the list, takes the second seat while she is in; Carla, on
+  // the list too, may not sit in it when one of them is away.
+  const inv2 = await ask(annaWs, { type: 'invite', name: 'bruno' });
+  r = await knock(PORT, bruno, { invite: inv2.code }); r.ws.close();
+  const inv3 = await ask(annaWs, { type: 'invite', name: 'carla' });
+  r = await knock(PORT, carla, { invite: inv3.code }); r.ws.close();
+  let a = await join(PORT, anna, '11112222', 'anna');
+  check('owner opens a room', a.answer.type === 'joined', a.answer);
+  let c = await join(PORT, carla, '11112222', 'carla');
+  check('second seat while the owner is in: a partner', c.answer.type === 'joined', c.answer);
+  c.ws.close(); await sleep(200);
+  let b = await join(PORT, bruno, '11112222', 'bruno');
+  check('a third phone on the list: not their room', b.answer.type === 'error' && b.answer.reason === 'taken-room', b.answer);
+  a.ws.close(); await sleep(200);
+  c = await join(PORT, carla, '11112222', 'carla');
+  check('the partner comes back alone', c.answer.type === 'joined', c.answer); c.ws.close();
+  b = await join(PORT, bruno, '11112222', 'bruno');
+  check('owner away, partner away: still not their room', b.answer.type === 'error' && b.answer.reason === 'taken-room', b.answer);
+  // One name, one phone: the owner's own name, or a member's, cannot
+  // be given away again.
+  const inv4 = await ask(annaWs, { type: 'invite', name: 'anna' });
+  check('inviting under the owner\'s name: name-taken', inv4.type === 'error' && inv4.error === 'name-taken', inv4);
+  const inv5 = await ask(annaWs, { type: 'invite', name: 'carla' });
+  check('inviting under a member\'s name: name-taken', inv5.type === 'error' && inv5.error === 'name-taken', inv5);
+  a = await join(PORT, anna, '11112222', 'anna');
+  check('the owner comes back', a.answer.type === 'joined', a.answer); a.ws.close(); await sleep(200);
+  b = await join(PORT, bruno, '33334444', 'bruno');
+  check('a fresh room: anybody on the list opens it', b.answer.type === 'joined', b.answer); b.ws.close(); await sleep(200);
+  r = await knock(PORT, bruno); await ask(r.ws, { type: 'leave' }); r.ws.close();
+  r = await knock(PORT, carla); await ask(r.ws, { type: 'leave' }); r.ws.close();
 
   // A stranger at the door cannot do the owner business.
   r = await knock(PORT, carla);
