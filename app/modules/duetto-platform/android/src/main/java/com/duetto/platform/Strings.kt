@@ -52,6 +52,9 @@ object Strings {
     /** What the standing notification says until the app says otherwise. */
     val inChannel get() = pick("You are in the channel", "Sei nel canale")
     val waiting get() = pick("Waiting", "In attesa")
+    /** the buttons on the standing notification */
+    val enter get() = pick("Enter", "Entra")
+    val goWaiting get() = pick("Go to waiting", "Vai in attesa")
 
     /** The system's sound picker, and the name for a sound with no title. */
     val alertSoundTitle get() = pick("Alert sound", "Suono dell'avviso")

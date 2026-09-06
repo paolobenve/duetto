@@ -220,6 +220,23 @@ object Notifier {
      * information ("you can be reached"), and two different standing
      * notifications would only be confusing.
      */
+    /**
+     * "Enter", as a button on the standing notification: the app is
+     * opened on the channel link, and JavaScript, told the link, goes
+     * into the channel on purpose - not by the rule for a window that
+     * merely came back.
+     */
+    fun enterPending(ctx: Context): PendingIntent {
+        val open = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("duetto://channel/enter")).apply {
+            setPackage(ctx.packageName)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        return PendingIntent.getActivity(
+            ctx, 3, open,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+    }
+
     fun startForegroundPresence(service: android.app.Service) {
         val launch = service.packageManager
             .getLaunchIntentForPackage(service.packageName)?.apply {
@@ -252,6 +269,7 @@ object Notifier {
             .setContentText(withName(name(service), Strings.waiting))
             .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(pending)
+            .addAction(0, Strings.enter, enterPending(service))
             // No `setOngoing`: it is that declaration that makes the
             // notification impossible to dismiss, and on Android 13 and
             // later it is of no use any more. From there on the system

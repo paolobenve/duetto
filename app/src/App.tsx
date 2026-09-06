@@ -400,6 +400,23 @@ export default function App() {
         } catch { /* asked again in a moment */ }
       }, 4000);
     };
+    // The buttons of the standing notification. "Go to waiting" comes
+    // as a word from the service; "Enter" comes as the channel link,
+    // through the app being opened on it - cold, or already alive.
+    const actions = DeviceEventEmitter.addListener('duettoNotificationAction', (a: string) => {
+      if (a !== 'wait') return;
+      Journal.mark('command:notification:wait').catch(() => {});
+      leaveChannelRef.current?.();
+    });
+    const enterOnLink = (url: string | null) => {
+      if (!url || !url.startsWith('duetto://channel')) return;
+      Journal.mark('command:notification:enter').catch(() => {});
+      // Asked for by name: the leaving of a moment ago does not hold it back.
+      leftByHandAt.current = 0;
+      if (!inChannelRef.current) enterChannelRef.current?.();
+    };
+    Linking.getInitialURL().then(enterOnLink).catch(() => {});
+    const links = Linking.addEventListener('url', ({ url }) => enterOnLink(url));
     const sub = DeviceEventEmitter.addListener('onAudioFocusChange', (data: any) => {
       const what = String(data?.eventText || '');
       const call = what === 'AUDIOFOCUS_LOSS_TRANSIENT';
@@ -415,6 +432,8 @@ export default function App() {
     });
     return () => {
       sub.remove();
+      actions.remove();
+      links.remove();
       if (retry) clearInterval(retry);
       sessionRef.current?.hush(false);
       sessionRef.current?.duck(false);
@@ -1284,7 +1303,9 @@ export default function App() {
     if (noticeRetry.current) { clearTimeout(noticeRetry.current); noticeRetry.current = null; }
     if (!presenceLiveRef.current) return;
     const text = noticeTextRef.current;
-    Foreground.setText(text, alertNameRef.current).then(() => {
+    // The button beside the line: "Enter" while waiting, "Go to
+    // waiting" while in.
+    Foreground.setText(text, alertNameRef.current, inChannelRef.current ? 'wait' : 'enter').then(() => {
       writtenNotice.current = text;
     }).catch(() => {
       if (left <= 0) return;

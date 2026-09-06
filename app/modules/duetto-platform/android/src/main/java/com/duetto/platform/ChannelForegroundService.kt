@@ -66,6 +66,7 @@ class ChannelForegroundService : Service() {
      * watchdog alarm's job now.
      */
     private var inChannel: Boolean = false
+    private var currentActions: String = ""
 
     /**
      * The consumption journal is written from here.
@@ -103,6 +104,10 @@ class ChannelForegroundService : Service() {
         const val EXTRA_NAME = "name"
         const val EXTRA_CAMERA = "camera"
         const val EXTRA_IN_CHANNEL = "inChannel"
+        /** which buttons the notification carries: "enter", "wait" or nothing */
+        const val EXTRA_ACTIONS = "actions"
+        /** the "Go to waiting" button was touched */
+        const val ACTION_WAIT = "com.duetto.platform.WAIT"
 
         // A safety net: if something goes wrong and we do not stop the
         // service, the wake lock does not hang around for ever.
@@ -197,6 +202,15 @@ class ChannelForegroundService : Service() {
             return START_NOT_STICKY
         }
 
+        // A button of the notification, touched from the shade: the
+        // word goes to JavaScript, which is alive under the service,
+        // and does what the button on the screen would do. Nothing
+        // else changes here.
+        if (intent.action == ACTION_WAIT) {
+            ForegroundModule.emitAction("wait")
+            return START_STICKY
+        }
+        intent.getStringExtra(EXTRA_ACTIONS)?.let { currentActions = it }
         intent.getStringExtra(EXTRA_TEXT)?.let { currentText = it }
         intent.getStringExtra(EXTRA_NAME)?.let {
             currentName = it
@@ -337,11 +351,26 @@ class ChannelForegroundService : Service() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
 
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Duetto")
             .setContentText(Notifier.withName(currentName ?: Notifier.name(this), currentText))
             .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(pending)
+        // The buttons: "Enter" while waiting, "Go to waiting" while in
+        // the channel. Leaving for good stays in the app, behind its
+        // question: one touch in the shade is too little for that.
+        when (currentActions) {
+            "enter" -> builder.addAction(0, Strings.enter, Notifier.enterPending(this))
+            "wait" -> builder.addAction(
+                0, Strings.goWaiting,
+                PendingIntent.getService(
+                    this, 4,
+                    Intent(this, ChannelForegroundService::class.java).setAction(ACTION_WAIT),
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                ),
+            )
+        }
+        return builder
             // No `setOngoing`: it is that declaration that makes the
             // notification impossible to dismiss, and on Android 13 and
             // later it is of no use any more. From there on the system

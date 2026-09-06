@@ -20,6 +20,8 @@ import com.facebook.react.bridge.ReactMethod
 class ForegroundModule(private val ctx: ReactApplicationContext) :
     ReactContextBaseJavaModule(ctx) {
 
+    init { live = this }
+
     override fun getName() = "DuettoForeground"
 
     private fun sendToService(
@@ -56,11 +58,28 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
     }
 
     @ReactMethod
-    fun setText(text: String, name: String, promise: Promise) {
+    fun setText(text: String, name: String, actions: String, promise: Promise) {
         sendToService(promise) {
             putExtra(ChannelForegroundService.EXTRA_TEXT, text)
             putExtra(ChannelForegroundService.EXTRA_NAME, name)
+            putExtra(ChannelForegroundService.EXTRA_ACTIONS, actions)
         }
+    }
+
+    /** A button of the notification, said to JavaScript. */
+    private fun sayAction(action: String) {
+        if (!ctx.hasActiveReactInstance()) return
+        try {
+            ctx.getJSModule(com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+                .emit("duettoNotificationAction", action)
+        } catch (_: Exception) {
+        }
+    }
+
+    companion object {
+        /** the module alive, for the service to reach JavaScript through */
+        @Volatile private var live: ForegroundModule? = null
+        fun emitAction(action: String) { live?.sayAction(action) }
     }
 
     /** Takes the quiet note away when it is not true any more. */

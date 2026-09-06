@@ -287,7 +287,7 @@ export async function startListening(): Promise<boolean> {
   const refresh = () => {
     Foreground.setText(presenceLine({
       inChannel: false, peerActive: active, peerPresent: present, name, detached,
-    }), connectionName).catch(() => { /* noop */ });
+    }), connectionName, detached ? '' : 'enter').catch(() => { /* noop */ });
     // A stale alert is worse than no alert: "waiting for you in the
     // channel" is only true while they are actually in there.
     if (!active) Foreground.clearNotification().catch(() => { /* noop */ });

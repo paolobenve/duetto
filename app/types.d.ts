@@ -86,7 +86,7 @@ declare module 'duetto-platform' {
     /** whether the watchdog alarm has anything to watch over */
     watchdogWanted(v: boolean): Promise<boolean>;
     /** text of the standing notification, and the connection name to put in front */
-    setText(text: string, name?: string): Promise<boolean>;
+    setText(text: string, name?: string, actions?: 'enter' | 'wait' | ''): Promise<boolean>;
     stop(): Promise<boolean>;
     notify(name: string, text: string): Promise<boolean>;
     /** quiet news: it does not sound and does not buzz */
