@@ -527,9 +527,15 @@ export default function App() {
       }).catch(() => { /* not this time */ });
     };
     read();
+    // A JavaScript timer sleeps with the screen: with the phone in a
+    // pocket for hours the level stayed at its last reading, and the
+    // other side was told a battery of the afternoon in the evening.
+    // The heartbeat is native and rings with the screen off: the level
+    // is read at every beat as well.
     const timer = setInterval(read, 30_000);
+    const beat = Heartbeat.subscribe(read);
     const sub = AppState.addEventListener('change', (st) => { if (st === 'active') read(); });
-    return () => { alive = false; clearInterval(timer); sub.remove(); };
+    return () => { alive = false; clearInterval(timer); beat(); sub.remove(); };
   }, [inChannel, cfg?.diagnostics]);
 
   /** shown for a moment while pressing: otherwise the effect is invisible */
