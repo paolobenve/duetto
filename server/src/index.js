@@ -46,6 +46,7 @@ import {
   addInvitation, adopt, isBroken, markBroken, noteGuest, noteRoom, mayOpen, read, refresh,
   remove as removePerson, removeInvitation, removeRoom, roomOf, useInvitation,
 } from './devices.js';
+import { credentialsFor as turnCredentials, drop as dropTurn } from './turn.js';
 
 const PORT = parseInt(process.env.PORT || '8787', 10);
 const HOST = process.env.HOST || '127.0.0.1'; // behind a reverse proxy: loopback only
@@ -58,12 +59,14 @@ const TURN_USER = process.env.TURN_USER || '';
 const TURN_PASS = process.env.TURN_PASS || '';
 
 /** To be sent to the clients so they know how to reach the relay. */
-function turnConfig() {
+function turnConfig(ws) {
   if (!TURN_URL || !TURN_PASS) return null;
+  // This phone's own user, when it has one: see turn.js.
+  const own = ws?.pub ? turnCredentials(ws.pub) : null;
   return {
     urls: TURN_URL.split(',').map((u) => u.trim()).filter(Boolean),
-    username: TURN_USER,
-    credential: TURN_PASS,
+    username: own ? own.username : TURN_USER,
+    credential: own ? own.credential : TURN_PASS,
   };
 }
 
@@ -762,7 +765,7 @@ wss.on('connection', (ws, req) => {
         // in beside somebody else may not: telling it lets the app take
         // away a button that would only lead to a closed door.
         opens: ws.opens !== false,
-        turn: turnConfig(),
+        turn: turnConfig(ws),
         stun: stunConfig(),
         polite: others.length === 0,
         peerPresent: !!other,
@@ -980,6 +983,9 @@ function leaveServer(ws) {
   // Their rooms, before they go: whoever was in a pair with them is
   // told that it is broken, wherever they are.
   const theirs = read().rooms.filter((r) => r.owner === ws.who || r.partner === ws.who);
+  // Their relay user, and those of the guests of their rooms.
+  dropTurn(ws.pub);
+  for (const r of theirs) if (r.owner === ws.who && r.guest) dropTurn(r.guest);
   const gone = removePerson(ws.who);
   console.log(`[duetto] ${ws.who} leaves the server (${gone})`);
   send(ws, { type: 'left' });
@@ -1013,8 +1019,10 @@ function ownersBusiness(ws, msg) {
   // rest is the owner's.
   if (msg.type === 'forget' && msg.room) {
     if (!ws.opens) { send(ws, { type: 'error', error: 'not-yours' }); return; }
+    const guest = roomOf(String(msg.room))?.guest;
     const gone = removeRoom(String(msg.room), ws.who);
     console.log(`[duetto] ${ws.who} forgets a room of theirs (${gone})`);
+    if (gone && guest) dropTurn(guest);
     if (!ws.invites) return;
   } else if (!ws.invites) {
     send(ws, { type: 'error', error: 'not-yours' });
@@ -1045,6 +1053,8 @@ function ownersBusiness(ws, msg) {
       // Their card first: whoever is connected with it is told, and
       // let go, so the phone learns at once and not at its next try.
       const pubs = read().devices.filter((d) => d.name === name).map((d) => d.pub);
+      for (const pub of pubs) dropTurn(pub);
+      for (const r of read().rooms) if (r.owner === name && r.guest) dropTurn(r.guest);
       const gone = removePerson(name);
       console.log(`[duetto] ${ws.who} takes ${name} off the list (${gone})`);
       for (const peer of wss.clients) {

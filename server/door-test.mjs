@@ -70,7 +70,13 @@ function ask(ws, obj) {
 let failed = 0;
 const check = (label, ok, detail) => { console.log(`${ok ? 'OK ' : 'FAIL'} ${label}${ok ? '' : ' -> ' + JSON.stringify(detail)}`); if (!ok) failed++; };
 
-const srv = start(PORT, FILE);
+// A relay admin that only writes down what it is asked: the users are
+// made and dropped through it.
+import { writeFileSync, readFileSync, chmodSync } from 'node:fs';
+const ADMIN = `${tmpdir()}/duetto-turnadmin-${process.pid}.sh`;
+const ADMIN_LOG = `${ADMIN}.log`;
+writeFileSync(ADMIN, `#!/bin/sh\necho "$@" >> ${ADMIN_LOG}\n`); chmodSync(ADMIN, 0o755);
+const srv = start(PORT, FILE, { TURN_URL: 'turn:relay.test:3478', TURN_USER: 'shared', TURN_PASS: 'shared', TURN_ADMIN_CMD: ADMIN });
 const srvK = start(PORT_K, FILE_K, { SERVER_KEY: 'sesamo' });
 await sleep(700);
 try {
@@ -145,7 +151,18 @@ try {
   check('the owner comes back', a.answer.type === 'joined', a.answer); a.ws.close(); await sleep(200);
   b = await join(PORT, bruno, '33334444', 'bruno');
   check('a fresh room: anybody on the list opens it', b.answer.type === 'joined', b.answer); b.ws.close(); await sleep(200);
+  // The relay: the first time the shared credential, while the phone's
+  // own user is being made; from then on its own, and dropped when it goes.
+  check('first join: the shared relay credential', b.answer.turn && b.answer.turn.username === 'shared', b.answer.turn);
+  await sleep(300);
+  b = await join(PORT, bruno, '33334444', 'bruno');
+  const own = b.answer.turn && b.answer.turn.username;
+  check('then a relay user of its own', /^[0-9a-f]{12}$/.test(own || '') && b.answer.turn.credential !== 'shared', b.answer.turn);
+  check('made through the admin', readFileSync(ADMIN_LOG, 'utf8').includes(`add ${own} `), readFileSync(ADMIN_LOG, 'utf8'));
+  b.ws.close(); await sleep(200);
   r = await knock(PORT, bruno); await ask(r.ws, { type: 'leave' }); r.ws.close();
+  await sleep(300);
+  check('leaving drops the relay user', readFileSync(ADMIN_LOG, 'utf8').includes(`del ${own}`), readFileSync(ADMIN_LOG, 'utf8'));
   r = await knock(PORT, carla); await ask(r.ws, { type: 'leave' }); r.ws.close();
 
   // A stranger at the door cannot do the owner business.
@@ -176,6 +193,7 @@ try {
 } finally {
   srv.kill(); srvK.kill();
   try { unlinkSync(FILE); } catch {}
+  try { unlinkSync(ADMIN); unlinkSync(ADMIN_LOG); } catch {}
   try { unlinkSync(FILE_K); } catch {}
 }
 console.log(failed ? `\n${failed} FAILED` : '\nALL OK');

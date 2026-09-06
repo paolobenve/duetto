@@ -199,6 +199,34 @@ ls -l /var/backups/duetto/
 To put a copy back: stop the service, copy the file over `devices.json` with the same owner
 and mode, start the service.
 
+### A relay user per phone
+
+With one TURN credential shared by everybody, whoever takes it out of a phone keeps the
+relay for good, and a phone taken off the list keeps it too. Coturn has a user database
+(`/var/lib/turn/turndb` on Debian) that it consults at every request, and the server can
+keep one user per phone in it: made the first time the phone is let in, handed to that
+phone alone with `joined`, dropped when the phone leaves, is taken off, or its pair is
+forgotten. The shared credential stays in `turnserver.conf` as the fallback.
+
+The making and the dropping go through a small script, with sudo:
+
+```bash
+sudo cp /opt/duetto/server/deploy/duetto-turnuser /usr/local/sbin/
+sudo chmod 755 /usr/local/sbin/duetto-turnuser
+sudo cp /opt/duetto/server/deploy/sudoers-duetto-turnuser /etc/sudoers.d/duetto-turnuser
+sudo chmod 440 /etc/sudoers.d/duetto-turnuser
+sudo visudo -c
+```
+
+then, in the server's `.env`:
+
+```
+TURN_ADMIN_CMD=sudo -n /usr/local/sbin/duetto-turnuser
+```
+
+and a restart. `sudo turnadmin -l` lists the users: one per phone, named by a piece of the
+card's fingerprint. The server's log says when one is made or dropped.
+
 ### Keeping the insistent out
 
 The server counts the attempts at its door by itself (`JOIN_LIMIT` per address,

@@ -39,7 +39,7 @@ const FILE = process.env.DEVICES_FILE
 /** A week. Long enough to be handed over calmly, short enough to expire. */
 const INVITE_DAYS = Number(process.env.INVITE_DAYS || 7);
 
-const EMPTY = { devices: [], invitations: [], rooms: [], broken: [] };
+const EMPTY = { devices: [], invitations: [], rooms: [], broken: [], turn: {} };
 /** How long a broken room is remembered, for the side that has not heard. */
 const BROKEN_DAYS = 30;
 
@@ -83,6 +83,7 @@ export function read() {
       invitations: Array.isArray(parsed.invitations) ? parsed.invitations : [],
       rooms: Array.isArray(parsed.rooms) ? parsed.rooms : [],
       broken: Array.isArray(parsed.broken) ? parsed.broken : [],
+      turn: parsed.turn && typeof parsed.turn === 'object' ? parsed.turn : {},
     };
     return cached;
   } catch {
@@ -346,6 +347,25 @@ export function mayOpen(room, who, pub, here) {
 }
 
 /** And that this phone is the other half of it. */
+/** The relay user of this phone: {user, pass}, or null. */
+export function turnOf(pub) {
+  const t = read().turn[pub];
+  return t && t.user && t.pass ? t : null;
+}
+
+export function noteTurn(pub, user, pass) {
+  const data = read();
+  data.turn[pub] = { user, pass, since: new Date().toISOString() };
+  write(data);
+}
+
+export function forgetTurn(pub) {
+  const data = read();
+  if (!(pub in data.turn)) return;
+  delete data.turn[pub];
+  write(data);
+}
+
 export function noteGuest(room, pub) {
   const data = read();
   const known = data.rooms.find((r) => r.room === room);
