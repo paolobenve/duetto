@@ -1235,7 +1235,9 @@ export default function App() {
     // something else happened to move. It was masked - `shownStatus`
     // follows `status` a breath later and dragged the line along - but
     // masked is not cured.
-  }), [inChannel, status, shownStatus, peerPresent, peerDetached, peerTornDown, shownName]);
+  }), [inChannel, status, shownStatus, peerPresent, peerDetached, peerTornDown, shownName,
+    // The words change with the language: the line is written again.
+    cfg?.language]);
 
   /**
    * Since when we have been without a server, or 0 when we have one.
