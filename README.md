@@ -129,7 +129,7 @@ two phones are on different networks — it is all in [docs/DEPLOY.md](docs/DEPL
 
 ### The Android app
 
-What you need first: Node 18+, JDK 17, the Android SDK (`ANDROID_HOME`).
+What you need first: Node 18+, JDK 21 (the one F-Droid builds with: `scripts/jdk21.js` makes React Native use it), the Android SDK (`ANDROID_HOME`).
 
 ```bash
 cd app

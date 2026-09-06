@@ -1,0 +1,1 @@
+No server? The first screen now says how to ask to be a beta tester, and takes you there. Rooms now belong to the two phones that made them.

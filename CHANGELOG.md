@@ -14,7 +14,19 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
-## 0.9.9 build 275
+## 0.9.10 build 281
+
+**Version 0.9.10: how to ask to be a beta tester, and rooms that belong to their phones.**
+No server? The first screen now says that Duetto is looking for beta testers, with a button
+that opens the GitLab work item, template and title already in place. On the server, a
+room belongs to the two phones that made it: a phone on the list is let into its own rooms,
+or into a free second seat only while the owner is in - the pairing itself - and told
+"this pair is not yours" otherwise; invitations refuse a name already on the list; a join
+limit for everybody together sits beside the one per address; and the app stops knocking
+after a definite refusal instead of retrying every few seconds. Deploy: a daily copy of
+`devices.json` and a fail2ban jail for the door, both in `deploy/`. The app is built with
+JDK 21, as F-Droid does (`scripts/jdk21.js`), so that the two builds are the same bytes.
+
 
 **Version 0.9.9: packaged as F-Droid asks.** The APK no longer carries the «dependency
 metadata» block that the Android plugin adds for Google Play - a binary blob F-Droid's
