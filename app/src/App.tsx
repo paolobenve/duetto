@@ -473,6 +473,13 @@ export default function App() {
    * reaction presses again.
    */
   const [leaving, setLeaving] = useState(false);
+  /**
+   * When the channel was last left by the button. Leaving puts the
+   * window away, and coming back to the foreground means coming back
+   * in - but not when the window bounces back within a moment of the
+   * leaving, as one phone did: the leaving was annulled by itself.
+   */
+  const leftByHandAt = useRef(0);
 
   /**
    * How far we are lifting the other voice, 1 = as it arrived.
@@ -1876,6 +1883,10 @@ export default function App() {
       // the notification - means wanting to be in the channel: we go
       // back in without asking anything.
       if (!wasActive && !inChannelRef.current && signalingRef.current) {
+        if (Date.now() - leftByHandAt.current < 15_000) {
+          Journal.mark('reentry-skipped:just-left').catch(() => {});
+          return;
+        }
         enterChannelRef.current?.();
       }
     });
@@ -3089,8 +3100,12 @@ export default function App() {
     // Leaving the channel is leaving the app: the window disappears.
     // The process stays alive, though, so that you remain reachable and
     // get the notification when the other person comes in. Opening the
-    // app again brings you straight back into the channel.
-    if (!quiet) AppWindow.minimize().catch(() => {});
+    // app again brings you straight back into the channel - unless it
+    // comes back within a moment, which is no opening at all.
+    if (!quiet) {
+      leftByHandAt.current = Date.now();
+      AppWindow.minimize().catch(() => {});
+    }
   }, [putAwayChannel, cfg?.pair?.id]);
 
   /**

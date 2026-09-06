@@ -414,6 +414,24 @@ export default function ChannelScreen(props: Props) {
   const [qualityMenu, setQualityMenu] = useState(false);
   /** the two ways out, by holding "Leave" */
   const [leaveMenu, setLeaveMenu] = useState(false);
+  /**
+   * Where the row of controls sits, measured when the question opens:
+   * "Stay in the channel" is laid over that very band, so that a
+   * second touch in the same place as the first - a finger that
+   * doubles, a screen that touches itself - lands on staying, and the
+   * two ways out sit above, where nothing was touched.
+   */
+  const controlsRef = useRef<View>(null);
+  const [leaveBand, setLeaveBand] = useState<{ bottomGap: number; height: number } | null>(null);
+  const windowHeight = useWindowDimensions().height;
+  const openLeaveMenu = useCallback(() => {
+    const node = controlsRef.current;
+    if (!node) { setLeaveBand(null); setLeaveMenu(true); return; }
+    node.measureInWindow((_x, y, _w, h) => {
+      setLeaveBand(h > 0 ? { bottomGap: windowHeight - (y + h), height: h } : null);
+      setLeaveMenu(true);
+    });
+  }, [windowHeight]);
   /** the fading menu, opened by holding a finger on the picture */
   const [fadeMenu, setFadeMenu] = useState(false);
   /** the sounds for calling the other person back, by holding "Call" */
@@ -1134,7 +1152,7 @@ export default function ChannelScreen(props: Props) {
             {versionWarning}
           </Text>
         ) : null}
-        <View style={styles.controls}>
+        <View style={styles.controls} ref={controlsRef} collapsable={false}>
         <CircleButton
           covered={covered}
           label={t('buttons.video')}
@@ -1234,8 +1252,8 @@ export default function ChannelScreen(props: Props) {
            * wants. A single touch no longer takes anybody out of
            * anywhere.
            */
-          onPress={press(() => setLeaveMenu(true))}
-          onLongPress={press(() => setLeaveMenu(true))}
+          onPress={press(openLeaveMenu)}
+          onLongPress={press(openLeaveMenu)}
         />
         </View>
         {showStats ? (
@@ -1361,7 +1379,11 @@ export default function ChannelScreen(props: Props) {
         animationType="fade"
         onRequestClose={() => setLeaveMenu(false)}>
         <Pressable style={styles.sheetBack} onPress={() => setLeaveMenu(false)}>
-          <View style={styles.sheet}>
+          <View style={[
+            styles.sheet,
+            // Above the band of the controls, when it is known.
+            leaveBand ? { marginBottom: leaveBand.bottomGap + leaveBand.height + 12 - 16 } : null,
+          ]}>
             <Text style={styles.sheetTitle}>{t('channel.leaveTitle')}</Text>
             <TouchableOpacity
               style={styles.sheetRow}
@@ -1393,14 +1415,25 @@ export default function ChannelScreen(props: Props) {
                 to: touching outside works, but that is something one
                 has to know, and whoever finds this question in front of
                 them without having asked for it does not. */}
-            <TouchableOpacity
-              style={styles.sheetRow}
-              onPress={(e) => { signTouch('leave-cancel', e); setLeaveMenu(false); }}>
-              <View style={styles.sheetText}>
-                <Text style={styles.sheetLabel}>{t('channel.stayInChannel')}</Text>
-              </View>
-            </TouchableOpacity>
+            {leaveBand ? null : (
+              <TouchableOpacity
+                style={styles.sheetRow}
+                onPress={(e) => { signTouch('leave-cancel', e); setLeaveMenu(false); }}>
+                <View style={styles.sheetText}>
+                  <Text style={styles.sheetLabel}>{t('channel.stayInChannel')}</Text>
+                </View>
+              </TouchableOpacity>
+            )}
           </View>
+          {leaveBand ? (
+            // Over the controls, "Leave" included: the same place as
+            // the touch that opened this.
+            <TouchableOpacity
+              style={[styles.stayBand, { bottom: leaveBand.bottomGap - 6, minHeight: leaveBand.height + 12 }]}
+              onPress={(e) => { signTouch('leave-cancel', e); setLeaveMenu(false); }}>
+              <Text style={styles.sheetLabel}>{t('channel.stayInChannel')}</Text>
+            </TouchableOpacity>
+          ) : null}
         </Pressable>
       </Modal>
 
@@ -2186,6 +2219,12 @@ const styles = StyleSheet.create({
   sheetRow: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
     paddingHorizontal: 14, paddingVertical: 15, borderRadius: 12,
+  },
+  stayBand: {
+    position: 'absolute', left: 16, right: 16,
+    justifyContent: 'center', alignItems: 'center',
+    backgroundColor: '#151a23', borderRadius: 16, borderWidth: 1, borderColor: '#252c38',
+    paddingHorizontal: 14,
   },
   sheetIcon: { fontSize: 20 },
   sheetLabel: { color: '#c9d2de', fontSize: 17, flex: 1 },
