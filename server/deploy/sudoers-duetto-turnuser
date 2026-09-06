@@ -1,3 +1,0 @@
-# The signalling server's user may make and drop relay users, through
-# the script alone. Goes in /etc/sudoers.d/duetto-turnuser (mode 440).
-duetto ALL=(root) NOPASSWD: /usr/local/sbin/duetto-turnuser

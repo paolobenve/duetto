@@ -17,29 +17,53 @@
  * handed its own credentials with `joined`. Coturn reads its database
  * at every request: no restart, and a dropped user is out at once.
  *
- * The making and the dropping go through a small script with sudo
- * (deploy/duetto-turnuser), named by TURN_ADMIN_CMD; without it, or
- * while the user is not made yet, the shared credential stands in.
+ * The making and the dropping are writes to that database, with the
+ * sqlite3 command: TURN_DB names the file and TURN_REALM the realm,
+ * and the service's user has to be in coturn's group. (The service
+ * runs with "no new privileges", so sudo is not a road: a script of
+ * one's own can be named by TURN_ADMIN_CMD instead, `add user pass` /
+ * `del user`.) Without either, or while the user is not made yet, the
+ * shared credential stands in.
+ *
+ * Coturn's long-term key is md5("user:realm:password"), in hex: that
+ * is what goes in the table, never the password.
  */
 import { execFile } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { forgetTurn, noteTurn, turnOf } from './devices.js';
 
+const DB = (process.env.TURN_DB || '').trim();
+const REALM = (process.env.TURN_REALM || '').trim();
 const CMD = (process.env.TURN_ADMIN_CMD || '').trim();
+const ENABLED = !!((DB && REALM) || CMD);
 
 /** The user's name: a piece of the card's fingerprint, letters and figures only. */
 export function userFor(pub) {
   return createHash('sha256').update(String(pub)).digest('hex').slice(0, 12);
 }
 
-function run(args) {
+function exec(cmd, args) {
   return new Promise((resolve, reject) => {
-    const [cmd, ...head] = CMD.split(/\s+/).filter(Boolean);
-    execFile(cmd, [...head, ...args], { timeout: 10_000 }, (e, out, err) => {
+    execFile(cmd, args, { timeout: 10_000 }, (e, out, err) => {
       if (e) reject(new Error(String(err || e.message).trim().split('\n')[0]));
       else resolve(out);
     });
   });
+}
+
+/** `add user pass` or `del user`, by the database or by the script. */
+function run(args) {
+  if (DB && REALM) {
+    const q = (s) => `'${String(s).replace(/'/g, "''")}'`;
+    const [op, user, pass] = args;
+    const sql = op === 'add'
+      ? `INSERT OR REPLACE INTO turnusers_lt(realm,name,hmackey) VALUES(${q(REALM)},${q(user)},`
+        + `${q(createHash('md5').update(`${user}:${REALM}:${pass}`).digest('hex'))});`
+      : `DELETE FROM turnusers_lt WHERE realm=${q(REALM)} AND name=${q(user)};`;
+    return exec('sqlite3', [DB, sql]);
+  }
+  const [cmd, ...head] = CMD.split(/\s+/).filter(Boolean);
+  return exec(cmd, [...head, ...args]);
 }
 
 const making = new Set();
@@ -49,7 +73,7 @@ const making = new Set();
  * then they are made in the background, for the next time.
  */
 export function credentialsFor(pub) {
-  if (!CMD || !pub) return null;
+  if (!ENABLED || !pub) return null;
   const known = turnOf(pub);
   if (known) return { username: known.user, credential: known.pass };
   make(pub);
@@ -71,7 +95,7 @@ function make(pub) {
 
 /** The phone is gone: its relay user goes with it. */
 export function drop(pub) {
-  if (!CMD || !pub) return;
+  if (!ENABLED || !pub) return;
   const known = turnOf(pub);
   forgetTurn(pub);
   run(['del', known ? known.user : userFor(pub)]).then(() => {

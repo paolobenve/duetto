@@ -208,24 +208,30 @@ keep one user per phone in it: made the first time the phone is let in, handed t
 phone alone with `joined`, dropped when the phone leaves, is taken off, or its pair is
 forgotten. The shared credential stays in `turnserver.conf` as the fallback.
 
-The making and the dropping go through a small script, with sudo:
+The making and the dropping are plain writes to that database with `sqlite3` (the
+long-term key coturn keeps is `md5("user:realm:password")`, never the password). The
+service runs with no new privileges, so there is no sudo in the way: its user joins
+coturn's group, the database is group-writable, and the unit is allowed to write there:
 
 ```bash
-sudo cp /opt/duetto/server/deploy/duetto-turnuser /usr/local/sbin/
-sudo chmod 755 /usr/local/sbin/duetto-turnuser
-sudo cp /opt/duetto/server/deploy/sudoers-duetto-turnuser /etc/sudoers.d/duetto-turnuser
-sudo chmod 440 /etc/sudoers.d/duetto-turnuser
-sudo visudo -c
+sudo apt-get install sqlite3
+sudo usermod -aG turnserver duetto
+sudo chmod 660 /var/lib/turn/turndb
+sudo systemctl edit duetto-signaling      # add, under [Service]:
+#   SupplementaryGroups=turnserver
+#   ReadWritePaths=/var/lib/turn
 ```
 
 then, in the server's `.env`:
 
 ```
-TURN_ADMIN_CMD=sudo -n /usr/local/sbin/duetto-turnuser
+TURN_DB=/var/lib/turn/turndb
+TURN_REALM=example.org
 ```
 
-and a restart. `sudo turnadmin -l` lists the users: one per phone, named by a piece of the
-card's fingerprint. The server's log says when one is made or dropped.
+and `systemctl daemon-reload` plus a restart. `sudo turnadmin -l` lists the users: one per
+phone, named by a piece of the card's fingerprint. The server's log says when one is made
+or dropped.
 
 ### Keeping the insistent out
 
