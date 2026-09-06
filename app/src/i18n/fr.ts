@@ -15,6 +15,13 @@ import type { Dictionary } from './en';
  * se connaissent.
  */
 export const fr: Dictionary = {
+  google: {
+    title: 'Google et les applis qui ne passent pas par lui',
+    body: 'Duetto ne passe pas par Google Play et n’a pas besoin de Google. À partir de septembre 2026 dans certains pays, et de 2027 partout, Google fait que les téléphones Android refusent les applis de qui ne lui a pas remis son identité, même venues de F-Droid ou d’un fichier téléchargé. Ce n’est pas de la sécurité pour toi : c’est le contrôle de qui peut écrire des programmes pour ton téléphone. Une pétition existe pour l’arrêter.',
+    sign: 'Signer la pétition',
+    later: 'Me le montrer plus tard',
+    never: 'Ne plus le montrer',
+  },
   errors: {
     memberLeft: '{who} a quitté le serveur',
     memberLeftBody: '{who} a renoncé à utiliser {server} pour ses liaisons. Les paires avec cette personne ne marchent plus ; pour revenir il lui faudrait une nouvelle invitation.',

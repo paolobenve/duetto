@@ -31,6 +31,16 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.9.11',
+    notes: {
+      en: ['A word about Google, once, with the petition to sign: from 2026 the phones refuse the apps of whoever has not handed Google their identity.'],
+      it: ['Una parola su Google, una volta sola, con la petizione da firmare: dal 2026 i telefoni rifiutano le app di chi non gli ha consegnato la propria identità.'],
+      es: ['Una palabra sobre Google, una sola vez, con la petición para firmar: desde 2026 los teléfonos rechazan las apps de quien no le ha entregado su identidad.'],
+      pt: ['Uma palavra sobre o Google, uma só vez, com a petição para assinar: a partir de 2026 os telefones recusam os apps de quem não lhe entregou a própria identidade.'],
+      fr: ['Un mot sur Google, une seule fois, avec la pétition à signer : dès 2026 les téléphones refusent les applis de qui ne lui a pas remis son identité.'],
+    },
+  },
+  {
     version: '0.9.10',
     notes: {
       en: ['No server? The first screen now says how to ask to be a beta tester, and takes you there.'],

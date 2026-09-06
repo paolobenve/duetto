@@ -10,9 +10,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   StatusBar, Platform, PermissionsAndroid, Alert, View, AppState, DeviceEventEmitter,
-  ActivityIndicator, StyleSheet, BackHandler, Dimensions,
+  ActivityIndicator, StyleSheet, BackHandler, Dimensions, Linking,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { PETITION_LINK } from './links';
 import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
 import {
@@ -330,6 +331,43 @@ export default function App() {
    * only for room.
    */
   const [onCall, setOnCall] = useState(false);
+  /**
+   * A word about Google, once you are in: from September 2026 the
+   * certified Android phones refuse the apps of whoever has not handed
+   * Google their identity, wherever the app comes from. Said once, with
+   * the petition to sign; "later" is a week, "never" is never.
+   */
+  const GOOGLE_NOTICE_LATER_MS = 7 * 24 * 3600_000;
+  useEffect(() => {
+    if (!inChannel || screen !== 'channel' || !cfg) return;
+    const at = cfg.googleNoticeAt;
+    if (at === 'never' || (typeof at === 'number' && at > Date.now())) return;
+    const timer = setTimeout(() => {
+      const remember = (next: number | 'never') => {
+        setCfg((prev) => (prev ? saveCfg({ ...prev, googleNoticeAt: next }) : prev));
+      };
+      Journal.mark('google-notice:shown').catch(() => {});
+      Alert.alert(
+        t('google.title'),
+        t('google.body'),
+        [
+          { text: t('google.never'), onPress: () => { Journal.mark('google-notice:never').catch(() => {}); remember('never'); } },
+          { text: t('google.later'), onPress: () => { Journal.mark('google-notice:later').catch(() => {}); remember(Date.now() + GOOGLE_NOTICE_LATER_MS); } },
+          {
+            text: t('google.sign'),
+            onPress: () => {
+              Journal.mark('google-notice:sign').catch(() => {});
+              remember('never');
+              Linking.openURL(PETITION_LINK).catch(() => {});
+            },
+          },
+        ],
+        { cancelable: true, onDismiss: () => remember(Date.now() + GOOGLE_NOTICE_LATER_MS) },
+      );
+    }, 6000);
+    return () => clearTimeout(timer);
+  }, [inChannel, screen, cfg?.googleNoticeAt]);
+
   useEffect(() => {
     if (!inChannel) { setOnCall(false); return; }
     /**

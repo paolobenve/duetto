@@ -21,6 +21,13 @@
  * use; the same holes must appear in every translation.
  */
 export const en = {
+  google: {
+    title: 'Google and the apps that do not go through it',
+    body: 'Duetto does not go through Google Play and does not need Google. From September 2026 in some countries, and from 2027 everywhere, Google makes Android phones refuse the apps of whoever has not handed Google their identity, even when they come from F-Droid or from a downloaded file. It is not security for you: it is control over who may write programs for your phone. There is a petition to stop it.',
+    sign: 'Sign the petition',
+    later: 'Show me later',
+    never: 'Do not show again',
+  },
   errors: {
     memberLeft: '{who} has left the server',
     memberLeftBody: '{who} gave up using {server} for their connections. The pairs with them no longer work; to come back they would need a new invitation.',

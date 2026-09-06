@@ -11,6 +11,13 @@ import type { Dictionary } from './en';
 
 /** Le parole italiane. La struttura la detta `en`, che è il riferimento. */
 export const it: Dictionary = {
+  google: {
+    title: 'Google e le app che non passano da lui',
+    body: 'Duetto non passa da Google Play e non ha bisogno di Google. Da settembre 2026 in alcuni paesi, e dal 2027 ovunque, Google fa in modo che i telefoni Android rifiutino le app di chi non gli ha consegnato la propria identità, anche se arrivano da F-Droid o da un file scaricato. Non è sicurezza per te: è il controllo su chi può scrivere programmi per il tuo telefono. C’è una petizione per fermarlo.',
+    sign: 'Firma la petizione',
+    later: 'Mostramelo più tardi',
+    never: 'Non mostrarlo più',
+  },
   errors: {
     memberLeft: '{who} ha lasciato il server',
     memberLeftBody: '{who} ha rinunciato a usare {server} per le sue connessioni. Le coppie con lui non funzionano più; per tornare gli servirebbe un nuovo invito.',

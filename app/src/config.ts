@@ -243,6 +243,11 @@ export type DuoConfig = {
   setupShown: boolean;
   /** the settings tab last looked at: it is where one comes back to */
   settingsTab?: 'links' | 'use';
+  /**
+   * The notice about Google's developer verification: when to show it
+   * next (a time), or never again.
+   */
+  googleNoticeAt?: number | 'never';
   /** how much to spend on video: bandwidth and battery */
   videoQuality: VideoQuality;
   /**

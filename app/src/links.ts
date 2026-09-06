@@ -13,6 +13,9 @@ import { displayServer, normalizeServerUrl } from './config';
  * Where to ask to be a beta tester: a GitLab work item with the template
  * and the title already in place, the same link the README gives.
  */
+/** The petition against Google's developer verification of every app. */
+export const PETITION_LINK = 'https://keepandroidopen.org/';
+
 export const BETA_TESTER_LINK =
   'https://gitlab.com/paolobenve/duetto/-/issues/new?issuable_template=Beta_tester&issue%5Btitle%5D=Beta%20tester%3A%20%3Cadd%20here%20your%20%28nick%29name%3E';
 
