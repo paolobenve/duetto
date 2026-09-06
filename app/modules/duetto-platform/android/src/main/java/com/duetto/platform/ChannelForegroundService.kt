@@ -106,6 +106,8 @@ class ChannelForegroundService : Service() {
         const val EXTRA_IN_CHANNEL = "inChannel"
         /** which buttons the notification carries: "enter", "wait" or nothing */
         const val EXTRA_ACTIONS = "actions"
+        const val EXTRA_ENTER_LABEL = "enterLabel"
+        const val EXTRA_WAIT_LABEL = "waitLabel"
         /** the "Go to waiting" button was touched */
         const val ACTION_WAIT = "com.duetto.platform.WAIT"
 
@@ -211,6 +213,11 @@ class ChannelForegroundService : Service() {
             return START_STICKY
         }
         intent.getStringExtra(EXTRA_ACTIONS)?.let { currentActions = it }
+        Notifier.rememberLabels(
+            this,
+            intent.getStringExtra(EXTRA_ENTER_LABEL) ?: "",
+            intent.getStringExtra(EXTRA_WAIT_LABEL) ?: "",
+        )
         intent.getStringExtra(EXTRA_TEXT)?.let { currentText = it }
         intent.getStringExtra(EXTRA_NAME)?.let {
             currentName = it
@@ -360,9 +367,9 @@ class ChannelForegroundService : Service() {
         // the channel. Leaving for good stays in the app, behind its
         // question: one touch in the shade is too little for that.
         when (currentActions) {
-            "enter" -> builder.addAction(0, Strings.enter, Notifier.enterPending(this))
+            "enter" -> builder.addAction(0, Notifier.enterLabel(this), Notifier.enterPending(this))
             "wait" -> builder.addAction(
-                0, Strings.goWaiting,
+                0, Notifier.waitLabel(this),
                 PendingIntent.getService(
                     this, 4,
                     Intent(this, ChannelForegroundService::class.java).setAction(ACTION_WAIT),

@@ -103,8 +103,9 @@ export const Foreground = isAndroid && NativeForeground
        * is folded, and that is exactly where one needs to know which of
        * the connections one is in.
        */
-      setText: (text, name, actions) =>
-        call(NativeForeground, 'setText', String(text), String(name || ''), String(actions || '')),
+      setText: (text, name, actions, labels) =>
+        call(NativeForeground, 'setText', String(text), String(name || ''), String(actions || ''),
+          String(labels?.enter || ''), String(labels?.wait || '')),
 
       /** Stops the service and releases the wake lock. */
       stop: () => call(NativeForeground, 'stop'),

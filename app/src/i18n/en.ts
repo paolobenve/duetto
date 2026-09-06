@@ -106,6 +106,8 @@ export const en = {
   },
 
   presence: {
+    enter: 'Enter',
+    wait: 'Go to waiting',
     wereInChannel: 'You were in the channel with {who}: touch to go back in.',
     theOther: 'the other phone',
     inChannel: 'You are in the channel',

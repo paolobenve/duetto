@@ -58,11 +58,16 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
     }
 
     @ReactMethod
-    fun setText(text: String, name: String, actions: String, promise: Promise) {
+    fun setText(
+        text: String, name: String, actions: String,
+        enterLabel: String, waitLabel: String, promise: Promise,
+    ) {
         sendToService(promise) {
             putExtra(ChannelForegroundService.EXTRA_TEXT, text)
             putExtra(ChannelForegroundService.EXTRA_NAME, name)
             putExtra(ChannelForegroundService.EXTRA_ACTIONS, actions)
+            putExtra(ChannelForegroundService.EXTRA_ENTER_LABEL, enterLabel)
+            putExtra(ChannelForegroundService.EXTRA_WAIT_LABEL, waitLabel)
         }
     }
 

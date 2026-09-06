@@ -95,6 +95,8 @@ export const fr: Dictionary = {
   },
 
   presence: {
+    enter: 'Entrer',
+    wait: 'Passer en attente',
     wereInChannel: 'Tu étais dans le canal avec {who} : touche pour y revenir.',
     theOther: 'l’autre',
     inChannel: 'Tu es dans le canal',

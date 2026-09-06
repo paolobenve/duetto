@@ -1305,7 +1305,8 @@ export default function App() {
     const text = noticeTextRef.current;
     // The button beside the line: "Enter" while waiting, "Go to
     // waiting" while in.
-    Foreground.setText(text, alertNameRef.current, inChannelRef.current ? 'wait' : 'enter').then(() => {
+    Foreground.setText(text, alertNameRef.current, inChannelRef.current ? 'wait' : 'enter',
+      { enter: t('presence.enter'), wait: t('presence.wait') }).then(() => {
       writtenNotice.current = text;
     }).catch(() => {
       if (left <= 0) return;

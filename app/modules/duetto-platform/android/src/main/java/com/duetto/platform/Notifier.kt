@@ -206,6 +206,28 @@ object Notifier {
      * presence notification appears before the app has spoken, and
      * without this it would not say which connection it is waiting on.
      */
+    /**
+     * The words on the buttons, in the app's language rather than the
+     * phone's: JavaScript says them with every line, and they are kept
+     * for the presence without an interface, which builds its own
+     * notification. Empty, the phone's language stands in.
+     */
+    private const val KEY_ENTER = "label_enter"
+    private const val KEY_WAIT = "label_wait"
+    fun rememberLabels(ctx: Context, enter: String, wait: String) {
+        if (enter.isEmpty() && wait.isEmpty()) return
+        try {
+            ctx.getSharedPreferences(BootReceiver.PREFS, Context.MODE_PRIVATE)
+                .edit().putString(KEY_ENTER, enter).putString(KEY_WAIT, wait).apply()
+        } catch (_: Exception) { /* noop */ }
+    }
+    private fun label(ctx: Context, key: String, fallback: String): String = try {
+        ctx.getSharedPreferences(BootReceiver.PREFS, Context.MODE_PRIVATE)
+            .getString(key, null)?.takeIf { it.isNotEmpty() } ?: fallback
+    } catch (_: Exception) { fallback }
+    fun enterLabel(ctx: Context) = label(ctx, KEY_ENTER, Strings.enter)
+    fun waitLabel(ctx: Context) = label(ctx, KEY_WAIT, Strings.goWaiting)
+
     fun name(ctx: Context): String {
         return try {
             ctx.getSharedPreferences(BootReceiver.PREFS, Context.MODE_PRIVATE)
@@ -269,7 +291,7 @@ object Notifier {
             .setContentText(withName(name(service), Strings.waiting))
             .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(pending)
-            .addAction(0, Strings.enter, enterPending(service))
+            .addAction(0, enterLabel(service), enterPending(service))
             // No `setOngoing`: it is that declaration that makes the
             // notification impossible to dismiss, and on Android 13 and
             // later it is of no use any more. From there on the system
