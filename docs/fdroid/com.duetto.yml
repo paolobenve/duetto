@@ -1,6 +1,5 @@
 Categories:
-  - Connectivity
-  - Phone & SMS
+  - Voice & Video Chat
 License: GPL-3.0-or-later
 AuthorName: Paolo Benvenuto
 WebSite: https://gitlab.com/paolobenve/duetto
@@ -37,7 +36,6 @@ Builds:
       - app/node_modules/@react-native-async-storage/async-storage/android/build.gradle
       - app/node_modules/react-native-get-random-values/android/build.gradle
       - app/node_modules/react-native-svg/android/build.gradle
-      - app/node_modules/react-native/ReactAndroid/publish.gradle
     scandelete:
       - app/node_modules
 
