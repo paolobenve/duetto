@@ -89,11 +89,25 @@ denied-peer-ip=127.0.0.0-127.255.255.255
 denied-peer-ip=169.254.0.0-169.254.255.255
 denied-peer-ip=172.16.0.0-172.31.255.255
 denied-peer-ip=192.168.0.0-192.168.255.255
+# The carriers' shared range (CGNAT), and the private IPv6 ranges, for
+# a server that answers on IPv6 too.
+denied-peer-ip=100.64.0.0-100.127.255.255
+denied-peer-ip=::1
+denied-peer-ip=fc00::-fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+denied-peer-ip=fe80::-febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+# WebRTC relays UDP only. The TCP relay (RFC 6062) would let whoever
+# holds the credentials use the server as a proxy to any TCP service.
+no-tcp-relay
+# The phones speak TLS 1.2 and 1.3.
+no-tlsv1
+no-tlsv1_1
 
 # Limits, so as not to leave the relay at the disposal of anybody who
-# finds out the credentials: two phones do not use more than a few dozen.
+# finds out the credentials: two phones do not use more than a few dozen,
+# and one conversation, video included, stays well under 4 Mbit/s.
 user-quota=12
 total-quota=100
+max-bps=4000000
 
 # Log. In a directory of its own, because /var/log itself is not
 # writable by the turnserver user - and a log file coturn cannot open
