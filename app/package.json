@@ -11,7 +11,7 @@
     "build:apk": "npm run sync && npm run patch && npm run bump && rm -rf android/app/build/generated/assets android/app/build/intermediates/assets && cd android && ./gradlew assembleRelease",
     "lint": "eslint .",
     "tsc": "tsc --noEmit",
-    "postinstall": "node scripts/sync-local-modules.js",
+    "postinstall": "node scripts/sync-local-modules.js && node scripts/jdk21.js",
     "bump": "node scripts/bump-build.js"
   },
   "dependencies": {
