@@ -22,8 +22,8 @@
  */
 export const en = {
   google: {
-    title: 'Google and the apps that do not go through it',
-    body: 'Duetto does not go through Google Play and does not need Google. From September 2026 in some countries, and from 2027 everywhere, Google makes Android phones refuse the apps of whoever has not handed Google their identity, even when they come from F-Droid or from a downloaded file. It is not security for you: it is control over who may write programs for your phone. There is a petition to stop it.',
+    title: 'Google wants to decide which apps you use',
+    body: 'From 2027 Android phones will refuse the apps of whoever has not handed Google their identity, wherever they come from. Whoever makes Duetto does not intend to: Duetto will install only on phones without Google services, or through ADB. There is a petition to stop all this.',
     sign: 'Sign the petition',
     later: 'Show me later',
     never: 'Do not show again',

@@ -12,8 +12,8 @@ import type { Dictionary } from './en';
 /** Le parole italiane. La struttura la detta `en`, che è il riferimento. */
 export const it: Dictionary = {
   google: {
-    title: 'Google e le app che non passano da lui',
-    body: 'Duetto non passa da Google Play e non ha bisogno di Google. Da settembre 2026 in alcuni paesi, e dal 2027 ovunque, Google fa in modo che i telefoni Android rifiutino le app di chi non gli ha consegnato la propria identità, anche se arrivano da F-Droid o da un file scaricato. Non è sicurezza per te: è il controllo su chi può scrivere programmi per il tuo telefono. C’è una petizione per fermarlo.',
+    title: 'Google vuole decidere quali app usi',
+    body: 'Dal 2027 i telefoni Android rifiuteranno le app di chi non ha consegnato a Google la propria identità, da qualunque parte arrivino. Chi fa Duetto non intende farlo: Duetto si installerà solo sui telefoni senza servizi Google, o via ADB. C’è una petizione per fermare tutto questo.',
     sign: 'Firma la petizione',
     later: 'Mostramelo più tardi',
     never: 'Non mostrarlo più',

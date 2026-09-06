@@ -16,8 +16,8 @@ import type { Dictionary } from './en';
  */
 export const es: Dictionary = {
   google: {
-    title: 'Google y las apps que no pasan por él',
-    body: 'Duetto no pasa por Google Play y no necesita a Google. Desde septiembre de 2026 en algunos países, y desde 2027 en todas partes, Google hace que los teléfonos Android rechacen las apps de quien no le ha entregado su identidad, aunque vengan de F-Droid o de un archivo descargado. No es seguridad para ti: es control sobre quién puede escribir programas para tu teléfono. Hay una petición para detenerlo.',
+    title: 'Google quiere decidir qué apps usas',
+    body: 'Desde 2027 los teléfonos Android rechazarán las apps de quien no haya entregado a Google su identidad, vengan de donde vengan. Quien hace Duetto no piensa hacerlo: Duetto se instalará solo en teléfonos sin servicios de Google, o por ADB. Hay una petición para detener todo esto.',
     sign: 'Firmar la petición',
     later: 'Mostrar más tarde',
     never: 'No mostrar más',
