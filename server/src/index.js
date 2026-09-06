@@ -453,6 +453,8 @@ function leaveRoom(ws) {
   const set = rooms.get(roomId);
   if (!set) return;
   set.delete(ws);
+  console.log(`[duetto] ${ws.who || ws.name || '?'} out of room ${roomId.slice(0, 4)}… `
+    + `(${ws.saidBye ? 'bye' : ws.replaced ? 'replaced' : 'dropped'}, ${set.size} left)`);
   // If this connection has been replaced by the same device hooking up
   // again, the other one must see no departure at all: the place is
   // taken once more, and announcing it would bring the good connection
@@ -736,6 +738,11 @@ wss.on('connection', (ws, req) => {
       ws.joined = true;
       ws.name = cleanName(msg.name);
       ws.mode = MODES.includes(msg.mode) ? msg.mode : 'listening';
+      // One line per coming and going, for the questions of the day
+      // after: "when did they disappear?". The room by its first
+      // figures only: the log is not the place for a whole code.
+      console.log(`[duetto] ${ws.who || ws.name || '?'} in room ${roomId.slice(0, 4)}… `
+        + `(${set.size} in, ${ws.mode})`);
 
       // "polite" in the sense of WebRTC's perfect negotiation: whoever
       // was in the room already gives way if the offers collide.
