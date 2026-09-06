@@ -103,10 +103,17 @@ no-tlsv1
 no-tlsv1_1
 
 # Limits, so as not to leave the relay at the disposal of anybody who
-# finds out the credentials: two phones do not use more than a few dozen,
-# and one conversation, video included, stays well under 4 Mbit/s.
-user-quota=12
-total-quota=100
+# finds out the credentials. The quotas count relay sessions at once;
+# with one credential shared by all the phones, as here, user-quota is
+# the one that bites, so it goes up to the relay ports below (41 of
+# them, 49160-49200). And a session's port stays taken until it
+# expires: a phone that changes network cannot close the old one, so
+# two minutes rather than the ten a phone asks for - it renews every
+# minute, one small packet. One conversation, video included, stays
+# well under 4 Mbit/s.
+user-quota=40
+total-quota=40
+max-allocate-lifetime=120
 max-bps=4000000
 
 # Log. In a directory of its own, because /var/log itself is not
