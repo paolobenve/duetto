@@ -62,6 +62,9 @@ export type ChannelEvents = {
     camera?: string;
     /** how loudly they are listening to US: 1 = as we send it */
     volume?: number;
+    /** the two halves of `volume`, when they say them: the phone's knob (0..1) and Duetto's gain */
+    volSys?: number | null;
+    gain?: number;
     /** in another call on the phone */
     busy?: boolean;
     /** their battery, when they say */
@@ -443,6 +446,9 @@ export class ChannelSession {
    * know where the knob stands over here.
    */
   private heardLevel = 1;
+  /** the two halves of `heardLevel`, told alongside: the phone's knob (0..1, null if unknown) and our gain */
+  private heardSys: number | null = null;
+  private heardGain = 1;
 
   /** The audio sender of the live connection. */
   private liveAudioSender(): any {
@@ -812,6 +818,8 @@ export class ChannelSession {
         recvDelay: msg.recvDelay,
         camera: msg.camera,
         volume: msg.volume,
+        volSys: typeof msg.volSys === 'number' ? msg.volSys : null,
+        gain: typeof msg.gain === 'number' ? msg.gain : undefined,
         busy: msg.busy === true,
         battery: typeof msg.batteryPct === 'number'
           ? { percent: msg.batteryPct, charging: msg.charging === true }
@@ -2034,6 +2042,8 @@ export class ChannelSession {
       recvDelay: this.recvDelay ?? undefined,
       camera: this.isFrontCamera() ? 'front' : 'back',
       volume: this.heardLevel,
+      volSys: this.heardSys,
+      gain: this.heardGain,
       video: this.isVideoEnabled(),
       aspect: this.getLocalVideoAspect(),
       watching: this.localWatching,
@@ -2069,11 +2079,14 @@ export class ChannelSession {
   }
 
   /** The level declared to the other side; it changes the telling, not the sound. */
-  setHeardLevel(l: number) {
+  setHeardLevel(l: number, sys: number | null = null, gain = 1) {
     // Zero is a value like any other: it means they are not heard at
     // all, and that is precisely what the other side needs to know.
-    if (!(l >= 0) || l === this.heardLevel) return;
+    if (!(l >= 0)) return;
+    if (l === this.heardLevel && sys === this.heardSys && gain === this.heardGain) return;
     this.heardLevel = l;
+    this.heardSys = sys;
+    this.heardGain = gain;
     this.broadcastState();
   }
 

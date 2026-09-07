@@ -603,6 +603,9 @@ export default function App() {
     busy?: boolean;
     /** their battery, when they say */
     battery?: { percent: number; charging: boolean } | null;
+    /** the two halves of `volume`, when they say them */
+    volSys?: number | null;
+    gain?: number;
     /** where the sound comes out over there: they say so */
     output?: string;
     /** which Duetto they have; missing if older than this field */
@@ -1024,8 +1027,12 @@ export default function App() {
    * on your phone stands.
    */
   useEffect(() => {
-    sessionRef.current?.setHeardLevel(level);
-  }, [level, inChannel]);
+    sessionRef.current?.setHeardLevel(
+      level,
+      systemVolume.max > 0 ? systemVolume.volume / systemVolume.max : null,
+      gain,
+    );
+  }, [level, inChannel, systemVolume.volume, systemVolume.max, gain]);
 
   /**
    * Turns the LEVEL up or down, sharing the work between the two

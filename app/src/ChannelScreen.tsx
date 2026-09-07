@@ -15,7 +15,7 @@ import {
 import type { GestureResponderEvent } from 'react-native';
 import { MediaStream } from 'react-native-webrtc';
 import { Journal, Proximity } from 'duetto-platform';
-import { t } from './i18n';
+import { t, currentLanguage } from './i18n';
 import type { PresenceStatus } from './signaling';
 import VideoStage from './VideoStage';
 import { AudioRoute, routeLabel } from './audioRoute';
@@ -282,6 +282,9 @@ type Props = {
     busy?: boolean;
     /** their battery, when they say */
     battery?: { percent: number; charging: boolean } | null;
+    /** the two halves of `volume`, when they say them */
+    volSys?: number | null;
+    gain?: number;
   };
   /** in another call on THIS phone: Duetto is silent until it ends */
   onCall?: boolean;
@@ -792,6 +795,18 @@ export default function ChannelScreen(props: Props) {
    * having to ask aloud.
    */
   const percent = (v?: number) => `${Math.round((v ?? 1) * 100)}%`;
+  /**
+   * The level with its two halves: "25%×2.5=62%" - the phone's knob,
+   * Duetto's gain, what is really heard. With diagnostics on one wants
+   * to see which half moves under the volume keys, and which does not.
+   * Without the halves (an older app on the other side) the product alone.
+   */
+  const levelText = (applied?: number, sys?: number | null, gain?: number) => {
+    if (sys == null || gain == null) return percent(applied);
+    const comma = currentLanguage() !== 'en';
+    const g = (Math.round(gain * 100) / 100).toString().replace('.', comma ? ',' : '.');
+    return `${Math.round(sys * 100)}%×${g}=${percent(applied)}`;
+  };
 
   const peerBadge = React.useMemo(() => (
     <>
@@ -952,9 +967,15 @@ export default function ChannelScreen(props: Props) {
                     <Text style={styles.cardVolume} numberOfLines={1}>
                       {[
                         peerState.volume != null
-                          ? t('channel.hearsYou', { pct: percent(peerState.volume) })
+                          ? t('channel.hearsYou', { pct: levelText(peerState.volume, peerState.volSys, peerState.gain) })
                           : '',
-                        t('channel.youHear', { pct: percent(peerGain) }),
+                        t('channel.youHear', {
+                          pct: levelText(
+                            peerGain,
+                            systemVolume && systemVolume.max > 0 ? systemVolume.volume / systemVolume.max : null,
+                            gain ?? undefined,
+                          ),
+                        }),
                       ].filter(Boolean).join(' · ')}
                     </Text>
                   ) : null}

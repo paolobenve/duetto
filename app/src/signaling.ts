@@ -63,7 +63,7 @@ export type SignalMessage =
       /** in another call on the phone: silent both ways until it ends */
       busy?: boolean;
       /** the battery, for the other side's diagnostics */
-      batteryPct?: number; charging?: boolean }
+      batteryPct?: number; charging?: boolean; volSys?: number | null; gain?: number }
   // "I did not leave: the phone closed the window on me."
   //
   // Sent by the headless presence when it takes the place of an app
