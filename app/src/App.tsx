@@ -631,6 +631,11 @@ export default function App() {
   const [knockPending, setKnockPending] = useState(false);
   /** their video track really arriving, not merely announced */
   const [remoteHasVideo, setRemoteHasVideo] = useState(false);
+  /** The screen stays awake only while there is video to look at. */
+  useEffect(() => {
+    if (!inChannel) return;
+    try { InCallManager.setKeepScreenOn(videoOn || remoteHasVideo); } catch { /* noop */ }
+  }, [inChannel, videoOn, remoteHasVideo]);
   /**
    * Bumped every time their video starts again. It serves as a React
    * key: it forces the viewer to be recreated instead of reattached to
@@ -2850,6 +2855,12 @@ export default function App() {
 
     try {
       InCallManager.start({ media: 'audio' });
+      // InCallManager, like a phone app in a call, sets "keep the
+      // screen on" at start: with Duetto left in front for hours the
+      // screen never went off, and it was the screen - 600 to 1300 mA
+      // an hour - that emptied one phone. Off here: the phone's own
+      // timeout rules, and only the video keeps the screen awake.
+      InCallManager.setKeepScreenOn(false);
     } catch { /* noop */ }
     // From here on the CPU must not doze: the service holds the wake
     // lock only while one is really in the channel.
