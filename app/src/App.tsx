@@ -1925,7 +1925,10 @@ export default function App() {
       // the notification - means wanting to be in the channel: we go
       // back in without asking anything.
       if (!wasActive && !inChannelRef.current && signalingRef.current) {
-        if (Date.now() - leftByHandAt.current < 15_000) {
+        // Three seconds: the bounce seen was one second, and whoever
+        // really opens the app again takes longer than that. Fifteen
+        // caught a person who left and came straight back on purpose.
+        if (Date.now() - leftByHandAt.current < 3_000) {
           Journal.mark('reentry-skipped:just-left').catch(() => {});
           return;
         }
