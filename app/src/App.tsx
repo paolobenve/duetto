@@ -3808,6 +3808,7 @@ export default function App() {
         // The screen is given the LEVEL, not the gain: it is the number
         // that says how loud you are hearing the other person.
         gain={levelShowing ? level : null}
+        ownGain={gain}
         peerGain={level}
         systemVolume={systemVolume}
         onChangeLevel={changeLevel}

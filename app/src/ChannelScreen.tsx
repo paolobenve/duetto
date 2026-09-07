@@ -230,6 +230,8 @@ type Props = {
    * same.
    */
   gain?: number | null;
+  /** Duetto's own gain for the output in use, the second half of the level */
+  ownGain?: number;
   /**
    * The level right now, for the audio menu.
    *
@@ -347,7 +349,7 @@ type Props = {
  */
 export default function ChannelScreen(props: Props) {
   const {
-    entered, onEnter,
+    entered, onEnter, ownGain,
     connectionName, peerName, peerAvatar, peerPresent, peerDetached, peerTornDown, videoStats, peerSendDelay, peerRecvDelay, delayTotalOnly, qualityLabel, showStats, controls, onSelectControls, news, onNewsRead, gain, peerGain, systemVolume, onChangeLevel,
     versionWarning, frontCamera, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
@@ -979,7 +981,7 @@ export default function ChannelScreen(props: Props) {
                           pct: levelText(
                             peerGain,
                             systemVolume && systemVolume.max > 0 ? systemVolume.volume / systemVolume.max : null,
-                            gain ?? undefined,
+                            ownGain,
                           ),
                         }),
                       ].filter(Boolean).join(' · ')}
