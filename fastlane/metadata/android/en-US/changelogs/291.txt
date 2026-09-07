@@ -1,0 +1,1 @@
+Buttons on the notification (Enter / Go to waiting). The screen no longer stays on in an audio-only channel. A sturdier exit: a repeated touch keeps you in. The battery level told to the other side stays fresh. A word about Google, once, with the petition.

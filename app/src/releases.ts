@@ -33,11 +33,41 @@ export const RELEASES: Release[] = [
   {
     version: '0.9.11',
     notes: {
-      en: ['A word about Google, once, with the petition to sign: from 2026 the phones refuse the apps of whoever has not handed Google their identity.'],
-      it: ['Una parola su Google, una volta sola, con la petizione da firmare: dal 2026 i telefoni rifiutano le app di chi non gli ha consegnato la propria identità.'],
-      es: ['Una palabra sobre Google, una sola vez, con la petición para firmar: desde 2026 los teléfonos rechazan las apps de quien no le ha entregado su identidad.'],
-      pt: ['Uma palavra sobre o Google, uma só vez, com a petição para assinar: a partir de 2026 os telefones recusam os apps de quem não lhe entregou a própria identidade.'],
-      fr: ['Un mot sur Google, une seule fois, avec la pétition à signer : dès 2026 les téléphones refusent les applis de qui ne lui a pas remis son identité.'],
+      en: [
+        'Buttons on the notification: "Enter" while waiting, "Go to waiting" while in the channel.',
+        'The screen no longer stays on in an audio-only channel: only the video keeps it awake.',
+        'Leaving: "Stay in the channel" sits right over the Leave button, so a second touch in the same place keeps you in; and a leaving is not undone by the app coming back for a moment.',
+        'The battery level told to the other side stays fresh with the screen off.',
+        'A word about Google, once, with the petition to sign.',
+      ],
+      it: [
+        'Pulsanti sulla notifica: «Entra» in attesa, «Vai in attesa» nel canale.',
+        'Lo schermo non resta più acceso nel canale solo audio: lo tiene sveglio solo il video.',
+        'Uscita: «Resta nel canale» sta proprio sopra il pulsante Esci, così un secondo tocco nello stesso punto ti tiene dentro; e un’uscita non viene annullata dall’app che torna davanti per un attimo.',
+        'Il livello della batteria detto all’altro resta aggiornato a schermo spento.',
+        'Una parola su Google, una volta sola, con la petizione da firmare.',
+      ],
+      es: [
+        'Botones en la notificación: «Entrar» en espera, «Ir a la espera» en el canal.',
+        'La pantalla ya no se queda encendida en el canal solo de audio: solo el vídeo la mantiene despierta.',
+        'Salida: «Quedarse en el canal» está justo sobre el botón Salir, así un segundo toque en el mismo sitio te mantiene dentro; y una salida no la deshace la app al volver un instante.',
+        'El nivel de batería que se dice al otro se mantiene actualizado con la pantalla apagada.',
+        'Una palabra sobre Google, una sola vez, con la petición para firmar.',
+      ],
+      pt: [
+        'Botões na notificação: «Entrar» em espera, «Ir para a espera» no canal.',
+        'A tela não fica mais acesa no canal só de áudio: só o vídeo a mantém acordada.',
+        'Saída: «Ficar no canal» fica bem sobre o botão Sair, assim um segundo toque no mesmo lugar mantém você dentro; e uma saída não é desfeita pelo app voltar por um instante.',
+        'O nível de bateria dito ao outro fica atualizado com a tela apagada.',
+        'Uma palavra sobre o Google, uma só vez, com a petição para assinar.',
+      ],
+      fr: [
+        'Des boutons sur la notification : « Entrer » en attente, « Passer en attente » dans le canal.',
+        'L’écran ne reste plus allumé dans le canal audio seul : seule la vidéo le garde éveillé.',
+        'Sortie : « Rester dans le canal » se trouve juste sur le bouton Quitter, ainsi un second toucher au même endroit te garde dedans ; et une sortie n’est pas annulée par l’appli qui revient un instant.',
+        'Le niveau de batterie dit à l’autre reste à jour écran éteint.',
+        'Un mot sur Google, une seule fois, avec la pétition à signer.',
+      ],
     },
   },
   {

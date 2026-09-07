@@ -14,7 +14,23 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
-## 0.9.10 build 281
+## 0.9.11 build 291
+
+**Version 0.9.11: buttons on the notification, a screen that sleeps, a sturdier exit.**
+The standing notification carries "Enter" while waiting and "Go to waiting" while in the
+channel (labels in the app's language, the line rewritten on a change of language). The
+screen is no longer kept on in an audio-only channel - InCallManager set that flag at
+start, and a phone left in front spent 600-1300 mA an hour on its screen - only video
+keeps it awake. Leaving: "Stay in the channel" is laid over the band of the controls, so a
+repeated touch keeps one in, and a leaving by the button is not undone by the window
+bouncing back within fifteen seconds. The battery level is read on the native heartbeat
+too, so the other side is told a fresh one with the screen off. A word about Google's
+developer verification, once, with the petition. On the server: rooms belong to the two
+phones that made them, invitations refuse a name already on the list, a join limit for
+everybody together, one log line per coming and going, a relay user per phone in coturn's
+database, a daily copy of `devices.json`, a fail2ban jail for the door, and a hardened
+coturn example. Built with JDK 21, as F-Droid does.
+
 
 **Version 0.9.10: how to ask to be a beta tester, and rooms that belong to their phones.**
 No server? The first screen now says that Duetto is looking for beta testers, with a button

@@ -1,0 +1,1 @@
+Botões na notificação (Entrar / Ir para a espera). A tela não fica mais acesa no canal só de áudio. Saída mais robusta: um segundo toque mantém você dentro. O nível de bateria dito ao outro fica atualizado. Uma palavra sobre o Google, uma vez, com a petição.
