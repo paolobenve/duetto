@@ -634,10 +634,20 @@ export default function App() {
   const [knockPending, setKnockPending] = useState(false);
   /** their video track really arriving, not merely announced */
   const [remoteHasVideo, setRemoteHasVideo] = useState(false);
-  /** The screen stays awake only while there is video to look at. */
+  /**
+   * The screen stays awake only while there is video to look at.
+   *
+   * Said again at every return to the foreground: InCallManager sets
+   * "keep the screen on" back on its own each time the app resumes
+   * (its onHostResume restarts its events), so saying it once after
+   * start was not enough - one opening of the app and the screen was
+   * held again for hours.
+   */
+  const keepScreenRef = useRef(false);
   useEffect(() => {
+    keepScreenRef.current = inChannel && (videoOn || remoteHasVideo);
     if (!inChannel) return;
-    try { InCallManager.setKeepScreenOn(videoOn || remoteHasVideo); } catch { /* noop */ }
+    try { InCallManager.setKeepScreenOn(keepScreenRef.current); } catch { /* noop */ }
   }, [inChannel, videoOn, remoteHasVideo]);
   /**
    * Bumped every time their video starts again. It serves as a React
@@ -1878,6 +1888,13 @@ export default function App() {
       if (s !== 'active') return;
 
       Foreground.clearNotification().catch(() => {});
+      // InCallManager has just set "keep the screen on" again on its
+      // own resume: our word, once more, a moment later.
+      if (inChannelRef.current) {
+        setTimeout(() => {
+          try { InCallManager.setKeepScreenOn(keepScreenRef.current); } catch { /* noop */ }
+        }, 300);
+      }
       // The fixed line, if the shade is not showing what it should: a
       // write refused while we were in the background, or a service
       // put back on its feet underneath us with the words of before.
