@@ -142,6 +142,9 @@ export const en = {
   },
 
   channel: {
+    notEntered: 'You are out of the channel',
+    notEnteredBody: 'Touch Enter to go back in.',
+    enter: 'Enter',
     screenCovered: 'Screen covered: the buttons are held. Touch three times to insist.',
     charging: 'charging',
     notCharging: 'not charging',

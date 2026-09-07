@@ -130,6 +130,9 @@ export const it: Dictionary = {
   },
 
   channel: {
+    notEntered: 'Sei fuori dal canale',
+    notEnteredBody: 'Tocca Entra per rientrare.',
+    enter: 'Entra',
     screenCovered: 'Schermo coperto: pulsanti bloccati. Tocca tre volte per insistere.',
     charging: 'in carica',
     notCharging: 'non in carica',

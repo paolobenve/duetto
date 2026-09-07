@@ -131,6 +131,9 @@ export const es: Dictionary = {
   },
 
   channel: {
+    notEntered: 'Estás fuera del canal',
+    notEnteredBody: 'Toca Entrar para volver a entrar.',
+    enter: 'Entrar',
     screenCovered: 'Pantalla cubierta: botones bloqueados. Toca tres veces para insistir.',
     charging: 'cargando',
     notCharging: 'sin cargar',

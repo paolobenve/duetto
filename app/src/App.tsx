@@ -3875,6 +3875,8 @@ export default function App() {
         onCall={onCall}
         pairBroken={!!cfg.pair?.brokenByPeer}
         battery={battery}
+        entered={inChannel}
+        onEnter={() => { leftByHandAt.current = 0; Journal.mark('command:enter-card').catch(() => {}); enterChannel(); }}
       />
     </View>
   );

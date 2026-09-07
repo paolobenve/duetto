@@ -270,6 +270,9 @@ type Props = {
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
   status: PresenceStatus;
+  /** false when the screen is up but the phone is not in the channel: it shows the way in */
+  entered?: boolean;
+  onEnter?: () => void;
   connectionState: string;
   audioOn: boolean;
   videoOn: boolean;
@@ -344,6 +347,7 @@ type Props = {
  */
 export default function ChannelScreen(props: Props) {
   const {
+    entered, onEnter,
     connectionName, peerName, peerAvatar, peerPresent, peerDetached, peerTornDown, videoStats, peerSendDelay, peerRecvDelay, delayTotalOnly, qualityLabel, showStats, controls, onSelectControls, news, onNewsRead, gain, peerGain, systemVolume, onChangeLevel,
     versionWarning, frontCamera, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
@@ -955,6 +959,8 @@ export default function ChannelScreen(props: Props) {
           />
         ) : (
           <PresenceCard
+            entered={entered}
+            onEnter={onEnter}
             connectionName={connectionName}
             peerMark={
               <View style={styles.cardMarkCol}>
@@ -1593,6 +1599,8 @@ function PresenceMini(props: {
 
 function PresenceCard(props: {
   status: PresenceStatus;
+  entered?: boolean;
+  onEnter?: () => void;
   /** the link is carrying: connected, or still delivering packets */
   linked: boolean;
   connectionState: string;
@@ -1624,6 +1632,25 @@ function PresenceCard(props: {
       <View style={styles.card}>
         <ActivityIndicator size="large" color="#2f7cf6" />
         <Text style={styles.cardTitle}>{t('channel.connectingToChannel')}</Text>
+      </View>
+    );
+  }
+
+  // The screen is up but the phone is not in: the automatic entry was
+  // held back (a window that came back within a moment of leaving). No
+  // "establishing" that never ends: the door, and one touch opens it.
+  if (props.entered === false) {
+    return (
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>{t('channel.notEntered')}</Text>
+        <Text style={styles.cardSub}>
+          {peerPresent
+            ? t('channel.peerInChannel', { who: peerName || t('channel.theOther') })
+            : t('channel.notEnteredBody')}
+        </Text>
+        <TouchableOpacity style={styles.enterButton} onPress={props.onEnter}>
+          <Text style={styles.enterButtonText}>{t('channel.enter')}</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -2241,6 +2268,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 14,
     paddingHorizontal: 14, paddingVertical: 15, borderRadius: 12,
   },
+  enterButton: {
+    marginTop: 18, backgroundColor: '#2f7cf6', borderRadius: 12,
+    paddingVertical: 14, paddingHorizontal: 34,
+  },
+  enterButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
   stayBand: {
     position: 'absolute', left: 16, right: 16,
     justifyContent: 'center', alignItems: 'center',
