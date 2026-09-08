@@ -16,6 +16,7 @@ import {
   mediaDevices,
   MediaStream,
 } from 'react-native-webrtc';
+import { Journal } from 'duetto-platform';
 import type { DuoConfig } from './config';
 import { iceServers, VIDEO_PROFILES, CAPTURE_FPS } from './config';
 import type { Signaling, SignalMessage } from './signaling';
@@ -366,6 +367,9 @@ export class ChannelSession {
   private peerVp9 = false;
 
   private polite = false;
+  /** frames encoded at the last sample, and since when they stopped growing with the video on */
+  private lastFramesEncoded = 0;
+  private stalledSince = 0;
   private makingOffer = false;
   private ignoreOffer = false;
   /** When the offer that is being ignored was set aside: see onSignal. */
@@ -564,6 +568,8 @@ export class ChannelSession {
     // The measurements follow the connection, not our camera: with the
     // other side's video alone there is still something to show.
     this.lastOutbound = null;
+    this.lastFramesEncoded = 0;
+    this.stalledSince = 0;
     this.lastInbound = null;
     this.lastWait = {};
     this.termsLogged = '';
@@ -686,6 +692,8 @@ export class ChannelSession {
          * on screen seconds behind, just when it has changed.
          */
         this.lastOutbound = null;
+    this.lastFramesEncoded = 0;
+    this.stalledSince = 0;
         this.lastInbound = null;
         this.logOutboundVideo();
         setTimeout(() => this.logOutboundVideo(), 1000);
@@ -779,6 +787,39 @@ export class ChannelSession {
     // event: if one is already under way, the check inside negotiate()
     // lets it carry on without overlapping.
     if (!polite) await this.negotiate();
+  }
+
+  /**
+   * The video channel must carry our track out, not only theirs in.
+   *
+   * On the polite side the transceiver that came with their offer is
+   * receive-only until somebody says otherwise, and replacing its
+   * track alone sends nothing: the other side sees black - one phone
+   * did, for an afternoon, and switching the video off and on changed
+   * nothing, because nobody ever renegotiated. So: the direction set
+   * to sendrecv, and a renegotiation - ours if we may offer, asked of
+   * them if we may not. Called when the video goes on, and again when
+   * the encoder is seen standing still with the video on.
+   */
+  private async ensureVideoSending(why: string) {
+    const pc: any = this.pc;
+    const sender = this.videoSender;
+    if (!pc || !sender) return;
+    let tr: any = null;
+    try { tr = pc.getTransceivers?.().find((t: any) => t.sender === sender) ?? null; } catch { /* noop */ }
+    const dir = tr?.direction ?? '?';
+    const cur = tr?.currentDirection ?? '?';
+    Journal.mark(`video:${why}:dir=${dir}/${cur} polite=${this.polite ? 'yes' : 'no'}`).catch(() => { /* noop */ });
+    if (tr && dir !== 'sendrecv') {
+      try { tr.direction = 'sendrecv'; } catch (e) { log('direction not set:', String(e)); }
+    }
+    if (dir === 'sendrecv' && cur === 'sendrecv' && why === 'on') return;
+    if (this.polite) {
+      log('renegotiation asked of them');
+      this.signaling.sendSignal({ kind: 'renegotiate' });
+    } else {
+      await this.negotiate();
+    }
   }
 
   private async negotiate() {
@@ -1376,6 +1417,24 @@ export class ChannelSession {
           };
           this.lastOutbound = { ts: r.timestamp, bytes: r.bytesSent };
           limit = r.qualityLimitationReason ?? '?';
+          // The encoder standing still with the video on: black over
+          // there. Eight seconds of it, and the channel is put right.
+          const fe = Number(r.framesEncoded ?? 0);
+          if (this.isVideoEnabled()) {
+            if (fe > this.lastFramesEncoded) {
+              this.lastFramesEncoded = fe;
+              this.stalledSince = 0;
+            } else if (!this.stalledSince) {
+              this.stalledSince = Date.now();
+            } else if (Date.now() - this.stalledSince > 8_000) {
+              this.stalledSince = Date.now();
+              log('video encoder standing still: putting the channel right');
+              this.ensureVideoSending('stalled').catch(() => { /* noop */ });
+            }
+          } else {
+            this.lastFramesEncoded = fe;
+            this.stalledSince = 0;
+          }
         } else if (r.type === 'inbound-rtp') {
           out.in = {
             w: r.frameWidth ?? 0,
@@ -1729,12 +1788,15 @@ export class ChannelSession {
       // Fallback, if the video channel had not been opened in advance.
       this.videoSender = this.pc.addTrack(track, local);
     }
+    await this.ensureVideoSending('on');
 
     // If the other side is not watching in the meantime, the camera
     // stays on for the preview but nothing goes out of the channel.
     if (!this.peerWatching) await this.applyPeerWatching();
 
     this.lastOutbound = null;
+    this.lastFramesEncoded = 0;
+    this.stalledSince = 0;
 
     this.events.onLocalStream?.(this.localStream);
     this.broadcastState();
@@ -1862,6 +1924,8 @@ export class ChannelSession {
     // The sample starts again from here: otherwise the first bandwidth
     // shown after the change would be an average straddling it.
     this.lastOutbound = null;
+    this.lastFramesEncoded = 0;
+    this.stalledSince = 0;
     this.lastInbound = null;
     this.lastWait = {};
     this.termsLogged = '';
@@ -1983,6 +2047,8 @@ export class ChannelSession {
     }
 
     this.lastOutbound = null;
+    this.lastFramesEncoded = 0;
+    this.stalledSince = 0;
 
     this.events.onLocalStream?.(this.localStream);
     this.broadcastState();
@@ -2135,6 +2201,8 @@ export class ChannelSession {
     this.creating = null;
     if (this.statsTimer) { clearInterval(this.statsTimer); this.statsTimer = null; }
     this.lastOutbound = null;
+    this.lastFramesEncoded = 0;
+    this.stalledSince = 0;
     this.lastInbound = null;
     this.lastWait = {};
     this.termsLogged = '';
