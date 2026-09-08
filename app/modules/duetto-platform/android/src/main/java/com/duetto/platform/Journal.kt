@@ -61,7 +61,12 @@ object Journal {
     /** The last death already written down: the others are old news. */
     const val LAST_DEATH = "last_recorded_death"
 
-    /** Past this size the file is rotated: one step back and no more. */
+    /**
+     * Past this size the file is rotated: .1 becomes .2, .2 becomes .3
+     * and so on, and nothing is thrown away - for now, the history is
+     * worth more than the megabytes. Half a megabyte is a day or two of
+     * one phone's lines.
+     */
     private const val MAX_SIZE = 512L * 1024L
 
     private val format = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
@@ -595,9 +600,14 @@ object Journal {
      */
     private fun rotateIfBig(file: File) {
         if (!file.exists() || file.length() < MAX_SIZE) return
-        val old = File(file.parentFile, file.name + ".1")
-        if (old.exists()) old.delete()
-        file.renameTo(old)
+        val dir = file.parentFile ?: return
+        // The highest number kept so far, then everything one step back.
+        var last = 0
+        while (File(dir, "${file.name}.${last + 1}").exists()) last++
+        for (n in last downTo 1) {
+            File(dir, "${file.name}.$n").renameTo(File(dir, "${file.name}.${n + 1}"))
+        }
+        file.renameTo(File(dir, file.name + ".1"))
     }
 
     /** Our own journal, from the line starting at `from` onwards. */
