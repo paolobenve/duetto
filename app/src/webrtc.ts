@@ -16,7 +16,7 @@ import {
   mediaDevices,
   MediaStream,
 } from 'react-native-webrtc';
-import { Journal } from 'duetto-platform';
+import { Journal, Heartbeat } from 'duetto-platform';
 import type { DuoConfig } from './config';
 import { iceServers, VIDEO_PROFILES, CAPTURE_FPS } from './config';
 import type { Signaling, SignalMessage } from './signaling';
@@ -292,6 +292,8 @@ export class ChannelSession {
    */
   private heavyVideo = false;
   private statsTimer: ReturnType<typeof setInterval> | null = null;
+  /** the sampling on the native heartbeat too: the timer stands still with the app put away */
+  private statsBeat: (() => void) | null = null;
   /** Whether the technical lines are being watched: it sets the pace below. */
   private diagnostics = false;
   /** the other side says its camera is on: the `state` message tells us */
@@ -1262,6 +1264,7 @@ export class ChannelSession {
     const every = this.diagnostics || unwell
       ? ChannelSession.STATS_MS : ChannelSession.STATS_SLOW_MS;
     this.statsTimer = setInterval(() => { this.logOutboundVideo(); }, every);
+    if (!this.statsBeat) this.statsBeat = Heartbeat.subscribe(() => { this.logOutboundVideo(); });
   }
 
   /** Follows the diagnostics switch: it changes the pace above. */
@@ -2200,6 +2203,7 @@ export class ChannelSession {
     this.generation += 1;
     this.creating = null;
     if (this.statsTimer) { clearInterval(this.statsTimer); this.statsTimer = null; }
+    if (this.statsBeat) { this.statsBeat(); this.statsBeat = null; }
     this.lastOutbound = null;
     this.lastFramesEncoded = 0;
     this.stalledSince = 0;

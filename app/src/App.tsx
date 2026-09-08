@@ -400,6 +400,14 @@ export default function App() {
         } catch { /* asked again in a moment */ }
       }, 4000);
     };
+    // The retry above stands still while the app is not in front: the
+    // heartbeat asks too, once a beat, as long as we are asking.
+    const askBeat = Heartbeat.subscribe(() => {
+      if (!retry) return;
+      Promise.resolve((InCallManager as any).requestAudioFocus?.()).then((r: any) => {
+        if (String(r ?? '').includes('GRANTED')) back('asked');
+      }).catch(() => { /* asked again at the next beat */ });
+    });
     // The buttons of the standing notification. "Go to waiting" comes
     // as a word from the service; "Enter" comes as the channel link,
     // through the app being opened on it - cold, or already alive.
@@ -434,6 +442,7 @@ export default function App() {
       sub.remove();
       actions.remove();
       links.remove();
+      askBeat();
       if (retry) clearInterval(retry);
       sessionRef.current?.hush(false);
       sessionRef.current?.duck(false);
@@ -3231,7 +3240,10 @@ export default function App() {
   useEffect(() => {
     if (screen !== 'channel') return;
     let refresh = 0;
-    const timer = setInterval(() => {
+    // Also at every native heartbeat: the interval below stands still
+    // while the app is not in front, and two people talking with the
+    // screen off are exactly the case this net is for.
+    const check = () => {
       /**
        * The drawer is kept fresh while one is in the channel.
        *
@@ -3273,8 +3285,10 @@ export default function App() {
       recoveryBegunAt.current = Date.now();
       if (politeRef.current) sig.sendSignal({ kind: 'renegotiate' });
       else attachPeer(true);
-    }, 5000);
-    return () => clearInterval(timer);
+    };
+    const timer = setInterval(check, 5000);
+    const beat = Heartbeat.subscribe(check);
+    return () => { clearInterval(timer); beat(); };
   }, [screen, attachPeer]);
 
   // --- the Back key: Picture-in-Picture ------------------------------------
