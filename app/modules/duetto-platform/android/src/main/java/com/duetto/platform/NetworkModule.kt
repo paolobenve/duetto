@@ -389,6 +389,26 @@ class NetworkModule(private val ctx: ReactApplicationContext) :
      * roads, the escape from the relay - happens exactly as it would
      * have then.
      */
+    /** Which network carries the traffic now: "wifi", "mobile", "other" or "none". */
+    @ReactMethod
+    fun kind(promise: Promise) {
+        val c = cm
+        if (c == null) { promise.resolve("none"); return }
+        try {
+            val caps = c.getNetworkCapabilities(c.activeNetwork)
+            promise.resolve(
+                when {
+                    caps == null -> "none"
+                    caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "wifi"
+                    caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "mobile"
+                    else -> "other"
+                },
+            )
+        } catch (e: Exception) {
+            promise.resolve("none")
+        }
+    }
+
     @ReactMethod
     fun recheck(promise: Promise) {
         val c = cm

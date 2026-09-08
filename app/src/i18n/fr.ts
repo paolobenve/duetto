@@ -131,6 +131,8 @@ export const fr: Dictionary = {
   },
 
   channel: {
+    onWifi: 'en wifi',
+    onMobile: 'en données mobiles',
     notEntered: 'Tu es hors du canal',
     notEnteredBody: 'Touche Entrer pour y revenir.',
     enter: 'Entrer',

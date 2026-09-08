@@ -131,6 +131,8 @@ export const pt: Dictionary = {
   },
 
   channel: {
+    onWifi: 'no wifi',
+    onMobile: 'nos dados móveis',
     notEntered: 'Você está fora do canal',
     notEnteredBody: 'Toque em Entrar para voltar.',
     enter: 'Entrar',

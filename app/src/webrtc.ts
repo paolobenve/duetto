@@ -69,6 +69,8 @@ export type ChannelEvents = {
     busy?: boolean;
     /** their battery, when they say */
     battery?: { percent: number; charging: boolean } | null;
+    /** the network carrying them, when they say: 'wifi', 'mobile', ... */
+    net?: string | null;
   }) => void;
   /**
    * Whether we are receiving a video track.
@@ -326,6 +328,13 @@ export class ChannelSession {
   private ducked = false;
   /** the battery, told to the other side for their diagnostics */
   private battery: { percent: number; charging: boolean } | null = null;
+  /** the network carrying us, told with the battery: with diagnostics on */
+  private network: string | null = null;
+  setNetwork(n: string | null) {
+    if (n === this.network) return;
+    this.network = n;
+    this.broadcastState();
+  }
 
   setBattery(b: { percent: number; charging: boolean } | null) {
     const same = (!!b === !!this.battery)
@@ -824,6 +833,7 @@ export class ChannelSession {
         battery: typeof msg.batteryPct === 'number'
           ? { percent: msg.batteryPct, charging: msg.charging === true }
           : null,
+        net: typeof msg.net === 'string' ? msg.net : null,
       });
       this.setPeerWatching(msg.watching !== false);
       // What the other side declares goes into the judgement on
@@ -2051,6 +2061,7 @@ export class ChannelSession {
       busy: this.hushed,
       batteryPct: this.battery?.percent,
       charging: this.battery?.charging,
+      net: this.network ?? undefined,
     });
   }
 

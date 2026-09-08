@@ -440,6 +440,8 @@ export const Network = isAndroid && NativeNetwork
        * hear the system's word. See NetworkModule.
        */
       recheck: () => call(NativeNetwork, 'recheck'),
+      /** which network carries the traffic now: 'wifi', 'mobile', 'other' or 'none' */
+      kind: () => call(NativeNetwork, 'kind'),
 
       /**
        * The emergency lane: mobile data switched on and every socket

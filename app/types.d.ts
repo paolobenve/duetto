@@ -69,6 +69,8 @@ declare module 'duetto-platform' {
     reportNotCarrying(): Promise<boolean>;
     /** looks at the network now, and announces a change nobody heard */
     recheck(): Promise<boolean>;
+    /** which network carries the traffic now: 'wifi', 'mobile', 'other' or 'none' */
+    kind(): Promise<string>;
     /** the emergency lane: mobile data on and every socket bound to it */
     requestMobile(): Promise<boolean>;
     probeViaMobile(host: string, port: number, timeoutMs: number): Promise<boolean>;

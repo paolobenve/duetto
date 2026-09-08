@@ -287,6 +287,8 @@ type Props = {
     busy?: boolean;
     /** their battery, when they say */
     battery?: { percent: number; charging: boolean } | null;
+    /** the network carrying them, when they say */
+    net?: string | null;
     /** the two halves of `volume`, when they say them */
     volSys?: number | null;
     gain?: number;
@@ -297,6 +299,8 @@ type Props = {
   pairBroken?: boolean;
   /** the battery, with the diagnostics on: percent and charger */
   battery?: { percent: number; charging: boolean } | null;
+  /** the network carrying us: 'wifi', 'mobile', ... */
+  network?: string | null;
   /** the other person's video track really arriving */
   remoteHasVideo: boolean;
   /** changes at every restart of the remote video, to rebuild the view */
@@ -349,7 +353,7 @@ type Props = {
  */
 export default function ChannelScreen(props: Props) {
   const {
-    entered, onEnter, ownGain,
+    entered, onEnter, ownGain, network,
     connectionName, peerName, peerAvatar, peerPresent, peerDetached, peerTornDown, videoStats, peerSendDelay, peerRecvDelay, delayTotalOnly, qualityLabel, showStats, controls, onSelectControls, news, onNewsRead, gain, peerGain, systemVolume, onChangeLevel,
     versionWarning, frontCamera, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
@@ -991,7 +995,7 @@ export default function ChannelScreen(props: Props) {
                 </View>
                 {showStats && (battery || peerState.battery) ? (
                   <Text style={styles.cardVolume} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-                    {batteryLine(battery, peerState.battery)}
+                    {batteryLine(battery, peerState.battery, network, peerState.net)}
                   </Text>
                 ) : null}
               </View>
@@ -1294,6 +1298,8 @@ export default function ChannelScreen(props: Props) {
             { height: statsLineCount(videoStats, localHasVideo || remoteHasVideo, !!battery || !!peerState.battery) * STATS_LINE_H },
           ]}>
             <StatsLine
+              network={network}
+              peerNet={peerState.net}
               stats={videoStats}
               quality={qualityLabel}
               showUp={localHasVideo}
@@ -1788,19 +1794,26 @@ export const STATS_LINE_H = 18;
  * "battery: you 57% charging · the other 56% not charging" - one short
  * line, mine first, theirs after when they say.
  */
+/** "su wifi" / "su rete mobile", or nothing when unknown */
+function netWord(n: string | null | undefined): string {
+  return n === 'wifi' ? ` ${t('channel.onWifi')}` : n === 'mobile' ? ` ${t('channel.onMobile')}` : '';
+}
+
 function batteryLine(
   mine: { percent: number; charging: boolean } | null | undefined,
   theirs: { percent: number; charging: boolean } | null | undefined,
+  mineNet?: string | null,
+  theirsNet?: string | null,
 ): string {
-  const part = (b: { percent: number; charging: boolean }) =>
-    `${b.percent}% ${t(b.charging ? 'channel.charging' : 'channel.notCharging')}`;
-  if (mine && theirs) return t('channel.batteryBoth', { mine: part(mine), theirs: part(theirs) });
-  if (mine) return t('channel.batteryMine', { mine: part(mine) });
-  return theirs ? t('channel.batteryTheirsOnly', { theirs: part(theirs) }) : '';
+  const part = (b: { percent: number; charging: boolean }, n?: string | null) =>
+    `${b.percent}% ${t(b.charging ? 'channel.charging' : 'channel.notCharging')}${netWord(n)}`;
+  if (mine && theirs) return t('channel.batteryBoth', { mine: part(mine, mineNet), theirs: part(theirs, theirsNet) });
+  if (mine) return t('channel.batteryMine', { mine: part(mine, mineNet) });
+  return theirs ? t('channel.batteryTheirsOnly', { theirs: part(theirs, theirsNet) }) : '';
 }
 
 function StatsLine({
-  stats, quality, showUp, showDown, peerSend, peerRecv, totalOnly, battery, peerBattery,
+  stats, quality, showUp, showDown, peerSend, peerRecv, totalOnly, battery, peerBattery, network, peerNet,
 }: {
   stats: VideoStats;
   quality: string;
@@ -1808,6 +1821,9 @@ function StatsLine({
   battery?: { percent: number; charging: boolean } | null;
   /** and the other side's, when they say */
   peerBattery?: { percent: number; charging: boolean } | null;
+  /** the networks, ours and theirs, when known */
+  network?: string | null;
+  peerNet?: string | null;
   /** cameras really on: the statistics lag by one sample */
   showUp: boolean;
   showDown: boolean;
@@ -1981,7 +1997,7 @@ function StatsLine({
         <Text style={styles.stats} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
           {[
             waitSaid,
-            battery || peerBattery ? batteryLine(battery, peerBattery) : '',
+            battery || peerBattery ? batteryLine(battery, peerBattery, network, peerNet) : '',
           ].filter(Boolean).join(' · ')}
         </Text>
       ) : null}

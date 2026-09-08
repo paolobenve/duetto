@@ -130,6 +130,8 @@ export const it: Dictionary = {
   },
 
   channel: {
+    onWifi: 'su wifi',
+    onMobile: 'su rete mobile',
     notEntered: 'Sei fuori dal canale',
     notEnteredBody: 'Tocca Entra per rientrare.',
     enter: 'Entra',

@@ -513,8 +513,13 @@ export default function App() {
   const [systemVolume, setSystemVolume] = useState({ volume: 0, max: 0 });
   /** the battery, shown with the diagnostics beside the volumes */
   const [battery, setBattery] = useState<{ percent: number; charging: boolean } | null>(null);
+  /** the network carrying us, shown and told with the battery */
+  const [network, setNetwork] = useState<string | null>(null);
   useEffect(() => {
-    if (!inChannel || !cfg?.diagnostics) { setBattery(null); return; }
+    if (!inChannel || !cfg?.diagnostics) {
+      setBattery(null); setNetwork(null); sessionRef.current?.setNetwork(null);
+      return;
+    }
     let alive = true;
     const read = () => {
       Foreground.battery().then((b) => {
@@ -524,6 +529,13 @@ export default function App() {
           // Told to the other side too: their diagnostics show it.
           sessionRef.current?.setBattery(mine);
         }
+      }).catch(() => { /* not this time */ });
+      // And the network carrying us, beside it: "wifi or mobile data?"
+      // is the question that comes right after the battery.
+      Network.kind().then((k) => {
+        if (!alive) return;
+        setNetwork(k);
+        sessionRef.current?.setNetwork(k);
       }).catch(() => { /* not this time */ });
     };
     read();
@@ -603,6 +615,8 @@ export default function App() {
     busy?: boolean;
     /** their battery, when they say */
     battery?: { percent: number; charging: boolean } | null;
+    /** the network carrying them, when they say */
+    net?: string | null;
     /** the two halves of `volume`, when they say them */
     volSys?: number | null;
     gain?: number;
@@ -3894,6 +3908,7 @@ export default function App() {
         onCall={onCall}
         pairBroken={!!cfg.pair?.brokenByPeer}
         battery={battery}
+        network={network}
         entered={inChannel}
         onEnter={() => { leftByHandAt.current = 0; Journal.mark('command:enter-card').catch(() => {}); enterChannel(); }}
       />

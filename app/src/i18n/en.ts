@@ -142,6 +142,8 @@ export const en = {
   },
 
   channel: {
+    onWifi: 'on wifi',
+    onMobile: 'on mobile data',
     notEntered: 'You are out of the channel',
     notEnteredBody: 'Touch Enter to go back in.',
     enter: 'Enter',
