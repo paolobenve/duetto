@@ -231,6 +231,11 @@ export const fr: Dictionary = {
   },
 
   settings: {
+    micOnEntry: 'Micro à l’entrée',
+    micOnEntryAsLeft: 'Comme je l’avais laissé',
+    micOnEntryAsLeftNote: 'Si tu sors avec le micro coupé, tu reviens avec le micro coupé ; si tu sors avec le micro allumé, tu reviens avec le micro allumé.',
+    micOnEntryOff: 'Toujours coupé',
+    micOnEntryOffNote: 'En entrant dans le canal le micro est toujours coupé : c’est toi qui l’allumes quand tu veux être entendu.',
     pairBrokenByPeer: 'rompue de l’autre côté',
     leaveServer: 'Quitter ce serveur',
     leaveServerTitle: 'Quitter {server} ?',

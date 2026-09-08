@@ -231,6 +231,11 @@ export const es: Dictionary = {
   },
 
   settings: {
+    micOnEntry: 'Micrófono al entrar',
+    micOnEntryAsLeft: 'Como lo dejé',
+    micOnEntryAsLeftNote: 'Si sales con el micrófono apagado vuelves a entrar con él apagado; si sales con él encendido, encendido.',
+    micOnEntryOff: 'Siempre apagado',
+    micOnEntryOffNote: 'Al entrar en el canal el micrófono está siempre apagado: lo enciendes tú cuando quieres que te oigan.',
     pairBrokenByPeer: 'deshecha desde el otro lado',
     leaveServer: 'Dejar este servidor',
     leaveServerTitle: '¿Dejar {server}?',

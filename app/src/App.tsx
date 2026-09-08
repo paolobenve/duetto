@@ -2938,11 +2938,20 @@ export default function App() {
     // entry could win and find nothing. Not before the reading is done.
     await howItWasLoading.current;
     const before = mine ? howItWas.current[mine] : undefined;
+    // The microphone: always off when the connection says so, else as
+    // it was left the last time.
+    if (cfg.micOnEntry === 'off') {
+      if (sessionRef.current?.isAudioEnabled() !== false) {
+        Journal.mark('mic-off:on-entry').catch(() => { /* noop */ });
+        const on = sessionRef.current?.toggleAudio();
+        if (on !== undefined) setAudioOn(on);
+      }
+    }
     if (before) {
       const still = Date.now() - before.when;
       // The microphone: as it was left, however long ago. The clock
       // below judges only the camera.
-      if (!before.audio) {
+      if (!before.audio && cfg.micOnEntry !== 'off') {
         Journal.mark(`resume-mic:after ${Math.round(still / 1000)}s`)
           .catch(() => { /* noop */ });
         const on = sessionRef.current?.toggleAudio();

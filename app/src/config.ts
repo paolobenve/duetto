@@ -103,6 +103,8 @@ export type PairSettings = {
   displayName: string;
   videoQuality: VideoQuality;
   richerAudio: boolean;
+  /** the microphone on entering: as it was left ('asLeft'), or always off ('off') */
+  micOnEntry: 'asLeft' | 'off';
   controls: 'dim' | 'faint' | 'hidden' | 'none';
   videoCodec: 'auto' | 'vp9';
   alertVibration: 'default' | 'always' | 'never';
@@ -121,7 +123,7 @@ export type PairSettings = {
 
 /** The fields that travel with the connection, in one place. */
 const PAIR_FIELDS: (keyof PairSettings)[] = [
-  'displayName', 'videoQuality', 'richerAudio', 'controls',
+  'displayName', 'videoQuality', 'richerAudio', 'micOnEntry', 'controls',
   'videoCodec', 'alertVibration', 'alertSound', 'alertSoundUri', 'alertSoundName',
   'audioOutput', 'gains', 'frontCamera', 'language',
 ];
@@ -260,6 +262,12 @@ export type DuoConfig = {
    */
   richerAudio: boolean;
   /**
+   * The microphone on entering the channel: as it was left the last
+   * time, or always off, so that going in never means being heard
+   * before one meant to. Per connection, like the rest.
+   */
+  micOnEntry: 'asLeft' | 'off';
+  /**
    * Diagnostics: everything that exists in order to understand, and
    * that is of no use to whoever only wants to talk.
    *
@@ -390,6 +398,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   // definition, however good their network.
   videoQuality: 'better',
   richerAudio: false,
+  micOnEntry: 'asLeft',
   diagnostics: false,
   delayTotalOnly: false,
   controls: 'dim',

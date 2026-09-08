@@ -244,6 +244,11 @@ export const en = {
   },
 
   settings: {
+    micOnEntry: 'Microphone on entering',
+    micOnEntryAsLeft: 'As I left it',
+    micOnEntryAsLeftNote: 'If you leave with the microphone off you come back in with it off; if you leave with it on, with it on.',
+    micOnEntryOff: 'Always off',
+    micOnEntryOffNote: 'On entering the channel the microphone is always off: you turn it on when you want to be heard.',
     pairBrokenByPeer: 'broken from the other side',
     leaveServer: 'Leave this server',
     leaveServerTitle: 'Leave {server}?',

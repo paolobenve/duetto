@@ -644,6 +644,27 @@ export default function SettingsScreen({
           </View>
         </TouchableOpacity>
 
+        <Text style={styles.sectionHint}>{t('settings.micOnEntry')}</Text>
+        {(['asLeft', 'off'] as const).map((v) => (
+          <TouchableOpacity
+            key={v}
+            style={[styles.choice, (cfg.micOnEntry ?? 'asLeft') === v && styles.choicePicked]}
+            onPress={() => {
+              setCfg({ ...cfg, micOnEntry: v });
+              onLive?.({ micOnEntry: v });
+            }}>
+            <View style={[styles.radio, (cfg.micOnEntry ?? 'asLeft') === v && styles.radioPicked]} />
+            <View style={styles.choiceText}>
+              <Text style={styles.choiceLabel}>
+                {t(v === 'off' ? 'settings.micOnEntryOff' : 'settings.micOnEntryAsLeft')}
+              </Text>
+              <Text style={styles.choiceNote}>
+                {t(v === 'off' ? 'settings.micOnEntryOffNote' : 'settings.micOnEntryAsLeftNote')}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+
         <Text style={styles.subsection}>{t('settings.whenTheyCall')}</Text>
         <Text style={styles.sectionHint}>{t('settings.whenTheyCallHint')}</Text>
 
