@@ -3130,14 +3130,22 @@ export default function App() {
 
     setLeaving(true);
     try {
-      const wait = (ms: number) => new Promise<void>((r) => { setTimeout(r, ms); });
-      await Promise.race([
-        (async () => {
-          await sendJournal();
-          await wait(BREATH_MS);
-        })(),
-        wait(LEAVING_CAP_MS),
-      ]);
+      // Not in front - the button on the notification, from the shade -
+      // and JavaScript's timers stand still: a wait on them never ends,
+      // and the leaving stayed half done until the app was opened
+      // again. The journal goes out all the same; the breath is skipped.
+      if (appStateRef.current !== 'active') {
+        await sendJournal().catch(() => { /* noop */ });
+      } else {
+        const wait = (ms: number) => new Promise<void>((r) => { setTimeout(r, ms); });
+        await Promise.race([
+          (async () => {
+            await sendJournal();
+            await wait(BREATH_MS);
+          })(),
+          wait(LEAVING_CAP_MS),
+        ]);
+      }
     } finally {
       setLeaving(false);
     }
