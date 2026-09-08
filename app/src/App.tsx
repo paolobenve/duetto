@@ -1853,7 +1853,17 @@ export default function App() {
     // in the channel: journals are exchanged while merely waiting too.
     const first = setTimeout(send, 10_000);
     const timer = setInterval(send, JOURNAL_SWAP_MS);
-    return () => { alive = false; clearTimeout(first); clearInterval(timer); };
+    // JavaScript's timers stand still while the app is not in front:
+    // with Duetto put away the journal stopped going out, and the
+    // other side's copy ended an hour before. The native heartbeat
+    // rings all the same: every five minutes of it, the journal goes.
+    let lastBeatSend = Date.now();
+    const beat = Heartbeat.subscribe(() => {
+      if (Date.now() - lastBeatSend < JOURNAL_SWAP_MS) return;
+      lastBeatSend = Date.now();
+      send();
+    });
+    return () => { alive = false; clearTimeout(first); clearInterval(timer); beat(); };
   }, [peerPresent, sendJournal, cfg?.diagnostics]);
 
   /**
