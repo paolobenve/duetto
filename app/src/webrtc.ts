@@ -824,6 +824,46 @@ export class ChannelSession {
     }
   }
 
+  /**
+   * Thrifty audio: 60 ms packets and silence not sent.
+   *
+   * Opus sends a packet every 20 ms by default, fifty a second each
+   * way, and on a mobile network it is the packets, not the bytes,
+   * that keep the radio awake. Sixty milliseconds is a third of them,
+   * with a delay of forty milliseconds more that nobody hears; and DTX
+   * sends one packet every four hundred milliseconds while nobody is
+   * talking. Both are asked for in the SDP: libwebrtc reads them from
+   * the description it RECEIVES, so ours is shaped too, before it goes
+   * out, for the other side - an older app included - to send the same
+   * way; and theirs is shaped on arrival, for our encoder.
+   */
+  private static thriftyAudio(sdp: string): string {
+    const m = sdp.match(/a=rtpmap:(\d+) opus\/48000\/2/i);
+    if (!m) return sdp;
+    const pt = m[1];
+    const shaped = (params: string) => {
+      const kv = new Map<string, string>();
+      for (const p of params.split(';')) {
+        const t = p.trim();
+        if (!t) continue;
+        const i = t.indexOf('=');
+        kv.set(i < 0 ? t : t.slice(0, i), i < 0 ? '' : t.slice(i + 1));
+      }
+      kv.set('minptime', '10');
+      kv.set('useinbandfec', '1');
+      kv.set('usedtx', '1');
+      kv.set('ptime', '60');
+      kv.set('maxptime', '120');
+      return [...kv].map(([k, v]) => (v === '' ? k : `${k}=${v}`)).join(';');
+    };
+    const fmtp = new RegExp(`^a=fmtp:${pt} ([^\\r\\n]*)`, 'm');
+    if (fmtp.test(sdp)) return sdp.replace(fmtp, (_all, p) => `a=fmtp:${pt} ${shaped(p)}`);
+    return sdp.replace(
+      new RegExp(`(a=rtpmap:${pt} opus\\/48000\\/2[^\\r\\n]*\\r?\\n)`),
+      (all) => `${all}a=fmtp:${pt} ${shaped('')}\r\n`,
+    );
+  }
+
   private async negotiate() {
     const pc = this.pc;
     if (!pc) return;
@@ -836,7 +876,9 @@ export class ChannelSession {
     try {
       this.makingOffer = true;
       const offer = await pc.createOffer({});
-      await pc.setLocalDescription(offer);
+      await pc.setLocalDescription(
+        new RTCSessionDescription({ type: offer.type, sdp: ChannelSession.thriftyAudio(offer.sdp) }),
+      );
       const desc = pc.localDescription!;
       log('offer sent');
       this.signaling.sendSignal({ kind: 'desc', type: 'offer', sdp: desc.sdp });
@@ -913,7 +955,7 @@ export class ChannelSession {
       }
 
       await pc.setRemoteDescription(
-        new RTCSessionDescription({ type: msg.type, sdp: msg.sdp }),
+        new RTCSessionDescription({ type: msg.type, sdp: ChannelSession.thriftyAudio(msg.sdp) }),
       );
       // Something came back: whatever was waiting, it is not stalled.
       this.offerPendingSince = 0;
@@ -922,7 +964,9 @@ export class ChannelSession {
 
       if (msg.type === 'offer') {
         const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
+        await pc.setLocalDescription(
+          new RTCSessionDescription({ type: answer.type, sdp: ChannelSession.thriftyAudio(answer.sdp) }),
+        );
         log('answer sent - directions:',
           ((pc as any).getTransceivers?.() ?? [])
             .map((t: any) => `${t?.receiver?.track?.kind ?? '?'}:${t?.direction}`)
@@ -1042,7 +1086,9 @@ export class ChannelSession {
           this.restartAskedAt = 0;
           try {
             const offer = await pc.createOffer({ iceRestart: true });
-            await pc.setLocalDescription(offer);
+            await pc.setLocalDescription(
+              new RTCSessionDescription({ type: offer.type, sdp: ChannelSession.thriftyAudio(offer.sdp) }),
+            );
             this.signaling.sendSignal({
               kind: 'desc', type: 'offer', sdp: pc.localDescription.sdp,
             });
@@ -1055,7 +1101,9 @@ export class ChannelSession {
       }
       // Older versions: the same thing, with an offer.
       const offer = await pc.createOffer({ iceRestart: true });
-      await pc.setLocalDescription(offer);
+      await pc.setLocalDescription(
+        new RTCSessionDescription({ type: offer.type, sdp: ChannelSession.thriftyAudio(offer.sdp) }),
+      );
       this.signaling.sendSignal({
         kind: 'desc', type: 'offer', sdp: pc.localDescription.sdp,
       });
