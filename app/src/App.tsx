@@ -2772,6 +2772,9 @@ export default function App() {
         onConnectionState: (st) => {
           setConnState(st);
           connStateRef.current = st;
+          // Written down: a link that stays "connecting" for half a
+          // minute has to be readable the day after.
+          Journal.mark(`link:${st}`).catch(() => { /* noop */ });
 
           if (st === 'connected') {
             clearRecovery();

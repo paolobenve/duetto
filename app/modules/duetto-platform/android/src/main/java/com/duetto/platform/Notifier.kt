@@ -228,6 +228,39 @@ object Notifier {
     fun enterLabel(ctx: Context) = label(ctx, KEY_ENTER, Strings.enter)
     fun waitLabel(ctx: Context) = label(ctx, KEY_WAIT, Strings.goWaiting)
 
+    /**
+     * The last line and buttons the app put on the notification, kept
+     * for the presence: when the system puts it back on its feet it
+     * used to write "Waiting" with "Enter" over a notification that
+     * said "in the channel" - the same id - and the wrong words stayed
+     * until the line changed.
+     */
+    private const val KEY_TEXT = "notice_text"
+    private const val KEY_ACTIONS = "notice_actions"
+    fun rememberNotice(ctx: Context, text: String, actions: String) {
+        try {
+            ctx.getSharedPreferences(BootReceiver.PREFS, Context.MODE_PRIVATE)
+                .edit().putString(KEY_TEXT, text).putString(KEY_ACTIONS, actions).apply()
+        } catch (_: Exception) { /* noop */ }
+    }
+    private fun noticeText(ctx: Context) = label(ctx, KEY_TEXT, Strings.waiting)
+    private fun noticeActions(ctx: Context) = label(ctx, KEY_ACTIONS, "enter")
+    /** The button the remembered line asks for: "Enter", "Go to waiting", or none. */
+    fun addNoticeAction(ctx: Context, b: NotificationCompat.Builder) {
+        when (noticeActions(ctx)) {
+            "enter" -> b.addAction(0, enterLabel(ctx), enterPending(ctx))
+            "wait" -> b.addAction(
+                0, waitLabel(ctx),
+                PendingIntent.getService(
+                    ctx, 4,
+                    Intent(ctx, ChannelForegroundService::class.java)
+                        .setAction(ChannelForegroundService.ACTION_WAIT),
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                ),
+            )
+        }
+    }
+
     fun name(ctx: Context): String {
         return try {
             ctx.getSharedPreferences(BootReceiver.PREFS, Context.MODE_PRIVATE)
@@ -288,10 +321,10 @@ object Notifier {
 
         val notification = NotificationCompat.Builder(service, PRESENCE_CHANNEL_ID)
             .setContentTitle(TITLE)
-            .setContentText(withName(name(service), Strings.waiting))
+            .setContentText(withName(name(service), noticeText(service)))
             .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(pending)
-            .addAction(0, enterLabel(service), enterPending(service))
+            .apply { addNoticeAction(service, this) }
             // No `setOngoing`: it is that declaration that makes the
             // notification impossible to dismiss, and on Android 13 and
             // later it is of no use any more. From there on the system

@@ -386,6 +386,7 @@ export const Proximity = isAndroid && NativeProximity
  * native Handler and is an event, and events the JavaScript engine
  * receives anyway. See HeartbeatModule.
  */
+let beatListeners = 0;
 export const Heartbeat = isAndroid && NativeHeartbeat
   ? {
       /**
@@ -394,14 +395,26 @@ export const Heartbeat = isAndroid && NativeHeartbeat
        */
       fast: (quick) => call(NativeHeartbeat, 'fast', !!quick),
 
-      /** Calls `cb()` at every beat. Gives back the function to stop. */
+      /**
+       * Calls `cb()` at every beat. Gives back the function to stop.
+       *
+       * The beat is started by the first listener and stopped by the
+       * last: it used to be stopped by ANY of them going away, and with
+       * several listeners one leaving - the journal's, when the other
+       * person left the channel - silenced the beat for the rest, the
+       * watchdog included: a phone sat thirteen minutes without its
+       * server, in a pocket, until something else subscribed again.
+       */
       subscribe(cb) {
-        call(NativeHeartbeat, 'start');
+        if (beatListeners++ === 0) call(NativeHeartbeat, 'start');
         const emitter = new NativeEventEmitter(NativeHeartbeat);
         const sub = emitter.addListener('duetto-heartbeat', () => cb());
+        let gone = false;
         return () => {
+          if (gone) return;
+          gone = true;
           sub.remove();
-          call(NativeHeartbeat, 'stop');
+          if (--beatListeners === 0) call(NativeHeartbeat, 'stop');
         };
       },
     }

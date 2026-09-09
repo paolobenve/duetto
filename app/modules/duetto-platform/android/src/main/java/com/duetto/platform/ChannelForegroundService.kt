@@ -246,6 +246,7 @@ class ChannelForegroundService : Service() {
          * the type is granted - and once granted it stays for the whole
          * stay, screen off included, as it always did.
          */
+        Notifier.rememberNotice(this, currentText, currentActions)
         goForeground(mayUseMicrophone = inChannel)
         if (inChannel) acquireWakeLock() else releaseWakeLock()
         // The net under the waiting: see WatchdogAlarm.
