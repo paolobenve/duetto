@@ -1,0 +1,19 @@
+# Copy to docker-compose.override.yml. Compose loads it on its own; git ignores it.
+# Use it to attach the container to a reverse proxy's network and add its labels.
+
+services:
+  duetto-signaling:
+    networks:
+      - default
+      - web_network        # rename to your proxy's network
+    # Traefik, for example:
+    # labels:
+    #   - "traefik.enable=true"
+    #   - "traefik.http.routers.duetto.rule=Host(`duetto.example.com`)"
+    #   - "traefik.http.routers.duetto.entrypoints=websecure"
+    #   - "traefik.http.routers.duetto.tls.certresolver=myresolver"
+    #   - "traefik.http.services.duetto.loadbalancer.server.port=8787"
+
+networks:
+  web_network:
+    external: true

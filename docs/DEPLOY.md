@@ -181,6 +181,29 @@ sudo systemctl enable --now duetto-signaling
 curl -s http://127.0.0.1:8787/healthz      # {"ok":true,"rooms":0}
 ```
 
+### With Docker, instead of systemd
+
+```bash
+cd server
+cp .env.example .env                    # it is fine as it is
+docker compose up -d
+curl -s http://127.0.0.1:8787/healthz   # {"ok":true,"rooms":0}
+```
+
+The image is Alpine, runs as the `node` user, listens on 8787, and keeps
+`devices.json` in the `duetto-data` volume. Management commands run inside the
+container:
+
+```bash
+docker compose exec duetto-signaling npm run invite -- anna
+docker compose exec duetto-signaling npm run devices
+```
+
+To put the container on a reverse proxy's network, copy
+`docker-compose.override.yml.example` to `docker-compose.override.yml` and set the
+network name there. Compose loads that file on its own, and git ignores it, so it
+stays local to your machine.
+
 ### A copy of the list
 
 `devices.json` is the phones, the invitations and the rooms: losing it means pairing

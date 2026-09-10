@@ -1,0 +1,29 @@
+services:
+  duetto-signaling:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: duetto-signaling:latest
+    container_name: duetto-signaling
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8787}:8787"
+    environment:
+      - PORT=8787
+      - HOST=0.0.0.0
+      - DEVICES_FILE=/app/data/devices.json
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - duetto-data:/app/data
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:' + (process.env.PORT || 8787) + '/healthz').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  duetto-data:
+    name: duetto-data
