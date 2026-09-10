@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DeviceEventEmitter } from 'react-native';
 import InCallManager from 'react-native-incall-manager';
+import { Journal } from 'duetto-platform';
 import { t } from './i18n';
 
 /**
@@ -76,6 +77,18 @@ export function useAudioRoute(
   /** The last output picked by hand, restored on coming back in. */
   const wanted = useRef<AudioRoute | null>(null);
   const initialised = useRef(false);
+  /**
+   * The last built-in output - speaker or earpiece - the sound came out
+   * of. When a Bluetooth earpiece or a wired headset goes away, the
+   * call library falls back on ITS default (the earpiece, for audio);
+   * the person expects the output they had before the headset.
+   */
+  const builtIn = useRef<AudioRoute>('SPEAKER_PHONE');
+  /** the sound was coming out of a headset at the previous event */
+  const headsetWas = useRef(false);
+  const noteBuiltIn = (r: AudioRoute) => {
+    if (r === 'SPEAKER_PHONE' || r === 'EARPIECE') builtIn.current = r;
+  };
 
   /** Applies an output, with a fallback if the library will not choose. */
   const applyRoute = useCallback((route: AudioRoute) => {
@@ -97,6 +110,7 @@ export function useAudioRoute(
   useEffect(() => {
     if (!isRoute(preferred)) return;
     wanted.current = preferred;
+    noteBuiltIn(preferred);
     setCurrent(preferred);
     // Not applied outside the channel: an output is chosen when there is
     // a sound to send somewhere.
@@ -122,8 +136,26 @@ export function useAudioRoute(
             if (routes.length > 0) setAvailable(routes);
           }
 
-          if (isRoute(data?.selectedAudioDevice)) {
-            setCurrent(data.selectedAudioDevice);
+          const selected: AudioRoute | null = isRoute(data?.selectedAudioDevice)
+            ? data.selectedAudioDevice : null;
+          if (selected) setCurrent(selected);
+          // A headset gone - the one wanted, or simply the one in use:
+          // back to the built-in output of before, not to the library's.
+          const headsetGone = initialised.current && routes.length > 0
+            && selected !== null
+            && !routes.includes('BLUETOOTH') && !routes.includes('WIRED_HEADSET')
+            && (wanted.current === 'BLUETOOTH' || wanted.current === 'WIRED_HEADSET'
+              || headsetWas.current)
+            && selected !== builtIn.current && routes.includes(builtIn.current);
+          headsetWas.current = selected === 'BLUETOOTH' || selected === 'WIRED_HEADSET';
+          if (headsetGone) {
+            const back = builtIn.current;
+            wanted.current = back;
+            setCurrent(back);
+            applyRoute(back);
+            Journal.mark(`output:back:${back}`).catch(() => { /* noop */ });
+          } else if (selected) {
+            noteBuiltIn(selected);
           }
 
           // On the first event we restore the last output chosen, if it
@@ -156,6 +188,7 @@ export function useAudioRoute(
 
     setCurrent(next); // hopeful: the event will confirm it
     wanted.current = next;
+    noteBuiltIn(next);
     applyRoute(next);
     remember?.(next);
   }, [available, current, applyRoute, remember]);

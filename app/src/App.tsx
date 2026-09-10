@@ -1896,9 +1896,17 @@ export default function App() {
     // `onJoined`.
     if (connState !== 'connected') return;
     if (videoStats.path !== 'relay' || relayRetried.current) return;
+    // A JS timer sleeps while the app is not in front, and fires when
+    // it comes back: a retry that lands minutes late is not a search
+    // for a better road, it is a "connecting" out of the blue at the
+    // very moment the person opens the app to talk. Late, it is skipped.
+    const setAt = Date.now();
     const t = setTimeout(() => {
       if (!inChannelRef.current || !peerActiveRef.current) return;
       relayRetried.current = true;
+      const late = Date.now() - setAt > 15_000;
+      Journal.mark(late ? 'relay-retry:late' : 'relay-retry').catch(() => { /* noop */ });
+      if (late) return;
       rtcLog('going through the relay: looking for a direct road');
       if (politeRef.current) signalingRef.current?.sendSignal({ kind: 'renegotiate' });
       else sessionRef.current?.restartIce();
@@ -1918,6 +1926,9 @@ export default function App() {
     const sub = AppState.addEventListener('change', (s) => {
       const wasActive = appStateRef.current === 'active';
       appStateRef.current = s;
+      if (wasActive !== (s === 'active')) {
+        Journal.mark(s === 'active' ? 'ui:front' : `ui:back:${s}`).catch(() => { /* noop */ });
+      }
       if (s !== 'active') return;
 
       Foreground.clearNotification().catch(() => {});

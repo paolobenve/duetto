@@ -371,6 +371,8 @@ export class ChannelSession {
   private polite = false;
   /** frames encoded at the last sample, and since when they stopped growing with the video on */
   private lastFramesEncoded = 0;
+  /** the road last written in the journal: relay, direct, local */
+  private lastRoad = '';
   private stalledSince = 0;
   private makingOffer = false;
   private ignoreOffer = false;
@@ -1409,6 +1411,13 @@ export class ChannelSession {
               : 'direct';
         if (out.path === 'relay' && typeof l?.relayProtocol === 'string') {
           out.relayLeg = l.relayProtocol;
+        }
+        // Written down when it changes: a "connecting" out of the blue
+        // is read the day after only if the road before it is known.
+        const road = `${out.path}${out.relayLeg ? '/' + out.relayLeg : ''}`;
+        if (road !== this.lastRoad) {
+          this.lastRoad = road;
+          Journal.mark(`road:${road}`).catch(() => { /* noop */ });
         }
       }
 
