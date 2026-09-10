@@ -204,6 +204,23 @@ To put the container on a reverse proxy's network, copy
 network name there. Compose loads that file on its own, and git ignores it, so it
 stays local to your machine.
 
+Two things live on the host and not in the container. The relay user per phone
+(below) is written in coturn's database: give the container that file, read-write,
+and the `turnserver` group's id -
+
+```yaml
+    volumes:
+      - duetto-data:/app/data
+      - /var/lib/turn:/var/lib/turn
+    group_add:
+      - "TURNSERVER_GID"        # getent group turnserver | cut -d: -f3
+```
+
+- or leave `TURN_DB` unset and the shared credential serves everybody. And the
+daily copy of the list reads the file from the volume rather than from a folder:
+`docker compose exec -T duetto-signaling cat /app/data/devices.json > copy.json`
+in place of the `cp` in the backup unit.
+
 ### A copy of the list
 
 `devices.json` is the phones, the invitations and the rooms: losing it means pairing
