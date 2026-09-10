@@ -122,6 +122,7 @@ cp .env.example .env      # it is fine as it is
 npm install
 npm run test:smoke        # it has to print ALL OK
 npm start
+# or in Docker: docker compose up -d
 ```
 
 Then expose it over HTTPS behind the proxy you already have, and add `coturn` for when the

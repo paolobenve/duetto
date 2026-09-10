@@ -30,6 +30,10 @@ app/.expo/
 # Secrets / local config
 server/.env
 *.local
+docker-compose.override.yml
+docker-compose.override.yaml
+server/docker-compose.override.yml
+server/docker-compose.override.yaml
 
 # Logs and system
 *.log
