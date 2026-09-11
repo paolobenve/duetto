@@ -55,19 +55,38 @@ object Journal {
 
     private const val TAG = "Duetto"
     const val FOLDER = "journal"
-    const val MINE = "mine.log"
-    const val OTHER = "other.log"
+    private const val SENT_FILE = "journal_sent_file"
+    private const val SENT_LINES = "journal_sent_lines"
+
+    /**
+     * One file a day, tab-separated, the first row the names of the
+     * columns. The day turns at three in the morning: a row written at
+     * two belongs to the evening before. Nothing rotates: the file of
+     * the day is made when its first row comes, header included.
+     */
+    private const val DAY_TURNS_AT_MS = 3L * 3600L * 1000L
+    private val dayFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+    val COLUMNS = listOf(
+        "time", "pair", "why", "state", "batt", "charge", "dcharge", "current", "charging",
+        "screen", "screenOn", "system", "audio", "volVoice", "level", "volMedia", "speaker",
+        "voiceKeys", "net", "min", "cpu", "rx", "tx", "phone", "android", "battery",
+        "cause", "was", "status", "pss", "rss", "description",
+    )
+    val HEADER = COLUMNS.joinToString("\t")
+    fun day(now: Long): String = dayFormat.format(Date(now - DAY_TURNS_AT_MS))
+    /** a value on one row: no tab and no newline, whatever it was */
+    private fun cell(v: Any?): String =
+        v?.toString()?.replace('\t', ' ')?.replace('\n', ' ')?.replace('\r', ' ') ?: ""
+    private fun row(values: Map<String, Any?>): String =
+        COLUMNS.joinToString("\t") { cell(values[it]) } + "\n"
+    /** appends a row, writing the header first when the file is new */
+    private fun appendRow(file: File, line: String) {
+        if (!file.exists() || file.length() == 0L) file.writeText(HEADER + "\n")
+        file.appendText(line)
+    }
 
     /** The last death already written down: the others are old news. */
     const val LAST_DEATH = "last_recorded_death"
-
-    /**
-     * Past this size the file is rotated: .1 becomes .2, .2 becomes .3
-     * and so on, and nothing is thrown away - for now, the history is
-     * worth more than the megabytes. Half a megabyte is a day or two of
-     * one phone's lines.
-     */
-    private const val MAX_SIZE = 512L * 1024L
 
     private val format = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
 
@@ -100,6 +119,9 @@ object Journal {
      * of whoever reads the code.
      */
     @Volatile private var voiceKeys = false
+    /** the name of the connection in use, on every row: the file carries the id only */
+    @Volatile private var pair: String = ""
+    fun pair(name: String) { pair = name }
 
     /**
      * The level really heard, in percent: the product of the system's
@@ -184,7 +206,13 @@ object Journal {
         return if (dir.exists() || dir.mkdirs()) dir else null
     }
 
-    fun myFile(ctx: Context): File? = folder(ctx)?.let { File(it, MINE) }
+    /** today's file of our own rows */
+    fun myFile(ctx: Context, now: Long = System.currentTimeMillis()): File? =
+        folder(ctx)?.let { File(it, "mine-${day(now)}.csv") }
+    /** our files, oldest first */
+    fun myFiles(ctx: Context): List<File> =
+        folder(ctx)?.listFiles { f -> f.name.startsWith("mine-") && f.name.endsWith(".csv") }
+            ?.sortedBy { it.name } ?: emptyList()
 
     /**
      * The journal that arrives from the other side, one per connection.
@@ -199,14 +227,21 @@ object Journal {
      * fingerprint: readable by whoever downloads the files, and different
      * for every pair even when the labels look alike.
      */
-    fun otherFile(ctx: Context, who: String = ""): File? {
+    /**
+     * Today's file of the other side's rows. `who` is the pair's id,
+     * never its name: a connection renamed must not start a new file.
+     * Rows from an older app come without tabs and go to a .log file
+     * of their own, the old shape kept apart from the new.
+     */
+    fun otherFile(ctx: Context, who: String = "", csv: Boolean = true): File? {
         val folder = folder(ctx) ?: return null
         val clean = who.lowercase()
             .map { if (it.isLetterOrDigit() || it == '-') it else '-' }
             .joinToString("")
             .trim('-')
             .take(40)
-        return File(folder, if (clean.isEmpty()) OTHER else "other-$clean.log")
+        val stem = if (clean.isEmpty()) "other" else "other-$clean"
+        return File(folder, "$stem-${day(System.currentTimeMillis())}." + (if (csv) "csv" else "log"))
     }
 
     /** Percentage, charge left in microamp-hours, current right now. */
@@ -317,10 +352,8 @@ object Journal {
     @Synchronized
     fun sample(ctx: Context, why: String = "periodic") {
         try {
-            val file = myFile(ctx) ?: return
-            rotateIfBig(file)
-
             val now = System.currentTimeMillis()
+            val file = myFile(ctx, now) ?: return
             val (percent, charge, current) = battery(ctx)
             val cpuMs = Process.getElapsedCpuTime()
             val uid = Process.myUid()
@@ -335,63 +368,48 @@ object Journal {
             val dRx = if (lastRx == 0L || rx < lastRx) -1L else rx - lastRx
             val dTx = if (lastTx == 0L || tx < lastTx) -1L else tx - lastTx
 
-            val line = buildString {
-                append(format.format(Date(now)))
-                append(" why=").append(why)
-                // Which phone this is, on the start line.
-                //
-                // Every session writes one, so the model is always there,
-                // but not on every line: reading somebody else's journal
-                // the first question is "which phone is it", because half
-                // of the audio behaviour depends on that - and repeating
-                // it on every line would be the same word a hundred
-                // times.
-                if (why == "start") {
-                    append(" phone=\"").append(phoneName()).append('"')
-                    append(" android=").append(Build.VERSION.RELEASE)
-                    // Whether the phone has promised not to get in the way.
-                    //
-                    // It is the only one of the restrictions that can be
-                    // read from code: the makers' extra ones - auto-start,
-                    // "background activity" - no app can question. But
-                    // this is the first to look at when an app keeps dying
-                    // on the same phone, and it is absurd to have to ask
-                    // for it out loud from whoever holds that phone.
-                    append(" battery=").append(
-                        if (StartupHelper.isIgnoringBatteryOptimizations(ctx)) "unrestricted"
-                        else "optimised",
-                    )
-                }
-                append(" state=").append(state)
-                append(" batt=").append(percent).append('%')
-                append(" charge=").append(charge).append("uAh")
-                if (dCharge != Int.MIN_VALUE) append(" dcharge=").append(dCharge).append("uAh")
-                append(" current=").append(current / 1000).append("mA")
-                append(" charging=").append(if (charging(ctx)) "yes" else "no")
-                append(" screen=").append(if (screenOn(ctx)) "on" else "off")
-                // How much of the interval just closed was spent with the
-                // screen on: it is the key to telling whether what was
-                // used is ours or belongs to whoever was using the phone.
-                append(" screenOn=").append(screenSeconds(ctx)).append('s')
-                append(" system=").append(dozing(ctx))
-                // The sound: which mode it goes through, where the voice
-                // volume stands, and whether the keys command it. The
-                // three things needed to make sense of an "I cannot hear
-                // you" told over the phone.
-                append(" audio=").append(audioMode(ctx))
-                append(" volVoice=").append(voiceVolume(ctx))
-                if (heardLevel >= 0) append(" level=").append(heardLevel).append('%')
-                append(" volMedia=").append(mediaVolume(ctx))
-                append(" speaker=").append(if (speakerphone(ctx)) "yes" else "no")
-                append(" voiceKeys=").append(if (voiceKeys) "yes" else "no")
-                append(" net=").append(network(ctx))
-                if (minutes >= 0) append(" min=").append(String.format(Locale.US, "%.1f", minutes))
-                if (dCpu >= 0) append(" cpu=+").append(dCpu / 1000).append('s')
-                if (dRx >= 0) append(" rx=+").append(dRx / 1024).append("kB")
-                if (dTx >= 0) append(" tx=+").append(dTx / 1024).append("kB")
-                append('\n')
+            val values = HashMap<String, Any?>()
+            values["time"] = format.format(Date(now))
+            values["pair"] = pair
+            values["why"] = why
+            // Which phone this is, on the start row only: the first
+            // question over somebody else's journal is "which phone",
+            // and repeating it on every row would be the same word a
+            // hundred times.
+            if (why == "start") {
+                values["phone"] = phoneName()
+                values["android"] = Build.VERSION.RELEASE
+                // Whether the phone has promised not to get in the way:
+                // the only restriction that can be read from code.
+                values["battery"] =
+                    if (StartupHelper.isIgnoringBatteryOptimizations(ctx)) "unrestricted"
+                    else "optimised"
             }
-            file.appendText(line)
+            values["state"] = state
+            values["batt"] = percent
+            values["charge"] = charge
+            if (dCharge != Int.MIN_VALUE) values["dcharge"] = dCharge
+            values["current"] = current / 1000
+            values["charging"] = if (charging(ctx)) "yes" else "no"
+            values["screen"] = if (screenOn(ctx)) "on" else "off"
+            // Seconds of the interval just closed spent with the screen
+            // on: the key to telling what is ours from what belongs to
+            // whoever was using the phone.
+            values["screenOn"] = screenSeconds(ctx)
+            values["system"] = dozing(ctx)
+            // The sound: mode, voice volume, whether the keys command it.
+            values["audio"] = audioMode(ctx)
+            values["volVoice"] = voiceVolume(ctx)
+            if (heardLevel >= 0) values["level"] = heardLevel
+            values["volMedia"] = mediaVolume(ctx)
+            values["speaker"] = if (speakerphone(ctx)) "yes" else "no"
+            values["voiceKeys"] = if (voiceKeys) "yes" else "no"
+            values["net"] = network(ctx)
+            if (minutes >= 0) values["min"] = String.format(Locale.US, "%.1f", minutes)
+            if (dCpu >= 0) values["cpu"] = dCpu / 1000
+            if (dRx >= 0) values["rx"] = dRx / 1024
+            if (dTx >= 0) values["tx"] = dTx / 1024
+            appendRow(file, row(values))
 
             lastMoment = now
             lastCharge = charge
@@ -442,21 +460,20 @@ object Journal {
             val fresh = exits.filter { it.timestamp > already }.sortedBy { it.timestamp }
             if (fresh.isEmpty()) return
 
-            val file = myFile(ctx) ?: return
-            rotateIfBig(file)
             for (u in fresh) {
-                val line = buildString {
-                    append(format.format(Date(u.timestamp)))
-                    append(" why=death")
-                    append(" cause=").append(cause(u.reason))
-                    append(" was=").append(importance(u.importance))
-                    if (u.status != 0) append(" status=").append(u.status)
-                    if (u.pss > 0) append(" pss=").append(u.pss).append("kB")
-                    if (u.rss > 0) append(" rss=").append(u.rss).append("kB")
-                    u.description?.let { append(" description=\"").append(it).append('"') }
-                    append('\n')
-                }
-                file.appendText(line)
+                // A death goes on the row of the day it happened.
+                val file = myFile(ctx, u.timestamp) ?: continue
+                val values = HashMap<String, Any?>()
+                values["time"] = format.format(Date(u.timestamp))
+                values["pair"] = pair
+                values["why"] = "death"
+                values["cause"] = cause(u.reason)
+                values["was"] = importance(u.importance)
+                if (u.status != 0) values["status"] = u.status
+                if (u.pss > 0) values["pss"] = u.pss
+                if (u.rss > 0) values["rss"] = u.rss
+                u.description?.let { values["description"] = it }
+                appendRow(file, row(values))
             }
             prefs.edit().putLong(LAST_DEATH, fresh.last().timestamp).apply()
         } catch (e: Exception) {
@@ -592,46 +609,57 @@ object Journal {
     }
 
     /**
-     * Keeps the file within a reasonable size.
-     *
-     * One line every five minutes makes about 40 kB a month: the rotation
-     * will hardly ever happen, but a file growing without a limit on a
-     * phone is the kind of thing one finds out about when it is late.
+     * The rows not yet handed to the other side, across the files:
+     * the tail of the file the last sending stopped in, and every
+     * later file whole, headers left out. The cursor names the file and
+     * the row count reached; it is written down only when the sending
+     * is confirmed, by [markSent].
      */
-    private fun rotateIfBig(file: File) {
-        if (!file.exists() || file.length() < MAX_SIZE) return
-        val dir = file.parentFile ?: return
-        // The highest number kept so far, then everything one step back.
-        var last = 0
-        while (File(dir, "${file.name}.${last + 1}").exists()) last++
-        for (n in last downTo 1) {
-            File(dir, "${file.name}.$n").renameTo(File(dir, "${file.name}.${n + 1}"))
+    @Synchronized
+    fun unsent(ctx: Context): Pair<String, String> {
+        val files = myFiles(ctx)
+        if (files.isEmpty()) return Pair("", "")
+        val prefs = ctx.getSharedPreferences(BootReceiver.PREFS, Context.MODE_PRIVATE)
+        val sentFile = prefs.getString(SENT_FILE, "") ?: ""
+        val sentLines = prefs.getInt(SENT_LINES, 0)
+        val out = StringBuilder()
+        var cursor = ""
+        for (f in files) {
+            if (f.name < sentFile) continue
+            val lines = f.readLines()
+            val from = if (f.name == sentFile) sentLines.coerceIn(0, lines.size) else 0
+            for (i in from until lines.size) {
+                val l = lines[i]
+                if (l.isEmpty() || l.startsWith("time\t")) continue
+                out.append(l).append('\n')
+            }
+            cursor = "${f.name}|${lines.size}"
         }
-        file.renameTo(File(dir, file.name + ".1"))
+        return Pair(out.toString(), cursor)
     }
 
-    /** Our own journal, from the line starting at `from` onwards. */
-    fun readMine(ctx: Context, fromLine: Int): String {
-        val file = myFile(ctx) ?: return ""
-        if (!file.exists()) return ""
-        val lines = file.readLines()
-        if (fromLine >= lines.size) return ""
-        return lines.subList(fromLine.coerceAtLeast(0), lines.size).joinToString("\n")
+    fun markSent(ctx: Context, cursor: String) {
+        val bar = cursor.lastIndexOf('|')
+        if (bar <= 0) return
+        ctx.getSharedPreferences(BootReceiver.PREFS, Context.MODE_PRIVATE).edit()
+            .putString(SENT_FILE, cursor.substring(0, bar))
+            .putInt(SENT_LINES, cursor.substring(bar + 1).toIntOrNull() ?: 0)
+            .apply()
     }
 
-    /** How many lines our journal has: only the new ones get sent. */
-    fun myLines(ctx: Context): Int {
-        val file = myFile(ctx) ?: return 0
-        return if (file.exists()) file.readLines().size else 0
-    }
-
-    /** Appends what the other phone has sent. */
+    /** The other side's rows, into today's file of theirs. */
     @Synchronized
     fun appendOther(ctx: Context, text: String, who: String = "") {
         try {
-            val file = otherFile(ctx, who) ?: return
-            rotateIfBig(file)
-            file.appendText(if (text.endsWith("\n")) text else text + "\n")
+            val csv = text.contains('\t')
+            val file = otherFile(ctx, who, csv) ?: return
+            if (!csv) {
+                file.appendText(if (text.endsWith("\n")) text else text + "\n")
+                return
+            }
+            val body = text.split('\n').filter { it.isNotEmpty() && !it.startsWith("time\t") }
+            if (body.isEmpty()) return
+            appendRow(file, body.joinToString("\n") + "\n")
         } catch (e: Exception) {
             Log.w(TAG, "journal: could not write the other side's: ${e.message}")
         }

@@ -584,13 +584,9 @@ export function pairName(p: PairInfo | null | undefined): string {
  */
 export function pairFileKey(p: PairInfo | null | undefined): string {
   if (!p) return '';
-  const name = (p.label || p.peerName || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 24);
-  const fingerprint = (p.id || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 8).toLowerCase();
-  return name ? `${name}-${fingerprint}` : fingerprint;
+  // The id only: a connection renamed must not start a new file. The
+  // name goes on every row instead, in the journal's own column.
+  return (p.id || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 8).toLowerCase();
 }
 
 /** Renames the connection. Empty = it has no name. */

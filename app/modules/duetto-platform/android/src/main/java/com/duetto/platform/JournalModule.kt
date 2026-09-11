@@ -70,15 +70,28 @@ class JournalModule(private val ctx: ReactApplicationContext) :
 
     /** How many lines the journal has: only the new ones get sent. */
     @ReactMethod
-    fun lines(promise: Promise) {
-        promise.resolve(Journal.myLines(ctx))
+    fun pair(name: String, promise: Promise) {
+        Journal.pair(name)
+        promise.resolve(true)
+    }
+
+    /** the rows not yet handed to the other side, with the cursor to confirm */
+    @ReactMethod
+    fun unsent(promise: Promise) {
+        val (text, cursor) = Journal.unsent(ctx)
+        val m = Arguments.createMap()
+        m.putString("text", text)
+        m.putString("cursor", cursor)
+        promise.resolve(m)
+    }
+
+    @ReactMethod
+    fun markSent(cursor: String, promise: Promise) {
+        Journal.markSent(ctx, cursor)
+        promise.resolve(true)
     }
 
     /** The lines from `fromLine` onwards, as a single text. */
-    @ReactMethod
-    fun read(fromLine: Int, promise: Promise) {
-        promise.resolve(Journal.readMine(ctx, fromLine))
-    }
 
     /**
      * Appends the journal that arrived from the other phone.

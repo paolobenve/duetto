@@ -31,6 +31,9 @@ set -euo pipefail
 
 DEST="${1:-journal-$(date +%Y%m%d-%H%M)}"
 REMOTE=/sdcard/Android/data/com.duetto/files/journal
+# Since build 313 the journal is one tab-separated .csv a day (mine-YYYY-MM-DD.csv,
+# other-<pair id>-YYYY-MM-DD.csv), first row the column names; older .log files
+# (key=value lines) stay beside them.
 
 if ! adb get-state > /dev/null 2>&1; then
   echo "No phone connected (adb cannot see one)." >&2
@@ -49,7 +52,7 @@ echo "== pulled into $DEST:"
 ls -l "$DEST"
 
 # A two-line summary, to see at once whether there is anything to read.
-for f in "$DEST"/*.log; do
+for f in "$DEST"/*.csv "$DEST"/*.log; do
   [ -f "$f" ] || continue
   lines=$(wc -l < "$f")
   echo

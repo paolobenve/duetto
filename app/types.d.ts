@@ -135,8 +135,11 @@ declare module 'duetto-platform' {
     level(percent: number): Promise<boolean>;
     /** whether to write the periodic line: it follows the diagnostics switch */
     sampling(on: boolean): Promise<boolean>;
-    lines(): Promise<number>;
-    read(fromLine: number): Promise<string>;
+    /** the name of the connection in use: it goes on every row */
+    pair(name: string): Promise<boolean>;
+    /** the rows not yet handed to the other side, and the cursor to confirm with markSent */
+    unsent(): Promise<{ text: string; cursor: string }>;
+    markSent(cursor: string): Promise<boolean>;
     /** `who`: which connection it comes from, to keep the files apart */
     appendOther(text: string, who?: string): Promise<boolean>;
     path(): Promise<string>;

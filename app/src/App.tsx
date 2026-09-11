@@ -45,7 +45,7 @@ import ChannelScreen from './ChannelScreen';
 import { loadPipPosition } from './VideoStage';
 import { useAudioRoute } from './audioRoute';
 import {
-  startListening, stopListening, presenceLine, deathStory, interfaceInCharge, isRealName,
+  startListening, stopListening, presenceCode, presenceLine, deathStory, interfaceInCharge, isRealName,
 } from './presence';
 import { avatarFor, peerAvatar } from './avatar';
 
@@ -77,6 +77,8 @@ const RETURN_WAIT_MS = 6000;
  * connected, that is, when the network is already in use.
  */
 const JOURNAL_SWAP_MS = 5 * 60 * 1000;
+/** one piece of journal per message: the server takes 256 KB, this leaves room */
+const JOURNAL_PIECE = 180 * 1024;
 
 const rtcLog = logger('[duetto-rtc]');
 const uiLog = logger('[duetto-ui]');
@@ -88,8 +90,6 @@ const uiLog = logger('[duetto-ui]');
  * sent to one would count as sent to the other, which would never
  * receive them. Each has its own bookmark.
  */
-const SENT_KEY = 'duetto.journal.sent';
-const sentKeyFor = (id: string) => `${SENT_KEY}.${id}`;
 
 /** The last death already told to the other phone: it is not repeated. */
 const DEATH_TOLD_KEY = 'duetto.death.told';
@@ -1170,6 +1170,10 @@ export default function App() {
    */
   const journalKeyRef = useRef('');
   useEffect(() => { journalKeyRef.current = pairFileKey(cfg?.pair); }, [cfg?.pair]);
+  // The connection's name, on every row of the journal.
+  useEffect(() => {
+    Journal.pair(pairName(cfg?.pair) || '').catch(() => { /* noop */ });
+  }, [cfg?.pair]);
 
   /**
    * The name that goes in front of the alerts: which connection they
@@ -1243,6 +1247,17 @@ export default function App() {
     return () => clearTimeout(t);
   }, [status]);
 
+  const noticeCode = React.useMemo(() => presenceCode({
+    inChannel,
+    peerActive: status === 'together',
+    peerPresent,
+    detached: peerDetached,
+    tornDown: peerTornDown,
+    server: shownStatus === 'offline' ? 'down'
+      : shownStatus === 'connecting' ? 'connecting' : 'ok',
+  }), [inChannel, status, shownStatus, peerPresent, peerDetached, peerTornDown]);
+  const noticeCodeRef = useRef(noticeCode);
+  useEffect(() => { noticeCodeRef.current = noticeCode; }, [noticeCode]);
   const noticeText = React.useMemo(() => presenceLine({
     inChannel,
     peerActive: status === 'together',
@@ -1352,7 +1367,7 @@ export default function App() {
   const catchUpNotice = useCallback(() => {
     if (!presenceLiveRef.current) return;
     if (writtenNotice.current === noticeTextRef.current) return;
-    Journal.mark(`notice:again:${noticeTextRef.current}`).catch(() => { /* noop */ });
+    Journal.mark(`notice:again:${noticeCodeRef.current}`).catch(() => { /* noop */ });
     writeNotice();
   }, [writeNotice]);
   const catchUpNoticeRef = useRef(catchUpNotice);
@@ -1365,7 +1380,7 @@ export default function App() {
     // Into the journal, because it is the one thing the journal never
     // said: what the shade was told to show. Without it, a line that
     // stayed behind cannot be told from a line that was never sent.
-    Journal.mark(`notice:${noticeText}`).catch(() => { /* noop */ });
+    Journal.mark(`notice:${noticeCode}`).catch(() => { /* noop */ });
     writeNotice();
     return () => {
       if (noticeRetry.current) { clearTimeout(noticeRetry.current); noticeRetry.current = null; }
@@ -1787,28 +1802,26 @@ export default function App() {
   const sendJournal = useCallback(async () => {
     const sig = signalingRef.current;
     if (!sig?.connected) return;
-    const key = sentKeyFor(cfg?.pair?.id ?? '');
     try {
-      const lines = await Journal.lines();
-      const mine = await readWithBridge(key, `${OLD_KEYS.sent}.${cfg?.pair?.id ?? ''}`);
-      // The single key of old is the starting point for whoever was
-      // already here: without it, the first exchange after the update
-      // would send months of lines the other side already has.
-      const older = mine === null
-        ? await AsyncStorage.getItem(OLD_KEYS.sent)
-        : null;
-      let sent = Number(mine ?? older) || 0;
-      if (sent > lines) sent = 0;
-      if (lines <= sent) return;
-
-      const text = await Journal.read(sent);
-      if (!text) return;
-      sig.sendSignal({ kind: 'journal', text });
-      await AsyncStorage.setItem(key, String(lines));
+      const { text, cursor } = await Journal.unsent();
+      if (!text || !cursor) return;
+      // In pieces under the server's ceiling, cut between rows: a row
+      // split in two would be glued back with a newline in the middle.
+      let piece = '';
+      for (const line of text.split('\n')) {
+        if (!line) continue;
+        if (piece.length + line.length + 1 > JOURNAL_PIECE) {
+          sig.sendSignal({ kind: 'journal', text: piece });
+          piece = '';
+        }
+        piece += line + '\n';
+      }
+      if (piece) sig.sendSignal({ kind: 'journal', text: piece });
+      await Journal.markSent(cursor);
     } catch {
-      /* the journal is not worth an error in anybody's face */
+      // the next beat tries again
     }
-  }, [cfg?.pair?.id]);
+  }, []);
 
   useEffect(() => {
     if (!peerPresent) return;

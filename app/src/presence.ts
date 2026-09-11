@@ -162,6 +162,23 @@ export function deathStory(
  *  - "unreachable": their phone is not connected to the server, and an
  *    alert has nowhere to go.
  */
+/** The same branches as presenceLine, as a short code for the journal. */
+export function presenceCode(o: {
+  inChannel: boolean;
+  peerActive: boolean;
+  peerPresent: boolean;
+  detached?: boolean;
+  tornDown?: boolean;
+  server?: 'ok' | 'down' | 'connecting';
+}): string {
+  if (o.server === 'down') return 'no-server';
+  if (o.server === 'connecting') return 'connecting';
+  if (o.peerActive) return o.inChannel ? 'with-peer' : 'peer-in-channel';
+  if (!o.peerPresent) return o.detached ? 'peer-detached' : 'peer-unreachable';
+  if (!o.inChannel) return 'both-waiting';
+  return o.tornDown ? 'peer-waiting-torn-down' : 'peer-waiting';
+}
+
 export function presenceLine(o: {
   /** we are in the channel */
   inChannel: boolean;

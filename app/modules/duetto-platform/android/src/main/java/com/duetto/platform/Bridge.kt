@@ -174,9 +174,9 @@ object Bridge {
     }
 
     private fun newName(name: String) = when {
-        name == "mio.log" -> Journal.MINE
-        name == "mio.log.1" -> "${Journal.MINE}.1"
-        name == "altro.log" -> Journal.OTHER
+        name == "mio.log" -> "mine.log"
+        name == "mio.log.1" -> "mine.log.1"
+        name == "altro.log" -> "other.log"
         name.startsWith("altro-") -> "other-" + name.removePrefix("altro-")
         else -> name
     }

@@ -265,8 +265,11 @@ export const Journal = isAndroid && NativeJournal
        * way.
        */
       sampling: (on) => call(NativeJournal, 'sampling', !!on),
-      lines: () => call(NativeJournal, 'lines'),
-      read: (fromLine) => call(NativeJournal, 'read', Number(fromLine) || 0),
+      /** the name of the connection in use: it goes on every row */
+      pair: (name) => call(NativeJournal, 'pair', String(name || '')),
+      /** the rows not yet handed to the other side, and the cursor to confirm with markSent */
+      unsent: () => call(NativeJournal, 'unsent'),
+      markSent: (cursor) => call(NativeJournal, 'markSent', String(cursor || '')),
       appendOther: (text, who) =>
         call(NativeJournal, 'appendOther', String(text), String(who || '')),
       path: () => call(NativeJournal, 'path'),
@@ -278,8 +281,9 @@ export const Journal = isAndroid && NativeJournal
       mark: unavailable,
       sampling: unavailable,
       level: unavailable,
-      lines: () => Promise.resolve(0),
-      read: () => Promise.resolve(''),
+      pair: unavailable,
+      unsent: () => Promise.resolve({ text: '', cursor: '' }),
+      markSent: unavailable,
       appendOther: unavailable,
       path: () => Promise.resolve(''),
       lastDeath: () => Promise.resolve(null),
