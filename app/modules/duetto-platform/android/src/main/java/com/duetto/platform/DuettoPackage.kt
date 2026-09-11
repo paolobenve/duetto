@@ -37,6 +37,7 @@ class DuettoPackage : ReactPackage {
         AudioModule(reactContext),
         AlertsModule(reactContext),
         JournalModule(reactContext),
+        ReportModule(reactContext),
         VolumeModule(reactContext),
         AlarmModule(reactContext),
         ScannerModule(reactContext),

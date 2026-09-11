@@ -28,6 +28,19 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application>
+        <!-- Hands the journal's files to other apps, through the share
+             sheet: a content:// address each, read-only, and only for
+             the folder named in duetto_file_paths.xml. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.duetto.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/duetto_file_paths" />
+        </provider>
+
         <!-- The screen that reads a QR code: a pairing code or an
              invitation held up by the phone next to this one. -->
         <activity

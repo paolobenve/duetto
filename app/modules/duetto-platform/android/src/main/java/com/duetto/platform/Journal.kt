@@ -209,6 +209,20 @@ object Journal {
     /** today's file of our own rows */
     fun myFile(ctx: Context, now: Long = System.currentTimeMillis()): File? =
         folder(ctx)?.let { File(it, "mine-${day(now)}.csv") }
+    /**
+     * The journal's files of the last `days` days - ours and the other
+     * side's, dated ones only - newest first. What is handed out or
+     * attached to a report.
+     */
+    fun recentFiles(ctx: Context, days: Int): List<File> {
+        val dir = folder(ctx) ?: return emptyList()
+        val since = day(System.currentTimeMillis() - days.coerceAtLeast(1) * 86400000L)
+        val dated = Regex("^(mine|other.*)-(\\d{4}-\\d{2}-\\d{2})\\.(csv|log)$")
+        return dir.listFiles()?.filter { f ->
+            val m = dated.find(f.name) ?: return@filter false
+            m.groupValues[2] >= since && f.length() > 0
+        }?.sortedByDescending { it.name } ?: emptyList()
+    }
     /** our files, oldest first */
     fun myFiles(ctx: Context): List<File> =
         folder(ctx)?.listFiles { f -> f.name.startsWith("mine-") && f.name.endsWith(".csv") }
@@ -507,7 +521,7 @@ object Journal {
      * writes "motorola edge 50 fusion" - and sticking the make in front
      * gave "motorola motorola edge 50 fusion".
      */
-    private fun phoneName(): String {
+    fun phoneName(): String {
         val make = Build.MANUFACTURER ?: ""
         val model = Build.MODEL ?: ""
         return if (model.startsWith(make, ignoreCase = true)) model

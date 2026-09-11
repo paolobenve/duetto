@@ -140,6 +140,12 @@ declare module 'duetto-platform' {
     /** the rows not yet handed to the other side, and the cursor to confirm with markSent */
     unsent(): Promise<{ text: string; cursor: string }>;
     markSent(cursor: string): Promise<boolean>;
+    /** the journal's files of the last days, newest first */
+    files(days: number): Promise<{ name: string; path: string; text: string }[]>;
+    /** Android's share sheet with those files */
+    share(days: number, title: string): Promise<boolean>;
+    /** which phone this is, for the head of a report */
+    phone(): Promise<string>;
     /** `who`: which connection it comes from, to keep the files apart */
     appendOther(text: string, who?: string): Promise<boolean>;
     path(): Promise<string>;

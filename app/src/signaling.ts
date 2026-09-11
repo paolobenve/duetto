@@ -154,7 +154,11 @@ export type SignalingEvents = {
     owner: boolean;
     /** whether it may open connections of its own on this server */
     opens: boolean;
+    /** whether this server carries reports to the beta testers' work items */
+    reports: boolean;
   }) => void;
+  /** the answer to a report sent through the server */
+  onReportResult?: (ok: boolean, error?: string, url?: string) => void;
   onPeerJoined?: (name: string, mode: Mode) => void;
   /** @param why 'bye' if they left, 'dropped' if the network went */
   onPeerLeft?: (why: 'bye' | 'dropped') => void;
@@ -579,7 +583,12 @@ export class Signaling {
           peerName: msg.peerName || '',
           turn: msg.turn ?? null,
           stun: msg.stun ?? null,
+          reports: msg.reports === true,
         });
+        break;
+
+      case 'report-result':
+        this.events.onReportResult?.(!!msg.ok, msg.error, msg.url);
         break;
 
       case 'peer-joined':
@@ -777,6 +786,11 @@ export class Signaling {
   /** Asks the server to alert the other side. */
   knock() {
     this.rawSend({ type: 'knock' });
+  }
+
+  /** one part of a report for the server to carry: begin, file, end */
+  sendReport(part: Record<string, unknown>) {
+    this.rawSend({ type: 'report', ...part });
   }
 
   get connected(): boolean {

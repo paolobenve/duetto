@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What the FileProvider may hand out: the journal's folder, and
+     nothing else of the app's files. -->
+<paths>
+    <external-files-path name="journal" path="journal/" />
+    <files-path name="journal-internal" path="journal/" />
+</paths>

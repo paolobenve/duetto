@@ -287,6 +287,8 @@ export type DuoConfig = {
    * the interface that does not travel with the person.
    */
   diagnostics: boolean;
+  /** the beta tester's own GitLab token, for reports in their name */
+  gitlabToken?: string;
   /**
    * The wait, written as one number instead of two.
    *

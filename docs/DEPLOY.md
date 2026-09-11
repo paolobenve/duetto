@@ -221,6 +221,17 @@ daily copy of the list reads the file from the volume rather than from a folder:
 `docker compose exec -T duetto-signaling cat /app/data/devices.json > copy.json`
 in place of the `cp` in the backup unit.
 
+### Reports from the beta testers
+
+With `GITLAB_TOKEN` and `GITLAB_PROJECT` in `.env` the server carries the
+testers' reports: the app offers "send the journal to my work item" and
+"report a problem", the server finds the open work item whose title holds the
+name on the person's invitation (the one titled "Beta tester: ..." first),
+uploads the journal's files and writes a note with the person's name in its
+first line. The token is a project access token of the Duetto project, role
+Reporter, scope `api`. A tester with a token of their own does not need this:
+the app writes on GitLab by itself, in their name.
+
 ### A copy of the list
 
 `devices.json` is the phones, the invitations and the rooms: losing it means pairing

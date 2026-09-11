@@ -22,6 +22,7 @@ const NativeScanner = NativeModules.DuettoScanner;
 const NativeAudio = NativeModules.DuettoAudio;
 const NativeAlerts = NativeModules.DuettoAlerts;
 const NativeJournal = NativeModules.DuettoJournal;
+const NativeReport = NativeModules.DuettoReport;
 const NativeVolume = NativeModules.DuettoVolume;
 const NativeAlarm = NativeModules.DuettoAlarm;
 
@@ -270,6 +271,12 @@ export const Journal = isAndroid && NativeJournal
       /** the rows not yet handed to the other side, and the cursor to confirm with markSent */
       unsent: () => call(NativeJournal, 'unsent'),
       markSent: (cursor) => call(NativeJournal, 'markSent', String(cursor || '')),
+      /** the journal's files of the last days, newest first: {name, text} */
+      files: (days) => call(NativeReport, 'journalFiles', Math.max(1, Number(days) || 3)),
+      /** Android's share sheet with those files */
+      share: (days, title) => call(NativeReport, 'shareJournal', Math.max(1, Number(days) || 3), String(title || 'Duetto')),
+      /** which phone this is, for the head of a report */
+      phone: () => call(NativeReport, 'phone'),
       appendOther: (text, who) =>
         call(NativeJournal, 'appendOther', String(text), String(who || '')),
       path: () => call(NativeJournal, 'path'),
@@ -282,6 +289,9 @@ export const Journal = isAndroid && NativeJournal
       sampling: unavailable,
       level: unavailable,
       pair: unavailable,
+      files: () => Promise.resolve([]),
+      share: unavailable,
+      phone: () => Promise.resolve(''),
       unsent: () => Promise.resolve({ text: '', cursor: '' }),
       markSent: unavailable,
       appendOther: unavailable,

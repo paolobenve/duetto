@@ -10,7 +10,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity,
-  KeyboardAvoidingView, Platform, Alert, Modal, Pressable, Clipboard,
+  KeyboardAvoidingView, Platform, Alert, Modal, Pressable, Clipboard, Linking,
 } from 'react-native';
 import type { DuoConfig, PairInfo, VideoQuality } from './config';
 import type { PersonOnServer, InvitationOnServer } from './signaling';
@@ -25,7 +25,9 @@ import {
 import { peerAvatar } from './avatar';
 import { isRealName } from './presence';
 import { VERSION_FULL } from './version';
-import { Alerts } from 'duetto-platform';
+import { Alerts, Journal } from 'duetto-platform';
+import { TOKEN_PAGE } from './gitlab';
+import type { ReportOutcome } from './gitlab';
 
 /**
  * The choices for the call's vibration.
@@ -149,6 +151,10 @@ type Props = {
    * on.
    */
   onLive?: (patch: Partial<DuoConfig>) => void;
+  /** whether the server carries reports to the beta testers' work items */
+  reportsOpen?: boolean;
+  /** a report: the person's words, the journal along or not */
+  onReport?: (text: string, withJournal: boolean) => Promise<ReportOutcome>;
 };
 
 /**
@@ -157,7 +163,7 @@ type Props = {
  */
 export default function SettingsScreen({
   initial, onForgetPair, onSwitchPair, onRenamePair, onChangeServer, onLeaveServer, onRepair, onHaveCode, onClose, onOpenSetup,
-  vp9Here, vp9Peer, onQualityChange, onLive,
+  vp9Here, vp9Peer, onQualityChange, onLive, reportsOpen, onReport,
   canInvite, canAddPair, people = [], invitations = [], freshInvite,
   onAskPeople, onInvite, onForget, onForgetInvitation,
 }: Props) {
@@ -171,6 +177,35 @@ export default function SettingsScreen({
         : t('settings.vp9OtherPhone');
   // The field shows the domain, not the whole address that lives in the
   // configuration: that is what is asked for, and what is read back.
+  // The report's window: the words, whether the journal goes along,
+  // and the sending under way.
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportText, setReportText] = useState('');
+  const [reportWithJournal, setReportWithJournal] = useState(false);
+  const [reportBusy, setReportBusy] = useState(false);
+  const openReport = (withJournal: boolean) => {
+    setReportText('');
+    setReportWithJournal(withJournal);
+    setReportOpen(true);
+  };
+  const submitReport = async () => {
+    if (!onReport || reportBusy) return;
+    setReportBusy(true);
+    const out = await onReport(reportText, reportWithJournal).catch(
+      (e): ReportOutcome => ({ ok: false, error: String(e) }),
+    );
+    setReportBusy(false);
+    if (out.ok) {
+      setReportOpen(false);
+      Alert.alert(t('settings.reportSentTitle'), t('settings.reportSent'));
+      return;
+    }
+    const why = out.error === 'no-work-item' ? t('settings.reportNoWorkItem')
+      : out.error === 'bad-token' ? t('settings.reportBadToken')
+        : out.error === 'no-road' ? t('settings.reportNoRoad')
+          : t('settings.reportFailed', { error: out.error ?? '' });
+    Alert.alert(t('settings.reportFailedTitle'), why);
+  };
   const [cfg, setCfg] = useState<DuoConfig>(
     () => ({ ...initial, serverUrl: displayServer(initial.serverUrl) }),
   );
@@ -849,6 +884,51 @@ export default function SettingsScreen({
           </TouchableOpacity>
         ) : null}
 
+        {/* The journal, handed out. Android's share sheet for anybody;
+            for the beta testers their work item on GitLab - with a
+            token of their own, in their name; without one, through the
+            server, which says whose words they are. */}
+        <TouchableOpacity
+          style={styles.secondary}
+          onPress={() => {
+            Journal.share(3, 'Duetto').then((ok) => {
+              if (!ok) Alert.alert(t('settings.shareJournal'), t('settings.journalEmpty'));
+            }).catch(() => { /* the sheet did not open: nothing to say */ });
+          }}>
+          <Text style={styles.secondaryText}>{t('settings.shareJournal')}</Text>
+        </TouchableOpacity>
+        <Text style={styles.sectionHint}>{t('settings.shareJournalNote')}</Text>
+
+        <Text style={styles.subsection}>{t('settings.betaReports')}</Text>
+        <Text style={styles.sectionHint}>{t('settings.betaReportsHint')}</Text>
+        <Field
+          label={t('settings.gitlabToken')}
+          value={cfg.gitlabToken ?? ''}
+          onChange={(v) => {
+            const token = v.trim();
+            setCfg({ ...cfg, gitlabToken: token });
+            onLive?.({ gitlabToken: token });
+          }}
+          placeholder="glpat-…"
+          autoCapitalize="none"
+          hint={t('settings.gitlabTokenNote')}
+        />
+        <TouchableOpacity onPress={() => { Linking.openURL(TOKEN_PAGE).catch(() => {}); }}>
+          <Text style={styles.linkInline}>{t('settings.gitlabTokenMake')}</Text>
+        </TouchableOpacity>
+        {cfg.gitlabToken || reportsOpen ? (
+          <>
+            <TouchableOpacity style={styles.secondary} onPress={() => openReport(true)}>
+              <Text style={styles.secondaryText}>{t('settings.sendJournal')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.secondary} onPress={() => openReport(false)}>
+              <Text style={styles.secondaryText}>{t('settings.reportProblem')}</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <Text style={styles.sectionHint}>{t('settings.reportNoRoad')}</Text>
+        )}
+
         <Text style={styles.section}>{t('settings.security')}</Text>
         <View style={styles.infoBox}>
           <Text style={styles.infoLine}>
@@ -936,6 +1016,53 @@ export default function SettingsScreen({
               </TouchableOpacity>
               <TouchableOpacity style={styles.sheetAction} onPress={() => closeNaming(true)}>
                 <Text style={styles.sheetOk}>{t('settings.save')}</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* The report's window: the words, and the journal along or not */}
+      <Modal
+        visible={reportOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => { if (!reportBusy) setReportOpen(false); }}>
+        <Pressable style={styles.sheetBack} onPress={() => { if (!reportBusy) setReportOpen(false); }}>
+          <Pressable style={styles.sheet} onPress={() => { /* hold it */ }}>
+            <Text style={styles.sheetTitle}>
+              {t(reportWithJournal ? 'settings.sendJournal' : 'settings.reportProblem')}
+            </Text>
+            <TextInput
+              style={[styles.input, styles.reportInput]}
+              value={reportText}
+              onChangeText={setReportText}
+              placeholder={t('settings.reportPlaceholder')}
+              placeholderTextColor="#5b6472"
+              multiline
+              autoFocus
+              maxLength={4000}
+            />
+            <TouchableOpacity
+              style={[styles.choice, reportWithJournal && styles.choicePicked]}
+              onPress={() => setReportWithJournal(!reportWithJournal)}>
+              <View style={[styles.radio, reportWithJournal && styles.radioPicked]} />
+              <View style={styles.choiceText}>
+                <Text style={styles.choiceLabel}>{t('settings.reportAttach')}</Text>
+                <Text style={styles.choiceNote}>{t('settings.reportAttachNote')}</Text>
+              </View>
+            </TouchableOpacity>
+            <View style={styles.sheetActions}>
+              <TouchableOpacity style={styles.sheetAction} disabled={reportBusy} onPress={() => setReportOpen(false)}>
+                <Text style={styles.sheetCancel}>{t('settings.cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.sheetAction}
+                disabled={reportBusy || (!reportText.trim() && !reportWithJournal)}
+                onPress={submitReport}>
+                <Text style={[styles.sheetOk, reportBusy ? styles.textOff : null]}>
+                  {t(reportBusy ? 'settings.reportSending' : 'settings.reportSend')}
+                </Text>
               </TouchableOpacity>
             </View>
           </Pressable>
@@ -1041,6 +1168,7 @@ const styles = StyleSheet.create({
   field: { marginBottom: 16 },
   label: { color: '#c9d2de', marginBottom: 6, fontWeight: '600' },
   readonly: { color: '#e6ebf1', fontSize: 16, paddingVertical: 4 },
+  reportInput: { minHeight: 110, textAlignVertical: 'top' },
   linkInline: { color: '#2f7cf6', fontSize: 14, fontWeight: '600', marginTop: 8 },
   input: {
     backgroundColor: '#151a23', color: '#fff', borderRadius: 10,

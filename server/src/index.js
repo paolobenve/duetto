@@ -54,6 +54,12 @@ const HOST = process.env.HOST || '127.0.0.1'; // behind a reverse proxy: loopbac
 // The fallback link (TURN). Configured HERE and not on the phones: that
 // way there is one single thing to maintain, and changing the password
 // does not mean going back to every device.
+// Reports from the beta testers: with a token of the project's, the
+// server writes their words and their journal on their work item.
+const GITLAB_URL = (process.env.GITLAB_URL || 'https://gitlab.com').replace(/\/+$/, '');
+const GITLAB_TOKEN = process.env.GITLAB_TOKEN || '';
+const GITLAB_PROJECT = process.env.GITLAB_PROJECT || '';
+const reportsOpen = () => !!(GITLAB_TOKEN && GITLAB_PROJECT);
 const TURN_URL = process.env.TURN_URL || '';
 const TURN_USER = process.env.TURN_USER || '';
 const TURN_PASS = process.env.TURN_PASS || '';
@@ -480,6 +486,106 @@ function leaveRoom(ws) {
 }
 
 /** The name shown in the other's notifications: cleaned, we do not trust it. */
+// --- Reports to GitLab ------------------------------------------------
+
+async function gitlab(path, init = {}) {
+  const res = await fetch(
+    `${GITLAB_URL}/api/v4/projects/${encodeURIComponent(GITLAB_PROJECT)}${path}`,
+    { ...init, headers: { 'PRIVATE-TOKEN': GITLAB_TOKEN, ...(init.headers || {}) } },
+  );
+  if (!res.ok) throw new Error(`gitlab-${res.status}`);
+  return res.json();
+}
+
+/**
+ * The work item of the person named on the invitation: among the open
+ * ones whose title holds the name, the one titled "Beta tester: ..."
+ * first - the title our link puts - else the first found.
+ */
+async function findWorkItem(name) {
+  const clean = String(name || '').trim();
+  if (!clean || clean === 'Someone') return null;
+  const list = await gitlab(
+    `/issues?state=opened&in=title&search=${encodeURIComponent(clean)}&per_page=20`,
+  );
+  if (!Array.isArray(list) || list.length === 0) return null;
+  const lower = clean.toLowerCase();
+  const titled = list.filter((i) => String(i.title || '').toLowerCase().includes(lower));
+  const beta = titled.find((i) => /^beta tester\b/i.test(String(i.title || '')));
+  const pick = beta || titled[0] || null;
+  return pick ? { iid: pick.iid, url: pick.web_url } : null;
+}
+
+const REPORT_MAX_BYTES = 6 * 1024 * 1024;
+
+/**
+ * A report comes in parts, under the message ceiling: "begin" with the
+ * words, "file" pieces by name, "end". On the end it is written on the
+ * work item: the person's name in the first line - the note is the
+ * project's, but who speaks is said - their words quoted, the journal
+ * attached.
+ */
+async function handleReport(ws, msg) {
+  if (!reportsOpen()) {
+    send(ws, { type: 'report-result', ok: false, error: 'no-road' });
+    return;
+  }
+  const part = String(msg.part || '');
+  if (part === 'begin') {
+    ws.report = {
+      text: String(msg.text || '').slice(0, 20000),
+      version: String(msg.version || '').slice(0, 80),
+      phone: String(msg.phone || '').slice(0, 80),
+      files: new Map(),
+      bytes: 0,
+    };
+    return;
+  }
+  const r = ws.report;
+  if (!r) return;
+  if (part === 'file') {
+    const name = String(msg.name || 'journal.csv').replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 80);
+    const text = String(msg.text || '');
+    r.bytes += text.length;
+    if (r.bytes > REPORT_MAX_BYTES) {
+      ws.report = null;
+      send(ws, { type: 'report-result', ok: false, error: 'too-big' });
+      return;
+    }
+    r.files.set(name, (r.files.get(name) || '') + text);
+    return;
+  }
+  if (part !== 'end') return;
+  ws.report = null;
+  const item = await findWorkItem(ws.name);
+  if (!item) {
+    send(ws, { type: 'report-result', ok: false, error: 'no-work-item' });
+    return;
+  }
+  const attachments = [];
+  for (const [name, text] of r.files) {
+    const form = new FormData();
+    form.append('file', new Blob([text], { type: 'text/plain' }), name);
+    const up = await gitlab('/uploads', { method: 'POST', body: form });
+    if (up && up.markdown) attachments.push(up.markdown);
+  }
+  const quoted = r.text.trim()
+    ? r.text.trim().split('\n').map((l) => `> ${l}`).join('\n')
+    : '';
+  const body = [
+    `**Report from ${cleanName(ws.name)}** · Duetto ${r.version} · ${r.phone}`,
+    quoted,
+    attachments.length ? `Journal: ${attachments.join(' ')}` : '',
+  ].filter(Boolean).join('\n\n');
+  await gitlab(`/issues/${item.iid}/notes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ body }),
+  });
+  console.log(`[duetto] report from ${cleanName(ws.name)} on ${item.url}`);
+  send(ws, { type: 'report-result', ok: true, url: item.url });
+}
+
 function cleanName(raw) {
   const s = typeof raw === 'string' ? raw.trim() : '';
   if (!s) return 'Someone';
@@ -767,6 +873,7 @@ wss.on('connection', (ws, req) => {
         opens: ws.opens !== false,
         turn: turnConfig(ws),
         stun: stunConfig(),
+        reports: reportsOpen(),
         polite: others.length === 0,
         peerPresent: !!other,
         peerActive: other ? other.mode === 'active' : false,
@@ -840,6 +947,16 @@ wss.on('connection', (ws, req) => {
       for (const peer of peersOf(ws.roomId, ws)) {
         send(peer, { type: 'pair', from: ws.peerId, payload: msg.payload });
       }
+      return;
+    }
+
+    // --- 4b) A report for the beta testers' work item, carried by us ----
+    if (msg.type === 'report') {
+      handleReport(ws, msg).catch((e) => {
+        console.warn(`[duetto] report from ${cleanName(ws.name)} failed: ${e.message}`);
+        ws.report = null;
+        send(ws, { type: 'report-result', ok: false, error: 'failed' });
+      });
       return;
     }
 

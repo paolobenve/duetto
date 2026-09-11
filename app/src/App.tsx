@@ -32,7 +32,7 @@ import {
 import { Signaling, PresenceStatus, Mode } from './signaling';
 import type { PersonOnServer, InvitationOnServer } from './signaling';
 import { useLanguage, t } from './i18n';
-import { VERSION, BUILD } from './version';
+import { VERSION, BUILD, VERSION_FULL } from './version';
 import { logger, setLogging } from './log';
 import { ChannelSession } from './webrtc';
 import type { VideoStats } from './webrtc';
@@ -44,6 +44,8 @@ import { leaveServer, knock, watchDoor } from './door';
 import ChannelScreen from './ChannelScreen';
 import { loadPipPosition } from './VideoStage';
 import { useAudioRoute } from './audioRoute';
+import { reportDirectly } from './gitlab';
+import type { ReportOutcome } from './gitlab';
 import {
   startListening, stopListening, presenceCode, presenceLine, deathStory, interfaceInCharge, isRealName,
 } from './presence';
@@ -562,6 +564,45 @@ export default function App() {
     return () => { alive = false; clearInterval(timer); beat(); sub.remove(); };
   }, [inChannel, cfg?.diagnostics]);
 
+  /** whether the server carries reports to the beta testers' work items */
+  const [reportsOpen, setReportsOpen] = useState(false);
+  /** the report on its way through the server, waiting for the answer */
+  const reportPending = useRef<((o: ReportOutcome) => void) | null>(null);
+  /**
+   * A report: with the person's own token straight to GitLab, in their
+   * name; else through the server, which writes it in the project's
+   * name with theirs in the first line.
+   */
+  const sendReport = useCallback(async (text: string, withJournal: boolean): Promise<ReportOutcome> => {
+    const phone = await Journal.phone().catch(() => '');
+    const token = (cfgRef.current?.gitlabToken || '').trim();
+    if (token) {
+      return reportDirectly({ token, text, withJournal, version: VERSION_FULL, phone });
+    }
+    const sig = signalingRef.current;
+    if (!sig?.connected || !reportsOpen) return { ok: false, error: 'no-road' };
+    return new Promise<ReportOutcome>((resolve) => {
+      const timer = setTimeout(() => {
+        reportPending.current = null;
+        resolve({ ok: false, error: 'timeout' });
+      }, 90_000);
+      reportPending.current = (o) => { clearTimeout(timer); reportPending.current = null; resolve(o); };
+      (async () => {
+        sig.sendReport({ part: 'begin', text, version: VERSION_FULL, phone });
+        if (withJournal) {
+          const files = await Journal.files(3).catch(() => [] as { name: string; text: string }[]);
+          for (const f of files) {
+            for (let i = 0; i < f.text.length; i += JOURNAL_PIECE) {
+              sig.sendReport({ part: 'file', name: f.name, text: f.text.slice(i, i + JOURNAL_PIECE) });
+            }
+          }
+        }
+        sig.sendReport({ part: 'end' });
+      })().catch(() => {
+        reportPending.current?.({ ok: false, error: 'failed' });
+      });
+    });
+  }, [reportsOpen]);
   /**
    * The output hushed by its button: the level stays where it was, and
    * comes back at the second touch. Not kept between one entry and the
@@ -2176,9 +2217,10 @@ export default function App() {
           },
 
           onJoined: ({
-            peerPresent: present, peerActive, peerName: n, turn, stun, owner, opens,
+            peerPresent: present, peerActive, peerName: n, turn, stun, owner, opens, reports,
           }) => {
             setCanInvite(owner);
+            setReportsOpen(reports);
             setCanAddPair(opens);
             // The word the door gave is kept true by every join: what
             // the pairing screen shows next time hangs on it.
@@ -2454,6 +2496,9 @@ export default function App() {
             sess.onSignal(msg);
           },
 
+          onReportResult: (ok, error, url) => {
+            reportPending.current?.({ ok, error, url });
+          },
           onKnockResult: (ok, error) => {
             if (ok) {
               // Only a confirmation on screen: the button stays
@@ -3770,6 +3815,8 @@ export default function App() {
           onHaveCode={() => { setPairingTyping(true); setScreen('pairing'); }}
           onClose={isPaired(cfg) ? () => setScreen('channel') : undefined}
           onOpenSetup={() => { setSetupFrom('settings'); setScreen('setup'); }}
+          reportsOpen={reportsOpen}
+          onReport={sendReport}
           onQualityChange={(q) => applyQuality(q, true)}
           canInvite={canInvite}
         canAddPair={canAddPair}
