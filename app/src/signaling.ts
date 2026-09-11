@@ -7,6 +7,7 @@
  * the LICENSE file at the root of the project, and at
  * <https://www.gnu.org/licenses/>.
  */
+import { Journal } from 'duetto-platform';
 import { SignalCrypto } from './crypto';
 import { logger } from './log';
 import { deviceKey, deviceModel, deviceName, signNonce } from './device';
@@ -159,6 +160,13 @@ export type SignalingEvents = {
   }) => void;
   /** the answer to a report sent through the server */
   onReportResult?: (ok: boolean, error?: string, url?: string) => void;
+  /**
+   * This connection was pushed out by another of the same phone's:
+   * the server keeps one per phone in a room. Nobody reconnects by
+   * themselves on this - two connections of one phone doing so pushed
+   * each other out every second, for an hour, on a real phone.
+   */
+  onReplaced?: () => void;
   onPeerJoined?: (name: string, mode: Mode) => void;
   /** @param why 'bye' if they left, 'dropped' if the network went */
   onPeerLeft?: (why: 'bye' | 'dropped') => void;
@@ -447,6 +455,12 @@ export class Signaling {
       // shares it at home.
       if (e?.code === 4006) {
         log('refused for good: not trying again by myself');
+        return;
+      }
+      if (e?.code === 4005) {
+        log('replaced by another connection of this phone: not trying again by myself');
+        Journal.mark('server:replaced').catch(() => { /* noop */ });
+        this.events.onReplaced?.();
         return;
       }
       if (!this.closedByUser) this.scheduleReconnect();

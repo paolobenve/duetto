@@ -328,6 +328,13 @@ export async function startListening(): Promise<boolean> {
       mode: 'listening',
     },
     {
+      // Pushed out by the interface, which is the one in charge when
+      // it is there: the presence yields. It comes back the next time
+      // the interface hands over.
+      onReplaced: () => {
+        log('replaced by the interface: stopping');
+        stopListening();
+      },
       onJoined: ({ peerPresent, peerActive, peerName }) => {
         // "I did not leave": said once, as soon as we are connected, and
         // only if there is somebody there to hear it.

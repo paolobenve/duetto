@@ -564,6 +564,8 @@ export default function App() {
     return () => { alive = false; clearInterval(timer); beat(); sub.remove(); };
   }, [inChannel, cfg?.diagnostics]);
 
+  /** the pause before taking the place back after a "replaced", doubling each time */
+  const replacedWait = useRef(3000);
   /** whether the server carries reports to the beta testers' work items */
   const [reportsOpen, setReportsOpen] = useState(false);
   /** the report on its way through the server, waiting for the answer */
@@ -2182,6 +2184,21 @@ export default function App() {
           mode: 'listening',
         },
         {
+          // Pushed out by the headless presence, which should not be
+          // up while the interface is: the presence is stopped, and
+          // the interface takes its place back after a pause that
+          // doubles each time - once is a crossing of the two, a
+          // second time is something to look at, not to fight.
+          onReplaced: () => {
+            stopListening();
+            if (appStateRef.current !== 'active') return;
+            const wait = replacedWait.current;
+            replacedWait.current = Math.min(wait * 2, 60_000);
+            setTimeout(() => {
+              if (signalingRef.current !== sig || sig.connected) return;
+              sig.connect();
+            }, wait);
+          },
           onStatus: (st, detail) => {
             setStatus(st);
             if (st === 'offline') signalingWasDown.current = true;
@@ -2221,6 +2238,7 @@ export default function App() {
           }) => {
             setCanInvite(owner);
             setReportsOpen(reports);
+            replacedWait.current = 3000;
             setCanAddPair(opens);
             // The word the door gave is kept true by every join: what
             // the pairing screen shows next time hangs on it.
