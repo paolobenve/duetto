@@ -32,7 +32,7 @@ import {
 import { Signaling, PresenceStatus, Mode } from './signaling';
 import type { PersonOnServer, InvitationOnServer } from './signaling';
 import { useLanguage, t } from './i18n';
-import { VERSION, BUILD, VERSION_FULL } from './version';
+import { VERSION, BUILD, VERSION_FULL, VERSION_LABEL } from './version';
 import { logger, setLogging } from './log';
 import { ChannelSession } from './webrtc';
 import type { VideoStats } from './webrtc';
@@ -1039,7 +1039,9 @@ export default function App() {
      * its build - an older Duetto - only the version is named, which is
      * everything that is known.
      */
-    const mine = `${VERSION} (${t('news.build', { n: String(BUILD) })})`;
+    // The label, not the bare number: a build on the way to a version
+    // says so, "0.9.12-pre", here as in the badge.
+    const mine = `${VERSION_LABEL} (${t('news.build', { n: String(BUILD) })})`;
     const theirBuild = peerState.build;
     if (!theirs) return t('news.versionsDifferOlder', { here: mine });
     const said = theirBuild
