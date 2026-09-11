@@ -89,7 +89,7 @@ android {
         applicationId "com.duetto"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 319
+        versionCode 320
         versionName "0.9.13-pre"
         ndk {
             // Solo architetture reali: gli emulatori x86 raddoppiavano

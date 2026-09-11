@@ -87,7 +87,7 @@ const CONTROLS = (): {
   { value: 'hidden', label: t('settings.controlsHidden'), note: t('settings.controlsHiddenNote') },
 ];
 
-type Tab = 'links' | 'use';
+type Tab = 'links' | 'use' | 'diagnostics';
 
 type Props = {
   /** whether this phone may invite: the server says so */
@@ -340,13 +340,13 @@ export default function SettingsScreen({
             most often - the sound, the quality - sat under the list of
             connections and the server, which are touched once. */}
         <View style={styles.tabs}>
-          {(['links', 'use'] as Tab[]).map((k) => (
+          {(['links', 'use', 'diagnostics'] as Tab[]).map((k) => (
             <TouchableOpacity
               key={k}
               style={[styles.tab, tab === k && styles.tabPicked]}
               onPress={() => setTab(k)}>
               <Text style={[styles.tabText, tab === k && styles.tabTextPicked]}>
-                {t(k === 'links' ? 'settings.tabLinks' : 'settings.tabUse')}
+                {t(k === 'links' ? 'settings.tabLinks' : k === 'use' ? 'settings.tabUse' : 'settings.diagnostics')}
               </Text>
             </TouchableOpacity>
           ))}
@@ -861,6 +861,40 @@ export default function SettingsScreen({
           <Text style={styles.rowButtonArrow}>{'\u203A'}</Text>
         </TouchableOpacity>
 
+        <Text style={styles.section}>{t('settings.security')}</Text>
+        <View style={styles.infoBox}>
+          <Text style={styles.infoLine}>
+            {'\u{1F512}'}{t('settings.secMedia')}
+            <Text style={styles.infoStrong}>{t('settings.secMediaStrong')}</Text>
+            {t('settings.secMediaTail')}
+          </Text>
+          <Text style={styles.infoLine}>
+            {'\u{1F512}'}{t('settings.secHandshake')}
+          </Text>
+          <Text style={styles.infoLine}>
+            {'\u{1F511}'}{t('settings.secKey')}
+          </Text>
+          <Text style={styles.infoLine}>
+            {'\u{1F441}'}{t('settings.secServerKnows')}
+            <Text style={styles.infoStrong}>{t('settings.secWhen')}</Text>
+            {t('settings.secServerKnowsMid')}
+            <Text style={styles.infoStrong}>{t('settings.secWhat')}</Text>
+            {t('settings.secServerKnowsTail')}
+          </Text>
+        </View>
+
+        {/* The sounds for calling back come from outside, and whoever
+            recorded them is to be named: one of the four asks for it in
+            its licence, the others do not, but citing only the
+            compulsory one would be half a courtesy. */}
+        <Text style={styles.subsection}>{t('settings.soundsOrigin')}</Text>
+        <Text style={styles.sectionHint}>{t('settings.soundsOriginText')}</Text>
+
+          </>
+        ) : null}
+
+        {tab === 'diagnostics' ? (
+          <>
         {/* Diagnostics belong to the phone, like staying reachable, and
             not to the person: the journal is one file and the log one
             stream. That is why they sit here among the app's own things
@@ -882,6 +916,7 @@ export default function SettingsScreen({
         </TouchableOpacity>
 
         {cfg.diagnostics ? (
+          <>
           <TouchableOpacity
             style={[styles.choice, cfg.delayTotalOnly && styles.choicePicked]}
             onPress={() => {
@@ -895,7 +930,6 @@ export default function SettingsScreen({
               <Text style={styles.choiceNote}>{t('settings.delayTotalOnlyNote')}</Text>
             </View>
           </TouchableOpacity>
-        ) : null}
 
         {/* The journal, handed out. Android's share sheet for anybody;
             for the beta testers their work item on GitLab - with a
@@ -941,35 +975,8 @@ export default function SettingsScreen({
         ) : (
           <Text style={styles.sectionHint}>{t('settings.reportNoRoad')}</Text>
         )}
-
-        <Text style={styles.section}>{t('settings.security')}</Text>
-        <View style={styles.infoBox}>
-          <Text style={styles.infoLine}>
-            {'\u{1F512}'}{t('settings.secMedia')}
-            <Text style={styles.infoStrong}>{t('settings.secMediaStrong')}</Text>
-            {t('settings.secMediaTail')}
-          </Text>
-          <Text style={styles.infoLine}>
-            {'\u{1F512}'}{t('settings.secHandshake')}
-          </Text>
-          <Text style={styles.infoLine}>
-            {'\u{1F511}'}{t('settings.secKey')}
-          </Text>
-          <Text style={styles.infoLine}>
-            {'\u{1F441}'}{t('settings.secServerKnows')}
-            <Text style={styles.infoStrong}>{t('settings.secWhen')}</Text>
-            {t('settings.secServerKnowsMid')}
-            <Text style={styles.infoStrong}>{t('settings.secWhat')}</Text>
-            {t('settings.secServerKnowsTail')}
-          </Text>
-        </View>
-
-        {/* The sounds for calling back come from outside, and whoever
-            recorded them is to be named: one of the four asks for it in
-            its licence, the others do not, but citing only the
-            compulsory one would be half a courtesy. */}
-        <Text style={styles.subsection}>{t('settings.soundsOrigin')}</Text>
-        <Text style={styles.sectionHint}>{t('settings.soundsOriginText')}</Text>
+          </>
+        ) : null}
 
           </>
         ) : null}

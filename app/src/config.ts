@@ -244,7 +244,7 @@ export type DuoConfig = {
   /** the system settings have already been offered once */
   setupShown: boolean;
   /** the settings tab last looked at: it is where one comes back to */
-  settingsTab?: 'links' | 'use';
+  settingsTab?: 'links' | 'use' | 'diagnostics';
   /**
    * The notice about Google's developer verification: when to show it
    * next (a time), or never again.
