@@ -76,7 +76,7 @@ export function noteBody(o: {
     : '';
   const parts = [
     o.who
-      ? `**Report from ${o.who}** · Duetto ${o.version} · ${o.phone}`
+      ? `**Report from _${o.who}_** · Duetto ${o.version} · ${o.phone}`
       : `**Duetto ${o.version}** · ${o.phone}`,
     quoted,
     o.attachments.length ? `Journal: ${o.attachments.join(' ')}` : '',

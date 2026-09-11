@@ -578,7 +578,7 @@ async function handleReport(ws, msg) {
     ? r.text.trim().split('\n').map((l) => `> ${l}`).join('\n')
     : '';
   const body = [
-    `**Report from ${who}** · Duetto ${r.version} · ${r.phone}`,
+    `**Report from _${who}_** · Duetto ${r.version} · ${r.phone}`,
     quoted,
     attachments.length ? `Journal: ${attachments.join(' ')}` : '',
   ].filter(Boolean).join('\n\n');

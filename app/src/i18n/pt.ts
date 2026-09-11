@@ -347,6 +347,7 @@ export const pt: Dictionary = {
     journalEmpty: 'Ainda não há nada para compartilhar.',
     betaReports: 'Relatos dos beta testers',
     betaReportsHint: 'Se você pediu para ser beta tester, daqui manda o diário e os relatos para o seu work item no GitLab. Com um token seu saem em seu nome; sem ele passam pelo servidor, que escreve o seu nome no alto.',
+    notSet: 'não definido',
     betaName: 'Nome no work item (opcional)',
     betaNamePlaceholder: 'como no título do work item',
     betaNameNote: 'Serve se o nome do convite não é o do work item, ou se você não tem um convite próprio: o relato vai ao work item aberto com este nome no título.',

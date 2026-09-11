@@ -360,6 +360,7 @@ export const en = {
     journalEmpty: 'Nothing to share yet.',
     betaReports: 'Beta testers\' reports',
     betaReportsHint: 'If you asked to be a beta tester, from here you send the journal and your reports to your work item on GitLab. With a token of your own they go out in your name; without one they go through the server, which writes your name at the top.',
+    notSet: 'not set',
     betaName: 'Name on the work item (optional)',
     betaNamePlaceholder: 'as in the work item\'s title',
     betaNameNote: 'For when the invitation\'s name is not the work item\'s, or you have no invitation of your own: the report goes to the open work item with this name in its title.',

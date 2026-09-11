@@ -346,6 +346,7 @@ export const it: Dictionary = {
     journalEmpty: 'Non c’è ancora niente da condividere.',
     betaReports: 'Segnalazioni dei beta tester',
     betaReportsHint: 'Se hai chiesto di fare da beta tester, da qui mandi il giornale e le segnalazioni al tuo work item su GitLab. Con un token tuo escono a nome tuo; senza, passano dal server, che scrive il tuo nome in testa.',
+    notSet: 'non impostato',
     betaName: 'Nome sul work item (facoltativo)',
     betaNamePlaceholder: 'come nel titolo del work item',
     betaNameNote: 'Serve se il nome dell’invito non è quello del work item, o se non hai un invito tuo: la segnalazione va al work item aperto che ha questo nome nel titolo.',

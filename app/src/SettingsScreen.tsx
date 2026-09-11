@@ -206,9 +206,27 @@ export default function SettingsScreen({
           : t('settings.reportFailed', { error: out.error ?? '' });
     Alert.alert(t('settings.reportFailedTitle'), why);
   };
+  // The box for the beta tester's name and token: what is typed lives
+  // here until "Save".
+  const [editing, setEditing] = useState<null | 'betaName' | 'gitlabToken'>(null);
+  const [editValue, setEditValue] = useState('');
+  const openEditing = (what: 'betaName' | 'gitlabToken') => {
+    setEditValue(String((cfgRefForEdit.current as any)?.[what] ?? ''));
+    setEditing(what);
+  };
+  const closeEditing = (save: boolean) => {
+    const what = editing;
+    setEditing(null);
+    if (!save || !what) return;
+    const v = editValue.trim();
+    setCfg((prev) => ({ ...prev, [what]: v }));
+    onLive?.({ [what]: v } as Partial<DuoConfig>);
+  };
   const [cfg, setCfg] = useState<DuoConfig>(
     () => ({ ...initial, serverUrl: displayServer(initial.serverUrl) }),
   );
+  const cfgRefForEdit = React.useRef(cfg);
+  cfgRefForEdit.current = cfg;
   const [advanced, setAdvanced] = useState(false);
   /**
    * Which tab is open. Once paired, the one touched most often: how the
@@ -948,28 +966,39 @@ export default function SettingsScreen({
 
         <Text style={styles.subsection}>{t('settings.betaReports')}</Text>
         <Text style={styles.sectionHint}>{t('settings.betaReportsHint')}</Text>
-        <Field
-          label={t('settings.betaName')}
-          value={cfg.betaName ?? ''}
-          onChange={(v) => {
-            setCfg({ ...cfg, betaName: v });
-            onLive?.({ betaName: v });
-          }}
-          placeholder={t('settings.betaNamePlaceholder')}
-          hint={t('settings.betaNameNote')}
-        />
-        <Field
-          label={t('settings.gitlabToken')}
-          value={cfg.gitlabToken ?? ''}
-          onChange={(v) => {
-            const token = v.trim();
-            setCfg({ ...cfg, gitlabToken: token });
-            onLive?.({ gitlabToken: token });
-          }}
-          placeholder="glpat-…"
-          autoCapitalize="none"
-          hint={t('settings.gitlabTokenNote')}
-        />
+        {/* Read, not typed into: a name and a token are set once and
+            then left alone. The pencil opens the box, and only "Save"
+            writes - like the connection's name. */}
+        <Text style={styles.label}>{t('settings.betaName')}</Text>
+        <View style={styles.pairRow}>
+          <View style={styles.pairBox}>
+            <View style={styles.pairWho}>
+              <Text style={[styles.pairName, !cfg.betaName ? styles.textOff : null]}>
+                {cfg.betaName || t('settings.notSet')}
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity style={styles.pairAway} onPress={() => openEditing('betaName')}>
+            <Text style={styles.pairNameText}>{'\u270E'}</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.hint}>{t('settings.betaNameNote')}</Text>
+        <Text style={styles.label}>{t('settings.gitlabToken')}</Text>
+        <View style={styles.pairRow}>
+          <View style={styles.pairBox}>
+            <View style={styles.pairWho}>
+              <Text style={[styles.pairName, !cfg.gitlabToken ? styles.textOff : null]}>
+                {cfg.gitlabToken
+                  ? `••••${cfg.gitlabToken.slice(-4)}`
+                  : t('settings.notSet')}
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity style={styles.pairAway} onPress={() => openEditing('gitlabToken')}>
+            <Text style={styles.pairNameText}>{'\u270E'}</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.hint}>{t('settings.gitlabTokenNote')}</Text>
         <TouchableOpacity onPress={() => { Linking.openURL(TOKEN_PAGE).catch(() => {}); }}>
           <Text style={styles.linkInline}>{t('settings.gitlabTokenMake')}</Text>
         </TouchableOpacity>
@@ -1045,6 +1074,42 @@ export default function SettingsScreen({
                 <Text style={styles.sheetCancel}>{t('settings.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.sheetAction} onPress={() => closeNaming(true)}>
+                <Text style={styles.sheetOk}>{t('settings.save')}</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* The beta tester's name or token, typed once */}
+      <Modal
+        visible={editing !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => closeEditing(false)}>
+        <Pressable style={styles.sheetBack} onPress={() => closeEditing(false)}>
+          <Pressable style={styles.sheet} onPress={() => { /* hold it */ }}>
+            <Text style={styles.sheetTitle}>
+              {t(editing === 'gitlabToken' ? 'settings.gitlabToken' : 'settings.betaName')}
+            </Text>
+            <TextInput
+              style={styles.input}
+              value={editValue}
+              onChangeText={setEditValue}
+              placeholder={editing === 'gitlabToken' ? 'glpat-…' : t('settings.betaNamePlaceholder')}
+              placeholderTextColor="#5b6472"
+              autoFocus
+              autoCapitalize={editing === 'gitlabToken' ? 'none' : 'words'}
+              autoCorrect={false}
+              maxLength={editing === 'gitlabToken' ? 120 : 64}
+              returnKeyType="done"
+              onSubmitEditing={() => closeEditing(true)}
+            />
+            <View style={styles.sheetActions}>
+              <TouchableOpacity style={styles.sheetAction} onPress={() => closeEditing(false)}>
+                <Text style={styles.sheetCancel}>{t('settings.cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.sheetAction} onPress={() => closeEditing(true)}>
                 <Text style={styles.sheetOk}>{t('settings.save')}</Text>
               </TouchableOpacity>
             </View>
