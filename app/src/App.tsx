@@ -136,30 +136,33 @@ async function readWithBridge(fresh: string, old: string): Promise<string | null
 }
 
 /**
- * How far to lift the other voice when the phone will not obey.
+ * The level, in loudness.
  *
- * On plenty of models the call volume on speaker is nailed to the top
- * by the manufacturer: the keys look broken and the voice stays
- * deafening. WebRTC then does the work, multiplying the signal before
- * it goes out.
+ * The phone's own scale is not linear in the signal but in loudness:
+ * every step is about the same number of decibels. Ours works the
+ * same way, so that a press feels the same at the bottom and at the
+ * top. A press is two decibels: three presses double the loudness.
  *
- * The step is a quarter: ten presses to halve or to double, which is
- * about the sensitivity of a real knob. It does not go below a quarter
- * - past that it is more honest to mute the microphone - nor above four
- * times, which is beyond the point where a voice starts to distort.
+ * The keys move OUR gain only; the phone's knob is left where it is
+ * and stays a factor. The level - the knob times the gain - runs from
+ * five per cent of the phone's top (-26 dB) to four times it (+12 dB),
+ * beyond which a voice starts to distort. Zero decibels is the phone's
+ * own top: on the scale it is marked, so one sees where the phone
+ * ends and Duetto goes on. Moving the knob from outside leaves the
+ * gain alone and moves the level with it; past an end, the level is
+ * held at the end.
  */
-const GAIN_STEP = 0.25;
+const LEVEL_STEP_DB = 2;
+const LEVEL_MIN_DB = -26;
+const LEVEL_MAX_DB = 12;
 /**
- * Our multiplier works at the two extremes.
- *
- * In between, the phone's own knob is in charge, which is finer and
- * does not touch the sound. But the phone has two limits: above, a top
- * that is never enough on speaker with a quiet voice; and below, a
- * first step which on some phones - a recent Motorola, on speaker - is
- * still very loud. The gain covers both ends.
+ * WebRTC multiplies a voice at most ten times: with the knob under
+ * forty per cent the top of the scale is out of reach, and the scale
+ * shows where the reachable stretch ends.
  */
-const GAIN_MIN = 0.25;
-const GAIN_MAX = 4;
+const GAIN_CEILING = 10;
+const dbOf = (x: number) => 20 * Math.log10(x);
+const ofDb = (d: number) => Math.pow(10, d / 20);
 
 
 
@@ -559,9 +562,12 @@ export default function App() {
     return () => { alive = false; clearInterval(timer); beat(); sub.remove(); };
   }, [inChannel, cfg?.diagnostics]);
 
-  /** shown for a moment while pressing: otherwise the effect is invisible */
-  const [levelShowing, setLevelShowing] = useState(false);
-  const levelTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /**
+   * The output hushed by its button: the level stays where it was, and
+   * comes back at the second touch. Not kept between one entry and the
+   * next - one enters and hears.
+   */
+  const [outputMuted, setOutputMuted] = useState(false);
   /**
    * They left on purpose; their line did not drop.
    *
@@ -895,9 +901,21 @@ export default function App() {
    * eight and our 100% on top, and neither number, on its own,
    * explained the "I cannot hear you".
    */
-  const level = systemVolume.max > 0
-    ? Math.round((systemVolume.volume / systemVolume.max) * gain * 100) / 100
-    : gain;
+  const sysFraction = systemVolume.max > 0 ? systemVolume.volume / systemVolume.max : 1;
+  /** the top the level can reach: four times the phone's top, or ten times the knob */
+  const levelCeiling = Math.min(ofDb(LEVEL_MAX_DB), Math.max(sysFraction, 0.001) * GAIN_CEILING);
+  const level = sysFraction > 0
+    ? Math.round(Math.min(levelCeiling, Math.max(ofDb(LEVEL_MIN_DB), sysFraction * gain)) * 1000) / 1000
+    : 0;
+  /** the gain actually put on the voice: the level over the knob */
+  const appliedGain = sysFraction > 0 ? level / sysFraction : gain;
+  useEffect(() => { if (!inChannel) setOutputMuted(false); }, [inChannel]);
+  const toggleOutputMute = useCallback(() => {
+    setOutputMuted((m) => {
+      Journal.mark(m ? 'output:on' : 'output:hushed').catch(() => { /* noop */ });
+      return !m;
+    });
+  }, []);
 
   /**
    * In a ref because `enterChannel` calls it, and that is born earlier
@@ -1048,8 +1066,8 @@ export default function App() {
    * was already there.
    */
   useEffect(() => {
-    sessionRef.current?.setRemoteGain(gain);
-  }, [gain, inChannel]);
+    sessionRef.current?.setRemoteGain(outputMuted ? 0 : appliedGain);
+  }, [appliedGain, outputMuted, inChannel]);
 
   /**
    * What is declared to the other side is the LEVEL, not the gain.
@@ -1061,11 +1079,11 @@ export default function App() {
    */
   useEffect(() => {
     sessionRef.current?.setHeardLevel(
-      level,
-      systemVolume.max > 0 ? systemVolume.volume / systemVolume.max : null,
-      gain,
+      outputMuted ? 0 : level,
+      systemVolume.max > 0 ? sysFraction : null,
+      appliedGain,
     );
-  }, [level, inChannel, systemVolume.volume, systemVolume.max, gain]);
+  }, [level, inChannel, systemVolume.max, sysFraction, appliedGain, outputMuted]);
 
   /**
    * Turns the LEVEL up or down, sharing the work between the two
@@ -1089,88 +1107,30 @@ export default function App() {
    */
   const changeLevel = useCallback((direction: number) => {
     if (!direction) return;
-    const show = () => {
-      setLevelShowing(true);
-      if (levelTimer.current) clearTimeout(levelTimer.current);
-      levelTimer.current = setTimeout(() => setLevelShowing(false), 1800);
-    };
     const output = audioRouteRef.current;
     const phone = systemVolumeRef.current;
-    const ours = cfgRef.current?.gains?.[output] ?? 1;
-
-    const changeOurGain = (value: number) => {
-      setCfg((prev) => {
-        if (!prev) return prev;
-        // Zero is a real value: it is silence, and we make it ourselves
-        // because the phone does not get there.
-        const amount = value <= 0
-          ? 0
-          : Math.min(GAIN_MAX, Math.max(GAIN_MIN, value));
-        if (amount === (prev.gains?.[output] ?? 1)) return prev;
-        return saveCfg({
-          ...prev,
-          gains: { ...(prev.gains ?? {}), [output]: amount },
-        });
+    const sys = phone.max > 0 ? phone.volume / phone.max : 1;
+    // The knob at zero multiplies nothing: there is no level to move.
+    if (sys <= 0) return;
+    const ceiling = Math.min(LEVEL_MAX_DB, dbOf(sys * GAIN_CEILING));
+    const now = levelRef.current > 0 ? dbOf(levelRef.current) : LEVEL_MIN_DB;
+    // On the ladder's rungs: the nearest rung, then one up or down. A
+    // level that sits between two rungs - the knob moved from outside
+    // - still moves in the direction pressed, by at least a decibel.
+    const rung = Math.round(now / LEVEL_STEP_DB) * LEVEL_STEP_DB;
+    const next = Math.min(ceiling, Math.max(LEVEL_MIN_DB, rung + direction * LEVEL_STEP_DB));
+    const wanted = Math.round((ofDb(next) / sys) * 1000) / 1000;
+    // A key while hushed: the sound comes back, at the level pressed.
+    setOutputMuted(false);
+    Journal.mark(`level:${next > 0 ? '+' : ''}${Math.round(next)}dB`).catch(() => { /* noop */ });
+    setCfg((prev) => {
+      if (!prev) return prev;
+      if (wanted === (prev.gains?.[output] ?? 1)) return prev;
+      return saveCfg({
+        ...prev,
+        gains: { ...(prev.gains ?? {}), [output]: wanted },
       });
-    };
-
-    const movePhoneVolume = (v: number) => {
-      setSystemVolume({ ...phone, volume: v });
-      /**
-       * Trust, but verify: on a good many phones the maker nails this
-       * stream (speaker above all) and the set does nothing. Believing
-       * it anyway walked our notion of the volume away from the truth,
-       * step by step, until the ladder was attenuating with the phone
-       * really at its top: a journal showed 12/12 beside a level of
-       * 46%, a state no ladder can reach. If the phone did not move,
-       * the truth comes back and the press goes to the gain, which
-       * always obeys.
-       */
-      Volume.set(v).then(async () => {
-        const real = await Volume.read();
-        if (real.volume === v) return;
-        setSystemVolume(real);
-        Journal.mark(`volume:nailed at ${real.volume}/${real.max}`).catch(() => { /* noop */ });
-        changeOurGain(direction > 0 ? up : down);
-      }).catch(() => { /* noop */ });
-    };
-
-    const up = Math.round((ours + GAIN_STEP) * 100) / 100;
-    const down = Math.round((ours - GAIN_STEP) * 100) / 100;
-
-    if (direction > 0) {
-      // Going up: from silence back to the phone's lowest step, then we
-      // stop attenuating, then the phone comes up, and only when it is
-      // at its top do we multiply.
-      if (ours === 0) changeOurGain(1);
-      else if (phone.max > 0 && phone.volume === 0) movePhoneVolume(1);
-      else if (ours < 1) changeOurGain(up);
-      else if (phone.max > 0 && phone.volume < phone.max) movePhoneVolume(phone.volume + 1);
-      else changeOurGain(up);
-    } else if (ours === 0) {
-      // Already muted: there is nothing below.
-    } else if (ours > 1) {
-      changeOurGain(down);
-    } else if (phone.max > 0 && phone.volume > 1) {
-      movePhoneVolume(phone.volume - 1);
-    } else if (ours > GAIN_MIN) {
-      // The phone is at its lowest step and quieter is wanted: from
-      // here down we attenuate, because below that step the phone
-      // cannot go - and on some phones, on speaker, that step is still
-      // very loud.
-      changeOurGain(down);
-    } else {
-      /**
-       * The last step down is silence, and we make it ourselves.
-       *
-       * Android will not take the call volume to zero: ask it for zero
-       * and it holds the lowest step, which is perfectly audible. Real
-       * silence is only had by clearing the multiplier, that is, by not
-       * playing what arrives.
-       */
-      changeOurGain(0);
-    }
-    show();
+    });
   }, [saveCfg]);
 
   useEffect(() => {
@@ -3893,11 +3853,19 @@ export default function App() {
         onNewsRead={() => setNotice(null)}
         // The screen is given the LEVEL, not the gain: it is the number
         // that says how loud you are hearing the other person.
-        gain={levelShowing ? level : null}
-        ownGain={gain}
-        peerGain={level}
+        ownGain={appliedGain}
+        peerGain={outputMuted ? 0 : level}
+        levelDb={{
+          level: level > 0 ? dbOf(level) : LEVEL_MIN_DB,
+          phone: sysFraction > 0 ? dbOf(sysFraction) : LEVEL_MIN_DB,
+          ceiling: dbOf(levelCeiling),
+          min: LEVEL_MIN_DB,
+          max: LEVEL_MAX_DB,
+          muted: outputMuted,
+        }}
         systemVolume={systemVolume}
         onChangeLevel={changeLevel}
+        onToggleOutputMute={toggleOutputMute}
         versionWarning={versionWarning}
         frontCamera={frontCamera}
         quality={cfg.videoQuality}

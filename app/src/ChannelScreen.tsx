@@ -125,6 +125,76 @@ const OUTPUT_ICON: Record<
   BLUETOOTH: BluetoothIcon,
 };
 
+/** A level as loudness: decibels against the phone's top, "muted" at zero. */
+function dbText(level?: number): string {
+  if (level == null) return '';
+  if (level <= 0) return t('channel.muted');
+  const d = Math.round(20 * Math.log10(level));
+  return `${d > 0 ? '+' : ''}${d} dB`;
+}
+
+/**
+ * The scale of the loudness. A rung every two decibels, the zero - the
+ * phone's own top - marked with its figure, the reachable stretch a
+ * shade lighter than the rest. Two things on it: the phone's knob, a
+ * thin grey mark with a handset, and our level, the cursor, with the
+ * figure above. Under it, the button that hushes the output.
+ */
+function VolumeScale(p: {
+  level: number; phone: number; ceiling: number; min: number; max: number; muted: boolean;
+  route: AudioRoute;
+  onToggleMute?: () => void;
+}) {
+  const [h, setH] = useState(0);
+  const span = p.max - p.min;
+  const y = (db: number) => h - ((Math.min(p.max, Math.max(p.min, db)) - p.min) / span) * h;
+  const rungs: number[] = [];
+  for (let d = p.min; d <= p.max; d += 2) rungs.push(d);
+  const figure = p.muted
+    ? t('channel.muted')
+    : `${p.level > 0 ? '+' : ''}${Math.round(p.level)}`;
+  const Icon = OUTPUT_ICON[p.route] ?? OUTPUT_ICON.SPEAKER_PHONE;
+  return (
+    <View style={styles.scaleBox} pointerEvents="box-none">
+      <Text style={[styles.scaleFigure, p.muted ? styles.scaleFigureMuted : null]} numberOfLines={1}>
+        {figure}
+      </Text>
+      {!p.muted ? <Text style={styles.scaleUnit}>dB</Text> : null}
+      <View
+        style={styles.scaleTrack}
+        pointerEvents="none"
+        onLayout={(e) => setH(e.nativeEvent.layout.height)}>
+        {h > 0 ? (
+          <>
+            <View style={[styles.scaleRail, { top: 0, height: h }]} />
+            <View style={[styles.scaleReach, { top: y(p.ceiling), height: h - y(p.ceiling) }]} />
+            {rungs.map((d) => (
+              <View
+                key={d}
+                style={[styles.rung, d % 10 === 0 ? styles.rungMajor : null, { top: y(d) - 0.5 }]}
+              />
+            ))}
+            <Text style={[styles.zeroText, { top: y(0) - 8 }]}>0</Text>
+            <View style={[styles.phoneMark, { top: y(p.phone) - 1 }]}>
+              <EarpieceIcon size={11} color="#8a94a3" />
+              <View style={styles.phoneLine} />
+            </View>
+            {!p.muted ? (
+              <View style={[styles.cursor, { top: y(p.level) - 7 }]} />
+            ) : null}
+          </>
+        ) : null}
+      </View>
+      <TouchableOpacity
+        style={styles.hushButton}
+        onPress={p.onToggleMute}
+        accessibilityLabel={t(p.muted ? 'channel.outputOn' : 'channel.outputOff')}>
+        <Icon size={20} color="#e6ebf1" off={p.muted} background="#1e1f22" />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 /**
  * The sounds for calling back somebody who is in the channel but does
  * not answer.
@@ -229,7 +299,6 @@ type Props = {
    * produce nothing visible and the keys would look broken all the
    * same.
    */
-  gain?: number | null;
   /** Duetto's own gain for the output in use, the second half of the level */
   ownGain?: number;
   /**
@@ -254,6 +323,12 @@ type Props = {
    */
   systemVolume?: { volume: number; max: number };
   onChangeLevel?: (direction: number) => void;
+  /**
+   * The level in decibels, for the scale: ours, the phone's knob, the
+   * reachable top, the two ends, and whether the output is hushed.
+   */
+  levelDb?: { level: number; phone: number; ceiling: number; min: number; max: number; muted: boolean };
+  onToggleOutputMute?: () => void;
   /**
    * The two sides have different versions of Duetto.
    *
@@ -354,13 +429,14 @@ type Props = {
 export default function ChannelScreen(props: Props) {
   const {
     entered, onEnter, ownGain, network,
-    connectionName, peerName, peerAvatar, peerPresent, peerDetached, peerTornDown, videoStats, peerSendDelay, peerRecvDelay, delayTotalOnly, qualityLabel, showStats, controls, onSelectControls, news, onNewsRead, gain, peerGain, systemVolume, onChangeLevel,
+    connectionName, peerName, peerAvatar, peerPresent, peerDetached, peerTornDown, videoStats, peerSendDelay, peerRecvDelay, delayTotalOnly, qualityLabel, showStats, controls, onSelectControls, news, onNewsRead, peerGain, systemVolume, onChangeLevel,
     versionWarning, frontCamera, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes,
     onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, leaving,
     onAlarm, onZoom, onOpenSettings, onCall, pairBroken, battery,
   } = props;
+  const { levelDb, onToggleOutputMute } = props;
 
   // In Picture-in-Picture the window is tiny: no controls. The width
   // is kept as a second witness for the phones where the activity's
@@ -812,17 +888,17 @@ export default function ChannelScreen(props: Props) {
    * Without the halves (an older app on the other side) the product alone.
    */
   const levelText = (applied?: number, sys?: number | null, gain?: number) => {
-    if (sys == null || gain == null) return percent(applied);
+    if (sys == null || gain == null) return dbText(applied);
     const comma = currentLanguage() !== 'en';
     const g = (Math.round(gain * 100) / 100).toString().replace('.', comma ? ',' : '.');
-    return `${Math.round(sys * 100)}%×${g}=${percent(applied)}`;
+    return `${dbText(applied)} (${Math.round(sys * 100)}%×${g})`;
   };
 
   const peerBadge = React.useMemo(() => (
     <>
       {peerMark(13, '#1b1d21')}
       {showStats && peerState.volume != null ? (
-        <Text style={styles.pillVolume}>{percent(peerState.volume)}</Text>
+        <Text style={styles.pillVolume}>{dbText(peerState.volume)}</Text>
       ) : null}
     </>
   ), [peerMark, showStats, peerState.volume]);
@@ -838,7 +914,7 @@ export default function ChannelScreen(props: Props) {
       <>
         {ownOutputMark(13, '#1b1d21')}
         {showStats ? (
-          <Text style={styles.pillVolume}>{percent(peerGain)}</Text>
+          <Text style={styles.pillVolume}>{dbText(peerGain)}</Text>
         ) : null}
       </>
     );
@@ -1080,20 +1156,6 @@ export default function ChannelScreen(props: Props) {
         </View>
       ) : null}
 
-      {/* The other person's volume, while it is being changed. It sits
-          in the middle and cannot be touched: it is a reply, not a
-          control. */}
-      {!compact && gain != null ? (
-        <View style={styles.volumeOver} pointerEvents="none">
-          <Text style={styles.volumeText}>
-            {t('channel.peerVoice')}{'  '}
-            <Text style={styles.volumeFigure}>
-              {gain === 0 ? t('channel.muted') : `${Math.round(gain * 100)}%`}
-            </Text>
-          </Text>
-        </View>
-      ) : null}
-
       {/* In PiP it ends here: the little window shows the video alone. */}
       {compact ? null : (
         <>
@@ -1163,6 +1225,24 @@ export default function ChannelScreen(props: Props) {
           <SettingsIcon size={21} color="#e6ebf1" />
         </TouchableOpacity>
       </Animated.View>
+
+      {/* The loudness, on a scale that keeps the buttons' company: the
+          phone's knob as a thin grey mark with a handset, our level as
+          the cursor with its figure; between the two is the gain. The
+          phone's own bubble vanishes in a second; this one fades with
+          the controls. Under it, the button that hushes the output
+          without losing where the level was. */}
+      {levelDb ? (
+        <Animated.View
+          pointerEvents={gone ? 'none' : 'box-none'}
+          style={[styles.scale, { opacity, right: 8 + inset.h }]}>
+          <VolumeScale
+            {...levelDb}
+            route={audioRoute}
+            onToggleMute={onToggleOutputMute}
+          />
+        </Animated.View>
+      ) : null}
 
       {/* The controls: always there, at the bottom, inside a dark panel */}
       <Animated.View
@@ -1511,11 +1591,7 @@ export default function ChannelScreen(props: Props) {
                 onPress={() => onChangeLevel?.(-1)}>
                 <Text style={styles.stepSign}>−</Text>
               </TouchableOpacity>
-              <Text style={styles.stepValue}>
-                {peerGain === 0
-                  ? t('channel.muted')
-                  : `${Math.round((peerGain ?? 1) * 100)}%`}
-              </Text>
+              <Text style={styles.stepValue}>{dbText(peerGain)}</Text>
               <TouchableOpacity
                 style={styles.step}
                 onPress={() => onChangeLevel?.(+1)}>
@@ -1528,8 +1604,8 @@ export default function ChannelScreen(props: Props) {
               // top of it. The total is the percentage above.
               <Text style={styles.sheetMeta}>
                 {t('channel.phoneVolume', { volume: systemVolume.volume, max: systemVolume.max })}
-                {systemVolume.volume >= systemVolume.max && (peerGain ?? 1) > 1
-                  ? `  ·  Duetto ×${(peerGain ?? 1).toFixed(2).replace(/0$/, '')}`
+                {ownGain != null && Math.abs(ownGain - 1) > 0.01
+                  ? `  ·  Duetto ×${ownGain.toFixed(2).replace(/0$/, '')}`
                   : ''}
               </Text>
             ) : null}
@@ -2184,15 +2260,33 @@ const styles = StyleSheet.create({
   leavingText: {
     color: '#e6ebf1', fontSize: 16, fontWeight: '600',
   },
-  volumeOver: {
-    position: 'absolute', left: 0, right: 0, top: '46%', alignItems: 'center',
+  // The loudness scale, on the right, between the top bar and the panel
+  scale: {
+    position: 'absolute', top: '21%', bottom: '31%', width: 64, alignItems: 'center',
   },
-  volumeText: {
-    color: '#e6ebf1', fontSize: 15, fontWeight: '600',
-    backgroundColor: 'rgba(0,0,0,0.72)', borderRadius: 18, overflow: 'hidden',
-    paddingVertical: 10, paddingHorizontal: 20,
+  scaleBox: { flex: 1, alignItems: 'center', width: 64 },
+  scaleFigure: { color: '#7cc4ff', fontSize: 19, fontWeight: '800', lineHeight: 22 },
+  scaleFigureMuted: { color: '#ffb454', fontSize: 13, fontWeight: '700' },
+  scaleUnit: { color: '#9fb4c8', fontSize: 10, fontWeight: '700', marginTop: -2, marginBottom: 6 },
+  scaleTrack: { flex: 1, width: 64, alignItems: 'center', marginTop: 2, marginBottom: 8 },
+  scaleRail: { position: 'absolute', left: 31, width: 2, backgroundColor: 'rgba(230,235,241,0.28)' },
+  scaleReach: { position: 'absolute', left: 31, width: 2, backgroundColor: 'rgba(230,235,241,0.7)' },
+  rung: { position: 'absolute', left: 27, width: 10, height: 1, backgroundColor: 'rgba(230,235,241,0.45)' },
+  rungMajor: { left: 24, width: 16, backgroundColor: 'rgba(230,235,241,0.8)' },
+  zeroText: {
+    position: 'absolute', right: 0, width: 20, textAlign: 'left',
+    color: '#e6ebf1', fontSize: 11, fontWeight: '700',
   },
-  volumeFigure: { color: '#7cc4ff', fontWeight: '800' },
+  phoneMark: { position: 'absolute', left: 4, flexDirection: 'row', alignItems: 'center', gap: 2 },
+  phoneLine: { width: 14, height: 2, backgroundColor: '#8a94a3' },
+  cursor: {
+    position: 'absolute', left: 25, width: 14, height: 14, borderRadius: 7,
+    backgroundColor: '#7cc4ff', borderWidth: 2, borderColor: '#0b0e14',
+  },
+  hushButton: {
+    width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(30,31,34,0.94)', borderWidth: 1, borderColor: 'rgba(230,235,241,0.2)',
+  },
   newsOver: {
     position: 'absolute',
     backgroundColor: 'rgba(20,26,36,0.94)', borderRadius: 14,
