@@ -365,7 +365,7 @@ export const es: Dictionary = {
     reportSent: 'La nota está en tu work item.',
     reportFailedTitle: 'No mandado',
     reportFailed: 'Algo salió mal ({error}). Vuelve a intentarlo dentro de un rato, o usa «Compartir el diario».',
-    reportNoWorkItem: 'No encuentro un work item tuyo abierto: abre antes la petición de beta tester desde la primera pantalla, con tu nombre en el título.',
+    reportNoWorkItem: 'No encuentro un work item abierto con este nombre: escribe arriba el nombre que tienes en el work item, o pide ser beta tester desde la pestaña «Servidor y parejas».',
     reportBadToken: 'GitLab no acepta el token: compruébalo, o créalo de nuevo.',
     reportNoRoad: 'Para mandar al work item hace falta un token, o un servidor que lleve los avisos.',
     controlsWhileWatching: 'Los mandos mientras miras',

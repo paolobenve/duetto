@@ -365,7 +365,7 @@ export const fr: Dictionary = {
     reportSent: 'La note est sur ton work item.',
     reportFailedTitle: 'Non envoyé',
     reportFailed: 'Quelque chose a raté ({error}). Réessaie dans un moment, ou passe par « Partager le journal ».',
-    reportNoWorkItem: 'Je ne trouve pas de work item ouvert à toi : ouvre d’abord la demande de bêta-testeur depuis le premier écran, avec ton nom dans le titre.',
+    reportNoWorkItem: 'Pas de work item ouvert à ce nom : écris ci-dessus le nom que tu as sur le work item, ou demande à être bêta-testeur depuis l’onglet « Serveur et paires ».',
     reportBadToken: 'GitLab n’accepte pas le jeton : vérifie-le, ou crée-le à nouveau.',
     reportNoRoad: 'Pour envoyer au work item il faut un jeton, ou un serveur qui porte les signalements.',
     controlsWhileWatching: 'Les commandes pendant que tu regardes',

@@ -378,7 +378,7 @@ export const en = {
     reportSent: 'The note is on your work item.',
     reportFailedTitle: 'Not sent',
     reportFailed: 'Something went wrong ({error}). Try again in a while, or use "Share the journal".',
-    reportNoWorkItem: 'No open work item of yours found: open the beta tester request from the first screen first, with your name in the title.',
+    reportNoWorkItem: 'No open work item with this name: write above the name you have on the work item, or ask to be a beta tester from the "Server and pairs" tab.',
     reportBadToken: 'GitLab does not accept the token: check it, or create it again.',
     reportNoRoad: 'Sending to the work item needs a token, or a server that carries reports.',
     controlsWhileWatching: 'The controls while you watch',

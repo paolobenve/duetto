@@ -561,7 +561,9 @@ async function handleReport(ws, msg) {
   }
   if (part !== 'end') return;
   ws.report = null;
-  const who = r.name && r.name !== 'Someone' ? r.name : cleanName(ws.name);
+  // The name said in the app first; else the invitation's, which the
+  // list knows; else the name the app shows of itself.
+  const who = r.name && r.name !== 'Someone' ? r.name : (ws.who || cleanName(ws.name));
   const item = await findWorkItem(who);
   if (!item) {
     send(ws, { type: 'report-result', ok: false, error: 'no-work-item' });
