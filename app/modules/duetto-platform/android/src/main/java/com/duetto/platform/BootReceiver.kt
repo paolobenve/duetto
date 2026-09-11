@@ -28,10 +28,15 @@ class BootReceiver : BroadcastReceiver() {
         // The names in storage have changed: this is the first stop.
         Bridge.migrate(context)
         val action = intent.action ?: return
+        val updated = action == Intent.ACTION_MY_PACKAGE_REPLACED
         if (action != Intent.ACTION_BOOT_COMPLETED &&
             action != Intent.ACTION_LOCKED_BOOT_COMPLETED &&
-            action != "android.intent.action.QUICKBOOT_POWERON"
+            action != "android.intent.action.QUICKBOOT_POWERON" &&
+            !updated
         ) return
+        // Written down: the journal is where "the app vanished after the
+        // update" is read the day after.
+        if (updated) Journal.sample(context, "updated")
 
         /**
          * Note down that the event arrived.
