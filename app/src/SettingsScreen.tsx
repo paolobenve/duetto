@@ -15,7 +15,7 @@ import {
 import type { DuoConfig, PairInfo, VideoQuality } from './config';
 import type { PersonOnServer, InvitationOnServer } from './signaling';
 import { t, LANGUAGES, longDate } from './i18n';
-import { inviteLink } from './links';
+import { inviteLink, BETA_TESTER_LINK } from './links';
 import QrCode from './QrCode';
 import type { LanguageChoice } from './i18n';
 import {
@@ -385,6 +385,19 @@ export default function SettingsScreen({
             <Text style={styles.hint}>{t('settings.serverKeyShownHint')}</Text>
           </View>
         ) : null}
+
+        {/* The same box as the first screen's: once connected, that
+            screen is out of reach, and asking to be a beta tester is
+            something one may want from here too. */}
+        <View style={styles.betaBox}>
+          <Text style={styles.betaTitle}>{t('welcome.betaTitle')}</Text>
+          <Text style={styles.betaBody}>{t('welcome.betaBody')}</Text>
+          <TouchableOpacity
+            style={styles.betaButton}
+            onPress={() => { Linking.openURL(BETA_TESTER_LINK).catch(() => {}); }}>
+            <Text style={styles.betaButtonText}>{t('welcome.betaButton')}</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Not paired yet: the step forward is the pairing, and it
             belongs right here, under the server it will be made on. */}
@@ -1169,6 +1182,17 @@ const styles = StyleSheet.create({
   label: { color: '#c9d2de', marginBottom: 6, fontWeight: '600' },
   readonly: { color: '#e6ebf1', fontSize: 16, paddingVertical: 4 },
   reportInput: { minHeight: 110, textAlignVertical: 'top' },
+  betaBox: {
+    marginTop: 18, padding: 16, borderRadius: 12,
+    backgroundColor: '#121a27', borderColor: '#27405f', borderWidth: 1,
+  },
+  betaTitle: { color: '#e6ebf2', fontSize: 16, fontWeight: '700', marginBottom: 6 },
+  betaBody: { color: '#aab4c2', fontSize: 14, lineHeight: 20 },
+  betaButton: {
+    marginTop: 12, alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 14,
+    borderRadius: 10, borderWidth: 1, borderColor: '#2f7cf6',
+  },
+  betaButtonText: { color: '#7cc4ff', fontSize: 15, fontWeight: '700' },
   linkInline: { color: '#2f7cf6', fontSize: 14, fontWeight: '600', marginTop: 8 },
   input: {
     backgroundColor: '#151a23', color: '#fff', borderRadius: 10,
