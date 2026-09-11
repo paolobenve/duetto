@@ -31,6 +31,61 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.9.12',
+    notes: {
+      en: [
+        'The volume in decibels: the keys move only Duetto\'s gain, the phone\'s knob stays where it is; a scale beside the buttons shows the level and where the phone sits, with a button to hush the other person without losing the volume.',
+        'Bluetooth earpiece or wired headset unplugged: back to the output you had before, not to the earpiece.',
+        'The microphone on entry: per connection, as you left it or always off.',
+        'Beside the other person\'s battery you see whether they are on wifi or mobile data; the video no longer stays black after a change of connection.',
+        'With the app behind, everything goes on: battery, journal, link; and after an update the presence comes back by itself.',
+        'Fixed: two connections of the same phone pushing each other out every second, the other side seeing the link made and unmade all the time.',
+        'The journal: one file a day, shareable; beta testers send it to their work item from Settings, with their reports.',
+        'Less data on mobile networks: sparser audio packets, and silence not sent.',
+      ],
+      it: [
+        'Il volume in decibel: i tasti muovono solo il guadagno di Duetto, il pomello del telefono resta dov’è; una scala accanto ai pulsanti mostra il livello e dove sta il telefono, con un pulsante per zittire l’altro senza perdere il volume.',
+        'Auricolare Bluetooth o cuffia con filo staccati: si torna all’uscita di prima, non all’orecchio.',
+        'Il microfono all’ingresso: per ogni connessione, come l’avevi lasciato o sempre spento.',
+        'Accanto alla batteria dell’altro si vede se è su wifi o su rete dati; il video non resta più nero dopo un cambio di connessione.',
+        'Con l’app dietro tutto continua: batteria, giornale, collegamento; e dopo un aggiornamento la presenza riparte da sola.',
+        'Corretto: due connessioni dello stesso telefono che si scalzavano ogni secondo, con l’altro che vedeva il collegamento rifarsi di continuo.',
+        'Il giornale: un file al giorno, condivisibile; i beta tester lo mandano al loro work item dalle Impostazioni, con le segnalazioni.',
+        'Meno dati sulla rete mobile: pacchetti audio più radi e silenzio non trasmesso.',
+      ],
+      es: [
+        'El volumen en decibelios: las teclas mueven solo la ganancia de Duetto, la rueda del teléfono se queda donde está; una escala junto a los botones muestra el nivel y dónde está el teléfono, con un botón para silenciar al otro sin perder el volumen.',
+        'Auricular Bluetooth o cascos con cable desconectados: se vuelve a la salida de antes, no al auricular.',
+        'El micrófono al entrar: por conexión, como lo dejaste o siempre apagado.',
+        'Junto a la batería del otro se ve si está en wifi o en datos móviles; el vídeo ya no se queda en negro tras un cambio de conexión.',
+        'Con la app detrás todo sigue: batería, diario, enlace; y tras una actualización la presencia vuelve sola.',
+        'Corregido: dos conexiones del mismo teléfono que se echaban la una a la otra cada segundo, con el otro viendo el enlace hacerse y deshacerse sin parar.',
+        'El diario: un archivo al día, compartible; los beta testers lo mandan a su work item desde Ajustes, con sus avisos.',
+        'Menos datos en la red móvil: paquetes de audio más espaciados y silencio no enviado.',
+      ],
+      pt: [
+        'O volume em decibéis: as teclas movem só o ganho do Duetto, o botão do telefone fica onde está; uma escala ao lado dos botões mostra o nível e onde está o telefone, com um botão para silenciar o outro sem perder o volume.',
+        'Fone Bluetooth ou com fio desconectado: volta-se à saída de antes, não ao auricular.',
+        'O microfone ao entrar: por conexão, como você o deixou ou sempre desligado.',
+        'Ao lado da bateria do outro vê-se se está no wi-fi ou nos dados móveis; o vídeo não fica mais preto depois de uma troca de conexão.',
+        'Com o app atrás tudo continua: bateria, diário, ligação; e depois de uma atualização a presença volta sozinha.',
+        'Corrigido: duas conexões do mesmo telefone que se expulsavam a cada segundo, com o outro vendo a ligação refazer-se sem parar.',
+        'O diário: um arquivo por dia, compartilhável; os beta testers mandam-no ao seu work item pelas Configurações, com os relatos.',
+        'Menos dados na rede móvel: pacotes de áudio mais espaçados e silêncio não enviado.',
+      ],
+      fr: [
+        'Le volume en décibels : les touches ne bougent que le gain de Duetto, la molette du téléphone reste où elle est ; une échelle à côté des boutons montre le niveau et où en est le téléphone, avec un bouton pour faire taire l’autre sans perdre le volume.',
+        'Oreillette Bluetooth ou casque filaire débranchés : retour à la sortie d’avant, pas à l’écouteur.',
+        'Le micro à l’entrée : par connexion, comme tu l’avais laissé ou toujours coupé.',
+        'À côté de la batterie de l’autre on voit s’il est en wifi ou en données mobiles ; la vidéo ne reste plus noire après un changement de connexion.',
+        'L’appli en arrière-plan, tout continue : batterie, journal, liaison ; et après une mise à jour la présence revient d’elle-même.',
+        'Corrigé : deux connexions du même téléphone qui se chassaient chaque seconde, l’autre voyant la liaison se refaire sans arrêt.',
+        'Le journal : un fichier par jour, partageable ; les bêta-testeurs l’envoient à leur work item depuis les Réglages, avec leurs signalements.',
+        'Moins de données sur le réseau mobile : paquets audio plus espacés et silence non transmis.',
+      ],
+    },
+  },
+  {
     version: '0.9.11',
     notes: {
       en: [

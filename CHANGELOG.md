@@ -14,6 +14,26 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
+## 0.9.12 build 317
+
+**Version 0.9.12: the volume in loudness, the journal handed out, and a connection that
+does not fight back.** The level is in decibels against the phone's top: the keys move
+Duetto's gain only, the phone's knob stays where it is and stays a factor, a scale beside
+the controls shows the level, where the knob sits and the reachable stretch, and a button
+hushes the output without losing the level. A headset gone - Bluetooth or wired - brings
+the output back to the built-in one it had before. The microphone on entry is a per-pair
+option. The network kind (wifi or mobile) is told beside the battery; the video no longer
+stays black after a change of pair; the direct-road retry is skipped when it would fire
+late. Everything that has to run with the app behind rides the native heartbeat - battery,
+journal, safety net, audio focus, stats - and the heartbeat is stopped by its last
+listener, not by any. The journal is one tab-separated file a day with the connection's
+name on every row, shareable through Android's sheet; beta testers send it, with their
+words, to their work item on GitLab - with a token of their own or through the server.
+Fixed: a connection pushed out by another of the same phone's - the interface and the
+headless presence - reconnected at once and pushed the other out, every second, for hours;
+now nobody fights back. The presence comes back by itself after an update. Thrifty audio:
+60 ms packets and silence not sent.
+
 ## 0.9.11 build 291
 
 **Version 0.9.11: buttons on the notification, a screen that sleeps, a sturdier exit.**
