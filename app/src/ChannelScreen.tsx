@@ -156,10 +156,12 @@ function VolumeScale(p: {
   const Icon = OUTPUT_ICON[p.route] ?? OUTPUT_ICON.SPEAKER_PHONE;
   return (
     <View style={styles.scaleBox} pointerEvents="box-none">
+      {/* Two lines of fixed height, hushed or not: the scale must not
+          change size under the finger that hushes it. */}
       <Text style={[styles.scaleFigure, p.muted ? styles.scaleFigureMuted : null]} numberOfLines={1}>
         {figure}
       </Text>
-      {!p.muted ? <Text style={styles.scaleUnit}>dB</Text> : null}
+      <Text style={styles.scaleUnit}>{p.muted ? ' ' : 'dB'}</Text>
       <View
         style={styles.scaleTrack}
         pointerEvents="none"
@@ -1054,16 +1056,10 @@ export default function ChannelScreen(props: Props) {
                   {showStats ? (
                     <Text style={styles.cardVolume} numberOfLines={1}>
                       {[
+                        // "you hear" is on the scale beside: said once
                         peerState.volume != null
                           ? t('channel.hearsYou', { pct: levelText(peerState.volume, peerState.volSys, peerState.gain) })
                           : '',
-                        t('channel.youHear', {
-                          pct: levelText(
-                            peerGain,
-                            systemVolume && systemVolume.max > 0 ? systemVolume.volume / systemVolume.max : null,
-                            ownGain,
-                          ),
-                        }),
                       ].filter(Boolean).join(' · ')}
                     </Text>
                   ) : null}
@@ -2266,8 +2262,8 @@ const styles = StyleSheet.create({
   },
   scaleBox: { flex: 1, alignItems: 'center', width: 64 },
   scaleFigure: { color: '#7cc4ff', fontSize: 19, fontWeight: '800', lineHeight: 22 },
-  scaleFigureMuted: { color: '#ffb454', fontSize: 13, fontWeight: '700' },
-  scaleUnit: { color: '#9fb4c8', fontSize: 10, fontWeight: '700', marginTop: -2, marginBottom: 6 },
+  scaleFigureMuted: { color: '#ffb454', fontSize: 13, fontWeight: '700', lineHeight: 22 },
+  scaleUnit: { color: '#9fb4c8', fontSize: 10, fontWeight: '700', lineHeight: 12, marginTop: -2, marginBottom: 6 },
   scaleTrack: { flex: 1, width: 64, alignItems: 'center', marginTop: 2, marginBottom: 8 },
   scaleRail: { position: 'absolute', left: 31, width: 2, backgroundColor: 'rgba(230,235,241,0.28)' },
   scaleReach: { position: 'absolute', left: 31, width: 2, backgroundColor: 'rgba(230,235,241,0.7)' },

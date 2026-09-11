@@ -1118,8 +1118,19 @@ export default function App() {
     // level that sits between two rungs - the knob moved from outside
     // - still moves in the direction pressed, by at least a decibel.
     const rung = Math.round(now / LEVEL_STEP_DB) * LEVEL_STEP_DB;
-    const next = Math.min(ceiling, Math.max(LEVEL_MIN_DB, rung + direction * LEVEL_STEP_DB));
-    const wanted = Math.round((ofDb(next) / sys) * 1000) / 1000;
+    let next = Math.min(ceiling, Math.max(LEVEL_MIN_DB, rung + direction * LEVEL_STEP_DB));
+    let knob = sys;
+    // At WebRTC's ceiling, and only there, the phone's knob is moved:
+    // one step up makes room, and the gain is set so that the level
+    // rises by its usual two decibels, not by the knob's own jump.
+    if (direction > 0 && rung + LEVEL_STEP_DB > ceiling && phone.max > 0 && phone.volume < phone.max) {
+      knob = (phone.volume + 1) / phone.max;
+      next = Math.min(LEVEL_MAX_DB, Math.min(dbOf(knob * GAIN_CEILING), rung + LEVEL_STEP_DB));
+      setSystemVolume({ ...phone, volume: phone.volume + 1 });
+      Volume.set(phone.volume + 1).catch(() => { /* the read-back puts the truth back */ });
+      Journal.mark(`level:knob ${phone.volume + 1}/${phone.max}`).catch(() => { /* noop */ });
+    }
+    const wanted = Math.round((ofDb(next) / knob) * 1000) / 1000;
     // A key while hushed: the sound comes back, at the level pressed.
     setOutputMuted(false);
     Journal.mark(`level:${next > 0 ? '+' : ''}${Math.round(next)}dB`).catch(() => { /* noop */ });
