@@ -289,6 +289,8 @@ export type DuoConfig = {
   diagnostics: boolean;
   /** the beta tester's own GitLab token, for reports in their name */
   gitlabToken?: string;
+  /** the name on their work item, when it is not the invitation's */
+  betaName?: string;
   /**
    * The wait, written as one number instead of two.
    *

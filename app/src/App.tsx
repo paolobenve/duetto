@@ -578,8 +578,9 @@ export default function App() {
   const sendReport = useCallback(async (text: string, withJournal: boolean): Promise<ReportOutcome> => {
     const phone = await Journal.phone().catch(() => '');
     const token = (cfgRef.current?.gitlabToken || '').trim();
+    const name = (cfgRef.current?.betaName || '').trim();
     if (token) {
-      return reportDirectly({ token, text, withJournal, version: VERSION_FULL, phone });
+      return reportDirectly({ token, name, text, withJournal, version: VERSION_FULL, phone });
     }
     const sig = signalingRef.current;
     if (!sig?.connected || !reportsOpen) return { ok: false, error: 'no-road' };
@@ -590,7 +591,7 @@ export default function App() {
       }, 90_000);
       reportPending.current = (o) => { clearTimeout(timer); reportPending.current = null; resolve(o); };
       (async () => {
-        sig.sendReport({ part: 'begin', text, version: VERSION_FULL, phone });
+        sig.sendReport({ part: 'begin', text, name, version: VERSION_FULL, phone });
         if (withJournal) {
           const files = await Journal.files(3).catch(() => [] as { name: string; text: string }[]);
           for (const f of files) {

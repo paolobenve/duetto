@@ -45,11 +45,16 @@ async function api(token: string, path: string, init: RequestInit = {}) {
  * The person's work item: among the open ones they created, the one
  * titled "Beta tester: ..." first, else the most recent.
  */
-export async function findMyWorkItem(token: string): Promise<{ iid: number; url: string } | null> {
+export async function findMyWorkItem(
+  token: string, name = '',
+): Promise<{ iid: number; url: string } | null> {
   const list: any[] = await api(token, '/issues?scope=created_by_me&state=opened&per_page=20');
   if (!Array.isArray(list) || list.length === 0) return null;
+  const lower = name.trim().toLowerCase();
+  const named = lower
+    ? list.find((i) => String(i.title ?? '').toLowerCase().includes(lower)) : null;
   const beta = list.find((i) => /^beta tester\b/i.test(String(i.title ?? '')));
-  const pick = beta ?? list[0];
+  const pick = named ?? beta ?? list[0];
   return { iid: Number(pick.iid), url: String(pick.web_url ?? '') };
 }
 
@@ -84,10 +89,10 @@ export function noteBody(o: {
  * `withJournal`: the files of the last three days go along.
  */
 export async function reportDirectly(o: {
-  token: string; text: string; withJournal: boolean; version: string; phone: string;
+  token: string; name?: string; text: string; withJournal: boolean; version: string; phone: string;
 }): Promise<ReportOutcome> {
   try {
-    const item = await findMyWorkItem(o.token);
+    const item = await findMyWorkItem(o.token, o.name ?? '');
     if (!item) return { ok: false, error: 'no-work-item' };
     const attachments: string[] = [];
     if (o.withJournal) {

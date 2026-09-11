@@ -533,6 +533,10 @@ async function handleReport(ws, msg) {
   const part = String(msg.part || '');
   if (part === 'begin') {
     ws.report = {
+      // The name on the work item, when the person says one: the
+      // invitation's name may be wrong, or there may be no invitation
+      // - the other side of a pair is a tester too.
+      name: cleanName(String(msg.name || '')).slice(0, 80),
       text: String(msg.text || '').slice(0, 20000),
       version: String(msg.version || '').slice(0, 80),
       phone: String(msg.phone || '').slice(0, 80),
@@ -557,7 +561,8 @@ async function handleReport(ws, msg) {
   }
   if (part !== 'end') return;
   ws.report = null;
-  const item = await findWorkItem(ws.name);
+  const who = r.name && r.name !== 'Someone' ? r.name : cleanName(ws.name);
+  const item = await findWorkItem(who);
   if (!item) {
     send(ws, { type: 'report-result', ok: false, error: 'no-work-item' });
     return;
@@ -573,7 +578,7 @@ async function handleReport(ws, msg) {
     ? r.text.trim().split('\n').map((l) => `> ${l}`).join('\n')
     : '';
   const body = [
-    `**Report from ${cleanName(ws.name)}** · Duetto ${r.version} · ${r.phone}`,
+    `**Report from ${who}** · Duetto ${r.version} · ${r.phone}`,
     quoted,
     attachments.length ? `Journal: ${attachments.join(' ')}` : '',
   ].filter(Boolean).join('\n\n');
@@ -582,7 +587,7 @@ async function handleReport(ws, msg) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ body }),
   });
-  console.log(`[duetto] report from ${cleanName(ws.name)} on ${item.url}`);
+  console.log(`[duetto] report from ${who} on ${item.url}`);
   send(ws, { type: 'report-result', ok: true, url: item.url });
 }
 

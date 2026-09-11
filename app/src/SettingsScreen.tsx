@@ -949,6 +949,16 @@ export default function SettingsScreen({
         <Text style={styles.subsection}>{t('settings.betaReports')}</Text>
         <Text style={styles.sectionHint}>{t('settings.betaReportsHint')}</Text>
         <Field
+          label={t('settings.betaName')}
+          value={cfg.betaName ?? ''}
+          onChange={(v) => {
+            setCfg({ ...cfg, betaName: v });
+            onLive?.({ betaName: v });
+          }}
+          placeholder={t('settings.betaNamePlaceholder')}
+          hint={t('settings.betaNameNote')}
+        />
+        <Field
           label={t('settings.gitlabToken')}
           value={cfg.gitlabToken ?? ''}
           onChange={(v) => {
