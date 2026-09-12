@@ -31,6 +31,46 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.9.13',
+    notes: {
+      en: [
+        'The channel is no longer rebuilt over and over. With the video on and nobody watching on the other side, the link was made and unmade every eight seconds, in the middle of a conversation that on both screens was audio only.',
+        'A better road is now taken without interrupting anything: the voice goes on while the new road is tried.',
+        'When the phone closes Duetto by itself, the phone it happened on says so too, and says where to lift the background limits.',
+        'The diagnostics have a tab of their own; the switch shows the rest.',
+        'From there the journal can be shared, and the beta testers send it, with their reports, to their work item on GitLab.',
+      ],
+      it: [
+        'Il canale non si rifà più in continuazione. Con il video acceso e nessuno che guardasse dall’altra parte, il collegamento si disfaceva ogni otto secondi, in mezzo a una conversazione che sugli schermi era solo audio.',
+        'Il passaggio a una strada migliore non interrompe più niente: la voce continua mentre la strada nuova viene provata.',
+        'Quando il telefono chiude Duetto da sé, lo dice anche il telefono a cui è successo, e dice dove togliere i limiti in sottofondo.',
+        'La diagnostica ha una scheda sua; l’interruttore mostra il resto.',
+        'Da lì il giornale si condivide, e i beta tester lo mandano, con le loro segnalazioni, al loro work item su GitLab.',
+      ],
+      es: [
+        'El canal ya no se rehace una y otra vez. Con el vídeo encendido y nadie mirando al otro lado, el enlace se deshacía cada ocho segundos, en medio de una conversación que en las pantallas era solo audio.',
+        'El paso a un camino mejor ya no interrumpe nada: la voz sigue mientras se prueba el camino nuevo.',
+        'Cuando el teléfono cierra Duetto por su cuenta, lo dice también el teléfono al que le ha pasado, y dice dónde quitar los límites en segundo plano.',
+        'La diagnóstica tiene una pestaña propia; el interruptor muestra lo demás.',
+        'Desde ahí se comparte el diario, y los beta testers lo mandan, con sus avisos, a su work item en GitLab.',
+      ],
+      pt: [
+        'O canal não é mais refeito sem parar. Com o vídeo ligado e ninguém olhando do outro lado, a ligação se desfazia a cada oito segundos, no meio de uma conversa que nas telas era só áudio.',
+        'A passagem para um caminho melhor não interrompe mais nada: a voz continua enquanto o caminho novo é testado.',
+        'Quando o telefone fecha o Duetto sozinho, quem o diz é também o telefone em que aconteceu, com onde tirar os limites em segundo plano.',
+        'O diagnóstico tem uma aba própria; o interruptor mostra o resto.',
+        'De lá o diário se compartilha, e os beta testers o mandam, com os seus relatos, ao seu work item no GitLab.',
+      ],
+      fr: [
+        'Le canal n’est plus refait sans arrêt. Avec la vidéo allumée et personne qui regardait en face, la liaison se défaisait toutes les huit secondes, au milieu d’une conversation qui sur les écrans était en audio seul.',
+        'Le passage à une meilleure route n’interrompt plus rien : la voix continue pendant que la nouvelle route est essayée.',
+        'Quand le téléphone ferme Duetto de lui-même, le téléphone où c’est arrivé le dit aussi, et dit où enlever les limites en arrière-plan.',
+        'Le diagnostic a son propre onglet ; l’interrupteur montre le reste.',
+        'De là le journal se partage, et les bêta-testeurs l’envoient, avec leurs signalements, à leur work item sur GitLab.',
+      ],
+    },
+  },
+  {
     version: '0.9.12',
     notes: {
       en: [

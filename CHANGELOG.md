@@ -14,6 +14,24 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
+## 0.9.13 build 326
+
+**Version 0.9.13: a channel that stays up.** The watch for a still video encoder was
+rebuilding the whole channel every eight seconds whenever the video was on and no frame
+was leaving - and none was leaving on purpose, because the other side was not watching:
+an hour of links made and unmade in the middle of a conversation that on both screens was
+audio only. It now fires only when the frames should really be going out, and a cure that
+does not work is tried twice, the wait doubling, then written down and left alone. The
+retry for a direct road asks the other side to shake the candidates of the channel it has,
+not to demolish it: the road changes with no silence and nothing on screen. A death by the
+phone's own hand is told on the phone it happened to, not only to the other side, with
+where to lift the maker's background limits. The diagnostics have a tab of their own, with
+the switch that shows the rest, the journal's share button, and the beta testers' road to
+their work item on GitLab - with a token of their own, or through the server, and a field
+for the name the work item carries. The periodic line of the journal comes every five
+minutes again: any line written used to push it further, so in an hour of lines a second
+not one was written. And the line about different versions says "-pre" when it should.
+
 ## 0.9.12 build 317
 
 **Version 0.9.12: the volume in loudness, the journal handed out, and a connection that
