@@ -84,7 +84,13 @@ export type SignalMessage =
   // It goes in the encrypted envelope and not through the server: what
   // version somebody is running is their business, not his.
   | { kind: 'hello'; version: string; build?: number }
-  | { kind: 'renegotiate' }
+  /**
+   * "Do it again". `road` asks for the gentler kind: the channel is
+   * shaken to find a better road, not demolished - what carries the
+   * voice goes on carrying it while the new road is tried. An older
+   * app ignores the field and rebuilds, which is what it always did.
+   */
+  | { kind: 'renegotiate'; road?: boolean }
   // Video quality belongs to both: changing it on one phone changes it
   // on the other. Whoever receives it does not send it back.
   | { kind: 'quality'; value: string }

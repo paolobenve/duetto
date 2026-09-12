@@ -1942,8 +1942,11 @@ export default function App() {
       Journal.mark(late ? 'relay-retry:late' : 'relay-retry').catch(() => { /* noop */ });
       if (late) return;
       rtcLog('going through the relay: looking for a direct road');
-      if (politeRef.current) signalingRef.current?.sendSignal({ kind: 'renegotiate' });
-      else sessionRef.current?.restartIce();
+      if (politeRef.current) {
+        signalingRef.current?.sendSignal({ kind: 'renegotiate', road: true });
+      } else {
+        sessionRef.current?.restartIce();
+      }
     }, 8000);
     return () => clearTimeout(t);
   }, [connState, videoStats.path]);
@@ -2495,7 +2498,11 @@ export default function App() {
             // They have been left without a connection and ask us to
             // make the offer again: it is up to us, the offering side.
             if (msg.kind === 'renegotiate') {
-              if (!politeRef.current && inChannelRef.current) attachPeer(true);
+              if (politeRef.current || !inChannelRef.current) return;
+              // A change of road does not demolish anything: the voice
+              // keeps going while the new road is tried.
+              if (msg.road) sessionRef.current?.restartIce();
+              else attachPeer(true);
               return;
             }
             // They changed the quality: it holds for both, so that one
