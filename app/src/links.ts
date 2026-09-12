@@ -17,7 +17,13 @@ import { displayServer, normalizeServerUrl } from './config';
 export const PETITION_LINK = 'https://keepandroidopen.org/';
 
 export const BETA_TESTER_LINK =
-  'https://gitlab.com/paolobenve/duetto/-/issues/new?issuable_template=Beta_tester&issue%5Btitle%5D=Beta%20tester%3A%20%3Cadd%20here%20your%20%28nick%29name%3E';
+  // Confidential from birth: a beta tester's work item carries their
+  // reports and their journals - the phone they hold, their battery,
+  // their networks - and the invitation link is written in it too.
+  // Confidential means the author and the project see it, nobody else.
+  'https://gitlab.com/paolobenve/duetto/-/issues/new?issuable_template=Beta_tester'
+  + '&issue%5Btitle%5D=Beta%20tester%3A%20%3Cadd%20here%20your%20%28nick%29name%3E'
+  + '&issue%5Bconfidential%5D=true';
 
 /**
  * What a QR code says, and how it is read back.

@@ -509,6 +509,7 @@ export const en = {
     invitedBody: 'Hand it to {who} as you would a pairing code: out loud, by message, however you like. It is used once, and lasts {days} days.',
     copy: 'Copy',
     copied: 'Copied',
+    share: 'Share',
     keyExchangeFailed: 'The key exchange did not succeed. Try again.',
     codeMismatch: 'The code does not match.\n\nCheck that you typed exactly the digits shown on the other phone.',
     codeInUse: 'That code is already used by two devices.\n\nGenerate a new one.',

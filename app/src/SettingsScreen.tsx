@@ -10,7 +10,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity,
-  KeyboardAvoidingView, Platform, Alert, Modal, Pressable, Clipboard, Linking,
+  KeyboardAvoidingView, Platform, Alert, Modal, Pressable, Clipboard, Linking, Share,
 } from 'react-native';
 import type { DuoConfig, PairInfo, VideoQuality } from './config';
 import type { PersonOnServer, InvitationOnServer } from './signaling';
@@ -301,10 +301,18 @@ export default function SettingsScreen({
   const [copiedCode, setCopiedCode] = useState('');
   /** the invitation shown as a QR code, big, for the phone next to this one */
   const [qrFor, setQrFor] = useState<InvitationOnServer | null>(null);
+  /**
+   * The whole link, not the bare code: the code alone does not carry
+   * the server, and whoever is being invited has no server of their
+   * own - that is the point of the invitation.
+   */
   const copyCode = (code: string) => {
-    Clipboard.setString(code);
+    Clipboard.setString(inviteLink(initial.serverUrl, code));
     setCopiedCode(code);
     setTimeout(() => setCopiedCode(''), 2000);
+  };
+  const shareInvite = (code: string) => {
+    Share.share({ message: inviteLink(initial.serverUrl, code) }).catch(() => { /* noop */ });
   };
 
   const confirmForgetInvitation = (i: InvitationOnServer) => {
@@ -594,6 +602,9 @@ export default function SettingsScreen({
                     <Text style={styles.linkInline}>
                       {copiedCode === i.code ? t('settings.copied') : t('settings.copy')}
                     </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => shareInvite(i.code)}>
+                    <Text style={styles.linkInline}>{t('settings.share')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => confirmForgetInvitation(i)}>
                     <Text style={styles.linkInline}>{t('settings.forgetPerson')}</Text>

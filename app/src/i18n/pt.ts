@@ -496,6 +496,7 @@ export const pt: Dictionary = {
     invitedBody: 'Passe para {who} como um código de pareamento: de viva voz, por mensagem, como quiser. Usa-se uma vez, e vale {days} dias.',
     copy: 'Copiar',
     copied: 'Copiado',
+    share: 'Compartilhar',
     keyExchangeFailed: 'A troca de chaves não deu certo. Tente de novo.',
     codeMismatch: 'O código não confere.\n\nVerifique se digitou exatamente os algarismos mostrados no outro telefone.',
     codeInUse: 'Esse código já é usado por dois aparelhos.\n\nGere um novo.',
