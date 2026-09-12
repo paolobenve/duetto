@@ -180,6 +180,25 @@ object Journal {
      */
     @Volatile private var reschedule: (() -> Unit)? = null
 
+    /**
+     * When the last periodic line was written.
+     *
+     * Every line used to push the wait five minutes further, and in an
+     * hour of lines written one a second - a phone bouncing in and out
+     * of a room - not one periodic line was written: the battery, the
+     * traffic and the network went unrecorded exactly when they were
+     * worth recording. Now an event line puts the wait back only as far
+     * as five minutes from the last periodic one.
+     */
+    @Volatile private var lastPeriodic = 0L
+
+    /** How long until the next periodic line is due. */
+    fun msToNextPeriodic(interval: Long): Long {
+        if (lastPeriodic == 0L) return interval
+        val left = lastPeriodic + interval - System.currentTimeMillis()
+        return if (left < 0) 0 else left
+    }
+
     fun onWrite(f: (() -> Unit)?) {
         reschedule = f
     }
@@ -425,6 +444,7 @@ object Journal {
             if (dTx >= 0) values["tx"] = dTx / 1024
             appendRow(file, row(values))
 
+            if (why == "periodic" || why == "start" || why == "sampling-on") lastPeriodic = now
             lastMoment = now
             lastCharge = charge
             lastCpuMs = cpuMs

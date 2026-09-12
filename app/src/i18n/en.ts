@@ -103,6 +103,7 @@ export const en = {
     // words, and "disappeared" next to "in the channel" read as a
     // denial of the present. What is true now leads; the story follows.
     story: '{who} came back at {back} — had disappeared {when}: {why}.',
+    mineStory: 'The phone closed Duetto {when}: {why}. You were unreachable from then until now. If it happens again, lift the background limits on Duetto in the phone\'s battery settings.',
   },
 
   presence: {

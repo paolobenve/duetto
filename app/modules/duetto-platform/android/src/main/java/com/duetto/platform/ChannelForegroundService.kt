@@ -94,7 +94,7 @@ class ChannelForegroundService : Service() {
         // put back in the queue, and the journal is left with the lines
         // that events write.
         if (!Journal.sampling) return
-        clock.postDelayed(writeJournal, JOURNAL_INTERVAL_MS)
+        clock.postDelayed(writeJournal, Journal.msToNextPeriodic(JOURNAL_INTERVAL_MS))
     }
 
     companion object {

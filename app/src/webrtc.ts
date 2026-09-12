@@ -184,6 +184,10 @@ const log = logger('[duetto-rtc]');
  * enough that nobody stares at "establishing the connection" for it.
  */
 const STALL_MS = 10_000;
+/** how long an encoder may stand still before the channel is put right */
+const STALL_CURE_MS = 8_000;
+/** how many times that is tried, the wait doubling, before giving up */
+const STALL_CURES = 2;
 
 /**
  * The balancing of the two pictures: see weighBalance().
@@ -374,6 +378,8 @@ export class ChannelSession {
   /** the road last written in the journal: relay, direct, local */
   private lastRoad = '';
   private stalledSince = 0;
+  /** how many times the channel has been put right for a still encoder */
+  private stallCures = 0;
   private makingOffer = false;
   private ignoreOffer = false;
   /** When the offer that is being ignored was set aside: see onSignal. */
@@ -574,6 +580,7 @@ export class ChannelSession {
     this.lastOutbound = null;
     this.lastFramesEncoded = 0;
     this.stalledSince = 0;
+    this.stallCures = 0;
     this.lastInbound = null;
     this.lastWait = {};
     this.termsLogged = '';
@@ -698,6 +705,7 @@ export class ChannelSession {
         this.lastOutbound = null;
     this.lastFramesEncoded = 0;
     this.stalledSince = 0;
+    this.stallCures = 0;
         this.lastInbound = null;
         this.logOutboundVideo();
         setTimeout(() => this.logOutboundVideo(), 1000);
@@ -1478,22 +1486,42 @@ export class ChannelSession {
           this.lastOutbound = { ts: r.timestamp, bytes: r.bytesSent };
           limit = r.qualityLimitationReason ?? '?';
           // The encoder standing still with the video on: black over
-          // there. Eight seconds of it, and the channel is put right.
+          // there - but only when the frames should really be going
+          // out. With the other side not watching, our own app behind
+          // or no camera alive, it is us holding them back, and there
+          // is nothing to put right: the cure - rebuilding the whole
+          // channel - was being applied every eight seconds for hours
+          // to a channel with nothing wrong with it, and on the other
+          // phone the link was made and unmade in the middle of a
+          // conversation that was audio only.
           const fe = Number(r.framesEncoded ?? 0);
-          if (this.isVideoEnabled()) {
+          if (this.isVideoEnabled() && this.videoShouldFlow()) {
             if (fe > this.lastFramesEncoded) {
               this.lastFramesEncoded = fe;
               this.stalledSince = 0;
+              this.stallCures = 0;
             } else if (!this.stalledSince) {
               this.stalledSince = Date.now();
-            } else if (Date.now() - this.stalledSince > 8_000) {
+            } else if (Date.now() - this.stalledSince > STALL_CURE_MS * (1 << this.stallCures)) {
+              // And a cure that does not work is not repeated for ever:
+              // twice, the wait doubling, then it is written down and
+              // left alone until the frames move again.
               this.stalledSince = Date.now();
-              log('video encoder standing still: putting the channel right');
-              this.ensureVideoSending('stalled').catch(() => { /* noop */ });
+              if (this.stallCures >= STALL_CURES) {
+                this.stalledSince = 0;
+                this.lastFramesEncoded = fe;
+                Journal.mark('video:stalled:giving-up').catch(() => { /* noop */ });
+                log('video encoder still standing still: leaving the channel alone');
+              } else {
+                this.stallCures += 1;
+                log('video encoder standing still: putting the channel right');
+                this.ensureVideoSending('stalled').catch(() => { /* noop */ });
+              }
             }
           } else {
             this.lastFramesEncoded = fe;
             this.stalledSince = 0;
+            this.stallCures = 0;
           }
         } else if (r.type === 'inbound-rtp') {
           out.in = {
@@ -1857,6 +1885,7 @@ export class ChannelSession {
     this.lastOutbound = null;
     this.lastFramesEncoded = 0;
     this.stalledSince = 0;
+    this.stallCures = 0;
 
     this.events.onLocalStream?.(this.localStream);
     this.broadcastState();
@@ -1986,6 +2015,7 @@ export class ChannelSession {
     this.lastOutbound = null;
     this.lastFramesEncoded = 0;
     this.stalledSince = 0;
+    this.stallCures = 0;
     this.lastInbound = null;
     this.lastWait = {};
     this.termsLogged = '';
@@ -2039,6 +2069,21 @@ export class ChannelSession {
    * We tell the other side whether we are watching, so they can stop
    * sending video nobody is looking at.
    */
+  /**
+   * Whether the camera's frames should really be leaving right now.
+   *
+   * They should not when the other side is not watching (we replace
+   * the track with nothing on purpose), when our own app is behind, or
+   * when there is no live camera track: in all three the encoder
+   * standing still is what we asked for, not a fault.
+   */
+  private videoShouldFlow(): boolean {
+    if (!this.peerWatching || !this.localWatching) return false;
+    const track: any = this.localStream?.getVideoTracks?.()[0];
+    if (!track || track.enabled === false) return false;
+    return track.readyState !== 'ended';
+  }
+
   setLocalWatching(watching: boolean) {
     if (this.localWatching === watching) return;
     this.localWatching = watching;
@@ -2109,6 +2154,7 @@ export class ChannelSession {
     this.lastOutbound = null;
     this.lastFramesEncoded = 0;
     this.stalledSince = 0;
+    this.stallCures = 0;
 
     this.events.onLocalStream?.(this.localStream);
     this.broadcastState();
@@ -2264,6 +2310,7 @@ export class ChannelSession {
     this.lastOutbound = null;
     this.lastFramesEncoded = 0;
     this.stalledSince = 0;
+    this.stallCures = 0;
     this.lastInbound = null;
     this.lastWait = {};
     this.termsLogged = '';

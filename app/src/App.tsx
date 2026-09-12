@@ -47,7 +47,7 @@ import { useAudioRoute } from './audioRoute';
 import { reportDirectly } from './gitlab';
 import type { ReportOutcome } from './gitlab';
 import {
-  startListening, stopListening, presenceCode, presenceLine, deathStory, interfaceInCharge, isRealName,
+  startListening, stopListening, presenceCode, presenceLine, deathStory, myDeathStory, interfaceInCharge, isRealName,
 } from './presence';
 import { avatarFor, peerAvatar } from './avatar';
 
@@ -1818,6 +1818,10 @@ export default function App() {
       // The time of the return is now: the app is starting again at
       // this very moment, and this is the only phone that can know it.
       deathToTell.current = { when: m.when, cause: m.cause, back: Date.now() };
+      // And it is said on this phone too: whoever holds it was
+      // unreachable all that while without knowing, and is the only
+      // one who can tell the phone to stop doing it.
+      setNotice(myDeathStory(m.when, m.cause));
     } catch { /* if the phone does not know, it does not know */ }
   }, []);
 

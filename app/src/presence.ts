@@ -89,11 +89,9 @@ const named = (name: string) => isRealName(name);
  * presence below. A phone that has just got back on its feet can find
  * the other one in either state, and the story has to be the same.
  */
-export function deathStory(
-  when: number, cause: string, name: string, back?: number,
-): string {
-  const who = named(name) ? name : t('death.theOther');
-  const why = t(`death.${{
+/** The cause of a death, as a sentence: the same words on both phones. */
+function deathWhy(cause: string): string {
+  return t(`death.${{
     'out-of-memory': 'outOfMemory',
     crash: 'crashed',
     'native-crash': 'crashed',
@@ -119,12 +117,33 @@ export function deathStory(
     segnale: 'phoneClosedIt',
     altro: 'phoneClosedIt',
   }[cause] ?? 'unknown'}`);
+}
 
+/** The moment of a death, as this phone would say it aloud. */
+function deathWhen(when: number): string {
   const died = new Date(when);
   const time = died.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  const whenSaid = died.toDateString() === new Date().toDateString()
+  return died.toDateString() === new Date().toDateString()
     ? t('death.atTime', { time })
     : t('death.onDayAtTime', { date: died.toLocaleDateString(), time });
+}
+
+/**
+ * The same story, for a death of our own: the phone closed Duetto, and
+ * from then until this very moment nobody could reach this phone. It is
+ * the only phone that can tell it, and the person holding it is the one
+ * who can do something about it.
+ */
+export function myDeathStory(when: number, cause: string): string {
+  return t('death.mineStory', { when: deathWhen(when), why: deathWhy(cause) });
+}
+
+export function deathStory(
+  when: number, cause: string, name: string, back?: number,
+): string {
+  const who = named(name) ? name : t('death.theOther');
+  const why = deathWhy(cause);
+  const whenSaid = deathWhen(when);
 
   /**
    * The time of the return, down to the second.

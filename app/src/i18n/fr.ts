@@ -92,6 +92,7 @@ export const fr: Dictionary = {
     atTime: 'à {time}',
     onDayAtTime: 'le {date} à {time}',
     story: '{who} est revenu à {back} — avait disparu {when} : {why}.',
+    mineStory: 'Le téléphone a fermé Duetto {when} : {why}. De ce moment jusqu’à maintenant tu étais injoignable. Si cela se répète, enlève à Duetto les limites en arrière-plan dans les réglages de batterie du téléphone.',
   },
 
   presence: {

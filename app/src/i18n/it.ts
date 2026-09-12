@@ -91,6 +91,7 @@ export const it: Dictionary = {
     // parole, e «è sparito» accanto a «nel canale» leggeva come una
     // smentita del presente. Prima ciò che è vero ora, poi la storia.
     story: '{who} è tornato alle {back} — era sparito {when}: {why}.',
+    mineStory: 'Il telefono ha chiuso Duetto {when}: {why}. Da allora non eri raggiungibile, fino a ora. Se si ripete, togli a Duetto i limiti in sottofondo nelle impostazioni della batteria del telefono.',
   },
 
   presence: {
