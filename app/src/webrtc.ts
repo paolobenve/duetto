@@ -266,6 +266,7 @@ export class ChannelSession {
   private lastMediaAt = 0;
   private inboundBytesSeen = 0;
   private lastAudioOut: { ts: number; bytes: number } | null = null;
+  private lastAudioIn: { ts: number; bytes: number } | null = null;
   /**
    * What the wait counters said last time, one entry per stream.
    *
@@ -1432,6 +1433,17 @@ export class ChannelSession {
       /** Rebuilding the connection restarts the counters from zero: the
        *  difference goes negative, and showing that is worse than
        *  saying nothing. */
+      /**
+       * What the voice costs, the two ways together.
+       *
+       * What leaves this phone alone means little: with the silence not
+       * transmitted it falls to a tenth of a kB while one listens, and
+       * the phone's own counter - which says both ways - looks like it
+       * is telling another story.
+       */
+      let audioOut: number | null = null;
+      let audioIn: number | null = null;
+
       const rate = (prev: { ts: number; bytes: number } | null, ts: number, bytes: number) => {
         const dt = prev ? (ts - prev.ts) / 1000 : 0;
         const delta = prev ? bytes - prev.bytes : -1;
@@ -1471,8 +1483,13 @@ export class ChannelSession {
           step('audio', 'playout', r.totalPlayoutDelay, r.totalSamplesCount);
         }
         if (r.kind === 'audio' && r.type === 'outbound-rtp') {
-          out.audioKbps = rate(this.lastAudioOut, r.timestamp, r.bytesSent);
+          audioOut = rate(this.lastAudioOut, r.timestamp, r.bytesSent);
           this.lastAudioOut = { ts: r.timestamp, bytes: r.bytesSent };
+          return;
+        }
+        if (r.kind === 'audio' && r.type === 'inbound-rtp') {
+          audioIn = rate(this.lastAudioIn, r.timestamp, r.bytesReceived);
+          this.lastAudioIn = { ts: r.timestamp, bytes: r.bytesReceived };
           return;
         }
         if (r.kind !== 'video') return;
@@ -1533,6 +1550,11 @@ export class ChannelSession {
           this.lastInbound = { ts: r.timestamp, bytes: r.bytesReceived };
         }
       });
+
+      // The voice's cost, the two ways together.
+      out.audioKbps = audioIn === null && audioOut === null
+        ? null
+        : (audioIn ?? 0) + (audioOut ?? 0);
 
       /**
        * The two halves this phone can time, in milliseconds - the
