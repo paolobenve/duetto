@@ -223,7 +223,7 @@ export const en = {
     state: 'state: {state}',
     resolutionLabel: 'Resolution: {quality}',
     linkLabel: 'Link: {path}',
-    audioRate: 'audio {rate}',
+    audioRate: 'channel {rate}',
     latency: 'latency ↑↓{ms}ms',
     delay: 'delay {ms}ms',
     delayBoth: 'delay ↑{up} ↓{down}ms',

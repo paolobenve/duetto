@@ -265,8 +265,8 @@ export class ChannelSession {
    */
   private lastMediaAt = 0;
   private inboundBytesSeen = 0;
-  private lastAudioOut: { ts: number; bytes: number } | null = null;
-  private lastAudioIn: { ts: number; bytes: number } | null = null;
+  /** what the road in use has carried, both ways together */
+  private lastWire: { ts: number; bytes: number } | null = null;
   /**
    * What the wait counters said last time, one entry per stream.
    *
@@ -1426,6 +1426,8 @@ export class ChannelSession {
         const road = `${out.path}${out.relayLeg ? '/' + out.relayLeg : ''}`;
         if (road !== this.lastRoad) {
           this.lastRoad = road;
+          // A new road counts from its own zero.
+          this.lastWire = null;
           Journal.mark(`road:${road}`).catch(() => { /* noop */ });
         }
       }
@@ -1433,17 +1435,6 @@ export class ChannelSession {
       /** Rebuilding the connection restarts the counters from zero: the
        *  difference goes negative, and showing that is worse than
        *  saying nothing. */
-      /**
-       * What the voice costs, the two ways together.
-       *
-       * What leaves this phone alone means little: with the silence not
-       * transmitted it falls to a tenth of a kB while one listens, and
-       * the phone's own counter - which says both ways - looks like it
-       * is telling another story.
-       */
-      let audioOut: number | null = null;
-      let audioIn: number | null = null;
-
       const rate = (prev: { ts: number; bytes: number } | null, ts: number, bytes: number) => {
         const dt = prev ? (ts - prev.ts) / 1000 : 0;
         const delta = prev ? bytes - prev.bytes : -1;
@@ -1482,16 +1473,7 @@ export class ChannelSession {
         if (r.type === 'media-playout') {
           step('audio', 'playout', r.totalPlayoutDelay, r.totalSamplesCount);
         }
-        if (r.kind === 'audio' && r.type === 'outbound-rtp') {
-          audioOut = rate(this.lastAudioOut, r.timestamp, r.bytesSent);
-          this.lastAudioOut = { ts: r.timestamp, bytes: r.bytesSent };
-          return;
-        }
-        if (r.kind === 'audio' && r.type === 'inbound-rtp') {
-          audioIn = rate(this.lastAudioIn, r.timestamp, r.bytesReceived);
-          this.lastAudioIn = { ts: r.timestamp, bytes: r.bytesReceived };
-          return;
-        }
+        if (r.kind === 'audio' && r.type === 'outbound-rtp') return;
         if (r.kind !== 'video') return;
         if (r.type === 'outbound-rtp') {
           out.out = {
@@ -1551,10 +1533,23 @@ export class ChannelSession {
         }
       });
 
-      // The voice's cost, the two ways together.
-      out.audioKbps = audioIn === null && audioOut === null
-        ? null
-        : (audioIn ?? 0) + (audioOut ?? 0);
+      /**
+       * What the channel costs: everything that goes in and out over
+       * the road in use, both ways together.
+       *
+       * Not the bytes of the voice: those are the payload alone, and
+       * the phone's own counter - which sees the wire - reads two to
+       * five times more. The wrapping of every packet is about sixty
+       * bytes, which during the silence nobody transmits is nearly all
+       * of it; the reports, the ICE taps and, through the relay, the
+       * TLS around each packet, are the rest. This counter is the one
+       * that can be held beside Android's.
+       */
+      if (pairStat) {
+        const wire = Number(pairStat.bytesSent ?? 0) + Number(pairStat.bytesReceived ?? 0);
+        out.audioKbps = rate(this.lastWire, pairStat.timestamp, wire);
+        this.lastWire = { ts: pairStat.timestamp, bytes: wire };
+      }
 
       /**
        * The two halves this phone can time, in milliseconds - the

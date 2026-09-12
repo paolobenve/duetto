@@ -210,7 +210,7 @@ export const es: Dictionary = {
     state: 'estado: {state}',
     resolutionLabel: 'Resolución: {quality}',
     linkLabel: 'Enlace: {path}',
-    audioRate: 'audio {rate}',
+    audioRate: 'canal {rate}',
     latency: 'latencia ↑↓{ms}ms',
     delay: 'retardo {ms}ms',
     delayBoth: 'retardo ↑{up} ↓{down}ms',

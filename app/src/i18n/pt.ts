@@ -210,7 +210,7 @@ export const pt: Dictionary = {
     state: 'estado: {state}',
     resolutionLabel: 'Resolução: {quality}',
     linkLabel: 'Ligação: {path}',
-    audioRate: 'áudio {rate}',
+    audioRate: 'canal {rate}',
     latency: 'latência ↑↓{ms}ms',
     delay: 'atraso {ms}ms',
     delayBoth: 'atraso ↑{up} ↓{down}ms',
