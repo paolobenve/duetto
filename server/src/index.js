@@ -519,6 +519,52 @@ async function findWorkItem(name) {
 const REPORT_MAX_BYTES = 6 * 1024 * 1024;
 
 /**
+ * The invitation, written on the work item of whoever asked for it.
+ *
+ * The work item is made confidential first: an invitation link is the
+ * key to this house for one phone, and a beta tester's work item goes
+ * on to carry their journals. Confidential means the person who opened
+ * it and the project, and nobody else.
+ */
+async function handleInviteNote(ws, msg) {
+  if (!reportsOpen()) {
+    send(ws, { type: 'invite-note-result', ok: false, error: 'no-road' });
+    return;
+  }
+  const name = cleanName(String(msg.name || ''));
+  const link = String(msg.link || '').trim();
+  if (!/^duetto:\/\/[^\s]{3,200}$/.test(link)) {
+    send(ws, { type: 'invite-note-result', ok: false, error: 'bad-link' });
+    return;
+  }
+  const item = await findWorkItem(name);
+  if (!item) {
+    send(ws, { type: 'invite-note-result', ok: false, error: 'no-work-item' });
+    return;
+  }
+  await gitlab(`/issues/${item.iid}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ confidential: true }),
+  });
+  const body = [
+    `Here is your invitation, ${link}`,
+    'Open it on the phone with Duetto installed: it carries the server with it, so there is'
+      + ' nothing to type.',
+    'Then, in Settings, open the "Diagnostics" tab and turn the diagnostics on: from there you'
+      + ' can share the journal and send your reports, and they land here.',
+    'This work item is confidential: only you and the project see it.',
+  ].join('\n\n');
+  await gitlab(`/issues/${item.iid}/notes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ body }),
+  });
+  console.log(`[duetto] invitation for ${name} written on ${item.url}`);
+  send(ws, { type: 'invite-note-result', ok: true, url: item.url });
+}
+
+/**
  * A report comes in parts, under the message ceiling: "begin" with the
  * words, "file" pieces by name, "end". On the end it is written on the
  * work item: the person's name in the first line - the note is the
@@ -954,6 +1000,17 @@ wss.on('connection', (ws, req) => {
       for (const peer of peersOf(ws.roomId, ws)) {
         send(peer, { type: 'pair', from: ws.peerId, payload: msg.payload });
       }
+      return;
+    }
+
+    // --- 4a) An invitation written on the work item of the person it
+    //         is for: they are a beta tester who asked here, and the
+    //         link is not a thing to leave in the open ---------------
+    if (msg.type === 'invite-note') {
+      handleInviteNote(ws, msg).catch((e) => {
+        console.warn(`[duetto] invitation note failed: ${e.message}`);
+        send(ws, { type: 'invite-note-result', ok: false, error: 'failed' });
+      });
       return;
     }
 

@@ -155,6 +155,8 @@ type Props = {
   reportsOpen?: boolean;
   /** a report: the person's words, the journal along or not */
   onReport?: (text: string, withJournal: boolean) => Promise<ReportOutcome>;
+  /** an invitation, written on the work item of the person it is for */
+  onInviteToWorkItem?: (name: string, link: string) => Promise<ReportOutcome>;
 };
 
 /**
@@ -163,7 +165,7 @@ type Props = {
  */
 export default function SettingsScreen({
   initial, onForgetPair, onSwitchPair, onRenamePair, onChangeServer, onLeaveServer, onRepair, onHaveCode, onClose, onOpenSetup,
-  vp9Here, vp9Peer, onQualityChange, onLive, reportsOpen, onReport,
+  vp9Here, vp9Peer, onQualityChange, onLive, reportsOpen, onReport, onInviteToWorkItem,
   canInvite, canAddPair, people = [], invitations = [], freshInvite,
   onAskPeople, onInvite, onForget, onForgetInvitation,
 }: Props) {
@@ -313,6 +315,28 @@ export default function SettingsScreen({
   };
   const shareInvite = (code: string) => {
     Share.share({ message: inviteLink(initial.serverUrl, code) }).catch(() => { /* noop */ });
+  };
+  /**
+   * The invitation written on the work item of whoever asked to be a
+   * beta tester: the item is made confidential first, and the link
+   * never passes through anywhere else.
+   */
+  const [sendingTo, setSendingTo] = useState('');
+  const inviteToWorkItem = async (i: InvitationOnServer) => {
+    if (!onInviteToWorkItem || sendingTo) return;
+    setSendingTo(i.code);
+    const out = await onInviteToWorkItem(i.name, inviteLink(initial.serverUrl, i.code))
+      .catch((e): ReportOutcome => ({ ok: false, error: String(e) }));
+    setSendingTo('');
+    if (out.ok) {
+      Alert.alert(t('settings.reportSentTitle'), t('settings.inviteSent', { name: i.name }));
+      return;
+    }
+    const why = out.error === 'no-work-item'
+      ? t('settings.inviteNoWorkItem', { name: i.name })
+      : out.error === 'no-road' ? t('settings.reportNoRoad')
+        : t('settings.reportFailed', { error: out.error ?? '' });
+    Alert.alert(t('settings.reportFailedTitle'), why);
   };
 
   const confirmForgetInvitation = (i: InvitationOnServer) => {
@@ -605,6 +629,11 @@ export default function SettingsScreen({
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => shareInvite(i.code)}>
                     <Text style={styles.linkInline}>{t('settings.share')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => inviteToWorkItem(i)}>
+                    <Text style={styles.linkInline}>
+                      {sendingTo === i.code ? t('settings.reportSending') : t('settings.toWorkItem')}
+                    </Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => confirmForgetInvitation(i)}>
                     <Text style={styles.linkInline}>{t('settings.forgetPerson')}</Text>

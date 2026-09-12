@@ -85,6 +85,48 @@ export function noteBody(o: {
 }
 
 /**
+ * The invitation, on the work item of whoever asked for it, with one's
+ * own token: the item is made confidential first.
+ */
+export async function inviteOnWorkItem(o: {
+  token: string; name: string; link: string;
+}): Promise<ReportOutcome> {
+  try {
+    const list: any[] = await api(
+      o.token,
+      `/issues?state=opened&in=title&search=${encodeURIComponent(o.name)}&per_page=20`,
+    );
+    const lower = o.name.trim().toLowerCase();
+    const titled = list.filter((i) => String(i.title ?? '').toLowerCase().includes(lower));
+    const beta = titled.find((i) => /^beta tester\b/i.test(String(i.title ?? '')));
+    const item = beta ?? titled[0];
+    if (!item) return { ok: false, error: 'no-work-item' };
+    await api(o.token, `/issues/${item.iid}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confidential: true }),
+    });
+    await api(o.token, `/issues/${item.iid}/notes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        body: [
+          `Here is your invitation, ${o.link}`,
+          'Open it on the phone with Duetto installed: it carries the server with it, so there'
+            + ' is nothing to type.',
+          'Then, in Settings, open the "Diagnostics" tab and turn the diagnostics on: from there'
+            + ' you can share the journal and send your reports, and they land here.',
+          'This work item is confidential: only you and the project see it.',
+        ].join('\n\n'),
+      }),
+    });
+    return { ok: true, url: String(item.web_url ?? '') };
+  } catch (e: any) {
+    return { ok: false, error: String(e?.message ?? e) };
+  }
+}
+
+/**
  * The whole trip with the person's own token: find, upload, write.
  * `withJournal`: the files of the last three days go along.
  */
