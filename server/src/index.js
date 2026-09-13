@@ -548,9 +548,13 @@ async function handleInviteNote(ws, msg) {
     body: JSON.stringify({ confidential: true }),
   });
   const body = [
+    'Welcome aboard, and thank you for wanting to try Duetto.',
     `Here is your invitation, ${link}`,
     'Open it on the phone with Duetto installed: it carries the server with it, so there is'
       + ' nothing to type.',
+    'Please keep the app at the latest version:'
+      + ' https://gitlab.com/paolobenve/duetto/-/releases - what F-Droid has can be a few days'
+      + ' behind, and at this age Duetto is mended often.',
     'Then, in Settings, open the "Diagnostics" tab and turn the diagnostics on: from there you'
       + ' can share the journal and send your reports, and they land here.',
     'This work item is confidential: only you and the project see it.',
