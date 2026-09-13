@@ -70,6 +70,12 @@ class JournalModule(private val ctx: ReactApplicationContext) :
 
     /** How many lines the journal has: only the new ones get sent. */
     @ReactMethod
+    fun using(mic: Boolean, peerMic: Boolean, peerVideo: Boolean, promise: Promise) {
+        Journal.using(mic, peerMic, peerVideo)
+        promise.resolve(true)
+    }
+
+    @ReactMethod
     fun pair(name: String, promise: Promise) {
         Journal.pair(name)
         promise.resolve(true)

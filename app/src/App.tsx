@@ -1720,6 +1720,17 @@ export default function App() {
    * far the phone had come down without saying what the app was doing,
    * which is the one thing that makes those figures comparable.
    */
+  // The four things being used, on every line of the journal: a
+  // microphone left open from the moment one entered wrote no line at
+  // all, and a day later its band was empty where it should have been
+  // full.
+  useEffect(() => {
+    Journal.using(
+      inChannel && audioOn,
+      inChannel && peerState.audio === true,
+      inChannel && peerState.video === true,
+    ).catch(() => { /* noop */ });
+  }, [inChannel, audioOn, peerState.audio, peerState.video]);
   useEffect(() => {
     const state = !inChannel ? 'waiting' : videoOn ? 'channel+video' : 'channel';
     Journal.state(state).catch(() => {});

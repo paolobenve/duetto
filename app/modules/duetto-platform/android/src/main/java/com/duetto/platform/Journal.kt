@@ -69,7 +69,8 @@ object Journal {
     val COLUMNS = listOf(
         "time", "pair", "why", "state", "batt", "charge", "dcharge", "current", "charging",
         "screen", "screenOn", "system", "audio", "volVoice", "level", "volMedia", "speaker",
-        "voiceKeys", "net", "min", "cpu", "rx", "tx", "phone", "android", "battery",
+        "voiceKeys", "mic", "peerMic", "peerVideo", "net", "min", "cpu", "rx", "tx",
+        "phone", "android", "battery",
         "cause", "was", "status", "pss", "rss", "description",
     )
     val HEADER = COLUMNS.joinToString("\t")
@@ -163,6 +164,23 @@ object Journal {
 
     fun state(newState: String) {
         state = newState
+    }
+
+    /**
+     * Who has the microphone open and who the camera, on both phones.
+     *
+     * The journal used to write only the changes, and a microphone left
+     * open from the moment one entered left no line at all: reading a
+     * day afterwards, its band was empty where it should have been full.
+     * These four go on every line, so any stretch can be measured.
+     */
+    @Volatile private var mic = ""
+    @Volatile private var peerMic = ""
+    @Volatile private var peerVideo = ""
+    fun using(micOn: Boolean, peerMicOn: Boolean, peerVideoOn: Boolean) {
+        mic = if (micOn) "on" else "off"
+        peerMic = if (peerMicOn) "on" else "off"
+        peerVideo = if (peerVideoOn) "on" else "off"
     }
 
     /**
@@ -437,6 +455,9 @@ object Journal {
             values["volMedia"] = mediaVolume(ctx)
             values["speaker"] = if (speakerphone(ctx)) "yes" else "no"
             values["voiceKeys"] = if (voiceKeys) "yes" else "no"
+            values["mic"] = mic
+            values["peerMic"] = peerMic
+            values["peerVideo"] = peerVideo
             values["net"] = network(ctx)
             if (minutes >= 0) values["min"] = String.format(Locale.US, "%.1f", minutes)
             if (dCpu >= 0) values["cpu"] = dCpu / 1000

@@ -256,6 +256,9 @@ export const Journal = isAndroid && NativeJournal
   ? {
       /** "waiting" | "channel" | "channel+video": it ends up on every line. */
       state: (s) => call(NativeJournal, 'state', String(s)),
+      /** who has the microphone open and who the camera, on both phones */
+      using: (mic, peerMic, peerVideo) =>
+        call(NativeJournal, 'using', !!mic, !!peerMic, !!peerVideo),
       /** A line right now, to mark a moment that counts. */
       mark: (why) => call(NativeJournal, 'mark', String(why)),
       /** the level really heard, in percent: it goes on the periodic line */
@@ -285,6 +288,7 @@ export const Journal = isAndroid && NativeJournal
     }
   : {
       state: unavailable,
+      using: unavailable,
       mark: unavailable,
       sampling: unavailable,
       level: unavailable,
