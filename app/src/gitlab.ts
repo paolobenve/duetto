@@ -84,12 +84,19 @@ export function noteBody(o: {
   return parts.filter(Boolean).join('\n\n');
 }
 
+/** The day an invitation runs out, said in the note's own tongue. */
+function untilDay(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
 /**
  * The invitation, on the work item of whoever asked for it, with one's
  * own token: the item is made confidential first.
  */
 export async function inviteOnWorkItem(o: {
-  token: string; name: string; link: string;
+  token: string; name: string; link: string; expires?: string;
 }): Promise<ReportOutcome> {
   try {
     const list: any[] = await api(
@@ -114,7 +121,10 @@ export async function inviteOnWorkItem(o: {
           'Welcome aboard, and thank you for wanting to try Duetto.',
           `Here is your invitation, ${o.link}`,
           'Open it on the phone with Duetto installed: it carries the server with it, so there'
-            + ' is nothing to type.',
+            + ' is nothing to type.'
+            + (o.expires && untilDay(o.expires)
+              ? ` It is used once, and it works until ${untilDay(o.expires)}.`
+              : ' It is used once.'),
           'Please keep the app at the latest version:'
             + ' https://gitlab.com/paolobenve/duetto/-/releases - what F-Droid has can be a few'
             + ' days behind, and at this age Duetto is mended often.',

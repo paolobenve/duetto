@@ -612,9 +612,11 @@ export default function App() {
    * The invitation, written on the work item of the person it is for:
    * with our own token straight to GitLab, else through the server.
    */
-  const sendInviteNote = useCallback(async (name: string, link: string): Promise<ReportOutcome> => {
+  const sendInviteNote = useCallback(async (
+    name: string, link: string, expires: string,
+  ): Promise<ReportOutcome> => {
     const token = (cfgRef.current?.gitlabToken || '').trim();
-    if (token) return inviteOnWorkItem({ token, name, link });
+    if (token) return inviteOnWorkItem({ token, name, link, expires });
     const sig = signalingRef.current;
     if (!sig?.connected || !reportsOpen) return { ok: false, error: 'no-road' };
     return new Promise<ReportOutcome>((resolve) => {
@@ -625,7 +627,7 @@ export default function App() {
       invitePending.current = (o) => {
         clearTimeout(timer); invitePending.current = null; resolve(o);
       };
-      sig.sendInviteNote(name, link);
+      sig.sendInviteNote(name, link, expires);
     });
   }, [reportsOpen]);
   /**

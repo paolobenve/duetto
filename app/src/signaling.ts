@@ -820,8 +820,8 @@ export class Signaling {
   }
 
   /** an invitation to be written on the work item of the person named */
-  sendInviteNote(name: string, link: string) {
-    this.rawSend({ type: 'invite-note', name, link });
+  sendInviteNote(name: string, link: string, expires: string) {
+    this.rawSend({ type: 'invite-note', name, link, expires });
   }
 
   get connected(): boolean {

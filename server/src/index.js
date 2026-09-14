@@ -537,6 +537,12 @@ async function handleInviteNote(ws, msg) {
     send(ws, { type: 'invite-note-result', ok: false, error: 'bad-link' });
     return;
   }
+  // The day it runs out, said in the note's own tongue.
+  let until = '';
+  const when = new Date(String(msg.expires || ''));
+  if (!Number.isNaN(when.getTime())) {
+    until = when.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
   const item = await findWorkItem(name);
   if (!item) {
     send(ws, { type: 'invite-note-result', ok: false, error: 'no-work-item' });
@@ -551,7 +557,8 @@ async function handleInviteNote(ws, msg) {
     'Welcome aboard, and thank you for wanting to try Duetto.',
     `Here is your invitation, ${link}`,
     'Open it on the phone with Duetto installed: it carries the server with it, so there is'
-      + ' nothing to type.',
+      + ' nothing to type.'
+      + (until ? ` It is used once, and it works until ${until}.` : ' It is used once.'),
     'Please keep the app at the latest version:'
       + ' https://gitlab.com/paolobenve/duetto/-/releases - what F-Droid has can be a few days'
       + ' behind, and at this age Duetto is mended often.',

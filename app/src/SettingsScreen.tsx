@@ -156,7 +156,7 @@ type Props = {
   /** a report: the person's words, the journal along or not */
   onReport?: (text: string, withJournal: boolean) => Promise<ReportOutcome>;
   /** an invitation, written on the work item of the person it is for */
-  onInviteToWorkItem?: (name: string, link: string) => Promise<ReportOutcome>;
+  onInviteToWorkItem?: (name: string, link: string, expires: string) => Promise<ReportOutcome>;
 };
 
 /**
@@ -325,7 +325,7 @@ export default function SettingsScreen({
   const inviteToWorkItem = async (i: InvitationOnServer) => {
     if (!onInviteToWorkItem || sendingTo) return;
     setSendingTo(i.code);
-    const out = await onInviteToWorkItem(i.name, inviteLink(initial.serverUrl, i.code))
+    const out = await onInviteToWorkItem(i.name, inviteLink(initial.serverUrl, i.code), i.expires)
       .catch((e): ReportOutcome => ({ ok: false, error: String(e) }));
     setSendingTo('');
     if (out.ok) {
