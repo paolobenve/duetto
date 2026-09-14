@@ -15,7 +15,7 @@ import { Signaling } from './signaling';
 import { attachWatchdog, Watchdog } from './watchdog';
 import { t } from './i18n';
 import { logger, setLogging } from './log';
-import { VERSION, BUILD } from './version';
+import { VERSION_LABEL, BUILD } from './version';
 
 /**
  * Presence with no interface.
@@ -332,7 +332,7 @@ export async function startListening(): Promise<boolean> {
 
   /** Which Duetto is on this phone: see the same in App.tsx. */
   const sayHello = () => {
-    signaling?.sendSignal({ kind: 'hello', version: VERSION, build: BUILD });
+    signaling?.sendSignal({ kind: 'hello', version: VERSION_LABEL, build: BUILD });
   };
 
   signaling = new Signaling(

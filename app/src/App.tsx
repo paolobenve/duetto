@@ -32,7 +32,7 @@ import {
 import { Signaling, PresenceStatus, Mode } from './signaling';
 import type { PersonOnServer, InvitationOnServer } from './signaling';
 import { useLanguage, t } from './i18n';
-import { VERSION, BUILD, VERSION_FULL, VERSION_LABEL } from './version';
+import { BUILD, VERSION_FULL, VERSION_LABEL } from './version';
 import { logger, setLogging } from './log';
 import { ChannelSession } from './webrtc';
 import type { VideoStats } from './webrtc';
@@ -1070,7 +1070,7 @@ export default function App() {
     const said = theirBuild
       ? `${theirs} (${t('news.build', { n: String(theirBuild) })})`
       : theirs;
-    if (theirs !== VERSION) return t('news.versionsDiffer', { here: mine, there: said });
+    if (theirs !== VERSION_LABEL) return t('news.versionsDiffer', { here: mine, there: said });
     /**
      * The same version, a different APK.
      *
@@ -2168,7 +2168,10 @@ export default function App() {
    * something.
    */
   const sayHello = useCallback(() => {
-    signalingRef.current?.sendSignal({ kind: 'hello', version: VERSION, build: BUILD });
+    // The label, not the bare number: a build on the way to a version
+    // calls itself 0.9.14 like the version itself, and the two looked
+    // like the same one with different builds.
+    signalingRef.current?.sendSignal({ kind: 'hello', version: VERSION_LABEL, build: BUILD });
   }, []);
 
   const noteName = useCallback((n: string) => {
