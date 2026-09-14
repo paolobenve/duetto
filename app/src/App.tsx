@@ -2569,8 +2569,8 @@ export default function App() {
           onReportResult: (ok, error, url) => {
             reportPending.current?.({ ok, error, url });
           },
-          onInviteNoteResult: (ok, error, url) => {
-            invitePending.current?.({ ok, error, url });
+          onInviteNoteResult: (ok, error, url, member) => {
+            invitePending.current?.({ ok, error, url, member });
           },
           onKnockResult: (ok, error) => {
             if (ok) {

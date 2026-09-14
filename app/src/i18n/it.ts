@@ -258,6 +258,7 @@ export const it: Dictionary = {
     inviteSentTitle: 'Invito mandato',
     inviteSent: 'Il link è nel work item di {name}, insieme a due righe su cosa fare. Il work item ora è riservato: lo vedono solo tu e chi l’ha aperto.',
     inviteNoWorkItem: 'Non trovo nessun work item aperto con «{name}» nel titolo. Il nome dell’invito deve essere quello che la persona ha messo lì.',
+    inviteNotMember: 'Non sono riuscito a metterlo tra i membri del progetto: mettilo tu come Guest, così riceve le notifiche e il work item resta suo.',
     invitation: 'L\'invito',
     invitationPlaceholder: 'ABCD-2345',
     invitationHint: 'Un server che tiene un elenco di telefoni fa entrare solo quelli che conosce. Chi lo tiene ti fa un invito e te lo dà come si dà un codice di accoppiamento: lo scrivi qui, una volta, prima di collegarti. Si consuma al primo uso, e da lì in poi questo telefono è conosciuto dalla sua carta, qui sopra. Maiuscole o minuscole, è lo stesso.',

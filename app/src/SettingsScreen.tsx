@@ -329,7 +329,11 @@ export default function SettingsScreen({
       .catch((e): ReportOutcome => ({ ok: false, error: String(e) }));
     setSendingTo('');
     if (out.ok) {
-      Alert.alert(t('settings.inviteSentTitle'), t('settings.inviteSent', { name: i.name }));
+      Alert.alert(
+        t('settings.inviteSentTitle'),
+        t('settings.inviteSent', { name: i.name })
+          + (out.member ? '' : `\n\n${t('settings.inviteNotMember')}`),
+      );
       return;
     }
     const why = out.error === 'no-work-item'

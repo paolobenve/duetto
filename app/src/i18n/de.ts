@@ -259,6 +259,7 @@ export const de: Dictionary = {
     inviteSentTitle: 'Einladung geschickt',
     inviteSent: 'Der Link steht im Work Item von {name}, mit zwei Zeilen dazu, was als Nächstes zu tun ist. Das Work Item ist jetzt vertraulich: es sehen nur du und wer es geöffnet hat.',
     inviteNoWorkItem: 'Kein offenes Work Item mit «{name}» im Titel. Der Name der Einladung muss der sein, den die Person dort hingeschrieben hat.',
+    inviteNotMember: 'Ich konnte sie nicht zum Mitglied des Projekts machen: nimm sie selbst als Guest auf, damit sie die Mitteilungen bekommen und das Work Item ihres bleibt.',
     invitation: 'Die Einladung',
     invitationPlaceholder: 'ABCD-2345',
     invitationHint: 'Ein Server, der eine Liste von Telefonen führt, lässt nur die herein, die er kennt. Wer ihn betreibt, macht dir eine Einladung und übergibt sie wie einen Paarungscode: du schreibst sie hier einmal hin, bevor du dich verbindest. Beim ersten Gebrauch ist sie verbraucht, und von da an kennt der Server dieses Telefon an seiner eigenen Karte, oben. Groß oder klein geschrieben, das macht keinen Unterschied.',

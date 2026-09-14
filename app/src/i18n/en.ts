@@ -272,6 +272,7 @@ export const en = {
     inviteSentTitle: 'Invitation sent',
     inviteSent: 'The link is on {name}\'s work item, with two lines on what to do next. The work item is confidential now: only you and whoever opened it see it.',
     inviteNoWorkItem: 'No open work item with "{name}" in its title. The invitation\'s name has to be the one the person put there.',
+    inviteNotMember: 'I could not make them a member of the project: add them as a Guest yourself, so that they get the notifications and the work item stays theirs.',
     invitation: 'The invitation',
     invitationPlaceholder: 'ABCD-2345',
     invitationHint: 'A server that keeps a list of phones lets in only the ones it knows. Whoever runs it makes an invitation for you and hands it over as one hands over a pairing code: you write it here, once, before connecting. It is spent at the first use and from then on this phone is known by its own card, above. Upper or lower case, it makes no difference.',

@@ -513,10 +513,38 @@ async function findWorkItem(name) {
   const titled = list.filter((i) => String(i.title || '').toLowerCase().includes(lower));
   const beta = titled.find((i) => /^beta tester\b/i.test(String(i.title || '')));
   const pick = beta || titled[0] || null;
-  return pick ? { iid: pick.iid, url: pick.web_url } : null;
+  return pick ? { iid: pick.iid, url: pick.web_url, authorId: pick.author && pick.author.id } : null;
 }
 
 const REPORT_MAX_BYTES = 6 * 1024 * 1024;
+
+/** Guest: enough to be an assignee, not enough to read anybody else's. */
+const GUEST = 10;
+
+/**
+ * Makes somebody a guest of the project, and says whether they are one
+ * afterwards - already a member counts as yes.
+ */
+async function makeProjectGuest(userId) {
+  if (!userId) return false;
+  try {
+    await gitlab('/members', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId, access_level: GUEST }),
+    });
+  } catch (e) {
+    // 409: already a member. Anything else - a token that may not make
+    // members - leaves the answer to the check below.
+    if (!/409/.test(e.message)) console.warn(`[duetto] cannot add member: ${e.message}`);
+  }
+  try {
+    const m = await gitlab(`/members/all/${userId}`);
+    return !!(m && m.id);
+  } catch {
+    return false;
+  }
+}
 
 /**
  * The invitation, written on the work item of whoever asked for it.
@@ -553,6 +581,24 @@ async function handleInviteNote(ws, msg) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ confidential: true }),
   });
+  // Then whoever opened it is made a guest of the project and the work
+  // item is put in their hands.
+  //
+  // A confidential work item is seen by the members from Reporter up,
+  // and by its author and its assignees. Guest opens nothing else -
+  // the other testers' work items stay out of sight - but it makes
+  // them a member, and a member can be an assignee: author and
+  // assignee together leave nothing to chance. Making members needs a
+  // token that may: a Reporter's cannot, and then this is skipped and
+  // the note goes out all the same.
+  const member = await makeProjectGuest(item.authorId);
+  if (member) {
+    await gitlab(`/issues/${item.iid}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assignee_ids: [item.authorId] }),
+    }).catch(() => { /* the author's own right carries it */ });
+  }
   const body = [
     'Welcome aboard, and thank you for wanting to try Duetto.',
     `Here is your invitation, ${link}`,
@@ -571,8 +617,9 @@ async function handleInviteNote(ws, msg) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ body }),
   });
-  console.log(`[duetto] invitation for ${name} written on ${item.url}`);
-  send(ws, { type: 'invite-note-result', ok: true, url: item.url });
+  console.log(`[duetto] invitation for ${name} written on ${item.url}`
+    + (member ? '' : ' (not a member of the project)'));
+  send(ws, { type: 'invite-note-result', ok: true, url: item.url, member });
 }
 
 /**
