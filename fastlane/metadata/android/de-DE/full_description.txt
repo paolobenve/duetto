@@ -1,0 +1,12 @@
+Duetto ist ein winziges «Discord», nach Maß für genau zwei Menschen. Es ist keine App zum Anrufen: es ist ein dauerhafter Kanal. Du öffnest die App und bist drin; ist die andere Person auch da, verbindet ihr euch von selbst, und sonst bleibst du erreichbar und erfährst es in dem Augenblick, in dem sie kommt.
+
+Ton und Video reisen Ende zu Ende verschlüsselt geradewegs zwischen den beiden Telefonen. Der Server - deiner, oder einer, auf den dich jemand gelassen hat - ist nur dafür da, dass ihr euch findet, und kann nichts davon lesen. Kein Konto, keine Telefonnummer, kein Dienst von irgendwem.
+
+- Eine Berührung, und du bist im Kanal, und du bleibst: die App übersteht die Nacht, die Hosentasche, den Wechsel des Netzes.
+- Video, wenn du es willst, mit der für beide Telefone gewählten Qualität.
+- Die andere Person kann dich zurückrufen, mit einem Ton, der auch bei leisem Klingeln ankommt.
+- Paarung mit einem achtstelligen Code oder einem QR-Code, den man dem anderen Telefon hinhält; Einladungen für alle, die auf deinem Server eigene Verbindungen öffnen sollen.
+- Still während eines Telefonats, wieder da, wenn es vorbei ist.
+- Freie Software, GPL-3, und ein Server, den du selbst betreibst: ein kleiner Node.js-Prozess und coturn.
+
+Du brauchst Android 7 oder neuer und einen Server: die README sagt, wie man in einer Viertelstunde einen aufsetzt.

@@ -13,6 +13,7 @@ import { it } from './it';
 import { es } from './es';
 import { pt } from './pt';
 import { fr } from './fr';
+import { de } from './de';
 
 /**
  * The languages the app speaks, and the words it speaks them with.
@@ -27,12 +28,12 @@ import { fr } from './fr';
  * settings: two people who write to each other in English can keep the
  * app in English, and the same phone can show Italian to somebody else.
  */
-export type Language = 'en' | 'it' | 'es' | 'pt' | 'fr';
+export type Language = 'en' | 'it' | 'es' | 'pt' | 'fr' | 'de';
 
-const dictionaries: Record<Language, Dictionary> = { en, it, es, pt, fr };
+const dictionaries: Record<Language, Dictionary> = { en, it, es, pt, fr, de };
 
 /** What the picker in the settings offers, in this order. */
-export const LANGUAGES: Language[] = ['en', 'it', 'es', 'pt', 'fr'];
+export const LANGUAGES: Language[] = ['en', 'it', 'es', 'pt', 'fr', 'de'];
 
 /** `auto` means: whatever the phone is set to. */
 export type LanguageChoice = 'auto' | Language;
@@ -94,7 +95,9 @@ function look(dictionary: Dictionary, path: string): string {
 export function longDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  const locale = { en: 'en-GB', it: 'it-IT', es: 'es-ES', pt: 'pt-BR', fr: 'fr-FR' }[current];
+  const locale = {
+    en: 'en-GB', it: 'it-IT', es: 'es-ES', pt: 'pt-BR', fr: 'fr-FR', de: 'de-DE',
+  }[current];
   try {
     return d.toLocaleDateString(locale, {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',

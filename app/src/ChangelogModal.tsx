@@ -62,7 +62,7 @@ export default function ChangelogModal({ visible, onClose }: {
             {RELEASES.map((r) => (
               <View key={r.version} style={styles.block}>
                 <Text style={styles.version}>{r.version}</Text>
-                {r.notes[currentLanguage()].map((note, i) => (
+                {(r.notes[currentLanguage()] ?? r.notes.en).map((note, i) => (
                   <Text key={i} style={styles.paragraph}>{note}</Text>
                 ))}
               </View>

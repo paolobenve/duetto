@@ -26,13 +26,25 @@ import type { Language } from './i18n';
  */
 export type Release = {
   version: string;
-  notes: Record<Language, string[]>;
+  /**
+   * A language may be missing: the notes of the versions before it was
+   * added are not translated backwards, and what is read then is the
+   * English - which every entry has.
+   */
+  notes: Partial<Record<Language, string[]>> & { en: string[] };
 };
 
 export const RELEASES: Release[] = [
   {
     version: '0.9.13',
     notes: {
+      de: [
+        'Der Kanal wird nicht mehr immer wieder neu aufgebaut. Mit eingeschaltetem Video und niemandem, der auf der anderen Seite zusah, wurde die Leitung alle acht Sekunden gelöst und neu geknüpft, mitten in einem Gespräch, das auf beiden Bildschirmen nur Ton war.',
+        'Der Wechsel auf einen besseren Weg unterbricht jetzt nichts mehr: die Stimme läuft weiter, während der neue Weg versucht wird.',
+        'Wenn das Telefon Duetto von selbst schließt, sagt es auch das Telefon, dem es geschehen ist, und sagt, wo man die Grenzen im Hintergrund wegnimmt.',
+        'Die Diagnose hat einen eigenen Reiter; der Schalter zeigt den Rest.',
+        'Von dort lässt sich das Tagebuch teilen, und die Beta-Tester schicken es samt ihren Meldungen an ihr Work Item auf GitLab.',
+      ],
       en: [
         'The channel is no longer rebuilt over and over. With the video on and nobody watching on the other side, the link was made and unmade every eight seconds, in the middle of a conversation that on both screens was audio only.',
         'A better road is now taken without interrupting anything: the voice goes on while the new road is tried.',
@@ -73,6 +85,16 @@ export const RELEASES: Release[] = [
   {
     version: '0.9.12',
     notes: {
+      de: [
+        'Die Lautstärke in Dezibel: die Tasten bewegen nur die Verstärkung von Duetto, der Regler des Telefons bleibt, wo er ist; eine Skala neben den Tasten zeigt den Pegel und wo das Telefon steht, mit einer Taste, um die andere Person stummzuschalten, ohne die Lautstärke zu verlieren.',
+        'Bluetooth-Hörer oder Kopfhörer mit Kabel abgezogen: zurück zur Ausgabe von vorher, nicht zum Hörer am Ohr.',
+        'Das Mikrofon beim Eintreten: für jede Verbindung, wie du es gelassen hast oder immer stumm.',
+        'Neben dem Akku der anderen Person siehst du, ob sie im WLAN oder im Mobilfunknetz ist; das Video bleibt nach einem Wechsel der Verbindung nicht mehr schwarz.',
+        'Mit der App im Hintergrund läuft alles weiter: Akku, Tagebuch, Leitung; und nach einer Aktualisierung kommt die Bereitschaft von selbst zurück.',
+        'Behoben: zwei Verbindungen desselben Telefons, die sich jede Sekunde gegenseitig hinauswarfen, während die andere Seite die Leitung ständig neu entstehen sah.',
+        'Das Tagebuch: eine Datei je Tag, teilbar; Beta-Tester schicken es aus den Einstellungen an ihr Work Item, samt ihren Meldungen.',
+        'Weniger Daten im Mobilfunknetz: seltenere Tonpakete, und Stille wird nicht gesendet.',
+      ],
       en: [
         'The volume in decibels: the keys move only Duetto\'s gain, the phone\'s knob stays where it is; a scale beside the buttons shows the level and where the phone sits, with a button to hush the other person without losing the volume.',
         'Bluetooth earpiece or wired headset unplugged: back to the output you had before, not to the earpiece.',
@@ -128,6 +150,13 @@ export const RELEASES: Release[] = [
   {
     version: '0.9.11',
     notes: {
+      de: [
+        'Tasten auf der Mitteilung: «Eintreten» in Bereitschaft, «In Bereitschaft gehen» im Kanal.',
+        'Der Bildschirm bleibt in einem Kanal ohne Video nicht mehr an: wach hält ihn nur das Video.',
+        'Hinausgehen: «Im Kanal bleiben» liegt genau über der Taste zum Verlassen, so hält dich eine zweite Berührung an derselben Stelle drinnen; und ein Hinausgehen wird nicht rückgängig gemacht, wenn die App für einen Augenblick zurückkommt.',
+        'Der Akkustand, der der anderen Seite gesagt wird, bleibt bei ausgeschaltetem Bildschirm frisch.',
+        'Ein Wort über Google, einmal, mit der Petition zum Unterschreiben.',
+      ],
       en: [
         'Buttons on the notification: "Enter" while waiting, "Go to waiting" while in the channel.',
         'The screen no longer stays on in an audio-only channel: only the video keeps it awake.',

@@ -536,5 +536,6 @@ export const es: Dictionary = {
     es: 'Español',
     pt: 'Português',
     fr: 'Français',
+    de: 'Deutsch',
   },
 };

@@ -549,6 +549,7 @@ export const en = {
     es: 'Español',
     pt: 'Português',
     fr: 'Français',
+    de: 'Deutsch',
   },
 };
 
