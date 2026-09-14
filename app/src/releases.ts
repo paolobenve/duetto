@@ -36,6 +36,53 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.9.14',
+    notes: {
+      en: [
+        'Duetto speaks German too, and the words the notification writes when the app is not running are now in all six languages: until now Spanish, Portuguese, French and German read English there.',
+        'An invitation is copied and shared as a link, which carries the server with it - the bare code did not.',
+        'And it can be written straight on the work item of whoever asked to be a beta tester, which is made confidential first: the link, their reports and their journals stay between them and the project.',
+        'The figure under the buttons is what the channel really costs, both ways together, taken from the road in use: it can be held beside the phone\'s own counter now.',
+        'The journal says on every line who has the microphone open and who the camera, on both phones, instead of only writing the changes.',
+      ],
+      it: [
+        'Duetto parla anche tedesco, e le parole che la notifica scrive quando l\'app non è aperta sono ora in tutte e sei le lingue: finora spagnolo, portoghese, francese e tedesco leggevano l\'inglese.',
+        'L\'invito si copia e si condivide come link, che porta dentro il server: il codice da solo non lo faceva.',
+        'E si può scrivere direttamente sul work item di chi ha chiesto di fare da beta tester, reso prima riservato: il link, le sue segnalazioni e i suoi giornali restano tra lui e il progetto.',
+        'Il numero sotto i pulsanti è quello che il canale costa davvero, nelle due direzioni, preso dalla strada in uso: ora si può mettere accanto al contatore del telefono.',
+        'Il giornale dice su ogni riga chi ha il microfono aperto e chi la telecamera, dai due lati, invece di scrivere solo i cambi.',
+      ],
+      de: [
+        'Duetto spricht jetzt auch Deutsch, und die Worte, die die Mitteilung schreibt, wenn die App nicht läuft, stehen in allen sechs Sprachen: bisher lasen Spanisch, Portugiesisch, Französisch und Deutsch dort Englisch.',
+        'Eine Einladung wird als Link kopiert und geteilt, der den Server mitbringt: der bloße Code tat das nicht.',
+        'Und sie lässt sich geradewegs in das Work Item dessen schreiben, der darum gebeten hat, Beta-Tester zu sein; es wird vorher vertraulich gemacht: der Link, seine Meldungen und seine Tagebücher bleiben zwischen ihm und dem Projekt.',
+        'Die Zahl unter den Tasten ist das, was der Kanal wirklich kostet, in beide Richtungen zusammen, vom Weg genommen, der gerade trägt: jetzt lässt sie sich neben den Zähler des Telefons halten.',
+        'Das Tagebuch sagt in jeder Zeile, wer das Mikrofon offen hat und wer die Kamera, auf beiden Telefonen, statt nur die Wechsel aufzuschreiben.',
+      ],
+      es: [
+        'Duetto habla también alemán, y las palabras que escribe la notificación cuando la app no está abierta están ya en los seis idiomas: hasta ahora español, portugués, francés y alemán leían inglés ahí.',
+        'La invitación se copia y se comparte como enlace, que lleva dentro el servidor: el código a secas no lo hacía.',
+        'Y puede escribirse directamente en el work item de quien pidió ser beta tester, hecho confidencial antes: el enlace, sus avisos y sus diarios quedan entre él y el proyecto.',
+        'El número bajo los botones es lo que el canal cuesta de verdad, en las dos direcciones, tomado del camino en uso: ahora se puede poner al lado del contador del teléfono.',
+        'El diario dice en cada línea quién tiene el micrófono abierto y quién la cámara, en los dos lados, en vez de escribir solo los cambios.',
+      ],
+      pt: [
+        'O Duetto fala também alemão, e as palavras que a notificação escreve quando o app não está aberto estão agora nos seis idiomas: até agora espanhol, português, francês e alemão liam inglês ali.',
+        'O convite se copia e se compartilha como link, que leva o servidor dentro: o código sozinho não levava.',
+        'E pode ser escrito direto no work item de quem pediu para ser beta tester, tornado confidencial antes: o link, os relatos e os diários ficam entre ele e o projeto.',
+        'O número sob os botões é o que o canal custa de verdade, nas duas direções, tirado do caminho em uso: agora dá para colocá-lo ao lado do contador do telefone.',
+        'O diário diz em cada linha quem está com o microfone aberto e quem com a câmera, dos dois lados, em vez de escrever só as mudanças.',
+      ],
+      fr: [
+        'Duetto parle aussi allemand, et les mots que la notification écrit quand l\'appli n\'est pas ouverte sont désormais dans les six langues : jusqu\'ici l\'espagnol, le portugais, le français et l\'allemand y lisaient l\'anglais.',
+        'Une invitation se copie et se partage en lien, qui emporte le serveur avec lui : le code seul ne le faisait pas.',
+        'Et elle peut s\'écrire directement sur le work item de qui a demandé à être bêta-testeur, rendu confidentiel d\'abord : le lien, ses signalements et ses journaux restent entre lui et le projet.',
+        'Le nombre sous les boutons est ce que le canal coûte vraiment, dans les deux sens, pris sur la route en service : on peut maintenant le tenir à côté du compteur du téléphone.',
+        'Le journal dit à chaque ligne qui a le micro ouvert et qui la caméra, des deux côtés, au lieu de n\'écrire que les changements.',
+      ],
+    },
+  },
+  {
     version: '0.9.13',
     notes: {
       de: [

@@ -14,6 +14,30 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
+## 0.9.14 build 335
+
+**Version 0.9.14: German, and an invitation that carries the server.** A sixth dictionary,
+in the "du" form like the others, and the words the notification writes when the app is not
+running - put up by the service, sometimes before there is any app at all - are in all six
+languages: until now Spanish, Portuguese, French and German read English there. The store
+texts for F-Droid are in German too; the feature graphic, which has its words drawn in,
+waits to be redrawn. Release notes are not translated backwards: a language may be missing
+from an old entry, and what is read then is the English.
+
+An invitation is copied and shared as a link, because the bare code does not carry the
+server and whoever is being invited has none. It can also be written straight on the work
+item of whoever asked to be a beta tester - the item is made confidential first, and the
+link that opens a new one asks for confidentiality from birth: an invitation is the key to
+the house for one phone, and a tester's work item goes on to carry their journals.
+
+The figure under the buttons is now what the channel really costs, both ways together,
+read from the candidate pair that is carrying the traffic: the payload alone read two to
+five times less than the phone's own counter, because the wrapping of every packet -
+nearly everything, during the silence nobody transmits - was missing. And the journal says
+on every line who has the microphone open and who the camera, on both phones, instead of
+only writing the changes: a microphone left open from the moment one entered used to leave
+no line at all.
+
 ## 0.9.13 build 326
 
 **Version 0.9.13: a channel that stays up.** The watch for a still video encoder was
