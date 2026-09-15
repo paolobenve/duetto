@@ -148,13 +148,16 @@ function VolumeScale(p: {
 }) {
   const [h, setH] = useState(0);
   const span = p.max - p.min;
-  const y = (db: number) => h - ((Math.min(p.max, Math.max(p.min, db)) - p.min) / span) * h;
+  /** how far up the strip a level stands, from the bottom */
+  const up = (db: number) => ((Math.min(p.max, Math.max(p.min, db)) - p.min) / span) * h;
   const rungs: number[] = [];
   for (let d = p.min; d <= p.max; d += 2) rungs.push(d);
   const figure = p.muted
     ? t('channel.muted')
     : `${p.level > 0 ? '+' : ''}${Math.round(p.level)}`;
   const Icon = OUTPUT_ICON[p.route] ?? OUTPUT_ICON.SPEAKER_PHONE;
+  const phone = up(p.phone);
+  const level = up(p.level);
   return (
     <View style={styles.scaleBox} pointerEvents="box-none">
       {/* Two lines of fixed height, hushed or not: the scale must not
@@ -169,22 +172,36 @@ function VolumeScale(p: {
         onLayout={(e) => setH(e.nativeEvent.layout.height)}>
         {h > 0 ? (
           <>
-            <View style={[styles.scaleRail, { top: 0, height: h }]} />
-            <View style={[styles.scaleReach, { top: y(p.ceiling), height: h - y(p.ceiling) }]} />
+            {/* A strip that fills, not a line with a bead on it. The
+                phone's own volume is off-white; what Duetto adds on top
+                of it is white. Taking away instead of adding, the white
+                is what is left - up to where one is really listening -
+                and the off-white above is the phone's volume given up.
+                Where the white ends is the level; where the off-white
+                ends is the phone. */}
+            <View style={[styles.stripBack, { height: h }]} />
+            <View style={[styles.stripSystem, { height: phone }]} />
+            <View style={[
+              styles.stripGain,
+              level > phone
+                ? { bottom: phone, height: level - phone }
+                : { bottom: 0, height: level },
+            ]} />
+            {/* Above what the road can carry there is no answer to a
+                press: the strip says so by going dim. */}
+            {up(p.ceiling) < h ? (
+              <View style={[styles.stripOut, { bottom: up(p.ceiling), height: h - up(p.ceiling) }]} />
+            ) : null}
             {rungs.map((d) => (
               <View
                 key={d}
-                style={[styles.rung, d % 10 === 0 ? styles.rungMajor : null, { top: y(d) - 0.5 }]}
+                style={[styles.rung, d === 0 ? styles.rungMajor : null, { bottom: up(d) }]}
               />
             ))}
-            <Text style={[styles.zeroText, { top: y(0) - 8 }]}>0</Text>
-            <View style={[styles.phoneMark, { top: y(p.phone) - 1 }]}>
+            <Text style={[styles.zeroText, { bottom: up(0) - 7 }]}>0</Text>
+            <View style={[styles.phoneMark, { bottom: phone - 6 }]}>
               <EarpieceIcon size={11} color="#8a94a3" />
-              <View style={styles.phoneLine} />
             </View>
-            {!p.muted ? (
-              <View style={[styles.cursor, { top: y(p.level) - 7 }]} />
-            ) : null}
           </>
         ) : null}
       </View>
@@ -2256,20 +2273,37 @@ const styles = StyleSheet.create({
   scaleFigureMuted: { color: '#ffb454', fontSize: 13, fontWeight: '700', lineHeight: 22 },
   scaleUnit: { color: '#9fb4c8', fontSize: 10, fontWeight: '700', lineHeight: 12, marginTop: -2, marginBottom: 6 },
   scaleTrack: { flex: 1, width: 64, alignItems: 'center', marginTop: 2, marginBottom: 8 },
-  scaleRail: { position: 'absolute', left: 31, width: 2, backgroundColor: 'rgba(230,235,241,0.28)' },
-  scaleReach: { position: 'absolute', left: 31, width: 2, backgroundColor: 'rgba(230,235,241,0.7)' },
-  rung: { position: 'absolute', left: 27, width: 10, height: 1, backgroundColor: 'rgba(230,235,241,0.45)' },
-  rungMajor: { left: 24, width: 16, backgroundColor: 'rgba(230,235,241,0.8)' },
+  // The strip: dark ground, the phone's own volume off-white over it,
+  // and Duetto's own share white. Thirteen points wide, so that the
+  // two whites can be told apart at a glance from across a room.
+  stripBack: {
+    position: 'absolute', bottom: 0, left: 25, width: 14, borderRadius: 7,
+    backgroundColor: 'rgba(230,235,241,0.14)',
+  },
+  stripSystem: {
+    position: 'absolute', bottom: 0, left: 25, width: 14, borderRadius: 7,
+    backgroundColor: 'rgba(238,240,235,0.45)',
+  },
+  stripGain: {
+    position: 'absolute', left: 25, width: 14, borderRadius: 7,
+    backgroundColor: '#ffffff',
+  },
+  stripOut: {
+    position: 'absolute', left: 25, width: 14, borderRadius: 7,
+    backgroundColor: 'rgba(11,14,20,0.55)',
+  },
+  rung: {
+    position: 'absolute', left: 21, width: 22, height: 1,
+    backgroundColor: 'rgba(11,14,20,0.55)',
+  },
+  rungMajor: {
+    left: 17, width: 30, height: 2.5, backgroundColor: 'rgba(11,14,20,0.9)',
+  },
   zeroText: {
-    position: 'absolute', right: 0, width: 20, textAlign: 'left',
+    position: 'absolute', right: 0, width: 16, textAlign: 'left',
     color: '#e6ebf1', fontSize: 11, fontWeight: '700',
   },
-  phoneMark: { position: 'absolute', left: 4, flexDirection: 'row', alignItems: 'center', gap: 2 },
-  phoneLine: { width: 14, height: 2, backgroundColor: '#8a94a3' },
-  cursor: {
-    position: 'absolute', left: 25, width: 14, height: 14, borderRadius: 7,
-    backgroundColor: '#7cc4ff', borderWidth: 2, borderColor: '#0b0e14',
-  },
+  phoneMark: { position: 'absolute', left: 4 },
   hushButton: {
     width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(30,31,34,0.94)', borderWidth: 1, borderColor: 'rgba(230,235,241,0.2)',
