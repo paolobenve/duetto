@@ -233,6 +233,12 @@ function VolumeScale(p: {
             <View style={[styles.phoneMark, { bottom: phone - 6 }]}>
               <EarpieceIcon size={11} color="#8a94a3" />
             </View>
+            {/* Where one is listening, in a colour nothing else on the
+                strip wears: it is the one thing here that moves, and it
+                has to look like it can be taken hold of. */}
+            {!p.muted ? (
+              <View style={[styles.handle, { bottom: level - 3 }]} />
+            ) : null}
           </>
         ) : null}
       </View>
@@ -2349,6 +2355,11 @@ const styles = StyleSheet.create({
     color: '#e6ebf1', fontSize: 11, fontWeight: '700',
   },
   phoneMark: { position: 'absolute', left: 4 },
+  handle: {
+    position: 'absolute', left: 19, width: 26, height: 6, borderRadius: 3,
+    backgroundColor: '#ffb454',
+    borderWidth: 1, borderColor: 'rgba(11,14,20,0.7)',
+  },
   hushButton: {
     width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(30,31,34,0.94)', borderWidth: 1, borderColor: 'rgba(230,235,241,0.2)',
