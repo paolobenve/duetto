@@ -525,6 +525,15 @@ export default function App() {
    * at it - it showed its own number as if that were the whole truth.
    */
   const [systemVolume, setSystemVolume] = useState({ volume: 0, max: 0 });
+  /**
+   * The phone's volume as it was, output by output.
+   *
+   * A phone keeps one for each - earpiece, speaker, Bluetooth - and
+   * answers only about the one in use; switching, the old figure stood
+   * there for half a second and then jumped. What is remembered here
+   * goes up at once, and the system's own answer corrects it.
+   */
+  const knownVolume = useRef<Record<string, { volume: number; max: number }>>({});
   /** the battery, shown with the diagnostics beside the volumes */
   const [battery, setBattery] = useState<{ percent: number; charging: boolean } | null>(null);
   /** the network carrying us, shown and told with the battery */
@@ -1114,11 +1123,19 @@ export default function App() {
    */
   useEffect(() => {
     let alive = true;
+    const where = audio.route;
     const reread = () => {
       Volume.read().then((v) => {
-        if (alive && v && v.max > 0) setSystemVolume({ volume: v.volume, max: v.max });
+        if (!alive || !v || !(v.max > 0)) return;
+        knownVolume.current[where] = { volume: v.volume, max: v.max };
+        setSystemVolume({ volume: v.volume, max: v.max });
       }).catch(() => { /* noop */ });
     };
+    // What we knew of this output, at once: the system will answer for
+    // the output it is still on, and until it has moved the strip would
+    // show the one before. Corrected the moment the real answer comes.
+    const known = knownVolume.current[where];
+    if (known) setSystemVolume(known);
     reread();
     // And again a moment later, and once more after that.
     //
