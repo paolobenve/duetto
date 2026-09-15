@@ -971,7 +971,16 @@ export default function App() {
    * eight and our 100% on top, and neither number, on its own,
    * explained the "I cannot hear you".
    */
-  const sysFraction = systemVolume.max > 0 ? systemVolume.volume / systemVolume.max : 1;
+  /**
+   * The phone's own volume, as a share of its top - never more than
+   * the top itself. A phone was seen answering "volume 12" and
+   * "highest 11" for the same output, and taken at its word the strip
+   * put the phone's share a little above the rung that means the
+   * phone's top.
+   */
+  const sysFraction = systemVolume.max > 0
+    ? Math.min(1, systemVolume.volume / systemVolume.max)
+    : 1;
   /** the top the level can reach: four times the phone's top, or ten times the knob */
   const levelCeiling = Math.min(ofDb(LEVEL_MAX_DB), Math.max(sysFraction, 0.001) * GAIN_CEILING);
   const level = sysFraction > 0
