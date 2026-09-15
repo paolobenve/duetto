@@ -1177,6 +1177,34 @@ export default function App() {
    * without anything changing at the ear, and from outside that case
    * cannot be told from a working one.
    */
+  /**
+   * A level pointed at on the scale, instead of stepped to with the
+   * keys: the same ladder, and the same two ends.
+   */
+  const setLevelTo = useCallback((db: number, done: boolean) => {
+    const output = audioRouteRef.current;
+    const phone = systemVolumeRef.current;
+    const sys = phone.max > 0 ? phone.volume / phone.max : 1;
+    if (sys <= 0) return;
+    setControlsWakeAt(Date.now());
+    const ceiling = Math.min(LEVEL_MAX_DB, dbOf(sys * GAIN_CEILING));
+    const rung = Math.round(db / LEVEL_STEP_DB) * LEVEL_STEP_DB;
+    const next = Math.min(ceiling, Math.max(LEVEL_MIN_DB, rung));
+    const wanted = Math.round((ofDb(next) / sys) * 1000) / 1000;
+    setOutputMuted(false);
+    // Written down when the finger is lifted: during the drag it would
+    // be a line every few pixels.
+    if (done) {
+      Journal.mark(`level:${next > 0 ? '+' : ''}${Math.round(next)}dB:dragged`)
+        .catch(() => { /* noop */ });
+    }
+    setCfg((prev) => {
+      if (!prev) return prev;
+      if (wanted === (prev.gains?.[output] ?? 1)) return prev;
+      return saveCfg({ ...prev, gains: { ...(prev.gains ?? {}), [output]: wanted } });
+    });
+  }, [saveCfg]);
+
   const changeLevel = useCallback((direction: number) => {
     if (!direction) return;
     // The keys are pressed without looking: whatever the controls were
@@ -4020,6 +4048,7 @@ export default function App() {
         onChangeLevel={changeLevel}
         wakeAt={controlsWakeAt}
         onToggleOutputMute={toggleOutputMute}
+        onSetLevel={setLevelTo}
         versionWarning={versionWarning}
         frontCamera={frontCamera}
         quality={cfg.videoQuality}

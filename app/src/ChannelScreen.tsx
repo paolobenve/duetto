@@ -10,7 +10,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated,
-  useWindowDimensions, Modal, Pressable,
+  useWindowDimensions, Modal, Pressable, PanResponder,
 } from 'react-native';
 import type { GestureResponderEvent } from 'react-native';
 import { MediaStream } from 'react-native-webrtc';
@@ -149,6 +149,7 @@ function VolumeScale(p: {
   pct: number; muted: boolean;
   route: AudioRoute;
   onToggleMute?: () => void;
+  onPick?: (db: number, done: boolean) => void;
 }) {
   const [h, setH] = useState(0);
   const span = p.max - p.min;
@@ -163,6 +164,29 @@ function VolumeScale(p: {
   const Icon = OUTPUT_ICON[p.route] ?? OUTPUT_ICON.SPEAKER_PHONE;
   const phone = up(p.phone);
   const level = up(p.level);
+
+  /**
+   * The strip under the finger.
+   *
+   * Touching it anywhere goes there, and a finger dragged along it
+   * follows: the keys move by steps, the strip goes where one points.
+   * The bottom of the view is the bottom of the scale, so the height
+   * measured on layout is the ruler.
+   */
+  const pick = (locationY: number, done: boolean) => {
+    if (!p.onPick || h <= 0) return;
+    const share = 1 - Math.min(1, Math.max(0, locationY / h));
+    p.onPick(p.min + share * span, done);
+  };
+  const finger = React.useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: (e) => pick(e.nativeEvent.locationY, false),
+    onPanResponderMove: (e) => pick(e.nativeEvent.locationY, false),
+    onPanResponderRelease: (e) => pick(e.nativeEvent.locationY, true),
+    onPanResponderTerminationRequest: () => false,
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [h, span, p.min, p.onPick]);
   return (
     <View style={styles.scaleBox} pointerEvents="box-none">
       {/* Two lines of fixed height, hushed or not: the scale must not
@@ -173,8 +197,8 @@ function VolumeScale(p: {
       <Text style={styles.scaleUnit}>{p.muted ? ' ' : '%'}</Text>
       <View
         style={styles.scaleTrack}
-        pointerEvents="none"
-        onLayout={(e) => setH(e.nativeEvent.layout.height)}>
+        onLayout={(e) => setH(e.nativeEvent.layout.height)}
+        {...finger.panHandlers}>
         {h > 0 ? (
           <>
             {/* A strip that fills, not a line with a bead on it. The
@@ -347,6 +371,12 @@ type Props = {
   };
   onToggleOutputMute?: () => void;
   /**
+   * A level asked for by hand, on the scale: a touch anywhere on the
+   * strip, or a finger dragged along it. `done` says the finger has
+   * been lifted, which is when it is worth writing down.
+   */
+  onSetLevel?: (db: number, done: boolean) => void;
+  /**
    * The two sides have different versions of Duetto.
    *
    * `null` when they are the same, which is the normal case and does
@@ -453,7 +483,7 @@ export default function ChannelScreen(props: Props) {
     onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, leaving,
     onAlarm, onZoom, onOpenSettings, onCall, pairBroken, battery,
   } = props;
-  const { levelDb, onToggleOutputMute, wakeAt } = props;
+  const { levelDb, onToggleOutputMute, onSetLevel, wakeAt } = props;
 
   // In Picture-in-Picture the window is tiny: no controls. The width
   // is kept as a second witness for the phones where the activity's
@@ -1256,6 +1286,9 @@ export default function ChannelScreen(props: Props) {
             {...levelDb}
             route={audioRoute}
             onToggleMute={onToggleOutputMute}
+            // Covered, the glass decides nothing: it is the same rule
+            // as for the buttons.
+            onPick={(db, done) => { if (!blocked()) onSetLevel?.(db, done); }}
           />
         </Animated.View>
       ) : null}
