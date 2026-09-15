@@ -1124,19 +1124,27 @@ export default function App() {
   useEffect(() => {
     let alive = true;
     const where = audio.route;
-    const reread = () => {
-      Volume.read().then((v) => {
-        if (!alive || !v || !(v.max > 0)) return;
-        knownVolume.current[where] = { volume: v.volume, max: v.max };
-        setSystemVolume({ volume: v.volume, max: v.max });
-      }).catch(() => { /* noop */ });
-    };
-    // What we knew of this output, at once: the system will answer for
-    // the output it is still on, and until it has moved the strip would
-    // show the one before. Corrected the moment the real answer comes.
+    // What we knew of this output, at once: the system answers about
+    // the output the sound is on, and it has not moved yet.
     const known = knownVolume.current[where];
     if (known) setSystemVolume(known);
-    reread();
+    /**
+     * `settled` says the sound has had time to move, and only then is
+     * the answer about this output: before that it is about the one
+     * before, and writing it down under this one is how the jump came
+     * back, in both directions - the memory being filled with the
+     * wrong figure at every switch.
+     */
+    const reread = (settled: boolean) => {
+      Volume.read().then((v) => {
+        if (!alive || !v || !(v.max > 0)) return;
+        if (settled) knownVolume.current[where] = { volume: v.volume, max: v.max };
+        // Nothing remembered: even an answer about the output before is
+        // better than the zero the strip starts from.
+        if (settled || !known) setSystemVolume({ volume: v.volume, max: v.max });
+      }).catch(() => { /* noop */ });
+    };
+    reread(false);
     // And again a moment later, and once more after that.
     //
     // The phone keeps a volume for every output - on one of these
@@ -1146,7 +1154,7 @@ export default function App() {
     // another output, and the answer given a moment before was about
     // the one before: the strip then drew the phone's share in the
     // wrong place, and Duetto's share along with it.
-    const again = [setTimeout(reread, 700), setTimeout(reread, 2500)];
+    const again = [setTimeout(() => reread(true), 700), setTimeout(() => reread(true), 2500)];
     /**
      * A volume moved from outside leaves our gain alone.
      *
@@ -1163,7 +1171,9 @@ export default function App() {
      * did: nobody else lifts it.
      */
     const stop = Volume.listenToSystem(() => {
-      reread();
+      // Somebody moved the phone's own knob: that is about the output
+      // in use, and it is worth remembering.
+      reread(true);
     });
     return () => {
       alive = false;
