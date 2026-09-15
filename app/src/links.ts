@@ -23,8 +23,8 @@ export const BETA_TESTER_LINK =
 /**
  * What a QR code says, and how it is read back.
  *
- *   duetto://cathopedia.org/pair/12345678     a pairing code
- *   duetto://cathopedia.org/invite/ABCD-2345  an invitation
+ *   duetto://yourserver.org/pair/12345678     a pairing code
+ *   duetto://yourserver.org/invite/ABCD-2345  an invitation
  *
  * The server travels with the code: whoever is invited or called holds
  * their phone up to the other one and types nothing, not even the
