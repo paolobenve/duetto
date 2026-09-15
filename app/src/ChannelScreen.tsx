@@ -306,6 +306,12 @@ type Props = {
   systemVolume?: { volume: number; max: number };
   onChangeLevel?: (direction: number) => void;
   /**
+   * The moment something outside asked for the controls: the volume
+   * keys, which are pressed without looking. Faded or hidden, they
+   * come back at full strength, so one sees what one is doing.
+   */
+  wakeAt?: number;
+  /**
    * The level in decibels, for the scale: ours, the phone's knob, the
    * reachable top, the two ends, and whether the output is hushed.
    */
@@ -418,7 +424,7 @@ export default function ChannelScreen(props: Props) {
     onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, leaving,
     onAlarm, onZoom, onOpenSettings, onCall, pairBroken, battery,
   } = props;
-  const { levelDb, onToggleOutputMute } = props;
+  const { levelDb, onToggleOutputMute, wakeAt } = props;
 
   // In Picture-in-Picture the window is tiny: no controls. The width
   // is kept as a second witness for the phones where the activity's
@@ -775,6 +781,11 @@ export default function ChannelScreen(props: Props) {
     // one wants to see the picture now.
     if (Date.now() < fadeEnd.current) fade(400); else wake();
   }, [fade, wake, blocked]);
+
+  // Asked from outside - a volume key - the controls come back whole.
+  useEffect(() => {
+    if (wakeAt) wake();
+  }, [wakeAt, wake]);
 
   // `wake` changes when `toWatch` changes: switching the last camera
   // off brings the controls back to full and there they stay.

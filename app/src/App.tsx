@@ -564,6 +564,8 @@ export default function App() {
     return () => { alive = false; clearInterval(timer); beat(); sub.remove(); };
   }, [inChannel, cfg?.diagnostics]);
 
+  /** the last moment something asked for the controls to be seen */
+  const [controlsWakeAt, setControlsWakeAt] = useState(0);
   /** the pause before taking the place back after a "replaced", doubling each time */
   const replacedWait = useRef(3000);
   /** whether the server carries reports to the beta testers' work items */
@@ -1177,6 +1179,10 @@ export default function App() {
    */
   const changeLevel = useCallback((direction: number) => {
     if (!direction) return;
+    // The keys are pressed without looking: whatever the controls were
+    // doing - faded, or gone altogether - they come back, and with them
+    // the scale that says where the level is going.
+    setControlsWakeAt(Date.now());
     const output = audioRouteRef.current;
     const phone = systemVolumeRef.current;
     const sys = phone.max > 0 ? phone.volume / phone.max : 1;
@@ -4011,6 +4017,7 @@ export default function App() {
         }}
         systemVolume={systemVolume}
         onChangeLevel={changeLevel}
+        wakeAt={controlsWakeAt}
         onToggleOutputMute={toggleOutputMute}
         versionWarning={versionWarning}
         frontCamera={frontCamera}
