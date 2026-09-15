@@ -142,7 +142,8 @@ function dbText(level?: number): string {
  * figure above. Under it, the button that hushes the output.
  */
 function VolumeScale(p: {
-  level: number; phone: number; ceiling: number; min: number; max: number; muted: boolean;
+  level: number; phone: number; ceiling: number; min: number; max: number;
+  pct: number; muted: boolean;
   route: AudioRoute;
   onToggleMute?: () => void;
 }) {
@@ -152,9 +153,10 @@ function VolumeScale(p: {
   const up = (db: number) => ((Math.min(p.max, Math.max(p.min, db)) - p.min) / span) * h;
   const rungs: number[] = [];
   for (let d = p.min; d <= p.max; d += 2) rungs.push(d);
-  const figure = p.muted
-    ? t('channel.muted')
-    : `${p.level > 0 ? '+' : ''}${Math.round(p.level)}`;
+  // The figure is what one is listening at, as a share of the phone's
+  // own top: decibels are the right ruler for the steps, and the wrong
+  // words for a number read at a glance.
+  const figure = p.muted ? t('channel.muted') : `${Math.round(p.pct)}`;
   const Icon = OUTPUT_ICON[p.route] ?? OUTPUT_ICON.SPEAKER_PHONE;
   const phone = up(p.phone);
   const level = up(p.level);
@@ -165,7 +167,7 @@ function VolumeScale(p: {
       <Text style={[styles.scaleFigure, p.muted ? styles.scaleFigureMuted : null]} numberOfLines={1}>
         {figure}
       </Text>
-      <Text style={styles.scaleUnit}>{p.muted ? ' ' : 'dB'}</Text>
+      <Text style={styles.scaleUnit}>{p.muted ? ' ' : '%'}</Text>
       <View
         style={styles.scaleTrack}
         pointerEvents="none"
@@ -198,7 +200,9 @@ function VolumeScale(p: {
                 style={[styles.rung, d === 0 ? styles.rungMajor : null, { bottom: up(d) }]}
               />
             ))}
-            <Text style={[styles.zeroText, { bottom: up(0) - 7 }]}>0</Text>
+            {/* One: the phone's own top, where Duetto stops taking
+                away and starts adding. */}
+            <Text style={[styles.zeroText, { bottom: up(0) - 7 }]}>1</Text>
             <View style={[styles.phoneMark, { bottom: phone - 6 }]}>
               <EarpieceIcon size={11} color="#8a94a3" />
             </View>
@@ -332,7 +336,12 @@ type Props = {
    * The level in decibels, for the scale: ours, the phone's knob, the
    * reachable top, the two ends, and whether the output is hushed.
    */
-  levelDb?: { level: number; phone: number; ceiling: number; min: number; max: number; muted: boolean };
+  levelDb?: {
+    level: number; phone: number; ceiling: number; min: number; max: number;
+    /** the level as a share of the phone's own top: 100 is that top */
+    pct: number;
+    muted: boolean;
+  };
   onToggleOutputMute?: () => void;
   /**
    * The two sides have different versions of Duetto.
