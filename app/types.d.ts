@@ -161,7 +161,8 @@ declare module 'duetto-platform' {
   export const Alerts: {
     configure(
       vibration: 'default' | 'always' | 'never',
-      sound: 'default' | 'none' | 'chosen',
+      sound: 'default' | 'none' | 'chosen' | 'duetto',
+      /** the picked sound's address, or the name of one of Duetto's own */
       uri?: string,
     ): Promise<boolean | string>;
     pickSound(currentUri?: string): Promise<{ uri: string; name: string } | null>;

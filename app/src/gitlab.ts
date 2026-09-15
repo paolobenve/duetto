@@ -29,7 +29,7 @@ export const TOKEN_PAGE =
   `${GITLAB}/-/user_settings/personal_access_tokens?name=Duetto&scopes=api`;
 
 export type ReportFile = { name: string; path: string; text: string };
-export type ReportOutcome = { ok: boolean; error?: string; url?: string; member?: boolean };
+export type ReportOutcome = { ok: boolean; error?: string; url?: string };
 
 async function api(token: string, path: string, init: RequestInit = {}) {
   const res = await fetch(`${GITLAB}/api/v4/projects/${PROJECT_ID}${path}`, {
@@ -84,32 +84,6 @@ export function noteBody(o: {
   return parts.filter(Boolean).join('\n\n');
 }
 
-/** Guest: enough to be an assignee, not enough to read anybody else's. */
-const GUEST = 10;
-
-/**
- * Makes somebody a guest of the project, and says whether they are one
- * afterwards - already a member counts as yes. A token that may not
- * make members simply gets a no, and the invitation goes out all the
- * same.
- */
-async function makeGuest(token: string, userId?: number): Promise<boolean> {
-  if (!userId) return false;
-  try {
-    await api(token, '/members', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: userId, access_level: GUEST }),
-    });
-  } catch { /* already a member, or this token may not: the check says */ }
-  try {
-    const m: any = await api(token, `/members/all/${userId}`);
-    return !!m?.id;
-  } catch {
-    return false;
-  }
-}
-
 /** The day an invitation runs out, said in the note's own tongue. */
 function untilDay(iso: string): string {
   const d = new Date(iso);
@@ -119,7 +93,9 @@ function untilDay(iso: string): string {
 
 /**
  * The invitation, on the work item of whoever asked for it, with one's
- * own token: the item is made confidential first.
+ * own token. In the open, where the work item is: see the server's
+ * side for why - GitLab has no private message, and an invitation is
+ * spent at the first use anyway.
  */
 export async function inviteOnWorkItem(o: {
   token: string; name: string; link: string; expires?: string;
@@ -134,24 +110,6 @@ export async function inviteOnWorkItem(o: {
     const beta = titled.find((i) => /^beta tester\b/i.test(String(i.title ?? '')));
     const item = beta ?? titled[0];
     if (!item) return { ok: false, error: 'no-work-item' };
-    await api(o.token, `/issues/${item.iid}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ confidential: true }),
-    });
-    // Then whoever opened it becomes a guest of the project and the
-    // work item is put in their hands: a confidential one is seen by
-    // the members from Reporter up, and by its author and its
-    // assignees, and Guest opens nothing else - the other testers'
-    // work items stay out of sight.
-    const member = await makeGuest(o.token, item.author?.id);
-    if (member) {
-      await api(o.token, `/issues/${item.iid}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assignee_ids: [item.author.id] }),
-      }).catch(() => { /* the author's own right carries it */ });
-    }
     await api(o.token, `/issues/${item.iid}/notes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -169,11 +127,10 @@ export async function inviteOnWorkItem(o: {
             + ' days behind, and at this age Duetto is mended often.',
           'Then, in Settings, open the "Diagnostics" tab and turn the diagnostics on: from there'
             + ' you can share the journal and send your reports, and they land here.',
-          'This work item is confidential: only you and the project see it.',
         ].join('\n\n'),
       }),
     });
-    return { ok: true, url: String(item.web_url ?? ''), member };
+    return { ok: true, url: String(item.web_url ?? '') };
   } catch (e: any) {
     return { ok: false, error: String(e?.message ?? e) };
   }

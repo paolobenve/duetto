@@ -26,7 +26,7 @@ import {
   DuoConfig, PairInfo, loadConfig, saveConfig,
   isServerConfigured, isPaired, displayServer, opensHere, VIDEO_PROFILES,
   addPair, switchToPair, forgetPair, markPairBroken, rememberPeerName,
-  alignPairServer, renamePair, pairFileKey, pairName,
+  alertSoundFor, alignPairServer, renamePair, pairFileKey, pairName,
   storeSettingsInPair,
 } from './config';
 import { Signaling, PresenceStatus, Mode } from './signaling';
@@ -2112,7 +2112,7 @@ export default function App() {
       // needed: it is born with
       // sound and vibration inside it, and creating it at the first
       // alert would mean creating it while it is being used.
-      Alerts.configure(c.alertVibration, c.alertSound, c.alertSoundUri).catch(() => {});
+      Alerts.configure(c.alertVibration, c.alertSound, alertSoundFor(c)).catch(() => {});
       // No server yet: the welcome, which asks for the server and
       // for nothing else until the server says what it needs.
       if (!isServerConfigured(c)) setScreen('welcome');
@@ -2569,8 +2569,8 @@ export default function App() {
           onReportResult: (ok, error, url) => {
             reportPending.current?.({ ok, error, url });
           },
-          onInviteNoteResult: (ok, error, url, member) => {
-            invitePending.current?.({ ok, error, url, member });
+          onInviteNoteResult: (ok, error, url) => {
+            invitePending.current?.({ ok, error, url });
           },
           onKnockResult: (ok, error) => {
             if (ok) {
@@ -3910,8 +3910,9 @@ export default function App() {
             if ('richerAudio' in patch) applyAudio(next.richerAudio, true);
             // The call's sound and vibration live in the notification
             // channel, which has to be built again at every change.
-            if ('alertVibration' in patch || 'alertSound' in patch || 'alertSoundUri' in patch) {
-              Alerts.configure(next.alertVibration, next.alertSound, next.alertSoundUri)
+            if ('alertVibration' in patch || 'alertSound' in patch || 'alertSoundUri' in patch
+                || 'alertDuettoSound' in patch) {
+              Alerts.configure(next.alertVibration, next.alertSound, alertSoundFor(next))
                 .catch(() => {});
             }
             return next;

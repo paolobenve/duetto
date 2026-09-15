@@ -228,17 +228,16 @@ testers' reports: the app offers "send the journal to my work item" and
 "report a problem", the server finds the open work item whose title holds the
 name on the person's invitation (the one titled "Beta tester: ..." first),
 uploads the journal's files and writes a note with the person's name in its
-first line. The same road carries an invitation to a tester's work item: it is found by
-name, made confidential, its author is made a Guest of the project and the work item is
-put in their hands - a confidential one is seen by the members from Reporter up, and by
-its author and its assignees.
+first line. The same road carries an invitation to a tester's work item, found by name -
+in the open, where the work item is: GitLab has no private message, and the only private
+place in it hides the invitation from the very person it is for unless they are made a
+member, or asks them to publish a way of reaching them, which is worse. An invitation is
+spent at the first use: if a passer-by takes it, the tester says it does not work, that
+phone goes off the list and another invitation is made.
 
-The token, scope `api`, is either a personal one of whoever owns the project - it carries
-their own permissions, and an owner's may do everything - or a project access token with
-the **Maintainer** role, because only a Maintainer may make members. With a Reporter's
-token everything else still works and the app says to add the person by hand. A tester
-with a token of their own does not need any of this: the app writes on GitLab by itself,
-in their name.
+The token is a project access token of the Duetto project, role Reporter, scope `api`, or
+a personal one of whoever owns it. A tester with a token of their own does not need this:
+the app writes on GitLab by itself, in their name.
 
 ### A copy of the list
 

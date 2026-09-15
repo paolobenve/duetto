@@ -25,7 +25,8 @@ import {
 import { peerAvatar } from './avatar';
 import { isRealName } from './presence';
 import { VERSION_FULL } from './version';
-import { Alerts, Journal } from 'duetto-platform';
+import { Alarm, Alerts, Journal } from 'duetto-platform';
+import { ALARMS } from './alarms';
 import { TOKEN_PAGE } from './gitlab';
 import type { ReportOutcome } from './gitlab';
 
@@ -303,6 +304,8 @@ export default function SettingsScreen({
   const [copiedCode, setCopiedCode] = useState('');
   /** the invitation shown as a QR code, big, for the phone next to this one */
   const [qrFor, setQrFor] = useState<InvitationOnServer | null>(null);
+  /** the list of Duetto's own sounds, to hear them and pick one */
+  const [duettoSounds, setDuettoSounds] = useState(false);
   /**
    * The whole link, not the bare code: the code alone does not carry
    * the server, and whoever is being invited has no server of their
@@ -329,11 +332,7 @@ export default function SettingsScreen({
       .catch((e): ReportOutcome => ({ ok: false, error: String(e) }));
     setSendingTo('');
     if (out.ok) {
-      Alert.alert(
-        t('settings.inviteSentTitle'),
-        t('settings.inviteSent', { name: i.name })
-          + (out.member ? '' : `\n\n${t('settings.inviteNotMember')}`),
-      );
+      Alert.alert(t('settings.inviteSentTitle'), t('settings.inviteSent', { name: i.name }));
       return;
     }
     const why = out.error === 'no-work-item'
@@ -834,6 +833,31 @@ export default function SettingsScreen({
           </TouchableOpacity>
         ) : null}
 
+        {/* One of Duetto's own: the same sounds one calls back with.
+            Touching the entry chooses it; the list below changes which
+            one it is, and plays it so one hears what one is choosing. */}
+        <TouchableOpacity
+          style={[styles.choice, cfg.alertSound === 'duetto' && styles.choicePicked]}
+          onPress={() => {
+            setCfg({ ...cfg, alertSound: 'duetto' });
+            onLive?.({ alertSound: 'duetto' });
+          }}>
+          <View style={[styles.radio, cfg.alertSound === 'duetto' && styles.radioPicked]} />
+          <View style={styles.choiceText}>
+            <Text style={styles.choiceLabel}>
+              {ALARMS().find((a) => a.name === cfg.alertDuettoSound)?.label
+                ?? t('settings.soundDuetto')}
+            </Text>
+            <Text style={styles.choiceNote}>{t('settings.soundDuettoNote')}</Text>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.rowButton, styles.rowAfterChoices]}
+          onPress={() => setDuettoSounds(true)}>
+          <Text style={styles.rowButtonText}>{t('settings.soundDuettoChoose')}</Text>
+          <Text style={styles.rowButtonArrow}>{'\u203A'}</Text>
+        </TouchableOpacity>
+
         {/* Going to look for another one: an action, not a choice, and
             it says so with an arrow instead of a dot. */}
         <TouchableOpacity
@@ -1125,6 +1149,44 @@ export default function SettingsScreen({
         </Pressable>
       </Modal>
 
+      {/* Duetto's own sounds: touching one plays it and makes it the
+          sound of the alert. */}
+      <Modal
+        visible={duettoSounds}
+        transparent
+        animationType="fade"
+        onRequestClose={() => { Alarm.stop().catch(() => {}); setDuettoSounds(false); }}>
+        <Pressable
+          style={styles.sheetBack}
+          onPress={() => { Alarm.stop().catch(() => {}); setDuettoSounds(false); }}>
+          <View style={styles.sheet}>
+            <Text style={styles.sheetTitle}>{t('settings.soundDuettoChoose')}</Text>
+            {ALARMS().map((a) => (
+              <TouchableOpacity
+                key={a.name}
+                style={styles.sheetRow}
+                onPress={() => {
+                  Alarm.play(a.name, true).catch(() => {});
+                  const patch = { alertSound: 'duetto' as const, alertDuettoSound: a.name };
+                  setCfg({ ...cfg, ...patch });
+                  onLive?.(patch);
+                }}>
+                <View style={styles.sheetText}>
+                  <Text style={[
+                    styles.sheetLabel,
+                    cfg.alertDuettoSound === a.name ? styles.sheetLabelPicked : null,
+                  ]}>
+                    {a.label}
+                  </Text>
+                  <Text style={styles.sheetNote}>{a.note}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+            <Text style={styles.sheetHint}>{t('settings.soundDuettoHint')}</Text>
+          </View>
+        </Pressable>
+      </Modal>
+
       {/* The beta tester's name or token, typed once */}
       <Modal
         visible={editing !== null}
@@ -1353,6 +1415,19 @@ const styles = StyleSheet.create({
   sheet: {
     width: '100%', maxWidth: 420, backgroundColor: '#151a23', borderRadius: 16,
     padding: 20, borderWidth: 1, borderColor: '#252c38',
+  },
+  // The rows of a sheet, as in the channel: a label, a note under it,
+  // and the one in use in colour.
+  sheetRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    paddingHorizontal: 14, paddingVertical: 15, borderRadius: 12,
+  },
+  sheetText: { flex: 1 },
+  sheetLabel: { color: '#c9d2de', fontSize: 17, flex: 1 },
+  sheetLabelPicked: { color: '#7cc4ff', fontWeight: '700' },
+  sheetNote: { color: '#6b7686', fontSize: 12.5, marginTop: 2 },
+  sheetHint: {
+    color: '#5a6472', fontSize: 12, paddingHorizontal: 14, paddingTop: 6, lineHeight: 17,
   },
   sheetTitle: { color: '#e6ebf1', fontSize: 18, fontWeight: '700', marginBottom: 14 },
   sheetActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 6 },

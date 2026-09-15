@@ -65,27 +65,36 @@ object Alarm {
      * left - the rest keeps playing while one is already doing something
      * else.
      */
+    /**
+     * The sound behind a name, or null for a name nobody knows.
+     *
+     * The alert's notification asks for it too: what one hears trying
+     * the sounds in the list must be what the notification plays.
+     */
+    fun resourceFor(name: String): Int? = when (name) {
+        "drumroll" -> R.raw.alarm_drumroll
+        "drumkit" -> R.raw.alarm_drumkit
+        "fanfare" -> R.raw.alarm_fanfare
+        "horn" -> R.raw.alarm_horn
+        "rooster" -> R.raw.alarm_rooster
+        // Not an alarm, and not in the list: it is the answer heard by
+        // whoever knocks, two raps on a door.
+        "knock" -> R.raw.knock
+        // The names as the older Duetto said them: they come from a
+        // phone that has not been updated yet. These six lines go away
+        // with the next version.
+        "tamburi" -> R.raw.alarm_drumroll
+        "batteria" -> R.raw.alarm_drumkit
+        "fanfara" -> R.raw.alarm_fanfare
+        "strombazzata" -> R.raw.alarm_horn
+        "gallo" -> R.raw.alarm_rooster
+        "bussata" -> R.raw.knock
+        else -> null
+    }
+
+
     fun play(ctx: Context, name: String, echo: Boolean = false, maxMs: Int = 0) {
-        val res = when (name) {
-            "drumroll" -> R.raw.alarm_drumroll
-            "drumkit" -> R.raw.alarm_drumkit
-            "fanfare" -> R.raw.alarm_fanfare
-            "horn" -> R.raw.alarm_horn
-            "rooster" -> R.raw.alarm_rooster
-            // Not an alarm, and not in the list: it is the answer heard by
-            // whoever knocks, two raps on a door.
-            "knock" -> R.raw.knock
-            // The names as the older Duetto said them: they come from a
-            // phone that has not been updated yet. These six lines go away
-            // with the next version.
-            "tamburi" -> R.raw.alarm_drumroll
-            "batteria" -> R.raw.alarm_drumkit
-            "fanfara" -> R.raw.alarm_fanfare
-            "strombazzata" -> R.raw.alarm_horn
-            "gallo" -> R.raw.alarm_rooster
-            "bussata" -> R.raw.knock
-            else -> return
-        }
+        val res = resourceFor(name) ?: return
         stop()
         try {
             val attributes = AudioAttributes.Builder()

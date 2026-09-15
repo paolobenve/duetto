@@ -80,6 +80,14 @@ object Alerts {
         "none" -> null
         "chosen" -> uri(ctx).takeIf { it.isNotEmpty() }?.let { Uri.parse(it) }
             ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        // One of Duetto's own, which live in res/raw: the short name
+        // travels - "fanfare" - and the address is built here, where
+        // the package and the resources are known. The same names the
+        // alarms go by, so that what one hears in the list is what the
+        // notification will play.
+        "duetto" -> Alarm.resourceFor(uri(ctx))
+            ?.let { Uri.parse("android.resource://${ctx.packageName}/$it") }
+            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
         else -> RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
     }
 
@@ -190,7 +198,7 @@ object Alerts {
     private fun channelId(ctx: Context): String {
         val s = when (sound(ctx)) {
             "none" -> "mute"
-            "chosen" -> "s" + Integer.toHexString(uri(ctx).hashCode())
+            "chosen", "duetto" -> "s" + Integer.toHexString(uri(ctx).hashCode())
             else -> "default"
         }
         return "${CHANNEL_PREFIX}_${vibration(ctx)}_$s"

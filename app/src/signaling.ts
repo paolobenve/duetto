@@ -167,7 +167,7 @@ export type SignalingEvents = {
   /** the answer to a report sent through the server */
   onReportResult?: (ok: boolean, error?: string, url?: string) => void;
   /** the answer to an invitation written on a work item */
-  onInviteNoteResult?: (ok: boolean, error?: string, url?: string, member?: boolean) => void;
+  onInviteNoteResult?: (ok: boolean, error?: string, url?: string) => void;
   /**
    * This connection was pushed out by another of the same phone's:
    * the server keeps one per phone in a room. Nobody reconnects by
@@ -614,7 +614,7 @@ export class Signaling {
         break;
 
       case 'invite-note-result':
-        this.events.onInviteNoteResult?.(!!msg.ok, msg.error, msg.url, msg.member === true);
+        this.events.onInviteNoteResult?.(!!msg.ok, msg.error, msg.url);
         break;
 
       case 'peer-joined':

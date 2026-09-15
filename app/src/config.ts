@@ -108,9 +108,11 @@ export type PairSettings = {
   controls: 'dim' | 'faint' | 'hidden' | 'none';
   videoCodec: 'auto' | 'vp9';
   alertVibration: 'default' | 'always' | 'never';
-  alertSound: 'default' | 'none' | 'chosen';
+  alertSound: 'default' | 'none' | 'chosen' | 'duetto';
   alertSoundUri: string;
   alertSoundName: string;
+  /** which of Duetto's own sounds, when the choice is 'duetto' */
+  alertDuettoSound: string;
   /** which language the app speaks: 'auto' follows the phone */
   language: LanguageChoice;
   /** where the sound comes out: 'SPEAKER_PHONE', 'EARPIECE', ... */
@@ -125,6 +127,7 @@ export type PairSettings = {
 const PAIR_FIELDS: (keyof PairSettings)[] = [
   'displayName', 'videoQuality', 'richerAudio', 'micOnEntry', 'controls',
   'videoCodec', 'alertVibration', 'alertSound', 'alertSoundUri', 'alertSoundName',
+  'alertDuettoSound',
   'audioOutput', 'gains', 'frontCamera', 'language',
 ];
 
@@ -327,11 +330,17 @@ export type DuoConfig = {
    * bedside table at night wants nothing at all.
    */
   alertVibration: 'default' | 'always' | 'never';
-  alertSound: 'default' | 'none' | 'chosen';
+  alertSound: 'default' | 'none' | 'chosen' | 'duetto';
   /** A sound picked from the phone's own: a system address. */
   alertSoundUri: string;
   /** Its name, so it can be shown without having to ask for it again. */
   alertSoundName: string;
+  /**
+   * Which of Duetto's own sounds, when the choice is "duetto": the
+   * name of the file in res/raw, like "alarm_fanfare". The address is
+   * built on the other side, where the package's name is known.
+   */
+  alertDuettoSound: string;
 
   /**
    * Where the sound comes out.
@@ -411,6 +420,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   alertSound: 'default',
   alertSoundUri: '',
   alertSoundName: '',
+  alertDuettoSound: 'drumroll',
   audioOutput: 'SPEAKER_PHONE',
   language: 'auto',
   gains: {},
@@ -658,6 +668,17 @@ export function normalizeServerUrl(raw: string): string {
  * show the domain alone; if somebody typed a path of their own it stays
  * whole, because there the domain would not be enough.
  */
+/**
+ * The sound the alert channel is given: one picked from the phone's
+ * own, or the name of one of Duetto's - the address of that one is
+ * built where the package's name is known.
+ */
+export function alertSoundFor(cfg: {
+  alertSound: string; alertSoundUri: string; alertDuettoSound: string;
+}): string {
+  return cfg.alertSound === 'duetto' ? cfg.alertDuettoSound : cfg.alertSoundUri;
+}
+
 export function displayServer(url: string): string {
   const m = (url || '').match(/^wss?:\/\/([^/]+)\/duetto\/ws$/i);
   return m ? m[1] : (url || '');

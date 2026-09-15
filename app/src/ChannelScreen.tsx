@@ -19,6 +19,7 @@ import { t, currentLanguage } from './i18n';
 import type { PresenceStatus } from './signaling';
 import VideoStage from './VideoStage';
 import { AudioRoute, routeLabel } from './audioRoute';
+import { ALARMS } from './alarms';
 import { VERSION_LABEL } from './version';
 import ChangelogModal from './ChangelogModal';
 import type { Avatar } from './avatar';
@@ -196,27 +197,6 @@ function VolumeScale(p: {
     </View>
   );
 }
-
-/**
- * The sounds for calling back somebody who is in the channel but does
- * not answer.
- *
- * A handful, and quite unlike one another: you choose without having to
- * listen to them one by one. The technical name is known to the phone
- * on the other side too, which is the one that plays it.
- */
-/**
- * Built while drawing, not once at import: a list made at the top of the
- * file freezes the language it was born in, and changing language it
- * would go on speaking the old one under a screen that had changed.
- */
-const ALARMS = (): { name: string; label: string; note: string }[] => [
-  { name: 'drumroll', label: t('alarms.drums'), note: t('alarms.drumsNote') },
-  { name: 'drumkit', label: t('alarms.kit'), note: t('alarms.kitNote') },
-  { name: 'fanfare', label: t('alarms.fanfare'), note: t('alarms.fanfareNote') },
-  { name: 'horn', label: t('alarms.horn'), note: t('alarms.hornNote') },
-  { name: 'rooster', label: t('alarms.rooster'), note: t('alarms.roosterNote') },
-];
 
 type Props = {
   /**

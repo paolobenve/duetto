@@ -6,7 +6,7 @@
 - The person I would talk with has a phone too, and it is (model, Android):
 - We are mostly on: wifi at home / mobile data / both
 - Mobile carrier(s), if on mobile data (some carriers only allow the relay):
-- Language I would like to use the app in: English / Italiano / Español / Português / Français
+- Language I would like to use the app in: English / Italiano / Español / Português / Français / Deutsch
 - Anything else (what you would use it for, how often):
 
 <!-- What happens next: you get an invitation code, or a pairing code, and a link to the
