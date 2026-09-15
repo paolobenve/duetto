@@ -144,6 +144,9 @@ function dbText(level?: number): string {
  * thin grey mark with a handset, and our level, the cursor, with the
  * figure above. Under it, the button that hushes the output.
  */
+/** The rungs the strip snaps to, the same the keys move by. */
+const SCALE_STEP_DB = 2;
+
 function VolumeScale(p: {
   level: number; phone: number; ceiling: number; min: number; max: number;
   pct: number; muted: boolean;
@@ -155,15 +158,27 @@ function VolumeScale(p: {
   const span = p.max - p.min;
   /** how far up the strip a level stands, from the bottom */
   const up = (db: number) => ((Math.min(p.max, Math.max(p.min, db)) - p.min) / span) * h;
+  /**
+   * Where the finger is, while it is down.
+   *
+   * Drawn from here and not from the level that comes back: that one
+   * travels through the settings and arrives a frame or two later, and
+   * in between the strip drew the old level over the new - a white
+   * flash over the upper half at every move.
+   */
+  const [dragging, setDragging] = useState<number | null>(null);
+  const shown = dragging ?? p.level;
   const rungs: number[] = [];
   for (let d = p.min; d <= p.max; d += 2) rungs.push(d);
   // The figure is what one is listening at, as a share of the phone's
   // own top: decibels are the right ruler for the steps, and the wrong
   // words for a number read at a glance.
-  const figure = p.muted ? t('channel.muted') : `${Math.round(p.pct)}`;
+  const figure = p.muted
+    ? t('channel.muted')
+    : `${Math.round(dragging === null ? p.pct : 10 ** (dragging / 20) * 100)}`;
   const Icon = OUTPUT_ICON[p.route] ?? OUTPUT_ICON.SPEAKER_PHONE;
   const phone = up(p.phone);
-  const level = up(p.level);
+  const level = up(shown);
 
   /**
    * The strip under the finger.
@@ -176,7 +191,10 @@ function VolumeScale(p: {
   const pick = (locationY: number, done: boolean) => {
     if (!p.onPick || h <= 0) return;
     const share = 1 - Math.min(1, Math.max(0, locationY / h));
-    p.onPick(p.min + share * span, done);
+    const db = p.min + share * span;
+    const rung = Math.round(db / SCALE_STEP_DB) * SCALE_STEP_DB;
+    setDragging(done ? null : Math.min(p.ceiling, Math.max(p.min, rung)));
+    p.onPick(db, done);
   };
   const finger = React.useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => true,
@@ -2323,7 +2341,7 @@ const styles = StyleSheet.create({
   scaleFigure: { color: '#7cc4ff', fontSize: 19, fontWeight: '800', lineHeight: 22 },
   scaleFigureMuted: { color: '#ffb454', fontSize: 13, fontWeight: '700', lineHeight: 22 },
   scaleUnit: { color: '#9fb4c8', fontSize: 10, fontWeight: '700', lineHeight: 12, marginTop: -2, marginBottom: 6 },
-  scaleTrack: { flex: 1, width: 64, alignItems: 'center', marginTop: 2, marginBottom: 8 },
+  scaleTrack: { flex: 1, width: 64, alignItems: 'center', marginTop: 2, marginBottom: 20 },
   // The strip: dark ground, the phone's own volume off-white over it,
   // and Duetto's own share white. Thirteen points wide, so that the
   // two whites can be told apart at a glance from across a room.

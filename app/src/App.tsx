@@ -1186,7 +1186,9 @@ export default function App() {
     const phone = systemVolumeRef.current;
     const sys = phone.max > 0 ? phone.volume / phone.max : 1;
     if (sys <= 0) return;
-    setControlsWakeAt(Date.now());
+    // The controls are called back once, when the finger lands: doing
+    // it at every move would restart their fading a hundred times.
+    if (!done) setControlsWakeAt((was) => (Date.now() - was > 2000 ? Date.now() : was));
     const ceiling = Math.min(LEVEL_MAX_DB, dbOf(sys * GAIN_CEILING));
     const rung = Math.round(db / LEVEL_STEP_DB) * LEVEL_STEP_DB;
     const next = Math.min(ceiling, Math.max(LEVEL_MIN_DB, rung));
