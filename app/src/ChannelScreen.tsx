@@ -185,6 +185,19 @@ function VolumeScale(p: {
    */
   const [dragging, setDragging] = useState<number | null>(null);
   const shown = dragging ?? p.level;
+  /**
+   * The finger's place is let go of only when the level that comes
+   * back has caught up with it - or after a moment, if it cannot,
+   * because an end of the ladder holds it.
+   */
+  const asked = React.useRef<number | null>(null);
+  useEffect(() => {
+    if (asked.current === null) return;
+    if (Math.abs(p.level - asked.current) < 0.51) {
+      asked.current = null;
+      setDragging(null);
+    }
+  }, [p.level]);
   const figure = p.muted ? t('channel.muted') : `${Math.round(loudness(shown))}`;
   const Icon = OUTPUT_ICON[p.route] ?? OUTPUT_ICON.SPEAKER_PHONE;
   const phone = up(p.phone);
@@ -203,8 +216,18 @@ function VolumeScale(p: {
     // Back from loudness to decibels, which is what the level is kept in.
     const loud = floor + share * span;
     const db = 10 * Math.log2(loud / 100);
-    const rung = Math.round(db / SCALE_STEP_DB) * SCALE_STEP_DB;
-    setDragging(done ? null : Math.min(p.ceiling, Math.max(p.min, rung)));
+    const rung = Math.min(p.ceiling, Math.max(p.min, Math.round(db / SCALE_STEP_DB) * SCALE_STEP_DB));
+    setDragging(rung);
+    asked.current = rung;
+    if (done) {
+      // If the level cannot get there - an end of the ladder holds it -
+      // the finger's place is let go of all the same, in a moment.
+      setTimeout(() => {
+        if (asked.current === null) return;
+        asked.current = null;
+        setDragging(null);
+      }, 400);
+    }
     p.onPick(db, done);
   };
   const finger = React.useMemo(() => PanResponder.create({
@@ -229,6 +252,12 @@ function VolumeScale(p: {
         style={styles.scaleTrack}
         onLayout={(e) => setH(e.nativeEvent.layout.height)}
         {...finger.panHandlers}>
+        {/* Everything drawn here is deaf to the finger: touching one of
+            these pieces would give a place measured against that piece
+            and not against the scale - the wrong level, a jump, and a
+            drag that sometimes would not start. The track alone
+            listens, and it is the ruler. */}
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
         {h > 0 ? (
           <>
             {/* A strip that fills. The phone's own volume is off-white;
@@ -281,6 +310,7 @@ function VolumeScale(p: {
             ) : null}
           </>
         ) : null}
+        </View>
       </View>
       <TouchableOpacity
         style={styles.hushButton}
