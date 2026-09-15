@@ -1111,6 +1111,16 @@ export default function App() {
       }).catch(() => { /* noop */ });
     };
     reread();
+    // And again a moment later, and once more after that.
+    //
+    // The phone keeps a volume for every output - on one of these
+    // phones the earpiece sits at 12, the speaker at 10, the Bluetooth
+    // at 7 - and the one the system answers with is the one in use at
+    // that instant. Entering the conversation moves the sound to
+    // another output, and the answer given a moment before was about
+    // the one before: the strip then drew the phone's share in the
+    // wrong place, and Duetto's share along with it.
+    const again = [setTimeout(reread, 700), setTimeout(reread, 2500)];
     /**
      * A volume moved from outside leaves our gain alone.
      *
@@ -1129,7 +1139,11 @@ export default function App() {
     const stop = Volume.listenToSystem(() => {
       reread();
     });
-    return () => { alive = false; stop(); };
+    return () => {
+      alive = false;
+      stop();
+      for (const t of again) clearTimeout(t);
+    };
   }, [inChannel, audio.route, saveCfg]);
 
   /**
