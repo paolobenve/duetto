@@ -113,6 +113,8 @@ export type PairSettings = {
   alertSoundName: string;
   /** which of Duetto's own sounds, when the choice is 'duetto' */
   alertDuettoSound: string;
+  /** which kind of sound was picked, if any: it is the third entry in the list */
+  alertPicked: '' | 'chosen' | 'duetto';
   /** which language the app speaks: 'auto' follows the phone */
   language: LanguageChoice;
   /** where the sound comes out: 'SPEAKER_PHONE', 'EARPIECE', ... */
@@ -127,7 +129,7 @@ export type PairSettings = {
 const PAIR_FIELDS: (keyof PairSettings)[] = [
   'displayName', 'videoQuality', 'richerAudio', 'micOnEntry', 'controls',
   'videoCodec', 'alertVibration', 'alertSound', 'alertSoundUri', 'alertSoundName',
-  'alertDuettoSound',
+  'alertDuettoSound', 'alertPicked',
   'audioOutput', 'gains', 'frontCamera', 'language',
 ];
 
@@ -337,10 +339,17 @@ export type DuoConfig = {
   alertSoundName: string;
   /**
    * Which of Duetto's own sounds, when the choice is "duetto": the
-   * name of the file in res/raw, like "alarm_fanfare". The address is
-   * built on the other side, where the package's name is known.
+   * name it goes by, like "fanfare". The address is built on the other
+   * side, where the package and the resources are known.
    */
   alertDuettoSound: string;
+  /**
+   * Which kind of sound was picked, if any: it is the third entry in
+   * the list, and without one there are only the phone's own and
+   * silence. It stays after switching to those two, so a sound already
+   * picked can be taken up again without going to look for it.
+   */
+  alertPicked: '' | 'chosen' | 'duetto';
 
   /**
    * Where the sound comes out.
@@ -421,6 +430,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   alertSoundUri: '',
   alertSoundName: '',
   alertDuettoSound: 'drumroll',
+  alertPicked: '',
   audioOutput: 'SPEAKER_PHONE',
   language: 'auto',
   gains: {},

@@ -265,6 +265,16 @@ export default function SettingsScreen({
    * written before this field existed had only the address.
    */
   const hasOwnSound = !!(cfg.alertSoundName || cfg.alertSoundUri);
+  /** the sound picked so far - one of Duetto's or one of the phone's - if any */
+  const picked = cfg.alertPicked === 'duetto'
+    ? {
+      label: ALARMS().find((a) => a.name === cfg.alertDuettoSound)?.label
+        ?? t('settings.soundDuetto'),
+      note: t('settings.soundDuettoNote'),
+    }
+    : cfg.alertPicked === 'chosen' && hasOwnSound
+      ? { label: cfg.alertSoundName || t('settings.soundChosen'), note: t('settings.soundChosenNote') }
+      : null;
 
   /** the name of the person being invited, while it is typed */
   const [inviteName, setInviteName] = useState('');
@@ -816,41 +826,29 @@ export default function SettingsScreen({
             it. Before, that same touch opened the system screen again -
             so the sound in use could not be picked back without going
             to look for it a second time. */}
-        {hasOwnSound ? (
+        {/* The sound picked, whichever kind it is: one of Duetto's own
+            or one taken from the phone. It is here only once it has
+            been picked - before that there are the phone's own sound
+            and silence, and nothing else - and it stays after a turn
+            through those two, so it can be taken up again without
+            going to look for it a second time. */}
+        {picked ? (
           <TouchableOpacity
-            style={[styles.choice, cfg.alertSound === 'chosen' && styles.choicePicked]}
+            style={[styles.choice, cfg.alertSound === cfg.alertPicked && styles.choicePicked]}
             onPress={() => {
-              setCfg({ ...cfg, alertSound: 'chosen' });
-              onLive?.({ alertSound: 'chosen' });
+              setCfg({ ...cfg, alertSound: cfg.alertPicked as 'chosen' | 'duetto' });
+              onLive?.({ alertSound: cfg.alertPicked as 'chosen' | 'duetto' });
             }}>
-            <View style={[styles.radio, cfg.alertSound === 'chosen' && styles.radioPicked]} />
+            <View style={[
+              styles.radio, cfg.alertSound === cfg.alertPicked && styles.radioPicked,
+            ]} />
             <View style={styles.choiceText}>
-              <Text style={styles.choiceLabel}>
-                {cfg.alertSoundName || t('settings.soundChosen')}
-              </Text>
-              <Text style={styles.choiceNote}>{t('settings.soundChosenNote')}</Text>
+              <Text style={styles.choiceLabel}>{picked.label}</Text>
+              <Text style={styles.choiceNote}>{picked.note}</Text>
             </View>
           </TouchableOpacity>
         ) : null}
 
-        {/* One of Duetto's own: the same sounds one calls back with.
-            Touching the entry chooses it; the list below changes which
-            one it is, and plays it so one hears what one is choosing. */}
-        <TouchableOpacity
-          style={[styles.choice, cfg.alertSound === 'duetto' && styles.choicePicked]}
-          onPress={() => {
-            setCfg({ ...cfg, alertSound: 'duetto' });
-            onLive?.({ alertSound: 'duetto' });
-          }}>
-          <View style={[styles.radio, cfg.alertSound === 'duetto' && styles.radioPicked]} />
-          <View style={styles.choiceText}>
-            <Text style={styles.choiceLabel}>
-              {ALARMS().find((a) => a.name === cfg.alertDuettoSound)?.label
-                ?? t('settings.soundDuetto')}
-            </Text>
-            <Text style={styles.choiceNote}>{t('settings.soundDuettoNote')}</Text>
-          </View>
-        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.rowButton, styles.rowAfterChoices]}
           onPress={() => setDuettoSounds(true)}>
@@ -866,12 +864,13 @@ export default function SettingsScreen({
             // A system screen makes the choice: if it is cancelled,
             // nothing changes - not even the selected entry, which would
             // otherwise say "chosen" without anything having been chosen.
-            const picked = await Alerts.pickSound(cfg.alertSoundUri).catch(() => null);
-            if (!picked) return;
+            const fromPhone = await Alerts.pickSound(cfg.alertSoundUri).catch(() => null);
+            if (!fromPhone) return;
             const patch = {
               alertSound: 'chosen' as const,
-              alertSoundUri: picked.uri,
-              alertSoundName: picked.name,
+              alertPicked: 'chosen' as const,
+              alertSoundUri: fromPhone.uri,
+              alertSoundName: fromPhone.name,
             };
             setCfg({ ...cfg, ...patch });
             onLive?.(patch);
@@ -1167,7 +1166,11 @@ export default function SettingsScreen({
                 style={styles.sheetRow}
                 onPress={() => {
                   Alarm.play(a.name, true).catch(() => {});
-                  const patch = { alertSound: 'duetto' as const, alertDuettoSound: a.name };
+                  const patch = {
+                    alertSound: 'duetto' as const,
+                    alertPicked: 'duetto' as const,
+                    alertDuettoSound: a.name,
+                  };
                   setCfg({ ...cfg, ...patch });
                   onLive?.(patch);
                 }}>
