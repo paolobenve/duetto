@@ -127,14 +127,15 @@ const OUTPUT_ICON: Record<
 };
 
 /**
- * A level said in words: the share of the phone's own top, "muted" at
- * zero. The same number the scale shows, so that the pills, the audio
- * menu and the scale do not each speak their own tongue.
+ * A level said in words: how loud it sounds against the phone's own
+ * top, "muted" at zero. The same number the scale shows - ten decibels
+ * more sound twice as loud - so that the pills, the audio menu and the
+ * scale do not each speak their own tongue.
  */
 function dbText(level?: number): string {
   if (level == null) return '';
   if (level <= 0) return t('channel.muted');
-  return `${Math.round(level * 100)}%`;
+  return `${Math.round(loudness(20 * Math.log10(level)))}%`;
 }
 
 /**
@@ -147,6 +148,17 @@ function dbText(level?: number): string {
 /** The rungs the strip snaps to, the same the keys move by. */
 const SCALE_STEP_DB = 2;
 
+/**
+ * How loud something sounds, against the phone's own top.
+ *
+ * Ten decibels more sound twice as loud: that is the ear's own rule,
+ * and it is the one the scale is drawn by. A hundred is the phone at
+ * its top; fifty really is half as loud, not half the signal.
+ */
+const loudness = (db: number) => 100 * 2 ** (db / 10);
+/** The rungs, at round loudness, and the one that means the phone's top. */
+const LOUD_RUNGS = [25, 50, 75, 100, 150, 200];
+
 function VolumeScale(p: {
   level: number; phone: number; ceiling: number; min: number; max: number;
   pct: number; muted: boolean;
@@ -155,9 +167,14 @@ function VolumeScale(p: {
   onPick?: (db: number, done: boolean) => void;
 }) {
   const [h, setH] = useState(0);
-  const span = p.max - p.min;
-  /** how far up the strip a level stands, from the bottom */
-  const up = (db: number) => ((Math.min(p.max, Math.max(p.min, db)) - p.min) / span) * h;
+  const floor = loudness(p.min);
+  const roof = loudness(p.max);
+  const span = roof - floor;
+  /** how far up the strip a loudness stands, from the bottom */
+  const up = (db: number) => {
+    const l = Math.min(roof, Math.max(floor, loudness(db)));
+    return ((l - floor) / span) * h;
+  };
   /**
    * Where the finger is, while it is down.
    *
@@ -168,14 +185,7 @@ function VolumeScale(p: {
    */
   const [dragging, setDragging] = useState<number | null>(null);
   const shown = dragging ?? p.level;
-  const rungs: number[] = [];
-  for (let d = p.min; d <= p.max; d += 2) rungs.push(d);
-  // The figure is what one is listening at, as a share of the phone's
-  // own top: decibels are the right ruler for the steps, and the wrong
-  // words for a number read at a glance.
-  const figure = p.muted
-    ? t('channel.muted')
-    : `${Math.round(dragging === null ? p.pct : 10 ** (dragging / 20) * 100)}`;
+  const figure = p.muted ? t('channel.muted') : `${Math.round(loudness(shown))}`;
   const Icon = OUTPUT_ICON[p.route] ?? OUTPUT_ICON.SPEAKER_PHONE;
   const phone = up(p.phone);
   const level = up(shown);
@@ -184,14 +194,15 @@ function VolumeScale(p: {
    * The strip under the finger.
    *
    * Touching it anywhere goes there, and a finger dragged along it
-   * follows: the keys move by steps, the strip goes where one points.
-   * The bottom of the view is the bottom of the scale, so the height
-   * measured on layout is the ruler.
+   * follows: the keys move by steps of two decibels, the strip goes
+   * where one points and then settles on the nearest step.
    */
   const pick = (locationY: number, done: boolean) => {
     if (!p.onPick || h <= 0) return;
     const share = 1 - Math.min(1, Math.max(0, locationY / h));
-    const db = p.min + share * span;
+    // Back from loudness to decibels, which is what the level is kept in.
+    const loud = floor + share * span;
+    const db = 10 * Math.log2(loud / 100);
     const rung = Math.round(db / SCALE_STEP_DB) * SCALE_STEP_DB;
     setDragging(done ? null : Math.min(p.ceiling, Math.max(p.min, rung)));
     p.onPick(db, done);
@@ -204,7 +215,8 @@ function VolumeScale(p: {
     onPanResponderRelease: (e) => pick(e.nativeEvent.locationY, true),
     onPanResponderTerminationRequest: () => false,
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [h, span, p.min, p.onPick]);
+  }), [h, span, floor, p.onPick]);
+
   return (
     <View style={styles.scaleBox} pointerEvents="box-none">
       {/* Two lines of fixed height, hushed or not: the scale must not
@@ -219,15 +231,20 @@ function VolumeScale(p: {
         {...finger.panHandlers}>
         {h > 0 ? (
           <>
-            {/* A strip that fills, not a line with a bead on it. The
-                phone's own volume is off-white; what Duetto adds on top
-                of it is white. Taking away instead of adding, the white
-                is what is left - up to where one is really listening -
-                and the off-white above is the phone's volume given up.
-                Where the white ends is the level; where the off-white
-                ends is the phone. */}
+            {/* A strip that fills. The phone's own volume is off-white;
+                what Duetto adds on top of it is white. Taking away
+                instead of adding, the white is what is left - up to
+                where one is really listening - and above it the part
+                given up, fainter, so that the edge of the white and the
+                bar always say the same thing. */}
             <View style={[styles.stripBack, { height: h }]} />
-            <View style={[styles.stripSystem, { height: phone }]} />
+            <View style={[
+              styles.stripSystem,
+              level >= phone
+                ? { bottom: 0, height: phone }
+                : { bottom: level, height: phone - level },
+              level < phone ? styles.stripGiven : null,
+            ]} />
             <View style={[
               styles.stripGain,
               level > phone
@@ -239,15 +256,20 @@ function VolumeScale(p: {
             {up(p.ceiling) < h ? (
               <View style={[styles.stripOut, { bottom: up(p.ceiling), height: h - up(p.ceiling) }]} />
             ) : null}
-            {rungs.map((d) => (
-              <View
-                key={d}
-                style={[styles.rung, d === 0 ? styles.rungMajor : null, { bottom: up(d) }]}
-              />
-            ))}
-            {/* One: the phone's own top, where Duetto stops taking
-                away and starts adding. */}
-            <Text style={[styles.zeroText, { bottom: up(0) - 7 }]}>1</Text>
+            {LOUD_RUNGS.map((l) => {
+              const db = 10 * Math.log2(l / 100);
+              const top = l === 100;
+              return (
+                <React.Fragment key={l}>
+                  <View style={[styles.rung, top ? styles.rungMajor : null, { bottom: up(db) }]} />
+                  <Text style={[styles.rungText, top ? styles.rungTextMajor : null, {
+                    bottom: up(db) - 7,
+                  }]}>
+                    {top ? '1' : String(l)}
+                  </Text>
+                </React.Fragment>
+              );
+            })}
             <View style={[styles.phoneMark, { bottom: phone - 6 }]}>
               <EarpieceIcon size={11} color="#8a94a3" />
             </View>
@@ -2357,6 +2379,9 @@ const styles = StyleSheet.create({
     position: 'absolute', left: 25, width: 14, borderRadius: 7,
     backgroundColor: '#ffffff',
   },
+  // The share of the phone's volume being given up: it is there to be
+  // read, not to be seen first, so it is a shadow of the fill.
+  stripGiven: { backgroundColor: 'rgba(238,240,235,0.16)' },
   stripOut: {
     position: 'absolute', left: 25, width: 14, borderRadius: 7,
     backgroundColor: 'rgba(11,14,20,0.55)',
@@ -2368,10 +2393,13 @@ const styles = StyleSheet.create({
   rungMajor: {
     left: 17, width: 30, height: 2.5, backgroundColor: 'rgba(11,14,20,0.9)',
   },
-  zeroText: {
-    position: 'absolute', right: 0, width: 16, textAlign: 'left',
-    color: '#e6ebf1', fontSize: 11, fontWeight: '700',
+  // The numbers beside the rungs: they say what the strip means, and
+  // that going up doubles while going down halves.
+  rungText: {
+    position: 'absolute', right: 0, width: 20, textAlign: 'left',
+    color: '#8a94a3', fontSize: 9.5, fontWeight: '600',
   },
+  rungTextMajor: { color: '#e6ebf1', fontSize: 11, fontWeight: '700' },
   phoneMark: { position: 'absolute', left: 4 },
   handle: {
     position: 'absolute', left: 19, width: 26, height: 6, borderRadius: 3,

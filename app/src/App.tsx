@@ -4038,7 +4038,7 @@ export default function App() {
         ownGain={appliedGain}
         peerGain={outputMuted ? 0 : level}
         levelDb={{
-          pct: Math.round(level * 100),
+          pct: Math.round(100 * 2 ** (dbOf(level) / 10)),
           level: level > 0 ? dbOf(level) : LEVEL_MIN_DB,
           phone: sysFraction > 0 ? dbOf(sysFraction) : LEVEL_MIN_DB,
           ceiling: dbOf(levelCeiling),
