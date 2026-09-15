@@ -284,6 +284,7 @@ export const es: Dictionary = {
     forgetBody: 'Para recuperarla tendrán que emparejarse otra vez con un código nuevo.\n\nNo hace falta deshacerla también en el otro teléfono: desde allí basta «Añadir una conexión».',
     forgetSwitch: '\n\nPasarás a {who}.',
     cancel: 'Cancelar',
+    done: 'Listo',
     breakUp: 'Deshacer',
     videoQuality: 'Calidad del video',
     videoQualityHint: 'Vale para los dos teléfonos: cambiarla aquí se la cambia también al otro, así no acaban con dos ajustes distintos sin saber cuál de los dos están mirando. Si no le va bien, la vuelve a cambiar él.',

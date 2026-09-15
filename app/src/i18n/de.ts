@@ -284,6 +284,7 @@ export const de: Dictionary = {
     forgetBody: 'Um sie zurückzubekommen, müsst ihr euch beide mit einem neuen Code neu paaren.\n\nAuf dem anderen Telefon muss nichts gelöst werden: von dort genügt «Eine Verbindung hinzufügen».',
     forgetSwitch: '\n\nDu wechselst zu {who}.',
     cancel: 'Abbrechen',
+    done: 'Fertig',
     breakUp: 'Lösen',
     videoQuality: 'Videoqualität',
     videoQualityHint: 'Sie gilt für beide Telefone: was du hier änderst, ändert sich auch bei der anderen Person, damit ihr nicht mit zwei verschiedenen Einstellungen dasteht, ohne zu wissen, welche ihr gerade seht. Wenn es ihr nicht passt, stellt sie es zurück.',

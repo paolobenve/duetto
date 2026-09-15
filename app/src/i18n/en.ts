@@ -297,6 +297,7 @@ export const en = {
     forgetBody: 'To have it back you will both have to pair again with a new code.\n\nThere is no need to break it on the other phone too: from there "Add a connection" is enough.',
     forgetSwitch: '\n\nYou will move to {who}.',
     cancel: 'Cancel',
+    done: 'Done',
     breakUp: 'Break',
     videoQuality: 'Video quality',
     videoQualityHint: 'It holds for both phones: changing it here changes it for the other person too, so that you do not end up with two different settings without knowing which of them you are looking at. If it does not suit them, they change it back.',

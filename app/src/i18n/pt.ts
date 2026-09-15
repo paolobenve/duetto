@@ -284,6 +284,7 @@ export const pt: Dictionary = {
     forgetBody: 'Para tê-la de volta vocês terão de refazer o pareamento com um código novo.\n\nNão é preciso desfazer também no outro telefone: de lá basta «Acrescentar uma ligação».',
     forgetSwitch: '\n\nVocê passará a {who}.',
     cancel: 'Cancelar',
+    done: 'Pronto',
     breakUp: 'Desfazer',
     videoQuality: 'Qualidade do vídeo',
     videoQualityHint: 'Vale para os dois telefones: mudá-la aqui muda também para o outro, assim vocês não ficam com dois ajustes diferentes sem saber qual dos dois estão vendo. Se não servir para ele, ele muda de volta.',

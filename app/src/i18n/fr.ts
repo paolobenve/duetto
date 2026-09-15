@@ -284,6 +284,7 @@ export const fr: Dictionary = {
     forgetBody: 'Pour la retrouver, vous devrez refaire l’appairage avec un nouveau code.\n\nPas besoin de rompre aussi sur l’autre téléphone : de là, « Ajouter une liaison » suffit.',
     forgetSwitch: '\n\nTu passeras à {who}.',
     cancel: 'Annuler',
+    done: 'Terminé',
     breakUp: 'Rompre',
     videoQuality: 'Qualité de la vidéo',
     videoQualityHint: 'Elle vaut pour les deux téléphones : la changer ici la change aussi chez l’autre, comme ça vous ne vous retrouvez pas avec deux réglages différents sans savoir lequel des deux vous regardez. Si ça ne lui va pas, il la rechange.',

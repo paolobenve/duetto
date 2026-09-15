@@ -283,6 +283,7 @@ export const it: Dictionary = {
     forgetBody: 'Per riaverlo dovrete rifare l’accoppiamento con un codice nuovo.\n\nNon serve sciogliere anche sull’altro telefono: da lì basta «Aggiungi un collegamento».',
     forgetSwitch: '\n\nPasserai a {who}.',
     cancel: 'Annulla',
+    done: 'Fatto',
     breakUp: 'Sciogli',
     videoQuality: 'Qualità del video',
     videoQualityHint: 'Vale per tutti e due i telefoni: cambiandola qui cambia anche all’altro, così non vi ritrovate con due impostazioni diverse senza sapere quale delle due state guardando. Se non gli va bene, la ricambia lui.',

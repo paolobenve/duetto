@@ -317,6 +317,28 @@ export default function SettingsScreen({
   /** the list of Duetto's own sounds, to hear them and pick one */
   const [duettoSounds, setDuettoSounds] = useState(false);
   /**
+   * How things stood before the list was opened. Touching a sound
+   * picks it at once - that is how one hears it - so "Cancel" has to
+   * have something to put back.
+   */
+  const soundsBefore = React.useRef<Partial<DuoConfig>>({});
+  const openDuettoSounds = () => {
+    soundsBefore.current = {
+      alertSound: cfg.alertSound,
+      alertPicked: cfg.alertPicked,
+      alertDuettoSound: cfg.alertDuettoSound,
+    };
+    setDuettoSounds(true);
+  };
+  const closeDuettoSounds = (keep: boolean) => {
+    Alarm.stop().catch(() => { /* noop */ });
+    setDuettoSounds(false);
+    if (keep) return;
+    const back = soundsBefore.current;
+    setCfg({ ...cfg, ...back });
+    onLive?.(back);
+  };
+  /**
    * The whole link, not the bare code: the code alone does not carry
    * the server, and whoever is being invited has no server of their
    * own - that is the point of the invitation.
@@ -851,7 +873,7 @@ export default function SettingsScreen({
 
         <TouchableOpacity
           style={[styles.rowButton, styles.rowAfterChoices]}
-          onPress={() => setDuettoSounds(true)}>
+          onPress={openDuettoSounds}>
           <Text style={styles.rowButtonText}>{t('settings.soundDuettoChoose')}</Text>
           <Text style={styles.rowButtonArrow}>{'\u203A'}</Text>
         </TouchableOpacity>
@@ -1154,10 +1176,8 @@ export default function SettingsScreen({
         visible={duettoSounds}
         transparent
         animationType="fade"
-        onRequestClose={() => { Alarm.stop().catch(() => {}); setDuettoSounds(false); }}>
-        <Pressable
-          style={styles.sheetBack}
-          onPress={() => { Alarm.stop().catch(() => {}); setDuettoSounds(false); }}>
+        onRequestClose={() => closeDuettoSounds(false)}>
+        <Pressable style={styles.sheetBack} onPress={() => closeDuettoSounds(false)}>
           <View style={styles.sheet}>
             <Text style={styles.sheetTitle}>{t('settings.soundDuettoChoose')}</Text>
             {ALARMS().map((a) => (
@@ -1186,6 +1206,14 @@ export default function SettingsScreen({
               </TouchableOpacity>
             ))}
             <Text style={styles.sheetHint}>{t('settings.soundDuettoHint')}</Text>
+            <View style={styles.sheetActions}>
+              <TouchableOpacity style={styles.sheetAction} onPress={() => closeDuettoSounds(false)}>
+                <Text style={styles.sheetCancel}>{t('settings.cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.sheetAction} onPress={() => closeDuettoSounds(true)}>
+                <Text style={styles.sheetOk}>{t('settings.done')}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </Pressable>
       </Modal>
