@@ -126,12 +126,15 @@ const OUTPUT_ICON: Record<
   BLUETOOTH: BluetoothIcon,
 };
 
-/** A level as loudness: decibels against the phone's top, "muted" at zero. */
+/**
+ * A level said in words: the share of the phone's own top, "muted" at
+ * zero. The same number the scale shows, so that the pills, the audio
+ * menu and the scale do not each speak their own tongue.
+ */
 function dbText(level?: number): string {
   if (level == null) return '';
   if (level <= 0) return t('channel.muted');
-  const d = Math.round(20 * Math.log10(level));
-  return `${d > 0 ? '+' : ''}${d} dB`;
+  return `${Math.round(level * 100)}%`;
 }
 
 /**
