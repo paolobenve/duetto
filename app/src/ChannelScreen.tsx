@@ -266,25 +266,32 @@ function VolumeScale(p: {
                 where one is really listening - and above it the part
                 given up, fainter, so that the edge of the white and the
                 bar always say the same thing. */}
-            <View style={[styles.stripBack, { height: h }]} />
-            <View style={[
-              styles.stripSystem,
-              level >= phone
-                ? { bottom: 0, height: phone }
-                : { bottom: level, height: phone - level },
-              level < phone ? styles.stripGiven : null,
-            ]} />
-            <View style={[
-              styles.stripGain,
-              level > phone
-                ? { bottom: phone, height: level - phone }
-                : { bottom: 0, height: level },
-            ]} />
-            {/* Above what the road can carry there is no answer to a
-                press: the strip says so by going dim. */}
-            {up(p.ceiling) < h ? (
-              <View style={[styles.stripOut, { bottom: up(p.ceiling), height: h - up(p.ceiling) }]} />
-            ) : null}
+            {/* The pieces are square and the frame is round: rounded
+                each on its own, where two of them met there was a waist
+                instead of a line, and the eye read it as a boundary
+                that did not fall on the rung. */}
+            <View style={[styles.stripClip, { height: h }]}>
+              <View style={[
+                styles.stripSystem,
+                level >= phone
+                  ? { bottom: 0, height: phone }
+                  : { bottom: level, height: phone - level },
+                level < phone ? styles.stripGiven : null,
+              ]} />
+              <View style={[
+                styles.stripGain,
+                level > phone
+                  ? { bottom: phone, height: level - phone }
+                  : { bottom: 0, height: level },
+              ]} />
+              {/* Above what the road can carry there is no answer to a
+                  press: the strip says so by going dim. */}
+              {up(p.ceiling) < h ? (
+                <View style={[styles.stripOut, {
+                  bottom: up(p.ceiling), height: h - up(p.ceiling),
+                }]} />
+              ) : null}
+            </View>
             {LOUD_RUNGS.map((l) => {
               const db = 10 * Math.log2(l / 100);
               const top = l === 100;
@@ -2397,23 +2404,23 @@ const styles = StyleSheet.create({
   // The strip: dark ground, the phone's own volume off-white over it,
   // and Duetto's own share white. Thirteen points wide, so that the
   // two whites can be told apart at a glance from across a room.
-  stripBack: {
+  // The frame is round and holds the pieces, which are square: so two
+  // of them meet on a line, and that line falls on the rung.
+  stripClip: {
     position: 'absolute', bottom: 0, left: 25, width: 14, borderRadius: 7,
-    backgroundColor: 'rgba(230,235,241,0.14)',
+    overflow: 'hidden', backgroundColor: 'rgba(230,235,241,0.14)',
   },
   stripSystem: {
-    position: 'absolute', bottom: 0, left: 25, width: 14, borderRadius: 7,
+    position: 'absolute', left: 0, right: 0,
     backgroundColor: 'rgba(238,240,235,0.45)',
   },
   stripGain: {
-    position: 'absolute', left: 25, width: 14, borderRadius: 7,
+    position: 'absolute', left: 0, right: 0,
     backgroundColor: '#ffffff',
   },
-  // The share of the phone's volume being given up: it is there to be
-  // read, not to be seen first, so it is a shadow of the fill.
   stripGiven: { backgroundColor: 'rgba(238,240,235,0.16)' },
   stripOut: {
-    position: 'absolute', left: 25, width: 14, borderRadius: 7,
+    position: 'absolute', left: 0, right: 0,
     backgroundColor: 'rgba(11,14,20,0.55)',
   },
   rung: {
