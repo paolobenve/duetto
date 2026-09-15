@@ -156,8 +156,8 @@ const SCALE_STEP_DB = 2;
  * its top; fifty really is half as loud, not half the signal.
  */
 const loudness = (db: number) => 100 * 2 ** (db / 10);
-/** The rungs, at round loudness, and the one that means the phone's top. */
-const LOUD_RUNGS = [25, 50, 75, 100, 150, 200];
+/** The rungs, at round loudness, every quarter of the phone's own top. */
+const LOUD_RUNGS = [25, 50, 75, 100, 125, 150, 175, 200, 225];
 
 function VolumeScale(p: {
   level: number; phone: number; ceiling: number; min: number; max: number;
@@ -301,7 +301,7 @@ function VolumeScale(p: {
                   <Text style={[styles.rungText, top ? styles.rungTextMajor : null, {
                     bottom: up(db) - 7,
                   }]}>
-                    {top ? '1' : String(l)}
+                    {String(l)}
                   </Text>
                 </React.Fragment>
               );
