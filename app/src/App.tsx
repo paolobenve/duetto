@@ -13,7 +13,7 @@ import {
   ActivityIndicator, StyleSheet, BackHandler, Dimensions, Linking,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { PETITION_LINK } from './links';
+import { PETITION_LINK, parseLink, type DuettoLink } from './links';
 import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
 import {
@@ -413,23 +413,16 @@ export default function App() {
         if (String(r ?? '').includes('GRANTED')) back('asked');
       }).catch(() => { /* asked again at the next beat */ });
     });
-    // The buttons of the standing notification. "Go to waiting" comes
-    // as a word from the service; "Enter" comes as the channel link,
-    // through the app being opened on it - cold, or already alive.
+    // "Go to waiting", one of the two buttons of the standing
+    // notification, comes as a word from the service. The other one,
+    // "Enter", comes as a link, and links are read below, in an effect
+    // that lives whether we are in the channel or not - this one does
+    // not, and a link arriving while waiting used to fall on nobody.
     const actions = DeviceEventEmitter.addListener('duettoNotificationAction', (a: string) => {
       if (a !== 'wait') return;
       Journal.mark('command:notification:wait').catch(() => {});
       leaveChannelRef.current?.();
     });
-    const enterOnLink = (url: string | null) => {
-      if (!url || !url.startsWith('duetto://channel')) return;
-      Journal.mark('command:notification:enter').catch(() => {});
-      // Asked for by name: the leaving of a moment ago does not hold it back.
-      leftByHandAt.current = 0;
-      if (!inChannelRef.current) enterChannelRef.current?.();
-    };
-    Linking.getInitialURL().then(enterOnLink).catch(() => {});
-    const links = Linking.addEventListener('url', ({ url }) => enterOnLink(url));
     const sub = DeviceEventEmitter.addListener('onAudioFocusChange', (data: any) => {
       const what = String(data?.eventText || '');
       const call = what === 'AUDIOFOCUS_LOSS_TRANSIENT';
@@ -446,13 +439,61 @@ export default function App() {
     return () => {
       sub.remove();
       actions.remove();
-      links.remove();
       askBeat();
       if (retry) clearInterval(retry);
       sessionRef.current?.hush(false);
       sessionRef.current?.duck(false);
     };
   }, [inChannel]);
+
+  /**
+   * Everything that arrives as a link.
+   *
+   * Three things speak this way: the standing notification's "Enter"
+   * button, which says duetto://channel/enter; an invitation, which
+   * says duetto://the.server/invite/ABCD-2345; and a pairing code,
+   * which says .../pair/12345678. The last two carry the server they
+   * belong to, so whoever is invited types nothing - not even the
+   * address - and the app names no server of its own.
+   *
+   * They used to be read inside the audio effect, which only lives
+   * while we are in the channel: an invitation had nowhere to land,
+   * and neither had "Enter" pressed while waiting.
+   */
+  const [arrived, setArrived] = useState<DuettoLink | null>(null);
+  const arrivedRef = useRef<DuettoLink | null>(null);
+  useEffect(() => {
+    const onLink = (url: string | null) => {
+      if (!url) return;
+      if (url.startsWith('duetto://channel')) {
+        Journal.mark('command:notification:enter').catch(() => {});
+        // Asked for by name: the leaving of a moment ago does not hold it back.
+        leftByHandAt.current = 0;
+        if (!inChannelRef.current) enterChannelRef.current?.();
+        return;
+      }
+      const link = parseLink(url);
+      if (!link) return;
+      Journal.mark(`link:${link.kind}`).catch(() => {});
+      // The welcome knows what to do with both: it knocks at the
+      // server the link names, with the invitation or with the code,
+      // exactly as it does for a QR code held up by the other phone.
+      arrivedRef.current = link;
+      setArrived(link);
+      setScreen('welcome');
+    };
+    // Cold start: the link that opened the app. The boot below asks
+    // this ref before choosing a screen, so the answer is not raced.
+    Linking.getInitialURL().then(onLink).catch(() => {});
+    const links = Linking.addEventListener('url', ({ url }) => onLink(url));
+    return () => links.remove();
+  }, []);
+  /** the link has been knocked with: a later visit starts clean */
+  const forgetArrived = useCallback(() => {
+    arrivedRef.current = null;
+    setArrived(null);
+  }, []);
+
   /** where to go back to when the system-settings screen is closed */
   const [setupFrom, setSetupFrom] = useState<'start' | 'settings'>('start');
 
@@ -2199,9 +2240,12 @@ export default function App() {
       // sound and vibration inside it, and creating it at the first
       // alert would mean creating it while it is being used.
       Alerts.configure(c.alertVibration, c.alertSound, alertSoundFor(c)).catch(() => {});
+      // Opened on an invitation or on a pairing code: the welcome,
+      // which has them in hand and knocks by itself.
+      if (arrivedRef.current) setScreen('welcome');
       // No server yet: the welcome, which asks for the server and
       // for nothing else until the server says what it needs.
-      if (!isServerConfigured(c)) setScreen('welcome');
+      else if (!isServerConfigured(c)) setScreen('welcome');
       // No pair yet: the pairing, if the server has said what we are
       // to it; otherwise the welcome, which knocks and finds out.
       // No pair yet: the settings, where the server is and the two
@@ -3936,7 +3980,9 @@ export default function App() {
         <StatusBar barStyle="light-content" />
         <WelcomeScreen
           initial={cfg}
+          arrived={arrived}
           onDone={(next, _answer, code) => {
+            forgetArrived();
             Journal.mark(`door:${next.serverRole || 'unknown'}`).catch(() => { /* noop */ });
             setPairingCode(code || '');
             setCfg(saveCfg(alignPairServer(next)));
@@ -3951,7 +3997,9 @@ export default function App() {
           // first start there is not.
           // Back is the settings, paired or not: a phone with no pair
           // used to be sent to the pairing, which opened on a code.
-          onClose={isServerConfigured(cfg) ? () => setScreen('settings') : undefined}
+          onClose={isServerConfigured(cfg)
+            ? () => { forgetArrived(); setScreen('settings'); }
+            : undefined}
         />
       </View>
     );

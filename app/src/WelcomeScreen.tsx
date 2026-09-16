@@ -7,14 +7,14 @@
  * the LICENSE file at the root of the project, and at
  * <https://www.gnu.org/licenses/>.
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator,
   ScrollView, KeyboardAvoidingView, Platform, BackHandler, Linking,
 } from 'react-native';
 import { DuoConfig, displayServer, normalizeServerUrl, isServerConfigured } from './config';
 import { knock, watchDoor, formatInvitation, DoorAnswer } from './door';
-import { parseLink, BETA_TESTER_LINK } from './links';
+import { parseLink, BETA_TESTER_LINK, type DuettoLink } from './links';
 import { Scanner } from 'duetto-platform';
 import { normalizeCode, formatCode, isCodeComplete } from './pairing';
 import { VERSION_FULL } from './version';
@@ -49,11 +49,17 @@ type Props = {
   onDone: (cfg: DuoConfig, answer: DoorAnswer, code?: string) => void;
   /** goes back without touching anything; absent at the first start, which has nowhere to go */
   onClose?: () => void;
+  /**
+   * A link the phone was opened on - an invitation, or a pairing code
+   * read out by somebody. It carries its server, so it is taken as a
+   * QR code is: fields filled, and knocked with straight away.
+   */
+  arrived?: DuettoLink | null;
 };
 
 type Step = 'server' | 'knocking' | 'key' | 'stranger' | 'welcomed';
 
-export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
+export default function WelcomeScreen({ initial, onDone, onClose, arrived }: Props) {
   const [server, setServer] = useState(displayServer(initial.serverUrl));
   const [key, setKey] = useState(initial.serverKey || '');
   // Never the one remembered: an invitation is spent at its first
@@ -188,6 +194,31 @@ export default function WelcomeScreen({ initial, onDone, onClose }: Props) {
       knockNow(from, { server: link.serverUrl, code: link.code });
     }
   }, [knockNow]);
+
+  /**
+   * The link the app was opened on, taken once.
+   *
+   * The same road as the QR code, because it is the same thing said in
+   * another way: the server and the code, with nothing to type. Taken
+   * once only - the mark is the link itself - or every redraw would
+   * knock again.
+   */
+  const took = useRef('');
+  useEffect(() => {
+    if (!arrived) return;
+    const mark = `${arrived.kind}:${arrived.serverUrl}:${arrived.code}`;
+    if (took.current === mark) return;
+    took.current = mark;
+    setNote('');
+    setServer(displayServer(arrived.serverUrl));
+    if (arrived.kind === 'invite') {
+      setInvitation(arrived.code);
+      knockNow('server', { server: arrived.serverUrl, invitation: arrived.code });
+    } else {
+      setCode(arrived.code);
+      knockNow('server', { server: arrived.serverUrl, code: arrived.code });
+    }
+  }, [arrived, knockNow]);
 
   /**
    * The phone's Back key does what the screen's own "Back" does: from
