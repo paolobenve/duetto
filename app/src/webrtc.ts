@@ -20,7 +20,7 @@ import { Journal, Heartbeat } from 'duetto-platform';
 import type { DuoConfig } from './config';
 import { iceServers, VIDEO_PROFILES, CAPTURE_FPS } from './config';
 import type { Signaling, SignalMessage } from './signaling';
-import { VERSION, BUILD } from './version';
+import { VERSION_LABEL, BUILD } from './version';
 import { logger } from './log';
 
 /**
@@ -2235,7 +2235,10 @@ export class ChannelSession {
       kind: 'state',
       audio: this.isAudioEnabled(),
       output: this.ourOutput,
-      version: VERSION,
+      // The label, as the greeting says it: a build on its way to a
+      // version calls itself "0.9.15-pre" there, and the bare number
+      // here made two phones of the same version look different.
+      version: VERSION_LABEL,
       build: BUILD,
       sendDelay: this.sendDelay ?? undefined,
       recvDelay: this.recvDelay ?? undefined,
