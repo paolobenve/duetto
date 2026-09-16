@@ -1,1 +1,1 @@
-Ein dauerhafter Sprach- und Videokanal für zwei, auf dem eigenen Server.
+Ein kleines Discord für zwei, auf dem eigenen Server: Sprach- und Videokanal.

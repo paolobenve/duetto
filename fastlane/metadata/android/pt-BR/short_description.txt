@@ -1,1 +1,1 @@
-Um canal de voz e vídeo permanente para duas pessoas, no seu próprio servidor.
+Um pequeno Discord para dois, no seu servidor: canal de voz e vídeo permanente.

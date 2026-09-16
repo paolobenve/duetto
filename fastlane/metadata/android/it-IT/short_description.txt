@@ -1,1 +1,1 @@
-Un canale voce e video permanente per due persone, sul tuo server.
+Un piccolo Discord per due, sul tuo server: canale voce e video permanente.
