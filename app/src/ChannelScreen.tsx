@@ -230,12 +230,33 @@ function VolumeScale(p: {
     }
     p.onPick(db, done);
   };
+  /**
+   * Where the strip has its top edge on the screen.
+   *
+   * The place of the finger INSIDE a view is only told truthfully while
+   * the finger is on that view: step off it - sideways, or past either
+   * end while dragging - and the number that arrives is measured from
+   * the edge of whatever view lies under the finger instead. The strip
+   * then read someone else's ruler and the level jumped about: at one
+   * pixel above the top it read 76 per cent, higher up 132, 152, 174,
+   * and below the bottom it ran to the top and then off the drawing.
+   *
+   * So the edge is written down once, when the finger lands and its
+   * place inside the strip is still known, and from there on only
+   * screen coordinates are used. Beyond the ends the reckoning goes on
+   * being the strip's own, and the clamp in pick() pins it to the top
+   * or to the bottom, which is what a finger dragged too far means.
+   */
+  const top = React.useRef(0);
   const finger = React.useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: (e) => pick(e.nativeEvent.locationY, false),
-    onPanResponderMove: (e) => pick(e.nativeEvent.locationY, false),
-    onPanResponderRelease: (e) => pick(e.nativeEvent.locationY, true),
+    onPanResponderGrant: (e) => {
+      top.current = e.nativeEvent.pageY - e.nativeEvent.locationY;
+      pick(e.nativeEvent.locationY, false);
+    },
+    onPanResponderMove: (e, g) => pick((e.nativeEvent.pageY || g.moveY) - top.current, false),
+    onPanResponderRelease: (e, g) => pick((e.nativeEvent.pageY || g.moveY) - top.current, true),
     onPanResponderTerminationRequest: () => false,
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [h, span, floor, p.onPick]);
