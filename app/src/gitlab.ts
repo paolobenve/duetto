@@ -110,6 +110,14 @@ export async function inviteOnWorkItem(o: {
     const beta = titled.find((i) => /^beta tester\b/i.test(String(i.title ?? '')));
     const item = beta ?? titled[0];
     if (!item) return { ok: false, error: 'no-work-item' };
+    // Open, if it was born shut: the link that opens a beta tester's
+    // work item used to ask for a confidential one, and every app still
+    // on the published version goes on making them.
+    await api(o.token, `/issues/${item.iid}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confidential: false }),
+    }).catch(() => { /* already open, or not ours to open */ });
     await api(o.token, `/issues/${item.iid}/notes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

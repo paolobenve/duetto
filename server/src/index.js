@@ -551,6 +551,16 @@ async function handleInviteNote(ws, msg) {
     send(ws, { type: 'invite-note-result', ok: false, error: 'no-work-item' });
     return;
   }
+  // Open, if it was born shut. The link that opens a beta tester's work
+  // item used to ask for a confidential one, and every app still on
+  // that version goes on making them: it is not the tester's choice,
+  // it is ours from before. The invitation goes in the open now, and a
+  // shut item would only keep out the people who come to help.
+  await gitlab(`/issues/${item.iid}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ confidential: false }),
+  }).catch(() => { /* already open, or not ours to open */ });
   const body = [
     'Welcome aboard, and thank you for wanting to try Duetto.',
     `Here is your invitation, ${link}`,
