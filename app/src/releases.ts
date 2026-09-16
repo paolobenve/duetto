@@ -36,6 +36,53 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.9.15',
+    notes: {
+      en: [
+        'The other voice has a strip instead of a line: touch it anywhere, or drag it, and it counts in per cent of loudness rather than in decibels. The phone\'s own volume is remembered for each output - earpiece, speaker, Bluetooth - and a volume key brings the faded controls back.',
+        'The alert can sound with one of Duetto\'s own sounds, chosen from a list of what is really there.',
+        'An invitation opened on the phone now opens Duetto, with the server and the code already in place: before, tapping it did nothing.',
+        'The invitation written on a beta tester\'s work item stays open, says until when it works, and makes them a guest of the project, with their item in their hands.',
+        'Two phones tell each other which version they are showing.',
+      ],
+      it: [
+        'La voce dell\'altro ha una striscia invece di una linea: la si tocca in qualunque punto, o la si trascina, e conta in per cento di volume sonoro invece che in decibel. Il volume del telefono è ricordato per ogni uscita - orecchio, vivavoce, Bluetooth - e un tasto del volume fa tornare i comandi sbiaditi.',
+        'L\'avviso può suonare con uno dei suoni di Duetto, scelto in un elenco di quello che c\'è davvero.',
+        'Un invito aperto sul telefono ora apre Duetto, con il server e il codice già a posto: prima, a toccarlo non succedeva niente.',
+        'L\'invito scritto sul work item di un beta tester resta aperto, dice fino a quando vale, e lo fa ospite del progetto, con il suo work item in mano.',
+        'Due telefoni si dicono che versione stanno mostrando.',
+      ],
+      es: [
+        'La voz del otro tiene una tira en vez de una línea: se toca en cualquier punto, o se arrastra, y cuenta en por ciento de volumen sonoro en vez de en decibelios. El volumen del teléfono se recuerda para cada salida - oído, altavoz, Bluetooth - y una tecla de volumen hace volver los mandos apagados.',
+        'El aviso puede sonar con uno de los sonidos de Duetto, elegido en una lista de lo que hay de verdad.',
+        'Una invitación abierta en el teléfono abre ahora Duetto, con el servidor y el código ya puestos: antes, tocarla no hacía nada.',
+        'La invitación escrita en el work item de un beta tester queda abierta, dice hasta cuándo vale, y lo hace invitado del proyecto, con su work item en la mano.',
+        'Dos teléfonos se dicen qué versión están mostrando.',
+      ],
+      pt: [
+        'A voz do outro tem uma faixa em vez de uma linha: toca-se em qualquer ponto, ou arrasta-se, e conta em por cento de volume sonoro em vez de em decibéis. O volume do telefone é lembrado para cada saída - ouvido, viva-voz, Bluetooth - e uma tecla de volume faz voltar os comandos apagados.',
+        'O aviso pode tocar com um dos sons do Duetto, escolhido numa lista do que há de verdade.',
+        'Um convite aberto no telefone agora abre o Duetto, com o servidor e o código já no lugar: antes, tocá-lo não fazia nada.',
+        'O convite escrito no work item de um beta tester fica aberto, diz até quando vale, e o torna convidado do projeto, com o seu work item na mão.',
+        'Dois telefones dizem um ao outro qual versão estão mostrando.',
+      ],
+      fr: [
+        'La voix de l\'autre a une bande au lieu d\'une ligne : on la touche n\'importe où, ou on la fait glisser, et elle compte en pour cent de volume sonore au lieu de décibels. Le volume du téléphone est retenu pour chaque sortie - oreille, haut-parleur, Bluetooth - et une touche de volume fait revenir les commandes effacées.',
+        'L\'alerte peut sonner avec l\'un des sons de Duetto, choisi dans une liste de ce qu\'il y a vraiment.',
+        'Une invitation ouverte sur le téléphone ouvre maintenant Duetto, avec le serveur et le code déjà en place : avant, la toucher ne faisait rien.',
+        'L\'invitation écrite sur le work item d\'un bêta-testeur reste ouverte, dit jusqu\'à quand elle vaut, et en fait un invité du projet, son work item en main.',
+        'Deux téléphones se disent quelle version ils montrent.',
+      ],
+      de: [
+        'Die Stimme des anderen hat einen Streifen statt einer Linie: man tippt ihn an beliebiger Stelle an oder zieht ihn, und er zählt in Prozent der Lautstärke statt in Dezibel. Die Lautstärke des Telefons wird für jeden Ausgang gemerkt - Ohr, Lautsprecher, Bluetooth - und eine Lautstärketaste holt die verblassten Tasten zurück.',
+        'Der Hinweis kann mit einem von Duettos eigenen Klängen ertönen, gewählt aus einer Liste dessen, was wirklich da ist.',
+        'Eine auf dem Telefon geöffnete Einladung öffnet nun Duetto, mit Server und Code schon an Ort und Stelle: vorher geschah beim Antippen nichts.',
+        'Die Einladung, die auf das Work Item eines Beta-Testers geschrieben wird, bleibt offen, sagt bis wann sie gilt, und macht ihn zum Gast des Projekts, mit seinem Work Item in der Hand.',
+        'Zwei Telefone sagen einander, welche Version sie zeigen.',
+      ],
+    },
+  },
+  {
     version: '0.9.14',
     notes: {
       en: [
