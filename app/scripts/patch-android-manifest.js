@@ -169,7 +169,7 @@ if (!activityMatch) {
             <action android:name="android.intent.action.VIEW" />
             <category android:name="android.intent.category.DEFAULT" />
             <category android:name="android.intent.category.BROWSABLE" />
-            <data android:scheme="duetto" android:host="channel" />
+            <data android:scheme="duetto" />
         </intent-filter>`;
       xml = xml.slice(0, at) + deepLink + xml.slice(at);
       changes++;
