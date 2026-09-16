@@ -39,7 +39,13 @@
             <action android:name="android.intent.action.VIEW" />
             <category android:name="android.intent.category.DEFAULT" />
             <category android:name="android.intent.category.BROWSABLE" />
-            <data android:scheme="duetto" android:host="channel" />
+            <!-- The host is left out on purpose: a link carries the server it
+                 belongs to - duetto://your.server/invite/ABCD-2345 - and no
+                 server name may live in the app. Android matches the path
+                 only if a host is given, and the host only if it is given
+                 too, so a bare scheme takes them all, duetto://channel/enter
+                 included. -->
+            <data android:scheme="duetto" />
         </intent-filter>
       </activity>
     </application>
