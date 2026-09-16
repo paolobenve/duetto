@@ -14,6 +14,38 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
+## 0.9.15 build 352
+
+**Version 0.9.15: the level as a strip, an alert of one's own, and an invitation that
+opens.** The volume of the other voice was a line with a bead on it, moved only by the
+volume keys. It is a strip that fills now: one touches it anywhere, or drags it, and it
+settles on the nearest step of two decibels. It counts in per cent of loudness, not in
+decibels, and the scale has the same step all the way up; the phone's own volume is
+drawn on it, remembered for each output - earpiece, speaker, Bluetooth - and read again
+after the sound has moved, so the boundary no longer jumps a moment later. A volume key
+brings the controls back whole when they have faded.
+
+The alert one hears can be one of Duetto's own sounds, or any sound of the phone, chosen
+from a list that shows what is really there and closes with Cancel or Done. What the
+other side hears stays theirs to choose.
+
+An invitation is a link, and until now tapping it did nothing: the app answered only for
+the link of its own notification, whose host is "channel", while an invitation carries
+the server it belongs to. The filter lets every duetto:// link in now, without naming any
+server, and an invitation opened on the phone lands in the welcome with the server and
+the code already in place, knocking by itself. The invitation written on a beta tester's
+work item goes in the open, says until when it works, and makes its tester a guest of the
+project with the item in their hands; the note also says the road by hand, for whoever
+holds an older Duetto or a browser that refuses links it does not know.
+
+Two phones tell each other which version they are showing, and now they say it the same
+way in both messages they send: the greeting used the label and the state message the
+bare number, so two phones on the very same build were told they differed.
+
+The short description, the one line F-Droid searches, names Discord: it is the comparison
+the long description already opens with, and the word anybody would type to look for a
+thing like this.
+
 ## 0.9.14 build 335
 
 **Version 0.9.14: German, and an invitation that carries the server.** A sixth dictionary,
