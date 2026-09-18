@@ -75,6 +75,14 @@ class JournalModule(private val ctx: ReactApplicationContext) :
         promise.resolve(true)
     }
 
+    /** What the road loses, for the six columns: see Journal.road. */
+    @ReactMethod
+    fun road(loss: String, peerLoss: String, jitter: String, rtt: String,
+             vLoss: String, vPeerLoss: String, promise: Promise) {
+        Journal.road(loss, peerLoss, jitter, rtt, vLoss, vPeerLoss)
+        promise.resolve(true)
+    }
+
     @ReactMethod
     fun pair(name: String, promise: Promise) {
         Journal.pair(name)

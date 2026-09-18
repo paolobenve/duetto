@@ -252,11 +252,13 @@ export class ChannelSession {
    * and the round trip of the media. The screen shows the delays, but
    * the journal used to keep none of this, and it is the first thing
    * to ask about a conversation that sounded broken over mobile data.
-   * One line every thirty seconds while media flows, with diagnostics
-   * on; and one at once when the voice coming in starts losing more
-   * than two packets in a hundred, which is where one begins to hear
-   * it. The loss is counted over the interval, not since the start:
-   * an old storm must not colour a calm minute.
+   * They go in six columns of the journal, on every line - numbers in
+   * cells, so a day can be drawn - refreshed at every reading; and a
+   * line of its own is forced every thirty seconds while media flows,
+   * with diagnostics on, and at once when the voice coming in starts
+   * losing more than two packets in a hundred, which is where one
+   * begins to hear it. The loss is counted over the interval, not
+   * since the start: an old storm must not colour a calm minute.
    */
   private lossPrev: Record<string, { got: number; lost: number }> = {};
   private lossLineAt = 0;
@@ -1677,8 +1679,8 @@ export class ChannelSession {
         this.broadcastState();
       }
 
-      // The road's losses, for the journal: see lossPrev.
-      const pieces: string[] = [];
+      // The road's losses, for the journal's six columns: see lossPrev.
+      const cells: Record<string, { in: string; out: string; jitter: string; rtt: string }> = {};
       let audioIn: number | null = null;
       for (const kind of ['audio', 'video']) {
         const r = road[kind];
@@ -1692,21 +1694,32 @@ export class ChannelSession {
         if (dGot + dLost === 0) continue;
         const pct = (100 * dLost) / (dGot + dLost);
         if (kind === 'audio') audioIn = pct;
-        const part = [`${kind} in=${pct.toFixed(1)}%`];
-        if (r.far !== undefined) part.push(`out=${(100 * r.far).toFixed(1)}%`);
-        if (r.jitter !== undefined) part.push(`jitter=${Math.round(r.jitter * 1000)}ms`);
-        if (r.rtt !== undefined) part.push(`rtt=${Math.round(r.rtt * 1000)}ms`);
-        pieces.push(part.join(' '));
+        cells[kind] = {
+          in: pct.toFixed(1),
+          out: r.far !== undefined ? (100 * r.far).toFixed(1) : '',
+          jitter: r.jitter !== undefined ? String(Math.round(r.jitter * 1000)) : '',
+          rtt: r.rtt !== undefined ? String(Math.round(r.rtt * 1000)) : '',
+        };
       }
-      if (pieces.length > 0 && this.diagnostics) {
-        const now = Date.now();
-        const bad = audioIn !== null && audioIn >= 2;
-        const turnedBad = bad && !this.lossAudioWasBad;
-        this.lossAudioWasBad = bad;
-        if (turnedBad || now - this.lossLineAt > 30_000) {
-          this.lossLineAt = now;
-          Journal.mark(`loss:${pieces.join(' | ')}`).catch(() => { /* noop */ });
+      if (cells.audio || cells.video) {
+        const a = cells.audio;
+        const v = cells.video;
+        Journal.road(a?.in ?? '', a?.out ?? '', a?.jitter ?? '', a?.rtt ?? '',
+          v?.in ?? '', v?.out ?? '').catch(() => { /* noop */ });
+        if (this.diagnostics) {
+          const now = Date.now();
+          const bad = audioIn !== null && audioIn >= 2;
+          const turnedBad = bad && !this.lossAudioWasBad;
+          this.lossAudioWasBad = bad;
+          if (turnedBad || now - this.lossLineAt > 30_000) {
+            this.lossLineAt = now;
+            Journal.mark(turnedBad ? 'loss:audio-bad' : 'loss').catch(() => { /* noop */ });
+          }
         }
+      } else if (this.lossLineAt) {
+        // Nothing flows: the cells go empty rather than stale.
+        this.lossLineAt = 0;
+        Journal.road('', '', '', '', '', '').catch(() => { /* noop */ });
       }
 
       out.carrying = this.mediaArrivedWithin(ChannelSession.CARRYING_MS);

@@ -132,6 +132,9 @@ declare module 'duetto-platform' {
     state(s: string): Promise<boolean>;
     /** who has the microphone open and who the camera, on both phones */
     using(mic: boolean, peerMic: boolean, peerVideo: boolean): Promise<boolean>;
+    /** what the road loses, six cells on every line; '' where unknown */
+    road(loss: string, peerLoss: string, jitter: string, rtt: string,
+      vLoss: string, vPeerLoss: string): Promise<boolean>;
     mark(why: string): Promise<boolean>;
     /** the level really heard, in percent: it goes on the periodic line */
     level(percent: number): Promise<boolean>;

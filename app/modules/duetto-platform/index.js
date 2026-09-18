@@ -259,6 +259,10 @@ export const Journal = isAndroid && NativeJournal
       /** who has the microphone open and who the camera, on both phones */
       using: (mic, peerMic, peerVideo) =>
         call(NativeJournal, 'using', !!mic, !!peerMic, !!peerVideo),
+      /** What the road loses, six cells on every line: '' for unknown. */
+      road: (loss, peerLoss, jitter, rtt, vLoss, vPeerLoss) =>
+        call(NativeJournal, 'road', String(loss ?? ''), String(peerLoss ?? ''),
+          String(jitter ?? ''), String(rtt ?? ''), String(vLoss ?? ''), String(vPeerLoss ?? '')),
       /** A line right now, to mark a moment that counts. */
       mark: (why) => call(NativeJournal, 'mark', String(why)),
       /** the level really heard, in percent: it goes on the periodic line */
@@ -289,6 +293,7 @@ export const Journal = isAndroid && NativeJournal
   : {
       state: unavailable,
       using: unavailable,
+      road: unavailable,
       mark: unavailable,
       sampling: unavailable,
       level: unavailable,

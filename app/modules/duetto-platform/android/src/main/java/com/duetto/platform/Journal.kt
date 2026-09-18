@@ -72,6 +72,8 @@ object Journal {
         "voiceKeys", "mic", "peerMic", "peerVideo", "net", "min", "cpu", "rx", "tx",
         "phone", "android", "battery",
         "cause", "was", "status", "pss", "rss", "description",
+        // what the road loses: see road()
+        "loss", "peerLoss", "jitter", "rtt", "vLoss", "vPeerLoss",
     )
     val HEADER = COLUMNS.joinToString("\t")
     fun day(now: Long): String = dayFormat.format(Date(now - DAY_TURNS_AT_MS))
@@ -181,6 +183,28 @@ object Journal {
         mic = if (micOn) "on" else "off"
         peerMic = if (peerMicOn) "on" else "off"
         peerVideo = if (peerVideoOn) "on" else "off"
+    }
+
+    /**
+     * What the road loses, as the last measurement had it.
+     *
+     * Packets lost coming in, as this phone counts them, in per cent
+     * over the last interval; lost going out, as the other side reports
+     * them; the jitter of what arrives and the round trip of the media,
+     * in milliseconds; audio first, then the video's two losses. Six
+     * columns, on every line, empty while nothing flows: numbers in
+     * cells, not words in the "why" column, so that a day can be drawn.
+     */
+    @Volatile private var loss = ""
+    @Volatile private var peerLoss = ""
+    @Volatile private var jitter = ""
+    @Volatile private var rtt = ""
+    @Volatile private var vLoss = ""
+    @Volatile private var vPeerLoss = ""
+    fun road(loss: String, peerLoss: String, jitter: String, rtt: String,
+             vLoss: String, vPeerLoss: String) {
+        this.loss = loss; this.peerLoss = peerLoss; this.jitter = jitter; this.rtt = rtt
+        this.vLoss = vLoss; this.vPeerLoss = vPeerLoss
     }
 
     /**
@@ -458,6 +482,12 @@ object Journal {
             values["mic"] = mic
             values["peerMic"] = peerMic
             values["peerVideo"] = peerVideo
+            values["loss"] = loss
+            values["peerLoss"] = peerLoss
+            values["jitter"] = jitter
+            values["rtt"] = rtt
+            values["vLoss"] = vLoss
+            values["vPeerLoss"] = vPeerLoss
             values["net"] = network(ctx)
             if (minutes >= 0) values["min"] = String.format(Locale.US, "%.1f", minutes)
             if (dCpu >= 0) values["cpu"] = dCpu / 1000
