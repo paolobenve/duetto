@@ -371,6 +371,8 @@ export type DuoConfig = {
   earEvenWithVideo: boolean;
   /** a Bluetooth earpiece that connects takes the sound at once */
   autoBluetooth: boolean;
+  /** a wired headset that is plugged in takes the sound at once */
+  autoWired: boolean;
 
   /**
    * Which language the app speaks.
@@ -446,6 +448,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   earOnProximity: true,
   earEvenWithVideo: false,
   autoBluetooth: true,
+  autoWired: true,
   language: 'auto',
   gains: {},
   gainsReset: false,

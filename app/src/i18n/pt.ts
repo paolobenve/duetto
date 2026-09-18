@@ -304,6 +304,8 @@ export const pt: Dictionary = {
     earEvenWithVideoNote: 'Normalmente o ouvido conta só numa conversa sem vídeo: com o vídeo ligado, o telefone fica na mão para ser olhado.',
     autoBluetooth: 'Bluetooth assim que se conecta',
     autoBluetoothNote: 'Um fone Bluetooth que se conecta toma o som na hora; quando vai embora, o som volta para onde estava.',
+    autoWired: 'Fone com fio assim que se conecta',
+    autoWiredNote: 'O mesmo, para um fone com fio. Com os dois, ganha o Bluetooth.',
     whenTheyCall: 'Quando o outro avisa você',
     whenTheyCallHint: 'Vale para as chamadas que chegam a você, e decide o que você ouve. O que o outro ouve quando é você quem chama é escolha dele, no telefone dele: se quiser outro som, tem de pedir.',
     vibration: 'Vibração',

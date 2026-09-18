@@ -997,6 +997,7 @@ export default function App() {
     earWithVideo: cfg?.earEvenWithVideo ?? false,
     videoOn: videoOn || remoteHasVideo,
     bluetooth: cfg?.autoBluetooth ?? true,
+    wired: cfg?.autoWired ?? true,
   });
 
   /**

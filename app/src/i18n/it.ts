@@ -303,6 +303,8 @@ export const it: Dictionary = {
     earEvenWithVideoNote: 'Di norma l\'orecchio conta solo in conversazione senza video: con il video acceso il telefono si tiene in mano per guardarlo.',
     autoBluetooth: 'Bluetooth appena si collega',
     autoBluetoothNote: 'Un auricolare Bluetooth che si collega prende subito il suono; quando se ne va, il suono torna dov\'era.',
+    autoWired: 'Cuffie con filo appena si collegano',
+    autoWiredNote: 'Lo stesso, per le cuffie con il filo. Con tutte e due, vince il Bluetooth.',
     whenTheyCall: 'Quando l’altro ti avvisa',
     whenTheyCallHint: 'Vale per le chiamate che arrivano a te, e decide che cosa senti tu. Quello che sente l’altro quando sei tu a chiamare è una sua scelta, sul suo telefono: se vuoi un suono diverso, glielo devi chiedere.',
     vibration: 'Vibrazione',

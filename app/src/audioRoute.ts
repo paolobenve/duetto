@@ -72,6 +72,8 @@ export type AutoOutput = {
   videoOn: boolean;
   /** a Bluetooth earpiece that connects takes the sound */
   bluetooth: boolean;
+  /** a wired headset that is plugged in takes the sound */
+  wired: boolean;
 };
 
 export function useAudioRoute(
@@ -254,8 +256,13 @@ export function useAudioRoute(
             const a = autoRef.current;
             const arrived = routes.filter((r) => !known.current.includes(r));
             known.current = routes;
+            // With both, Bluetooth wins: a wire plugged in while a
+            // Bluetooth earpiece carries the sound changes nothing.
             const take: AudioRoute | null =
-              a?.bluetooth && arrived.includes('BLUETOOTH') ? 'BLUETOOTH' : null;
+              a?.bluetooth && arrived.includes('BLUETOOTH') ? 'BLUETOOTH'
+                : a?.wired && arrived.includes('WIRED_HEADSET') && selected !== 'BLUETOOTH'
+                  ? 'WIRED_HEADSET'
+                  : null;
             if (take && selected !== take) {
               earFrom.current = null;
               wanted.current = take;

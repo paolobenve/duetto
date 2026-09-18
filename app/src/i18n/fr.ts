@@ -304,6 +304,8 @@ export const fr: Dictionary = {
     earEvenWithVideoNote: 'Normalement l\'oreille ne compte que dans une conversation sans vidéo : avec la vidéo allumée, on tient le téléphone pour le regarder.',
     autoBluetooth: 'Bluetooth dès qu\'il se connecte',
     autoBluetoothNote: 'Une oreillette Bluetooth qui se connecte prend le son aussitôt ; quand elle s\'en va, le son revient là où il était.',
+    autoWired: 'Casque filaire dès qu\'il est branché',
+    autoWiredNote: 'La même chose, pour un casque à fil. Avec les deux, le Bluetooth l\'emporte.',
     whenTheyCall: 'Quand l’autre te prévient',
     whenTheyCallHint: 'Cela vaut pour les appels qui t’arrivent, et décide ce que tu entends. Ce que l’autre entend quand c’est toi qui appelles est son choix, sur son téléphone : si tu veux un autre son, il faut le lui demander.',
     vibration: 'Vibration',

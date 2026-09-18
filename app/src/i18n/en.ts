@@ -317,6 +317,8 @@ export const en = {
     earEvenWithVideoNote: 'Normally the ear counts only in a conversation without video: with the video on, the phone is held to be looked at.',
     autoBluetooth: 'Bluetooth as soon as it connects',
     autoBluetoothNote: 'A Bluetooth earpiece that connects takes the sound at once; when it goes, the sound comes back where it was.',
+    autoWired: 'Wired headset as soon as it is plugged in',
+    autoWiredNote: 'The same, for a headset with a wire. With both, Bluetooth wins.',
     whenTheyCall: 'When the other person calls you',
     whenTheyCallHint: 'It holds for the calls that reach you, and settles what you hear. What the other person hears when you are the one calling is their choice, on their phone: if you want a different sound, you have to ask them.',
     vibration: 'Vibration',
