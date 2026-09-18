@@ -10,6 +10,7 @@
     "start": "react-native start",
     "build:apk": "node scripts/check-jdk.js && npm run sync && npm run patch && npm run bump && rm -rf android/app/build/generated/assets android/app/build/intermediates/assets && cd android && ./gradlew assembleRelease",
     "lint": "eslint .",
+    "test": "jest",
     "tsc": "tsc --noEmit",
     "postinstall": "node scripts/sync-local-modules.js && node scripts/jdk21.js",
     "bump": "node scripts/bump-build.js"
@@ -40,6 +41,7 @@
     "@types/qrcode": "^1.5.6",
     "@types/react": "^18.3.12",
     "eslint": "^8.57.0",
+    "jest": "^29.7.0",
     "prettier": "^3.3.3",
     "typescript": "5.6.3"
   },
