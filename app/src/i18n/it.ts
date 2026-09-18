@@ -301,6 +301,8 @@ export const it: Dictionary = {
     earOnProximityNote: 'Con il vivavoce, portando il telefono all\'orecchio il suono passa all\'auricolare e lo schermo si spegne, come in una telefonata; allontanandolo torna il vivavoce. Il sensore non distingue l\'orecchio dalla tasca: se tieni il telefono in tasca con il vivavoce acceso, spegnila.',
     earEvenWithVideo: 'Anche con il video acceso',
     earEvenWithVideoNote: 'Di norma l\'orecchio conta solo in conversazione senza video: con il video acceso il telefono si tiene in mano per guardarlo.',
+    autoBluetooth: 'Bluetooth appena si collega',
+    autoBluetoothNote: 'Un auricolare Bluetooth che si collega prende subito il suono; quando se ne va, il suono torna dov\'era.',
     whenTheyCall: 'Quando l’altro ti avvisa',
     whenTheyCallHint: 'Vale per le chiamate che arrivano a te, e decide che cosa senti tu. Quello che sente l’altro quando sei tu a chiamare è una sua scelta, sul suo telefono: se vuoi un suono diverso, glielo devi chiedere.',
     vibration: 'Vibrazione',

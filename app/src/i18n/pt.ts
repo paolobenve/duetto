@@ -302,6 +302,8 @@ export const pt: Dictionary = {
     earOnProximityNote: 'No viva-voz, ao levar o telefone ao ouvido o som passa para o auricular e a tela se apaga, como numa chamada; ao afastá-lo volta o viva-voz. O sensor não distingue o ouvido do bolso: se você guarda o telefone no bolso com o viva-voz ligado, desligue esta opção.',
     earEvenWithVideo: 'Também com o vídeo ligado',
     earEvenWithVideoNote: 'Normalmente o ouvido conta só numa conversa sem vídeo: com o vídeo ligado, o telefone fica na mão para ser olhado.',
+    autoBluetooth: 'Bluetooth assim que se conecta',
+    autoBluetoothNote: 'Um fone Bluetooth que se conecta toma o som na hora; quando vai embora, o som volta para onde estava.',
     whenTheyCall: 'Quando o outro avisa você',
     whenTheyCallHint: 'Vale para as chamadas que chegam a você, e decide o que você ouve. O que o outro ouve quando é você quem chama é escolha dele, no telefone dele: se quiser outro som, tem de pedir.',
     vibration: 'Vibração',

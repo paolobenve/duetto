@@ -302,6 +302,8 @@ export const es: Dictionary = {
     earOnProximityNote: 'Con el altavoz, al llevar el teléfono al oído el sonido pasa al auricular y la pantalla se apaga, como en una llamada; al alejarlo vuelve el altavoz. El sensor no distingue el oído del bolsillo: si llevas el teléfono en el bolsillo con el altavoz puesto, apágala.',
     earEvenWithVideo: 'También con el vídeo encendido',
     earEvenWithVideoNote: 'Normalmente el oído cuenta solo en una conversación sin vídeo: con el vídeo encendido, el teléfono se tiene en la mano para mirarlo.',
+    autoBluetooth: 'Bluetooth en cuanto se conecta',
+    autoBluetoothNote: 'Un auricular Bluetooth que se conecta toma el sonido al instante; cuando se va, el sonido vuelve a donde estaba.',
     whenTheyCall: 'Cuando el otro te avisa',
     whenTheyCallHint: 'Vale para las llamadas que te llegan, y decide qué oyes tú. Lo que oye el otro cuando llamas tú es su elección, en su teléfono: si quieres otro sonido, tienes que pedírselo.',
     vibration: 'Vibración',

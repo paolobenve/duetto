@@ -369,6 +369,8 @@ export type DuoConfig = {
   earOnProximity: boolean;
   /** ...even while the video is on, which normally keeps it off */
   earEvenWithVideo: boolean;
+  /** a Bluetooth earpiece that connects takes the sound at once */
+  autoBluetooth: boolean;
 
   /**
    * Which language the app speaks.
@@ -443,6 +445,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   audioOutput: 'SPEAKER_PHONE',
   earOnProximity: true,
   earEvenWithVideo: false,
+  autoBluetooth: true,
   language: 'auto',
   gains: {},
   gainsReset: false,

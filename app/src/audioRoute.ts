@@ -70,6 +70,8 @@ export type AutoOutput = {
   earWithVideo: boolean;
   /** video is flowing, one way or the other */
   videoOn: boolean;
+  /** a Bluetooth earpiece that connects takes the sound */
+  bluetooth: boolean;
 };
 
 export function useAudioRoute(
@@ -102,6 +104,8 @@ export function useAudioRoute(
   const builtIn = useRef<AudioRoute>('SPEAKER_PHONE');
   /** the sound was coming out of a headset at the previous event */
   const headsetWas = useRef(false);
+  /** the outputs there were at the previous event: what is new is what arrived */
+  const known = useRef<AudioRoute[]>([]);
   const noteBuiltIn = (r: AudioRoute) => {
     if (r === 'SPEAKER_PHONE' || r === 'EARPIECE') builtIn.current = r;
   };
@@ -184,6 +188,8 @@ export function useAudioRoute(
   useEffect(() => {
     if (!enabled) {
       initialised.current = false;
+      // Coming back in, a headset already there counts as arrived.
+      known.current = [];
       return;
     }
 
@@ -231,6 +237,32 @@ export function useAudioRoute(
             if (want && routes.includes(want) && want !== data?.selectedAudioDevice) {
               setCurrent(want);
               applyRoute(want);
+            }
+          }
+
+          /*
+           * A headset that has just appeared takes the sound, if asked
+           * to - as the phone does with its own calls. The library would
+           * do it by itself, but only while nobody has chosen an output,
+           * and we always have: the pair's choice is put back on entry,
+           * and from then on the library holds it sovereign. So what is
+           * new in the list is looked at here. Arriving with the headset
+           * already connected counts as arriving too. Going away, the
+           * way back to the built-in output of before is above.
+           */
+          if (routes.length > 0) {
+            const a = autoRef.current;
+            const arrived = routes.filter((r) => !known.current.includes(r));
+            known.current = routes;
+            const take: AudioRoute | null =
+              a?.bluetooth && arrived.includes('BLUETOOTH') ? 'BLUETOOTH' : null;
+            if (take && selected !== take) {
+              earFrom.current = null;
+              wanted.current = take;
+              currentRef.current = take;
+              setCurrent(take);
+              applyRoute(take);
+              Journal.mark(`output:auto:${take}`).catch(() => { /* noop */ });
             }
           }
         } catch {

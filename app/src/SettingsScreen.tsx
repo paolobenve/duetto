@@ -790,6 +790,7 @@ export default function SettingsScreen({
         {([
           { key: 'earOnProximity', when: true },
           { key: 'earEvenWithVideo', when: !!cfg.earOnProximity },
+          { key: 'autoBluetooth', when: true },
         ] as const).filter((o) => o.when).map((o) => (
           <TouchableOpacity
             key={o.key}

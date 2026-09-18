@@ -996,6 +996,7 @@ export default function App() {
     ear: cfg?.earOnProximity ?? true,
     earWithVideo: cfg?.earEvenWithVideo ?? false,
     videoOn: videoOn || remoteHasVideo,
+    bluetooth: cfg?.autoBluetooth ?? true,
   });
 
   /**

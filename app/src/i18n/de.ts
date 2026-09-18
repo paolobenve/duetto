@@ -302,6 +302,8 @@ export const de: Dictionary = {
     earOnProximityNote: 'Mit Lautsprecher: hältst du das Telefon ans Ohr, wechselt der Ton in den Hörer und der Bildschirm geht aus, wie bei einem Anruf; nimmst du es weg, kommt der Lautsprecher zurück. Der Sensor unterscheidet nicht zwischen Ohr und Tasche: wer das Telefon mit Lautsprecher in der Tasche trägt, schaltet dies aus.',
     earEvenWithVideo: 'Auch bei eingeschaltetem Video',
     earEvenWithVideoNote: 'Normalerweise zählt das Ohr nur in einem Gespräch ohne Video: mit Video hält man das Telefon, um es anzusehen.',
+    autoBluetooth: 'Bluetooth, sobald es verbunden ist',
+    autoBluetoothNote: 'Ein Bluetooth-Hörer, der sich verbindet, übernimmt den Ton sofort; geht er weg, kehrt der Ton dorthin zurück, wo er war.',
     whenTheyCall: 'Wenn die andere Person dich ruft',
     whenTheyCallHint: 'Es gilt für die Rufe, die dich erreichen, und bestimmt, was du hörst. Was die andere Person hört, wenn du rufst, ist ihre Sache, auf ihrem Telefon: willst du dort einen anderen Ton, musst du sie darum bitten.',
     vibration: 'Vibration',

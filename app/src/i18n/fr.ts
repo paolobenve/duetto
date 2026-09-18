@@ -302,6 +302,8 @@ export const fr: Dictionary = {
     earOnProximityNote: 'En haut-parleur, porter le téléphone à l\'oreille fait passer le son dans l\'écouteur et éteint l\'écran, comme dans un appel ; l\'éloigner ramène le haut-parleur. Le capteur ne distingue pas l\'oreille de la poche : si tu gardes le téléphone dans une poche avec le haut-parleur, éteins cette option.',
     earEvenWithVideo: 'Même avec la vidéo allumée',
     earEvenWithVideoNote: 'Normalement l\'oreille ne compte que dans une conversation sans vidéo : avec la vidéo allumée, on tient le téléphone pour le regarder.',
+    autoBluetooth: 'Bluetooth dès qu\'il se connecte',
+    autoBluetoothNote: 'Une oreillette Bluetooth qui se connecte prend le son aussitôt ; quand elle s\'en va, le son revient là où il était.',
     whenTheyCall: 'Quand l’autre te prévient',
     whenTheyCallHint: 'Cela vaut pour les appels qui t’arrivent, et décide ce que tu entends. Ce que l’autre entend quand c’est toi qui appelles est son choix, sur son téléphone : si tu veux un autre son, il faut le lui demander.',
     vibration: 'Vibration',

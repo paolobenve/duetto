@@ -315,6 +315,8 @@ export const en = {
     earOnProximityNote: 'On speaker, bringing the phone to your ear moves the sound to the earpiece and turns the screen off, as a phone call does; taking it away brings the speaker back. The sensor cannot tell an ear from a pocket: if you keep the phone in a pocket with the speaker on, switch this off.',
     earEvenWithVideo: 'Even with the video on',
     earEvenWithVideoNote: 'Normally the ear counts only in a conversation without video: with the video on, the phone is held to be looked at.',
+    autoBluetooth: 'Bluetooth as soon as it connects',
+    autoBluetoothNote: 'A Bluetooth earpiece that connects takes the sound at once; when it goes, the sound comes back where it was.',
     whenTheyCall: 'When the other person calls you',
     whenTheyCallHint: 'It holds for the calls that reach you, and settles what you hear. What the other person hears when you are the one calling is their choice, on their phone: if you want a different sound, you have to ask them.',
     vibration: 'Vibration',
