@@ -244,6 +244,23 @@ export class ChannelSession {
   private sendDelay: number | null = null;
   private recvDelay: number | null = null;
   private termsLogged = '';
+  /**
+   * What the road loses, written in the journal now and then.
+   *
+   * Packets lost coming in, as we count them; packets lost going out,
+   * as the other side reports them back; the jitter of what arrives
+   * and the round trip of the media. The screen shows the delays, but
+   * the journal used to keep none of this, and it is the first thing
+   * to ask about a conversation that sounded broken over mobile data.
+   * One line every thirty seconds while media flows, with diagnostics
+   * on; and one at once when the voice coming in starts losing more
+   * than two packets in a hundred, which is where one begins to hear
+   * it. The loss is counted over the interval, not since the start:
+   * an old storm must not colour a calm minute.
+   */
+  private lossPrev: Record<string, { got: number; lost: number }> = {};
+  private lossLineAt = 0;
+  private lossAudioWasBad = false;
   private delaySaid = '';
   private delaySaidAt = 0;
   /**
@@ -1443,15 +1460,28 @@ export class ChannelSession {
           : null;
       };
 
+      const road: Record<string, {
+        got?: number; lost?: number; jitter?: number; far?: number; rtt?: number;
+      }> = {};
+      const onRoad = (kind: string) => (road[kind] ??= {});
       stats.forEach((r: any) => {
         // The round trip of the media itself, which RTCP measures on
         // the stream and not on the ICE ping.
-        if (r.type === 'remote-inbound-rtp' && typeof r.roundTripTime === 'number') {
-          forKind(String(r.kind)).rtt = r.roundTripTime;
+        if (r.type === 'remote-inbound-rtp') {
+          if (typeof r.roundTripTime === 'number') {
+            forKind(String(r.kind)).rtt = r.roundTripTime;
+            onRoad(String(r.kind)).rtt = r.roundTripTime;
+          }
+          // What the other side lost of what we sent, in its last report.
+          if (typeof r.fractionLost === 'number') onRoad(String(r.kind)).far = r.fractionLost;
         }
         if (r.type === 'inbound-rtp') {
           const kind = String(r.kind);
           step(kind, 'buffer', r.jitterBufferDelay, r.jitterBufferEmittedCount);
+          const here = onRoad(kind);
+          here.got = Number(r.packetsReceived ?? 0);
+          here.lost = Number(r.packetsLost ?? 0);
+          if (typeof r.jitter === 'number') here.jitter = r.jitter;
           step(kind, 'decode', r.totalDecodeTime, r.framesDecoded);
           // Any movement of the received-bytes counter - growth, or the
           // reset of a rebuilt connection - is a packet that landed.
@@ -1645,6 +1675,38 @@ export class ChannelSession {
         this.delaySaid = saying;
         this.delaySaidAt = now;
         this.broadcastState();
+      }
+
+      // The road's losses, for the journal: see lossPrev.
+      const pieces: string[] = [];
+      let audioIn: number | null = null;
+      for (const kind of ['audio', 'video']) {
+        const r = road[kind];
+        if (!r || r.got === undefined || r.lost === undefined) continue;
+        const prev = this.lossPrev[kind];
+        this.lossPrev[kind] = { got: r.got, lost: r.lost };
+        // A rebuilt connection starts its counters again: skip the tick.
+        if (!prev || r.got < prev.got || r.lost < prev.lost) continue;
+        const dGot = r.got - prev.got;
+        const dLost = r.lost - prev.lost;
+        if (dGot + dLost === 0) continue;
+        const pct = (100 * dLost) / (dGot + dLost);
+        if (kind === 'audio') audioIn = pct;
+        const part = [`${kind} in=${pct.toFixed(1)}%`];
+        if (r.far !== undefined) part.push(`out=${(100 * r.far).toFixed(1)}%`);
+        if (r.jitter !== undefined) part.push(`jitter=${Math.round(r.jitter * 1000)}ms`);
+        if (r.rtt !== undefined) part.push(`rtt=${Math.round(r.rtt * 1000)}ms`);
+        pieces.push(part.join(' '));
+      }
+      if (pieces.length > 0 && this.diagnostics) {
+        const now = Date.now();
+        const bad = audioIn !== null && audioIn >= 2;
+        const turnedBad = bad && !this.lossAudioWasBad;
+        this.lossAudioWasBad = bad;
+        if (turnedBad || now - this.lossLineAt > 30_000) {
+          this.lossLineAt = now;
+          Journal.mark(`loss:${pieces.join(' | ')}`).catch(() => { /* noop */ });
+        }
       }
 
       out.carrying = this.mediaArrivedWithin(ChannelSession.CARRYING_MS);
