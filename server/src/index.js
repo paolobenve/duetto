@@ -363,11 +363,34 @@ const JOIN_WINDOW_MS = 60_000;
 /** @type {Map<string, number[]>} moments of the recent attempts per IP */
 const joinAttempts = new Map();
 
+/**
+ * Who may speak for the client's address.
+ *
+ * Behind the reverse proxy the real address is in X-Forwarded-For, and
+ * the proxy is the only one who can reach us to write it: the server
+ * listens on loopback. Published on an address of its own - Docker, a
+ * LAN - the header is whatever the client chose to send, and a client
+ * that names a new address at every knock is never counted twice. So
+ * the header is believed only from the proxies named in TRUSTED_PROXY,
+ * or, with none named, only while we listen on loopback.
+ */
+const LOOPBACK = /^(127\.|::1$|localhost$)/;
+const TRUSTED_PROXY = new Set(
+  (process.env.TRUSTED_PROXY || '').split(',').map((a) => a.trim()).filter(Boolean),
+);
+const bareAddress = (a) => String(a || '').replace(/^::ffff:/, '');
+function trustsHeaderFrom(remote) {
+  if (TRUSTED_PROXY.size > 0) return TRUSTED_PROXY.has(bareAddress(remote));
+  return LOOPBACK.test(HOST);
+}
+
 function clientIp(req) {
-  // Behind the reverse proxy the real address is in the header.
+  const remote = bareAddress(req.socket?.remoteAddress) || 'unknown';
   const fwd = req.headers['x-forwarded-for'];
-  if (typeof fwd === 'string' && fwd.length > 0) return fwd.split(',')[0].trim();
-  return req.socket?.remoteAddress || 'unknown';
+  if (typeof fwd === 'string' && fwd.length > 0 && trustsHeaderFrom(remote)) {
+    return fwd.split(',')[0].trim();
+  }
+  return remote;
 }
 
 /** @type {number[]} moments of the recent attempts, from everywhere */
