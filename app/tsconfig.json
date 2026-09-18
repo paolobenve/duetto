@@ -9,9 +9,10 @@
   "extends": "@react-native/typescript-config/tsconfig.json",
   "compilerOptions": {
     "strict": true,
-    // React Native's preset includes Jest's types, which are of no use
-    // here: the tests live on the server side (server/smoke-test.mjs).
-    "types": []
+    // Jest's types, for the tests of the pure modules under
+    // src/__tests__; react-native's own types come in through the
+    // imports and need no naming here.
+    "types": ["jest"]
   },
   "include": ["src", "index.js", "*.d.ts"]
 }
