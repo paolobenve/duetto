@@ -191,7 +191,12 @@ curl -s http://127.0.0.1:8787/healthz   # {"ok":true,"rooms":0}
 ```
 
 The image is Alpine, runs as the `node` user, listens on 8787, and keeps
-`devices.json` in the `duetto-data` volume. Management commands run inside the
+`devices.json` in the `duetto-data` volume. The port is published on the host's
+loopback only, for a reverse proxy on the same machine; `BIND=0.0.0.0` in the `.env`
+publishes it to everybody, and then a `SERVER_KEY` has to be there too: on an address
+of its own, an open door means the first stranger to knock takes the house, and the
+server refuses to start that way unless `OPEN_DOOR=yes` says the address is really
+yours alone. Management commands run inside the
 container:
 
 ```bash

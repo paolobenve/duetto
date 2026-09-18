@@ -1471,6 +1471,26 @@ const heartbeat = setInterval(() => {
 
 wss.on('close', () => clearInterval(heartbeat));
 
+/*
+ * A door left open on a public address is a house for the first
+ * stranger to knock: the first card at the door takes it. It is written
+ * in the deploy notes, and it is still the easiest mistake there is - a
+ * container publishes its port on every interface, and the .env "is
+ * fine as it is". So the server refuses to start that way: on anything
+ * but loopback the door has to be shut, by a key or by a phone already
+ * on the list, unless OPEN_DOOR=yes says the risk is understood - a
+ * LAN behind a firewall, say.
+ */
+const doorOpen = AUTHORISED_KEYS.size + listed().length === 0 && !SERVER_KEY;
+if (doorOpen && !LOOPBACK.test(HOST) && process.env.OPEN_DOOR !== 'yes') {
+  console.error(`[duetto] refusing to start: the door is open and HOST=${HOST} is not loopback.\n`
+    + '[duetto] The first phone to knock would become the owner of this server, and on a\n'
+    + '[duetto] public address that may not be yours. Set SERVER_KEY in the .env\n'
+    + '[duetto] (openssl rand -hex 12), or OPEN_DOOR=yes if this address is really\n'
+    + '[duetto] reachable by you alone.');
+  process.exit(1);
+}
+
 httpServer.listen(PORT, HOST, () => {
   console.log(`[duetto] signalling listening on ws://${HOST}:${PORT}`);
   const onTheList = AUTHORISED_KEYS.size + listed().length;

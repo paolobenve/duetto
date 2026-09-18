@@ -7,7 +7,9 @@ services:
     container_name: duetto-signaling
     restart: unless-stopped
     ports:
-      - "${PORT:-8787}:8787"
+      # On loopback, for a reverse proxy on the host: BIND=0.0.0.0 in the
+      # .env publishes it to everybody, and then SERVER_KEY has to be set.
+      - "${BIND:-127.0.0.1}:${PORT:-8787}:8787"
     environment:
       - PORT=8787
       - HOST=0.0.0.0
