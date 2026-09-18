@@ -1501,7 +1501,7 @@ export class ChannelSession {
               this.stallCures = 0;
             } else if (!this.stalledSince) {
               this.stalledSince = Date.now();
-            } else if (Date.now() - this.stalledSince > STALL_CURE_MS * (1 << this.stallCures)) {
+            } else if (Date.now() - this.stalledSince > STALL_CURE_MS * 2 ** this.stallCures) {
               // And a cure that does not work is not repeated for ever:
               // twice, the wait doubling, then it is written down and
               // left alone until the frames move again.

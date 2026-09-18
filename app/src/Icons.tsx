@@ -291,9 +291,9 @@ export function SettingsIcon(p: Props) {
       <Line x1={3} y1={7} x2={21} y2={7} stroke={c} strokeWidth={STROKE} strokeLinecap="round" />
       <Line x1={3} y1={12} x2={21} y2={12} stroke={c} strokeWidth={STROKE} strokeLinecap="round" />
       <Line x1={3} y1={17} x2={21} y2={17} stroke={c} strokeWidth={STROKE} strokeLinecap="round" />
-      <Circle cx={8.5} cy={7} r={2.4} fill={p.background ?? "#12141a"} stroke={c} strokeWidth={STROKE} />
-      <Circle cx={15.5} cy={12} r={2.4} fill={p.background ?? "#12141a"} stroke={c} strokeWidth={STROKE} />
-      <Circle cx={9.5} cy={17} r={2.4} fill={p.background ?? "#12141a"} stroke={c} strokeWidth={STROKE} />
+      <Circle cx={8.5} cy={7} r={2.4} fill={p.background ?? '#12141a'} stroke={c} strokeWidth={STROKE} />
+      <Circle cx={15.5} cy={12} r={2.4} fill={p.background ?? '#12141a'} stroke={c} strokeWidth={STROKE} />
+      <Circle cx={9.5} cy={17} r={2.4} fill={p.background ?? '#12141a'} stroke={c} strokeWidth={STROKE} />
     </Base>
   );
 }

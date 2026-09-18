@@ -167,7 +167,7 @@ type Props = {
 export default function SettingsScreen({
   initial, onForgetPair, onSwitchPair, onRenamePair, onChangeServer, onLeaveServer, onRepair, onHaveCode, onClose, onOpenSetup,
   vp9Here, vp9Peer, onQualityChange, onLive, reportsOpen, onReport, onInviteToWorkItem,
-  canInvite, canAddPair, people = [], invitations = [], freshInvite,
+  canInvite, canAddPair, people = [], invitations = [],
   onAskPeople, onInvite, onForget, onForgetInvitation,
 }: Props) {
   const vp9Available = !!vp9Here && !!vp9Peer;

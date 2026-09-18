@@ -29,7 +29,7 @@ import {
   alertSoundFor, alignPairServer, renamePair, pairFileKey, pairName,
   storeSettingsInPair,
 } from './config';
-import { Signaling, PresenceStatus, Mode } from './signaling';
+import { Signaling, PresenceStatus } from './signaling';
 import type { PersonOnServer, InvitationOnServer } from './signaling';
 import { useLanguage, t } from './i18n';
 import { BUILD, VERSION_FULL, VERSION_LABEL } from './version';
@@ -2702,7 +2702,7 @@ export default function App() {
           onInviteNoteResult: (ok, error, url) => {
             invitePending.current?.({ ok, error, url });
           },
-          onKnockResult: (ok, error) => {
+          onKnockResult: (ok, _error) => {
             if (ok) {
               // Only a confirmation on screen: the button stays
               // pressable, because insisting is exactly what one wants
@@ -2874,7 +2874,7 @@ export default function App() {
       }
       closeLane('torn-down');
       try { InCallManager.stop(); } catch { /* noop */ }
-      Audio.useCallVolumeKeys(false).catch(() => {});
+      Audio.claimVolumeKeys(false).catch(() => {});
     };
     // attachPeer is stable: it only uses refs. `cfg` is read from the
     // closure but is not a dependency: only connKey must redo it all.
@@ -3180,7 +3180,7 @@ export default function App() {
     // The volume keys have to be claimed by hand: without that, on
     // some phones they adjust the media volume and have no effect on
     // the other person's voice.
-    Audio.useCallVolumeKeys(true).catch(() => {});
+    Audio.claimVolumeKeys(true).catch(() => {});
 
     setInChannel(true);
     inChannelRef.current = true;
@@ -3431,7 +3431,7 @@ export default function App() {
     sessionRef.current?.leaveChannel();
     sessionRef.current = null;
     try { InCallManager.stop(); } catch { /* noop */ }
-    Audio.useCallVolumeKeys(false).catch(() => {});
+    Audio.claimVolumeKeys(false).catch(() => {});
     Foreground.setCameraActive(false).catch(() => {});
     // Waiting again: the wake lock goes, the watchdog alarm remains -
     // and the emergency lane, which belongs to the conversation, goes

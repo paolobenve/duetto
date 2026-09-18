@@ -1026,18 +1026,6 @@ export default function ChannelScreen(props: Props) {
     return <Icon size={size} color="#e6ebf1" off={!peerState.audio} background={background} />;
   }, [peerState.output, peerState.audio]);
   /**
-   * The two pills say who one is looking at; with the technical lines
-   * on they also say how that phone over there sounds.
-   *
-   * Each describes its own: where the sound comes out and how loud
-   * whoever holds it is hearing. On "Not you", then, there is their
-   * output and their volume - that is, how loud they hear YOU - which
-   * is the only one of the four things you could not know in any other
-   * way, and the only one that explains "I cannot hear you" without
-   * having to ask aloud.
-   */
-  const percent = (v?: number) => `${Math.round((v ?? 1) * 100)}%`;
-  /**
    * The level with its two halves: "25%×2.5=62%" - the phone's knob,
    * Duetto's gain, what is really heard. With diagnostics on one wants
    * to see which half moves under the volume keys, and which does not.

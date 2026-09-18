@@ -343,10 +343,12 @@ export const Alerts = isAndroid && NativeAlerts
 export const Audio = isAndroid && NativeAudio
   ? {
       /** `true` on entering the channel, `false` on leaving it. */
-      useCallVolumeKeys: (active) =>
+      // Named apart from the native method: a JS name starting with
+      // "use" reads as a React hook to the lint, and this is not one.
+      claimVolumeKeys: (active) =>
         call(NativeAudio, 'useCallVolumeKeys', !!active),
     }
-  : { useCallVolumeKeys: unavailable };
+  : { claimVolumeKeys: unavailable };
 
 /**
  * The language the phone is set to, as a two-letter code.
