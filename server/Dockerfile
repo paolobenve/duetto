@@ -1,4 +1,9 @@
-FROM node:24-alpine
+# Pinned to a digest, so the same Dockerfile builds the same image next
+# month too: the tag moves, the digest does not. To move on purpose,
+# take the new "digest" from
+#   https://hub.docker.com/v2/repositories/library/node/tags/24-alpine
+# and write it here.
+FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
 
 # sqlite CLI: turn.js shells out to it for the coturn per-phone credentials
 RUN apk add --no-cache sqlite
