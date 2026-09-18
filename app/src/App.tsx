@@ -992,7 +992,11 @@ export default function App() {
       : prev));
   }, [saveCfg]);
 
-  const audio = useAudioRoute(inChannel, cfg?.audioOutput, rememberOutput);
+  const audio = useAudioRoute(inChannel, cfg?.audioOutput, rememberOutput, {
+    ear: cfg?.earOnProximity ?? true,
+    earWithVideo: cfg?.earEvenWithVideo ?? false,
+    videoOn: videoOn || remoteHasVideo,
+  });
 
   /**
    * How far the other voice is lifted ABOVE the phone's own top.

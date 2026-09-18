@@ -785,6 +785,28 @@ export default function SettingsScreen({
           </View>
         </TouchableOpacity>
 
+        {/* What moves the sound by itself. Each a switch of its own; the
+            second only makes sense under the first. */}
+        {([
+          { key: 'earOnProximity', when: true },
+          { key: 'earEvenWithVideo', when: !!cfg.earOnProximity },
+        ] as const).filter((o) => o.when).map((o) => (
+          <TouchableOpacity
+            key={o.key}
+            style={[styles.choice, cfg[o.key] && styles.choicePicked]}
+            onPress={() => {
+              const v = !cfg[o.key];
+              setCfg({ ...cfg, [o.key]: v });
+              onLive?.({ [o.key]: v });
+            }}>
+            <View style={[styles.radio, cfg[o.key] && styles.radioPicked]} />
+            <View style={styles.choiceText}>
+              <Text style={styles.choiceLabel}>{t(`settings.${o.key}`)}</Text>
+              <Text style={styles.choiceNote}>{t(`settings.${o.key}Note`)}</Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+
         <Text style={styles.sectionHint}>{t('settings.micOnEntry')}</Text>
         {(['asLeft', 'off'] as const).map((v) => (
           <TouchableOpacity

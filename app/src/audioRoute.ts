@@ -62,17 +62,33 @@ const isRoute = (v: any): v is AudioRoute =>
  * remembers it by itself - it would not know whose it is - it receives
  * it and hands it back to whoever keeps the connections.
  */
+/** What moves the sound by itself, and when. */
+export type AutoOutput = {
+  /** the phone at the ear, on speaker: the earpiece takes the sound */
+  ear: boolean;
+  /** ...even while the video is on */
+  earWithVideo: boolean;
+  /** video is flowing, one way or the other */
+  videoOn: boolean;
+};
+
 export function useAudioRoute(
   enabled: boolean,
   preferred?: string,
   remember?: (route: AudioRoute) => void,
+  auto?: AutoOutput,
 ) {
+  /** read from inside the listeners, which are born once */
+  const autoRef = useRef(auto);
+  autoRef.current = auto;
   // Until the first event arrives, assume the bare minimum.
   const [available, setAvailable] = useState<AudioRoute[]>([
     'SPEAKER_PHONE',
     'EARPIECE',
   ]);
   const [current, setCurrent] = useState<AudioRoute>('SPEAKER_PHONE');
+  const currentRef = useRef<AudioRoute>('SPEAKER_PHONE');
+  useEffect(() => { currentRef.current = current; }, [current]);
 
   /** The last output picked by hand, restored on coming back in. */
   const wanted = useRef<AudioRoute | null>(null);
@@ -116,6 +132,54 @@ export function useAudioRoute(
     // a sound to send somewhere.
     if (enabled) applyRoute(preferred);
   }, [preferred, enabled, applyRoute]);
+
+  /**
+   * The phone at the ear.
+   *
+   * On speaker, the sensor covered means the phone has been brought to
+   * the ear: the sound goes to the earpiece and the screen goes off,
+   * as in a phone call; uncovered, both come back. The choice
+   * remembered for the pair is not touched - this is a moment, not a
+   * decision - and a choice made by hand in the meantime cancels the
+   * way back. Not while a headset carries the sound, and not with the
+   * video on unless asked, because then the phone is held to be looked
+   * at. The sensor comes from the call library, which listens to it
+   * from the start; it cannot tell an ear from a pocket, which is why
+   * this is an option.
+   */
+  const earFrom = useRef<AudioRoute | null>(null);
+  useEffect(() => {
+    if (!enabled) { earFrom.current = null; return; }
+    const sub = DeviceEventEmitter.addListener('Proximity', (data: any) => {
+      const a = autoRef.current;
+      if (data?.isNear) {
+        if (!a?.ear || earFrom.current) return;
+        if (a.videoOn && !a.earWithVideo) return;
+        if (currentRef.current !== 'SPEAKER_PHONE') return;
+        earFrom.current = 'SPEAKER_PHONE';
+        currentRef.current = 'EARPIECE';
+        setCurrent('EARPIECE');
+        applyRoute('EARPIECE');
+        try { InCallManager.turnScreenOff(); } catch { /* noop */ }
+        Journal.mark('output:ear').catch(() => { /* noop */ });
+      } else if (earFrom.current) {
+        const back = earFrom.current;
+        earFrom.current = null;
+        currentRef.current = back;
+        setCurrent(back);
+        applyRoute(back);
+        try { InCallManager.turnScreenOn(); } catch { /* noop */ }
+        Journal.mark('output:ear:back').catch(() => { /* noop */ });
+      }
+    });
+    return () => {
+      sub.remove();
+      if (earFrom.current) {
+        earFrom.current = null;
+        try { InCallManager.turnScreenOn(); } catch { /* noop */ }
+      }
+    };
+  }, [enabled, applyRoute]);
 
   useEffect(() => {
     if (!enabled) {
@@ -187,6 +251,7 @@ export function useAudioRoute(
     const next = options[(i + 1) % options.length];
 
     setCurrent(next); // hopeful: the event will confirm it
+    earFrom.current = null;
     wanted.current = next;
     noteBuiltIn(next);
     applyRoute(next);
@@ -218,6 +283,7 @@ export function useAudioRoute(
   const select = useCallback((route: AudioRoute) => {
     if (route === current) return;
     setCurrent(route);
+    earFrom.current = null;
     wanted.current = route;
     applyRoute(route);
     remember?.(route);

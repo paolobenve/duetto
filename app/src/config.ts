@@ -362,6 +362,15 @@ export type DuoConfig = {
   audioOutput: string;
 
   /**
+   * The phone at the ear, on speaker: the sound moves to the earpiece,
+   * as a phone call does. A thing of the phone, not of the pair: it is
+   * the same hand and the same pocket with everybody.
+   */
+  earOnProximity: boolean;
+  /** ...even while the video is on, which normally keeps it off */
+  earEvenWithVideo: boolean;
+
+  /**
    * Which language the app speaks.
    *
    * It sits among the connection's settings like the others: with one
@@ -432,6 +441,8 @@ export const DEFAULT_CONFIG: DuoConfig = {
   alertDuettoSound: 'drumroll',
   alertPicked: '',
   audioOutput: 'SPEAKER_PHONE',
+  earOnProximity: true,
+  earEvenWithVideo: false,
   language: 'auto',
   gains: {},
   gainsReset: false,
