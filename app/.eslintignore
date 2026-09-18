@@ -1,0 +1,5 @@
+node_modules/
+android/
+modules/*/android/
+modules/*/node_modules/
+scripts/
