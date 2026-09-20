@@ -808,7 +808,7 @@ const styles = StyleSheet.create({
   role: { color: '#c9d2de', fontSize: 14, textAlign: 'center', marginBottom: 14, marginTop: -10 },
   qrHint: { color: '#6b7686', fontSize: 13, textAlign: 'center', marginTop: 8, marginBottom: 18 },
   note: { color: '#ffb454', fontSize: 14, lineHeight: 20, marginTop: 10, alignSelf: 'flex-start' },
-  waitRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18 },
+  waitRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 22, marginBottom: 18 },
   waitText: { color: '#c9d2de', fontSize: 15 },
   hint: { color: '#6b7686', fontSize: 13, textAlign: 'center', lineHeight: 19 },
   button: {
