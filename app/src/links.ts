@@ -50,22 +50,37 @@ const fromUrl = (u: string) => {
   return b + '='.repeat((4 - (b.length % 4)) % 4);
 };
 
+/**
+ * The links people are given are https, not duetto://.
+ *
+ *   https://yourserver.org/duetto/p/12345678/KEY   a pairing code
+ *   https://yourserver.org/duetto/i/ABCD-2345      an invitation
+ *
+ * A messaging app makes an https address a link and a custom scheme
+ * plain text; mail cut "duetto://" off and offered the server's name.
+ * So the server itself answers at these paths with a page that bounces
+ * into the app - duetto://... - and, with no app installed, says where
+ * to get it and what to type. The host is the one the settings show,
+ * so no server name lives in the app. Both forms read back below.
+ */
 export function pairLink(serverUrl: string, code: string, pub?: string): string {
-  const base = `duetto://${displayServer(serverUrl)}/pair/${code.replace(/\D/g, '')}`;
+  const base = `https://${displayServer(serverUrl)}/duetto/p/${code.replace(/\D/g, '')}`;
   return pub ? `${base}/${toUrl(pub)}` : base;
 }
 
 export function inviteLink(serverUrl: string, code: string): string {
-  return `duetto://${displayServer(serverUrl)}/invite/${code.trim().toUpperCase()}`;
+  return `https://${displayServer(serverUrl)}/duetto/i/${code.trim().toUpperCase()}`;
 }
 
 /** Reads a link back; null for anything that is not one of ours. */
 export function parseLink(text: string): DuettoLink | null {
   const m = (text || '').trim()
-    .match(/^duetto:\/\/([^/\s]+)\/(pair|invite)\/([^/\s]+)(?:\/([A-Za-z0-9_-]{43}))?$/i);
+    .match(/^(?:duetto:\/\/([^/\s]+)\/(pair|invite)|https?:\/\/([^/\s]+)\/duetto\/(p|i))\/([^/\s?#]+)(?:\/([A-Za-z0-9_-]{43}))?\/?$/i);
   if (!m) return null;
-  const serverUrl = normalizeServerUrl(m[1]);
-  const kind = m[2].toLowerCase();
+  const serverUrl = normalizeServerUrl(m[1] || m[3]);
+  const kind = (m[2] || (m[4].toLowerCase() === 'p' ? 'pair' : 'invite')).toLowerCase();
+  m[3] = m[5];
+  m[4] = m[6];
   if (kind === 'pair') {
     const code = m[3].replace(/\D/g, '');
     if (code.length !== 8) return null;
