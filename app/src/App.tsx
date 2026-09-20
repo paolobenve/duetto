@@ -1611,9 +1611,15 @@ export default function App() {
    * reaching the end. Somebody who has been without a server for half a
    * minute has been, however many times they tried in between.
    */
+  const pairedNow = !!cfg && isPaired(cfg);
   useEffect(() => {
     if (!available) return;
     if (status !== 'offline' && status !== 'connecting') return;
+    // No pair, no connection to rebuild: on a phone at the welcome or
+    // the pairing the status stays "connecting" for good, and this net
+    // wrote a line every twelve seconds to rebuild nothing - two
+    // journals of beta testers were full of it.
+    if (!pairedNow) return;
     const t = setInterval(() => {
       // If we are not counting yet, we start now: we are here because
       // there is no link, and the worst case - the socket that stays
@@ -1630,7 +1636,7 @@ export default function App() {
       signalingRef.current?.rebuild();
     }, SERVER_CHECK_MS);
     return () => clearInterval(t);
-  }, [status, available]);
+  }, [status, available, pairedNow]);
 
   /**
    * The connection's watchdog, shared with the headless presence.
