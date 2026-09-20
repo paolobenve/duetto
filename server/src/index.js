@@ -774,11 +774,18 @@ open it, and ${kind === 'pair'
 </main>
 ${stay ? '' : `<script>
 // Handed to the app after the page is on the screen, and by assigning
-// the location rather than replacing it: Chrome hands an intent to the
-// app and keeps this tab as it is, while a replace made in the middle
-// of loading left the tab on an error page. No app: the fallback URL
-// in the intent brings the page back, with stay=1, and no second try.
-setTimeout(function () { window.location.href = ${JSON.stringify(intent)}; }, 150);
+// the location rather than replacing it, which keeps this tab as it is.
+// Two roads, because the browsers differ: the Chromium family - Chrome,
+// Samsung, Edge, Opera - takes an intent://, which names the package
+// and falls back to this page (stay=1) when the app is not there;
+// Firefox has never heard of intent:// and showed "connection failed"
+// on it, but opens a duetto:// link with a question, so it gets that.
+// Off Android there is nothing to open: the page stays, with the code.
+var ua = navigator.userAgent;
+if (/Android/.test(ua)) {
+  var intent = /Firefox|FxiOS/.test(ua) ? ${JSON.stringify(app)} : ${JSON.stringify(intent)};
+  setTimeout(function () { window.location.href = intent; }, 150);
+}
 </script>`}
 </body></html>
 `;
