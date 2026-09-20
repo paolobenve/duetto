@@ -3896,6 +3896,53 @@ export default function App() {
   }, [cfg, putAwayChannel, resetPeerMemory, stopWaiting]);
 
   /**
+   * A phone with no pair yet, and a code that waits.
+   *
+   * The connections that take the mail - the app's own and the
+   * headless presence - exist for a pair, and the very first pairing
+   * has none: whoever installed Duetto, made a code, sent the link and
+   * closed the screen would never hear the letter. So, while the app is
+   * open and there is nothing else to listen with, a small connection
+   * sits in the room of the newest waiting code, for the letter alone;
+   * the server hands it over at the door of that room.
+   */
+  const onPairedRef = useRef(onPaired);
+  useEffect(() => { onPairedRef.current = onPaired; }, [onPaired]);
+  // Keyed on what matters, not on the whole configuration: a change of
+  // level would otherwise tear the connection down and up again.
+  const waitingRoom = !cfg || isPaired(cfg) || !isServerConfigured(cfg) || !(cfg.pending ?? []).length
+    ? '' : cfg.pending![cfg.pending!.length - 1].id;
+  useEffect(() => {
+    if (!waitingRoom || screen === 'pairing') return;
+    const c = cfgRef.current;
+    if (!c) return;
+    const sig = new Signaling(
+      {
+        serverUrl: c.serverUrl.trim(),
+        serverKey: c.serverKey,
+        invitation: c.invitation,
+        room: waitingRoom,
+        displayName: c.displayName || '',
+        key: null,
+        side: 'A',
+        mode: 'listening',
+      },
+      {
+        onMail: (items) => {
+          for (const item of items) {
+            const mine = (cfgRef.current?.pending ?? []).find((x) => x.id === item.room);
+            if (!mine || item.payload.kind !== 'pubkey') continue;
+            Journal.mark('paired:by-letter:unpaired').catch(() => { /* noop */ });
+            onPairedRef.current(pairFromLetter(mine, item.payload.pub, item.payload.name, 'A'));
+          }
+        },
+      },
+    );
+    sig.connect();
+    return () => sig.close();
+  }, [waitingRoom, screen]);
+
+  /**
    * Leaving the server, as a member: the pairs made on it go too,
    * because without the list they cannot work, and the welcome is
    * where one lands, as a stranger.
