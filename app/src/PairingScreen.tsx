@@ -10,7 +10,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator,
-  ScrollView, KeyboardAvoidingView, Platform, Clipboard,
+  ScrollView, KeyboardAvoidingView, Platform, Clipboard, Share,
 } from 'react-native';
 import { DuoConfig, PairInfo, ServerRole, displayServer, isPaired } from './config';
 import { makeInvitation } from './door';
@@ -77,6 +77,8 @@ export default function PairingScreen({
   const [inviteNote, setInviteNote] = useState('');
   const [invited, setInvited] = useState<{ name: string; code: string; days: number } | null>(null);
   const [copied, setCopied] = useState(false);
+  /** the pairing link has just been put on the clipboard */
+  const [linkCopied, setLinkCopied] = useState(false);
   /** the pair just made, shown and explained before it is handed over */
   const [made, setMade] = useState<PairInfo | null>(null);
 
@@ -435,22 +437,42 @@ export default function PairingScreen({
   }
 
   if (step === 'create') {
+    /*
+     * Four ways to hand the code over, one screen. Dictated, as digits;
+     * looked at, as a QR code; or as a link, copied or shared, which
+     * carries the server with it and opens the app on the other phone
+     * - for whoever is not in the room. The link is the same one the
+     * QR code says.
+     */
+    const link = pairLink(cfg.serverUrl, code);
     return (
       <Screen>
-        <Text style={styles.title}>{t('pairing.dictateTitle')}</Text>
-        <Text style={styles.body}>{t('pairing.dictateBody')}</Text>
+        <Text style={styles.title}>{t('pairing.connectTitle2')}</Text>
+        <Text style={styles.body}>{t('pairing.connectBody2')}</Text>
         <View style={styles.codeBox}>
           <Text style={styles.code}>{formatCode(code)}</Text>
         </View>
-        {/* The same code to be looked at: whoever is near holds their
-            phone up, and types nothing - the server travels in it. */}
-        <QrCode text={pairLink(cfg.serverUrl, code)} size={180} />
+        <QrCode text={link} size={180} />
         <Text style={styles.qrHint}>{t('qr.orScanThis')}</Text>
+        <Primary
+          label={linkCopied ? t('pairing.linkCopied') : t('pairing.copyLink')}
+          outline
+          onPress={() => {
+            Clipboard.setString(link);
+            setLinkCopied(true);
+            setTimeout(() => setLinkCopied(false), 2000);
+          }}
+        />
+        <Primary
+          label={t('pairing.shareLink')}
+          outline
+          onPress={() => { Share.share({ message: link }).catch(() => { /* noop */ }); }}
+        />
         <View style={styles.waitRow}>
           <ActivityIndicator color="#2f7cf6" />
           <Text style={styles.waitText}>{t('pairing.waitingOther')}</Text>
         </View>
-        <Text style={styles.hint}>{t('pairing.dictateHint')}</Text>
+        <Text style={styles.hint}>{t('pairing.connectHint2')}</Text>
         <Secondary label={t('pairing.cancel')} onPress={opens ? onBack : reset} />
       </Screen>
     );
