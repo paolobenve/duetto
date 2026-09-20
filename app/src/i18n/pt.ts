@@ -498,6 +498,8 @@ export const pt: Dictionary = {
     doneTitle: 'Conectados',
     doneGuest: 'De agora em diante você e {who} são um par: ao abrir o app vocês se encontram. Neste servidor você é convidado de {who}: fala com essa pessoa, e com mais ninguém.',
     doneOpens: 'De agora em diante você e {who} são um par: ao abrir o app vocês se encontram. Outros pares se acrescentam nos ajustes.',
+    doneByLetter: 'O outro telefone vai se encontrar conectado na próxima vez que o Duetto abrir: lá não há nada a fazer.',
+    linkExpired: 'Este link venceu: um código espera um dia. Peça um novo.',
     go: 'Avançar',
     theOtherPerson: 'a outra pessoa',
     roleOwner: 'Este servidor é seu.',

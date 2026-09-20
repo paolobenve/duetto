@@ -511,6 +511,8 @@ export const en = {
     doneTitle: 'Connected',
     doneGuest: 'From now on you and {who} are a pair: open the app and you find each other. On this server you are the guest of {who}: you talk to them, and to nobody else.',
     doneOpens: 'From now on you and {who} are a pair: open the app and you find each other. Other pairs can be added from the settings.',
+    doneByLetter: 'The other phone will find you connected the next time Duetto opens on it: nothing to do over there.',
+    linkExpired: 'This link has run out: a code waits one day. Ask for a new one.',
     go: 'Next',
     theOtherPerson: 'the other person',
     roleOwner: 'This server is yours.',

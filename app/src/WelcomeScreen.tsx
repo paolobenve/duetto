@@ -46,7 +46,8 @@ type Props = {
    * a code, the pairing starts at once with it: somebody's guest has
    * typed the eight digits here, and has nothing else to press.
    */
-  onDone: (cfg: DuoConfig, answer: DoorAnswer, code?: string) => void;
+  /** `pub`: the maker's key, when the code came as a link that carried one */
+  onDone: (cfg: DuoConfig, answer: DoorAnswer, code?: string, pub?: string) => void;
   /** goes back without touching anything; absent at the first start, which has nowhere to go */
   onClose?: () => void;
   /**
@@ -78,6 +79,8 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived }: Pro
   const resolved = normalizeServerUrl(server);
   const ready = isServerConfigured({ ...initial, serverUrl: server });
 
+  /** the maker's key that came with the last link, if any */
+  const linkPub = useRef('');
   const finishWith = useCallback((
     a: DoorAnswer, withCode: string | undefined, at: string, inv: string,
   ) => {
@@ -87,7 +90,7 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived }: Pro
       serverKey: key.trim(),
       invitation: inv,
       serverRole: a.role,
-    }, a, withCode);
+    }, a, withCode, withCode ? linkPub.current || undefined : undefined);
   }, [initial, key, onDone]);
   const finish = useCallback((a: DoorAnswer, withCode?: string) => {
     finishWith(a, withCode, resolved, invitation.trim());
@@ -99,8 +102,9 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived }: Pro
    * up yet - and goes where the answer says.
    */
   const knockNow = useCallback(async (from: Step, over?: {
-    server?: string; invitation?: string; code?: string;
+    server?: string; invitation?: string; code?: string; pub?: string;
   }) => {
+    linkPub.current = over?.pub || '';
     const at = over?.server ? normalizeServerUrl(over.server) : resolved;
     const inv = (over?.invitation ?? invitation).trim();
     setStep('knocking');
@@ -191,7 +195,7 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived }: Pro
       knockNow(from, { server: link.serverUrl, invitation: link.code });
     } else {
       setCode(link.code);
-      knockNow(from, { server: link.serverUrl, code: link.code });
+      knockNow(from, { server: link.serverUrl, code: link.code, pub: link.pub });
     }
   }, [knockNow]);
 
@@ -216,7 +220,7 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived }: Pro
       knockNow('server', { server: arrived.serverUrl, invitation: arrived.code });
     } else {
       setCode(arrived.code);
-      knockNow('server', { server: arrived.serverUrl, code: arrived.code });
+      knockNow('server', { server: arrived.serverUrl, code: arrived.code, pub: arrived.pub });
     }
   }, [arrived, knockNow]);
 

@@ -38,6 +38,12 @@ type Props = {
   role?: ServerRole;
   /** a code typed at the welcome: the pairing starts with it, at once */
   joinWith?: string;
+  /**
+   * The maker's key, when the code came as a link that carried one:
+   * then the pairing does not wait for them - the key is made here,
+   * and theirs is left as a letter on the server.
+   */
+  joinWithKey?: string;
   /** open on typing a code, for whoever may create one but was given one */
   startTyping?: boolean;
   /**
@@ -64,7 +70,7 @@ const TIMEOUT_MS = 90_000;
 const RETRY_WAIT_S = 20;
 
 export default function PairingScreen({
-  cfg, onPaired, onBack, role = 'unknown', joinWith, onRefused, startTyping,
+  cfg, onPaired, onBack, role = 'unknown', joinWith, joinWithKey, onRefused, startTyping,
 }: Props) {
   const [step, setStep] = useState<Step>(startTyping ? 'join' : 'choose');
   const [code, setCode] = useState('');
@@ -238,6 +244,103 @@ export default function PairingScreen({
     }, TIMEOUT_MS);
   }, [cfg, fail, cleanup, onPaired]);
 
+  /**
+   * The other half of a code that came as a link with the maker's key.
+   *
+   * Everything the shared key is made of is here already: their public
+   * half, ours, the code. So the pair is made now, and what is left to
+   * do is let the maker know - a letter on the server with our key,
+   * which they find the next time their phone comes to the door; and
+   * the same key said live too, in case they are in the room right now,
+   * which is the old exchange and ends with their proof.
+   */
+  const startJoinWithKey = useCallback(async (rawCode: string, theirPub: string) => {
+    const clean = normalizeCode(rawCode);
+    codeRef.current = clean;
+    keysRef.current = newKeyPair();
+    doneRef.current = false;
+    sentPubRef.current = false;
+    let key: Uint8Array;
+    try {
+      key = deriveSharedKey(keysRef.current.secretKey, pubFromBase64(theirPub), clean);
+    } catch {
+      fail(t('pairing.keyExchangeFailed'));
+      return;
+    }
+    sharedRef.current = key;
+    setStep('preparing');
+    const pairId = await pairIdFromCode(clean);
+    pairIdRef.current = pairId;
+    if (doneRef.current) return;
+    setStep('exchanging');
+
+    const finish = (peerName: string) => {
+      if (doneRef.current) return;
+      doneRef.current = true;
+      cleanup();
+      setMade({
+        id: pairId,
+        key: keyToBase64(key),
+        side: 'B',
+        peerName,
+        pairedAt: new Date().toISOString(),
+      });
+      setStep('done');
+    };
+    const mine = (): PairMessage => ({
+      kind: 'pubkey',
+      pub: pubToBase64(keysRef.current.publicKey),
+      name: cfg.displayName || '',
+    });
+
+    const sig = new Signaling(
+      {
+        serverUrl: cfg.serverUrl.trim(),
+        serverKey: cfg.serverKey,
+        invitation: cfg.invitation,
+        room: pairId,
+        displayName: cfg.displayName || '',
+        key: null,
+        side: 'B',
+        mode: 'listening',
+      },
+      {
+        onJoined: () => {
+          sig.sendPairMail(mine());
+          if (!sentPubRef.current) { sentPubRef.current = true; sig.sendPair(mine()); }
+        },
+        onPeerJoined: () => {
+          if (!sentPubRef.current) { sentPubRef.current = true; sig.sendPair(mine()); }
+        },
+        // The letter is in: the pair is made, whether or not the maker
+        // is awake. Their name comes later, with their first hello.
+        onPairMailResult: (ok, error) => {
+          if (ok) finish('');
+          else if (error === 'not-waiting') fail(t('pairing.linkExpired'));
+        },
+        onPair: (msg: PairMessage) => {
+          if (msg.kind === 'pubkey') {
+            peerNameRef.current = msg.name || '';
+            sig.sendPair({ kind: 'confirm', proof: confirmationFor(key, 'B') });
+            return;
+          }
+          if (msg.kind === 'confirm') {
+            if (msg.proof !== confirmationFor(key, 'A')) { fail(t('pairing.codeMismatch')); return; }
+            finish(peerNameRef.current);
+          }
+        },
+        onRemoved: () => { cleanup(); doneRef.current = true; onRefused?.('stranger'); },
+        onError: (err, reason) => {
+          if (err === 'room-full') fail(t('pairing.codeInUse'));
+          else if (err === 'not-allowed') { cleanup(); doneRef.current = true; onRefused?.(reason || 'stranger'); }
+        },
+      },
+    );
+    signalingRef.current = sig;
+    sig.connect();
+    timerRef.current = setTimeout(() => fail(t('pairing.noAnswer')), TIMEOUT_MS);
+  }, [cfg, fail, cleanup, onRefused]);
+
   const startCreate = useCallback(() => {
     const c = generateCode();
     setCode(c);
@@ -299,8 +402,9 @@ export default function PairingScreen({
     if (!joinWith || !isCodeComplete(joinWith) || startedWith.current === joinWith) return;
     startedWith.current = joinWith;
     setTyped(joinWith);
-    startExchange(joinWith, 'B');
-  }, [joinWith, startExchange]);
+    if (joinWithKey) startJoinWithKey(joinWith, joinWithKey);
+    else startExchange(joinWith, 'B');
+  }, [joinWith, joinWithKey, startExchange, startJoinWithKey]);
 
   const reset = useCallback(() => {
     cleanup();
@@ -352,6 +456,10 @@ export default function PairingScreen({
           {role === 'guest'
             ? t('pairing.doneGuest', { who })
             : t('pairing.doneOpens', { who })}
+          {/* By letter: they will find it the next time their phone
+              comes to the door - said, or the silence over there would
+              look like a failure here. */}
+          {!made.peerName && joinWithKey ? `\n\n${t('pairing.doneByLetter')}` : ''}
         </Text>
         <Primary label={t('pairing.go')} onPress={() => onPaired(made)} />
       </Screen>

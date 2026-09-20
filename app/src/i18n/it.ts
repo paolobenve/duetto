@@ -497,6 +497,8 @@ export const it: Dictionary = {
     doneTitle: 'Collegati',
     doneGuest: 'Da ora tu e {who} siete una coppia: aprendo l’app vi trovate. Su questo server sei ospite di {who}: parli con lui, e con nessun altro.',
     doneOpens: 'Da ora tu e {who} siete una coppia: aprendo l’app vi trovate. Altre coppie si aggiungono dalle impostazioni.',
+    doneByLetter: 'L\'altro telefono si troverà collegato la prossima volta che Duetto si apre: di là non c\'è niente da fare.',
+    linkExpired: 'Questo link è scaduto: un codice aspetta un giorno. Chiedine uno nuovo.',
     go: 'Avanti',
     theOtherPerson: 'l’altra persona',
     roleOwner: 'Questo server è tuo.',

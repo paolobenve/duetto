@@ -295,6 +295,8 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>('loading');
   /** a pairing code typed at the welcome, handed to the pairing screen */
   const [pairingCode, setPairingCode] = useState('');
+  /** the maker's key, when the code came as a link that carried one: see links.ts */
+  const [pairingPub, setPairingPub] = useState('');
   /** the pairing opened on typing a code, from the settings */
   const [pairingTyping, setPairingTyping] = useState(false);
   const [cfg, setCfg] = useState<DuoConfig | null>(null);
@@ -3987,10 +3989,11 @@ export default function App() {
         <WelcomeScreen
           initial={cfg}
           arrived={arrived}
-          onDone={(next, _answer, code) => {
+          onDone={(next, _answer, code, pub) => {
             forgetArrived();
             Journal.mark(`door:${next.serverRole || 'unknown'}`).catch(() => { /* noop */ });
             setPairingCode(code || '');
+            setPairingPub(pub || '');
             setCfg(saveCfg(alignPairServer(next)));
             // Already paired: the pair has just moved to the new server
             // with us, and there is nothing to do but go back in. With
@@ -4092,6 +4095,7 @@ export default function App() {
           cfg={cfg}
           role={cfg.serverRole}
           joinWith={pairingCode}
+          joinWithKey={pairingPub}
           startTyping={pairingTyping}
           onRefused={(reason) => {
             // Not what we thought we were here: the welcome knocks
