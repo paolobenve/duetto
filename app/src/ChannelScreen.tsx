@@ -2447,13 +2447,13 @@ const styles = StyleSheet.create({
   },
   // The loudness scale, on the right, between the top bar and the panel
   scale: {
-    position: 'absolute', top: '21%', bottom: '31%', width: 64, alignItems: 'center',
+    position: 'absolute', top: '21%', bottom: '31%', width: 72, alignItems: 'center',
   },
-  scaleBox: { flex: 1, alignItems: 'center', width: 64 },
+  scaleBox: { flex: 1, alignItems: 'center', width: 72 },
   scaleFigure: { color: '#7cc4ff', fontSize: 19, fontWeight: '800', lineHeight: 22 },
   scaleFigureMuted: { color: '#ffb454', fontSize: 13, fontWeight: '700', lineHeight: 22 },
   scaleUnit: { color: '#9fb4c8', fontSize: 10, fontWeight: '700', lineHeight: 12, marginTop: -2, marginBottom: 6 },
-  scaleTrack: { flex: 1, width: 64, alignItems: 'center', marginTop: 2, marginBottom: 20 },
+  scaleTrack: { flex: 1, width: 72, alignItems: 'center', marginTop: 2, marginBottom: 20 },
   // The strip: dark ground, the phone's own volume off-white over it,
   // and Duetto's own share white. Thirteen points wide, so that the
   // two whites can be told apart at a glance from across a room.
@@ -2485,8 +2485,10 @@ const styles = StyleSheet.create({
   },
   // The numbers beside the rungs: they say what the strip means, and
   // that going up doubles while going down halves.
+  // Twenty-eight points wide: "100" in bold and "225" broke over two
+  // lines in twenty, and a number in two lines reads as two numbers.
   rungText: {
-    position: 'absolute', right: 0, width: 20, textAlign: 'left',
+    position: 'absolute', right: 0, width: 28, textAlign: 'left',
     color: '#8a94a3', fontSize: 9.5, fontWeight: '600',
   },
   rungTextMajor: { color: '#e6ebf1', fontSize: 11, fontWeight: '700' },
