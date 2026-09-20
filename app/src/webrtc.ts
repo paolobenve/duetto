@@ -263,6 +263,8 @@ export class ChannelSession {
   private lossPrev: Record<string, { got: number; lost: number }> = {};
   private lossLineAt = 0;
   private lossAudioWasBad = false;
+  /** since when the incoming voice has lost under one in a hundred; 0 while it does not */
+  private lossAudioGoodSince = 0;
   private delaySaid = '';
   private delaySaidAt = 0;
   /**
@@ -1753,9 +1755,21 @@ export class ChannelSession {
           v?.in ?? '', v?.out ?? '').catch(() => { /* noop */ });
         if (this.diagnostics) {
           const now = Date.now();
-          const bad = audioIn !== null && audioIn >= 2;
+          // "Bad" is said once per storm, not at every reading: a road
+          // that hovers around the threshold flipped in and out at
+          // every tick and wrote a line every few seconds - a beta
+          // tester's journal had two hundred of them. It turns bad at
+          // five in a hundred and is good again only after a full
+          // minute under one.
+          if (audioIn !== null) {
+            if (audioIn >= 5) this.lossAudioGoodSince = 0;
+            else if (audioIn < 1 && !this.lossAudioGoodSince) this.lossAudioGoodSince = now;
+          }
+          const bad = audioIn !== null && audioIn >= 5;
+          const calmAgain = this.lossAudioGoodSince > 0 && now - this.lossAudioGoodSince > 60_000;
           const turnedBad = bad && !this.lossAudioWasBad;
-          this.lossAudioWasBad = bad;
+          if (turnedBad) this.lossAudioWasBad = true;
+          else if (calmAgain) this.lossAudioWasBad = false;
           if (turnedBad || now - this.lossLineAt > 30_000) {
             this.lossLineAt = now;
             Journal.mark(turnedBad ? 'loss:audio-bad' : 'loss').catch(() => { /* noop */ });
