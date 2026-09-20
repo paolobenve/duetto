@@ -91,6 +91,8 @@ export type SignalMessage =
    * app ignores the field and rebuilds, which is what it always did.
    */
   | { kind: 'renegotiate'; road?: boolean }
+  /** short packets, for both: `permanent` when it was written in the settings */
+  | { kind: 'shortPackets'; on: boolean; permanent?: boolean }
   // Video quality belongs to both: changing it on one phone changes it
   // on the other. Whoever receives it does not send it back.
   | { kind: 'quality'; value: string }

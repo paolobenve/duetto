@@ -504,6 +504,9 @@ type Props = {
   /** what opening the app does; the door offers to change it */
   openInto?: 'channel' | 'door';
   onEnterAlways?: () => void;
+  /** the road loses and the voice comes choppy: the sheet that offers short packets */
+  lossSheet?: boolean;
+  onLossChoice?: (choice: 'always' | 'once' | 'later' | 'never') => void;
   connectionState: string;
   audioOn: boolean;
   videoOn: boolean;
@@ -582,7 +585,7 @@ type Props = {
  */
 export default function ChannelScreen(props: Props) {
   const {
-    entered, onEnter, openInto, onEnterAlways, ownGain, network,
+    entered, onEnter, openInto, onEnterAlways, lossSheet, onLossChoice, ownGain, network,
     connectionName, peerName, peerAvatar, peerPresent, peerDetached, peerTornDown, videoStats, peerSendDelay, peerRecvDelay, delayTotalOnly, qualityLabel, showStats, controls, onSelectControls, news, onNewsRead, peerGain, systemVolume, onChangeLevel,
     versionWarning, frontCamera, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
@@ -1570,6 +1573,28 @@ export default function ChannelScreen(props: Props) {
               </TouchableOpacity>
             ))}
             <Text style={styles.sheetHint}>{t('channel.resolutionHint')}</Text>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* The road loses: four answers, and where the option lives. */}
+      <Modal
+        visible={!!lossSheet}
+        transparent
+        animationType="fade"
+        onRequestClose={() => onLossChoice?.('later')}>
+        <Pressable style={styles.sheetBack} onPress={() => onLossChoice?.('later')}>
+          <View style={styles.sheet}>
+            <Text style={styles.sheetTitle}>{t('channel.lossTitle')}</Text>
+            <Text style={styles.sheetBody}>{t('channel.lossBody')}</Text>
+            {(['always', 'once', 'later', 'never'] as const).map((c) => (
+              <TouchableOpacity key={c} style={styles.sheetRow} onPress={() => onLossChoice?.(c)}>
+                <View style={styles.sheetText}>
+                  <Text style={styles.sheetLabel}>{t(`channel.loss_${c}`)}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+            <Text style={styles.sheetHint}>{t('channel.lossHint')}</Text>
           </View>
         </Pressable>
       </Modal>
@@ -2589,6 +2614,7 @@ const styles = StyleSheet.create({
   sheetLabel: { color: '#c9d2de', fontSize: 17, flex: 1 },
   sheetText: { flex: 1 },
   sheetNote: { color: '#6b7686', fontSize: 12.5, marginTop: 2 },
+  sheetBody: { color: '#c9d1dc', fontSize: 14, lineHeight: 20, marginBottom: 10 },
   sheetLabelOn: { color: '#7cc4ff', fontWeight: '700' },
   sheetCheck: { color: '#7cc4ff', fontSize: 18, fontWeight: '700' },
   step: {

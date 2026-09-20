@@ -2722,6 +2722,10 @@ export default function App() {
             }
             // Like the resolution: it holds for both, and whoever
             // receives it does not send it back.
+            if (msg.kind === 'shortPackets') {
+              applyShortPackets(msg.on, false, msg.permanent === true);
+              return;
+            }
             if (msg.kind === 'audio') {
               applyAudio(msg.richer, false);
               return;
@@ -3730,6 +3734,55 @@ export default function App() {
    * directions, and whoever turned it up hears no difference at all:
    * the audio they listen to is sent by the other person.
    */
+  /**
+   * Short packets, for both phones: see shortPackets in config.ts.
+   * Written in the settings when `permanent`, for this session alone
+   * otherwise; told to the other side when the choice was made here.
+   */
+  const applyShortPackets = useCallback((on: boolean, tell: boolean, permanent: boolean) => {
+    if (permanent) {
+      setCfg((prev) => (prev && prev.shortPackets !== on ? saveCfg({ ...prev, shortPackets: on }) : prev));
+    }
+    sessionRef.current?.setShortPackets(on, permanent).catch(() => { /* noop */ });
+    Journal.mark(`${tell ? '' : 'peer-'}short-packets:${on ? 'yes' : 'no'}${permanent ? '' : ':this-time'}`)
+      .catch(() => {});
+    if (tell) signalingRef.current?.sendSignal({ kind: 'shortPackets', on, permanent });
+  }, [saveCfg]);
+
+  /**
+   * The road loses, the voice comes choppy: the sheet that offers
+   * short packets. Ten per cent of the incoming voice lost, over
+   * thirty seconds of readings, with the option off, the asking not
+   * refused for good, and not asked in the last ten minutes. Shown to
+   * whoever hears the damage: it is their other half's packets that
+   * shorten, and the choice goes to both.
+   */
+  const [lossSheet, setLossSheet] = useState(false);
+  const lossBadSince = useRef(0);
+  const lossAskedAt = useRef(0);
+  useEffect(() => {
+    const loss = videoStats.audioLossIn;
+    if (loss === null || loss === undefined || !inChannel) { lossBadSince.current = 0; return; }
+    if (loss < 10) { lossBadSince.current = 0; return; }
+    const now = Date.now();
+    if (!lossBadSince.current) { lossBadSince.current = now; return; }
+    if (now - lossBadSince.current < 30_000) return;
+    const c = cfgRef.current;
+    if (!c || c.lossAsk === false || c.shortPackets || lossSheet) return;
+    if (now - lossAskedAt.current < 10 * 60_000) return;
+    lossAskedAt.current = now;
+    lossBadSince.current = 0;
+    Journal.mark('loss:sheet').catch(() => {});
+    setLossSheet(true);
+  }, [videoStats.audioLossIn, inChannel, lossSheet]);
+  const onLossChoice = useCallback((choice: 'always' | 'once' | 'later' | 'never') => {
+    setLossSheet(false);
+    Journal.mark(`loss:sheet:${choice}`).catch(() => {});
+    if (choice === 'always') applyShortPackets(true, true, true);
+    else if (choice === 'once') applyShortPackets(true, true, false);
+    else if (choice === 'never') setCfg((prev) => (prev ? saveCfg({ ...prev, lossAsk: false }) : prev));
+  }, [applyShortPackets, saveCfg]);
+
   const applyAudio = useCallback((richer: boolean, tell: boolean) => {
     setCfg((prev) => {
       if (!prev || prev.richerAudio === richer) return prev;
@@ -4159,6 +4212,7 @@ export default function App() {
             // ceiling right away, the processing on reopening the
             // microphone.
             if ('richerAudio' in patch) applyAudio(next.richerAudio, true);
+            if ('shortPackets' in patch) applyShortPackets(next.shortPackets, true, true);
             // The call's sound and vibration live in the notification
             // channel, which has to be built again at every change.
             if ('alertVibration' in patch || 'alertSound' in patch || 'alertSoundUri' in patch
@@ -4338,6 +4392,8 @@ export default function App() {
         network={network}
         entered={inChannel}
         onEnter={() => { leftByHandAt.current = 0; Journal.mark('command:enter-card').catch(() => {}); enterChannel(); }}
+        lossSheet={lossSheet}
+        onLossChoice={onLossChoice}
         openInto={cfg.openInto ?? 'door'}
         onEnterAlways={() => {
           // Said from the door itself: from now on the app goes in by

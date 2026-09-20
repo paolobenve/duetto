@@ -126,6 +126,8 @@ export type VideoStats = {
   in?: { w: number; h: number; fps: number; kbps: number | null };
   /** how much audio is going out: the only way to check the ceiling */
   audioKbps?: number | null;
+  /** what the incoming voice lost over the last interval, per cent */
+  audioLossIn?: number | null;
   /** which way the traffic is going, worked out at every sample */
   path?: 'local' | 'direct' | 'relay';
   /**
@@ -881,7 +883,7 @@ export class ChannelSession {
    * three hundred; on mobile data the default stands. See config.ts.
    */
   private shapeRemote(sdp: string): string {
-    const shaped = ChannelSession.thriftyAudio(sdp);
+    const shaped = ChannelSession.thriftyAudio(sdp, this.ptime());
     if (this.network !== 'wifi') return shaped;
     const profile = VIDEO_PROFILES[this.cfg.videoQuality] ?? VIDEO_PROFILES.better;
     const kbps = Math.round(profile.startWifi / 1000);
@@ -914,7 +916,36 @@ export class ChannelSession {
     return out;
   }
 
-  private static thriftyAudio(sdp: string): string {
+  /**
+   * Sixty milliseconds of voice per packet, or twenty when the road
+   * loses: see shortPackets in config.ts. A choice for this session
+   * alone may sit beside the written one - "for this time" on the
+   * sheet - and dies with the session.
+   */
+  private shortThisTime = false;
+  private ptime(): number {
+    return this.cfg.shortPackets || this.shortThisTime ? 20 : 60;
+  }
+
+  /**
+   * Switches the packet length, here and now, for both.
+   *
+   * The length an encoder uses is read from the description it
+   * RECEIVES, so a new pair of descriptions has to go round: the side
+   * that offers makes the offer, the other asks it to. Told to the
+   * other side by whoever keeps the configuration, as the richer voice
+   * is.
+   */
+  async setShortPackets(on: boolean, permanent: boolean) {
+    if (permanent) this.cfg = { ...this.cfg, shortPackets: on };
+    else this.shortThisTime = on;
+    Journal.mark(`packets:${this.ptime()}ms${permanent ? '' : ':this-time'}`).catch(() => { /* noop */ });
+    if (!this.pc) return;
+    if (this.polite) this.signaling.sendSignal({ kind: 'renegotiate' });
+    else await this.negotiate();
+  }
+
+  private static thriftyAudio(sdp: string, ptime = 60): string {
     const m = sdp.match(/a=rtpmap:(\d+) opus\/48000\/2/i);
     if (!m) return sdp;
     const pt = m[1];
@@ -929,7 +960,7 @@ export class ChannelSession {
       kv.set('minptime', '10');
       kv.set('useinbandfec', '1');
       kv.set('usedtx', '1');
-      kv.set('ptime', '60');
+      kv.set('ptime', String(ptime));
       kv.set('maxptime', '120');
       return [...kv].map(([k, v]) => (v === '' ? k : `${k}=${v}`)).join(';');
     };
@@ -954,7 +985,7 @@ export class ChannelSession {
       this.makingOffer = true;
       const offer = await pc.createOffer({});
       await pc.setLocalDescription(
-        new RTCSessionDescription({ type: offer.type, sdp: ChannelSession.thriftyAudio(offer.sdp) }),
+        new RTCSessionDescription({ type: offer.type, sdp: ChannelSession.thriftyAudio(offer.sdp, this.ptime()) }),
       );
       const desc = pc.localDescription!;
       log('offer sent');
@@ -1042,7 +1073,7 @@ export class ChannelSession {
       if (msg.type === 'offer') {
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(
-          new RTCSessionDescription({ type: answer.type, sdp: ChannelSession.thriftyAudio(answer.sdp) }),
+          new RTCSessionDescription({ type: answer.type, sdp: ChannelSession.thriftyAudio(answer.sdp, this.ptime()) }),
         );
         log('answer sent - directions:',
           ((pc as any).getTransceivers?.() ?? [])
@@ -1164,7 +1195,7 @@ export class ChannelSession {
           try {
             const offer = await pc.createOffer({ iceRestart: true });
             await pc.setLocalDescription(
-              new RTCSessionDescription({ type: offer.type, sdp: ChannelSession.thriftyAudio(offer.sdp) }),
+              new RTCSessionDescription({ type: offer.type, sdp: ChannelSession.thriftyAudio(offer.sdp, this.ptime()) }),
             );
             this.signaling.sendSignal({
               kind: 'desc', type: 'offer', sdp: pc.localDescription.sdp,
@@ -1179,7 +1210,7 @@ export class ChannelSession {
       // Older versions: the same thing, with an offer.
       const offer = await pc.createOffer({ iceRestart: true });
       await pc.setLocalDescription(
-        new RTCSessionDescription({ type: offer.type, sdp: ChannelSession.thriftyAudio(offer.sdp) }),
+        new RTCSessionDescription({ type: offer.type, sdp: ChannelSession.thriftyAudio(offer.sdp, this.ptime()) }),
       );
       this.signaling.sendSignal({
         kind: 'desc', type: 'offer', sdp: pc.localDescription.sdp,
@@ -1748,6 +1779,7 @@ export class ChannelSession {
           rtt: r.rtt !== undefined ? String(Math.round(r.rtt * 1000)) : '',
         };
       }
+      out.audioLossIn = audioIn;
       if (cells.audio || cells.video) {
         const a = cells.audio;
         const v = cells.video;

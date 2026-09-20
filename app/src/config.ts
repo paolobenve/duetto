@@ -103,6 +103,15 @@ export type PairSettings = {
   displayName: string;
   videoQuality: VideoQuality;
   richerAudio: boolean;
+  /**
+   * Short packets: 20 ms of voice each instead of 60. On a road that
+   * loses packets each loss costs a third of the voice, and the FEC
+   * gets three chances where it had one; on a clean road it is three
+   * times the packets for nothing, and on mobile data it is the packets
+   * that keep the radio awake. Off by default; it holds for both
+   * phones, as the richer voice does.
+   */
+  shortPackets: boolean;
   /** the microphone on entering: as it was left ('asLeft'), or always off ('off') */
   micOnEntry: 'asLeft' | 'off';
   controls: 'dim' | 'faint' | 'hidden' | 'none';
@@ -127,7 +136,7 @@ export type PairSettings = {
 
 /** The fields that travel with the connection, in one place. */
 const PAIR_FIELDS: (keyof PairSettings)[] = [
-  'displayName', 'videoQuality', 'richerAudio', 'micOnEntry', 'controls',
+  'displayName', 'videoQuality', 'richerAudio', 'shortPackets', 'micOnEntry', 'controls',
   'videoCodec', 'alertVibration', 'alertSound', 'alertSoundUri', 'alertSoundName',
   'alertDuettoSound', 'alertPicked',
   'audioOutput', 'gains', 'frontCamera', 'language',
@@ -287,6 +296,15 @@ export type DuoConfig = {
    */
   richerAudio: boolean;
   /**
+   * Short packets: 20 ms of voice each instead of 60. On a road that
+   * loses packets each loss costs a third of the voice, and the FEC
+   * gets three chances where it had one; on a clean road it is three
+   * times the packets for nothing, and on mobile data it is the packets
+   * that keep the radio awake. Off by default; it holds for both
+   * phones, as the richer voice does.
+   */
+  shortPackets: boolean;
+  /**
    * The microphone on entering the channel: as it was left the last
    * time, or always off, so that going in never means being heard
    * before one meant to. Per connection, like the rest.
@@ -402,6 +420,8 @@ export type DuoConfig = {
    * default, as a phone call: the speaker is a choice, not a surprise.
    */
   outputOnEntry: 'earpiece' | 'asLeft';
+  /** the sheet that offers short packets when the road loses: "no, and do not ask again" turns it off */
+  lossAsk: boolean;
   /** the notice about that option was shown, at the first turn to the speaker */
   speakerNoticeShown: boolean;
   /** a Bluetooth earpiece that connects takes the sound at once */
@@ -468,6 +488,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   // definition, however good their network.
   videoQuality: 'better',
   richerAudio: false,
+  shortPackets: false,
   micOnEntry: 'asLeft',
   diagnostics: false,
   delayTotalOnly: false,
@@ -484,6 +505,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   earEvenWithVideo: false,
   openInto: 'door',
   outputOnEntry: 'earpiece',
+  lossAsk: true,
   speakerNoticeShown: false,
   autoBluetooth: true,
   autoWired: true,

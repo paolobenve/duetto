@@ -1109,6 +1109,21 @@ export default function SettingsScreen({
             and not among the settings that travel with a connection. */}
         <Text style={styles.section}>{t('settings.diagnostics')}</Text>
         <Text style={styles.sectionHint}>{t('settings.diagnosticsHint')}</Text>
+        {/* A technical knob, kept here on purpose: it pays on a road
+            that loses packets and costs on every other. */}
+        <TouchableOpacity
+          style={[styles.choice, cfg.shortPackets && styles.choicePicked]}
+          onPress={() => {
+            const v = !cfg.shortPackets;
+            setCfg({ ...cfg, shortPackets: v });
+            onLive?.({ shortPackets: v });
+          }}>
+          <View style={[styles.radio, cfg.shortPackets && styles.radioPicked]} />
+          <View style={styles.choiceText}>
+            <Text style={styles.choiceLabel}>{t('settings.shortPackets')}</Text>
+            <Text style={styles.choiceNote}>{t('settings.shortPacketsNote')}</Text>
+          </View>
+        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.choice, cfg.diagnostics && styles.choicePicked]}
           onPress={() => {
