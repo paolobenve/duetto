@@ -151,6 +151,7 @@ export const de: Dictionary = {
     speakerNoticeBody: 'Der Kanal öffnet sich im Hörer, und der Lautsprecher wird jedes Mal gewählt. Soll er sich öffnen wie zuletzt gelassen, gibt es eine Option: „Ton beim Eintreten“, in den Einstellungen.',
     speakerNoticeFine: 'Passt so',
     speakerNoticeGo: 'Zur Option',
+    speakerNoticeAsLeft: 'Wie beim letzten Mal',
     enter: 'Eintreten',
     screenCovered: 'Bildschirm verdeckt: die Tasten sind gesperrt. Tippe dreimal, um darauf zu bestehen.',
     charging: 'lädt',

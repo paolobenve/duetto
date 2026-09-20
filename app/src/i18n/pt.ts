@@ -151,6 +151,7 @@ export const pt: Dictionary = {
     speakerNoticeBody: 'O canal abre no auricular, e o viva-voz se escolhe a cada vez. Se prefere que abra como ficou da última vez, há uma opção: «Som ao entrar», nas configurações.',
     speakerNoticeFine: 'Está bom assim',
     speakerNoticeGo: 'Ir à opção',
+    speakerNoticeAsLeft: 'Como ficou da última vez',
     enter: 'Entrar',
     screenCovered: 'Tela coberta: botões travados. Toque três vezes para insistir.',
     charging: 'carregando',

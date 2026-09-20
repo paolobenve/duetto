@@ -1003,6 +1003,14 @@ export default function App() {
       setCfg((prev) => (prev ? saveCfg({ ...prev, speakerNoticeShown: true }) : prev));
       Alert.alert(t('channel.speakerNoticeTitle'), t('channel.speakerNoticeBody'), [
         { text: t('channel.speakerNoticeFine'), style: 'cancel' },
+        // The choice itself, from the notice: no trip to the settings.
+        {
+          text: t('channel.speakerNoticeAsLeft'),
+          onPress: () => {
+            setCfg((prev) => (prev ? saveCfg({ ...prev, outputOnEntry: 'asLeft' }) : prev));
+            Journal.mark('output-on-entry:as-left:from-notice').catch(() => {});
+          },
+        },
         {
           text: t('channel.speakerNoticeGo'),
           onPress: () => {

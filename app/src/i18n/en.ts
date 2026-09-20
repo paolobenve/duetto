@@ -162,6 +162,7 @@ export const en = {
     speakerNoticeBody: 'The channel opens in the earpiece, and the speaker is chosen each time. If you would rather have it open as you left it, there is an option: "Sound on entering", in the settings.',
     speakerNoticeFine: 'Fine as it is',
     speakerNoticeGo: 'Go to the option',
+    speakerNoticeAsLeft: 'As it was left',
     enter: 'Enter',
     screenCovered: 'Screen covered: the buttons are held. Touch three times to insist.',
     charging: 'charging',

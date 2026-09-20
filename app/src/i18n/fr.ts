@@ -151,6 +151,7 @@ export const fr: Dictionary = {
     speakerNoticeBody: 'Le canal s\'ouvre dans l\'écouteur, et le haut-parleur se choisit à chaque fois. Si tu préfères qu\'il s\'ouvre comme tu l\'as laissé, il y a une option : « Le son à l\'entrée », dans les réglages.',
     speakerNoticeFine: 'C\'est bien ainsi',
     speakerNoticeGo: 'Aller à l\'option',
+    speakerNoticeAsLeft: 'Comme la dernière fois',
     enter: 'Entrer',
     screenCovered: 'Écran couvert : boutons bloqués. Touche trois fois pour insister.',
     charging: 'en charge',

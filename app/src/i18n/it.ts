@@ -150,6 +150,7 @@ export const it: Dictionary = {
     speakerNoticeBody: 'Il canale si apre nell\'auricolare, e il vivavoce si sceglie ogni volta. Se preferisci che si apra com\'era l\'ultima volta, c\'è un\'opzione: «Audio all\'ingresso», nelle impostazioni.',
     speakerNoticeFine: 'Va bene così',
     speakerNoticeGo: 'Vai all\'opzione',
+    speakerNoticeAsLeft: 'Com\'era l\'ultima volta',
     enter: 'Entra',
     screenCovered: 'Schermo coperto: pulsanti bloccati. Tocca tre volte per insistere.',
     charging: 'in carica',

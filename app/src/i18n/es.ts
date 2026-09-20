@@ -151,6 +151,7 @@ export const es: Dictionary = {
     speakerNoticeBody: 'El canal se abre en el auricular, y el altavoz se elige cada vez. Si prefieres que se abra como quedó la última vez, hay una opción: «Sonido al entrar», en los ajustes.',
     speakerNoticeFine: 'Está bien así',
     speakerNoticeGo: 'Ir a la opción',
+    speakerNoticeAsLeft: 'Como quedó la última vez',
     enter: 'Entrar',
     screenCovered: 'Pantalla cubierta: botones bloqueados. Toca tres veces para insistir.',
     charging: 'cargando',
