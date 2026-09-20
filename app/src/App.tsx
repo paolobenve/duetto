@@ -4155,12 +4155,16 @@ export default function App() {
             setPairingCode(code || '');
             setPairingPub(pub || '');
             setCfg(saveCfg(alignPairServer(next)));
-            // Already paired: the pair has just moved to the new server
-            // with us, and there is nothing to do but go back in. With
-            // a code typed, the pairing, which runs it. Otherwise the
-            // settings, where one sees where one has come in, and how,
-            // before dictating a code.
-            setScreen(isPaired(next) ? 'channel' : code ? 'pairing' : 'settings');
+            // With a code - typed, scanned, or opened as a link - the
+            // pairing, which runs it: a phone already paired is adding
+            // a pair, and used to be sent back into the channel with
+            // the code dropped on the floor. Without one: already
+            // paired, the pair has just moved to the new server with
+            // us and there is nothing to do but go back in; otherwise
+            // the settings, where one sees where one has come in, and
+            // how, before dictating a code.
+            setPairingTyping(false);
+            setScreen(code ? 'pairing' : isPaired(next) ? 'channel' : 'settings');
           }}
           // From the settings there is somewhere to go back to; at the
           // first start there is not.
