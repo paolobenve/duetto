@@ -764,6 +764,7 @@ code{font-size:1.4rem;letter-spacing:.1em;color:#fff}small{color:#8892a0}
 <h1>Duetto</h1>
 <p>This is ${what} for Duetto, the voice and video channel for two.</p>
 <a class="b" href="${esc(app)}">Open in Duetto</a>
+<p><small>On Firefox, touch the button: it asks to open Duetto.</small></p>
 <p>No Duetto on this phone yet? Get it from <a href="https://f-droid.org/packages/com.duetto/">F-Droid</a>,
 open it, and ${kind === 'pair'
     ? 'in the first screen write this server and the code'
@@ -775,16 +776,16 @@ open it, and ${kind === 'pair'
 ${stay ? '' : `<script>
 // Handed to the app after the page is on the screen, and by assigning
 // the location rather than replacing it, which keeps this tab as it is.
-// Two roads, because the browsers differ: the Chromium family - Chrome,
-// Samsung, Edge, Opera - takes an intent://, which names the package
-// and falls back to this page (stay=1) when the app is not there;
-// Firefox has never heard of intent:// and showed "connection failed"
-// on it, but opens a duetto:// link with a question, so it gets that.
-// Off Android there is nothing to open: the page stays, with the code.
+// Only for the Chromium family - Chrome, Samsung, Edge, Opera - which
+// takes an intent:// that names the package and falls back to this
+// page (stay=1) when the app is not there. Firefox has never heard of
+// intent://, and a duetto:// it is sent to by a script, with no touch
+// behind it, ends on "connection failed" just the same: it opens the
+// app only from a touch, and the button is one. Off Android there is
+// nothing to open: the page stays, with the code.
 var ua = navigator.userAgent;
-if (/Android/.test(ua)) {
-  var intent = /Firefox|FxiOS/.test(ua) ? ${JSON.stringify(app)} : ${JSON.stringify(intent)};
-  setTimeout(function () { window.location.href = intent; }, 150);
+if (/Android/.test(ua) && !/Firefox|FxiOS/.test(ua)) {
+  setTimeout(function () { window.location.href = ${JSON.stringify(intent)}; }, 150);
 }
 </script>`}
 </body></html>
