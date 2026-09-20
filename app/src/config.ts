@@ -193,6 +193,24 @@ function applySettings(cfg: DuoConfig, p: PairInfo): DuoConfig {
  */
 export type VideoQuality = 'saver' | 'standard' | 'better' | 'best';
 
+/**
+ * A code made here and handed over as a link, waiting for its other
+ * half: what is needed to finish the pairing when their letter comes
+ * - the secret half of the pair made for it, and the code itself.
+ * Kept for a day, then it is worth nothing.
+ */
+export type PendingPair = {
+  code: string;
+  /** the room: the code's fingerprint */
+  id: string;
+  /** the pair made for this exchange, both halves, base64 */
+  pub: string;
+  sec: string;
+  serverUrl: string;
+  /** ISO: after this the server has forgotten it, and so do we */
+  until: string;
+};
+
 export type DuoConfig = {
   /** wss://YOUR_DOMAIN/duetto/ws */
   serverUrl: string;
@@ -246,6 +264,8 @@ export type DuoConfig = {
    * used last.
    */
   pairs: PairInfo[];
+  /** codes made here that still wait for their other half: see PendingPair */
+  pending?: PendingPair[];
   /** the system settings have already been offered once */
   setupShown: boolean;
   /** the settings tab last looked at: it is where one comes back to */
@@ -465,7 +485,7 @@ export async function loadConfig(): Promise<DuoConfig> {
     // that on a phone updating from an earlier Duetto are still
     // written in Italian.
     const stored = fromItalianStorage(JSON.parse(raw));
-    return tidyPairs(oneDiagnostics({ ...DEFAULT_CONFIG, ...stored }));
+    return tidyPending(tidyPairs(oneDiagnostics({ ...DEFAULT_CONFIG, ...stored })));
   } catch {
     return DEFAULT_CONFIG;
   }
@@ -731,6 +751,14 @@ export function opensHere(cfg: DuoConfig): boolean {
 }
 
 /** True when a pair already exists: straight into the channel. */
+/** The codes still worth waiting for; the rest go quietly. */
+export function tidyPending(cfg: DuoConfig): DuoConfig {
+  const list = Array.isArray(cfg.pending)
+    ? cfg.pending.filter((p) => p && p.id && p.sec && Date.parse(p.until) > Date.now())
+    : [];
+  return { ...cfg, pending: list };
+}
+
 export function isPaired(cfg: DuoConfig): boolean {
   return !!cfg.pair && !!cfg.pair.id && !!cfg.pair.key;
 }

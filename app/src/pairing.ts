@@ -156,3 +156,29 @@ export const keyToBase64 = (k: Uint8Array) => encodeBase64(k);
 export const keyFromBase64 = (s: string) => decodeBase64(s);
 export const pubToBase64 = (k: Uint8Array) => encodeBase64(k);
 export const pubFromBase64 = (s: string) => decodeBase64(s);
+
+/**
+ * The pair, from the other half's letter.
+ *
+ * The maker kept the secret half of the pair made for the code; the
+ * letter brings the other phone's public half and its name. The shared
+ * key is the same one a live exchange would have made, and the proof
+ * is not needed: the code never travelled through the server, only in
+ * the link, and a letter for the wrong room simply makes a key nobody
+ * else has.
+ */
+export function pairFromLetter(
+  mine: { id: string; sec: string; code: string },
+  theirPub: string,
+  theirName: string,
+  side: 'A' | 'B',
+): { id: string; key: string; side: 'A' | 'B'; peerName: string; pairedAt: string } {
+  const key = deriveSharedKey(keyFromBase64(mine.sec), pubFromBase64(theirPub), mine.code);
+  return {
+    id: mine.id,
+    key: keyToBase64(key),
+    side,
+    peerName: theirName || '',
+    pairedAt: new Date().toISOString(),
+  };
+}

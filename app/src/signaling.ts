@@ -185,6 +185,16 @@ export type SignalingEvents = {
   onNotify?: (reason: 'peer-active' | 'knock', name: string) => void;
   onSignal?: (msg: SignalMessage) => void;
   onPair?: (msg: PairMessage) => void;
+  /** the server took note that this room waits for its other half, until when */
+  onAwaiting?: (room: string, until: string | null) => void;
+  /** the letter for the maker of a code was left, or could not be */
+  onPairMailResult?: (ok: boolean, error?: string) => void;
+  /**
+   * The mail: what the other half of a code handed over as a link left
+   * for this phone. One letter per room, handed over at the door of any
+   * room and gone from the server the moment it is.
+   */
+  onMail?: (items: { room: string; payload: PairMessage }[]) => void;
   onKnockResult?: (ok: boolean, error?: string) => void;
   /** the other side broke this pair: told now, or found on joining; the room, when said */
   onPairBroken?: (room?: string) => void;
@@ -676,6 +686,21 @@ export class Signaling {
         this.events.onKnockResult?.(!!msg.ok, msg.error);
         break;
 
+      case 'awaiting':
+        this.events.onAwaiting?.(String(msg.room || ''),
+          typeof msg.until === 'string' ? msg.until : null);
+        break;
+
+      case 'pair-mail-result':
+        this.events.onPairMailResult?.(!!msg.ok, msg.error);
+        break;
+
+      case 'mail':
+        this.events.onMail?.((Array.isArray(msg.items) ? msg.items : [])
+          .filter((i: any) => i && typeof i.room === 'string' && i.payload)
+          .map((i: any) => ({ room: String(i.room), payload: i.payload as PairMessage })));
+        break;
+
       case 'removed':
         this.events.onRemoved?.();
         break;
@@ -782,6 +807,20 @@ export class Signaling {
   /** A pairing message, in the clear (public keys). */
   sendPair(msg: PairMessage) {
     this.rawSend({ type: 'pair', payload: msg });
+  }
+
+  /**
+   * This room - the code's - waits for its other half until `untilMs`:
+   * whoever opens the link may come in alone and leave a letter. Zero
+   * takes the wait back, letter included.
+   */
+  awaitRoom(untilMs: number) {
+    this.rawSend({ type: 'await-room', until: untilMs });
+  }
+
+  /** The letter for the maker of the code: our public key, for later. */
+  sendPairMail(msg: PairMessage) {
+    this.rawSend({ type: 'pair-mail', payload: msg });
   }
 
   /** Enters or leaves the channel. This is what alerts the other side. */

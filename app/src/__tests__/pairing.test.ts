@@ -1,6 +1,6 @@
 import {
   generateCode, normalizeCode, isCodeComplete, formatCode, pairIdFromCode,
-  newKeyPair, deriveSharedKey, confirmationFor,
+  newKeyPair, deriveSharedKey, confirmationFor, pairFromLetter, keyToBase64, pubToBase64,
 } from '../pairing';
 
 describe('the pairing code', () => {
@@ -59,5 +59,18 @@ describe('the key exchange', () => {
     const key = new Uint8Array(32).fill(7);
     expect(confirmationFor(key, 'A')).not.toBe(confirmationFor(key, 'B'));
     expect(confirmationFor(key, 'A')).toBe(confirmationFor(key, 'A'));
+  });
+
+  test('a letter makes the key the live exchange would have made', () => {
+    const maker = newKeyPair();
+    const other = newKeyPair();
+    const live = deriveSharedKey(other.secretKey, maker.publicKey, '12345678');
+    const byLetter = pairFromLetter(
+      { id: 'room', sec: keyToBase64(maker.secretKey), code: '1234 5678' },
+      pubToBase64(other.publicKey), 'Mamma', 'A',
+    );
+    expect(byLetter.key).toBe(keyToBase64(live));
+    expect(byLetter.peerName).toBe('Mamma');
+    expect(byLetter.side).toBe('A');
   });
 });
