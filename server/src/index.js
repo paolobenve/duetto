@@ -1149,11 +1149,15 @@ wss.on('connection', (ws, req) => {
       if (!waiting) { send(ws, { type: 'pair-mail-result', ok: false, error: 'not-waiting' }); return; }
       const ok = leaveMail(ws.roomId, msg.payload, ws.pub, waiting.until);
       console.log(`[duetto] mail left in room ${ws.roomId.slice(0, 4)}… for ${waiting.owner}`);
-      // The maker on line right now, in any room: handed over at once.
-      for (const peer of wss.clients) {
-        if (peer !== ws && peer.joined && peer.pub && peer.pub === waiting.ownerPub) {
-          deliverMail(peer, takeMail({ pub: peer.pub }));
-        }
+      // The maker on line right now, in any room: handed over at once,
+      // to every connection of that card - the pairing screen's and
+      // the app's own may both be up, and only the first used to get
+      // it, while the other went on waiting for a live answer.
+      const makers = [...wss.clients].filter((peer) => peer !== ws && peer.joined
+        && peer.pub && peer.pub === waiting.ownerPub);
+      if (makers.length > 0) {
+        const items = takeMail({ pub: waiting.ownerPub });
+        for (const peer of makers) deliverMail(peer, items);
       }
       send(ws, { type: 'pair-mail-result', ok });
       return;

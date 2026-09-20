@@ -13,7 +13,6 @@ import {
   ScrollView, KeyboardAvoidingView, Platform, Clipboard, Share,
 } from 'react-native';
 import { DuoConfig, PairInfo, PendingPair, ServerRole, displayServer, isPaired } from './config';
-import { makeInvitation } from './door';
 import { pairLink, parseLink } from './links';
 import QrCode from './QrCode';
 import { Scanner } from 'duetto-platform';
@@ -61,7 +60,7 @@ type Props = {
 };
 
 type Step = 'choose' | 'preparing' | 'create' | 'join' | 'exchanging' | 'error'
-  | 'invite' | 'invited' | 'done';
+  | 'done';
 
 /** If nothing happens in a minute and a half, better say so than spin. */
 const TIMEOUT_MS = 90_000;
@@ -84,11 +83,6 @@ export default function PairingScreen({
   const [message, setMessage] = useState('');
   const [retryIn, setRetryIn] = useState(0);
   /** the invitation being made: whose, and the one just made */
-  const [person, setPerson] = useState('');
-  const [inviting, setInviting] = useState(false);
-  const [inviteNote, setInviteNote] = useState('');
-  const [invited, setInvited] = useState<{ name: string; code: string; days: number } | null>(null);
-  const [copied, setCopied] = useState(false);
   /** the pairing link has just been put on the clipboard */
   const [linkCopied, setLinkCopied] = useState(false);
   /** the pair just made, shown and explained before it is handed over */
@@ -231,6 +225,24 @@ export default function PairingScreen({
               sharedRef.current = key;
               setStep('exchanging');
               sig.sendPair({ kind: 'confirm', proof: confirmationFor(key, side) });
+              // The code went out as a link with our key in it, and
+              // whoever opened it has the pair made already: their key
+              // is all we needed, and their proof may never come - they
+              // close the moment their letter is in. Done here, as by
+              // letter; the confirm above serves an older app.
+              if (side === 'A' && awaitingRef.current) {
+                doneRef.current = true;
+                awaitingRef.current = '';
+                cleanup();
+                setMade({
+                  id: pairIdRef.current,
+                  key: keyToBase64(key),
+                  side,
+                  peerName: peerNameRef.current,
+                  pairedAt: new Date().toISOString(),
+                });
+                setStep('done');
+              }
             } catch {
               fail(t('pairing.keyExchangeFailed'));
             }
@@ -286,8 +298,13 @@ export default function PairingScreen({
 
     timerRef.current = setTimeout(() => {
       // A code that waits on the server has nothing to say after a
-      // minute and a half: the other half may come tomorrow.
-      if (awaitingRef.current) return;
+      // minute and a half: the other half may come tomorrow. Caught
+      // mid-exchange with nobody answering, it goes back to waiting
+      // rather than spin for good.
+      if (awaitingRef.current) {
+        if (!doneRef.current) { sharedRef.current = null; sentPubRef.current = false; setStep('create'); }
+        return;
+      }
       fail(t('pairing.noAnswer'));
     }, TIMEOUT_MS);
   }, [cfg, fail, cleanup, onPaired, onPending]);
@@ -462,37 +479,6 @@ export default function PairingScreen({
     setStep('choose');
   }, [cleanup]);
 
-  /**
-   * An invitation, made at the door.
-   *
-   * It goes through the door and not through a room, because a server
-   * just taken has no room yet - and the card shown at the door is
-   * authority enough. The server answers only an owner's card.
-   */
-  const startInvite = useCallback(async () => {
-    const who = person.trim();
-    if (!who || inviting) return;
-    setInviting(true);
-    setInviteNote('');
-    try {
-      const made = await makeInvitation(
-        cfg.serverUrl.trim(),
-        { key: cfg.serverKey, name: cfg.displayName },
-        who,
-      );
-      setInvited(made);
-      setPerson('');
-      setCopied(false);
-      setStep('invited');
-    } catch (e: any) {
-      setInviteNote(e?.message === 'name-taken'
-        ? t('errors.nameTaken')
-        : t('pairing.inviteFailed', { why: String(e?.message || '') }));
-    } finally {
-      setInviting(false);
-    }
-  }, [person, inviting, cfg]);
-
   // --- the screens --------------------------------------------------------
   if (step === 'done' && made) {
     const who = made.peerName || t('pairing.theOtherPerson');
@@ -513,59 +499,6 @@ export default function PairingScreen({
       </Screen>
     );
   }
-
-  if (step === 'invite') {
-    return (
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <Screen>
-          <Text style={styles.title}>{t('pairing.inviteTitle')}</Text>
-          <Text style={styles.body}>{t('pairing.inviteBody')}</Text>
-          <TextInput
-            style={styles.nameInput}
-            value={person}
-            onChangeText={setPerson}
-            placeholder={t('pairing.inviteName')}
-            placeholderTextColor="#4a5462"
-            autoCorrect={false}
-            autoFocus
-          />
-          <Text style={styles.hint}>{t('pairing.inviteNameHint')}</Text>
-          {inviteNote ? <Text style={styles.note}>{inviteNote}</Text> : null}
-          <Primary
-            label={t('pairing.makeInvite')}
-            disabled={!person.trim() || inviting}
-            onPress={startInvite}
-          />
-          <Secondary label={t('pairing.back')} onPress={() => setStep('choose')} />
-        </Screen>
-      </KeyboardAvoidingView>
-    );
-  }
-
-  if (step === 'invited' && invited) {
-    return (
-      <Screen>
-        <Text style={styles.title}>{t('pairing.invitedTitle')}</Text>
-        <Text style={styles.body}>
-          {t('pairing.invitedBody', { who: invited.name, days: invited.days })}
-        </Text>
-        <View style={styles.codeBox}>
-          <Text style={styles.inviteCode} selectable>{invited.code}</Text>
-        </View>
-        <Primary
-          label={copied ? t('pairing.copied') : t('pairing.copy')}
-          outline
-          onPress={() => {
-            Clipboard.setString(invited.code);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-          }}
-        />
-        <Secondary label={t('pairing.back')} onPress={() => setStep('choose')} />
-      </Screen>
-    );
-  }
-
 
   if (step === 'error') {
     return (
@@ -678,7 +611,7 @@ export default function PairingScreen({
         <ActivityIndicator size="large" color="#2f7cf6" />
         <Text style={[styles.title, { marginTop: 24 }]}>{t('pairing.exchanging')}</Text>
         <Text style={styles.body}>{t('pairing.establishingKey')}</Text>
-        <Secondary label={t('pairing.cancel')} onPress={reset} />
+        <Secondary label={t('pairing.cancel')} onPress={opens ? onBack : reset} />
       </Screen>
     );
   }
@@ -699,13 +632,6 @@ export default function PairingScreen({
       ) : null}
       {!guest ? <Primary label={t('pairing.createCode')} onPress={startCreate} /> : null}
       <Primary label={t('pairing.haveCode')} outline={!guest} onPress={() => setStep('join')} />
-      {role === 'owner' ? (
-        <Primary
-          label={t('pairing.invite')}
-          outline
-          onPress={() => { setInviteNote(''); setStep('invite'); }}
-        />
-      ) : null}
       {/* Whoever is already paired is here to add a connection, not
           because they must: they have to be able to change their mind.
           Whoever is not paired yet has nowhere to go back to, and the
