@@ -1885,11 +1885,15 @@ function PresenceCard(props: {
           <Text style={styles.enterButtonText}>{t('channel.enter')}</Text>
         </TouchableOpacity>
         {/* The option, from the door itself: whoever would rather not
-            press this every time says so here, once. */}
+            press Enter every time says so here, once - a second button,
+            and under it where to take it back. */}
         {props.openInto === 'door' && props.onEnterAlways ? (
-          <TouchableOpacity onPress={props.onEnterAlways} hitSlop={12}>
-            <Text style={styles.doorLink}>{t('channel.enterAlways')}</Text>
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity style={styles.enterAlwaysButton} onPress={props.onEnterAlways}>
+              <Text style={styles.enterAlwaysText}>{t('channel.enterAlways')}</Text>
+            </TouchableOpacity>
+            <Text style={styles.doorNote}>{t('channel.enterAlwaysNote')}</Text>
+          </>
         ) : null}
       </View>
     );
@@ -2569,7 +2573,12 @@ const styles = StyleSheet.create({
     paddingVertical: 14, paddingHorizontal: 34,
   },
   enterButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  doorLink: { color: '#6b7686', fontSize: 13, textAlign: 'center', marginTop: 18, textDecorationLine: 'underline' },
+  enterAlwaysButton: {
+    marginTop: 12, paddingVertical: 12, paddingHorizontal: 22, borderRadius: 14,
+    borderWidth: 1, borderColor: '#2f7cf6',
+  },
+  enterAlwaysText: { color: '#2f7cf6', fontSize: 15, fontWeight: '600', textAlign: 'center' },
+  doorNote: { color: '#6b7686', fontSize: 12, textAlign: 'center', marginTop: 8, lineHeight: 17 },
   stayBand: {
     position: 'absolute', left: 16, right: 16,
     justifyContent: 'center', alignItems: 'center',

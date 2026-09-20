@@ -150,6 +150,7 @@ export const en = {
     notEntered: 'You are out of the channel',
     notEnteredBody: 'Touch Enter to go in.',
     enterAlways: 'Go in by itself when I open the app',
+    enterAlwaysNote: 'You can change this any time in the settings, under "On opening the app".',
     enter: 'Enter',
     screenCovered: 'Screen covered: the buttons are held. Touch three times to insist.',
     charging: 'charging',

@@ -139,6 +139,7 @@ export const fr: Dictionary = {
     notEntered: 'Tu es hors du canal',
     notEnteredBody: 'Touche Entrer pour entrer.',
     enterAlways: 'Entrer toute seule quand j\'ouvre l\'appli',
+    enterAlwaysNote: 'Tu peux changer ça quand tu veux dans les réglages, à « À l\'ouverture de l\'appli ».',
     enter: 'Entrer',
     screenCovered: 'Écran couvert : boutons bloqués. Touche trois fois pour insister.',
     charging: 'en charge',

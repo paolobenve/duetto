@@ -139,6 +139,7 @@ export const de: Dictionary = {
     notEntered: 'Du bist außerhalb des Kanals',
     notEnteredBody: 'Tippe auf Eintreten, um hineinzugehen.',
     enterAlways: 'Von selbst eintreten, wenn ich die App öffne',
+    enterAlwaysNote: 'Das lässt sich jederzeit in den Einstellungen ändern, unter „Beim Öffnen der App“.',
     enter: 'Eintreten',
     screenCovered: 'Bildschirm verdeckt: die Tasten sind gesperrt. Tippe dreimal, um darauf zu bestehen.',
     charging: 'lädt',
