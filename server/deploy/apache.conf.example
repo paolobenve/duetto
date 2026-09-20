@@ -23,6 +23,9 @@ RewriteRule ^/duetto/ws$ ws://127.0.0.1:8787/ [P,L]
 # --- Health check (ordinary HTTP) ---
 ProxyPass        /duetto/healthz http://127.0.0.1:8787/healthz
 ProxyPassReverse /duetto/healthz http://127.0.0.1:8787/healthz
+# The links people are given (/duetto/p/..., /duetto/i/...): a page that opens the app.
+ProxyPass        /duetto/p/ http://127.0.0.1:8787/duetto/p/
+ProxyPass        /duetto/i/ http://127.0.0.1:8787/duetto/i/
 
 # The calls last a long time: the proxy must not close the connection.
 ProxyTimeout 3600

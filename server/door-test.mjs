@@ -229,6 +229,20 @@ try {
   mu = await join(PORT, ugo, ROOM, 'ugo');
   check('a third phone at the taken room: turned away', mu.answer.type === 'error', mu.answer);
   mu.ws.close();
+
+  // The page behind a link: bounces into the app, names host and code.
+  const KEY = 'A'.repeat(43);
+  // fetch does not let the Host header be set: the page names the one it was asked at.
+  const HOST = `127.0.0.1:${PORT}`;
+  let page = await (await fetch(`http://${HOST}/duetto/p/12345678/${KEY}`)).text();
+  check('pairing link page bounces into the app', page.includes(`href="duetto://${HOST}/pair/12345678/${KEY}"`)
+    && page.includes(`intent://${HOST}/pair/12345678/`) && page.includes('1234 5678'), page.slice(-400));
+  page = await (await fetch(`http://${HOST}/duetto/i/ABCD-2345`)).text();
+  check('invitation link page bounces into the app', page.includes(`href="duetto://${HOST}/invite/ABCD-2345"`), page.slice(-400));
+  page = await (await fetch(`http://${HOST}/duetto/p/12345678?stay=1`)).text();
+  check('with stay=1 the page does not bounce', !page.includes('location.replace'), page.slice(-200));
+  const r404 = await fetch(`http://127.0.0.1:${PORT}/duetto/x/12345678`);
+  check('an unknown path is not a page', r404.status === 426, r404.status);
 } finally {
   srv.kill(); srvK.kill();
   try { unlinkSync(FILE); } catch {}

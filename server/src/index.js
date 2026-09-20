@@ -569,7 +569,7 @@ async function handleInviteNote(ws, msg) {
   }
   const name = cleanName(String(msg.name || ''));
   const link = String(msg.link || '').trim();
-  if (!/^duetto:\/\/[^\s]{3,200}$/.test(link)) {
+  if (!/^(duetto|https?):\/\/[^\s]{3,200}$/.test(link)) {
     send(ws, { type: 'invite-note-result', ok: false, error: 'bad-link' });
     return;
   }
@@ -597,8 +597,8 @@ async function handleInviteNote(ws, msg) {
   const body = [
     'Welcome aboard, and thank you for wanting to try Duetto.',
     `Here is your invitation, ${link}`,
-    'Open it on the phone with Duetto installed: it carries the server with it, so there is'
-      + ' nothing to type.'
+    'Tap it on the phone: with Duetto installed it opens the app, with the server inside, so'
+      + ' there is nothing to type; without, it says where to get Duetto and what to type.'
       + (until ? ` It is used once, and it works until ${until}.` : ' It is used once.'),
     'If tapping it does nothing, some apps refuse links they do not know, and older versions'
       + ' of Duetto did not answer for them either: open Duetto, and in the first screen write'
@@ -719,6 +719,63 @@ function cleanModel(raw) {
   return s.replace(/[\r\n]/g, ' ').slice(0, 40);
 }
 
+/**
+ * The page behind a link that is handed to people.
+ *
+ * A pairing code or an invitation goes out as https://host/duetto/p/...
+ * or /duetto/i/..., because a messaging app makes an https address a
+ * link and a custom scheme plain text - mail cut "duetto://" off and
+ * offered the server's name instead. This page is what that link
+ * opens: on a phone with Duetto it goes straight into the app, through
+ * an intent:// that Chrome resolves and a duetto:// link for the rest;
+ * with no app it says where to get one and what to type by hand. The
+ * host is the one the request came to: nothing of the server's own
+ * name lives here.
+ */
+function bouncePage(req) {
+  const m = String(req.url || '').match(/\/duetto\/(p|i)\/([A-Za-z0-9-]{4,12})(?:\/([A-Za-z0-9_-]{43}))?\/?(?:[?#].*)?$/);
+  if (!m) return null;
+  const kind = m[1] === 'p' ? 'pair' : 'invite';
+  const code = m[2];
+  const key = m[3] || '';
+  const host = String(req.headers.host || '').replace(/[^A-Za-z0-9.:\-\[\]]/g, '');
+  if (!host) return null;
+  const path = `${host}/${kind}/${code}${key ? `/${key}` : ''}`;
+  const app = `duetto://${path}`;
+  const here = `https://${host}${req.url}`;
+  const intent = `intent://${path}#Intent;scheme=duetto;package=com.duetto;`
+    + `S.browser_fallback_url=${encodeURIComponent(here + (here.includes('?') ? '&' : '?') + 'stay=1')};end`;
+  const shown = kind === 'pair' ? `${code.slice(0, 4)} ${code.slice(4)}` : code;
+  const what = kind === 'pair' ? 'a pairing code' : 'an invitation';
+  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const stay = /[?&]stay=1/.test(String(req.url));
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Duetto</title>
+<style>
+body{margin:0;background:#0b0e14;color:#e6ebf1;font:17px/1.5 system-ui,sans-serif}
+main{max-width:30rem;margin:0 auto;padding:2.5rem 1.5rem}
+h1{font-size:2rem;margin:0 0 .5rem}p{color:#c9d1dc}
+a.b{display:block;text-align:center;background:#2f7cf6;color:#fff;text-decoration:none;
+padding:1rem;border-radius:1rem;font-weight:700;margin:1.5rem 0}
+code{font-size:1.4rem;letter-spacing:.1em;color:#fff}small{color:#8892a0}
+</style></head><body><main>
+<h1>Duetto</h1>
+<p>This is ${what} for Duetto, the voice and video channel for two.</p>
+<a class="b" href="${esc(app)}">Open in Duetto</a>
+<p>No Duetto on this phone yet? Get it from <a href="https://f-droid.org/packages/com.duetto/">F-Droid</a>,
+open it, and ${kind === 'pair'
+    ? 'in the first screen write this server and the code'
+    : 'in the first screen write this server and this invitation'}:</p>
+<p><code>${esc(host)}</code><br><code>${esc(shown)}</code></p>
+<small>Or come back to this page once Duetto is installed, and touch the button.</small>
+</main>
+${stay ? '' : `<script>location.replace(${JSON.stringify(intent)});</script>`}
+</body></html>
+`;
+}
+
 const httpServer = createServer((req, res) => {
   // We accept both /healthz and /any/prefix/healthz: in front there may
   // be a proxy that forwards the path without rewriting it (HAProxy) or
@@ -726,6 +783,13 @@ const httpServer = createServer((req, res) => {
   if (req.url === '/healthz' || req.url.endsWith('/healthz')) {
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ ok: true, rooms: rooms.size, turn: !!turnConfig() }));
+    return;
+  }
+  // The page a link opens: see bouncePage.
+  const page = bouncePage(req);
+  if (page) {
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+    res.end(page);
     return;
   }
   res.writeHead(426, { 'content-type': 'text/plain' });

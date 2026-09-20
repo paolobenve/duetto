@@ -383,7 +383,12 @@ sudo apachectl configtest && sudo systemctl reload apache2
 
 ### nginx
 
-See `server/deploy/nginx.conf.example`.
+See `server/deploy/nginx.conf.example`. Three things go through: the WebSocket at
+`/duetto/ws`, the health check, and the pages at `/duetto/p/...` and `/duetto/i/...` -
+what a pairing link or an invitation opens. A messaging app makes an https address a
+link and a custom scheme plain text, so the links people are given are https, and the
+signalling server answers them with a page that bounces into the app, or says where to
+get it. Without that route the links people share do not open.
 
 ### Checking
 

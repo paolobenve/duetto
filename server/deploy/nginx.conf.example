@@ -27,3 +27,11 @@ location = /duetto/healthz {
     proxy_pass http://127.0.0.1:8787/healthz;
     proxy_set_header Host $host;
 }
+
+# The links people are given - a pairing code, an invitation - are
+# https://YOUR_DOMAIN/duetto/p/... and /duetto/i/...: the signalling
+# server answers them with a page that opens the app.
+location ~ ^/duetto/(p|i)/ {
+    proxy_pass http://127.0.0.1:8787;
+    proxy_set_header Host $host;
+}
