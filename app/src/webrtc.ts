@@ -867,6 +867,51 @@ export class ChannelSession {
    * out, for the other side - an older app included - to send the same
    * way; and theirs is shaped on arrival, for our encoder.
    */
+  /**
+   * The other side's description, shaped for OUR encoder.
+   *
+   * libwebrtc takes the parameters of what it sends from the
+   * description it receives: that is why the audio is shaped on both,
+   * and why the video's starting bitrate goes here alone. Written on
+   * our own offer it would set the OTHER phone's start, from our
+   * network - and it is the sender's road that decides. On wifi the
+   * encoder starts from the profile's figure instead of the library's
+   * three hundred; on mobile data the default stands. See config.ts.
+   */
+  private shapeRemote(sdp: string): string {
+    const shaped = ChannelSession.thriftyAudio(sdp);
+    if (this.network !== 'wifi') return shaped;
+    const profile = VIDEO_PROFILES[this.cfg.videoQuality] ?? VIDEO_PROFILES.better;
+    const kbps = Math.round(profile.startWifi / 1000);
+    const out = ChannelSession.withStartBitrate(shaped, kbps);
+    if (out !== shaped && !this.startSaid) {
+      this.startSaid = true;
+      Journal.mark(`video:start:${kbps}k:wifi`).catch(() => { /* noop */ });
+    }
+    return out;
+  }
+  private startSaid = false;
+
+  /** x-google-start-bitrate on every real video codec: not on rtx, red, fec. */
+  private static withStartBitrate(sdp: string, kbps: number): string {
+    const pts = [...sdp.matchAll(/^a=rtpmap:(\d+) (VP8|VP9|H264|AV1)\//gim)].map((m) => m[1]);
+    let out = sdp;
+    for (const pt of pts) {
+      const fmtp = new RegExp(`^(a=fmtp:${pt} [^\\r\\n]*)`, 'm');
+      if (fmtp.test(out)) {
+        out = out.replace(fmtp, (line) => (/x-google-start-bitrate=/.test(line)
+          ? line.replace(/x-google-start-bitrate=\d+/, `x-google-start-bitrate=${kbps}`)
+          : `${line};x-google-start-bitrate=${kbps}`));
+      } else {
+        out = out.replace(
+          new RegExp(`(a=rtpmap:${pt} [^\\r\\n]*\\r?\\n)`),
+          (all) => `${all}a=fmtp:${pt} x-google-start-bitrate=${kbps}\r\n`,
+        );
+      }
+    }
+    return out;
+  }
+
   private static thriftyAudio(sdp: string): string {
     const m = sdp.match(/a=rtpmap:(\d+) opus\/48000\/2/i);
     if (!m) return sdp;
@@ -985,7 +1030,7 @@ export class ChannelSession {
       }
 
       await pc.setRemoteDescription(
-        new RTCSessionDescription({ type: msg.type, sdp: ChannelSession.thriftyAudio(msg.sdp) }),
+        new RTCSessionDescription({ type: msg.type, sdp: this.shapeRemote(msg.sdp) }),
       );
       // Something came back: whatever was waiting, it is not stalled.
       this.offerPendingSince = 0;

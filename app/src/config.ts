@@ -768,7 +768,6 @@ export function opensHere(cfg: DuoConfig): boolean {
   return cfg.serverRole === 'owner' || cfg.serverRole === 'member';
 }
 
-/** True when a pair already exists: straight into the channel. */
 /** The codes still worth waiting for; the rest go quietly. */
 export function tidyPending(cfg: DuoConfig): DuoConfig {
   const list = Array.isArray(cfg.pending)
@@ -777,6 +776,7 @@ export function tidyPending(cfg: DuoConfig): DuoConfig {
   return { ...cfg, pending: list };
 }
 
+/** True when a pair already exists: straight into the channel. */
 export function isPaired(cfg: DuoConfig): boolean {
   return !!cfg.pair && !!cfg.pair.id && !!cfg.pair.key;
 }
@@ -800,6 +800,14 @@ export const VIDEO_PROFILES: Record<VideoQuality, {
   /** how the camera films: the one lever no encoder ignores */
   capture: { width: number; height: number };
   maxBitrate: number;
+  /**
+   * Where the encoder starts on wifi, instead of libwebrtc's own
+   * three hundred: the picture is grainy until the bandwidth probe
+   * climbs, and on a home wifi that is half a minute for nothing. On
+   * mobile data the default stands - a lossy road punishes a high
+   * start with a collapse. See webrtc.ts, shapeRemote().
+   */
+  startWifi: number;
   degradation: string;
   /** the key of its name and of its note in the dictionaries */
   key: string;
@@ -807,24 +815,28 @@ export const VIDEO_PROFILES: Record<VideoQuality, {
   saver: {
     capture: { width: 640, height: 360 },
     maxBitrate: 300_000,
+    startWifi: 200_000,
     degradation: 'balanced',
     key: 'saver',
   },
   standard: {
     capture: { width: 960, height: 540 },
     maxBitrate: 1_200_000,
+    startWifi: 600_000,
     degradation: 'balanced',
     key: 'standard',
   },
   better: {
     capture: { width: 1280, height: 720 },
     maxBitrate: 2_500_000,
+    startWifi: 1_000_000,
     degradation: 'balanced',
     key: 'better',
   },
   best: {
     capture: { width: 1920, height: 1080 },
     maxBitrate: 4_000_000,
+    startWifi: 1_500_000,
     // 'balanced' rather than 'maintain-resolution': at switch-on the
     // bandwidth estimate starts low, and forcing the encoder to produce
     // 1080p straight away means a first key frame that often does not
