@@ -2876,7 +2876,19 @@ export default function App() {
                 // And the word is kept true: the buttons hang on it.
                 setCfg((prev) => (prev && prev.serverRole !== 'stranger'
                   ? saveCfg({ ...prev, serverRole: 'stranger' }) : prev));
-                Alert.alert(t('errors.stranger'), t('errors.strangerBody'));
+                // Said once: the connection tries again on its own, and
+                // the same alert every twenty seconds is a nuisance, not
+                // news. The pair is marked as broken from the other
+                // side - a guest turned away is a guest whose room is
+                // gone - which is the card that says so and offers to
+                // take it away.
+                const id = cfgRef.current?.pair?.id;
+                const pair = cfgRef.current?.pairs.find((p) => p.id === id);
+                if (id && pair && !pair.brokenByPeer) {
+                  Journal.mark(`stranger:${id.slice(0, 8)}`).catch(() => { /* noop */ });
+                  setCfg((prev) => (prev ? saveCfg(markPairBroken(prev, id)) : prev));
+                  Alert.alert(t('errors.stranger'), t('errors.strangerBody'));
+                }
               } else if (reason === 'bad-invite') {
                 Alert.alert(t('errors.badInvite'), t('errors.badInviteBody'));
               } else if (reason === 'taken-room') {
@@ -4223,10 +4235,13 @@ export default function App() {
         onInvite={(name) => signalingRef.current?.askInvite(name)}
         onForget={(name) => signalingRef.current?.forgetPerson(name)}
         onForgetInvitation={(code) => signalingRef.current?.forgetInvitation(code)}
-        pending={cfg.pending ?? []}
+        // Only what is still a code: a letter taken makes a pair with
+        // the same id, and that row is a connection now.
+        pending={(cfg.pending ?? []).filter((p) => !cfg.pairs.some((x) => x.id === p.id))}
         onForgetPending={(id) => {
-          // The room goes on the server, the wait and any letter with it.
-          signalingRef.current?.forgetRoom(id);
+          // The wait goes on the server, and the room with it unless
+          // somebody has come in meanwhile.
+          signalingRef.current?.forgetPending(id);
           forgottenRooms.current.add(id);
           setCfg((prev) => (prev
             ? saveCfg({ ...prev, pending: (prev.pending ?? []).filter((x) => x.id !== id) })

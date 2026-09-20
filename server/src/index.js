@@ -1368,12 +1368,22 @@ function ownersBusiness(ws, msg) {
   // rest is the owner's.
   if (msg.type === 'forget' && msg.room) {
     if (!ws.opens) { send(ws, { type: 'error', error: 'not-yours' }); return; }
-    const guest = roomOf(String(msg.room))?.guest;
-    dropPending(String(msg.room), ws.who);
-    const gone = removeRoom(String(msg.room), ws.who);
-    console.log(`[duetto] ${ws.who} forgets a room of theirs (${gone})`);
-    if (gone && guest) dropTurn(guest);
-    if (!ws.invites) return;
+    const room = String(msg.room);
+    const guest = roomOf(room)?.guest;
+    dropPending(room, ws.who);
+    // A waiting code taken back is not a pair forgotten: if somebody
+    // has come in as the room's guest in the meantime, the pair was
+    // made on it and the room stays - a phone lost its pair this way,
+    // and was turned away every twenty seconds after.
+    if (msg.pending && guest) {
+      console.log(`[duetto] ${ws.who} takes a waiting code back; its room stays, somebody is in`);
+      if (!ws.invites) return;
+    } else {
+      const gone = removeRoom(room, ws.who);
+      console.log(`[duetto] ${ws.who} forgets a room of theirs (${gone})`);
+      if (gone && guest) dropTurn(guest);
+      if (!ws.invites) return;
+    }
   } else if (!ws.invites) {
     send(ws, { type: 'error', error: 'not-yours' });
     return;

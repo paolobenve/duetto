@@ -552,6 +552,11 @@ export class Signaling {
     this.rawSend({ type: 'forget', room });
   }
 
+  /** A waiting code taken back: the room goes only if nobody has come in. */
+  forgetPending(room: string) {
+    this.rawSend({ type: 'forget', room, pending: true });
+  }
+
   /** The other side is told, now or at their next join, that the pair is broken. */
   tellBroken(room: string) {
     this.rawSend({ type: 'broken', room });
