@@ -865,6 +865,27 @@ export default function SettingsScreen({
           </TouchableOpacity>
         ))}
 
+        <Text style={styles.sectionHint}>{t('settings.outputOnEntry')}</Text>
+        {(['earpiece', 'asLeft'] as const).map((v) => (
+          <TouchableOpacity
+            key={v}
+            style={[styles.choice, (cfg.outputOnEntry ?? 'earpiece') === v && styles.choicePicked]}
+            onPress={() => {
+              setCfg({ ...cfg, outputOnEntry: v });
+              onLive?.({ outputOnEntry: v });
+            }}>
+            <View style={[styles.radio, (cfg.outputOnEntry ?? 'earpiece') === v && styles.radioPicked]} />
+            <View style={styles.choiceText}>
+              <Text style={styles.choiceLabel}>
+                {t(v === 'earpiece' ? 'settings.outputOnEntryEar' : 'settings.outputOnEntryAsLeft')}
+              </Text>
+              <Text style={styles.choiceNote}>
+                {t(v === 'earpiece' ? 'settings.outputOnEntryEarNote' : 'settings.outputOnEntryAsLeftNote')}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+
         <Text style={styles.sectionHint}>{t('settings.micOnEntry')}</Text>
         {(['asLeft', 'off'] as const).map((v) => (
           <TouchableOpacity

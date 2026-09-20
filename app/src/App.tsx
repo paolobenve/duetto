@@ -993,9 +993,33 @@ export default function App() {
     setCfg((prev) => (prev && prev.audioOutput !== route
       ? saveCfg({ ...prev, audioOutput: route })
       : prev));
+    /*
+     * The first turn to the speaker: a word on the option. The channel
+     * opens in the earpiece from now on, as a call does, and whoever
+     * would rather have it open as it was left the last time - the
+     * kitchen, the whole evening - is told once where that is said.
+     */
+    if (route === 'SPEAKER_PHONE' && cfgRef.current && !cfgRef.current.speakerNoticeShown) {
+      setCfg((prev) => (prev ? saveCfg({ ...prev, speakerNoticeShown: true }) : prev));
+      Alert.alert(t('channel.speakerNoticeTitle'), t('channel.speakerNoticeBody'), [
+        { text: t('channel.speakerNoticeFine'), style: 'cancel' },
+        {
+          text: t('channel.speakerNoticeGo'),
+          onPress: () => {
+            setCfg((prev) => (prev ? saveCfg({ ...prev, settingsTab: 'use' }) : prev));
+            setScreen('settings');
+          },
+        },
+      ]);
+    }
   }, [saveCfg]);
 
-  const audio = useAudioRoute(inChannel, cfg?.audioOutput, rememberOutput, {
+  // Where the sound comes out on entering: the earpiece unless asked
+  // to pick up where it was left. The pair's memory is kept either
+  // way; the option only decides what the entry starts from.
+  const preferredOutput = (cfg?.outputOnEntry ?? 'earpiece') === 'asLeft'
+    ? cfg?.audioOutput : 'EARPIECE';
+  const audio = useAudioRoute(inChannel, preferredOutput, rememberOutput, {
     ear: cfg?.earOnProximity ?? true,
     earWithVideo: cfg?.earEvenWithVideo ?? false,
     videoOn: videoOn || remoteHasVideo,

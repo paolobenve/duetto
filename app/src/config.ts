@@ -396,6 +396,14 @@ export type DuoConfig = {
    * moment the icon is touched surprised a tester, and that is fair.
    */
   openInto: 'channel' | 'door';
+  /**
+   * Where the sound comes out on entering the channel: the earpiece,
+   * always, or wherever it was left the last time. The earpiece is the
+   * default, as a phone call: the speaker is a choice, not a surprise.
+   */
+  outputOnEntry: 'earpiece' | 'asLeft';
+  /** the notice about that option was shown, at the first turn to the speaker */
+  speakerNoticeShown: boolean;
   /** a Bluetooth earpiece that connects takes the sound at once */
   autoBluetooth: boolean;
   /** a wired headset that is plugged in takes the sound at once */
@@ -475,6 +483,8 @@ export const DEFAULT_CONFIG: DuoConfig = {
   earOnProximity: true,
   earEvenWithVideo: false,
   openInto: 'door',
+  outputOnEntry: 'earpiece',
+  speakerNoticeShown: false,
   autoBluetooth: true,
   autoWired: true,
   language: 'auto',
