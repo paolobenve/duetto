@@ -45,6 +45,7 @@ import {
 import {
   addInvitation, adopt, isBroken, markBroken, noteGuest, noteRoom, mayOpen, read, refresh,
   remove as removePerson, removeInvitation, removeRoom, roomOf, useInvitation,
+  awaitRoom, pendingRoom, dropPending, leaveMail, takeMail,
 } from './devices.js';
 import { credentialsFor as turnCredentials, drop as dropTurn } from './turn.js';
 
@@ -277,8 +278,10 @@ function asGuest(msg, nonce, roomId, here) {
   if (room.guest === pub) return { name: `${room.owner}+`, opens: false, invites: false };
   if (room.guest) return null;
 
+  // The owner in the room, or the room waiting for its other half: a
+  // code handed over as a link, to be opened later. See devices.js.
   const ownerIsHere = [...here].some((peer) => peer.opens && peer.who === room.owner);
-  if (!ownerIsHere) return null;
+  if (!ownerIsHere && !pendingRoom(roomId)) return null;
 
   noteGuest(roomId, pub);
   console.log(`[duetto] ${room.owner} brings somebody along in their room, `
@@ -428,6 +431,13 @@ const rooms = new Map();
 
 function send(ws, obj) {
   if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(obj));
+}
+
+/** Hands the mail over, if there is any. */
+function deliverMail(ws, items) {
+  if (items.length === 0) return;
+  console.log(`[duetto] ${ws.who || '?'} takes ${items.length} letter(s) at the door`);
+  send(ws, { type: 'mail', items });
 }
 
 function peersOf(roomId, exclude) {
@@ -978,6 +988,12 @@ wss.on('connection', (ws, req) => {
         peerName: other ? other.name : '',
       });
 
+      // The mail: what the other half of a code handed over as a link
+      // left for this card, in whatever room it is met - the presence
+      // comes in by its pair's room, the maker of the code by the
+      // code's. Taken, it is gone.
+      deliverMail(ws, takeMail({ pub: ws.pub, room: roomId }));
+
       // If this side dropped moments ago, its departure is still being
       // held (see `returning`): they are back, the announcement dies
       // unsaid, and a knock that found nobody in the meantime - a cell
@@ -1045,6 +1061,37 @@ wss.on('connection', (ws, req) => {
       for (const peer of peersOf(ws.roomId, ws)) {
         send(peer, { type: 'pair', from: ws.peerId, payload: msg.payload });
       }
+      return;
+    }
+
+    // --- 4b) A code that waits, and the mail for it: see devices.js ----
+    if (msg.type === 'await-room') {
+      // Only whoever may open rooms, for the room they are in: the
+      // room was written down as theirs at the door.
+      if (!ws.opens || !ws.roomId) { send(ws, { type: 'error', error: 'not-yours' }); return; }
+      const untilMs = Number(msg.until) || 0;
+      if (untilMs <= Date.now()) {
+        dropPending(ws.roomId, ws.who);
+        send(ws, { type: 'awaiting', room: ws.roomId, until: null });
+        return;
+      }
+      const until = awaitRoom(ws.roomId, ws.who, ws.pub, untilMs);
+      console.log(`[duetto] ${ws.who} leaves room ${ws.roomId.slice(0, 4)}… waiting until ${until}`);
+      send(ws, { type: 'awaiting', room: ws.roomId, until });
+      return;
+    }
+    if (msg.type === 'pair-mail') {
+      const waiting = pendingRoom(ws.roomId);
+      if (!waiting) { send(ws, { type: 'pair-mail-result', ok: false, error: 'not-waiting' }); return; }
+      const ok = leaveMail(ws.roomId, msg.payload, ws.pub, waiting.until);
+      console.log(`[duetto] mail left in room ${ws.roomId.slice(0, 4)}… for ${waiting.owner}`);
+      // The maker on line right now, in any room: handed over at once.
+      for (const peer of wss.clients) {
+        if (peer !== ws && peer.joined && peer.pub && peer.pub === waiting.ownerPub) {
+          deliverMail(peer, takeMail({ pub: peer.pub }));
+        }
+      }
+      send(ws, { type: 'pair-mail-result', ok });
       return;
     }
 
@@ -1246,6 +1293,7 @@ function ownersBusiness(ws, msg) {
   if (msg.type === 'forget' && msg.room) {
     if (!ws.opens) { send(ws, { type: 'error', error: 'not-yours' }); return; }
     const guest = roomOf(String(msg.room))?.guest;
+    dropPending(String(msg.room), ws.who);
     const gone = removeRoom(String(msg.room), ws.who);
     console.log(`[duetto] ${ws.who} forgets a room of theirs (${gone})`);
     if (gone && guest) dropTurn(guest);

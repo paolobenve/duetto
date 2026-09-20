@@ -190,6 +190,45 @@ try {
   const dario3 = phone();
   r = await knock(PORT_K, dario3, { key: 'wrong' });
   check('new card, wrong key at owned house: bad-key', r.answer.error === 'bad-key', r.answer); r.ws.close();
+
+  // A code that waits: the maker leaves, the other half comes in alone
+  // and leaves its key, the maker finds it at the door of any room.
+  const gino = phone();
+  const ugo = phone();
+  const ROOM = 'waitroom1';
+  const nextMsg = (ws, ms = 1500) => new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(null), ms);
+    ws.once('message', (d) => { clearTimeout(timer); resolve(JSON.parse(d.toString())); });
+  });
+  let ma = await join(PORT, anna, ROOM, 'anna');
+  check('maker opens the code room', ma.answer.type === 'joined', ma.answer);
+  let mw = await ask(ma.ws, { type: 'await-room', until: Date.now() + 3600_000 });
+  check('the room waits', mw.type === 'awaiting' && mw.room === ROOM && !!mw.until, mw);
+  ma.ws.close(); await sleep(100);
+  let mg = await join(PORT, gino, ROOM, 'gino');
+  check('other half comes in alone while the room waits', mg.answer.type === 'joined', mg.answer);
+  let pm = await ask(mg.ws, { type: 'pair-mail', payload: { kind: 'pubkey', pub: 'GINO', name: 'gino' } });
+  check('mail left', pm.type === 'pair-mail-result' && pm.ok === true, pm);
+  mg.ws.close(); await sleep(100);
+  ma = await join(PORT, anna, 'someotherroom', 'anna');
+  check('maker back, elsewhere', ma.answer.type === 'joined', ma.answer);
+  let mail = await nextMsg(ma.ws);
+  check('mail handed over at the door', mail?.type === 'mail' && mail.items?.[0]?.room === ROOM
+    && mail.items[0].payload?.pub === 'GINO', mail);
+  ma.ws.close(); await sleep(100);
+  ma = await join(PORT, anna, 'someotherroom', 'anna');
+  mail = await nextMsg(ma.ws, 400);
+  check('taken, it is gone', mail === null, mail);
+  ma.ws.close(); await sleep(100);
+  mg = await join(PORT, gino, ROOM, 'gino');
+  check('the other half is the room\'s guest from here on', mg.answer.type === 'joined', mg.answer);
+  mg.ws.close();
+  let mu = await join(PORT, ugo, 'nowait', 'ugo');
+  check('a stranger at an empty room that does not wait: turned away', mu.answer.type === 'error' && mu.answer.error === 'not-allowed', mu.answer);
+  mu.ws.close();
+  mu = await join(PORT, ugo, ROOM, 'ugo');
+  check('a third phone at the taken room: turned away', mu.answer.type === 'error', mu.answer);
+  mu.ws.close();
 } finally {
   srv.kill(); srvK.kill();
   try { unlinkSync(FILE); } catch {}

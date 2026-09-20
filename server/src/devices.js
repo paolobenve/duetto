@@ -39,7 +39,9 @@ const FILE = process.env.DEVICES_FILE
 /** A week. Long enough to be handed over calmly, short enough to expire. */
 const INVITE_DAYS = Number(process.env.INVITE_DAYS || 7);
 
-const EMPTY = { devices: [], invitations: [], rooms: [], broken: [], turn: {} };
+const EMPTY = { devices: [], invitations: [], rooms: [], broken: [], turn: {}, pending: [], mail: [] };
+/** How long a pairing code waits for the other phone, at most. */
+const AWAIT_HOURS = Number(process.env.AWAIT_HOURS || 24);
 /** How long a broken room is remembered, for the side that has not heard. */
 const BROKEN_DAYS = 30;
 
@@ -84,6 +86,8 @@ export function read() {
       rooms: Array.isArray(parsed.rooms) ? parsed.rooms : [],
       broken: Array.isArray(parsed.broken) ? parsed.broken : [],
       turn: parsed.turn && typeof parsed.turn === 'object' ? parsed.turn : {},
+      pending: Array.isArray(parsed.pending) ? parsed.pending : [],
+      mail: Array.isArray(parsed.mail) ? parsed.mail : [],
     };
     return cached;
   } catch {
@@ -444,4 +448,87 @@ export function isBroken(room) {
   const now = Date.now();
   return (read().broken || []).some((b) =>
     b.room === room && now - Date.parse(b.at) < BROKEN_DAYS * 86400_000);
+}
+
+// --- A code that waits, and the mail for it -------------------------------
+//
+// A pairing used to need both phones awake at the same moment: the
+// exchange of public keys was live, through a room both were in. With
+// the maker's key in the link, the other phone has everything the
+// shared key is made of and pairs at once; what it has to do is leave
+// its own key for the maker to find. So a room can be AWAITED - the
+// maker says so while making the code, for a day at most - and while
+// it is, one phone may come in as its guest with nobody there, and
+// leave MAIL: one message, kept for the maker's card, handed over the
+// next time that card is seen at the door, in any room. Both expire
+// with the wait, and go the moment the mail is taken.
+
+const now = () => Date.now();
+const alive = (x) => Date.parse(x.until) > now();
+
+/** Sweeps what has expired; says whether anything went. */
+function sweep(data) {
+  const p = data.pending.length;
+  const m = data.mail.length;
+  data.pending = data.pending.filter(alive);
+  data.mail = data.mail.filter(alive);
+  return data.pending.length !== p || data.mail.length !== m;
+}
+
+/** The maker of a code says: this room waits for its other half. */
+export function awaitRoom(room, owner, pub, untilMs) {
+  const data = read();
+  sweep(data);
+  const cap = now() + AWAIT_HOURS * 3600_000;
+  const until = new Date(Math.min(Math.max(untilMs || 0, now()), cap)).toISOString();
+  data.pending = data.pending.filter((x) => x.room !== room)
+    .concat({ room, owner, ownerPub: pub, until });
+  write(data);
+  return until;
+}
+
+/** The wait for this room, if it is still on. */
+export function pendingRoom(room) {
+  const data = read();
+  if (sweep(data)) write(data);
+  return data.pending.find((x) => x.room === room) || null;
+}
+
+/** The maker takes the code back: the wait goes, and any mail with it. */
+export function dropPending(room, owner) {
+  const data = read();
+  const before = data.pending.length + data.mail.length;
+  data.pending = data.pending.filter((x) => !(x.room === room && x.owner === owner));
+  data.mail = data.mail.filter((x) => x.room !== room);
+  const gone = before - data.pending.length - data.mail.length;
+  if (gone) write(data);
+  return gone;
+}
+
+/** The other phone leaves its key for the maker: one letter per room. */
+export function leaveMail(room, payload, fromPub, until) {
+  const data = read();
+  sweep(data);
+  data.mail = data.mail.filter((x) => x.room !== room)
+    .concat({ room, payload, from: fromPub, until, since: new Date().toISOString() });
+  return write(data);
+}
+
+/**
+ * The mail for a card, or for a room: taken, it is gone, and so is the
+ * wait it answered - the room is the pair's from here on.
+ */
+export function takeMail({ pub = '', room = '' } = {}) {
+  const data = read();
+  sweep(data);
+  const mine = new Set(data.pending.filter((x) => (pub && x.ownerPub === pub) || (room && x.room === room))
+    .map((x) => x.room));
+  if (room) mine.add(room);
+  const items = data.mail.filter((x) => mine.has(x.room));
+  if (items.length === 0) return [];
+  const rooms = new Set(items.map((x) => x.room));
+  data.mail = data.mail.filter((x) => !rooms.has(x.room));
+  data.pending = data.pending.filter((x) => !rooms.has(x.room));
+  write(data);
+  return items.map((x) => ({ room: x.room, payload: x.payload }));
 }
