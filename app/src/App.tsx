@@ -2851,6 +2851,7 @@ export default function App() {
               if (!p || item.payload.kind !== 'pubkey') continue;
               Journal.mark('paired:by-letter').catch(() => { /* noop */ });
               onPaired(pairFromLetter(p, item.payload.pub, item.payload.name, 'A'));
+              sayPaired(item.payload.name);
             }
           },
 
@@ -3743,6 +3744,19 @@ export default function App() {
    * the audio they listen to is sent by the other person.
    */
   /**
+   * The letter came and the pair is made: said, or the person who
+   * shared the link and went on with their day would find a new
+   * connection in the list and no word about it.
+   */
+  const sayPaired = (who: string) => {
+    const named = who && who !== 'Someone' && who !== 'Qualcuno';
+    Alert.alert(
+      t('pairing.doneTitle'),
+      named ? t('alert.pairedNamed', { who }) : t('alert.paired'),
+    );
+  };
+
+  /**
    * Short packets, for both phones: see shortPackets in config.ts.
    * Written in the settings when `permanent`, for this session alone
    * otherwise; told to the other side when the choice was made here.
@@ -4027,6 +4041,7 @@ export default function App() {
             if (!mine || item.payload.kind !== 'pubkey') continue;
             Journal.mark('paired:by-letter:unpaired').catch(() => { /* noop */ });
             onPairedRef.current(pairFromLetter(mine, item.payload.pub, item.payload.name, 'A'));
+            sayPaired(item.payload.name);
           }
         },
       },

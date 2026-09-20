@@ -175,13 +175,7 @@ export default function PairingScreen({
         mode: 'listening',
       },
       {
-        onJoined: ({ peerPresent }) => {
-          if (peerPresent) sendPubOnce(sig);
-          // The maker's room waits a day: the code goes out as a link
-          // with our key in it, and the other half may come while this
-          // screen is long closed. See devices.js on the server.
-          if (side === 'A') sig.awaitRoom(Date.now() + 24 * 3600_000);
-        },
+        onJoined: ({ peerPresent }) => { if (peerPresent) sendPubOnce(sig); },
         onPeerJoined: () => sendPubOnce(sig),
         onAwaiting: (_room, until) => {
           if (side !== 'A' || !until) return;
@@ -537,6 +531,15 @@ export default function PairingScreen({
     // a letter. Without it, the link was the old kind, and the code at
     // its end read as a telephone number to a messaging app.
     const link = pairLink(cfg.serverUrl, code, pubToBase64(keysRef.current.publicKey));
+    // The room waits a day from the moment the link leaves the phone -
+    // copied or shared - and not before: a screen opened and closed
+    // used to leave a waiting code behind every time, and one phone
+    // had a dozen. Dictated or scanned, the exchange is live and
+    // nothing waits. See devices.js on the server.
+    const startWaiting = () => {
+      if (awaitingRef.current) return;
+      signalingRef.current?.awaitRoom(Date.now() + 24 * 3600_000);
+    };
     return (
       <Screen>
         <Text style={styles.title}>{t('pairing.connectTitle2')}</Text>
@@ -550,6 +553,7 @@ export default function PairingScreen({
           label={linkCopied ? t('pairing.linkCopied') : t('pairing.copyLink')}
           outline
           onPress={() => {
+            startWaiting();
             Clipboard.setString(link);
             setLinkCopied(true);
             setTimeout(() => setLinkCopied(false), 2000);
@@ -558,7 +562,7 @@ export default function PairingScreen({
         <Primary
           label={t('pairing.shareLink')}
           outline
-          onPress={() => { Share.share({ message: link }).catch(() => { /* noop */ }); }}
+          onPress={() => { startWaiting(); Share.share({ message: link }).catch(() => { /* noop */ }); }}
         />
         <View style={styles.waitRow}>
           <ActivityIndicator color="#2f7cf6" />
