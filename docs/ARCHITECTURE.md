@@ -143,6 +143,21 @@ final proofs would unmask them. The two proofs are different for the two sides, 
 can send back the other one's. Once the pairing is over the key is 256 bits and the
 weakness of the code counts no more.
 
+**The code can also travel as a link, and then nobody waits.** The exchange above needs
+both phones awake at the same moment, because each has to receive the other's public key.
+The link `duetto://server/pair/CODE/KEY` carries A's public key beside the code, so
+whoever opens it has everything the shared key is made of - their own secret, A's key,
+the code - and pairs at once. What is left is to let A know: B leaves a **letter** on
+the server, its own public key with its name, in the room A had told the server to keep
+**waiting** (a day at most, `await-room`). The server hands the letter to A's card the
+next time it comes to the door, in any room - at once if A is on line - and both the
+letter and the wait go with it; A makes the same key from it (`pairFromLetter`). The
+proofs are not exchanged on this road: the code never went through the server, only in
+the link, and a letter for the wrong room makes a key nobody else has. The room waits
+only for one guest, the first to leave a letter, as with a code read out loud. What A
+keeps meanwhile is `PendingPair` in its configuration - the secret half and the code -
+and the server keeps the wait and the letter in `devices.json`.
+
 ### 3. Encryption of the signalling (`app/src/crypto.ts`)
 
 - **NaCl secretbox** (XSalsa20-Poly1305), a random 24-byte nonce per message.
