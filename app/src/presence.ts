@@ -10,7 +10,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
 import { Foreground, Journal, Alarm } from 'duetto-platform';
-import { loadConfig, isPaired, isServerConfigured, pairFileKey, pairName } from './config';
+import {
+  loadConfig, saveConfig, addPair, isPaired, isServerConfigured, pairFileKey, pairName,
+} from './config';
+import { pairFromLetter } from './pairing';
 import { Signaling } from './signaling';
 import { attachWatchdog, Watchdog } from './watchdog';
 import { t } from './i18n';
@@ -449,6 +452,36 @@ export async function startListening(): Promise<boolean> {
         active = peerActive;
         if (peerName) name = peerName;
         refresh();
+      },
+
+      /**
+       * The letter of somebody who opened a link of ours, arriving at
+       * a phone with no interface open: the pair is made and written
+       * down, and the notification says who, for the interface to
+       * find when it comes. Read fresh: the codes that wait are kept
+       * by the interface, which may have made one after we started.
+       */
+      onMail: (items) => {
+        loadConfig().then(async (fresh) => {
+          let next = fresh;
+          let made = 0;
+          for (const item of items) {
+            const p = next.pending?.find((x) => x.id === item.room);
+            if (!p || item.payload.kind !== 'pubkey') continue;
+            const made1 = pairFromLetter(p, item.payload.pub, item.payload.name, 'A');
+            next = addPair(
+              { ...next, pending: (next.pending ?? []).filter((x) => x.id !== p.id) },
+              made1,
+            );
+            made += 1;
+            Journal.mark('paired:by-letter:headless').catch(() => { /* noop */ });
+            const who = item.payload.name;
+            Foreground.notify(connectionName,
+              named(who) ? t('alert.pairedNamed', { who }) : t('alert.paired'))
+              .catch(() => { /* noop */ });
+          }
+          if (made > 0) await saveConfig(next);
+        }).catch(() => { /* noop */ });
       },
 
       onNotify: (reason, peerName) => {

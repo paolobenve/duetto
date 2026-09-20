@@ -130,6 +130,8 @@ export const en = {
     callingYou: 'Somebody is calling you',
     joinedNamed: '{who} is in the channel',
     joined: 'Someone is in the channel',
+    pairedNamed: '{who} is connected with you',
+    paired: 'Somebody is connected with you',
   },
 
   buttons: {
@@ -364,6 +366,9 @@ export const en = {
     takeAway: 'Take away',
     forgetPerson: 'take away',
     inviteLine: 'Give them the code {code}: out loud, by message, however you like. It is used once, and lasts until {date}.',
+    waitingCodes: 'Codes that wait',
+    waitingCodesHint: 'Made here and handed over as a link, each waits one day for the other phone to open it.',
+    waitingLine: 'Waits until {date}.',
     invitePerson: 'Invite somebody to use the server, with pairs of their own',
     invitePersonPlaceholder: 'their name',
     invitePersonHint: 'The name is for you: it is what this list and the log will say. They never see it.',
@@ -512,6 +517,7 @@ export const en = {
     doneGuest: 'From now on you and {who} are a pair: open the app and you find each other. On this server you are the guest of {who}: you talk to them, and to nobody else.',
     doneOpens: 'From now on you and {who} are a pair: open the app and you find each other. Other pairs can be added from the settings.',
     doneByLetter: 'The other phone will find you connected the next time Duetto opens on it: nothing to do over there.',
+    canClose: 'You can close this: the code waits until {when}. Whoever opens the link is connected at once, and you will hear it.',
     linkExpired: 'This link has run out: a code waits one day. Ask for a new one.',
     go: 'Next',
     theOtherPerson: 'the other person',

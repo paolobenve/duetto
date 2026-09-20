@@ -12,7 +12,7 @@ import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator,
   ScrollView, KeyboardAvoidingView, Platform, Clipboard, Share,
 } from 'react-native';
-import { DuoConfig, PairInfo, ServerRole, displayServer, isPaired } from './config';
+import { DuoConfig, PairInfo, PendingPair, ServerRole, displayServer, isPaired } from './config';
 import { makeInvitation } from './door';
 import { pairLink, parseLink } from './links';
 import QrCode from './QrCode';
@@ -21,7 +21,7 @@ import { Signaling, PairMessage } from './signaling';
 import {
   generateCode, normalizeCode, formatCode, isCodeComplete,
   pairIdFromCode, newKeyPair, deriveSharedKey, confirmationFor,
-  keyToBase64, pubToBase64, pubFromBase64,
+  keyToBase64, pubToBase64, pubFromBase64, pairFromLetter,
 } from './pairing';
 import { VERSION_FULL } from './version';
 import { t } from './i18n';
@@ -29,6 +29,12 @@ import { t } from './i18n';
 type Props = {
   cfg: DuoConfig;
   onPaired: (pair: PairInfo) => void;
+  /**
+   * A code made here now waits on the server for its other half: what
+   * is needed to finish the pairing when their letter comes, to be
+   * kept by whoever keeps the configuration.
+   */
+  onPending?: (p: PendingPair) => void;
   onBack: () => void;
   /**
    * What the server is to this phone: it decides which buttons can
@@ -70,7 +76,7 @@ const TIMEOUT_MS = 90_000;
 const RETRY_WAIT_S = 20;
 
 export default function PairingScreen({
-  cfg, onPaired, onBack, role = 'unknown', joinWith, joinWithKey, onRefused, startTyping,
+  cfg, onPaired, onPending, onBack, role = 'unknown', joinWith, joinWithKey, onRefused, startTyping,
 }: Props) {
   const [step, setStep] = useState<Step>(startTyping ? 'join' : 'choose');
   const [code, setCode] = useState('');
@@ -97,13 +103,17 @@ export default function PairingScreen({
   const peerNameRef = useRef('');
   const doneRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** the server keeps this code waiting until then; '' while it does not */
+  const awaitingRef = useRef('');
+  const [awaitingUntil, setAwaitingUntil] = useState('');
 
   const cleanup = useCallback(() => {
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
     // A code created and not completed leaves a room on the server:
     // told to forget it, before the socket goes. Completed, the room
-    // is the pair's, and stays.
-    if (!doneRef.current && pairIdRef.current && signalingRef.current) {
+    // is the pair's, and stays; waiting - handed over as a link, to be
+    // opened later - it stays too, until its day is out.
+    if (!doneRef.current && !awaitingRef.current && pairIdRef.current && signalingRef.current) {
       signalingRef.current.forgetRoom(pairIdRef.current);
       pairIdRef.current = '';
     }
@@ -171,8 +181,41 @@ export default function PairingScreen({
         mode: 'listening',
       },
       {
-        onJoined: ({ peerPresent }) => { if (peerPresent) sendPubOnce(sig); },
+        onJoined: ({ peerPresent }) => {
+          if (peerPresent) sendPubOnce(sig);
+          // The maker's room waits a day: the code goes out as a link
+          // with our key in it, and the other half may come while this
+          // screen is long closed. See devices.js on the server.
+          if (side === 'A') sig.awaitRoom(Date.now() + 24 * 3600_000);
+        },
         onPeerJoined: () => sendPubOnce(sig),
+        onAwaiting: (_room, until) => {
+          if (side !== 'A' || !until) return;
+          awaitingRef.current = until;
+          setAwaitingUntil(until);
+          onPending?.({
+            code: clean,
+            id: pairId,
+            pub: pubToBase64(keysRef.current.publicKey),
+            sec: keyToBase64(keysRef.current.secretKey),
+            serverUrl: cfg.serverUrl.trim(),
+            until,
+          });
+        },
+        // Their letter, while this screen is still open: the pair is
+        // made from it, as it would be from their live key.
+        onMail: (items) => {
+          const mine = items.find((i) => i.room === pairId);
+          if (!mine || doneRef.current || mine.payload.kind !== 'pubkey') return;
+          doneRef.current = true;
+          awaitingRef.current = '';
+          cleanup();
+          setMade(pairFromLetter(
+            { id: pairId, sec: keyToBase64(keysRef.current.secretKey), code: clean },
+            mine.payload.pub, mine.payload.name, 'A',
+          ));
+          setStep('done');
+        },
 
         onPair: (msg: PairMessage) => {
           if (msg.kind === 'pubkey') {
@@ -202,6 +245,8 @@ export default function PairingScreen({
               return;
             }
             doneRef.current = true;
+            // Done live: the wait, and any letter, are taken back.
+            if (awaitingRef.current) { awaitingRef.current = ''; sig.awaitRoom(0); }
             cleanup();
             // Not handed over yet: first a word on what has just
             // happened, which whoever was merely reading digits out
@@ -240,9 +285,12 @@ export default function PairingScreen({
     sig.connect();
 
     timerRef.current = setTimeout(() => {
+      // A code that waits on the server has nothing to say after a
+      // minute and a half: the other half may come tomorrow.
+      if (awaitingRef.current) return;
       fail(t('pairing.noAnswer'));
     }, TIMEOUT_MS);
-  }, [cfg, fail, cleanup, onPaired]);
+  }, [cfg, fail, cleanup, onPaired, onPending]);
 
   /**
    * The other half of a code that came as a link with the maker's key.
@@ -580,8 +628,12 @@ export default function PairingScreen({
           <ActivityIndicator color="#2f7cf6" />
           <Text style={styles.waitText}>{t('pairing.waitingOther')}</Text>
         </View>
-        <Text style={styles.hint}>{t('pairing.connectHint2')}</Text>
-        <Secondary label={t('pairing.cancel')} onPress={opens ? onBack : reset} />
+        <Text style={styles.hint}>
+          {awaitingUntil
+            ? t('pairing.canClose', { when: whenText(awaitingUntil) })
+            : t('pairing.connectHint2')}
+        </Text>
+        <Secondary label={t(awaitingUntil ? 'pairing.back' : 'pairing.cancel')} onPress={opens ? onBack : reset} />
       </Screen>
     );
   }
@@ -677,6 +729,13 @@ function Screen({ children }: { children?: React.ReactNode }) {
       {children}
     </ScrollView>
   );
+}
+
+/** "tomorrow at 15:04", in the phone's own way of saying it */
+function whenText(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleString(undefined, { weekday: 'long', hour: '2-digit', minute: '2-digit' });
 }
 
 function Primary(props: { label: string; onPress: () => void; disabled?: boolean; outline?: boolean }) {

@@ -12,10 +12,10 @@ import {
   View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity,
   KeyboardAvoidingView, Platform, Alert, Modal, Pressable, Clipboard, Linking, Share,
 } from 'react-native';
-import type { DuoConfig, PairInfo, VideoQuality } from './config';
+import type { DuoConfig, PairInfo, PendingPair, VideoQuality } from './config';
 import type { PersonOnServer, InvitationOnServer } from './signaling';
 import { t, LANGUAGES, longDate } from './i18n';
-import { inviteLink, BETA_TESTER_LINK } from './links';
+import { inviteLink, pairLink, BETA_TESTER_LINK } from './links';
 import QrCode from './QrCode';
 import type { LanguageChoice } from './i18n';
 import {
@@ -102,6 +102,9 @@ type Props = {
   onInvite?: (name: string) => void;
   onForget?: (name: string) => void;
   onForgetInvitation?: (code: string) => void;
+  /** codes made here that still wait for their other half */
+  pending?: PendingPair[];
+  onForgetPending?: (id: string) => void;
   initial: DuoConfig;
   /** opens the welcome, which knocks at the new door and asks what it needs */
   onChangeServer: () => void;
@@ -168,7 +171,7 @@ export default function SettingsScreen({
   initial, onForgetPair, onSwitchPair, onRenamePair, onChangeServer, onLeaveServer, onRepair, onHaveCode, onClose, onOpenSetup,
   vp9Here, vp9Peer, onQualityChange, onLive, reportsOpen, onReport, onInviteToWorkItem,
   canInvite, canAddPair, people = [], invitations = [],
-  onAskPeople, onInvite, onForget, onForgetInvitation,
+  onAskPeople, onInvite, onForget, onForgetInvitation, pending = [], onForgetPending,
 }: Props) {
   const vp9Available = !!vp9Here && !!vp9Peer;
   const vp9Why = vp9Available
@@ -593,6 +596,38 @@ export default function SettingsScreen({
             owner's, which the server itself says. A guest never sees
             this: they can talk to whoever they like, and hand out
             nothing. */}
+        {pending.length > 0 ? (
+          <>
+            <Text style={styles.section}>{t('settings.waitingCodes')}</Text>
+            <Text style={styles.sectionHint}>{t('settings.waitingCodesHint')}</Text>
+            {pending.map((p) => (
+              <View key={p.id} style={styles.choice}>
+                <View style={styles.choiceText}>
+                  <Text style={styles.choiceLabel}>{`${p.code.slice(0, 4)} ${p.code.slice(4)}`}</Text>
+                  <Text style={styles.choiceNote}>
+                    {t('settings.waitingLine', { date: longDate(p.until) })}
+                  </Text>
+                </View>
+                <View style={styles.rowLinks}>
+                  <TouchableOpacity onPress={() => copyCode(pairLink(p.serverUrl, p.code, p.pub))}>
+                    <Text style={styles.linkInline}>
+                      {copiedCode === pairLink(p.serverUrl, p.code, p.pub) ? t('settings.copied') : t('settings.copy')}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => {
+                    Share.share({ message: pairLink(p.serverUrl, p.code, p.pub) }).catch(() => { /* noop */ });
+                  }}>
+                    <Text style={styles.linkInline}>{t('settings.share')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => onForgetPending?.(p.id)}>
+                    <Text style={styles.linkInline}>{t('settings.takeAway')}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </>
+        ) : null}
+
         {canInvite ? (
           <>
             <Text style={styles.section}>{t('settings.people')}</Text>

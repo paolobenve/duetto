@@ -119,6 +119,8 @@ export const es: Dictionary = {
     callingYou: 'Te están llamando',
     joinedNamed: '{who} está en el canal',
     joined: 'Hay alguien en el canal',
+    pairedNamed: '{who} se ha conectado contigo',
+    paired: 'Alguien se ha conectado contigo',
   },
 
   buttons: {
@@ -351,6 +353,9 @@ export const es: Dictionary = {
     takeAway: 'Quitar',
     forgetPerson: 'quitar',
     inviteLine: 'Dale el código {code}: de viva voz, por mensaje, como quieras. Se usa una sola vez, y vale hasta el {date}.',
+    waitingCodes: 'Códigos en espera',
+    waitingCodesHint: 'Creados aquí y pasados como enlace, cada uno espera un día a que el otro teléfono lo abra.',
+    waitingLine: 'Espera hasta {date}.',
     invitePerson: 'Invitar a alguien a usar el servidor, con parejas propias',
     invitePersonPlaceholder: 'su nombre',
     invitePersonHint: 'El nombre es para ti: es el que dirán esta lista y el registro. Él no lo ve.',
@@ -499,6 +504,7 @@ export const es: Dictionary = {
     doneGuest: 'Desde ahora tú y {who} sois una pareja: al abrir la app os encontráis. En este servidor eres invitado de {who}: hablas con esa persona, y con nadie más.',
     doneOpens: 'Desde ahora tú y {who} sois una pareja: al abrir la app os encontráis. Otras parejas se añaden desde los ajustes.',
     doneByLetter: 'El otro teléfono se encontrará conectado la próxima vez que Duetto se abra: allí no hay nada que hacer.',
+    canClose: 'Puedes cerrar: el código espera hasta {when}. Quien abra el enlace se conecta al instante, y lo sabrás.',
     linkExpired: 'Este enlace ha caducado: un código espera un día. Pide uno nuevo.',
     go: 'Siguiente',
     theOtherPerson: 'la otra persona',

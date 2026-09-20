@@ -44,6 +44,7 @@ import { leaveServer, knock, watchDoor } from './door';
 import ChannelScreen from './ChannelScreen';
 import { loadPipPosition } from './VideoStage';
 import { useAudioRoute } from './audioRoute';
+import { pairFromLetter } from './pairing';
 import { reportDirectly, inviteOnWorkItem } from './gitlab';
 import type { ReportOutcome } from './gitlab';
 import {
@@ -2783,7 +2784,11 @@ export default function App() {
             // list that comes back after has them gone.
             const me = list.find((p) => p.you);
             const pairs = cfgRef.current?.pairs ?? [];
+            const codesWaiting = cfgRef.current?.pending ?? [];
             for (const r of me?.theirs ?? []) {
+              // A room with no pair yet may be a code that waits: it
+              // is the server's to keep until its day is out.
+              if (codesWaiting.some((p) => p.id === r.room)) continue;
               if (r.room && !pairs.some((p) => p.id === r.room) && !forgottenRooms.current.has(r.room)) {
                 forgottenRooms.current.add(r.room);
                 sig.forgetRoom(r.room);
@@ -2794,6 +2799,17 @@ export default function App() {
             // The list follows on its own: the server sends it right
             // after, with this invitation already in it.
             setFreshInvite({ name, code });
+          },
+          // The letter of somebody who opened a link of ours: the
+          // pair is made from it, here and now, as if they had been
+          // in the room. See PendingPair.
+          onMail: (items) => {
+            for (const item of items) {
+              const p = cfgRef.current?.pending?.find((x) => x.id === item.room);
+              if (!p || item.payload.kind !== 'pubkey') continue;
+              Journal.mark('paired:by-letter').catch(() => { /* noop */ });
+              onPaired(pairFromLetter(p, item.payload.pub, item.payload.name, 'A'));
+            }
           },
 
           onError: (code, reason) => {
@@ -3865,7 +3881,11 @@ export default function App() {
     // It does not replace the previous connection: it stands beside it,
     // and moves to the front. Pairing with somebody else is not saying
     // you want to forget the first one.
-    const next = addPair(cfg, pair);
+    // The code that made it, if it was waiting, waits no more.
+    const next = addPair(
+      { ...cfg, pending: (cfg.pending ?? []).filter((p) => p.id !== pair.id) },
+      pair,
+    );
     setCfg(saveCfg(next));
     setPeerName(pair.peerName);
     setPeerPresent(false);
@@ -4044,6 +4064,15 @@ export default function App() {
         onInvite={(name) => signalingRef.current?.askInvite(name)}
         onForget={(name) => signalingRef.current?.forgetPerson(name)}
         onForgetInvitation={(code) => signalingRef.current?.forgetInvitation(code)}
+        pending={cfg.pending ?? []}
+        onForgetPending={(id) => {
+          // The room goes on the server, the wait and any letter with it.
+          signalingRef.current?.forgetRoom(id);
+          forgottenRooms.current.add(id);
+          setCfg((prev) => (prev
+            ? saveCfg({ ...prev, pending: (prev.pending ?? []).filter((x) => x.id !== id) })
+            : prev));
+        }}
         onLive={(patch) => setCfg((prev) => {
             if (!prev) return prev;
             const next = saveCfg({ ...prev, ...patch });
@@ -4106,6 +4135,9 @@ export default function App() {
             setScreen('welcome');
           }}
           onPaired={onPaired}
+          onPending={(p) => setCfg((prev) => (prev
+            ? saveCfg({ ...prev, pending: [...(prev.pending ?? []).filter((x) => x.id !== p.id), p] })
+            : prev))}
           // Before the first pairing, "change server" means the
           // welcome: there is nothing in the settings yet worth going
           // back to.
