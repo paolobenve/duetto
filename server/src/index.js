@@ -769,9 +769,17 @@ open it, and ${kind === 'pair'
     ? 'in the first screen write this server and the code'
     : 'in the first screen write this server and this invitation'}:</p>
 <p><code>${esc(host)}</code><br><code>${esc(shown)}</code></p>
-<small>Or come back to this page once Duetto is installed, and touch the button.</small>
+<small>${stay ? 'Come back to this page once Duetto is installed, and touch the button.'
+    : 'If Duetto did not open by itself, touch the button.'}</small>
 </main>
-${stay ? '' : `<script>location.replace(${JSON.stringify(intent)});</script>`}
+${stay ? '' : `<script>
+// Handed to the app after the page is on the screen, and by assigning
+// the location rather than replacing it: Chrome hands an intent to the
+// app and keeps this tab as it is, while a replace made in the middle
+// of loading left the tab on an error page. No app: the fallback URL
+// in the intent brings the page back, with stay=1, and no second try.
+setTimeout(function () { window.location.href = ${JSON.stringify(intent)}; }, 150);
+</script>`}
 </body></html>
 `;
 }
