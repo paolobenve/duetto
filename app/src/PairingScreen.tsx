@@ -600,7 +600,10 @@ export default function PairingScreen({
      * - for whoever is not in the room. The link is the same one the
      * QR code says.
      */
-    const link = pairLink(cfg.serverUrl, code);
+    // With our key in it: whoever opens it pairs at once, and leaves
+    // a letter. Without it, the link was the old kind, and the code at
+    // its end read as a telephone number to a messaging app.
+    const link = pairLink(cfg.serverUrl, code, pubToBase64(keysRef.current.publicKey));
     return (
       <Screen>
         <Text style={styles.title}>{t('pairing.connectTitle2')}</Text>
