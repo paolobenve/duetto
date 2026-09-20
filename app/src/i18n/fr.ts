@@ -137,7 +137,8 @@ export const fr: Dictionary = {
     onWifi: 'en wifi',
     onMobile: 'en données mobiles',
     notEntered: 'Tu es hors du canal',
-    notEnteredBody: 'Touche Entrer pour y revenir.',
+    notEnteredBody: 'Touche Entrer pour entrer.',
+    enterAlways: 'Entrer toute seule quand j\'ouvre l\'appli',
     enter: 'Entrer',
     screenCovered: 'Écran couvert : boutons bloqués. Touche trois fois pour insister.',
     charging: 'en charge',
@@ -236,6 +237,11 @@ export const fr: Dictionary = {
   },
 
   settings: {
+    openInto: 'À l\'ouverture de l\'appli',
+    openIntoDoor: 'La porte, avec Entrer',
+    openIntoDoorNote: 'L\'appli s\'ouvre sur la porte : une touche sur Entrer et tu es dans le canal. Avant, personne ne t\'entend.',
+    openIntoChannel: 'Directement dans le canal',
+    openIntoChannelNote: 'Ouvrir l\'appli, c\'est entrer : l\'autre t\'entend aussitôt.',
     micOnEntry: 'Micro à l’entrée',
     micOnEntryAsLeft: 'Comme je l’avais laissé',
     micOnEntryAsLeftNote: 'Si tu sors avec le micro coupé, tu reviens avec le micro coupé ; si tu sors avec le micro allumé, tu reviens avec le micro allumé.',

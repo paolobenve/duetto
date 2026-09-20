@@ -389,6 +389,13 @@ export type DuoConfig = {
   earOnProximity: boolean;
   /** ...even while the video is on, which normally keeps it off */
   earEvenWithVideo: boolean;
+  /**
+   * What opening the app does: goes straight into the channel, or
+   * shows the door with the Enter button. The door is the default: a
+   * channel that is always there is the model, but being heard the
+   * moment the icon is touched surprised a tester, and that is fair.
+   */
+  openInto: 'channel' | 'door';
   /** a Bluetooth earpiece that connects takes the sound at once */
   autoBluetooth: boolean;
   /** a wired headset that is plugged in takes the sound at once */
@@ -467,6 +474,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   audioOutput: 'SPEAKER_PHONE',
   earOnProximity: true,
   earEvenWithVideo: false,
+  openInto: 'door',
   autoBluetooth: true,
   autoWired: true,
   language: 'auto',

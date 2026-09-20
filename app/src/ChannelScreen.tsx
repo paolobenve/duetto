@@ -501,6 +501,9 @@ type Props = {
   /** false when the screen is up but the phone is not in the channel: it shows the way in */
   entered?: boolean;
   onEnter?: () => void;
+  /** what opening the app does; the door offers to change it */
+  openInto?: 'channel' | 'door';
+  onEnterAlways?: () => void;
   connectionState: string;
   audioOn: boolean;
   videoOn: boolean;
@@ -579,7 +582,7 @@ type Props = {
  */
 export default function ChannelScreen(props: Props) {
   const {
-    entered, onEnter, ownGain, network,
+    entered, onEnter, openInto, onEnterAlways, ownGain, network,
     connectionName, peerName, peerAvatar, peerPresent, peerDetached, peerTornDown, videoStats, peerSendDelay, peerRecvDelay, delayTotalOnly, qualityLabel, showStats, controls, onSelectControls, news, onNewsRead, peerGain, systemVolume, onChangeLevel,
     versionWarning, frontCamera, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
@@ -1187,6 +1190,8 @@ export default function ChannelScreen(props: Props) {
           <PresenceCard
             entered={entered}
             onEnter={onEnter}
+            openInto={openInto}
+            onEnterAlways={onEnterAlways}
             connectionName={connectionName}
             peerMark={
               <View style={styles.cardMarkCol}>
@@ -1826,6 +1831,9 @@ function PresenceCard(props: {
   status: PresenceStatus;
   entered?: boolean;
   onEnter?: () => void;
+  /** what opening the app does; the door offers to change it */
+  openInto?: 'channel' | 'door';
+  onEnterAlways?: () => void;
   /** the link is carrying: connected, or still delivering packets */
   linked: boolean;
   connectionState: string;
@@ -1876,6 +1884,13 @@ function PresenceCard(props: {
         <TouchableOpacity style={styles.enterButton} onPress={props.onEnter}>
           <Text style={styles.enterButtonText}>{t('channel.enter')}</Text>
         </TouchableOpacity>
+        {/* The option, from the door itself: whoever would rather not
+            press this every time says so here, once. */}
+        {props.openInto === 'door' && props.onEnterAlways ? (
+          <TouchableOpacity onPress={props.onEnterAlways} hitSlop={12}>
+            <Text style={styles.doorLink}>{t('channel.enterAlways')}</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
     );
   }
@@ -2554,6 +2569,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14, paddingHorizontal: 34,
   },
   enterButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  doorLink: { color: '#6b7686', fontSize: 13, textAlign: 'center', marginTop: 18, textDecorationLine: 'underline' },
   stayBand: {
     position: 'absolute', left: 16, right: 16,
     justifyContent: 'center', alignItems: 'center',

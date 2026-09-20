@@ -844,6 +844,27 @@ export default function SettingsScreen({
           </TouchableOpacity>
         ))}
 
+        <Text style={styles.sectionHint}>{t('settings.openInto')}</Text>
+        {(['door', 'channel'] as const).map((v) => (
+          <TouchableOpacity
+            key={v}
+            style={[styles.choice, (cfg.openInto ?? 'door') === v && styles.choicePicked]}
+            onPress={() => {
+              setCfg({ ...cfg, openInto: v });
+              onLive?.({ openInto: v });
+            }}>
+            <View style={[styles.radio, (cfg.openInto ?? 'door') === v && styles.radioPicked]} />
+            <View style={styles.choiceText}>
+              <Text style={styles.choiceLabel}>
+                {t(v === 'door' ? 'settings.openIntoDoor' : 'settings.openIntoChannel')}
+              </Text>
+              <Text style={styles.choiceNote}>
+                {t(v === 'door' ? 'settings.openIntoDoorNote' : 'settings.openIntoChannelNote')}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+
         <Text style={styles.sectionHint}>{t('settings.micOnEntry')}</Text>
         {(['asLeft', 'off'] as const).map((v) => (
           <TouchableOpacity

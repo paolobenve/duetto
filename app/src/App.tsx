@@ -2861,10 +2861,12 @@ export default function App() {
       interfaceInCharge(true);
       sig.connect();
 
-      // Automatic entry. setMode updates the declared state even
-      // before the WebSocket is open, and the join that follows carries
-      // it already right: there is no need to wait for the connection.
-      if (!cancelled) await enterChannel();
+      // Automatic entry, if asked for. setMode updates the declared
+      // state even before the WebSocket is open, and the join that
+      // follows carries it already right: there is no need to wait for
+      // the connection. With the door instead, the card with Enter is
+      // what one sees, and one touch opens it.
+      if (!cancelled && (cfgRef.current?.openInto ?? 'door') === 'channel') await enterChannel();
     })();
 
     return () => {
@@ -4312,6 +4314,15 @@ export default function App() {
         network={network}
         entered={inChannel}
         onEnter={() => { leftByHandAt.current = 0; Journal.mark('command:enter-card').catch(() => {}); enterChannel(); }}
+        openInto={cfg.openInto ?? 'door'}
+        onEnterAlways={() => {
+          // Said from the door itself: from now on the app goes in by
+          // itself, and it goes in now.
+          setCfg((prev) => (prev ? saveCfg({ ...prev, openInto: 'channel' }) : prev));
+          leftByHandAt.current = 0;
+          Journal.mark('command:enter-always').catch(() => {});
+          enterChannel();
+        }}
       />
     </View>
   );

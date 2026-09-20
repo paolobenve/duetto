@@ -148,7 +148,8 @@ export const en = {
     onWifi: 'on wifi',
     onMobile: 'on mobile data',
     notEntered: 'You are out of the channel',
-    notEnteredBody: 'Touch Enter to go back in.',
+    notEnteredBody: 'Touch Enter to go in.',
+    enterAlways: 'Go in by itself when I open the app',
     enter: 'Enter',
     screenCovered: 'Screen covered: the buttons are held. Touch three times to insist.',
     charging: 'charging',
@@ -249,6 +250,11 @@ export const en = {
   },
 
   settings: {
+    openInto: 'On opening the app',
+    openIntoDoor: 'The door, with Enter',
+    openIntoDoorNote: 'The app opens on the door: one touch on Enter and you are in the channel. Nobody hears you before that.',
+    openIntoChannel: 'Straight into the channel',
+    openIntoChannelNote: 'Opening the app is entering: the other person hears you at once.',
     micOnEntry: 'Microphone on entering',
     micOnEntryAsLeft: 'As I left it',
     micOnEntryAsLeftNote: 'If you leave with the microphone off you come back in with it off; if you leave with it on, with it on.',
