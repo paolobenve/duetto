@@ -300,6 +300,8 @@ export default function App() {
   const [pairingPub, setPairingPub] = useState('');
   /** the pairing opened on typing a code, from the settings */
   const [pairingTyping, setPairingTyping] = useState(false);
+  /** the welcome opened to accept an invitation or a connection handed over */
+  const [accepting, setAccepting] = useState(false);
   const [cfg, setCfg] = useState<DuoConfig | null>(null);
 
   /**
@@ -4177,8 +4179,10 @@ export default function App() {
         <WelcomeScreen
           initial={cfg}
           arrived={arrived}
+          accept={accepting}
           onDone={(next, _answer, code, pub) => {
             forgetArrived();
+            setAccepting(false);
             Journal.mark(`door:${next.serverRole || 'unknown'}`).catch(() => { /* noop */ });
             setPairingCode(code || '');
             setPairingPub(pub || '');
@@ -4199,7 +4203,7 @@ export default function App() {
           // Back is the settings, paired or not: a phone with no pair
           // used to be sent to the pairing, which opened on a code.
           onClose={isServerConfigured(cfg)
-            ? () => { forgetArrived(); setScreen('settings'); }
+            ? () => { forgetArrived(); setAccepting(false); setScreen('settings'); }
             : undefined}
         />
       </View>
@@ -4220,7 +4224,7 @@ export default function App() {
           // No existing connection is touched: the new one is added, if
           // and when it succeeds.
           onRepair={() => { setPairingTyping(false); setScreen(opensHere(cfg) ? 'pairing' : 'welcome'); }}
-          onHaveCode={() => { setPairingTyping(true); setScreen('pairing'); }}
+          onHaveCode={() => { setAccepting(true); setScreen('welcome'); }}
           onClose={isPaired(cfg) ? () => setScreen('channel') : undefined}
           onOpenSetup={() => { setSetupFrom('settings'); setScreen('setup'); }}
           reportsOpen={reportsOpen}

@@ -56,11 +56,17 @@ type Props = {
    * QR code is: fields filled, and knocked with straight away.
    */
   arrived?: DuettoLink | null;
+  /**
+   * Opened to accept what somebody handed over - an invitation or a
+   * connection, as a link, a QR code or a code read out - from a phone
+   * already on a server: one screen that tells them apart.
+   */
+  accept?: boolean;
 };
 
-type Step = 'server' | 'knocking' | 'key' | 'stranger' | 'welcomed';
+type Step = 'server' | 'knocking' | 'key' | 'stranger' | 'welcomed' | 'accept';
 
-export default function WelcomeScreen({ initial, onDone, onClose, arrived }: Props) {
+export default function WelcomeScreen({ initial, onDone, onClose, arrived, accept }: Props) {
   const [server, setServer] = useState(displayServer(initial.serverUrl));
   const [key, setKey] = useState(initial.serverKey || '');
   // Never the one remembered: an invitation is spent at its first
@@ -69,7 +75,9 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived }: Pro
   const [invitation, setInvitation] = useState('');
   /** the pairing code somebody is reading out, typed right here */
   const [code, setCode] = useState('');
-  const [step, setStep] = useState<Step>('server');
+  const [step, setStep] = useState<Step>(accept ? 'accept' : 'server');
+  /** what was typed on the accept screen: a code, an invitation, or a whole link */
+  const [handed, setHanded] = useState('');
   /** a line under the field: what went wrong, or what the server said */
   const [note, setNote] = useState('');
   const [answer, setAnswer] = useState<DoorAnswer | null>(null);
@@ -262,6 +270,7 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived }: Pro
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       if (step === 'knocking') return true;
+      if (step === 'accept' && onClose) { onClose(); return true; }
       if (step !== 'server') { setNote(''); setWelcomed(null); setStep('server'); return true; }
       if (onClose) { onClose(); return true; }
       return false;
@@ -338,6 +347,55 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived }: Pro
           {note ? <Text style={styles.note}>{note}</Text> : null}
           <Primary label={t('welcome.next')} disabled={!key.trim()} onPress={() => knockNow('key')} />
           <Secondary label={t('welcome.back')} onPress={() => { setNote(''); setStep('server'); }} />
+        </Screen>
+      </Keyboard>
+    );
+  }
+
+  if (step === 'accept') {
+    /*
+     * One field for whatever was handed over, told apart by its shape:
+     * eight digits are a pairing code, four-dash-four an invitation, and
+     * a whole link is read as the QR code would be. A pairing code from
+     * a phone already on the server pairs as what the phone is here;
+     * an invitation knocks at its server, this one or another.
+     */
+    const typed = handed.trim();
+    const asLink = parseLink(typed);
+    const asCode = normalizeCode(typed);
+    const asInvite = formatInvitation(typed, '');
+    const isCode = !asLink && /^\d[\d ]*$/.test(typed) && isCodeComplete(asCode);
+    const isInvite = !asLink && !isCode && /^[A-Za-z0-9]{4}-?[A-Za-z0-9]{4}$/.test(typed.replace(/\s/g, ''));
+    const go = () => {
+      setNote('');
+      if (asLink) { takeLink(asLink, 'accept'); return; }
+      if (isCode) {
+        const role = initial.serverRole === 'owner' || initial.serverRole === 'member'
+          ? initial.serverRole : 'guest';
+        finishWith({ ...(answer || { hasOwner: true, needsKey: false }), role }, asCode, resolved, '');
+        return;
+      }
+      if (isInvite) { setInvitation(asInvite); knockNow('accept', { invitation: asInvite }); return; }
+      setNote(t('welcome.acceptUnknown'));
+    };
+    return (
+      <Keyboard>
+        <Screen>
+          <Text style={styles.big}>{'\u{1F4E8}'}</Text>
+          <Text style={styles.title}>{t('welcome.acceptTitle')}</Text>
+          <Text style={styles.body}>{t('welcome.acceptBody')}</Text>
+          {note ? <Text style={styles.noteBox}>{note}</Text> : null}
+          <Primary label={t('qr.scan')} onPress={() => scanQr('accept')} />
+          <Primary label={t('qr.paste')} outline onPress={() => pasteLink('accept')} />
+          <Field
+            label={t('welcome.acceptField')}
+            value={handed}
+            onChange={setHanded}
+            placeholder={t('welcome.acceptPlaceholder')}
+            hint={t('welcome.acceptHint')}
+          />
+          <Primary label={t('welcome.next')} disabled={!typed} onPress={go} />
+          {onClose ? <Secondary label={t('welcome.back')} onPress={onClose} /> : null}
         </Screen>
       </Keyboard>
     );
