@@ -3296,6 +3296,12 @@ export default function App() {
     // entry could win and find nothing. Not before the reading is done.
     await howItWasLoading.current;
     const before = mine ? howItWas.current[mine] : undefined;
+    // In because Video was pressed at the door: the camera goes on,
+    // whatever the drawer says.
+    if (videoOnEntry.current) {
+      videoOnEntry.current = false;
+      setTimeout(() => { turnVideoBackOnRef.current?.(); }, 300);
+    }
     // The microphone: always off when the connection says so, else as
     // it was left the last time.
     if (cfg.micOnEntry === 'off') {
@@ -3692,9 +3698,21 @@ export default function App() {
     return () => sub.remove();
   }, [screen]);
 
+  /** the video button pressed while out of the channel: in, with the camera */
+  const videoOnEntry = useRef(false);
   const onToggleVideo = useCallback(async () => {
     const s = sessionRef.current;
-    if (!s) return;
+    // Out of the channel - left by hand a moment ago, the automatic
+    // re-entry held back - the button used to do nothing, in silence,
+    // while the others beside it seemed to work. Pressing Video means
+    // wanting to be in, with the camera: in first, then the camera.
+    if (!s || !inChannelRef.current) {
+      Journal.mark('command:video:enter').catch(() => { /* noop */ });
+      videoOnEntry.current = true;
+      leftByHandAt.current = 0;
+      enterChannelRef.current?.();
+      return;
+    }
     if (s.isVideoEnabled()) {
       setVideoOn(await s.disableVideo());
       setLocalAspect(undefined);
