@@ -1671,19 +1671,23 @@ export default function ChannelScreen(props: Props) {
             leaveBand ? { marginBottom: leaveBand.bottomGap + leaveBand.height + 12 - 16 } : null,
           ]}>
             <Text style={styles.sheetTitle}>{t('channel.leaveTitle')}</Text>
-            <TouchableOpacity
-              style={styles.sheetRow}
-              onPress={(e) => {
-                signTouch('leave-stay', e);
-                if (toIgnore()) return;
-                setLeaveMenu(false);
-                onLeave(true);
-              }}>
-              <View style={styles.sheetText}>
-                <Text style={styles.sheetLabel}>{t('channel.leaveStay')}</Text>
-                <Text style={styles.sheetNote}>{t('channel.leaveStayNote')}</Text>
-              </View>
-            </TouchableOpacity>
+            {/* Already waiting, there is no "go to waiting" to offer:
+                only the way out for good. */}
+            {entered !== false ? (
+              <TouchableOpacity
+                style={styles.sheetRow}
+                onPress={(e) => {
+                  signTouch('leave-stay', e);
+                  if (toIgnore()) return;
+                  setLeaveMenu(false);
+                  onLeave(true);
+                }}>
+                <View style={styles.sheetText}>
+                  <Text style={styles.sheetLabel}>{t('channel.leaveStay')}</Text>
+                  <Text style={styles.sheetNote}>{t('channel.leaveStayNote')}</Text>
+                </View>
+              </TouchableOpacity>
+            ) : null}
             <TouchableOpacity
               style={styles.sheetRow}
               onPress={(e) => {
