@@ -125,11 +125,13 @@ export async function inviteOnWorkItem(o: {
         body: [
           'Welcome aboard, and thank you for wanting to try Duetto.',
           `Here is your invitation, ${o.link}`,
-          'Open it on the phone with Duetto installed: it carries the server with it, so there'
-            + ' is nothing to type.'
+          'Tap it on the phone: with Duetto installed it opens the app, with the server inside,'
+            + ' so there is nothing to type; without, the page says where to get Duetto.'
             + (o.expires && untilDay(o.expires)
               ? ` It is used once, and it works until ${untilDay(o.expires)}.`
               : ' It is used once.'),
+          'If you would rather type: open Duetto and, in the first screen, paste the link, or'
+            + ' write the server and the code the link ends with.',
           'Please keep the app at the latest version:'
             + ' https://gitlab.com/paolobenve/duetto/-/releases - what F-Droid has can be a few'
             + ' days behind, and at this age Duetto is mended often.',

@@ -598,12 +598,10 @@ async function handleInviteNote(ws, msg) {
     'Welcome aboard, and thank you for wanting to try Duetto.',
     `Here is your invitation, ${link}`,
     'Tap it on the phone: with Duetto installed it opens the app, with the server inside, so'
-      + ' there is nothing to type; without, it says where to get Duetto and what to type.'
+      + ' there is nothing to type; without, the page says where to get Duetto.'
       + (until ? ` It is used once, and it works until ${until}.` : ' It is used once.'),
-    'If tapping it does nothing, some apps refuse links they do not know, and older versions'
-      + ' of Duetto did not answer for them either: open Duetto, and in the first screen write'
-      + ' the server and the code the link ends with - they are the two halves of the link'
-      + ' itself.',
+    'If you would rather type: open Duetto and, in the first screen, paste the link, or'
+      + ' write the server and the code the link ends with.',
     'Please keep the app at the latest version:'
       + ' https://gitlab.com/paolobenve/duetto/-/releases - what F-Droid has can be a few days'
       + ' behind, and at this age Duetto is mended often.',
