@@ -3866,6 +3866,9 @@ export default function App() {
     const c = cfgRef.current;
     if (!c?.pair) return;
     const bits = [
+      // The server first: with pairs on more than one, the file has
+      // to say which house each stretch was spent in.
+      `server=${displayServer(c.serverUrl)}`,
       `camera=${c.frontCamera !== false ? 'front' : 'back'}`,
       `output=${c.audioOutput}`,
       `quality=${c.videoQuality}`,
