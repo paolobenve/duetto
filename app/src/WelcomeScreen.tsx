@@ -422,7 +422,7 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived }: Pro
         <Text style={styles.title}>{t('welcome.serverTitle')}</Text>
         <Text style={styles.body}>{t('welcome.serverBody')}</Text>
         <Field
-          label={t('settings.server')}
+          label={t('welcome.serverOrLink')}
           value={server}
           onChange={onServerTyped}
           placeholder={t('settings.serverPlaceholder')}
