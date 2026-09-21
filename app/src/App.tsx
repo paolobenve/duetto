@@ -23,7 +23,7 @@ import {
 } from 'duetto-platform';
 import { attachWatchdog, Watchdog } from './watchdog';
 import {
-  DuoConfig, PairInfo, loadConfig, saveConfig,
+  DuoConfig, PairInfo, ServerRole, loadConfig, saveConfig,
   isServerConfigured, isPaired, displayServer, opensHere, VIDEO_PROFILES,
   addPair, switchToPair, forgetPair, markPairBroken, rememberPeerName,
   alertSoundFor, alignPairServer, renamePair, pairFileKey, pairName,
@@ -302,6 +302,16 @@ export default function App() {
   const [pairingTyping, setPairingTyping] = useState(false);
   /** the welcome opened to accept an invitation or a connection handed over */
   const [accepting, setAccepting] = useState(false);
+  /**
+   * The pairing is being made on another server than the pair in use:
+   * what the door there said. The app's own server stays the pair's -
+   * the channel would otherwise be torn down and rebuilt on a server
+   * that has never heard of its room - and the pairing screen alone
+   * works over there; the pair it makes remembers that server.
+   */
+  const [pairingServer, setPairingServer] = useState<{
+    serverUrl: string; serverKey: string; serverRole?: ServerRole;
+  } | null>(null);
   const [cfg, setCfg] = useState<DuoConfig | null>(null);
 
   /**
@@ -3988,9 +3998,13 @@ export default function App() {
     Journal.mark(`alarm-sent:${sound}`).catch(() => {});
   }, []);
 
-  const onPaired = useCallback(async (pair: PairInfo) => {
+  const onPaired = useCallback(async (made: PairInfo) => {
     if (!cfg) return;
     setPairingCode('');
+    // Made on another server: the pair remembers it, and the app moves
+    // there with it, as switching to it would.
+    const pair: PairInfo = pairingServer ? { ...pairingServer, ...made } : made;
+    setPairingServer(null);
     // Moving to the new pair is leaving the one in use, exactly as a
     // switch is: the channel put away, its memory written under its
     // own name. Without this the session went on as it was - camera
@@ -4005,7 +4019,15 @@ export default function App() {
     // you want to forget the first one.
     // The code that made it, if it was waiting, waits no more.
     const next = addPair(
-      { ...cfg, pending: (cfg.pending ?? []).filter((p) => p.id !== pair.id) },
+      {
+        ...cfg,
+        pending: (cfg.pending ?? []).filter((p) => p.id !== pair.id),
+        ...(pair.serverUrl ? {
+          serverUrl: pair.serverUrl,
+          serverKey: pair.serverKey ?? cfg.serverKey,
+          serverRole: pair.serverRole ?? cfg.serverRole,
+        } : {}),
+      },
       pair,
     );
     setCfg(saveCfg(next));
@@ -4015,7 +4037,7 @@ export default function App() {
     resetPeerMemory();
     stopWaiting();
     setScreen(next.setupShown ? 'channel' : 'setup');
-  }, [cfg, putAwayChannel, resetPeerMemory, stopWaiting]);
+  }, [cfg, pairingServer, putAwayChannel, resetPeerMemory, stopWaiting]);
 
   /**
    * A phone with no pair yet, and a code that waits.
@@ -4205,7 +4227,9 @@ export default function App() {
               && next.serverUrl !== next.pair.serverUrl;
             if (elsewhere) {
               Journal.mark('door:elsewhere:to-pair').catch(() => { /* noop */ });
-              setCfg(saveCfg(next));
+              setPairingServer({
+                serverUrl: next.serverUrl, serverKey: next.serverKey, serverRole: next.serverRole,
+              });
               setPairingTyping(false);
               setScreen('pairing');
               return;
@@ -4325,8 +4349,8 @@ export default function App() {
       <View style={styles.safe}>
         <StatusBar barStyle="light-content" />
         <PairingScreen
-          cfg={cfg}
-          role={cfg.serverRole}
+          cfg={pairingServer ? { ...cfg, ...pairingServer } : cfg}
+          role={pairingServer ? pairingServer.serverRole : cfg.serverRole}
           joinWith={pairingCode}
           joinWithKey={pairingPub}
           startTyping={pairingTyping}
@@ -4347,16 +4371,9 @@ export default function App() {
           // back to.
           onBack={() => {
             // Out of a pairing begun on another server, with no pair
-            // made there: back on the pair's own server, or the channel
-            // would knock at a room the new server has never heard of.
-            if (cfg.pair?.serverUrl && cfg.serverUrl !== cfg.pair.serverUrl) {
-              setCfg((prev) => (prev && prev.pair?.serverUrl ? saveCfg({
-                ...prev,
-                serverUrl: prev.pair.serverUrl,
-                serverKey: prev.pair.serverKey ?? prev.serverKey,
-                serverRole: prev.pair.serverRole ?? prev.serverRole,
-              }) : prev));
-            }
+            // made there: nothing to put back, the app's own server
+            // never left the pair's.
+            setPairingServer(null);
             setScreen(isPaired(cfg) ? 'settings' : 'welcome');
           }}
         />
