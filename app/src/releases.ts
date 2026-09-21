@@ -36,6 +36,71 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.9.16',
+    notes: {
+      en: [
+        'A connection can be sent as a link: whoever opens it is connected at once, even with the other phone off; the code waits a day.',
+        'The app opens on the door, with Enter; whoever would rather go straight in says so there, once.',
+        'The channel opens in the earpiece; the first turn to the speaker offers to open it as it was left.',
+        'At the ear the sound moves to the earpiece; a Bluetooth or wired headset takes it as soon as it connects. Four switches in the settings.',
+        '"Accept an invitation or a connection": one screen for a QR code, a pasted link or a code read out. An invitation to another server leads to a pair there, and each pair remembers its server.',
+        'On wifi the video starts sharp.',
+        'On a network that loses packets, "short packets" - offered when the voice turns choppy.',
+        'The journal records loss and jitter.',
+      ],
+      it: [
+        'Un collegamento si manda come link: chi lo apre si trova collegato subito, anche a telefono dell\'altro spento; il codice aspetta un giorno.',
+        'L\'app si apre sulla porta, con «Entra»; chi preferisce entrare da solo lo dice lì, una volta.',
+        'Il canale si apre nell\'auricolare; al primo passaggio al vivavoce si può scegliere di riaprirlo com\'era.',
+        'All\'orecchio il suono passa all\'auricolare; una cuffia Bluetooth o con filo lo prende appena si collega. Quattro interruttori nelle impostazioni.',
+        '«Accetta un invito o un collegamento»: una schermata sola per QR, link incollato o codice dettato. Un invito di un altro server porta a fare una coppia lì, e ogni coppia ricorda il suo server.',
+        'Sul wifi il video parte già nitido.',
+        'Con una rete che perde pacchetti, «pacchetti brevi», offerti quando la voce arriva a scatti.',
+        'Il giornale scrive perdita e jitter.',
+      ],
+      es: [
+        'Una conexión se envía como enlace: quien lo abre queda conectado al instante, aun con el otro teléfono apagado; el código espera un día.',
+        'La app se abre en la puerta, con «Entrar»; quien prefiera entrar directo lo dice ahí, una vez.',
+        'El canal se abre en el auricular; al primer paso al altavoz se puede elegir reabrirlo como quedó.',
+        'Al oído el sonido pasa al auricular; un auricular Bluetooth o con cable lo toma en cuanto se conecta. Cuatro interruptores en los ajustes.',
+        '«Aceptar una invitación o una conexión»: una sola pantalla para QR, enlace pegado o código dictado. Una invitación a otro servidor lleva a hacer una pareja allí, y cada pareja recuerda su servidor.',
+        'En wifi el vídeo empieza ya nítido.',
+        'En una red que pierde paquetes, «paquetes cortos», ofrecidos cuando la voz llega a trompicones.',
+        'El diario registra pérdida y jitter.',
+      ],
+      pt: [
+        'Uma conexão se manda como link: quem o abre fica conectado na hora, mesmo com o outro telefone desligado; o código espera um dia.',
+        'O app abre na porta, com «Entrar»; quem prefere entrar direto diz isso ali, uma vez.',
+        'O canal abre no auricular; na primeira passagem ao viva-voz dá para escolher reabri-lo como ficou.',
+        'Ao ouvido o som passa para o auricular; um fone Bluetooth ou com fio o toma assim que se conecta. Quatro chaves nas configurações.',
+        '«Aceitar um convite ou uma conexão»: uma tela só para QR, link colado ou código ditado. Um convite de outro servidor leva a fazer um par lá, e cada par lembra o seu servidor.',
+        'No wifi o vídeo já começa nítido.',
+        'Numa rede que perde pacotes, «pacotes curtos», oferecidos quando a voz chega picotada.',
+        'O diário registra perda e jitter.',
+      ],
+      fr: [
+        'Une connexion s\'envoie en lien : qui l\'ouvre est connecté aussitôt, même l\'autre téléphone éteint ; le code attend un jour.',
+        'L\'appli s\'ouvre sur la porte, avec « Entrer » ; qui préfère entrer directement le dit là, une fois.',
+        'Le canal s\'ouvre dans l\'écouteur ; au premier passage au haut-parleur, on peut choisir de le rouvrir tel quel.',
+        'À l\'oreille le son passe dans l\'écouteur ; une oreillette Bluetooth ou un casque filaire le prend dès qu\'il se connecte. Quatre interrupteurs dans les réglages.',
+        '« Accepter une invitation ou une connexion » : un seul écran pour QR, lien collé ou code dicté. Une invitation à un autre serveur mène à y faire une paire, et chaque paire se souvient de son serveur.',
+        'En wifi la vidéo démarre déjà nette.',
+        'Sur un réseau qui perd des paquets, « paquets courts », proposés quand la voix arrive hachée.',
+        'Le journal note perte et gigue.',
+      ],
+      de: [
+        'Eine Verbindung lässt sich als Link schicken: wer ihn öffnet, ist sofort verbunden, auch bei ausgeschaltetem anderem Telefon; der Code wartet einen Tag.',
+        'Die App öffnet sich an der Tür, mit „Eintreten“; wer lieber direkt hineingeht, sagt es dort, einmal.',
+        'Der Kanal öffnet sich im Hörer; beim ersten Wechsel zum Lautsprecher kann man wählen, ihn wie zuletzt zu öffnen.',
+        'Am Ohr wechselt der Ton in den Hörer; ein Bluetooth- oder Kabel-Headset übernimmt ihn, sobald es verbunden ist. Vier Schalter in den Einstellungen.',
+        '„Eine Einladung oder eine Verbindung annehmen“: ein Bildschirm für QR-Code, eingefügten Link oder diktierten Code. Eine Einladung zu einem anderen Server führt dorthin zu einem Paar, und jedes Paar merkt sich seinen Server.',
+        'Im WLAN startet das Video gleich scharf.',
+        'In einem Netz, das Pakete verliert, „kurze Pakete“, angeboten, wenn die Stimme abgehackt kommt.',
+        'Das Tagebuch schreibt Verlust und Jitter auf.',
+      ],
+    },
+  },
+  {
     version: '0.9.15',
     notes: {
       en: [
