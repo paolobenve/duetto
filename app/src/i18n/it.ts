@@ -519,6 +519,8 @@ export const it: Dictionary = {
     show: 'QR',
     orScanThis: 'Oppure fallo inquadrare all’altro telefono',
     notOurs: 'Non è un codice di Duetto.',
+    paste: 'Incolla un link',
+    nothingToPaste: 'Negli appunti non c\'è un link di Duetto: copia prima l\'invito o il link di collegamento.',
     otherServer: 'Questo codice è di un altro server ({server}).',
     noCamera: 'Per inquadrare serve il permesso della camera.',
     inviteHint: 'L’altro telefono lo inquadra dalla sua prima schermata, o da «Inquadra un codice QR»: il server viaggia insieme.',

@@ -533,6 +533,8 @@ export const en = {
     show: 'QR',
     orScanThis: 'Or let the other phone read this',
     notOurs: 'That is not a Duetto code.',
+    paste: 'Paste a link',
+    nothingToPaste: 'There is no Duetto link on the clipboard: copy the invitation or the pairing link first.',
     otherServer: 'That code belongs to another server ({server}).',
     noCamera: 'The camera permission is needed to read a code.',
     inviteHint: 'The other phone reads it from its first screen, or from «Point the camera at a QR code»: the server comes with it.',

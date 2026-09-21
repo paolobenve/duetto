@@ -10,7 +10,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator,
-  ScrollView, KeyboardAvoidingView, Platform, BackHandler, Linking,
+  ScrollView, KeyboardAvoidingView, Platform, BackHandler, Linking, Clipboard,
 } from 'react-native';
 import { DuoConfig, displayServer, normalizeServerUrl, isServerConfigured } from './config';
 import { knock, watchDoor, formatInvitation, DoorAnswer } from './door';
@@ -177,6 +177,19 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived }: Pro
   }, [resolved, key, invitation, initial.displayName, finishWith]);
 
   /** A QR code held up by the other phone: server and code, typed by nobody. */
+  /** A link of ours, however it came: fields filled, and knocked with. */
+  const takeLink = useCallback((link: DuettoLink, from: Step) => {
+    setNote('');
+    setServer(displayServer(link.serverUrl));
+    if (link.kind === 'invite') {
+      setInvitation(link.code);
+      knockNow(from, { server: link.serverUrl, invitation: link.code });
+    } else {
+      setCode(link.code);
+      knockNow(from, { server: link.serverUrl, code: link.code, pub: link.pub });
+    }
+  }, [knockNow]);
+
   const scanQr = useCallback(async (from: Step) => {
     setNote('');
     let text = '';
@@ -189,15 +202,32 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived }: Pro
     if (!text) return;
     const link = parseLink(text);
     if (!link) { setNote(t('qr.notOurs')); return; }
-    setServer(displayServer(link.serverUrl));
-    if (link.kind === 'invite') {
-      setInvitation(link.code);
-      knockNow(from, { server: link.serverUrl, invitation: link.code });
-    } else {
-      setCode(link.code);
-      knockNow(from, { server: link.serverUrl, code: link.code, pub: link.pub });
-    }
-  }, [knockNow]);
+    takeLink(link, from);
+  }, [takeLink]);
+
+  /**
+   * A link from the clipboard: for whoever got it as plain text - a
+   * mail that made nothing of it - and has nowhere to put it.
+   */
+  const pasteLink = useCallback(async (from: Step) => {
+    setNote('');
+    let text = '';
+    try { text = await Clipboard.getString(); } catch { /* nothing there */ }
+    const link = parseLink(text);
+    if (!link) { setNote(t('qr.nothingToPaste')); return; }
+    takeLink(link, from);
+  }, [takeLink]);
+
+  /**
+   * The server field takes a whole link too: people paste where they
+   * can, and the address of an invitation pasted here is the
+   * invitation, not a server name to be trimmed.
+   */
+  const onServerTyped = useCallback((v: string) => {
+    const link = parseLink(v);
+    if (link) { takeLink(link, 'server'); return; }
+    setServer(v);
+  }, [takeLink]);
 
   /**
    * The link the app was opened on, taken once.
@@ -327,6 +357,7 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived }: Pro
           {/* The camera first: it takes either - a pairing code or an
               invitation - and whoever is near has nothing to type. */}
           <Primary label={t('qr.scan')} onPress={() => scanQr('stranger')} />
+          <Primary label={t('qr.paste')} outline onPress={() => pasteLink('stranger')} />
 
           {/* The common case first: somebody is reading a code out,
               and the eight digits are all that is needed - typed here,
@@ -393,7 +424,7 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived }: Pro
         <Field
           label={t('settings.server')}
           value={server}
-          onChange={setServer}
+          onChange={onServerTyped}
           placeholder={t('settings.serverPlaceholder')}
           hint={server.trim()
             ? t('settings.willConnectTo', { url: resolved })
@@ -418,6 +449,9 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived }: Pro
         {/* Or nothing typed at all: the other phone holds its code up,
             and the server comes with it. */}
         <Primary label={t('qr.scan')} outline onPress={() => scanQr('server')} />
+        {/* Or the link came as text: pasted here, it is read as the
+            QR code would be. */}
+        <Primary label={t('qr.paste')} outline onPress={() => pasteLink('server')} />
         {/* No server at all: Duetto's own is open to beta testers, who
             ask on GitLab and get an invitation with the server inside. */}
         <View style={styles.betaBox}>

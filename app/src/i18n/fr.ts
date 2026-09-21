@@ -520,6 +520,8 @@ export const fr: Dictionary = {
     show: 'QR',
     orScanThis: 'Ou laisse l’autre téléphone lire ceci',
     notOurs: 'Ce n’est pas un code Duetto.',
+    paste: 'Coller un lien',
+    nothingToPaste: 'Il n\'y a pas de lien Duetto dans le presse-papiers : copie d\'abord l\'invitation ou le lien de connexion.',
     otherServer: 'Ce code appartient à un autre serveur ({server}).',
     noCamera: 'La permission caméra est nécessaire pour lire un code.',
     inviteHint: 'L’autre téléphone le lit depuis son premier écran, ou depuis « Vise un code QR » : le serveur voyage avec.',
