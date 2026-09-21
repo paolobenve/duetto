@@ -352,6 +352,9 @@ export default function PairingScreen({
       name: cfg.displayName || '',
     });
 
+    // Whether the maker is in the room: a QR code held up puts both
+    // phones here at once, and the room was never told to wait.
+    let makerHere = false;
     const sig = new Signaling(
       {
         serverUrl: cfg.serverUrl.trim(),
@@ -364,18 +367,23 @@ export default function PairingScreen({
         mode: 'listening',
       },
       {
-        onJoined: () => {
+        onJoined: ({ peerPresent }) => {
+          makerHere = peerPresent;
           sig.sendPairMail(mine());
           if (!sentPubRef.current) { sentPubRef.current = true; sig.sendPair(mine()); }
         },
         onPeerJoined: () => {
+          makerHere = true;
           if (!sentPubRef.current) { sentPubRef.current = true; sig.sendPair(mine()); }
         },
         // The letter is in: the pair is made, whether or not the maker
         // is awake. Their name comes later, with their first hello.
+        // "Not waiting" with the maker in the room is the QR code held
+        // up, not a link gone stale: the live road finishes it, and a
+        // silence there is what the timeout is for.
         onPairMailResult: (ok, error) => {
           if (ok) finish('');
-          else if (error === 'not-waiting') fail(t('pairing.linkExpired'));
+          else if (error === 'not-waiting' && !makerHere) fail(t('pairing.linkExpired'));
         },
         onPair: (msg: PairMessage) => {
           if (msg.kind === 'pubkey') {
