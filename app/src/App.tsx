@@ -4181,8 +4181,12 @@ export default function App() {
           arrived={arrived}
           accept={accepting}
           onDone={(next, _answer, code, pub) => {
+            // Opened by a link, or by "accept": the two ways a phone
+            // with a pair reaches another server without meaning to
+            // move; "change server" is the third way in, and means it.
+            const handedOver = accepting || !!arrivedRef.current;
             forgetArrived();
-            const wasAccepting = accepting;
+            const wasAccepting = handedOver;
             setAccepting(false);
             Journal.mark(`door:${next.serverRole || 'unknown'}`).catch(() => { /* noop */ });
             setPairingCode(code || '');
