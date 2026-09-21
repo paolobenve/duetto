@@ -1415,6 +1415,13 @@ export default function ChannelScreen(props: Props) {
           </Text>
         ) : null}
         <View style={styles.controls} ref={controlsRef} collapsable={false}>
+        {/* Video, the microphone and the camera act on the session, and
+            out of the channel there is none: the three are not there
+            while one is out, or they were pressed at the door and did
+            nothing, in silence. The call and Leave stay: they are what
+            one does from outside. */}
+        {entered !== false ? (
+          <>
         <CircleButton
           covered={covered}
           label={t('buttons.video')}
@@ -1458,6 +1465,8 @@ export default function ChannelScreen(props: Props) {
           disabled={false}
           onPress={press(onSwitchCamera)}
         />
+          </>
+        ) : null}
         <CircleButton
           covered={covered}
           label={knockPending ? t('buttons.called') : t('buttons.call')}
