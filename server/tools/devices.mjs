@@ -51,7 +51,10 @@ else {
     const also = theirs.length
       ? `   ${theirs.length} connection(s), ${brought} with somebody along`
       : '';
-    console.log(`  ${d.name.padEnd(12)} ${card}   since ${d.since.slice(0, 10)}${also}`);
+    // Which Duetto, and when last seen: blank for an app too old to say.
+    const runs = d.version ? `  ${d.version}` : '  (version unknown)';
+    const seen = d.seen ? `  seen ${d.seen}` : '';
+    console.log(`  ${d.name.padEnd(12)} ${card}   since ${d.since.slice(0, 10)}${runs}${seen}${also}`);
   }
 }
 

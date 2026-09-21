@@ -11,6 +11,7 @@ import { Journal } from 'duetto-platform';
 import { SignalCrypto } from './crypto';
 import { logger } from './log';
 import { deviceKey, deviceModel, deviceName, signNonce } from './device';
+import { VERSION_LABEL, BUILD } from './version';
 
 /**
  * The connection to the signalling server.
@@ -522,6 +523,8 @@ export class Signaling {
       invite: this.opts.invitation || undefined,
       name: this.opts.displayName || 'Someone',
       model: deviceModel(),
+      // Which Duetto this is, for the owner's list: "0.9.16 (364)".
+      version: `${VERSION_LABEL} (${BUILD})`,
       mode: this.mode,
       side: this.opts.side,
     });

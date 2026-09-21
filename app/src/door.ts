@@ -8,6 +8,7 @@
  * <https://www.gnu.org/licenses/>.
  */
 import { deviceKey, deviceModel, deviceName, signNonce } from './device';
+import { VERSION_LABEL, BUILD } from './version';
 import type { ServerRole } from './config';
 
 /**
@@ -136,6 +137,7 @@ function visit(serverUrl: string, ask: DoorRequest): Promise<Visit> {
           invite: ask.invite || undefined,
           name: ask.name || undefined,
           model: deviceModel(),
+          version: `${VERSION_LABEL} (${BUILD})`,
         });
         return;
       }

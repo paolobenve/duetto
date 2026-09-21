@@ -182,7 +182,7 @@ function liveInvitation(data, code) {
  * finds it spent - which is the cheapest way of noticing that it was
  * passed on.
  */
-export function useInvitation(code, pub, model = '') {
+export function useInvitation(code, pub, model = '', version = '') {
   const data = read();
   const invitation = liveInvitation(data, code);
   if (!invitation) return null;
@@ -193,6 +193,8 @@ export function useInvitation(code, pub, model = '') {
       name: invitation.name,
       pub,
       model: model || undefined,
+      version: version || undefined,
+      seen: new Date().toISOString().slice(0, 10),
       since: new Date().toISOString(),
     });
   write(data);
@@ -224,11 +226,18 @@ export function removeInvitation(code) {
  * person calls themselves does not touch it.
  * Returns the name the phone is known by now, or null if unknown.
  */
-export function refresh(pub, name, model) {
+export function refresh(pub, name, model, version = '') {
   const data = read();
   const known = data.devices.find((d) => d.pub === pub);
   if (!known) return null;
   let changed = false;
+  // Which Duetto, and when it was last at the door: the owner's list
+  // says who is behind, and who has not been seen for a week. The day
+  // alone is written, so a phone that comes and goes all day does not
+  // rewrite the file at every knock.
+  const today = new Date().toISOString().slice(0, 10);
+  if (version && version !== known.version) { known.version = version; changed = true; }
+  if (known.seen !== today) { known.seen = today; changed = true; }
   if (name && name !== known.name && known.owner === true) {
     const old = known.name;
     known.name = name;

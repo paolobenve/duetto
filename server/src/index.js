@@ -241,7 +241,7 @@ function whoIsThere(msg, nonce) {
   if (known) return { name: known.name, opens: true, invites: known.owner === true };
 
   if (msg.invite) {
-    const name = useInvitation(msg.invite, pub, cleanModel(msg.model));
+    const name = useInvitation(msg.invite, pub, cleanModel(msg.model), cleanVersion(msg.version));
     if (name) {
       console.log(`[duetto] ${name} comes in with an invitation, `
         + `phone ${pub.slice(0, 12)}…`);
@@ -716,6 +716,11 @@ function cleanModel(raw) {
   const s = typeof raw === 'string' ? raw.trim() : '';
   return s.replace(/[\r\n]/g, ' ').slice(0, 40);
 }
+/** "0.9.16 (364)", as the app says it; older apps say nothing. */
+function cleanVersion(raw) {
+  const s = typeof raw === 'string' ? raw.trim() : '';
+  return /^[\w.\- ()]{1,24}$/.test(s) ? s : '';
+}
 
 /**
  * The page behind a link that is handed to people.
@@ -962,7 +967,8 @@ wss.on('connection', (ws, req) => {
         // is known by their card alone: it is kept too, so that a pair
         // broken from the other side can find them.
         ws.pub = String(msg.pub || '');
-        ws.who = refresh(ws.pub, saidName(msg.name), cleanModel(msg.model)) || who.name;
+        ws.who = refresh(ws.pub, saidName(msg.name), cleanModel(msg.model), cleanVersion(msg.version))
+          || who.name;
         ws.opens = who.opens === true;
         ws.invites = who.invites === true;
         // The room belongs to whoever may open one: it is written down
