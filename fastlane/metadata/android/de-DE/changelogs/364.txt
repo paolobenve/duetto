@@ -1,0 +1,5 @@
+- Eine Verbindung geht als Link hinaus: wer ihn öffnet, ist sofort verbunden; der Code wartet einen Tag.
+- Die App öffnet sich an der Tür, mit „Eintreten“; ein zweiter Knopf geht ab jetzt direkt hinein.
+- Der Kanal öffnet sich im Hörer; am Ohr wechselt der Ton dorthin; ein Headset übernimmt ihn beim Verbinden.
+- Ein Bildschirm nimmt Einladung oder Verbindung an: QR, Link oder Code. Jedes Paar merkt sich seinen Server.
+- Im WLAN startet das Video scharf.

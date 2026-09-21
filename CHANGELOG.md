@@ -14,6 +14,38 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
+## 0.9.16 build 364
+
+**Version 0.9.16: the link that connects.** A pairing code goes out as an https link
+that carries the maker's key: whoever opens it has everything the shared key is made of
+and pairs at once, with the maker asleep if need be; their own key is left on the server
+as a letter, and the maker finds it at the door the next time their phone comes - a day
+at most. The server answers the link with a page that bounces into the app, or says
+where to get it. "Accept an invitation or a connection" is one screen for a QR code, a
+pasted link or a code read out, told apart by shape; an invitation to another server
+leads to a pair there, each pair remembers its server, and switching pairs switches
+servers. Taking a waiting code back leaves a room somebody has entered, and a phone
+turned away as a stranger is told once.
+
+The app opens on the door with Enter, and a second button says to go in by itself from
+then on. The channel opens in the earpiece; the first turn to the speaker offers the
+choice of opening it as it was left. At the ear the sound moves to the earpiece and
+the screen goes off; a Bluetooth or wired headset takes the sound as soon as it
+connects; four switches under Audio.
+
+On wifi the video starts from the profile's figure instead of the library's three
+hundred, so the first frames are sharp. Short packets - twenty milliseconds instead of
+sixty - for a road that loses packets, a hidden switch in Diagnostics and a sheet with
+four answers when the incoming voice turns choppy. The journal has six columns for
+loss, jitter and round trip; "loss:audio-bad" is said once per storm; the settings
+line names the server; and the net that rebuilt the server link no longer runs on a
+phone with no pair.
+
+Housekeeping: ESLint works again and found a few things; eighteen tests on the pure
+modules; X-Forwarded-For believed only from a trusted proxy; an open door on a public
+address refuses to start; the Docker base image pinned to a digest; the door's fail2ban
+jail wider and shorter; the feature graphic says mini Discord in six languages.
+
 ## 0.9.15 build 352
 
 **Version 0.9.15: the level as a strip, an alert of one's own, and an invitation that

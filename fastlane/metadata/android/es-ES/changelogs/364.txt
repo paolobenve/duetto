@@ -1,0 +1,5 @@
+- Una conexión se envía como enlace: quien lo abre queda conectado al instante; el código espera un día.
+- La app se abre en la puerta, con «Entrar»; un segundo botón entra directo desde entonces.
+- El canal se abre en el auricular; al oído el sonido pasa ahí; un auricular lo toma al conectarse.
+- Una pantalla acepta invitación o conexión: QR, enlace o código. Cada pareja recuerda su servidor.
+- En wifi el vídeo empieza nítido. Paquetes cortos para una red que los pierde.

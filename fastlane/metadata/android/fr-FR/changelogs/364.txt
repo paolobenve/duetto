@@ -1,0 +1,5 @@
+- Une connexion s'envoie en lien : qui l'ouvre est connecté aussitôt ; le code attend un jour.
+- L'appli s'ouvre sur la porte, avec « Entrer » ; un second bouton entre directement désormais.
+- Le canal s'ouvre dans l'écouteur ; à l'oreille le son y passe ; un casque le prend en se connectant.
+- Un écran accepte invitation ou connexion : QR, lien ou code. Chaque paire se souvient de son serveur.
+- En wifi la vidéo démarre nette. Paquets courts pour un réseau qui en perd.

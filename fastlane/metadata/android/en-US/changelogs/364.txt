@@ -1,0 +1,5 @@
+- A connection goes out as a link: whoever opens it is connected at once; the code waits a day.
+- The app opens on the door, with Enter; a second button goes straight in from then on.
+- The channel opens in the earpiece; at the ear the sound moves there; a headset takes it when it connects.
+- One screen accepts an invitation or a connection: QR, pasted link or code. Each pair remembers its server.
+- Video starts sharp on wifi. Short packets for a lossy network. The journal records loss.

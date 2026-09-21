@@ -1,0 +1,5 @@
+- Un collegamento si manda come link: chi lo apre è collegato subito; il codice aspetta un giorno.
+- L'app si apre sulla porta, con «Entra»; un secondo bottone entra da solo d'ora in poi.
+- Il canale si apre nell'auricolare; all'orecchio il suono passa lì; una cuffia lo prende quando si collega.
+- Una schermata accetta invito o collegamento: QR, link o codice. Ogni coppia ricorda il suo server.
+- Sul wifi il video parte nitido. Pacchetti brevi per una rete che li perde.

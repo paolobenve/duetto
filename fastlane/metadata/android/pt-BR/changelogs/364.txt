@@ -1,0 +1,5 @@
+- Uma conexão se manda como link: quem o abre fica conectado na hora; o código espera um dia.
+- O app abre na porta, com «Entrar»; um segundo botão entra direto daí em diante.
+- O canal abre no auricular; ao ouvido o som passa para lá; um fone o toma ao se conectar.
+- Uma tela aceita convite ou conexão: QR, link ou código. Cada par lembra o seu servidor.
+- No wifi o vídeo começa nítido. Pacotes curtos para uma rede que os perde. O diário registra perdas.
