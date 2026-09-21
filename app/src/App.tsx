@@ -1826,6 +1826,37 @@ export default function App() {
   }, [available]);
 
   /**
+   * The polite side's own net against an offer that never comes.
+   *
+   * In the channel, the other believed active, and no connection born
+   * after ten seconds: the beat is meant to cure this, but it ticks
+   * slowly and did not here, and a phone sat at "establishing the
+   * link" for minutes. So a timer of our own, while the screen is on:
+   * the server is asked the truth about the other side, and if they
+   * are really there, they are asked to offer; again every fifteen
+   * seconds while it lasts, each time written down.
+   */
+  useEffect(() => {
+    if (!inChannel || status !== 'together' || !politeRef.current) return;
+    const born = () => {
+      const s = sessionRef.current;
+      return !!s && s.hasPeer() && !s.isStalled() && connState !== 'new';
+    };
+    if (born()) return;
+    let tries = 0;
+    const ask = () => {
+      if (born()) return;
+      tries += 1;
+      Journal.mark(`stuck:no-offer:${tries}`).catch(() => { /* noop */ });
+      signalingRef.current?.askPresence();
+      if (peerActiveRef.current) signalingRef.current?.sendSignal({ kind: 'renegotiate' });
+    };
+    const first = setTimeout(ask, 10_000);
+    const again = setInterval(ask, 15_000);
+    return () => { clearTimeout(first); clearInterval(again); };
+  }, [inChannel, status, connState]);
+
+  /**
    * The heartbeat quickens while we are without a server.
    *
    * With the screen off it is the only engine running, so its pace is
@@ -2590,6 +2621,13 @@ export default function App() {
               stopWaiting();
               setStatus('together');
               if (inChannelRef.current) attachPeer();
+            } else if (present) {
+              // The other way round too: "in the channel" remembered
+              // from before, while the server says they are merely
+              // listening, kept a phone at "establishing the link" for
+              // an offer nobody was going to make.
+              setStatus('alone');
+              sessionRef.current?.detachPeer();
             }
           },
 
@@ -3290,6 +3328,11 @@ export default function App() {
     sig.setMode('active');
 
     if (peerActiveRef.current) attachPeer();
+    // And the server is asked how the other side really is: what is
+    // remembered from before the wait may be stale - a phone that went
+    // back to listening while we were out - and a stale "active" on
+    // the polite side is a wait for an offer that never comes.
+    sig.askPresence();
 
     /**
      * Coming back in right after going out: things resume as they were.
