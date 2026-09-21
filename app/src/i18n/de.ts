@@ -305,7 +305,7 @@ export const de: Dictionary = {
     since: 'Seit ',
     addConnection: 'Eine Verbindung hinzufügen',
     addConnectionHint: 'Um dich mit einer weiteren Person zu verbinden: du machst einen neuen Code und liest ihn ihr vor, und sie tippt ihn in ihr Telefon. Deine Paare bleiben: das neue kommt dazu und geht in Gebrauch. Es ist auch für den Fall, dass die andere Seite das Paar gelöst hat, denn von hier aus merkt man das nicht.',
-    cannotAddHere: 'Auf diesem Server darfst du mit dem sprechen, der dich hereingelassen hat, und mit niemandem sonst: für eine eigene Verbindung bräuchtest du eine Einladung von ihm.',
+    cannotAddHere: 'Dieser Server lässt dich mit dem sprechen, der dich hereingelassen hat: den Code macht er, nicht du. Was dir jemand gibt, eine Einladung oder eine auf seinem Telefon gemachte Verbindung, kannst du hier annehmen.',
     forgetTitle: 'Die Verbindung mit {who} lösen?',
     forgetBody: 'Um sie zurückzubekommen, müsst ihr euch beide mit einem neuen Code neu paaren.\n\nAuf dem anderen Telefon muss nichts gelöst werden: von dort genügt «Eine Verbindung hinzufügen».',
     forgetSwitch: '\n\nDu wechselst zu {who}.',

@@ -581,14 +581,16 @@ export default function SettingsScreen({
                   <Text style={styles.secondaryText}>{t('settings.addConnection')}</Text>
                 </TouchableOpacity>
                 <Text style={styles.sectionHint}>{t('settings.addConnectionHint')}</Text>
-                {/* And the other way round: a code somebody else made -
-                    another phone of the owner's, a member - typed or
-                    read with the camera. */}
-                <TouchableOpacity style={styles.secondary} onPress={onHaveCode}>
-                  <Text style={styles.secondaryText}>{t('settings.haveCode')}</Text>
-                </TouchableOpacity>
               </>
             )}
+            {/* And the other way round, for everybody: what somebody
+                else handed over - an invitation, or a connection made
+                on their phone. A guest may be the guest of more rooms
+                than one, and may be invited elsewhere: only making a
+                code is not theirs. */}
+            <TouchableOpacity style={styles.secondary} onPress={onHaveCode}>
+              <Text style={styles.secondaryText}>{t('settings.haveCode')}</Text>
+            </TouchableOpacity>
           </>
         ) : null}
 

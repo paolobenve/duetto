@@ -305,7 +305,7 @@ export const fr: Dictionary = {
     since: 'Depuis le ',
     addConnection: 'Ajouter une liaison',
     addConnectionHint: 'Pour te lier à une autre personne : tu crées un nouveau code et tu le lui dictes, et elle le saisit sur son téléphone. Les paires que tu as restent : la nouvelle s’ajoute et passe en usage. Ça sert aussi si l’autre a rompu la paire de son côté, parce que d’ici il n’y a pas moyen de s’en apercevoir.',
-    cannotAddHere: 'Ce serveur te laisse parler avec qui t’a fait entrer, et avec personne d’autre : pour une liaison à toi il faudrait une invitation de sa part.',
+    cannotAddHere: 'Ce serveur te laisse parler à qui t\'a fait entrer : le code, c\'est lui qui le crée, pas toi. Ce que quelqu\'un te donne, une invitation ou une connexion faite sur son téléphone, tu peux l\'accepter ici.',
     forgetTitle: 'Rompre la liaison avec {who} ?',
     forgetBody: 'Pour la retrouver, vous devrez refaire l’appairage avec un nouveau code.\n\nPas besoin de rompre aussi sur l’autre téléphone : de là, « Ajouter une liaison » suffit.',
     forgetSwitch: '\n\nTu passeras à {who}.',

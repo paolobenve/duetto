@@ -304,7 +304,7 @@ export const it: Dictionary = {
     since: 'Dal ',
     addConnection: 'Aggiungi un collegamento',
     addConnectionHint: 'Per collegarti con un’altra persona: crei un codice nuovo e glielo detti, e lei lo scrive sul suo telefono. Le coppie che hai restano: la nuova si aggiunge e passa in uso. Serve anche se l’altro ha sciolto la coppia dalla sua parte, perché da qui non c’è modo di accorgersene.',
-    cannotAddHere: 'Questo server ti fa parlare con chi ti ha fatto entrare, e con nessun altro: per un collegamento tuo ci vuole un suo invito.',
+    cannotAddHere: 'Questo server ti fa parlare con chi ti ha fatto entrare: un codice lo crea lui, non tu. Quello che qualcuno ti dà, un invito o un collegamento fatto sul suo telefono, lo puoi accettare qui.',
     forgetTitle: 'Sciogliere il collegamento con {who}?',
     forgetBody: 'Per riaverlo dovrete rifare l’accoppiamento con un codice nuovo.\n\nNon serve sciogliere anche sull’altro telefono: da lì basta «Aggiungi un collegamento».',
     forgetSwitch: '\n\nPasserai a {who}.',
