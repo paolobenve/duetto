@@ -750,6 +750,15 @@ export default function App() {
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [audioOn, setAudioOn] = useState(true);
   const [videoOn, setVideoOn] = useState(false);
+  /**
+   * The same two, readable from where the state is not: out of the
+   * channel the buttons set what one WANTS on entering - the camera,
+   * the microphone - and the drawer is written from these.
+   */
+  const audioOnRef = useRef(true);
+  const videoOnRef = useRef(false);
+  useEffect(() => { audioOnRef.current = audioOn; }, [audioOn]);
+  useEffect(() => { videoOnRef.current = videoOn; }, [videoOn]);
   const [localAspect, setLocalAspect] = useState<number | undefined>(undefined);
   /**
    * Which camera the "Turn" button shows.
@@ -3407,10 +3416,14 @@ export default function App() {
    */
   const noteHowItIs = useCallback((pairId: string | undefined) => {
     if (!pairId) return;
+    // In the channel the session is the truth; out of it, the buttons
+    // say what is wanted on entering, and that is what goes in the
+    // drawer the entry reads.
+    const s = sessionRef.current;
     howItWas.current[pairId] = {
       when: Date.now(),
-      video: sessionRef.current?.isVideoEnabled() === true,
-      audio: sessionRef.current?.isAudioEnabled() !== false,
+      video: s ? s.isVideoEnabled() === true : videoOnRef.current,
+      audio: s ? s.isAudioEnabled() !== false : audioOnRef.current,
       live: true,
     };
     saveHowItWasRef.current?.();
@@ -3534,7 +3547,8 @@ export default function App() {
     setLocalStream(null);
     setRemoteStream(null);
     setRemoteHasVideo(false);
-    setVideoOn(false);
+    // The button keeps saying what was on: it is what the drawer holds
+    // and what the next entry restores, and out here it can be changed.
     setLocalAspect(undefined);
     setConnState('new');
     setInChannel(false);
@@ -3694,7 +3708,16 @@ export default function App() {
 
   const onToggleVideo = useCallback(async () => {
     const s = sessionRef.current;
-    if (!s) return;
+    // Out of the channel: no camera to open, but a choice to make for
+    // when one goes in - the button shows it, and the entry obeys it.
+    if (!s || !inChannelRef.current) {
+      const want = !videoOnRef.current;
+      videoOnRef.current = want;
+      setVideoOn(want);
+      noteHowItIsRef.current?.();
+      Journal.mark(`video:wanted:${want ? 'on' : 'off'}`).catch(() => { /* noop */ });
+      return;
+    }
     if (s.isVideoEnabled()) {
       setVideoOn(await s.disableVideo());
       setLocalAspect(undefined);
@@ -4448,7 +4471,16 @@ export default function App() {
         audioRoute={audio.route}
         audioRoutes={audio.available}
         onToggleAudio={() => {
-          const on = sessionRef.current?.toggleAudio() ?? false;
+          if (!sessionRef.current || !inChannelRef.current) {
+            // Out of the channel: what is wanted on entering.
+            const want = !audioOnRef.current;
+            audioOnRef.current = want;
+            setAudioOn(want);
+            noteHowItIs(cfg?.pair?.id);
+            Journal.mark(`audio:wanted:${want ? 'on' : 'off'}`).catch(() => {});
+            return;
+          }
+          const on = sessionRef.current.toggleAudio();
           setAudioOn(on);
           noteHowItIs(cfg?.pair?.id);
           Journal.mark(`audio:${on ? 'on' : 'off'}`).catch(() => {});
@@ -4456,7 +4488,14 @@ export default function App() {
         onToggleVideo={onToggleVideo}
         onSwitchCamera={() => {
           const s = sessionRef.current;
-          if (!s) return;
+          if (!s || !inChannelRef.current) {
+            // Out of the channel: the next session opens with it.
+            const front = !(cfgRef.current?.frontCamera !== false);
+            setFrontCamera(front);
+            setCfg((prev) => (prev ? saveCfg({ ...prev, frontCamera: front }) : prev));
+            Journal.mark(`camera:wanted:${front ? 'front' : 'back'}`).catch(() => {});
+            return;
+          }
           // The truth lives in the session, with the video off too: it
           // is the session that remembers which camera will open.
           const front = s.switchCamera();
