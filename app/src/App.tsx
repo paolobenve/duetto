@@ -3762,6 +3762,7 @@ export default function App() {
    */
   const sayPaired = (who: string) => {
     const named = who && who !== 'Someone' && who !== 'Qualcuno';
+    Journal.mark('paired:said').catch(() => { /* noop */ });
     Alert.alert(
       t('pairing.doneTitle'),
       named ? t('alert.pairedNamed', { who }) : t('alert.paired'),
