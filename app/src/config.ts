@@ -63,6 +63,13 @@ export type PairInfo = {
    */
   serverUrl?: string;
   /**
+   * What this phone is on that server - owner, member, guest - so that
+   * coming back to this pair from one on another server brings the
+   * right buttons with it. Missing in older configurations: then the
+   * app's own word stands.
+   */
+  serverRole?: ServerRole;
+  /**
    * The key of the server this pairing was born on.
    *
    * It travels with the address for the same reason: two connections
@@ -571,6 +578,7 @@ export function addPair(cfg: DuoConfig, pair: PairInfo): DuoConfig {
   const fresh: PairInfo = {
     serverUrl: cfg.serverUrl,
     serverKey: cfg.serverKey,
+    serverRole: cfg.serverRole,
     settings: settingsInUse(cfg),
     ...pair,
   };
@@ -598,6 +606,7 @@ export function switchToPair(cfg: DuoConfig, id: string): DuoConfig {
     ...stored,
     serverUrl: chosen.serverUrl || stored.serverUrl,
     serverKey: chosen.serverKey ?? stored.serverKey,
+    serverRole: chosen.serverRole ?? stored.serverRole,
     pair: chosen,
     pairs: [chosen, ...stored.pairs.filter((p) => p.id !== id)],
   };

@@ -4182,10 +4182,30 @@ export default function App() {
           accept={accepting}
           onDone={(next, _answer, code, pub) => {
             forgetArrived();
+            const wasAccepting = accepting;
             setAccepting(false);
             Journal.mark(`door:${next.serverRole || 'unknown'}`).catch(() => { /* noop */ });
             setPairingCode(code || '');
             setPairingPub(pub || '');
+            /*
+             * Two ways to come out of the welcome with a pair in use.
+             * "Change server" moves the pair along: its server is
+             * rewritten, and one goes back in. Accepting an invitation
+             * on another server does not: the pair in use keeps its
+             * server, and the new one is where a pair is made next -
+             * the pairing opens there at once, and the pair it makes
+             * remembers that server. Backing out of it puts the phone
+             * back on the pair's server as if nothing had happened.
+             */
+            const elsewhere = wasAccepting && isPaired(next) && !!next.pair?.serverUrl
+              && next.serverUrl !== next.pair.serverUrl;
+            if (elsewhere) {
+              Journal.mark('door:elsewhere:to-pair').catch(() => { /* noop */ });
+              setCfg(saveCfg(next));
+              setPairingTyping(false);
+              setScreen('pairing');
+              return;
+            }
             setCfg(saveCfg(alignPairServer(next)));
             // With a code - typed, scanned, or opened as a link - the
             // pairing, which runs it: a phone already paired is adding
@@ -4321,7 +4341,20 @@ export default function App() {
           // Before the first pairing, "change server" means the
           // welcome: there is nothing in the settings yet worth going
           // back to.
-          onBack={() => setScreen(isPaired(cfg) ? 'settings' : 'welcome')}
+          onBack={() => {
+            // Out of a pairing begun on another server, with no pair
+            // made there: back on the pair's own server, or the channel
+            // would knock at a room the new server has never heard of.
+            if (cfg.pair?.serverUrl && cfg.serverUrl !== cfg.pair.serverUrl) {
+              setCfg((prev) => (prev && prev.pair?.serverUrl ? saveCfg({
+                ...prev,
+                serverUrl: prev.pair.serverUrl,
+                serverKey: prev.pair.serverKey ?? prev.serverKey,
+                serverRole: prev.pair.serverRole ?? prev.serverRole,
+              }) : prev));
+            }
+            setScreen(isPaired(cfg) ? 'settings' : 'welcome');
+          }}
         />
       </View>
     );
