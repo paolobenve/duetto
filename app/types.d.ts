@@ -120,6 +120,8 @@ declare module 'duetto-platform' {
   /** The app's window. */
   export const AppWindow: {
     minimize(): Promise<boolean>;
+    /** somebody opened the app from outside; gives back the stop */
+    onOpened(cb: () => void): () => void;
   };
 
   /** What the video side of this phone can do. */

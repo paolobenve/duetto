@@ -2229,6 +2229,19 @@ export default function App() {
     if (cfg) uiLog('profile shown:', cfg.videoQuality);
   }, [cfg?.videoQuality]);
 
+  /**
+   * Somebody opened the app: the leaving of a moment ago does not hold.
+   *
+   * The activity is the only one who can tell an opening from a bounce
+   * of the window - an intent arrives with the first and not with the
+   * second - and it arrives before the app is active again, so the net
+   * below finds the ground already cleared.
+   */
+  useEffect(() => AppWindow.onOpened(() => {
+    leftByHandAt.current = 0;
+    Journal.mark('ui:opened').catch(() => { /* noop */ });
+  }), []);
+
   // Knowing whether we are in the foreground decides whether to show a
   // notification.
   useEffect(() => {
@@ -2304,11 +2317,16 @@ export default function App() {
           Journal.mark('reentry-skipped:door').catch(() => {});
           return;
         }
-        // Fifteen seconds, wide on purpose: a bounce on another phone
-        // may be slower than the one second seen, and going back into
-        // the channel against one's will is worse than a touch. Whoever
-        // comes back within that time finds the door on the screen.
-        if (Date.now() - leftByHandAt.current < 15_000) {
+        // A net, now, not the rule: whoever opens the app from the
+        // icon or the notification has already cleared this above, and
+        // what is left here is the one gesture that carries no intent -
+        // coming back from the recent apps - which from here looks
+        // exactly like the bounce that follows minimizing. Three
+        // seconds tell them apart: the bounce is an instant, and
+        // finding a hand on the screen takes longer than that. It used
+        // to be fifteen, which kept out whoever came back on purpose;
+        // whoever lands here finds the door, and one touch opens it.
+        if (Date.now() - leftByHandAt.current < 3_000) {
           Journal.mark('reentry-skipped:just-left').catch(() => {});
           return;
         }
