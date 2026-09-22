@@ -1,0 +1,5 @@
+- Oito sons dizem o que acontece: vídeo, microfone, câmera, entrar e sair; o outro telefone também os ouve.
+- Reabrir o app pelo ícone ou pela notificação volta logo ao canal.
+- Fora do canal a tela diz isso, com «Entrar», e os botões preparam como se entra.
+- Em espera, «Sair» oferece só a saída definitiva; ao voltar, não fica mais parado na conexão.
+- Código, convite e link numa tela só, que os distingue.

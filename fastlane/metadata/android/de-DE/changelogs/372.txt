@@ -1,0 +1,5 @@
+- Acht Töne sagen, was geschieht: Video, Mikrofon, Kamera, Eintreten und Hinausgehen; auch der andere hört sie.
+- Die App vom Symbol oder der Benachrichtigung aus öffnen führt sofort in den Kanal zurück.
+- Außerhalb des Kanals sagt es der Bildschirm, mit „Eintreten“, und die Knöpfe stellen das Hineingehen ein.
+- Beim Warten bietet „Hinausgehen“ nur den endgültigen Ausgang; zurück bleibt nichts mehr hängen.
+- Code, Einladung und Link auf einem Bildschirm, der sie unterscheidet.

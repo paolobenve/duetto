@@ -1,0 +1,5 @@
+- Ocho sonidos dicen lo que pasa: vídeo, micrófono, cámara, entrar y salir; también los oye el otro.
+- Reabrir la app desde el icono o la notificación devuelve al canal enseguida.
+- Fuera del canal la pantalla lo dice, con «Entrar», y los botones preparan cómo se entra.
+- En espera, «Salir» ofrece solo la salida definitiva; al volver, ya no se queda en la conexión.
+- Código, invitación y enlace en una sola pantalla, que los distingue.

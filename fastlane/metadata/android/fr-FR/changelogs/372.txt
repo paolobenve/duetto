@@ -1,0 +1,5 @@
+- Huit sons disent ce qui se passe : vidéo, micro, caméra, entrer et sortir ; l'autre téléphone les entend aussi.
+- Rouvrir l'appli depuis l'icône ou la notification ramène aussitôt dans le canal.
+- Hors du canal l'écran le dit, avec « Entrer », et les boutons préparent la façon d'entrer.
+- En attente, « Sortir » n'offre que la sortie définitive ; au retour, on ne reste plus sur la connexion.
+- Code, invitation et lien sur un seul écran, qui les distingue.

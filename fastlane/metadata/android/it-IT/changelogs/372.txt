@@ -1,0 +1,5 @@
+- Otto suoni dicono che cosa succede: video, microfono, camera, entrare e uscire; li sente anche l'altro.
+- Riaprire l'app dall'icona o dalla notifica riporta subito nel canale.
+- Fuori dal canale lo schermo lo dice, con «Entra», e i pulsanti preparano come si entra.
+- In attesa, «Esci» offre solo l'uscita definitiva; tornando dall'attesa non si resta più fermi sul collegamento.
+- Codice, invito e link in una schermata sola, che li riconosce.

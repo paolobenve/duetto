@@ -14,6 +14,37 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
+## 0.9.17 build 372
+
+**Version 0.9.17: the channel says what it does.** Eight short sounds tell what has just
+happened - the video on or off, the microphone, the camera turning round, coming in,
+going out, going out for good - and they are heard on both phones, because what one of
+the two does is news for the other. The three that mark the channel itself are chords
+that slide, two voices a fifth apart and three for the final one, so that they are not
+mistaken for the single tones of the controls. They are synthesised by hand in
+`app/assets/make-sounds.py`, with no sound taken from anywhere.
+
+Going out and coming back are put right. Out of the channel the screen used to be able
+to stay black and mute: what kept it black was the wait for the other's video, which
+outside the channel is not a wait at all but the plain fact of having left - so the
+door is drawn again, with Enter. And reopening the app now goes straight back in: the
+activity is told when somebody really opens it, because the icon, the notification and
+a link all hand it an intent while the window that bounces back after minimizing hands
+it none. The fifteen-second refusal that followed a leaving drops to three, and is now
+only a net against that bounce.
+
+The code has one door. "Type the code" was a step of its own on the pairing screen,
+with a field for eight digits and a camera beside it; everything it did is done by the
+screen that takes whatever was handed over - a code, an invitation, a whole link -
+written, pasted or held up to the camera, and tells them apart by shape. The button
+stays where it was, because a guest has no other, and carries the name of the screen it
+opens. Out of the channel the buttons set what one wants on entering instead of doing
+nothing; while waiting, Leave offers the way out for good and nothing else; coming back
+from waiting the connection is asked for again instead of remembered, so nobody sits on
+"establishing the connection" any more; and the presence starts once, steps aside by
+instance and comes back on the heartbeat, so a phone that closes the app stops going
+deaf to calls.
+
 ## 0.9.16 build 364
 
 **Version 0.9.16: the link that connects.** A pairing code goes out as an https link

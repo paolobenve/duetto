@@ -1,0 +1,5 @@
+- Eight sounds say what happens: video, microphone, camera, coming in and going out; the other phone hears them too.
+- Reopening the app from the icon or the notification goes straight back into the channel.
+- Out of the channel the screen says so, with Enter, and the buttons set how one goes in.
+- While waiting, Leave offers only the way out for good; back from waiting, the connection no longer sticks.
+- The code, the invitation and the link have one screen, which tells them apart.
