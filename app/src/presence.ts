@@ -9,7 +9,7 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
-import { Foreground, Journal, Alarm } from 'duetto-platform';
+import { Foreground, Journal, Alarm, Heartbeat } from 'duetto-platform';
 import {
   loadConfig, saveConfig, addPair, isPaired, isServerConfigured, pairFileKey, pairName,
 } from './config';
@@ -250,7 +250,27 @@ export function presenceLine(o: {
 const log = logger('[duetto-presence]');
 
 /** Starts listening, if a pair has been set up. */
-export async function startListening(): Promise<boolean> {
+/**
+ * One start at a time.
+ *
+ * The service was started twice within a second - the channel service
+ * handing over and the system restarting us after a kill - and both
+ * tasks passed the "already listening" check, because it came before
+ * the reads of the configuration and the drawer. Two connections were
+ * made; the server kept the newer and told the older it was replaced;
+ * the older, stepping aside, closed the module's connection - which
+ * was the newer one - and the phone sat alive and deaf for two hours,
+ * until a screen came on. Now the second caller waits for the first.
+ */
+let starting: Promise<boolean> | null = null;
+export function startListening(): Promise<boolean> {
+  if (signaling) return Promise.resolve(true);
+  if (starting) return starting;
+  starting = listenNow().finally(() => { starting = null; });
+  return starting;
+}
+
+async function listenNow(): Promise<boolean> {
   if (signaling) return true;
   if (uiInCharge) {
     log('the app already has its own connection: not opening another');
@@ -338,7 +358,7 @@ export async function startListening(): Promise<boolean> {
     signaling?.sendSignal({ kind: 'hello', version: VERSION_LABEL, build: BUILD });
   };
 
-  signaling = new Signaling(
+  const sig = new Signaling(
     {
       serverUrl: cfg.serverUrl.trim(),
       serverKey: cfg.serverKey,
@@ -354,7 +374,24 @@ export async function startListening(): Promise<boolean> {
       // it is there: the presence yields. It comes back the next time
       // the interface hands over.
       onReplaced: () => {
-        log('replaced by the interface: stopping');
+        // A connection of ours that is no longer the module's: a
+        // duplicate already superseded here. It goes quietly, and the
+        // survivor is not touched.
+        if (signaling !== sig) {
+          Journal.mark('presence:replaced:duplicate').catch(() => { /* noop */ });
+          sig.close(false);
+          return;
+        }
+        if (uiInCharge) {
+          log('replaced by the interface: stopping');
+          stopListening();
+          return;
+        }
+        // Replaced by something that is not the interface - a socket of
+        // ours the server had not yet let go of. Stepping back, not
+        // fighting it every second; the idle beat brings us back.
+        log('replaced by an unknown connection of ours: stepping back');
+        Journal.mark('presence:replaced:stale').catch(() => { /* noop */ });
         stopListening();
       },
       onJoined: ({ peerPresent, peerActive, peerName }) => {
@@ -494,7 +531,8 @@ export async function startListening(): Promise<boolean> {
       },
     },
   );
-  signaling.connect();
+  signaling = sig;
+  sig.connect();
   // Nobody else is watching over this connection: the pace-setting is
   // the watchdog's too (driveFast), one beat a minute when all is well
   // and one every fifteen seconds while the server is out of reach.
@@ -523,6 +561,30 @@ export function isListening(): boolean {
 }
 
 /**
+ * The net under an idle presence.
+ *
+ * The alarm every ten minutes strikes a beat by hand and, finding the
+ * engine alive, leaves it at that: it could not see that nobody was
+ * listening. This listener hears that beat - and the ordinary ones -
+ * and, with no connection, no start under way and no interface in
+ * charge, starts listening again. Not more often than every five
+ * minutes, because on a phone with no pair each try reads the
+ * configuration for nothing.
+ */
+let idleBeat: (() => void) | null = null;
+let idleTriedAt = 0;
+function watchIdle() {
+  if (idleBeat) return;
+  idleBeat = Heartbeat.subscribe(() => {
+    if (signaling || starting || uiInCharge) return;
+    if (Date.now() - idleTriedAt < 5 * 60_000) return;
+    idleTriedAt = Date.now();
+    Journal.mark('presence:relisten').catch(() => { /* noop */ });
+    startListening().catch(() => { /* the next beat tries again */ });
+  });
+}
+
+/**
  * The task the headless service runs.
  *
  * It never finishes, on purpose: as long as it lives, the connection
@@ -539,6 +601,7 @@ export async function presenceTask(): Promise<void> {
     log('app looks open: waiting a moment before deciding');
     await new Promise<void>((r) => setTimeout(r, 4000));
   }
+  watchIdle();
   if (await startListening()) {
     return new Promise<void>(() => { /* never resolved: it has to stay alive */ });
   }
