@@ -238,6 +238,15 @@ const SERVER_CHECK_MS = 3_000;
 const KNOCK_ECHO_MS = 2_000;
 
 /**
+ * A short sound for a thing that just happened in the channel - the
+ * camera or the microphone going on or off, the camera turning round,
+ * somebody coming in or going out - heard on both phones: here at
+ * the touch, over there when the change arrives. On the voice's own
+ * stream, quiet, as the knock's echo is: a cue, not an alarm.
+ */
+const cue = (name: string) => { Alarm.play(name, true).catch(() => { /* noop */ }); };
+
+/**
  * How long one may stay without a server before rebuilding everything.
  *
  * Measured from the last working connection: ten seconds without a
@@ -799,6 +808,8 @@ export default function App() {
    * means they have not spoken yet.
    */
   const [peerSeen, setPeerSeen] = useState(false);
+  /** a state of theirs has been heard since we met: the next ones are changes */
+  const peerStateHeard = useRef(false);
   /** VP9 in hardware: ours and theirs. The option shows only with both. */
   const [localVp9, setLocalVp9] = useState(false);
   const [peerVp9, setPeerVp9] = useState(false);
@@ -2580,7 +2591,7 @@ export default function App() {
             // They are back: the wait that was about to forget them is off.
             stopWaiting();
             peerActiveRef.current = mode === 'active';
-            if (mode === 'active' && inChannelRef.current) attachPeer(true);
+            if (mode === 'active' && inChannelRef.current) { attachPeer(true); cue('cue_enter'); }
           },
 
           onPeerLeft: (why) => {
@@ -2591,6 +2602,10 @@ export default function App() {
             // tomorrow with a cable, and it sits on the phone over
             // here, so it can be read without waiting for any exchange.
             Journal.mark(`peer-gone:${why}`).catch(() => { /* noop */ });
+            // Gone for good - they said so - is a sound; a drop is not,
+            // they may be back in a moment.
+            if (why === 'bye' && inChannelRef.current) cue('cue_detach');
+            peerStateHeard.current = false;
             setPeerPresent(false);
             setPeerSeen(false);
             setPeerDetached(why === 'bye');
@@ -2643,10 +2658,12 @@ export default function App() {
           onPeerMode: (mode, n) => {
             if (n) noteName(n);
             peerActiveRef.current = mode === 'active';
+            if (inChannelRef.current) cue(mode === 'active' ? 'cue_enter' : 'cue_leave');
             if (mode === 'active') {
               stopWaiting();
               if (inChannelRef.current) attachPeer();
             } else {
+              peerStateHeard.current = false;
               sessionRef.current?.detachPeer();
               // A deliberate exit: they pressed Leave and went back to waiting.
               forgetPeer(true);
@@ -3255,6 +3272,11 @@ export default function App() {
         },
         onVideoStats: setVideoStats,
         onPeerState: (st) => {
+          // The first state after meeting says how things stand, not
+          // what changed: no cue for it, or every meeting would ring
+          // two or three times.
+          const heard = peerStateHeard.current;
+          peerStateHeard.current = true;
           setPeerSeen(true);
           // Only the changes: the state arrives even when nothing has
           // changed, and a line for every message would be a journal
@@ -3262,12 +3284,15 @@ export default function App() {
           const before = peerStateRef.current;
           if (before.audio !== st.audio) {
             Journal.mark(`peer-audio:${st.audio ? 'on' : 'off'}`).catch(() => {});
+            if (heard && inChannelRef.current) cue(st.audio ? 'cue_audio_on' : 'cue_audio_off');
           }
           if (before.video !== st.video) {
             Journal.mark(`peer-video:${st.video ? 'on' : 'off'}`).catch(() => {});
+            if (heard && inChannelRef.current) cue(st.video ? 'cue_video_on' : 'cue_video_off');
           }
           if (st.camera && before.camera !== st.camera) {
             Journal.mark(`peer-camera:${st.camera}`).catch(() => {});
+            if (heard && inChannelRef.current && st.video) cue('cue_camera');
           }
           if (st.output && before.output !== st.output) {
             Journal.mark(`peer-audio-output:${st.output}`).catch(() => {});
@@ -3335,6 +3360,7 @@ export default function App() {
     inChannelRef.current = true;
     setScreen('channel');
     sig.setMode('active');
+    cue('cue_enter');
 
     if (peerActiveRef.current) attachPeer();
     // And the server is asked how the other side really is: what is
@@ -3581,6 +3607,8 @@ export default function App() {
    *   us off - and there is something on the screen to read.
    */
   const leaveChannel = useCallback(async (stayAvailable = true, quiet = false) => {
+    // Said before the audio comes down: going out, or going out for good.
+    if (inChannelRef.current) cue(stayAvailable ? 'cue_leave' : 'cue_detach');
     await putAwayChannel(
       stayAvailable ? 'left-channel' : 'unavailable', cfg?.pair?.id,
     );
@@ -3775,6 +3803,7 @@ export default function App() {
       setLocalAspect(undefined);
       Foreground.setCameraActive(false).catch(() => {});
       noteHowItIsRef.current?.();
+      cue('cue_video_off');
       return;
     }
     if (!cameraGranted.current) {
@@ -3793,6 +3822,7 @@ export default function App() {
       // changed with the video off: here we only align the icon.
       setFrontCamera(s.isFrontCamera());
       noteHowItIsRef.current?.();
+      cue('cue_video_on');
     } catch (e: any) {
       Foreground.setCameraActive(false).catch(() => {});
       Alert.alert(t('errors.cameraError'), String(e?.message ?? e));
@@ -4536,6 +4566,7 @@ export default function App() {
           setAudioOn(on);
           noteHowItIs(cfg?.pair?.id);
           Journal.mark(`audio:${on ? 'on' : 'off'}`).catch(() => {});
+          cue(on ? 'cue_audio_on' : 'cue_audio_off');
         }}
         onToggleVideo={onToggleVideo}
         onSwitchCamera={() => {
@@ -4552,6 +4583,7 @@ export default function App() {
           // is the session that remembers which camera will open.
           const front = s.switchCamera();
           setFrontCamera(front);
+          if (s.isVideoEnabled()) cue('cue_camera');
           // If the choice is not written down, the next session starts
           // from the front one again and it has to be turned round
           // every time.

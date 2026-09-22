@@ -14,9 +14,11 @@ on the other side of the room: they have to cut through, not to be
 pretty. A handful only, clearly different from one another, so that one
 picks with confidence without having to listen again.
 
-Two are home-made, the horn and the knock: a car horn is literally two
-notes with the odd harmonics, and synthesising it comes out better than
-looking for a clean recording. All the others are recordings, because
+Two are home-made, the horn and the knock, and so are the seven cues -
+the camera and the microphone going on and off, the camera turning
+round, coming into the channel, going out, and going out for good: a car horn is literally
+two notes with the odd harmonics, a cue is one tone sliding, and
+synthesising them comes out better than looking for a clean recording. All the others are recordings, because
 elsewhere synthesis can be heard - a built "cock-a-doodle-doo" stays a
 caricature, and a built drum kit is a thud with no skin on it.
 
@@ -205,6 +207,63 @@ def knock():
     put(x, 0.26, rap(132.0, 2), 1.00)
     return normalise(fade(x, 0.05))
 
+# --- Cues ------------------------------------------------------------------
+# Four short glissandi for the camera and the microphone going on and
+# off, heard on both phones: up for on, down for off; a clear, slightly
+# bright tone for the camera, a warmer one for the microphone, so the
+# pair is told apart without looking. Home-made, like the horn: a
+# glissando is one tone sliding, and there is nothing a recording would
+# add. A third of a second, and quiet: they go out on the voice's own
+# stream during a conversation and must not startle anybody.
+def glissando(f_from, f_to, dur=0.32, harmonics=((1, 1.0), (2, 0.25), (3, 0.08))):
+    n = int(SR * dur)
+    time = t(dur)
+    # The pitch slides on a log scale, as the ear hears it: the phase is
+    # the integral of the instantaneous frequency.
+    freq = f_from * (f_to / f_from) ** (time / dur)
+    phase = 2 * np.pi * np.cumsum(freq) / SR
+    x = np.zeros(n)
+    for k, weight in harmonics:
+        x += np.sin(phase * k) * weight
+    env = np.ones(n)
+    up = int(SR * 0.02)
+    down = int(SR * 0.10)
+    env[:up] = np.linspace(0, 1, up)
+    env[-down:] = np.linspace(1, 0, down)
+    return normalise(x * env, peak=0.6)
+
+def cue_video_on():
+    return glissando(520.0, 880.0, harmonics=((1, 1.0), (2, 0.35), (3, 0.15), (4, 0.06)))
+
+def cue_video_off():
+    return glissando(880.0, 520.0, harmonics=((1, 1.0), (2, 0.35), (3, 0.15), (4, 0.06)))
+
+def cue_audio_on():
+    return glissando(330.0, 520.0)
+
+def cue_audio_off():
+    return glissando(520.0, 330.0)
+
+# The camera turning round: a tone that goes up and comes back, one
+# quick turn, unlike the one-way slides of on and off.
+def cue_camera():
+    up = glissando(600.0, 900.0, dur=0.13, harmonics=((1, 1.0), (2, 0.3), (3, 0.1)))
+    down = glissando(900.0, 600.0, dur=0.13, harmonics=((1, 1.0), (2, 0.3), (3, 0.1)))
+    return normalise(fade(np.concatenate([up[:-int(SR * 0.06)], down]), 0.05), peak=0.6)
+
+# Coming in and going out: slides too, but wider and longer than the
+# cues above - an octave and a half up for in, the same down for out -
+# and going out for good wider still, two octaves and a half, so that
+# the three are told apart by how far they travel.
+def cue_enter():
+    return glissando(300.0, 900.0, dur=0.42, harmonics=((1, 1.0), (2, 0.3), (3, 0.1)))
+
+def cue_leave():
+    return glissando(900.0, 300.0, dur=0.42, harmonics=((1, 1.0), (2, 0.3), (3, 0.1)))
+
+def cue_detach():
+    return glissando(1100.0, 200.0, dur=0.55, harmonics=((1, 1.0), (2, 0.3), (3, 0.1)))
+
 # --- writing ---------------------------------------------------------------
 def save(name, data):
     os.makedirs(OUT, exist_ok=True)
@@ -225,3 +284,11 @@ if __name__ == '__main__':
     save('alarm_horn', horn())
     save('alarm_rooster', rooster())
     save('knock', knock())
+    save('cue_video_on', cue_video_on())
+    save('cue_video_off', cue_video_off())
+    save('cue_audio_on', cue_audio_on())
+    save('cue_audio_off', cue_audio_off())
+    save('cue_camera', cue_camera())
+    save('cue_enter', cue_enter())
+    save('cue_leave', cue_leave())
+    save('cue_detach', cue_detach())

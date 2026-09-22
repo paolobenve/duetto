@@ -80,6 +80,17 @@ object Alarm {
         // Not an alarm, and not in the list: it is the answer heard by
         // whoever knocks, two raps on a door.
         "knock" -> R.raw.knock
+        // The cues, on both phones: the camera and the microphone going
+        // on and off, the camera turning round, coming in, going out,
+        // going out for good.
+        "cue_video_on" -> R.raw.cue_video_on
+        "cue_video_off" -> R.raw.cue_video_off
+        "cue_audio_on" -> R.raw.cue_audio_on
+        "cue_audio_off" -> R.raw.cue_audio_off
+        "cue_camera" -> R.raw.cue_camera
+        "cue_enter" -> R.raw.cue_enter
+        "cue_leave" -> R.raw.cue_leave
+        "cue_detach" -> R.raw.cue_detach
         // The names as the older Duetto said them: they come from a
         // phone that has not been updated yet. These six lines go away
         // with the next version.

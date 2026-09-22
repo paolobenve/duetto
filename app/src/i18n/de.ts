@@ -450,7 +450,7 @@ export const de: Dictionary = {
     secWhat: 'was',
     secServerKnowsTail: ' ihr euch sagt.',
     soundsOrigin: 'Woher die Töne kommen',
-    soundsOriginText: 'Die Töne, mit denen man die andere Person zurückruft, sind Aufnahmen von freesound.org, alle unter CC0: keine Rechte vorbehalten, und sie werden aus Anstand genannt, nicht aus Pflicht.\nTrommeln — waveplaysfx (#556255)\nSchlagzeug — hewnmarrow (#695331)\nFanfare — plasterbrain (#397355)\nHahn — kyles (#454174)\nDie Hupe und das Klopfen dagegen macht die App selbst und stammen von niemandem.',
+    soundsOriginText: 'Die Töne, mit denen man die andere Person zurückruft, sind Aufnahmen von freesound.org, alle unter CC0: keine Rechte vorbehalten, und sie werden aus Anstand genannt, nicht aus Pflicht.\nTrommeln — waveplaysfx (#556255)\nSchlagzeug — hewnmarrow (#695331)\nFanfare — plasterbrain (#397355)\nHahn — kyles (#454174)\nDie Hupe und das Klopfen dagegen macht die App selbst und stammen von niemandem. Auch die acht Signale, Kamera und Mikrofon an und aus, die Kamera, die sich dreht, Eintreten, Hinausgehen, endgültig Hinausgehen, macht die App selbst.',
     connectionName: 'Der Name der Verbindung',
     connectionNamePlaceholder: 'Zuhause, Büro, Berge…',
     connectionNameHint: 'Es ist der Name der Verbindung, nicht der der Person: er ist für dich, damit du weißt, in welcher deiner Verbindungen du bist. Er steht auf der Pille oben und in der Mitteilung. Er bleibt auf diesem Telefon: die andere Person sieht ihn nicht und wird ihn nie erfahren.',

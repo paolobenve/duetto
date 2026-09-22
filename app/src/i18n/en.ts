@@ -463,7 +463,7 @@ export const en = {
     secWhat: 'what',
     secServerKnowsTail: ' you say to each other.',
     soundsOrigin: 'Where the sounds come from',
-    soundsOriginText: 'The sounds for calling the other person back are recordings published on freesound.org, all of them under CC0: no rights reserved, and they are named out of fairness rather than duty.\nDrums — waveplaysfx (#556255)\nDrum kit — hewnmarrow (#695331)\nFanfare — plasterbrain (#397355)\nRooster — kyles (#454174)\nThe car horn and the knock, on the other hand, are made by the app and come from nobody.',
+    soundsOriginText: 'The sounds for calling the other person back are recordings published on freesound.org, all of them under CC0: no rights reserved, and they are named out of fairness rather than duty.\nDrums — waveplaysfx (#556255)\nDrum kit — hewnmarrow (#695331)\nFanfare — plasterbrain (#397355)\nRooster — kyles (#454174)\nThe car horn and the knock, on the other hand, are made by the app and come from nobody. The eight cues - camera and microphone on and off, the camera turning round, coming in, going out, going out for good - are made by the app too.',
     connectionName: 'The connection\'s name',
     connectionNamePlaceholder: 'Home, office, mountains…',
     connectionNameHint: 'It is the connection\'s name, not the person\'s: it is for you, to know which of your connections you are in. It appears on the pill at the top and in the notification. It stays on this phone: the other person does not see it and will never know it.',

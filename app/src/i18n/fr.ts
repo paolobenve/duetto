@@ -450,7 +450,7 @@ export const fr: Dictionary = {
     secWhat: 'ce que',
     secServerKnowsTail: ' vous vous dites.',
     soundsOrigin: 'D’où viennent les sons',
-    soundsOriginText: 'Les sons pour rappeler l’autre sont des enregistrements publiés sur freesound.org, tous en CC0 : aucun droit réservé, et on les nomme par correction, non par obligation.\nTambours — waveplaysfx (#556255)\nBatterie — hewnmarrow (#695331)\nFanfare — plasterbrain (#397355)\nChant du coq — kyles (#454174)\nLe coup de klaxon et le toc-toc, eux, c’est l’app qui les fabrique : ils ne viennent de personne.',
+    soundsOriginText: 'Les sons pour rappeler l’autre sont des enregistrements publiés sur freesound.org, tous en CC0 : aucun droit réservé, et on les nomme par correction, non par obligation.\nTambours — waveplaysfx (#556255)\nBatterie — hewnmarrow (#695331)\nFanfare — plasterbrain (#397355)\nChant du coq — kyles (#454174)\nLe coup de klaxon et le toc-toc, eux, c’est l’app qui les fabrique : ils ne viennent de personne. Les huit signaux, caméra et micro qui s\'allument et s\'éteignent, la caméra qui tourne, entrer, sortir, sortir pour de bon, sont faits par l\'appli eux aussi.',
     connectionName: 'Nom de la liaison',
     connectionNamePlaceholder: 'Maison, bureau, montagne…',
     connectionNameHint: 'C’est le nom de la liaison, pas de la personne : il te sert à savoir dans laquelle de tes liaisons tu es. Il apparaît sur la pastille en haut et dans la notification. Il reste sur ce téléphone : l’autre ne le voit pas et ne le saura jamais.',

@@ -543,7 +543,9 @@ copyleft library in the tree: the GPL here is a choice, not an obligation.
 
 The sounds for calling the other person back are not code and have licences of their own,
 listed in `app/assets/make-sounds.py` and in the app under *Where the sounds come from*.
-The car horn and the knock are made by the app itself. The drum roll, the drum kit, the
+The car horn and the knock are made by the app itself, and so are the eight cues heard on
+both phones when the camera or the microphone goes on or off, the camera turns round,
+somebody comes in, goes out, or goes out for good. The drum roll, the drum kit, the
 fanfare and the rooster are recordings published on freesound.org, **all of them CC0**: no
 rights reserved. They are named out of fairness rather than duty — and it is worth keeping
 it that way, because a sound that asked for something in return would ask it of everybody
