@@ -308,7 +308,6 @@ export default function App() {
   /** the maker's key, when the code came as a link that carried one: see links.ts */
   const [pairingPub, setPairingPub] = useState('');
   /** the pairing opened on typing a code, from the settings */
-  const [pairingTyping, setPairingTyping] = useState(false);
   /** the welcome opened to accept an invitation or a connection handed over */
   const [accepting, setAccepting] = useState(false);
   /**
@@ -4356,7 +4355,6 @@ export default function App() {
               setPairingServer({
                 serverUrl: next.serverUrl, serverKey: next.serverKey, serverRole: next.serverRole,
               });
-              setPairingTyping(false);
               setScreen('pairing');
               return;
             }
@@ -4369,7 +4367,6 @@ export default function App() {
             // us and there is nothing to do but go back in; otherwise
             // the settings, where one sees where one has come in, and
             // how, before dictating a code.
-            setPairingTyping(false);
             setScreen(code ? 'pairing' : isPaired(next) ? 'channel' : 'settings');
           }}
           // From the settings there is somewhere to go back to; at the
@@ -4397,7 +4394,7 @@ export default function App() {
           onRenamePair={onRenamePair}
           // No existing connection is touched: the new one is added, if
           // and when it succeeds.
-          onRepair={() => { setPairingTyping(false); setScreen(opensHere(cfg) ? 'pairing' : 'welcome'); }}
+          onRepair={() => { setScreen(opensHere(cfg) ? 'pairing' : 'welcome'); }}
           onHaveCode={() => { setAccepting(true); setScreen('welcome'); }}
           onClose={isPaired(cfg) ? () => setScreen('channel') : undefined}
           onOpenSetup={() => { setSetupFrom('settings'); setScreen('setup'); }}
@@ -4479,7 +4476,7 @@ export default function App() {
           role={pairingServer ? pairingServer.serverRole : cfg.serverRole}
           joinWith={pairingCode}
           joinWithKey={pairingPub}
-          startTyping={pairingTyping}
+          onHaveCode={() => { setAccepting(true); setScreen('welcome'); }}
           onRefused={(reason) => {
             // Not what we thought we were here: the welcome knocks
             // again and finds out what we are now.

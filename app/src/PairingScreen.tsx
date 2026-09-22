@@ -9,13 +9,12 @@
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator,
-  ScrollView, KeyboardAvoidingView, Platform, Clipboard, Share,
+  View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
+  ScrollView, Clipboard, Share,
 } from 'react-native';
 import { DuoConfig, PairInfo, PendingPair, ServerRole, displayServer, isPaired } from './config';
-import { pairLink, parseLink } from './links';
+import { pairLink } from './links';
 import QrCode from './QrCode';
-import { Scanner } from 'duetto-platform';
 import { Signaling, PairMessage } from './signaling';
 import {
   generateCode, normalizeCode, formatCode, isCodeComplete,
@@ -49,8 +48,16 @@ type Props = {
    * and theirs is left as a letter on the server.
    */
   joinWithKey?: string;
-  /** open on typing a code, for whoever may create one but was given one */
-  startTyping?: boolean;
+  /**
+   * Somebody handed a code over: the screen that takes them all.
+   *
+   * A code used to be typed here, in a step of its own. Now one
+   * screen reads whatever was handed over - a code, an invitation, a
+   * whole link - whether it is written, pasted or held up to the
+   * camera, and this button opens it. A guest has no other button:
+   * a room is opened by whoever let them in.
+   */
+  onHaveCode?: () => void;
   /**
    * The server turned this phone away: it is not what the phone thought
    * it was here - taken off the list, say - and whoever holds the word
@@ -59,7 +66,7 @@ type Props = {
   onRefused?: (reason: string) => void;
 };
 
-type Step = 'choose' | 'preparing' | 'create' | 'join' | 'exchanging' | 'error'
+type Step = 'choose' | 'preparing' | 'create' | 'exchanging' | 'error'
   | 'done';
 
 /** If nothing happens in a minute and a half, better say so than spin. */
@@ -75,11 +82,10 @@ const TIMEOUT_MS = 90_000;
 const RETRY_WAIT_S = 20;
 
 export default function PairingScreen({
-  cfg, onPaired, onPending, onBack, role = 'unknown', joinWith, joinWithKey, onRefused, startTyping,
+  cfg, onPaired, onPending, onBack, role = 'unknown', joinWith, joinWithKey, onRefused, onHaveCode,
 }: Props) {
-  const [step, setStep] = useState<Step>(startTyping ? 'join' : 'choose');
+  const [step, setStep] = useState<Step>('choose');
   const [code, setCode] = useState('');
-  const [typed, setTyped] = useState('');
   const [message, setMessage] = useState('');
   const [retryIn, setRetryIn] = useState(0);
   /** the invitation being made: whose, and the one just made */
@@ -414,41 +420,6 @@ export default function PairingScreen({
     startExchange(c, 'A');
   }, [startExchange]);
 
-  const startJoin = useCallback(() => {
-    if (!isCodeComplete(typed)) return;
-    startExchange(typed, 'B');
-  }, [typed, startExchange]);
-
-  /** The other phone's code read with the camera, and the pairing started. */
-  const [scanNote, setScanNote] = useState('');
-  const scanCode = useCallback(async () => {
-    setScanNote('');
-    let text = '';
-    try {
-      text = await Scanner.scan(t('qr.hint'));
-    } catch {
-      setScanNote(t('qr.noCamera'));
-      return;
-    }
-    if (!text) return;
-    const link = parseLink(text);
-    if (!link) { setScanNote(t('qr.notOurs')); return; }
-    if (link.kind === 'invite') {
-      // An invitation, where a pairing code was expected: said for
-      // what it is. Already in, one has no use for it.
-      setScanNote(role === 'owner' || role === 'member'
-        ? t('qr.inviteAlreadyIn')
-        : t('qr.inviteNotHere'));
-      return;
-    }
-    if (displayServer(link.serverUrl) !== displayServer(cfg.serverUrl)) {
-      setScanNote(t('qr.otherServer', { server: displayServer(link.serverUrl) }));
-      return;
-    }
-    setTyped(link.code);
-    startExchange(link.code, 'B');
-  }, [cfg.serverUrl, startExchange]);
-
   /**
    * Whoever may open connections here creates the code, and that is
    * all: the screen opens on the code itself, with nothing to press.
@@ -458,17 +429,16 @@ export default function PairingScreen({
   const opens = role === 'owner' || role === 'member';
   const autoCreated = useRef(false);
   useEffect(() => {
-    if (!opens || joinWith || startTyping || autoCreated.current) return;
+    if (!opens || joinWith || autoCreated.current) return;
     autoCreated.current = true;
     startCreate();
-  }, [opens, joinWith, startTyping, startCreate]);
+  }, [opens, joinWith, startCreate]);
 
   // The eight digits were typed at the welcome: nothing to press here.
   const startedWith = useRef('');
   useEffect(() => {
     if (!joinWith || !isCodeComplete(joinWith) || startedWith.current === joinWith) return;
     startedWith.current = joinWith;
-    setTyped(joinWith);
     if (joinWithKey) startJoinWithKey(joinWith, joinWithKey);
     else startExchange(joinWith, 'B');
   }, [joinWith, joinWithKey, startExchange, startJoinWithKey]);
@@ -476,7 +446,6 @@ export default function PairingScreen({
   const reset = useCallback(() => {
     cleanup();
     doneRef.current = true; // stops a computation that may be under way
-    setTyped('');
     setCode('');
     setStep('choose');
   }, [cleanup]);
@@ -586,37 +555,6 @@ export default function PairingScreen({
     );
   }
 
-  if (step === 'join') {
-    return (
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <Screen>
-          <Text style={styles.title}>{t('pairing.typeTitle')}</Text>
-          <Text style={styles.body}>{t('pairing.typeBody')}</Text>
-          <TextInput
-            style={styles.codeInput}
-            value={formatCode(typed)}
-            onChangeText={(t) => setTyped(normalizeCode(t))}
-            placeholder={t('pairing.codePlaceholder')}
-            placeholderTextColor="#3a4353"
-            keyboardType="number-pad"
-            autoCorrect={false}
-            maxLength={9}
-            // One is here to type: the keyboard does not keep anybody waiting.
-            autoFocus
-          />
-          <Primary
-            label={t('pairing.pair')}
-            disabled={!isCodeComplete(typed)}
-            onPress={startJoin}
-          />
-          <Primary label={t('qr.scan')} outline onPress={scanCode} />
-          {scanNote ? <Text style={styles.note}>{scanNote}</Text> : null}
-          <Secondary label={t('pairing.back')} onPress={startTyping ? onBack : reset} />
-        </Screen>
-      </KeyboardAvoidingView>
-    );
-  }
-
   if (step === 'exchanging') {
     return (
       <Screen>
@@ -643,7 +581,13 @@ export default function PairingScreen({
         </Text>
       ) : null}
       {!guest ? <Primary label={t('pairing.createCode')} onPress={startCreate} /> : null}
-      <Primary label={t('pairing.haveCode')} outline={!guest} onPress={() => setStep('join')} />
+      {/* One screen for whatever was handed over - a code, an
+          invitation, a link - written, pasted or held up to the
+          camera. It is the same one the settings open, and it carries
+          the same name. */}
+      {onHaveCode ? (
+        <Primary label={t('settings.haveCode')} outline={!guest} onPress={onHaveCode} />
+      ) : null}
       {/* Whoever is already paired is here to add a connection, not
           because they must: they have to be able to change their mind.
           Whoever is not paired yet has nowhere to go back to, and the
@@ -729,12 +673,6 @@ const styles = StyleSheet.create({
     color: '#7cc4ff', fontSize: 44, fontWeight: '800', letterSpacing: 6,
     fontVariant: ['tabular-nums'],
   },
-  codeInput: {
-    backgroundColor: '#151a23', color: '#fff', borderRadius: 14,
-    paddingVertical: 18, paddingHorizontal: 20, fontSize: 34, fontWeight: '700',
-    letterSpacing: 5, textAlign: 'center', borderWidth: 1, borderColor: '#2a313d',
-    width: '100%', marginBottom: 22, fontVariant: ['tabular-nums'],
-  },
   inviteCode: {
     color: '#7cc4ff', fontSize: 36, fontWeight: '800', letterSpacing: 4,
   },
@@ -745,7 +683,6 @@ const styles = StyleSheet.create({
   },
   role: { color: '#c9d2de', fontSize: 14, textAlign: 'center', marginBottom: 14, marginTop: -10 },
   qrHint: { color: '#6b7686', fontSize: 13, textAlign: 'center', marginTop: 8, marginBottom: 18 },
-  note: { color: '#ffb454', fontSize: 14, lineHeight: 20, marginTop: 10, alignSelf: 'flex-start' },
   waitRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 22, marginBottom: 18 },
   waitText: { color: '#c9d2de', fontSize: 15 },
   hint: { color: '#6b7686', fontSize: 13, textAlign: 'center', lineHeight: 19 },
