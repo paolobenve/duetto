@@ -226,8 +226,24 @@ export const Pip = isAndroid && NativePip
  * keeps us reachable. Really closing it would cut the notifications off.
  */
 export const AppWindow = isAndroid && NativePip
-  ? { minimize: () => call(NativePip, 'minimize') }
-  : { minimize: unavailable };
+  ? {
+      minimize: () => call(NativePip, 'minimize'),
+
+      /**
+       * Calls `cb()` every time somebody opens the app from outside:
+       * the icon, the notification, a link. A window that comes back
+       * by itself after minimizing - the bounce some phones do - does
+       * not call it, because no intent arrives with it, and that is
+       * the whole point: from JavaScript the two look the same.
+       * Gives back the function to stop.
+       */
+      onOpened(cb) {
+        const emitter = new NativeEventEmitter(NativePip);
+        const sub = emitter.addListener('duetto-opened', () => cb());
+        return () => sub.remove();
+      },
+    }
+  : { minimize: unavailable, onOpened: () => () => {} };
 
 /**
  * What the video side of this phone can do.
