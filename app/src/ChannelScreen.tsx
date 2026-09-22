@@ -757,8 +757,14 @@ export default function ChannelScreen(props: Props) {
    *
    * If their camera is off, on the other hand, one's own at full screen
    * is the right thing: there we are waiting for nothing.
+   *
+   * Outside the channel there is no interruption to wait out: their
+   * video is not arriving because we left, not because the road broke.
+   * Counting it as one kept the screen deliberately black and empty -
+   * and the black swallowed the door, so that whoever came back found
+   * neither "you are in" nor "you are not": buttons over nothing.
    */
-  const interrupted = peerState.video && !remoteHasVideo;
+  const interrupted = entered !== false && peerState.video && !remoteHasVideo;
 
   /**
    * The call has somewhere to land.
