@@ -51,6 +51,9 @@ class PipModule(private val ctx: ReactApplicationContext) :
 
         const val EVENT = "duetto-pip"
 
+        /** Somebody opened the app: see MainActivity.onNewIntent. */
+        const val OPENED = "duetto-opened"
+
         @Volatile
         private var current: PipModule? = null
 
@@ -65,14 +68,25 @@ class PipModule(private val ctx: ReactApplicationContext) :
          * injected by patch-android-mainactivity.js), and from here it
          * reaches the JavaScript as an event.
          */
-        fun changed(inPip: Boolean) {
+        fun changed(inPip: Boolean) = tell(EVENT, inPip)
+
+        /**
+         * The app was opened from outside: the icon, the notification,
+         * a link. The activity is the only one who knows - an intent
+         * arrived - and the interface needs it, because a window that
+         * comes back on its own after minimizing looks exactly the
+         * same from JavaScript, and must not undo a leaving.
+         */
+        fun opened() = tell(OPENED, true)
+
+        private fun tell(event: String, value: Boolean) {
             val m = current ?: return
             if (!m.ctx.hasActiveReactInstance()) return
             try {
                 m.ctx.getJSModule(
                     com.facebook.react.modules.core.DeviceEventManagerModule
                         .RCTDeviceEventEmitter::class.java,
-                ).emit(EVENT, inPip)
+                ).emit(event, value)
             } catch (_: Exception) {
                 // The window still shows; only its clothes are wrong.
             }

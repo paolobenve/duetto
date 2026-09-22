@@ -1,5 +1,6 @@
 package com.duetto
 
+import android.content.Intent
 import android.view.KeyEvent
 import com.duetto.platform.Volume
 import android.content.res.Configuration
@@ -40,6 +41,25 @@ class MainActivity : ReactActivity() {
   override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
     if (Volume.consumeRelease(keyCode)) return true
     return super.onKeyUp(keyCode, event)
+  }
+
+  /**
+   * Opened on purpose, from outside.
+   *
+   * The icon, the notification, a link: every one of them hands the
+   * activity an intent. The window coming back by itself - the bounce
+   * that follows minimizing, which some phones do - hands it none. So
+   * this is the difference between "somebody opened the app" and "the
+   * window blinked", which no measure of time can tell apart, and the
+   * interface needs it to know whether the leaving of a moment ago
+   * still holds.
+   *
+   * super first, and always: React Native reads the intent from there,
+   * and the links would stop arriving.
+   */
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    PipModule.opened()
   }
 
   /** The little window begins or ends: the app changes its clothes. */
