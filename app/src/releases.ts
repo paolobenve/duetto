@@ -36,6 +36,71 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.9.17',
+    notes: {
+      en: [
+        'Eight sounds say what has just happened: the video, the microphone, the camera turning, coming in and going out; the other phone hears them too.',
+        'Reopening the app from the icon or the notification goes straight back into the channel: for fifteen seconds after leaving, it used not to.',
+        'Out of the channel the screen says so, with Enter: it could stay black and mute.',
+        'Out of the channel the buttons work: video, microphone and camera set how one goes in.',
+        'While waiting, Leave offers the way out for good and nothing else.',
+        'Coming back from waiting, the connection is asked for again instead of remembered: no more sitting on "establishing the connection".',
+        'The code, the invitation and the link have one screen, which tells them apart: the step that asked for eight digits is gone.',
+        'After the phone closes the app, the call comes through again by itself.',
+      ],
+      it: [
+        'Otto suoni dicono che cosa è appena successo: il video, il microfono, la camera che gira, entrare e uscire; li sente anche l\'altro telefono.',
+        'Riaprire l\'app dall\'icona o dalla notifica riporta subito nel canale: per quindici secondi dopo l\'uscita non rientrava.',
+        'Fuori dal canale lo schermo lo dice, con «Entra»: poteva restare nero e muto.',
+        'Fuori dal canale i pulsanti funzionano: video, microfono e camera preparano come si entra.',
+        'In attesa, «Esci» offre l\'uscita definitiva e nient\'altro.',
+        'Tornando dall\'attesa il collegamento si richiede invece di ricordarlo: non si resta più fermi su «sto stabilendo il collegamento».',
+        'Codice, invito e link hanno una schermata sola, che li riconosce: la tappa che chiedeva le otto cifre non c\'è più.',
+        'Dopo che il telefono chiude l\'app, la chiamata torna ad arrivare da sola.',
+      ],
+      es: [
+        'Ocho sonidos dicen lo que acaba de pasar: el vídeo, el micrófono, la cámara que gira, entrar y salir; también los oye el otro teléfono.',
+        'Reabrir la app desde el icono o la notificación devuelve al canal enseguida: durante quince segundos después de salir no dejaba entrar.',
+        'Fuera del canal la pantalla lo dice, con «Entrar»: podía quedarse negra y muda.',
+        'Fuera del canal los botones funcionan: vídeo, micrófono y cámara preparan cómo se entra.',
+        'En espera, «Salir» ofrece la salida definitiva y nada más.',
+        'Al volver de la espera la conexión se pide de nuevo en vez de recordarla: ya no se queda en «estableciendo la conexión».',
+        'Código, invitación y enlace tienen una sola pantalla, que los distingue: el paso que pedía las ocho cifras ya no está.',
+        'Después de que el teléfono cierra la app, la llamada vuelve a llegar sola.',
+      ],
+      pt: [
+        'Oito sons dizem o que acabou de acontecer: o vídeo, o microfone, a câmera que vira, entrar e sair; o outro telefone também os ouve.',
+        'Reabrir o app pelo ícone ou pela notificação volta logo ao canal: por quinze segundos depois de sair, não deixava entrar.',
+        'Fora do canal a tela diz isso, com «Entrar»: podia ficar preta e muda.',
+        'Fora do canal os botões funcionam: vídeo, microfone e câmera preparam como se entra.',
+        'Em espera, «Sair» oferece a saída definitiva e mais nada.',
+        'Voltando da espera a conexão é pedida de novo em vez de lembrada: não fica mais parado em «estabelecendo a conexão».',
+        'Código, convite e link têm uma tela só, que os distingue: a etapa que pedia os oito algarismos não existe mais.',
+        'Depois que o telefone fecha o app, a chamada volta a chegar sozinha.',
+      ],
+      fr: [
+        'Huit sons disent ce qui vient de se passer : la vidéo, le micro, la caméra qui tourne, entrer et sortir ; l\'autre téléphone les entend aussi.',
+        'Rouvrir l\'appli depuis l\'icône ou la notification ramène aussitôt dans le canal : pendant quinze secondes après la sortie, elle refusait.',
+        'Hors du canal l\'écran le dit, avec « Entrer » : il pouvait rester noir et muet.',
+        'Hors du canal les boutons marchent : vidéo, micro et caméra préparent la façon d\'entrer.',
+        'En attente, « Sortir » n\'offre que la sortie définitive.',
+        'En revenant de l\'attente la connexion est redemandée au lieu d\'être retenue : on ne reste plus sur « établissement de la connexion ».',
+        'Code, invitation et lien ont un seul écran, qui les distingue : l\'étape qui demandait les huit chiffres n\'est plus là.',
+        'Après que le téléphone a fermé l\'appli, l\'appel revient tout seul.',
+      ],
+      de: [
+        'Acht Töne sagen, was gerade geschehen ist: das Video, das Mikrofon, die Kamera, die sich dreht, Eintreten und Hinausgehen; das andere Telefon hört sie auch.',
+        'Die App vom Symbol oder von der Benachrichtigung aus wieder zu öffnen führt sofort zurück in den Kanal: fünfzehn Sekunden nach dem Hinausgehen tat sie das nicht.',
+        'Außerhalb des Kanals sagt es der Bildschirm, mit „Eintreten“: er konnte schwarz und stumm bleiben.',
+        'Außerhalb des Kanals wirken die Knöpfe: Video, Mikrofon und Kamera stellen ein, wie man hineingeht.',
+        'Beim Warten bietet „Hinausgehen“ nur den endgültigen Ausgang.',
+        'Aus dem Warten zurück wird die Verbindung neu erfragt statt erinnert: kein Steckenbleiben mehr bei „Verbindung wird hergestellt“.',
+        'Code, Einladung und Link haben einen einzigen Bildschirm, der sie unterscheidet: der Schritt, der die acht Ziffern verlangte, ist fort.',
+        'Nachdem das Telefon die App geschlossen hat, kommt der Anruf von selbst wieder an.',
+      ],
+    },
+  },
+  {
     version: '0.9.16',
     notes: {
       en: [
