@@ -75,6 +75,39 @@ if (!kt.includes('onPictureInPictureModeChanged')) {
   console.log('picture-in-picture: MainActivity told to speak up');
 }
 
+/**
+ * Who opened the app: the icon, the notification, a link - each hands
+ * the activity an intent, while the window that bounces back by itself
+ * after minimizing hands it none. Only the activity sees the
+ * difference, and the interface needs it to know whether a leaving of
+ * a moment ago still holds. See PipModule.opened().
+ */
+if (!kt.includes('onNewIntent')) {
+  if (!kt.includes('import android.content.Intent')) {
+    kt = kt.replace(
+      /^(import com\.facebook\.react\.ReactActivity\n)/m,
+      'import android.content.Intent\n$1',
+    );
+  }
+  if (!kt.includes('import com.duetto.platform.PipModule')) {
+    kt = kt.replace(
+      /^(import com\.facebook\.react\.ReactActivity\n)/m,
+      'import com.duetto.platform.PipModule\n$1',
+    );
+  }
+  const openedMethod = `
+  /** Opened on purpose, from outside: super first, or links stop arriving. */
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    PipModule.opened()
+  }
+`;
+  const closingOpened = kt.lastIndexOf('}');
+  kt = kt.slice(0, closingOpened) + openedMethod + kt.slice(closingOpened);
+  fs.writeFileSync(file, kt);
+  console.log('openings: MainActivity told to speak up');
+}
+
 // The guard looks at the import and not at the method names: an
 // activity patched by an older Duetto has the same import and the old
 // Italian names, and looking for those would add a second pair of
