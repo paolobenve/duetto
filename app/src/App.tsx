@@ -2282,8 +2282,17 @@ export default function App() {
       if (inChannelRef.current) signalingRef.current?.askPresence();
       // Coming back to the foreground - from the icon or by touching
       // the notification - means wanting to be in the channel: we go
-      // back in without asking anything.
+      // back in without asking anything. Only for whoever asked the
+      // app to go straight in: with the door as the way the app opens,
+      // coming back finds the door too - it used to go in by itself
+      // after fifteen seconds and show the door before, and a person
+      // who had just left, came back and found the door took it for a
+      // failure to get in, pressed what was under it, left for good.
       if (!wasActive && !inChannelRef.current && signalingRef.current) {
+        if ((cfgRef.current?.openInto ?? 'door') === 'door') {
+          Journal.mark('reentry-skipped:door').catch(() => {});
+          return;
+        }
         // Fifteen seconds, wide on purpose: a bounce on another phone
         // may be slower than the one second seen, and going back into
         // the channel against one's will is worse than a touch. Whoever
