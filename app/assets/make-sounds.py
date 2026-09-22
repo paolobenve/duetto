@@ -251,18 +251,37 @@ def cue_camera():
     down = glissando(900.0, 600.0, dur=0.13, harmonics=((1, 1.0), (2, 0.3), (3, 0.1)))
     return normalise(fade(np.concatenate([up[:-int(SR * 0.06)], down]), 0.05), peak=0.6)
 
-# Coming in and going out: slides too, but wider and longer than the
-# cues above - an octave and a half up for in, the same down for out -
-# and going out for good wider still, two octaves and a half, so that
-# the three are told apart by how far they travel.
+# Coming in and going out: slides too, but of a chord, not of one tone
+# - two voices a fifth apart sliding together, an octave and a half up
+# for in and the same down for out, and three voices, the octave added,
+# falling two and a half octaves for going out for good. A chord that
+# slides is a different thing to the ear from one tone that slides,
+# which is what the cues above are, and the width and the length do the
+# rest.
+def chord_glissando(f_from, f_to, ratios, dur):
+    n = int(SR * dur)
+    time = t(dur)
+    freq = f_from * (f_to / f_from) ** (time / dur)
+    phase = 2 * np.pi * np.cumsum(freq) / SR
+    x = np.zeros(n)
+    for r in ratios:
+        for k, weight in ((1, 1.0), (2, 0.25), (3, 0.08)):
+            x += np.sin(phase * r * k) * weight / len(ratios)
+    env = np.ones(n)
+    up = int(SR * 0.02)
+    down = int(SR * 0.14)
+    env[:up] = np.linspace(0, 1, up)
+    env[-down:] = np.linspace(1, 0, down)
+    return normalise(x * env, peak=0.6)
+
 def cue_enter():
-    return glissando(300.0, 900.0, dur=0.42, harmonics=((1, 1.0), (2, 0.3), (3, 0.1)))
+    return chord_glissando(260.0, 780.0, (1.0, 1.5), dur=0.5)
 
 def cue_leave():
-    return glissando(900.0, 300.0, dur=0.42, harmonics=((1, 1.0), (2, 0.3), (3, 0.1)))
+    return chord_glissando(780.0, 260.0, (1.0, 1.5), dur=0.5)
 
 def cue_detach():
-    return glissando(1100.0, 200.0, dur=0.55, harmonics=((1, 1.0), (2, 0.3), (3, 0.1)))
+    return chord_glissando(1000.0, 180.0, (1.0, 1.5, 2.0), dur=0.7)
 
 # --- writing ---------------------------------------------------------------
 def save(name, data):
