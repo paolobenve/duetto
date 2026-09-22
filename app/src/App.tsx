@@ -3292,7 +3292,7 @@ export default function App() {
           }
           if (st.camera && before.camera !== st.camera) {
             Journal.mark(`peer-camera:${st.camera}`).catch(() => {});
-            if (heard && inChannelRef.current && st.video) cue('cue_camera');
+            if (heard && inChannelRef.current) cue('cue_camera');
           }
           if (st.output && before.output !== st.output) {
             Journal.mark(`peer-audio-output:${st.output}`).catch(() => {});
@@ -4583,7 +4583,7 @@ export default function App() {
           // is the session that remembers which camera will open.
           const front = s.switchCamera();
           setFrontCamera(front);
-          if (s.isVideoEnabled()) cue('cue_camera');
+          cue('cue_camera');
           // If the choice is not written down, the next session starts
           // from the front one again and it has to be turned round
           // every time.
