@@ -410,9 +410,52 @@ export default function App() {
      * Now a plain loss only lowers the other voice, and says nothing;
      * and in both cases the focus is asked for again every few seconds,
      * so that the way back does not depend on anybody's courtesy.
+     *
+     * A telephone that rings takes the audio too, exactly as one that has
+     * been answered, and for a while the silence came with the ringtone:
+     * one did not even hear the other say "go on, answer". While the
+     * phone only rings, now, the channel stays as it is; the mode is
+     * watched, and the silence comes when the call is taken.
      */
     let retry: ReturnType<typeof setInterval> | null = null;
+    let ringing: ReturnType<typeof setInterval> | null = null;
+    /** lost the audio and not given it back yet */
+    let lost = false;
+    const stopRinging = () => {
+      if (ringing) { clearInterval(ringing); ringing = null; }
+    };
+    const silence = (why: string) => {
+      stopRinging();
+      const sess = sessionRef.current;
+      sess?.hush(true);
+      sess?.duck(false);
+      setOnCall(true);
+      Journal.mark(`audio-focus:call${why}`).catch(() => {});
+      keepAsking();
+    };
+    const watchRinging = () => {
+      if (ringing) return;
+      Journal.mark('audio-focus:ringing').catch(() => {});
+      ringing = setInterval(async () => {
+        let mode = '';
+        try { mode = String(await Audio.phoneMode()); } catch { return; }
+        if (!lost || !ringing || mode === 'ringtone') return;
+        if (mode === 'call') { silence(':answered'); return; }
+        // Not ringing any more, and not a telephone call: either nobody
+        // answered, or an app's call - WhatsApp - was taken, and both
+        // look like our own "communication". Asking for the audio tells
+        // them apart: given back, the call was not taken.
+        stopRinging();
+        try {
+          const res = String(await (InCallManager as any).requestAudioFocus?.() ?? '');
+          if (res.includes('GRANTED')) { back('rang'); return; }
+        } catch { /* taken as a call: the asking below finds the way back */ }
+        if (lost) silence(':answered');
+      }, 500);
+    };
     const back = (why: string) => {
+      lost = false;
+      stopRinging();
       if (retry) { clearInterval(retry); retry = null; }
       sessionRef.current?.hush(false);
       sessionRef.current?.duck(false);
@@ -452,18 +495,30 @@ export default function App() {
       const media = what === 'AUDIOFOCUS_LOSS';
       const duck = what === 'AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK';
       if (!call && !media && !duck) { back('told'); return; }
+      lost = true;
+      if (call) {
+        // Ringing or answered: the mode says which.
+        Promise.resolve(Audio.phoneMode()).catch(() => '').then((mode: any) => {
+          if (!lost) return;
+          if (String(mode) === 'ringtone') watchRinging();
+          else silence('');
+        });
+        return;
+      }
+      stopRinging();
       const sess = sessionRef.current;
-      sess?.hush(call);
-      sess?.duck(!call);
-      setOnCall(call);
-      Journal.mark(`audio-focus:${call ? 'call' : media ? 'media' : 'duck'}`).catch(() => {});
-      if (call || media) keepAsking();
+      sess?.hush(false);
+      sess?.duck(true);
+      setOnCall(false);
+      Journal.mark(`audio-focus:${media ? 'media' : 'duck'}`).catch(() => {});
+      if (media) keepAsking();
     });
     return () => {
       sub.remove();
       actions.remove();
       askBeat();
       if (retry) clearInterval(retry);
+      stopRinging();
       sessionRef.current?.hush(false);
       sessionRef.current?.duck(false);
     };
