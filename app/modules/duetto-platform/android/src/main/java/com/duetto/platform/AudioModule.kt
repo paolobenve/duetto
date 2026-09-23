@@ -111,4 +111,18 @@ class AudioModule(private val ctx: ReactApplicationContext) :
         apply(activity, active)
         promise.resolve(true)
     }
+
+    /**
+     * What the phone's audio is doing: "ringtone", "call",
+     * "communication", "normal".
+     *
+     * A ringing telephone takes the sound from us just as an answered
+     * one does, and the focus alone cannot tell the two apart; the mode
+     * can, and reading it needs no permission - the call state would
+     * want READ_PHONE_STATE.
+     */
+    @ReactMethod
+    fun phoneMode(promise: Promise) {
+        promise.resolve(Journal.audioMode(ctx))
+    }
 }

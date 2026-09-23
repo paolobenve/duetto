@@ -368,8 +368,10 @@ export const Audio = isAndroid && NativeAudio
       // "use" reads as a React hook to the lint, and this is not one.
       claimVolumeKeys: (active) =>
         call(NativeAudio, 'useCallVolumeKeys', !!active),
+      /** "ringtone", "call", "communication", "normal" */
+      phoneMode: () => call(NativeAudio, 'phoneMode'),
     }
-  : { claimVolumeKeys: unavailable };
+  : { claimVolumeKeys: unavailable, phoneMode: unavailable };
 
 /**
  * The language the phone is set to, as a two-letter code.

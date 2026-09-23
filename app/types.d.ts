@@ -176,6 +176,7 @@ declare module 'duetto-platform' {
   /** Points the volume keys at the conversation's stream. */
   export const Audio: {
     claimVolumeKeys(active: boolean): Promise<boolean>;
+    phoneMode(): Promise<string>;
   };
 
   /**

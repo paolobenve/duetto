@@ -600,7 +600,7 @@ object Journal {
     }
 
     /** Which mode the phone's audio is in: it is the one making the rules. */
-    private fun audioMode(ctx: Context): String {
+    internal fun audioMode(ctx: Context): String {
         val am = ctx.getSystemService(android.media.AudioManager::class.java) ?: return "?"
         return when (am.mode) {
             android.media.AudioManager.MODE_NORMAL -> "normal"
