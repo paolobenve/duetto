@@ -124,6 +124,9 @@ class ChannelForegroundService : Service() {
          * read of some counters and a write of a hundred bytes or so.
          */
         private const val JOURNAL_INTERVAL_MS = 5L * 60L * 1000L
+
+        /** the least time between two writings of the notification: see showSoon */
+        private const val NOTICE_GAP_MS = 500L
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -247,7 +250,7 @@ class ChannelForegroundService : Service() {
          * stay, screen off included, as it always did.
          */
         Notifier.rememberNotice(this, currentText, currentActions)
-        goForeground(mayUseMicrophone = inChannel)
+        showSoon(mayUseMicrophone = inChannel)
         if (inChannel) acquireWakeLock() else releaseWakeLock()
         // The net under the waiting: see WatchdogAlarm.
         WatchdogAlarm.schedule(this)
@@ -273,6 +276,7 @@ class ChannelForegroundService : Service() {
 
     override fun onDestroy() {
         try { unregisterReceiver(charger) } catch (_: Exception) { /* never registered */ }
+        gate.removeCallbacks(showLater)
         // First the rescheduling is unhooked, then the last line is
         // written: otherwise that line would queue a wait nobody is left
         // to wait for.
@@ -413,6 +417,47 @@ class ChannelForegroundService : Service() {
      * the journal and we stop. An app that crashes does not even leave a
      * way of understanding what happened.
      */
+    /**
+     * The one door every change of the notification goes through.
+     *
+     * Android drops, without a word, updates of a notification that come
+     * too thick: leaving for good changed the line three times within a
+     * second - out of the channel, gone from the server, the goodbye - the
+     * last one was lost, and the shade said "waiting" about somebody who
+     * had disconnected. The app with its window, the presence without
+     * one, anything that writes, all arrive here: the words are always
+     * the latest, and they are shown at most once every NOTICE_GAP_MS.
+     * What arrives in between waits, and when its turn comes it shows
+     * whatever is newest by then - not a queue that would replay every
+     * step, only the last.
+     *
+     * A change of type - the microphone or the camera, on entering the
+     * channel - does not wait: it has to be asked for while the app is
+     * in front, and that is now.
+     */
+    private val gate = Handler(Looper.getMainLooper())
+    private var lastShown = 0L
+    private var shownType: Pair<Boolean, Boolean>? = null
+    private var pendingMicrophone = false
+    private val showLater = Runnable { showNow(pendingMicrophone) }
+
+    private fun showSoon(mayUseMicrophone: Boolean) {
+        pendingMicrophone = mayUseMicrophone
+        gate.removeCallbacks(showLater)
+        val wait = lastShown + NOTICE_GAP_MS - android.os.SystemClock.elapsedRealtime()
+        if (shownType != Pair(mayUseMicrophone, cameraActive) || wait <= 0) {
+            showNow(mayUseMicrophone)
+        } else {
+            gate.postDelayed(showLater, wait)
+        }
+    }
+
+    private fun showNow(mayUseMicrophone: Boolean) {
+        lastShown = android.os.SystemClock.elapsedRealtime()
+        shownType = Pair(mayUseMicrophone, cameraActive)
+        goForeground(mayUseMicrophone)
+    }
+
     private fun goForeground(mayUseMicrophone: Boolean = true) {
         val notification = buildNotification()
         try {
