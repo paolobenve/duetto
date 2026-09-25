@@ -96,6 +96,25 @@ const uiLog = logger('[duetto-ui]');
 
 /** The last death already told to the other phone: it is not repeated. */
 const DEATH_TOLD_KEY = 'duetto.death.told';
+/**
+ * The last stretch of being unavailable by choice: `from` when it was
+ * chosen, `to` when the app was opened again (0 while it lasts).
+ *
+ * A phone closes an app that has nothing to do, and a detached Duetto
+ * has nothing to do: the Edge's Motorola closed it at the next o'clock,
+ * three times in one afternoon, and on reopening the other side read
+ * "disappeared at 16:00" about somebody who had left at 15:45 by their
+ * own choice. A death inside this stretch is not told.
+ */
+const DETACHED_KEY = 'duetto.detached';
+/** Opened again: the stretch of being unavailable ends now. */
+function closeDetached() {
+  AsyncStorage.getItem(DETACHED_KEY).then((raw) => {
+    const d = raw ? JSON.parse(raw) : null;
+    if (!d || d.to) return;
+    return AsyncStorage.setItem(DETACHED_KEY, JSON.stringify({ ...d, to: Date.now() }));
+  }).catch(() => {});
+}
 
 /**
  * TEMPORARY. The names things used to be stored under, in Italian.
@@ -2153,6 +2172,13 @@ export default function App() {
       // app gets replaced, and announcing it would be an alarm about
       // something wanted.
       if (/installPackage|PackageUpdate/i.test(m.description || '')) return;
+      // Closed while unavailable by choice: nobody missed anything, the
+      // leaving had already been told when it happened.
+      const d = JSON.parse((await AsyncStorage.getItem(DETACHED_KEY)) || 'null');
+      if (d && d.from && m.when >= d.from && (!d.to || m.when <= d.to)) {
+        Journal.mark('death:while-detached').catch(() => {});
+        return;
+      }
       const told = await readWithBridge(DEATH_TOLD_KEY, OLD_KEYS.death);
       if (Number(told) >= m.when) return;
       // The time of the return is now: the app is starting again at
@@ -2339,6 +2365,7 @@ export default function App() {
       // where the choice survives a reboot.
       setAvailable(true);
       Foreground.setAvailable(true).catch(() => {});
+      closeDetached();
       /**
        * The battery exemption is looked at again, every time.
        *
@@ -3733,6 +3760,8 @@ export default function App() {
       stopService.current = true;
       setAvailable(false);
       Foreground.setAvailable(false).catch(() => {});
+      AsyncStorage.setItem(DETACHED_KEY, JSON.stringify({ from: Date.now(), to: 0 }))
+        .catch(() => {});
     }
 
     // Leaving the channel is leaving the app: the window disappears.
