@@ -1423,6 +1423,7 @@ export default function ChannelScreen(props: Props) {
         <View style={styles.controls} ref={controlsRef} collapsable={false}>
         <CircleButton
           covered={covered}
+          name="video"
           label={t('buttons.video')}
           // Switched on, the button is a white pill, and then the
           // drawing goes dark: what is working is what has to be seen
@@ -1439,6 +1440,7 @@ export default function ChannelScreen(props: Props) {
         <CircleButton
           covered={covered}
           // Touch: muted/unmuted. Long press: where the audio comes out.
+          name={audioOn ? 'audio' : 'muted'}
           label={audioOn ? t('buttons.audio') : t('buttons.muted')}
           icon={<MicrophoneIcon off={!audioOn} {...(audioOn ? ON_LIGHT : {})} />}
           active={audioOn}
@@ -1448,6 +1450,7 @@ export default function ChannelScreen(props: Props) {
         />
         <CircleButton
           covered={covered}
+          name="flip"
           label={t('buttons.flip')}
           // The icon says which camera is on: a single person for the
           // front one, several people for the back one, which is what
@@ -1466,6 +1469,7 @@ export default function ChannelScreen(props: Props) {
         />
         <CircleButton
           covered={covered}
+          name={knockPending ? 'called' : 'call'}
           label={knockPending ? t('buttons.called') : t('buttons.call')}
           // For the two seconds that follow the press the bell rings:
           // it is the sign that the call has left. The wording alone
@@ -1500,6 +1504,7 @@ export default function ChannelScreen(props: Props) {
         />
         <CircleButton
           covered={covered}
+          name="leave"
           label={t('buttons.leave')}
           icon={<LeaveIcon background="#da373c" />}
           danger
@@ -2315,6 +2320,12 @@ function PeerFace({ name, avatar, live }: { name: string; avatar: Avatar; live: 
  * do not have.
  */
 function CircleButton(props: {
+  /**
+   * What the journal calls it: the same word in every language. The
+   * label used to stand in for it, and a journal from a phone in
+   * Italian said "esci" where one in English said "leave".
+   */
+  name: string;
   label: string;
   icon: React.ReactNode;
   /** the screen is covered: it is noted beside the touch */
@@ -2350,11 +2361,11 @@ function CircleButton(props: {
         };
       }}
       onPress={() => {
-        sign(props.label.toLowerCase());
+        sign(props.name);
         props.onPress();
       }}
       onLongPress={props.onLongPress
-        ? () => { sign(`${props.label.toLowerCase()}-long`); props.onLongPress?.(); }
+        ? () => { sign(`${props.name}-long`); props.onLongPress?.(); }
         : undefined}
       delayLongPress={350}
       disabled={props.disabled}
