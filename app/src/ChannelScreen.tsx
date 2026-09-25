@@ -1118,10 +1118,17 @@ export default function ChannelScreen(props: Props) {
   const signTouch = useCallback((what: string, e: GestureResponderEvent) => {
     const x = Math.round(e?.nativeEvent?.pageX ?? -1);
     const y = Math.round(e?.nativeEvent?.pageY ?? -1);
+    // How long the finger stayed, when the row said when it came down:
+    // the other half of the signature, as on the round buttons.
+    const held = rowDown.current ? ` after ${Date.now() - rowDown.current}ms` : '';
+    rowDown.current = 0;
     Journal.mark(
-      `command:${what} ${x},${y} covered=${coveredRef.current ? 'yes' : 'no'}`,
+      `command:${what} ${x},${y}${held} covered=${coveredRef.current ? 'yes' : 'no'}`,
     ).catch(() => { /* noop */ });
   }, []);
+  /** when the finger came down on a row of the ways out */
+  const rowDown = useRef(0);
+  const markDown = useCallback(() => { rowDown.current = Date.now(); }, []);
 
   /** True if the touch is to be dropped: the screen is covered. */
 
@@ -1687,6 +1694,7 @@ export default function ChannelScreen(props: Props) {
             {entered !== false ? (
               <TouchableOpacity
                 style={styles.sheetRow}
+                onPressIn={markDown}
                 onPress={(e) => {
                   signTouch('leave-stay', e);
                   if (toIgnore()) return;
@@ -1701,7 +1709,8 @@ export default function ChannelScreen(props: Props) {
             ) : null}
             <TouchableOpacity
               style={styles.sheetRow}
-              onPress={(e) => {
+              onPressIn={markDown}
+                onPress={(e) => {
                 signTouch('leave-detach', e);
                 if (toIgnore()) return;
                 setLeaveMenu(false);
@@ -1719,6 +1728,7 @@ export default function ChannelScreen(props: Props) {
             {leaveBand ? null : (
               <TouchableOpacity
                 style={styles.sheetRow}
+                onPressIn={markDown}
                 onPress={(e) => { signTouch('leave-cancel', e); setLeaveMenu(false); }}>
                 <View style={styles.sheetText}>
                   <Text style={styles.sheetLabel}>{t('channel.stayInChannel')}</Text>
@@ -1731,7 +1741,8 @@ export default function ChannelScreen(props: Props) {
             // the touch that opened this.
             <TouchableOpacity
               style={[styles.stayBand, { bottom: leaveBand.bottomGap - 6, minHeight: leaveBand.height + 12 }]}
-              onPress={(e) => { signTouch('leave-cancel', e); setLeaveMenu(false); }}>
+              onPressIn={markDown}
+                onPress={(e) => { signTouch('leave-cancel', e); setLeaveMenu(false); }}>
               <Text style={styles.sheetLabel}>{t('channel.stayInChannel')}</Text>
             </TouchableOpacity>
           ) : null}
