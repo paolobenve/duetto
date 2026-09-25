@@ -660,6 +660,9 @@ export default function ChannelScreen(props: Props) {
   const [qualityMenu, setQualityMenu] = useState(false);
   /** the two ways out, by holding "Leave" */
   const [leaveMenu, setLeaveMenu] = useState(false);
+  /** "unavailable" touched once: the sheet asks again */
+  const [confirmDetach, setConfirmDetach] = useState(false);
+  useEffect(() => { if (!leaveMenu) setConfirmDetach(false); }, [leaveMenu]);
   /**
    * Where the row of controls sits, measured when the question opens:
    * "Stay in the channel" is laid over that very band, so that a
@@ -1688,39 +1691,87 @@ export default function ChannelScreen(props: Props) {
             // Above the band of the controls, when it is known.
             leaveBand ? { marginBottom: leaveBand.bottomGap + leaveBand.height + 12 - 16 } : null,
           ]}>
-            <Text style={styles.sheetTitle}>{t('channel.leaveTitle')}</Text>
-            {/* Already waiting, there is no "go to waiting" to offer:
-                only the way out for good. */}
-            {entered !== false ? (
-              <TouchableOpacity
-                style={styles.sheetRow}
-                onPressIn={markDown}
-                onPress={(e) => {
-                  signTouch('leave-stay', e);
-                  if (toIgnore()) return;
-                  setLeaveMenu(false);
-                  onLeave(true);
-                }}>
-                <View style={styles.sheetText}>
-                  <Text style={styles.sheetLabel}>{t('channel.leaveStay')}</Text>
-                  <Text style={styles.sheetNote}>{t('channel.leaveStayNote')}</Text>
-                </View>
-              </TouchableOpacity>
-            ) : null}
-            <TouchableOpacity
-              style={styles.sheetRow}
-              onPressIn={markDown}
-                onPress={(e) => {
-                signTouch('leave-detach', e);
-                if (toIgnore()) return;
-                setLeaveMenu(false);
-                onLeave(false);
-              }}>
-              <View style={styles.sheetText}>
-                <Text style={styles.sheetLabel}>{t('channel.leaveDetach')}</Text>
-                <Text style={styles.sheetNote}>{t('channel.leaveDetachNote')}</Text>
-              </View>
-            </TouchableOpacity>
+            {confirmDetach ? (
+              /**
+               * Becoming unavailable is asked twice.
+               *
+               * It is the one way out the other person cannot undo: no
+               * alert reaches you until you open the app again. One
+               * afternoon it was chosen three times by somebody sure
+               * they had never left, once with a finger that landed
+               * just below the border between the two rows. "No" sits
+               * where the row that led here was, so that a touch
+               * repeated in the same place goes back.
+               */
+              <>
+                <Text style={styles.sheetTitle}>{t('channel.detachConfirm')}</Text>
+                <TouchableOpacity
+                  style={styles.sheetRow}
+                  onPressIn={markDown}
+                  onPress={(e) => { signTouch('leave-detach-no', e); setConfirmDetach(false); }}>
+                  <View style={styles.sheetText}>
+                    <Text style={styles.sheetLabel}>{t('channel.detachConfirmNo')}</Text>
+                  </View>
+                </TouchableOpacity>
+                <View style={styles.sheetGap} />
+                <TouchableOpacity
+                  style={styles.sheetRow}
+                  onPressIn={markDown}
+                  onPress={(e) => {
+                    signTouch('leave-detach-yes', e);
+                    if (toIgnore()) return;
+                    setLeaveMenu(false);
+                    onLeave(false);
+                  }}>
+                  <View style={styles.sheetText}>
+                    <Text style={styles.sheetLabel}>{t('channel.detachConfirmYes')}</Text>
+                    <Text style={styles.sheetNote}>{t('channel.leaveDetachNote')}</Text>
+                  </View>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={styles.sheetTitle}>{t('channel.leaveTitle')}</Text>
+                {/* The way out for good on top, far from the controls,
+                    and a gap below it: the row one normally wants is
+                    the nearer one, and a finger that falls short of it
+                    falls on nothing. */}
+                <TouchableOpacity
+                  style={styles.sheetRow}
+                  onPressIn={markDown}
+                  onPress={(e) => {
+                    signTouch('leave-detach', e);
+                    if (toIgnore()) return;
+                    setConfirmDetach(true);
+                  }}>
+                  <View style={styles.sheetText}>
+                    <Text style={styles.sheetLabel}>{t('channel.leaveDetach')}</Text>
+                    <Text style={styles.sheetNote}>{t('channel.leaveDetachNote')}</Text>
+                  </View>
+                </TouchableOpacity>
+                {/* Already waiting, there is no "go to waiting" to offer:
+                    only the way out for good. */}
+                {entered !== false ? (
+                  <>
+                    <View style={styles.sheetGap} />
+                    <TouchableOpacity
+                      style={styles.sheetRow}
+                      onPressIn={markDown}
+                      onPress={(e) => {
+                        signTouch('leave-stay', e);
+                        if (toIgnore()) return;
+                        setLeaveMenu(false);
+                        onLeave(true);
+                      }}>
+                      <View style={styles.sheetText}>
+                        <Text style={styles.sheetLabel}>{t('channel.leaveStay')}</Text>
+                        <Text style={styles.sheetNote}>{t('channel.leaveStayNote')}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  </>
+                ) : null}
+              </>
+            )}
             {/* Spelled out, for whoever ended up here without meaning
                 to: touching outside works, but that is something one
                 has to know, and whoever finds this question in front of
@@ -1742,7 +1793,7 @@ export default function ChannelScreen(props: Props) {
             <TouchableOpacity
               style={[styles.stayBand, { bottom: leaveBand.bottomGap - 6, minHeight: leaveBand.height + 12 }]}
               onPressIn={markDown}
-                onPress={(e) => { signTouch('leave-cancel', e); setLeaveMenu(false); }}>
+              onPress={(e) => { signTouch('leave-cancel', e); setLeaveMenu(false); }}>
               <Text style={styles.sheetLabel}>{t('channel.stayInChannel')}</Text>
             </TouchableOpacity>
           ) : null}
@@ -2623,6 +2674,8 @@ const styles = StyleSheet.create({
     color: '#8892a0', fontSize: 13, fontWeight: '700',
     paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8,
   },
+  /** the space between the two ways out: a finger falling short lands on nothing */
+  sheetGap: { height: 28 },
   sheetRow: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
     paddingHorizontal: 14, paddingVertical: 15, borderRadius: 12,
