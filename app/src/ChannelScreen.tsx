@@ -1706,7 +1706,7 @@ export default function ChannelScreen(props: Props) {
               <>
                 <Text style={styles.sheetTitle}>{t('channel.detachConfirm')}</Text>
                 <TouchableOpacity
-                  style={styles.sheetRow}
+                  style={[styles.sheetRow, styles.sheetBox]}
                   onPressIn={markDown}
                   onPress={(e) => { signTouch('leave-detach-no', e); setConfirmDetach(false); }}>
                   <View style={styles.sheetText}>
@@ -1715,7 +1715,7 @@ export default function ChannelScreen(props: Props) {
                 </TouchableOpacity>
                 <View style={styles.sheetGap} />
                 <TouchableOpacity
-                  style={styles.sheetRow}
+                  style={[styles.sheetRow, styles.sheetBox]}
                   onPressIn={markDown}
                   onPress={(e) => {
                     signTouch('leave-detach-yes', e);
@@ -1737,7 +1737,7 @@ export default function ChannelScreen(props: Props) {
                     the nearer one, and a finger that falls short of it
                     falls on nothing. */}
                 <TouchableOpacity
-                  style={styles.sheetRow}
+                  style={[styles.sheetRow, styles.sheetBox]}
                   onPressIn={markDown}
                   onPress={(e) => {
                     signTouch('leave-detach', e);
@@ -1755,7 +1755,7 @@ export default function ChannelScreen(props: Props) {
                   <>
                     <View style={styles.sheetGap} />
                     <TouchableOpacity
-                      style={styles.sheetRow}
+                      style={[styles.sheetRow, styles.sheetBox]}
                       onPressIn={markDown}
                       onPress={(e) => {
                         signTouch('leave-stay', e);
@@ -2676,6 +2676,8 @@ const styles = StyleSheet.create({
   },
   /** the space between the two ways out: a finger falling short lands on nothing */
   sheetGap: { height: 28 },
+  /** a way out in a box of its own: the two are told apart at a glance */
+  sheetBox: { backgroundColor: '#1e2531', borderWidth: 1, borderColor: '#2f3846' },
   sheetRow: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
     paddingHorizontal: 14, paddingVertical: 15, borderRadius: 12,
