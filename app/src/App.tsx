@@ -192,6 +192,17 @@ const ofDb = (d: number) => Math.pow(10, d / 20);
  * seconds later, usually, the app is back in a state where it can.
  */
 const NOTICE_RETRY_MS = 5_000;
+/**
+ * How long a new notification line waits before being written.
+ *
+ * Somebody leaving for good changes the line three times within a
+ * second - out of the channel, gone from the server, the goodbye - and
+ * Android drops updates of a notification that come that thick, without
+ * a word: the last, true one was lost, and the shade said "waiting"
+ * while the app said "disconnected". Waiting a moment writes only the
+ * last.
+ */
+const NOTICE_SETTLE_MS = 600;
 
 /**
  * How long we keep quiet before saying the server is gone.
@@ -1701,12 +1712,15 @@ export default function App() {
     noticeTextRef.current = noticeText;
     presenceLiveRef.current = presenceLive;
     if (!presenceLive) return;
-    // Into the journal, because it is the one thing the journal never
-    // said: what the shade was told to show. Without it, a line that
-    // stayed behind cannot be told from a line that was never sent.
-    Journal.mark(`notice:${noticeCode}`).catch(() => { /* noop */ });
-    writeNotice();
+    const settle = setTimeout(() => {
+      // Into the journal, because it is the one thing the journal never
+      // said: what the shade was told to show. Without it, a line that
+      // stayed behind cannot be told from a line that was never sent.
+      Journal.mark(`notice:${noticeCodeRef.current}`).catch(() => { /* noop */ });
+      writeNotice();
+    }, NOTICE_SETTLE_MS);
     return () => {
+      clearTimeout(settle);
       if (noticeRetry.current) { clearTimeout(noticeRetry.current); noticeRetry.current = null; }
     };
   }, [noticeText, alertName, presenceLive, writeNotice]);
