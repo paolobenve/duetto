@@ -288,30 +288,24 @@ function VolumeScale(p: {
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
         {h > 0 ? (
           <>
-            {/* A strip that fills. The phone's own volume is off-white;
-                what Duetto adds on top of it is white. Taking away
-                instead of adding, the white is what is left - up to
-                where one is really listening - and above it the part
-                given up, fainter, so that the edge of the white and the
-                bar always say the same thing. */}
+            {/* A strip that fills. White up to the phone's own volume,
+                and what Duetto adds above it in the blue of the figure:
+                the boost is seen as a boost. Taking away instead of
+                adding, the white is what is left - up to where one is
+                really listening - and above it the part given up,
+                faint, so that the edge of the white and the bar always
+                say the same thing. */}
             {/* The pieces are square and the frame is round: rounded
                 each on its own, where two of them met there was a waist
                 instead of a line, and the eye read it as a boundary
                 that did not fall on the rung. */}
             <View style={[styles.stripClip, { height: h }]}>
-              <View style={[
-                styles.stripSystem,
-                level >= phone
-                  ? { bottom: 0, height: phone }
-                  : { bottom: level, height: phone - level },
-                level < phone ? styles.stripGiven : null,
-              ]} />
-              <View style={[
-                styles.stripGain,
-                level > phone
-                  ? { bottom: phone, height: level - phone }
-                  : { bottom: 0, height: level },
-              ]} />
+              <View style={[styles.stripHeard, { bottom: 0, height: Math.min(level, phone) }]} />
+              {level > phone ? (
+                <View style={[styles.stripBoost, { bottom: phone, height: level - phone }]} />
+              ) : level < phone ? (
+                <View style={[styles.stripGiven, { bottom: level, height: phone - level }]} />
+              ) : null}
               {/* Above what the road can carry there is no answer to a
                   press: the strip says so by going dim. */}
               {up(p.ceiling) < h ? (
@@ -2564,8 +2558,8 @@ const styles = StyleSheet.create({
   scaleFigureLine: { marginBottom: 6 },
   scaleUnitInline: { color: '#9fb4c8', fontSize: 12, fontWeight: '700' },
   scaleTrack: { flex: 1, width: 72, alignItems: 'center', marginTop: 2, marginBottom: 20 },
-  // The strip: dark ground, the phone's own volume off-white over it,
-  // and Duetto's own share white. Thirteen points wide, so that the
+  // The strip: dark ground, white up to the phone's own volume, and
+  // Duetto's own share above it in blue. Thirteen points wide, so that the
   // two whites can be told apart at a glance from across a room.
   // The frame is round and holds the pieces, which are square: so two
   // of them meet on a line, and that line falls on the rung.
@@ -2573,15 +2567,21 @@ const styles = StyleSheet.create({
     position: 'absolute', bottom: 0, left: 25, width: 14, borderRadius: 7,
     overflow: 'hidden', backgroundColor: 'rgba(230,235,241,0.14)',
   },
-  stripSystem: {
-    position: 'absolute', left: 0, right: 0,
-    backgroundColor: 'rgba(238,240,235,0.45)',
-  },
-  stripGain: {
+  /** what is heard, up to the phone's own volume */
+  stripHeard: {
     position: 'absolute', left: 0, right: 0,
     backgroundColor: '#ffffff',
   },
-  stripGiven: { backgroundColor: 'rgba(238,240,235,0.16)' },
+  /** what Duetto adds above the phone's volume: the figure's blue */
+  stripBoost: {
+    position: 'absolute', left: 0, right: 0,
+    backgroundColor: '#7cc4ff',
+  },
+  /** below the phone's volume, the part given up */
+  stripGiven: {
+    position: 'absolute', left: 0, right: 0,
+    backgroundColor: 'rgba(238,240,235,0.16)',
+  },
   stripOut: {
     position: 'absolute', left: 0, right: 0,
     backgroundColor: 'rgba(11,14,20,0.55)',
