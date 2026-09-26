@@ -465,6 +465,15 @@ export const de: Dictionary = {
     connectionName: 'Der Name der Verbindung',
     connectionNamePlaceholder: 'Zuhause, Büro, Berge…',
     connectionNameHint: 'Es ist der Name der Verbindung, nicht der der Person: er ist für dich, damit du weißt, in welcher deiner Verbindungen du bist. Er steht auf der Pille oben und in der Mitteilung. Er bleibt auf diesem Telefon: die andere Person sieht ihn nicht und wird ihn nie erfahren.',
+    peerNameTitle: 'Name der anderen Person',
+    peerNameNone: 'Keinen Namen verwenden',
+    peerNameNoneNote: 'Erscheint als „die andere Person“.',
+    peerNameTheirs: 'Den selbst gewählten Namen verwenden: {name}',
+    peerNameTheirsNone: 'Den selbst gewählten Namen verwenden',
+    peerNameTheirsNoneNote: 'Es wurde keiner gewählt.',
+    peerNameMine: 'Diesen verwenden:',
+    peerNamePlaceholder: 'Anzuzeigender Name',
+    peerNameHint: 'Nur auf diesem Telefon, überall wo die andere Person erscheint: Mitteilungen, Hinweise, Kanalbildschirm.',
   },
 
   setup: {

@@ -46,6 +46,21 @@ export type PairInfo = {
    * never sees it and will never know it.
    */
   label?: string;
+  /**
+   * Which name the other person goes by on this phone.
+   *
+   *  - 'none': no name, "the other";
+   *  - 'theirs': the one they gave themselves, which travels from their
+   *    phone - allowed by whoever holds this one, not taken for granted;
+   *  - 'mine': the one written here, in `peerAlias`.
+   *
+   * Missing in pairs made before the choice existed: those showed their
+   * own name, and go on doing so until somebody says otherwise. A new
+   * pair is born with 'none' (see addPair).
+   */
+  peerNameUse?: 'none' | 'theirs' | 'mine';
+  /** the name given to the other person here, for 'mine' */
+  peerAlias?: string;
   /** when the pairing was done (ISO) */
   pairedAt: string;
   /**
@@ -575,11 +590,16 @@ function tidyPairs(cfg: DuoConfig): DuoConfig {
 export function addPair(cfg: DuoConfig, pair: PairInfo): DuoConfig {
   // It is born with the settings you have right now: they are the only
   // reasonable thing to give it, and from then on they are its own.
+  const before = cfg.pairs.find((p) => p.id === pair.id);
   const fresh: PairInfo = {
     serverUrl: cfg.serverUrl,
     serverKey: cfg.serverKey,
     serverRole: cfg.serverRole,
     settings: settingsInUse(cfg),
+    // The name they gave themselves is used once it is allowed: a new
+    // pair starts with none. The same pair made again keeps its choice.
+    peerNameUse: before?.peerNameUse ?? 'none',
+    peerAlias: before?.peerAlias,
     ...pair,
   };
   return {
@@ -680,8 +700,39 @@ export function rememberPeerName(cfg: DuoConfig, id: string, name: string): DuoC
 export function pairName(p: PairInfo | null | undefined): string {
   if (!p) return '';
   if (p.label) return p.label;
-  const n = p.peerName;
-  return n && n !== 'Qualcuno' && n !== 'Someone' ? n : '';
+  return peerShown(p);
+}
+
+/**
+ * What the other person is called on this phone: the name written
+ * here, the one they gave themselves if that is allowed, or nothing -
+ * and then the caller says "the other".
+ *
+ * @param live the name as their phone says it right now, fresher than
+ *   the one written down at pairing
+ */
+export function peerShown(p: PairInfo | null | undefined, live?: string): string {
+  if (!p) return '';
+  const use = p.peerNameUse ?? 'theirs';
+  if (use === 'mine') return (p.peerAlias || '').trim();
+  if (use === 'none') return '';
+  const real = (n?: string) => !!n && n !== 'Qualcuno' && n !== 'Someone';
+  return real(live) ? live! : real(p.peerName) ? p.peerName : '';
+}
+
+/** The choice of the other person's name, for one connection. */
+export function namePeer(
+  cfg: DuoConfig, id: string, use: 'none' | 'theirs' | 'mine', alias: string,
+): DuoConfig {
+  const clean = alias.trim().slice(0, 32);
+  const touch = (p: PairInfo) => (p.id === id
+    ? { ...p, peerNameUse: use, peerAlias: clean || undefined }
+    : p);
+  return {
+    ...cfg,
+    pair: cfg.pair ? touch(cfg.pair) : cfg.pair,
+    pairs: cfg.pairs.map(touch),
+  };
 }
 
 /**

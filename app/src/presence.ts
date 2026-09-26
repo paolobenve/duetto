@@ -11,7 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
 import { Foreground, Journal, Alarm, Heartbeat } from 'duetto-platform';
 import {
-  loadConfig, saveConfig, addPair, isPaired, isServerConfigured, pairFileKey,
+  loadConfig, saveConfig, addPair, isPaired, isServerConfigured, pairFileKey, peerShown,
 } from './config';
 import { pairFromLetter } from './pairing';
 import { Signaling } from './signaling';
@@ -419,7 +419,7 @@ async function listenNow(): Promise<boolean> {
     const raw = await AsyncStorage.getItem('duetto.how-it-was');
     const was = raw ? (JSON.parse(raw)?.[pair.id] ?? null) : null;
     if (was && was.live === true) {
-      const who = pair.peerName || t('presence.theOther');
+      const who = peerShown(pair) || t('presence.theOther');
       Foreground.note('', t('presence.wereInChannel', { who, channel: channelName(channel) }))
         .catch(() => { /* noop */ });
       Journal.mark('note:were-in-channel').catch(() => { /* noop */ });
@@ -447,7 +447,8 @@ async function listenNow(): Promise<boolean> {
 
   const refresh = () => {
     Foreground.setText(presenceLine({
-      inChannel: false, peerActive: active, peerPresent: present, name, detached, since,
+      inChannel: false, peerActive: active, peerPresent: present, name: peerShown(pair, name),
+      detached, since,
       mySince, channel: pair.label || '',
     }), '', detached ? '' : 'enter',
     { enter: t('presence.enter'), wait: t('presence.wait') }).catch(() => { /* noop */ });
@@ -560,7 +561,8 @@ async function listenNow(): Promise<boolean> {
           Foreground.note(
             '',
             deathStory(
-              Number(msg.when), String(msg.cause), name, Number(msg.back) || 0, channel,
+              Number(msg.when), String(msg.cause), peerShown(pair, name), Number(msg.back) || 0,
+              channel,
             ),
           ).catch(() => { /* noop */ });
           return;
@@ -580,7 +582,8 @@ async function listenNow(): Promise<boolean> {
           Journal.mark(`alarm:${msg.sound}`).catch(() => { /* noop */ });
           Foreground.notify(
             '',
-            news.called(name, channel, Number(msg.at) || Date.now(), alarmLabel(String(msg.sound ?? ''))),
+            news.called(peerShown(pair, name), channel, Number(msg.at) || Date.now(),
+              alarmLabel(String(msg.sound ?? ''))),
           ).catch(() => { /* noop */ });
         }
       },
@@ -635,9 +638,10 @@ async function listenNow(): Promise<boolean> {
       onNotify: (reason, peerName, at) => {
         // The same words as the app's: a call is a call, whether the
         // window is open or not.
+        const who = peerShown(pair, peerName);
         const text = reason === 'knock'
-          ? news.called(peerName, channel, at)
-          : news.inChannel(peerName, channel, at);
+          ? news.called(who, channel, at)
+          : news.inChannel(who, channel, at);
         log('alert:', text);
         Foreground.notify('', text).catch(() => { /* noop */ });
       },

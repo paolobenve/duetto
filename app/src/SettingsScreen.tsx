@@ -20,7 +20,7 @@ import QrCode from './QrCode';
 import type { LanguageChoice } from './i18n';
 import {
   isPaired, opensHere, displayServer, VIDEO_PROFILES,
-  pairName,
+  pairName, peerShown,
 } from './config';
 import { peerAvatar } from './avatar';
 import { isRealName } from './presence';
@@ -115,7 +115,9 @@ type Props = {
   /** brings a connection already set up into use */
   onSwitchPair: (id: string) => void;
   /** the name I give a connection myself; empty = back to theirs */
-  onRenamePair: (id: string, name: string) => void;
+  onRenamePair: (
+    id: string, name: string, peerUse: 'none' | 'theirs' | 'mine', peerAlias: string,
+  ) => void;
   /**
    * Adds a pairing without touching the ones already there: it is for a
    * new person, and it is for when the other side has broken the pair
@@ -288,12 +290,17 @@ export default function SettingsScreen({
   /** the connection being named, and the name in progress */
   const [naming, setNaming] = useState<PairInfo | null>(null);
   const [writtenName, setWrittenName] = useState('');
+  /** which name the other goes by, and the one written for them */
+  const [peerUse, setPeerUse] = useState<'none' | 'theirs' | 'mine'>('none');
+  const [peerAlias, setPeerAlias] = useState('');
   const openNaming = (p: PairInfo) => {
     setWrittenName(p.label || '');
+    setPeerUse(p.peerNameUse ?? 'theirs');
+    setPeerAlias(p.peerAlias || '');
     setNaming(p);
   };
   const closeNaming = (save: boolean) => {
-    if (save && naming) onRenamePair(naming.id, writtenName);
+    if (save && naming) onRenamePair(naming.id, writtenName, peerUse, peerAlias);
     setNaming(null);
   };
 
@@ -533,9 +540,9 @@ export default function SettingsScreen({
                           on the other side has to be said all the same:
                           they are two different things, and that name
                           is the one they gave themselves. */}
-                      {p.label && isRealName(p.peerName) ? (
+                      {p.label && peerShown(p) ? (
                         <Text style={styles.pairMeta}>
-                          {t('settings.withWho', { who: p.peerName })}
+                          {t('settings.withWho', { who: peerShown(p) })}
                         </Text>
                       ) : null}
                       <Text style={styles.pairMeta}>
@@ -1270,12 +1277,64 @@ export default function SettingsScreen({
               onChangeText={setWrittenName}
               placeholder={t('settings.connectionNamePlaceholder')}
               placeholderTextColor="#5b6472"
-              autoFocus
               maxLength={32}
               returnKeyType="done"
               onSubmitEditing={() => closeNaming(true)}
             />
             <Text style={styles.hint}>{t('settings.connectionNameHint')}</Text>
+
+            {/* The other person's name: theirs is used only when it is
+                allowed here, and a name of one's own can take its place. */}
+            <Text style={styles.sheetTitle}>{t('settings.peerNameTitle')}</Text>
+            <TouchableOpacity
+              style={[styles.choice, peerUse === 'none' && styles.choicePicked]}
+              onPress={() => setPeerUse('none')}>
+              <View style={[styles.radio, peerUse === 'none' && styles.radioPicked]} />
+              <View style={styles.choiceText}>
+                <Text style={styles.choiceLabel}>{t('settings.peerNameNone')}</Text>
+                <Text style={styles.choiceNote}>{t('settings.peerNameNoneNote')}</Text>
+              </View>
+            </TouchableOpacity>
+            {naming && isRealName(naming.peerName) ? (
+              <TouchableOpacity
+                style={[styles.choice, peerUse === 'theirs' && styles.choicePicked]}
+                onPress={() => setPeerUse('theirs')}>
+                <View style={[styles.radio, peerUse === 'theirs' && styles.radioPicked]} />
+                <View style={styles.choiceText}>
+                  <Text style={styles.choiceLabel}>
+                    {t('settings.peerNameTheirs', { name: naming.peerName })}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ) : (
+              <View style={[styles.choice, styles.choiceOff]}>
+                <View style={styles.radio} />
+                <View style={styles.choiceText}>
+                  <Text style={styles.choiceLabel}>{t('settings.peerNameTheirsNone')}</Text>
+                  <Text style={styles.choiceNote}>{t('settings.peerNameTheirsNoneNote')}</Text>
+                </View>
+              </View>
+            )}
+            <TouchableOpacity
+              style={[styles.choice, peerUse === 'mine' && styles.choicePicked]}
+              onPress={() => setPeerUse('mine')}>
+              <View style={[styles.radio, peerUse === 'mine' && styles.radioPicked]} />
+              <View style={styles.choiceText}>
+                <Text style={styles.choiceLabel}>{t('settings.peerNameMine')}</Text>
+                <TextInput
+                  style={styles.input}
+                  value={peerAlias}
+                  onChangeText={(v) => { setPeerAlias(v); setPeerUse('mine'); }}
+                  onFocus={() => setPeerUse('mine')}
+                  placeholder={t('settings.peerNamePlaceholder')}
+                  placeholderTextColor="#5b6472"
+                  maxLength={32}
+                  returnKeyType="done"
+                  onSubmitEditing={() => closeNaming(true)}
+                />
+              </View>
+            </TouchableOpacity>
+            <Text style={styles.hint}>{t('settings.peerNameHint')}</Text>
             <View style={styles.sheetActions}>
               <TouchableOpacity style={styles.sheetAction} onPress={() => closeNaming(false)}>
                 <Text style={styles.sheetCancel}>{t('settings.cancel')}</Text>

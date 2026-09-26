@@ -26,7 +26,7 @@ import {
   DuoConfig, PairInfo, ServerRole, loadConfig, saveConfig,
   isServerConfigured, isPaired, displayServer, opensHere, VIDEO_PROFILES,
   addPair, switchToPair, forgetPair, markPairBroken, rememberPeerName,
-  alertSoundFor, alignPairServer, renamePair, pairFileKey, pairName,
+  alertSoundFor, alignPairServer, renamePair, pairFileKey, pairName, peerShown, namePeer,
   storeSettingsInPair,
 } from './config';
 import { Signaling, PresenceStatus } from './signaling';
@@ -49,7 +49,7 @@ import { pairFromLetter } from './pairing';
 import { reportDirectly, inviteOnWorkItem } from './gitlab';
 import type { ReportOutcome } from './gitlab';
 import {
-  startListening, stopListening, presenceCode, presenceLine, deathStory, myDeathStory, interfaceInCharge, isRealName,
+  startListening, stopListening, presenceCode, presenceLine, deathStory, myDeathStory, interfaceInCharge,
   news,
 } from './presence';
 import { avatarFor, peerAvatar } from './avatar';
@@ -1243,9 +1243,9 @@ export default function App() {
    * and which connection you are in is said by the label, on its own
    * account.
    */
-  const shownName = isRealName(peerName)
-    ? peerName
-    : isRealName(cfg?.pair?.peerName) ? cfg!.pair!.peerName : '';
+  // As chosen on this phone: no name, theirs if allowed, or one of
+  // our own (see peerShown).
+  const shownName = peerShown(cfg?.pair, peerName);
 
   /**
    * The other side's last state, so we can notice what CHANGES.
@@ -2804,7 +2804,8 @@ export default function App() {
             setKnockPending(false);
             // The name is optional: without one we avoid writing
             // "Someone".
-            const who = n;
+            // The name as chosen on this phone, not as it travels.
+            const who = peerShown(cfgRef.current?.pair, n);
             // The channel is named inside the sentence, with one
             // connection too: which of them is calling is half the
             // news, and one may not remember which one one is in.
@@ -4200,9 +4201,11 @@ export default function App() {
    * know it. It is needed here, where the connections stand in a row
    * and without a name they all look alike.
    */
-  const onRenamePair = useCallback(async (id: string, name: string) => {
+  const onRenamePair = useCallback(async (
+    id: string, name: string, peerUse: 'none' | 'theirs' | 'mine', alias: string,
+  ) => {
     if (!cfg) return;
-    const next = renamePair(cfg, id, name);
+    const next = namePeer(renamePair(cfg, id, name), id, peerUse, alias);
     setCfg(saveCfg(next));
   }, [cfg]);
 

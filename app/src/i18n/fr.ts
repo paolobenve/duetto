@@ -465,6 +465,15 @@ export const fr: Dictionary = {
     connectionName: 'Nom de la liaison',
     connectionNamePlaceholder: 'Maison, bureau, montagne…',
     connectionNameHint: 'C’est le nom de la liaison, pas de la personne : il te sert à savoir dans laquelle de tes liaisons tu es. Il apparaît sur la pastille en haut et dans la notification. Il reste sur ce téléphone : l’autre ne le voit pas et ne le saura jamais.',
+    peerNameTitle: 'Nom de l’autre',
+    peerNameNone: 'N’utiliser aucun nom',
+    peerNameNoneNote: 'Apparaît comme « l’autre ».',
+    peerNameTheirs: 'Utiliser le nom qu’il s’est donné : {name}',
+    peerNameTheirsNone: 'Utiliser le nom qu’il s’est donné',
+    peerNameTheirsNoneNote: 'Il ne s’en est donné aucun.',
+    peerNameMine: 'Utiliser celui-ci :',
+    peerNamePlaceholder: 'Nom à afficher',
+    peerNameHint: 'Seulement sur ce téléphone, partout où l’autre apparaît : notifications, alertes, écran du canal.',
   },
 
   setup: {

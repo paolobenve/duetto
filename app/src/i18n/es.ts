@@ -465,6 +465,15 @@ export const es: Dictionary = {
     connectionName: 'Nombre de la conexión',
     connectionNamePlaceholder: 'Casa, oficina, montaña…',
     connectionNameHint: 'Es el nombre de la conexión, no de la persona: te sirve a ti para saber en cuál de tus conexiones estás. Aparece en la pastilla de arriba y en la notificación. Se queda en este teléfono: el otro no lo ve y no lo sabrá nunca.',
+    peerNameTitle: 'Nombre del otro',
+    peerNameNone: 'No usar ningún nombre',
+    peerNameNoneNote: 'Aparece como «el otro».',
+    peerNameTheirs: 'Usar el nombre que se ha puesto: {name}',
+    peerNameTheirsNone: 'Usar el nombre que se ha puesto',
+    peerNameTheirsNoneNote: 'No se ha puesto ninguno.',
+    peerNameMine: 'Usar este:',
+    peerNamePlaceholder: 'Nombre que mostrar',
+    peerNameHint: 'Solo en este teléfono, dondequiera que aparezca el otro: notificaciones, avisos, pantalla del canal.',
   },
 
   setup: {

@@ -478,6 +478,15 @@ export const en = {
     connectionName: 'The connection\'s name',
     connectionNamePlaceholder: 'Home, office, mountains…',
     connectionNameHint: 'It is the connection\'s name, not the person\'s: it is for you, to know which of your connections you are in. It appears on the pill at the top and in the notification. It stays on this phone: the other person does not see it and will never know it.',
+    peerNameTitle: 'The other person’s name',
+    peerNameNone: 'Use no name',
+    peerNameNoneNote: 'Shown as “the other”.',
+    peerNameTheirs: 'Use the name they gave themselves: {name}',
+    peerNameTheirsNone: 'Use the name they gave themselves',
+    peerNameTheirsNoneNote: 'They gave themselves none.',
+    peerNameMine: 'Use this one:',
+    peerNamePlaceholder: 'Name to show',
+    peerNameHint: 'Only on this phone, wherever the other person appears: notifications, alerts, the channel screen.',
   },
 
   setup: {

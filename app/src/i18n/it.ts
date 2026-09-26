@@ -464,6 +464,15 @@ export const it: Dictionary = {
     connectionName: 'Nome del collegamento',
     connectionNamePlaceholder: 'Casa, ufficio, montagna…',
     connectionNameHint: 'È il nome del collegamento, non della persona: serve a te per sapere in quale dei tuoi collegamenti stai. Compare sulla pastiglia in alto e nella notifica. Resta su questo telefono: l’altro non lo vede e non lo saprà mai.',
+    peerNameTitle: 'Nome dell’altro',
+    peerNameNone: 'Non usare nessun nome',
+    peerNameNoneNote: 'Compare come «l’altro».',
+    peerNameTheirs: 'Usa il nome che si è dato: {name}',
+    peerNameTheirsNone: 'Usa il nome che si è dato',
+    peerNameTheirsNoneNote: 'Non se n’è dato nessuno.',
+    peerNameMine: 'Usa questo:',
+    peerNamePlaceholder: 'Nome da mostrare',
+    peerNameHint: 'Vale solo su questo telefono, ovunque compare l’altro: notifiche, avvisi, schermata del canale.',
   },
 
   setup: {
