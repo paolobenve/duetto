@@ -53,7 +53,7 @@ export const pt: Dictionary = {
   news: {
     title: 'Novidades',
     close: 'Fechar',
-    reachableAgain: '{who} está alcançável de novo ({at}).',
+    reachableAgain: '{who} está de novo alcançável{channel}{when}',
     build: 'build {n}',
     versionsDiffer: 'Versões diferentes: aqui {here}, lá {there}',
     versionsDifferOlder: 'Versões diferentes: aqui {here}, lá uma mais velha',
@@ -91,14 +91,16 @@ export const pt: Dictionary = {
     unknown: 'não se sabe por quê',
     atTime: 'às {time}',
     onDayAtTime: 'em {date} às {time}',
-    story: '{who} voltou às {back} — tinha desaparecido {when}: {why}.',
+    story: '{who} está de novo alcançável{channel} desde as {back}. Não estava {when}: {why}.',
     mineStory: 'O telefone fechou o Duetto {when}: {why}. Desde então até agora você não estava acessível. Se acontecer de novo, tire do Duetto os limites em segundo plano nas configurações de bateria do telefone.',
+    sinceTime: 'desde as {time}',
+    onDaySinceTime: 'desde {date} às {time}',
   },
 
   presence: {
     enter: 'Entrar',
     wait: 'Ir para a espera',
-    wereInChannel: 'Você estava no canal com {who}: toque para voltar.',
+    wereInChannel: 'Você estava no canal{channel} com {who}: toque para voltar.',
     theOther: 'o outro',
     inChannel: 'Você está no canal{channel}{when}',
     waiting: 'À espera{channel}{when}',
@@ -119,14 +121,14 @@ export const pt: Dictionary = {
   },
 
   alert: {
-    knockFrom: '{who} espera você no canal',
-    knock: 'Estão esperando você no canal',
-    callingYouFrom: '{who} está chamando você',
-    callingYou: 'Estão chamando você',
-    joinedNamed: '{who} está no canal',
-    joined: 'Tem alguém no canal',
-    pairedNamed: '{who} se conectou com você',
-    paired: 'Alguém se conectou com você',
+    calledYouFrom: '{who} chamou você{channel}{when}',
+    calledYou: 'Chamaram você{channel}{when}',
+    alarmFrom: '{who} chamou você{channel}{when} ({sound})',
+    alarm: 'Chamaram você{channel}{when} ({sound})',
+    inChannelFrom: '{who} está no canal{channel}{when}',
+    inChannel: 'Tem alguém no canal{channel}{when}',
+    pairedWith: 'Nova conexão com {who}{when}',
+    paired: 'Nova conexão{when}',
   },
 
   buttons: {

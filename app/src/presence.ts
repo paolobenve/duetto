@@ -11,12 +11,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
 import { Foreground, Journal, Alarm, Heartbeat } from 'duetto-platform';
 import {
-  loadConfig, saveConfig, addPair, isPaired, isServerConfigured, pairFileKey, pairName,
+  loadConfig, saveConfig, addPair, isPaired, isServerConfigured, pairFileKey,
 } from './config';
 import { pairFromLetter } from './pairing';
 import { Signaling } from './signaling';
 import { attachWatchdog, Watchdog } from './watchdog';
 import { t } from './i18n';
+import { alarmLabel } from './alarms';
 import { logger, setLogging } from './log';
 import { VERSION_LABEL, BUILD } from './version';
 
@@ -142,11 +143,19 @@ export function myDeathStory(when: number, cause: string): string {
 }
 
 export function deathStory(
-  when: number, cause: string, name: string, back?: number,
+  when: number, cause: string, name: string, back?: number, channel = '',
 ): string {
   const who = named(name) ? name : t('death.theOther');
   const why = deathWhy(cause);
-  const whenSaid = deathWhen(when);
+  // "Not reachable since 12:00:03": to the second, like every other
+  // moment the notifications say.
+  const died = new Date(when);
+  const time = died.toLocaleTimeString(undefined, {
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  });
+  const whenSaid = died.toDateString() === new Date().toDateString()
+    ? t('death.sinceTime', { time })
+    : t('death.onDaySinceTime', { date: died.toLocaleDateString(), time });
 
   /**
    * The time of the return, down to the second.
@@ -164,7 +173,57 @@ export function deathStory(
       hour: '2-digit', minute: '2-digit', second: '2-digit',
     });
 
-  return t('death.story', { who, when: whenSaid, why, back: backAt });
+  return t('death.story', {
+    who, when: whenSaid, why, back: backAt, channel: inTheChannel(channel),
+  });
+}
+
+/** " in the channel Home", or nothing for a connection with no name. */
+export function inTheChannel(name?: string): string {
+  const n = (name || '').trim();
+  return n ? t('presence.inTheChannel', { name: n }) : '';
+}
+
+/** " Home", to follow a "channel" the sentence already has. */
+export function channelName(name?: string): string {
+  const n = (name || '').trim();
+  return n ? t('presence.channelName', { name: n }) : '';
+}
+
+/**
+ * The words of the alerts and of the quiet news, the same from the app
+ * and from the presence without a window. Every one of them names the
+ * channel, when it has a name - one may not remember which one one was
+ * left in - and says the moment to the second.
+ */
+export const news = {
+  /** they pressed Call; or sent a sound, whose name goes in brackets */
+  called: (who: string, channel: string, at: number, sound?: string) => {
+    const o = { who, channel: inTheChannel(channel), when: momentSaid(at, 'atTime'), sound: sound ?? '' };
+    if (sound) return named(who) ? t('alert.alarmFrom', o) : t('alert.alarm', o);
+    return named(who) ? t('alert.calledYouFrom', o) : t('alert.calledYou', o);
+  },
+  /** they came into the channel while we were not there */
+  inChannel: (who: string, channel: string, at: number) => {
+    const o = { who, channel: channelName(channel), when: momentSaid(at, 'sinceTime') };
+    return named(who) ? t('alert.inChannelFrom', o) : t('alert.inChannel', o);
+  },
+  /** somebody paired with us through a link of ours */
+  paired: (who: string, at: number) => {
+    const o = { who, when: momentSaid(at, 'atTime') };
+    return named(who) ? t('alert.pairedWith', o) : t('alert.paired', o);
+  },
+  /** back after more than a minute away */
+  reachable: (who: string, channel: string, at: number) => t('news.reachableAgain', {
+    who: named(who) ? who : t('death.theOther'),
+    channel: inTheChannel(channel),
+    when: momentSaid(at, 'sinceTime'),
+  }),
+};
+
+/** " at 15:45:27" or " since 15:45:27"; nothing for an unknown moment. */
+function momentSaid(at: number, key: 'sinceTime' | 'atTime'): string {
+  return at > 0 ? t(`presence.${key}`, { time: clockTime(at) }) : '';
 }
 
 /**
@@ -243,16 +302,15 @@ export function presenceLine(o: {
   // are states that last ("since").
   const at = (moment: number | undefined, key: 'sinceTime' | 'atTime' = 'sinceTime') =>
     (moment && moment > 0 ? t(`presence.${key}`, { time: clockTime(moment) }) : '');
-  const name = (o.channel || '').trim();
   // "In the channel Home", "Waiting in the channel Home": the name
   // reads after "channel", and where the line has no "channel" of its
   // own it brings one.
-  const channel = name ? t('presence.channelName', { name }) : '';
-  const inTheChannel = name ? t('presence.inTheChannel', { name }) : '';
+  const channel = channelName(o.channel);
+  const inChannelNamed = inTheChannel(o.channel);
   const mine = at(o.mySince);
   const ours = o.inChannel
     ? t('presence.inChannel', { channel, when: mine })
-    : t('presence.waiting', { channel: inTheChannel, when: mine });
+    : t('presence.waiting', { channel: inChannelNamed, when: mine });
   const who = named(o.name) ? o.name : t('presence.theOther');
   const theirs = at(o.since);
   if (o.server === 'down') return t('presence.noServer', { ours });
@@ -270,8 +328,8 @@ export function presenceLine(o: {
   }
   if (!o.inChannel) {
     return mine || theirs
-      ? t('presence.bothWaitingSince', { channel: inTheChannel, mine, who, theirs })
-      : t('presence.bothWaiting', { channel: inTheChannel });
+      ? t('presence.bothWaitingSince', { channel: inChannelNamed, mine, who, theirs })
+      : t('presence.bothWaiting', { channel: inChannelNamed });
   }
   return o.tornDown
     ? t('presence.peerWaitingTornDown', { ours, who, when: theirs })
@@ -339,17 +397,12 @@ async function listenNow(): Promise<boolean> {
   log('listening');
 
   /**
-   * Which connection the alerts arrive on.
-   *
-   * With more than one connection set up, "they are waiting for you in
-   * the channel" does not say enough: only one of the two or three you
-   * know is waiting. With a single connection there is nothing to tell
-   * apart.
-   *
-   * It goes for every notification, the standing one included: the name
-   * goes in front of the text, in italics, and Android puts it there.
+   * Which connection the alerts arrive on: said inside every sentence,
+   * with one connection too - one may not remember which channel one
+   * was left in. No name, nothing said. It used to go in front, in
+   * italics, and only with more than one connection.
    */
-  const connectionName = cfg.pairs.length > 1 ? pairName(pair) || '' : '';
+  const channel = pair.label || '';
   /**
    * "You were in the channel: touch to go back in."
    *
@@ -367,7 +420,8 @@ async function listenNow(): Promise<boolean> {
     const was = raw ? (JSON.parse(raw)?.[pair.id] ?? null) : null;
     if (was && was.live === true) {
       const who = pair.peerName || t('presence.theOther');
-      Foreground.note(connectionName, t('presence.wereInChannel', { who })).catch(() => { /* noop */ });
+      Foreground.note('', t('presence.wereInChannel', { who, channel: channelName(channel) }))
+        .catch(() => { /* noop */ });
       Journal.mark('note:were-in-channel').catch(() => { /* noop */ });
     }
   } catch { /* an unreadable drawer says nothing */ }
@@ -504,9 +558,9 @@ async function listenNow(): Promise<boolean> {
         }
         if (msg.kind === 'death') {
           Foreground.note(
-            connectionName,
+            '',
             deathStory(
-              Number(msg.when), String(msg.cause), name, Number(msg.back) || 0,
+              Number(msg.when), String(msg.cause), name, Number(msg.back) || 0, channel,
             ),
           ).catch(() => { /* noop */ });
           return;
@@ -525,8 +579,8 @@ async function listenNow(): Promise<boolean> {
           Alarm.play(String(msg.sound ?? '')).catch(() => { /* noop */ });
           Journal.mark(`alarm:${msg.sound}`).catch(() => { /* noop */ });
           Foreground.notify(
-            connectionName,
-            named(name) ? t('alert.callingYouFrom', { who: name }) : t('alert.callingYou'),
+            '',
+            news.called(name, channel, Number(msg.at) || Date.now(), alarmLabel(String(msg.sound ?? ''))),
           ).catch(() => { /* noop */ });
         }
       },
@@ -571,21 +625,21 @@ async function listenNow(): Promise<boolean> {
             made += 1;
             Journal.mark('paired:by-letter:headless').catch(() => { /* noop */ });
             const who = item.payload.name;
-            Foreground.notify(connectionName,
-              named(who) ? t('alert.pairedNamed', { who }) : t('alert.paired'))
+            Foreground.notify('', news.paired(who, Date.now()))
               .catch(() => { /* noop */ });
           }
           if (made > 0) await saveConfig(next);
         }).catch(() => { /* noop */ });
       },
 
-      onNotify: (reason, peerName) => {
-        const who = peerName;
+      onNotify: (reason, peerName, at) => {
+        // The same words as the app's: a call is a call, whether the
+        // window is open or not.
         const text = reason === 'knock'
-          ? (named(who) ? t('alert.knockFrom', { who }) : t('alert.knock'))
-          : (named(who) ? t('alert.joinedNamed', { who }) : t('alert.joined'));
+          ? news.called(peerName, channel, at)
+          : news.inChannel(peerName, channel, at);
         log('alert:', text);
-        Foreground.notify(connectionName, text).catch(() => { /* noop */ });
+        Foreground.notify('', text).catch(() => { /* noop */ });
       },
     },
   );

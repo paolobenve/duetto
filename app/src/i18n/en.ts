@@ -59,7 +59,7 @@ export const en = {
   news: {
     title: 'What is new',
     close: 'Close',
-    reachableAgain: '{who} is reachable again ({at}).',
+    reachableAgain: '{who} is reachable again{channel}{when}',
     build: 'build {n}',
     versionsDiffer: 'Different versions: {here} here, {there} over there',
     versionsDifferOlder: 'Different versions: {here} here, an older one over there',
@@ -102,14 +102,16 @@ export const en = {
     // The return first: the shade cuts the sentence at its first
     // words, and "disappeared" next to "in the channel" read as a
     // denial of the present. What is true now leads; the story follows.
-    story: '{who} came back at {back} — had disappeared {when}: {why}.',
+    story: '{who} is reachable again{channel} since {back}. Not reachable {when}: {why}.',
     mineStory: 'The phone closed Duetto {when}: {why}. You were unreachable from then until now. If it happens again, lift the background limits on Duetto in the phone\'s battery settings.',
+    sinceTime: 'since {time}',
+    onDaySinceTime: 'since {date} {time}',
   },
 
   presence: {
     enter: 'Enter',
     wait: 'Go to waiting',
-    wereInChannel: 'You were in the channel with {who}: touch to go back in.',
+    wereInChannel: 'You were in the channel{channel} with {who}: touch to go back in.',
     theOther: 'the other phone',
     inChannel: 'You are in the channel{channel}{when}',
     waiting: 'Waiting{channel}{when}',
@@ -130,14 +132,14 @@ export const en = {
   },
 
   alert: {
-    knockFrom: '{who} is waiting for you in the channel',
-    knock: 'Someone is waiting for you in the channel',
-    callingYouFrom: '{who} is calling you',
-    callingYou: 'Somebody is calling you',
-    joinedNamed: '{who} is in the channel',
-    joined: 'Someone is in the channel',
-    pairedNamed: '{who} is connected with you',
-    paired: 'Somebody is connected with you',
+    calledYouFrom: '{who} called you{channel}{when}',
+    calledYou: 'Somebody called you{channel}{when}',
+    alarmFrom: '{who} called you{channel}{when} ({sound})',
+    alarm: 'Somebody called you{channel}{when} ({sound})',
+    inChannelFrom: '{who} is in the channel{channel}{when}',
+    inChannel: 'Somebody is in the channel{channel}{when}',
+    pairedWith: 'New connection with {who}{when}',
+    paired: 'New connection{when}',
   },
 
   buttons: {

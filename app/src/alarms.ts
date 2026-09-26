@@ -22,6 +22,10 @@ import { t } from './i18n';
  * file freezes the language it was born in, and changing language it
  * would go on speaking the old one under a screen that had changed.
  */
+/** The name of a sound as the list shows it; the bare name if unknown. */
+export const alarmLabel = (name: string): string =>
+  ALARMS().find((a) => a.name === name)?.label ?? name;
+
 export const ALARMS = (): { name: string; label: string; note: string }[] => [
   { name: 'drumroll', label: t('alarms.drums'), note: t('alarms.drumsNote') },
   { name: 'drumkit', label: t('alarms.kit'), note: t('alarms.kitNote') },

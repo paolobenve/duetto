@@ -49,7 +49,7 @@ export const it: Dictionary = {
   news: {
     title: 'Novità',
     close: 'Chiudi',
-    reachableAgain: '{who} è di nuovo raggiungibile ({at}).',
+    reachableAgain: '{who} è di nuovo raggiungibile{channel}{when}',
     build: 'build {n}',
     versionsDiffer: 'Versioni diverse: qui {here}, di là {there}',
     versionsDifferOlder: 'Versioni diverse: qui {here}, di là una più vecchia',
@@ -90,14 +90,16 @@ export const it: Dictionary = {
     // Il ritorno per primo: la tendina tronca la frase alle prime
     // parole, e «è sparito» accanto a «nel canale» leggeva come una
     // smentita del presente. Prima ciò che è vero ora, poi la storia.
-    story: '{who} è tornato alle {back} — era sparito {when}: {why}.',
+    story: '{who} è di nuovo raggiungibile{channel} dalle {back}. Non lo era {when}: {why}.',
     mineStory: 'Il telefono ha chiuso Duetto {when}: {why}. Da allora non eri raggiungibile, fino a ora. Se si ripete, togli a Duetto i limiti in sottofondo nelle impostazioni della batteria del telefono.',
+    sinceTime: 'dalle {time}',
+    onDaySinceTime: 'dal {date} alle {time}',
   },
 
   presence: {
     enter: 'Entra',
     wait: 'Vai in attesa',
-    wereInChannel: 'Eri nel canale con {who}: tocca per rientrare.',
+    wereInChannel: 'Eri nel canale{channel} con {who}: tocca per rientrare.',
     theOther: 'l’altro',
     inChannel: 'Sei nel canale{channel}{when}',
     waiting: 'In attesa{channel}{when}',
@@ -118,14 +120,14 @@ export const it: Dictionary = {
   },
 
   alert: {
-    knockFrom: '{who} ti aspetta nel canale',
-    knock: 'Ti aspettano nel canale',
-    callingYouFrom: '{who} ti sta chiamando',
-    callingYou: 'Ti stanno chiamando',
-    joinedNamed: '{who} è nel canale',
-    joined: 'C’è qualcuno nel canale',
-    pairedNamed: '{who} si è collegato con te',
-    paired: 'Qualcuno si è collegato con te',
+    calledYouFrom: '{who} ti ha chiamato{channel}{when}',
+    calledYou: 'Ti hanno chiamato{channel}{when}',
+    alarmFrom: '{who} ti ha chiamato{channel}{when} ({sound})',
+    alarm: 'Ti hanno chiamato{channel}{when} ({sound})',
+    inChannelFrom: '{who} è nel canale{channel}{when}',
+    inChannel: 'C’è qualcuno nel canale{channel}{when}',
+    pairedWith: 'Nuovo collegamento con {who}{when}',
+    paired: 'Nuovo collegamento{when}',
   },
 
   buttons: {

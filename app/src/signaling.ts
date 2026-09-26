@@ -130,7 +130,7 @@ export type SignalMessage =
   // A loud sound to call back somebody who is in the channel but not
   // answering: asleep, or with the phone on the far side of the room.
   // The sender picks it, the receiver's phone plays it.
-  | { kind: 'alarm'; sound: string };
+  | { kind: 'alarm'; sound: string; at?: number };
 
 export type PairMessage =
   | { kind: 'pubkey'; pub: string; name: string }
@@ -214,7 +214,8 @@ export type SignalingEvents = {
     peerSince: number; peerGone: PeerGone;
   }) => void;
   /** the server tells us: the other one came in, or knocked */
-  onNotify?: (reason: 'peer-active' | 'knock', name: string) => void;
+  /** @param at the moment it happened, as the server says it */
+  onNotify?: (reason: 'peer-active' | 'knock', name: string, at: number) => void;
   onSignal?: (msg: SignalMessage) => void;
   onPair?: (msg: PairMessage) => void;
   /** the server took note that this room waits for its other half, until when */
@@ -713,7 +714,7 @@ export class Signaling {
         break;
 
       case 'notify':
-        this.events.onNotify?.(msg.reason, msg.name || 'Someone');
+        this.events.onNotify?.(msg.reason, msg.name || 'Someone', moment(msg.at) || Date.now());
         break;
 
       case 'signal': {

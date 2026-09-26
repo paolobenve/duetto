@@ -32,6 +32,7 @@ import {
 import { Signaling, PresenceStatus } from './signaling';
 import type { PersonOnServer, InvitationOnServer } from './signaling';
 import { useLanguage, t } from './i18n';
+import { alarmLabel } from './alarms';
 import { BUILD, VERSION_FULL, VERSION_LABEL } from './version';
 import { logger, setLogging } from './log';
 import { ChannelSession } from './webrtc';
@@ -49,6 +50,7 @@ import { reportDirectly, inviteOnWorkItem } from './gitlab';
 import type { ReportOutcome } from './gitlab';
 import {
   startListening, stopListening, presenceCode, presenceLine, deathStory, myDeathStory, interfaceInCharge, isRealName,
+  news,
 } from './presence';
 import { avatarFor, peerAvatar } from './avatar';
 
@@ -1538,26 +1540,6 @@ export default function App() {
   }, [cfg?.pair]);
 
   /**
-   * The name that goes in front of the alerts: which connection they
-   * arrived on.
-   *
-   * With a single connection there is nothing to tell apart and it
-   * stays empty. With more than one it becomes "Home": without it, an
-   * alert in the status bar says somebody is looking for you but not
-   * which of the two or three you know, and to find out you have to
-   * open the app.
-   *
-   * In a ref because the message handler reads it, and that is born
-   * once and would never see a name changed afterwards.
-   */
-  const alertName = React.useMemo(
-    () => (cfg && cfg.pairs.length > 1 ? pairName(cfg.pair) || '' : ''),
-    [cfg],
-  );
-  const alertNameRef = useRef(alertName);
-  useEffect(() => { alertNameRef.current = alertName; }, [alertName]);
-
-  /**
    * The name of this connection, if I gave it one.
    *
    * It is shown where knowing which connection you are in is useful: on
@@ -1566,6 +1548,9 @@ export default function App() {
    * has a single connection has nothing to tell apart.
    */
   const connectionName = cfg?.pair?.label || '';
+  /** the same, for the message handlers, which are born once */
+  const channelRef = useRef(connectionName);
+  useEffect(() => { channelRef.current = connectionName; }, [connectionName]);
 
   /**
    * The picture to show in place of the other person's video.
@@ -1755,7 +1740,7 @@ export default function App() {
       clearTimeout(settle);
       if (noticeRetry.current) { clearTimeout(noticeRetry.current); noticeRetry.current = null; }
     };
-  }, [noticeText, alertName, presenceLive, writeNotice]);
+  }, [noticeText, presenceLive, writeNotice]);
 
   /**
    * If we stay without a server too long, everything is rebuilt.
@@ -2147,19 +2132,16 @@ export default function App() {
     // ours. Theirs, if it happens, will be told when it happens.
     if (Date.now() - serverBackAt.current < OUR_RETURN_MS) return;
     forgetReturn();
+    // The moment they came back, not the moment it is told.
+    const back = Date.now();
     returnDue.current = setTimeout(() => {
       returnDue.current = null;
-      const who = shownNameRef.current || t('presence.theOther');
       // With the time to the second: a notification found later,
       // without it, does not say whether they came back a minute ago or
-      // this morning.
-      const at = new Date().toLocaleTimeString(undefined, {
-        hour: '2-digit', minute: '2-digit', second: '2-digit',
-      });
-      // In the shade only: inside the app the same sentence would
-      // appear twice, once in the card and once in the notification
-      // behind it.
-      Foreground.note(alertNameRef.current, t('news.reachableAgain', { who, at }))
+      // this morning. In the shade only: inside the app the same
+      // sentence would appear twice, once in the card and once in the
+      // notification behind it.
+      Foreground.note('', news.reachable(shownNameRef.current, channelRef.current, back))
         .catch(() => {});
     }, TELLING_DELAY_MS);
   }, [peerPresent, status, forgetReturn]);
@@ -2816,30 +2798,24 @@ export default function App() {
             }
           },
 
-          onNotify: (reason, n) => {
+          onNotify: (reason, n, at) => {
             Journal.mark(reason === 'knock' ? 'peer-knocks' : 'peer-enters').catch(() => {});
             noteName(n);
             setKnockPending(false);
             // The name is optional: without one we avoid writing
             // "Someone".
             const who = n;
-            const hasName = isRealName(n);
-            // With several connections set up, "somebody is calling
-            // you" is not enough: only one of the two or three you know
-            // is calling, and knowing which is half the information.
-            // With a single connection the name stays empty, since
-            // there is nothing to tell apart.
-            const title = alertNameRef.current;
+            // The channel is named inside the sentence, with one
+            // connection too: which of them is calling is half the
+            // news, and one may not remember which one one is in.
+            const channel = channelRef.current;
 
             if (reason === 'knock') {
               // An explicit call always goes through, even with the app
               // open: whoever knocks does it precisely because the
               // other one is not answering, and the phone may be lying
               // lit on a table with nobody in front of it.
-              Foreground.notify(
-                title,
-                hasName ? t('alert.callingYouFrom', { who }) : t('alert.callingYou'),
-              ).catch(() => {});
+              Foreground.notify('', news.called(who, channel, at)).catch(() => {});
               // The vibration is no longer done here: it lives in the
               // notification channel, together with the sound, because
               // that is where they can be adjusted - and because
@@ -2851,10 +2827,7 @@ export default function App() {
             // Their arrival, on the other hand, is plain to see in the
             // foreground: notifying it would be noise.
             if (appStateRef.current !== 'active') {
-              Foreground.notify(
-                title,
-                hasName ? t('alert.joinedNamed', { who }) : t('alert.joined'),
-              ).catch(() => {});
+              Foreground.notify('', news.inChannel(who, channel, at)).catch(() => {});
             }
           },
 
@@ -2897,9 +2870,9 @@ export default function App() {
               forgetReturn();
               const story = deathStory(
                 Number(msg.when), String(msg.cause), shownNameRef.current,
-                Number(msg.back) || 0,
+                Number(msg.back) || 0, channelRef.current,
               );
-              Foreground.note(alertNameRef.current, story).catch(() => {});
+              Foreground.note('', story).catch(() => {});
               setNotice(story);
               Journal.mark(`peer-death:${msg.cause}`).catch(() => {});
               return;
@@ -2916,13 +2889,10 @@ export default function App() {
               // the screen, is a riddle. It is the same case as a call
               // - somebody wants you - and it gets the same words.
               if (!inChannelRef.current) {
-                const who = shownNameRef.current;
-                Foreground.notify(
-                  alertNameRef.current,
-                  isRealName(who)
-                    ? t('alert.callingYouFrom', { who })
-                    : t('alert.callingYou'),
-                ).catch(() => { /* noop */ });
+                Foreground.notify('', news.called(
+                  shownNameRef.current, channelRef.current,
+                  Number((msg as any).at) || Date.now(), alarmLabel(String(msg.sound ?? '')),
+                )).catch(() => { /* noop */ });
               }
               return;
             }
@@ -4032,7 +4002,7 @@ export default function App() {
     Journal.mark('paired:said').catch(() => { /* noop */ });
     Alert.alert(
       t('pairing.doneTitle'),
-      named ? t('alert.pairedNamed', { who }) : t('alert.paired'),
+      news.paired(named ? who : '', Date.now()),
     );
   };
 
@@ -4245,7 +4215,8 @@ export default function App() {
    * know it happened.
    */
   const onAlarm = useCallback((sound: string) => {
-    signalingRef.current?.sendSignal({ kind: 'alarm', sound });
+    // With its moment: a sound delivered late still says when it was sent.
+    signalingRef.current?.sendSignal({ kind: 'alarm', sound, at: Date.now() });
     // It is heard on this side too: whoever sends a sound must know
     // what they sent, and hear that it really left. Here, though, it
     // comes out quietly and by way of the conversation, not the alarm:

@@ -53,7 +53,7 @@ export const fr: Dictionary = {
   news: {
     title: 'Nouveautés',
     close: 'Fermer',
-    reachableAgain: '{who} est de nouveau joignable ({at}).',
+    reachableAgain: '{who} est de nouveau joignable{channel}{when}',
     build: 'build {n}',
     versionsDiffer: 'Versions différentes : ici {here}, là-bas {there}',
     versionsDifferOlder: 'Versions différentes : ici {here}, là-bas une plus ancienne',
@@ -91,14 +91,16 @@ export const fr: Dictionary = {
     unknown: 'on ne sait pas pourquoi',
     atTime: 'à {time}',
     onDayAtTime: 'le {date} à {time}',
-    story: '{who} est revenu à {back} — avait disparu {when} : {why}.',
+    story: '{who} est de nouveau joignable{channel} depuis {back}. Ne l’était plus {when} : {why}.',
     mineStory: 'Le téléphone a fermé Duetto {when} : {why}. De ce moment jusqu’à maintenant tu étais injoignable. Si cela se répète, enlève à Duetto les limites en arrière-plan dans les réglages de batterie du téléphone.',
+    sinceTime: 'depuis {time}',
+    onDaySinceTime: 'depuis le {date} à {time}',
   },
 
   presence: {
     enter: 'Entrer',
     wait: 'Passer en attente',
-    wereInChannel: 'Tu étais dans le canal avec {who} : touche pour y revenir.',
+    wereInChannel: 'Tu étais dans le canal{channel} avec {who} : touche pour y revenir.',
     theOther: 'l’autre',
     inChannel: 'Tu es dans le canal{channel}{when}',
     waiting: 'En attente{channel}{when}',
@@ -119,14 +121,14 @@ export const fr: Dictionary = {
   },
 
   alert: {
-    knockFrom: '{who} t’attend dans le canal',
-    knock: 'On t’attend dans le canal',
-    callingYouFrom: '{who} t’appelle',
-    callingYou: 'On t’appelle',
-    joinedNamed: '{who} est dans le canal',
-    joined: 'Il y a quelqu’un dans le canal',
-    pairedNamed: '{who} s\'est connecté avec toi',
-    paired: 'Quelqu\'un s\'est connecté avec toi',
+    calledYouFrom: '{who} t’appelle{channel}{when}',
+    calledYou: 'On t’appelle{channel}{when}',
+    alarmFrom: '{who} t’appelle{channel}{when} ({sound})',
+    alarm: 'On t’appelle{channel}{when} ({sound})',
+    inChannelFrom: '{who} est dans le canal{channel}{when}',
+    inChannel: 'Quelqu’un est dans le canal{channel}{when}',
+    pairedWith: 'Nouvelle connexion avec {who}{when}',
+    paired: 'Nouvelle connexion{when}',
   },
 
   buttons: {
