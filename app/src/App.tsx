@@ -283,6 +283,8 @@ const KNOCK_ECHO_MS = 2_000;
  * the effect that follows the configuration.
  */
 let cueGain = CUE_GAIN.veryLow;
+/** how long the other's leaving waits, in case a goodbye follows it */
+const LEAVE_CUE_WAIT_MS = 1000;
 const cue = (name: string) => {
   if (cueGain > 0) Alarm.play(name, true, 0, cueGain).catch(() => { /* noop */ });
 };
@@ -1559,6 +1561,11 @@ export default function App() {
   const connectionName = cfg?.pair?.label || '';
   /** the same, for the message handlers, which are born once */
   const channelRef = useRef(connectionName);
+  /** the other's leaving, waiting to be heard: see onPeerMode */
+  const leaveCueDue = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const forgetLeaveCue = () => {
+    if (leaveCueDue.current) { clearTimeout(leaveCueDue.current); leaveCueDue.current = null; }
+  };
   useEffect(() => { cueGain = CUE_GAIN[cfg?.cueVolume ?? 'veryLow'] ?? CUE_GAIN.veryLow; },
     [cfg?.cueVolume]);
   useEffect(() => { channelRef.current = connectionName; }, [connectionName]);
@@ -2719,6 +2726,7 @@ export default function App() {
             // They are back: the wait that was about to forget them is off.
             stopWaiting();
             peerActiveRef.current = mode === 'active';
+            forgetLeaveCue();
             if (mode === 'active' && inChannelRef.current) { attachPeer(true); cue('cue_enter'); }
           },
 
@@ -2733,7 +2741,12 @@ export default function App() {
             Journal.mark(`peer-gone:${why}`).catch(() => { /* noop */ });
             // Gone for good - they said so - is a sound; a drop is not,
             // they may be back in a moment.
-            if (why === 'bye' && inChannelRef.current) cue('cue_detach');
+            if (why === 'bye') {
+              // The leaving that came a moment before is part of this
+              // one: only the going out for good is heard.
+              forgetLeaveCue();
+              if (inChannelRef.current) cue('cue_detach');
+            }
             peerStateHeard.current = false;
             setPeerPresent(false);
             setPeerSeen(false);
@@ -2796,7 +2809,19 @@ export default function App() {
             setPeerSince(since);
             if (n) noteName(n);
             peerActiveRef.current = mode === 'active';
-            if (inChannelRef.current) cue(mode === 'active' ? 'cue_enter' : 'cue_leave');
+            forgetLeaveCue();
+            if (mode === 'active') {
+              if (inChannelRef.current) cue('cue_enter');
+            } else {
+              // A moment's wait: going out for good arrives as "waiting"
+              // and, within the same second, the goodbye. Played at once,
+              // the first cue was cut by the second - half an arpeggio,
+              // then another.
+              leaveCueDue.current = setTimeout(() => {
+                leaveCueDue.current = null;
+                if (inChannelRef.current) cue('cue_leave');
+              }, LEAVE_CUE_WAIT_MS);
+            }
             if (mode === 'active') {
               stopWaiting();
               if (inChannelRef.current) attachPeer();
