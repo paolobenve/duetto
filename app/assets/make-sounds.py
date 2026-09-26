@@ -251,37 +251,40 @@ def cue_camera():
     down = glissando(900.0, 600.0, dur=0.13, harmonics=((1, 1.0), (2, 0.3), (3, 0.1)))
     return normalise(fade(np.concatenate([up[:-int(SR * 0.06)], down]), 0.05), peak=0.6)
 
-# Coming in and going out: slides too, but of a chord, not of one tone
-# - two voices a fifth apart sliding together, an octave and a half up
-# for in and the same down for out, and three voices, the octave added,
-# falling two and a half octaves for going out for good. A chord that
-# slides is a different thing to the ear from one tone that slides,
-# which is what the cues above are, and the width and the length do the
-# rest.
-def chord_glissando(f_from, f_to, ratios, dur):
-    n = int(SR * dur)
-    time = t(dur)
-    freq = f_from * (f_to / f_from) ** (time / dur)
-    phase = 2 * np.pi * np.cumsum(freq) / SR
-    x = np.zeros(n)
-    for r in ratios:
-        for k, weight in ((1, 1.0), (2, 0.25), (3, 0.08)):
-            x += np.sin(phase * r * k) * weight / len(ratios)
-    env = np.ones(n)
-    up = int(SR * 0.02)
-    down = int(SR * 0.14)
-    env[:up] = np.linspace(0, 1, up)
-    env[-down:] = np.linspace(1, 0, down)
-    return normalise(x * env, peak=0.6)
+# Coming in and going out: arpeggios, not slides - notes one after the
+# other, each struck like a small bell and left to ring under the next,
+# which to the ear is a different thing from the one sliding tone of the
+# cues above. The C major chord: E-G-C going up to come in, G-E-C going
+# down to go out, and for going out for good one note more, C-G-E-C,
+# down to the C an octave below the one where leaving stops.
+def arpeggio(freqs, step=0.13, last=0.29):
+    dur = step * (len(freqs) - 1) + last
+    x = np.zeros(int(SR * dur))
+    for i, f in enumerate(freqs):
+        # Every note rings to the end; the last one is heard alone.
+        ring = dur - i * step
+        time = t(ring)
+        note = np.zeros(len(time))
+        for k, weight in ((1, 1.0), (2, 0.3), (3, 0.1)):
+            note += np.sin(2 * np.pi * f * k * time) * weight
+        env = decay(len(time), 0.22)
+        up = int(SR * 0.005)
+        env[:up] *= np.linspace(0, 1, up)
+        put(x, i * step, note * env)
+    return normalise(fade(x, 0.05), peak=0.6)
+
+C3, E3, G3 = 130.81, 164.81, 196.00
+C4, E4, G4 = 261.63, 329.63, 392.00
+C5 = 523.25
 
 def cue_enter():
-    return chord_glissando(260.0, 780.0, (1.0, 1.5), dur=0.5)
+    return arpeggio((E4, G4, C5))
 
 def cue_leave():
-    return chord_glissando(780.0, 260.0, (1.0, 1.5), dur=0.5)
+    return arpeggio((G4, E4, C4))
 
 def cue_detach():
-    return chord_glissando(1000.0, 180.0, (1.0, 1.5, 2.0), dur=0.7)
+    return arpeggio((C4, G3, E3, C3), last=0.36)
 
 # --- writing ---------------------------------------------------------------
 def save(name, data):
