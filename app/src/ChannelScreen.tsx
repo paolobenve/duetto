@@ -266,12 +266,16 @@ function VolumeScale(p: {
 
   return (
     <View style={styles.scaleBox} pointerEvents="box-none">
-      {/* Two lines of fixed height, hushed or not: the scale must not
-          change size under the finger that hushes it. */}
-      <Text style={[styles.scaleFigure, p.muted ? styles.scaleFigureMuted : null]} numberOfLines={1}>
+      {/* One line of fixed height, hushed or not: the scale must not
+          change size under the finger that hushes it. The "%" sits
+          beside the figure, smaller: on a line of its own it read as a
+          number broken in two. */}
+      <Text
+        style={[styles.scaleFigure, styles.scaleFigureLine, p.muted ? styles.scaleFigureMuted : null]}
+        numberOfLines={1}>
         {figure}
+        {p.muted ? null : <Text style={styles.scaleUnitInline}>%</Text>}
       </Text>
-      <Text style={styles.scaleUnit}>{p.muted ? ' ' : '%'}</Text>
       <View
         style={styles.scaleTrack}
         onLayout={(e) => setH(e.nativeEvent.layout.height)}
@@ -2557,7 +2561,8 @@ const styles = StyleSheet.create({
   scaleBox: { flex: 1, alignItems: 'center', width: 72 },
   scaleFigure: { color: '#7cc4ff', fontSize: 19, fontWeight: '800', lineHeight: 22 },
   scaleFigureMuted: { color: '#ffb454', fontSize: 13, fontWeight: '700', lineHeight: 22 },
-  scaleUnit: { color: '#9fb4c8', fontSize: 10, fontWeight: '700', lineHeight: 12, marginTop: -2, marginBottom: 6 },
+  scaleFigureLine: { marginBottom: 6 },
+  scaleUnitInline: { color: '#9fb4c8', fontSize: 12, fontWeight: '700' },
   scaleTrack: { flex: 1, width: 72, alignItems: 'center', marginTop: 2, marginBottom: 20 },
   // The strip: dark ground, the phone's own volume off-white over it,
   // and Duetto's own share white. Thirteen points wide, so that the
