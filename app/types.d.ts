@@ -19,8 +19,11 @@ declare module 'tweetnacl-util' {
 declare module 'duetto-platform' {
   /** The sounds for calling the other back: they use the alarm volume. */
   export const Alarm: {
-    /** `echo`: played by whoever sent it, and then it comes out quietly */
-    play(name: string, echo?: boolean, maxMs?: number): Promise<boolean>;
+    /**
+     * `echo`: played by whoever sent it, and then it comes out quietly -
+     * `volume` (0 to 1) says how quietly, a third if left out
+     */
+    play(name: string, echo?: boolean, maxMs?: number, volume?: number): Promise<boolean>;
     stop(): Promise<boolean>;
     list(): Promise<string[]>;
   };

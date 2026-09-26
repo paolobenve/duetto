@@ -617,8 +617,10 @@ export const Volume = isAndroid && NativeVolume
  */
 export const Alarm = isAndroid && NativeAlarm
   ? {
-      play: (name, echo, maxMs) =>
-        call(NativeAlarm, 'play', String(name), !!echo, Number(maxMs) || 0),
+      // `volume`: for the echoes and the cues, 0 to 1; left out, a third.
+      play: (name, echo, maxMs, volume) =>
+        call(NativeAlarm, 'play', String(name), !!echo, Number(maxMs) || 0,
+          volume === undefined ? -1 : Number(volume)),
       stop: () => call(NativeAlarm, 'stop'),
       list: () => call(NativeAlarm, 'list'),
     }

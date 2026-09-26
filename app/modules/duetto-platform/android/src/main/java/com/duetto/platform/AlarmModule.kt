@@ -26,8 +26,8 @@ class AlarmModule(private val ctx: ReactApplicationContext) :
      * out quietly. `maxMs`: when to cut it; 0 to let it finish.
      */
     @ReactMethod
-    fun play(name: String, echo: Boolean, maxMs: Double, promise: Promise) {
-        Alarm.play(ctx, name, echo, maxMs.toInt())
+    fun play(name: String, echo: Boolean, maxMs: Double, volume: Double, promise: Promise) {
+        Alarm.play(ctx, name, echo, maxMs.toInt(), volume.toFloat())
         promise.resolve(true)
     }
 

@@ -42,6 +42,13 @@ object Alarm {
     /** One at a time: two drum rolls on top of each other are just noise. */
     private var player: MediaPlayer? = null
 
+    /**
+     * The cues and the echoes have a player of their own: they shared
+     * the alarms' one, and a camera turning round cut short the rooster
+     * that was waking somebody up.
+     */
+    private var cuePlayer: MediaPlayer? = null
+
     val names = listOf("drumroll", "drumkit", "fanfare", "horn", "rooster")
 
     /** The scheduled cut, to be called off if the sound ends earlier. */
@@ -104,8 +111,16 @@ object Alarm {
     }
 
 
-    fun play(ctx: Context, name: String, echo: Boolean = false, maxMs: Int = 0) {
+    /**
+     * @param volume for the echoes and the cues, the share of their
+     *   stream's volume, 0 to 1; below 0, the old third
+     */
+    fun play(ctx: Context, name: String, echo: Boolean = false, maxMs: Int = 0, volume: Float = -1f) {
         val res = resourceFor(name) ?: return
+        if (echo) {
+            playCue(ctx, res, name, maxMs, if (volume >= 0f) volume else 0.33f)
+            return
+        }
         stop()
         try {
             val attributes = AudioAttributes.Builder()
@@ -134,6 +149,38 @@ object Alarm {
         } catch (e: Exception) {
             Log.w(TAG, "alarm: $name does not play: ${e.message}")
         }
+    }
+
+    private fun playCue(ctx: Context, res: Int, name: String, maxMs: Int, volume: Float) {
+        stopCue()
+        if (volume <= 0f) return
+        try {
+            val attributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION_SIGNALLING)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+            val mp = MediaPlayer.create(ctx, res, attributes, AudioManager.AUDIO_SESSION_ID_GENERATE)
+                ?: return
+            mp.setOnCompletionListener {
+                it.release()
+                if (cuePlayer === it) cuePlayer = null
+            }
+            mp.setVolume(volume, volume)
+            cuePlayer = mp
+            mp.start()
+            if (maxMs > 0) {
+                clock.postDelayed({ if (cuePlayer === mp) stopCue() }, maxMs.toLong())
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "cue: $name does not play: ${e.message}")
+        }
+    }
+
+    private fun stopCue() {
+        val mp = cuePlayer ?: return
+        cuePlayer = null
+        try { if (mp.isPlaying) mp.stop() } catch (_: Exception) { /* over by itself */ }
+        try { mp.release() } catch (_: Exception) { /* noop */ }
     }
 
     /** Silences the one under way: also used before starting another. */
