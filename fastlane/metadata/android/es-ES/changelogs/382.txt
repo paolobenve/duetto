@@ -1,0 +1,6 @@
+- Mientras el teléfono suena el canal sigue abierto: se calla cuando respondes.
+- Las notificaciones nombran el canal y dicen las horas.
+- El nombre del otro lo eliges tú.
+- «Sal y hazte no disponible» está arriba, aparte, y pide confirmación.
+- Volumen de los sonidos de los botones en los ajustes; entrar y salir son arpegios.
+- Mejores colores en la barra del volumen.

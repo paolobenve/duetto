@@ -1,0 +1,6 @@
+- Mentre il telefono squilla il canale resta aperto: si zittisce quando rispondi.
+- Le notifiche nominano il canale e dicono le ore.
+- Il nome dell'altro lo scegli tu.
+- «Esci e renditi non disponibile» è in alto, separata, e chiede conferma.
+- Volume dei suoni dei pulsanti nelle impostazioni; entrare e uscire sono arpeggi.
+- Migliore colorazione della barra del volume.

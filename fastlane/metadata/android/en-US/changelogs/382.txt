@@ -1,0 +1,6 @@
+- While the phone rings the channel stays open: it goes quiet when you answer.
+- Notifications name the channel and say the times.
+- You choose the other person's name.
+- "Leave and become unavailable" is at the top, apart, and asks for confirmation.
+- The buttons' sounds have a volume setting; coming in and going out are arpeggios.
+- Better colours in the volume strip.

@@ -14,6 +14,33 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
+## 0.9.18 build 382
+
+**Version 0.9.18: the times and the names.** A telephone that rings no longer silences
+the channel: the two go on hearing each other while it rings, and the silence starts when
+the call is taken - an ordinary call or an app's, told apart by asking the audio back.
+
+The notifications say which channel and when. The channel's name is inside every
+sentence, with one connection too, instead of in italics in front and only with several;
+and every state carries its moment, to the second, on the server's clock for both phones
+- "Waiting in the channel Home since 14:30:25 · Mum switched Duetto off at 15:45:27". The
+server keeps those moments through a change of network, an update of the app, and its
+own restart. Alerts and news say the moment too, name the channel, and have no gender;
+a call says the same words with the app open or closed. Disconnected and unreachable use
+the same words on the screen and in the shade, and a death while unavailable by choice is
+no longer told as a disappearance.
+
+The other person goes by the name chosen on this phone: none, the one they gave
+themselves, or one written here. Becoming unavailable sits at the top of the leave sheet,
+apart from staying available, and is asked twice - the explanation under the question,
+"No" closing everything; the presence no longer comes back by itself while one is
+unavailable. The buttons' sounds have a volume of their own in the settings, very low to
+begin with, and a player that no longer cuts an alarm short; coming in and going out are
+arpeggios, going out for good goes on down another octave, and one's own going out is
+heard to the end. The volume strip is white up to the phone's volume and blue where
+Duetto adds to it, with the figure and its % on one line and the words in the middle kept
+clear of it.
+
 ## 0.9.17 build 372
 
 **Version 0.9.17: the channel says what it does.** Eight short sounds tell what has just

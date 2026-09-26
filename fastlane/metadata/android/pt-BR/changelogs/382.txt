@@ -1,0 +1,6 @@
+- Enquanto o telefone toca, o canal continua aberto: silencia quando você atende.
+- As notificações nomeiam o canal e dizem as horas.
+- O nome do outro é você quem escolhe.
+- «Saia e fique indisponível» está em cima, separada, e pede confirmação.
+- Volume dos sons dos botões nas configurações; entrar e sair são arpejos.
+- Cores melhores na barra do volume.

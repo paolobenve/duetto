@@ -1,0 +1,6 @@
+- Während das Telefon klingelt, bleibt der Kanal offen: er verstummt beim Abnehmen.
+- Die Mitteilungen nennen den Kanal und die Uhrzeiten.
+- Den Namen der anderen Person wählst du.
+- „Verlassen und nicht erreichbar sein“ steht oben, getrennt, und fragt nach.
+- Lautstärke der Töne der Knöpfe in den Einstellungen; hinein und hinaus sind Arpeggien.
+- Bessere Farben in der Lautstärkeleiste.

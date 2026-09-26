@@ -1,0 +1,6 @@
+- Pendant que le téléphone sonne, le canal reste ouvert : il se tait quand tu réponds.
+- Les notifications nomment le canal et disent les heures.
+- Le nom de l'autre, c'est toi qui le choisis.
+- « Sors et rends-toi indisponible » est en haut, à part, et demande confirmation.
+- Volume des sons des boutons dans les réglages ; entrer et sortir sont des arpèges.
+- De meilleures couleurs dans la barre du volume.
