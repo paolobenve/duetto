@@ -226,6 +226,11 @@ export function presenceLine(o: {
   name: string;
   /** how OUR own link to the server is doing */
   server?: 'ok' | 'down' | 'connecting';
+  /**
+   * Since when the other person is in the state the line tells, as the
+   * server saw it; 0 when nobody knows, and then no time is said.
+   */
+  since?: number;
 }): string {
   const ours = o.inChannel ? t('presence.inChannel') : t('presence.waiting');
   const who = named(o.name) ? o.name : t('presence.theOther');
@@ -236,15 +241,32 @@ export function presenceLine(o: {
       ? t('presence.withPeer', { who })
       : t('presence.peerInChannel', { ours, who });
   }
+  // Disconnecting is a moment ("at"), waiting and being out of reach
+  // are states that last ("since").
+  const when = (key: 'sinceTime' | 'atTime') => (o.since && o.since > 0
+    ? t(`presence.${key}`, { time: clockTime(o.since) }) : '');
   if (!o.peerPresent) {
     return o.detached
-      ? t('presence.peerDetached', { ours, who })
-      : t('presence.peerUnreachable', { ours, who });
+      ? t('presence.peerDetached', { ours, who, when: when('atTime') })
+      : t('presence.peerUnreachable', { ours, who, when: when('sinceTime') });
   }
   if (!o.inChannel) return t('presence.bothWaiting');
   return o.tornDown
-    ? t('presence.peerWaitingTornDown', { ours, who })
-    : t('presence.peerWaiting', { ours, who });
+    ? t('presence.peerWaitingTornDown', { ours, who, when: when('sinceTime') })
+    : t('presence.peerWaiting', { ours, who, when: when('sinceTime') });
+}
+
+/**
+ * A moment down to the second, with the day in front when it is not
+ * today: "since 15:45:27" read tomorrow morning would lie.
+ */
+function clockTime(at: number): string {
+  const d = new Date(at);
+  const time = d.toLocaleTimeString(undefined, {
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  });
+  return d.toDateString() === new Date().toDateString()
+    ? time : `${d.toLocaleDateString()} ${time}`;
 }
 
 const log = logger('[duetto-presence]');

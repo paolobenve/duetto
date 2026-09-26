@@ -117,10 +117,12 @@ export const en = {
     noServer: '{ours} · no link to the server',
     withPeer: 'In the channel with {who}',
     peerInChannel: '{ours} · {who} is in the channel',
-    peerWaiting: '{ours} · {who} waiting',
-    peerWaitingTornDown: '{ours} · {who} waiting (app closed by the phone)',
-    peerDetached: '{ours} · {who} has disconnected',
-    peerUnreachable: '{ours} · {who} unreachable',
+    peerWaiting: '{ours} · {who} waiting{when}',
+    peerWaitingTornDown: '{ours} · {who} waiting{when} (app closed by the phone)',
+    peerDetached: '{ours} · {who} has disconnected{when}',
+    peerUnreachable: '{ours} · {who} unreachable{when}',
+    sinceTime: ' since {time}',
+    atTime: ' at {time}',
   },
 
   alert: {

@@ -106,10 +106,12 @@ export const es: Dictionary = {
     noServer: '{ours} · sin conexión con el servidor',
     withPeer: 'En el canal con {who}',
     peerInChannel: '{ours} · {who} está en el canal',
-    peerWaiting: '{ours} · {who} a la espera',
-    peerWaitingTornDown: '{ours} · {who} a la espera (app cerrada por el teléfono)',
-    peerDetached: '{ours} · {who} se ha desconectado',
-    peerUnreachable: '{ours} · {who} ilocalizable',
+    peerWaiting: '{ours} · {who} a la espera{when}',
+    peerWaitingTornDown: '{ours} · {who} a la espera{when} (app cerrada por el teléfono)',
+    peerDetached: '{ours} · {who} se ha desconectado{when}',
+    peerUnreachable: '{ours} · {who} ilocalizable{when}',
+    sinceTime: ' desde las {time}',
+    atTime: ' a las {time}',
   },
 
   alert: {
