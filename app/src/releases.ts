@@ -36,6 +36,59 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.9.18',
+    notes: {
+      en: [
+        'While the phone rings the channel stays open: it goes quiet when you answer.',
+        'Notifications name the channel and say the times: since when you and the other are in the channel or waiting, since when the other is unreachable, when they called you.',
+        'You choose the other person\'s name: none, the one they gave themselves, or one of your own.',
+        '"Leave and become unavailable" is at the top, apart from the other way out, and asks for confirmation.',
+        'The volume of the buttons\' sounds is set in the settings, and starts very low. Coming in and going out are arpeggios.',
+        'Better colours in the volume strip.',
+      ],
+      it: [
+        'Mentre il telefono squilla il canale resta aperto: si zittisce quando rispondi.',
+        'Le notifiche nominano il canale e dicono le ore: da quando tu e l\'altro siete nel canale o in attesa, da quando l\'altro non è raggiungibile, quando ti ha chiamato.',
+        'Il nome dell\'altro lo scegli tu: nessuno, quello che si è dato, o uno tuo.',
+        '«Esci e renditi non disponibile» è in alto, separata dall\'altra uscita, e chiede conferma.',
+        'Il volume dei suoni dei pulsanti si regola nelle impostazioni, e parte molto basso. Entrare e uscire sono arpeggi.',
+        'Migliore colorazione della barra del volume.',
+      ],
+      es: [
+        'Mientras el teléfono suena el canal sigue abierto: se calla cuando respondes.',
+        'Las notificaciones nombran el canal y dicen las horas: desde cuándo tú y el otro estáis en el canal o a la espera, desde cuándo el otro no está localizable, cuándo te ha llamado.',
+        'El nombre del otro lo eliges tú: ninguno, el que se ha puesto, o uno tuyo.',
+        '«Sal y hazte no disponible» está arriba, separada de la otra salida, y pide confirmación.',
+        'El volumen de los sonidos de los botones se ajusta en los ajustes, y empieza muy bajo. Entrar y salir son arpegios.',
+        'Mejores colores en la barra del volumen.',
+      ],
+      fr: [
+        'Pendant que le téléphone sonne, le canal reste ouvert : il se tait quand tu réponds.',
+        'Les notifications nomment le canal et disent les heures : depuis quand toi et l\'autre êtes dans le canal ou en attente, depuis quand l\'autre n\'est pas joignable, quand il t\'a appelé.',
+        'Le nom de l\'autre, c\'est toi qui le choisis : aucun, celui qu\'il s\'est donné, ou un des tiens.',
+        '« Sors et rends-toi indisponible » est en haut, à part de l\'autre sortie, et demande confirmation.',
+        'Le volume des sons des boutons se règle dans les réglages, et commence très bas. Entrer et sortir sont des arpèges.',
+        'De meilleures couleurs dans la barre du volume.',
+      ],
+      de: [
+        'Während das Telefon klingelt, bleibt der Kanal offen: er verstummt, wenn du abnimmst.',
+        'Die Mitteilungen nennen den Kanal und sagen die Uhrzeiten: seit wann du und die andere Person im Kanal oder in Bereitschaft seid, seit wann die andere Person nicht erreichbar ist, wann sie dich gerufen hat.',
+        'Den Namen der anderen Person wählst du: keinen, den selbst gewählten, oder einen eigenen.',
+        '„Verlassen und nicht erreichbar sein“ steht oben, getrennt vom anderen Ausgang, und fragt nach.',
+        'Die Lautstärke der Töne der Knöpfe wird in den Einstellungen gewählt und beginnt sehr leise. Hinein und hinaus sind Arpeggien.',
+        'Bessere Farben in der Lautstärkeleiste.',
+      ],
+      pt: [
+        'Enquanto o telefone toca, o canal continua aberto: fica em silêncio quando você atende.',
+        'As notificações nomeiam o canal e dizem as horas: desde quando você e o outro estão no canal ou à espera, desde quando o outro não está alcançável, quando ele te chamou.',
+        'O nome do outro é você quem escolhe: nenhum, o que ele se deu, ou um seu.',
+        '«Saia e fique indisponível» está em cima, separada da outra saída, e pede confirmação.',
+        'O volume dos sons dos botões se ajusta nas configurações, e começa muito baixo. Entrar e sair são arpejos.',
+        'Cores melhores na barra do volume.',
+      ],
+    },
+  },
+  {
     version: '0.9.17',
     notes: {
       en: [
