@@ -264,8 +264,8 @@ def cue_camera():
 # other, each struck like a small bell and left to ring under the next,
 # which to the ear is a different thing from the one sliding tone of the
 # cues above. The C major chord: E-G-C going up to come in, G-E-C going
-# down to go out, and for going out for good one note more, C-G-E-C,
-# down to the C an octave below the one where leaving stops.
+# down to go out, and for going out for good the same G-E-C carried on
+# down another octave, G-E-C-G-E-C, at the same pace.
 def arpeggio(freqs, step=0.13, last=0.9):
     dur = step * (len(freqs) - 1) + last
     x = np.zeros(int(SR * dur))
@@ -294,7 +294,9 @@ def cue_leave():
     return arpeggio((G4, E4, C4))
 
 def cue_detach():
-    return arpeggio((C4, G3, E3, C3), last=1.0)
+    # The going out, then on down another octave: the same steps as
+    # leaving, twice as far.
+    return arpeggio((G4, E4, C4, G3, E3, C3), last=1.0)
 
 # --- writing ---------------------------------------------------------------
 def save(name, data):

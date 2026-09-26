@@ -287,7 +287,7 @@ let cueGain = CUE_GAIN.veryLow;
 const LEAVE_CUE_WAIT_MS = 1000;
 /** how long one's own leaving cues last: the call's audio waits for them */
 const LEAVE_CUE_MS = 1300;
-const DETACH_CUE_MS = 1500;
+const DETACH_CUE_MS = 1800;
 const cue = (name: string) => {
   if (cueGain > 0) Alarm.play(name, true, 0, cueGain).catch(() => { /* noop */ });
 };
