@@ -170,6 +170,10 @@ try {
   const aNotify = await a.expect('notify');
   check(aNotify.reason === 'peer-active', 'A alerted that the other has come in');
   check(aNotify.name === 'Bruno', 'the notification carries the name');
+  check(typeof aNotify.at === 'number', 'and the moment they came in');
+  const told = await b.expect('mode-since');
+  check(told.mode === 'active' && told.since === aNotify.at,
+    'whoever moved is told the same moment');
 
   // --- A comes in too: now no notification to B --------------------------
   a.send({ type: 'mode', mode: 'active' });
@@ -194,6 +198,7 @@ try {
   check(knock.ok === true, 'alert accepted');
   const bNotify = await b.expect('notify');
   check(bNotify.reason === 'knock' && bNotify.name === 'Anna', 'B receives the alert');
+  check(typeof bNotify.at === 'number', 'with the moment of the knock');
 
   // Insisting is legitimate: if the first alert gets no answer, the second
   // has to go through, and really reach the other.
@@ -440,6 +445,7 @@ try {
   await v2b.open();
   v2b.send({ type: 'join', key: KEY, room: 'goodbyes', name: 'V2', side: 'B', mode: 'listening' });
   const met = await v2b.expect('joined');
+  check(typeof met.since === 'number', 'whoever comes in is told its own moment too');
   check(typeof met.peerSince === 'number' && met.peerGone === undefined,
     'finding the other there, one learns since when');
   const joinedV2 = await v1b.expect('peer-joined');
@@ -508,6 +514,8 @@ try {
   const held = await kk2b.expect('notify');
   check(held.reason === 'knock' && held.name === 'K1',
     'and the knock is waiting for them on their return');
+  check(typeof held.at === 'number' && Date.now() - held.at > 0,
+    'with the moment it was made, not the moment it is delivered');
   kk1.close(); kk2b.close();
 
   // --- a refused join leaves no trace ----------------------------------------

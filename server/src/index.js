@@ -465,7 +465,8 @@ function peersOf(roomId, exclude) {
  * Keyed by room and side, because the side is the device: whatever
  * socket it comes back on, it is the same phone returning.
  *
- * @type {Map<string, { timer: NodeJS.Timeout, peerId: string, knocks: string[],
+ * @type {Map<string, { timer: NodeJS.Timeout, peerId: string,
+ *   knocks: { name: string, at: number }[],
  *   mode?: string, since?: number }>}
  */
 const returning = new Map();
@@ -1093,6 +1094,9 @@ wss.on('connection', (ws, req) => {
       send(ws, {
         type: 'joined',
         peerId: ws.peerId,
+        // Since when this phone is in its state: carried over when it
+        // is only coming back on a fresh socket.
+        since: ws.since,
         // The other side broke this pair while this phone was away:
         // said now, or it would go on waiting for somebody who is not
         // coming.
@@ -1132,8 +1136,8 @@ wss.on('connection', (ws, req) => {
         if (back) {
           clearTimeout(back.timer);
           returning.delete(`${roomId}\n${side}`);
-          for (const name of back.knocks) {
-            send(ws, { type: 'notify', reason: 'knock', name });
+          for (const { name, at } of back.knocks) {
+            send(ws, { type: 'notify', reason: 'knock', name, at });
           }
         }
       }
@@ -1153,7 +1157,7 @@ wss.on('connection', (ws, req) => {
         // If they come straight into the channel while the other is only
         // listening, this is the moment to let them know.
         if (ws.mode === 'active' && peer.mode === 'listening') {
-          send(peer, { type: 'notify', reason: 'peer-active', name: ws.name });
+          send(peer, { type: 'notify', reason: 'peer-active', name: ws.name, at: ws.since });
         }
       }
       return;
@@ -1166,13 +1170,17 @@ wss.on('connection', (ws, req) => {
       const before = ws.mode;
       ws.mode = next;
       ws.since = Date.now();
+      // The phone that moved is told the moment too: its own "in the
+      // channel since", in its notification, is on the server's clock
+      // like the other's.
+      send(ws, { type: 'mode-since', mode: next, since: ws.since });
       for (const peer of peersOf(ws.roomId, ws)) {
         send(peer, { type: 'peer-mode', mode: next, name: ws.name, since: ws.since });
         if (next === 'active') checkPresence(peer);
         // Only the transition that counts is notified: somebody HAS COME
         // INTO the channel while the other was merely listening.
         if (before === 'listening' && next === 'active' && peer.mode === 'listening') {
-          send(peer, { type: 'notify', reason: 'peer-active', name: ws.name });
+          send(peer, { type: 'notify', reason: 'peer-active', name: ws.name, at: ws.since });
         }
       }
       return;
@@ -1267,13 +1275,13 @@ wss.on('connection', (ws, req) => {
         const otherSide = ws.side === 'A' ? 'B' : ws.side === 'B' ? 'A' : null;
         if (otherSide) {
           const away = returning.get(`${ws.roomId}\n${otherSide}`);
-          if (away) away.knocks = [cleanName(ws.name)];
+          if (away) away.knocks = [{ name: cleanName(ws.name), at: Date.now() }];
         }
         send(ws, { type: 'knock-result', ok: false, error: 'peer-offline' });
         return;
       }
       for (const peer of others) {
-        send(peer, { type: 'notify', reason: 'knock', name: ws.name });
+        send(peer, { type: 'notify', reason: 'knock', name: ws.name, at: Date.now() });
         // Knocking is the moment when knowing whether they are really
         // there matters most: if they do not answer, within seconds their
         // departure reaches whoever knocked, instead of leaving them
