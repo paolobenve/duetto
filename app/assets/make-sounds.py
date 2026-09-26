@@ -281,22 +281,31 @@ def arpeggio(freqs, step=0.13, last=0.9):
         up = int(SR * 0.005)
         env[:up] *= np.linspace(0, 1, up)
         put(x, i * step, note * env)
-    return normalise(soft_tail(x, 0.5), peak=0.6)
+    return soft_tail(x, 0.5)
 
 C3, E3, G3 = 130.81, 164.81, 196.00
 C4, E4, G4 = 261.63, 329.63, 392.00
 C5 = 523.25
 
+ENTER, LEAVE = (E4, G4, C5), (G4, E4, C4)
+DETACH = (G4, E4, C4, G3, E3, C3)
+
+# One gain for the three, not one each: brought each to the same peak,
+# going out for good - more notes ringing together - came out a little
+# quieter than leaving, on the very same notes.
+ARPEGGIO_GAIN = 0.6 / max(np.max(np.abs(arpeggio(f, last=l)))
+                          for f, l in ((ENTER, 0.9), (LEAVE, 0.9), (DETACH, 1.0)))
+
 def cue_enter():
-    return arpeggio((E4, G4, C5))
+    return arpeggio(ENTER) * ARPEGGIO_GAIN
 
 def cue_leave():
-    return arpeggio((G4, E4, C4))
+    return arpeggio(LEAVE) * ARPEGGIO_GAIN
 
 def cue_detach():
     # The going out, then on down another octave: the same steps as
     # leaving, twice as far.
-    return arpeggio((G4, E4, C4, G3, E3, C3), last=1.0)
+    return arpeggio(DETACH, last=1.0) * ARPEGGIO_GAIN
 
 # --- writing ---------------------------------------------------------------
 def save(name, data):
