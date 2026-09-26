@@ -39,7 +39,9 @@ const FILE = process.env.DEVICES_FILE
 /** A week. Long enough to be handed over calmly, short enough to expire. */
 const INVITE_DAYS = Number(process.env.INVITE_DAYS || 7);
 
-const EMPTY = { devices: [], invitations: [], rooms: [], broken: [], turn: {}, pending: [], mail: [] };
+const EMPTY = {
+  devices: [], invitations: [], rooms: [], broken: [], turn: {}, pending: [], mail: [], moments: null,
+};
 /** How long a pairing code waits for the other phone, at most. */
 const AWAIT_HOURS = Number(process.env.AWAIT_HOURS || 24);
 /** How long a broken room is remembered, for the side that has not heard. */
@@ -88,6 +90,7 @@ export function read() {
       turn: parsed.turn && typeof parsed.turn === 'object' ? parsed.turn : {},
       pending: Array.isArray(parsed.pending) ? parsed.pending : [],
       mail: Array.isArray(parsed.mail) ? parsed.mail : [],
+      moments: parsed.moments && typeof parsed.moments === 'object' ? parsed.moments : null,
     };
     return cached;
   } catch {
@@ -540,4 +543,29 @@ export function takeMail({ pub = '', room = '' } = {}) {
   data.pending = data.pending.filter((x) => !rooms.has(x.room));
   write(data);
   return items.map((x) => ({ room: x.room, payload: x.payload }));
+}
+
+/**
+ * The moments, across a restart of the server.
+ *
+ * Since when each phone is in its state, and when and how each one
+ * left, live in memory: a restart used to forget them, and a phone
+ * waiting since 17:32 came back from it "waiting since 18:41", the
+ * moment the server was up again. So on the way out they are written
+ * here, and read back - and taken away - on the way in.
+ *
+ * @param {{ saved: number, states: object[], departed: object[] }} moments
+ */
+export function saveMoments(moments) {
+  const data = read();
+  write({ ...data, moments });
+}
+
+/** What the last shutdown wrote, once: it is gone from the file after. */
+export function takeMoments() {
+  const data = read();
+  if (!data.moments) return null;
+  const { moments } = data;
+  write({ ...data, moments: null });
+  return moments;
 }

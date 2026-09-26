@@ -509,12 +509,13 @@ try {
   const missed = await kk1.expect('knock-result');
   check(missed.ok === false && missed.error === 'peer-offline',
     'knocking into the hole: told honestly there is nobody');
+  const returnedAt = Date.now();
   kk2b.send({ type: 'join', key: KEY, room: 'gracek', name: 'K2', side: 'B', mode: 'listening' });
   await kk2b.expect('joined');
   const held = await kk2b.expect('notify');
   check(held.reason === 'knock' && held.name === 'K1',
     'and the knock is waiting for them on their return');
-  check(typeof held.at === 'number' && Date.now() - held.at > 0,
+  check(typeof held.at === 'number' && held.at <= returnedAt,
     'with the moment it was made, not the moment it is delivered');
   kk1.close(); kk2b.close();
 
@@ -591,6 +592,55 @@ try {
   // The server is restarted with a list of allowed phones: from that
   // moment the door is a signature, and the word of the house counts
   // for nothing.
+  // --- the moments survive a restart ------------------------------------------
+  // A phone waiting since 17:32 came back from a restart of the server
+  // "waiting since 18:41". The server writes the moments on the way
+  // out and reads them back on the way in.
+  {
+    const PORTR = 8796;
+    const FILER = `${tmpdir()}/duetto-restart-${process.pid}.json`;
+    const start = () => spawn('node', ['src/index.js'], {
+      env: {
+        ...process.env, PORT: String(PORTR), HOST: '127.0.0.1', SERVER_KEY: KEY,
+        DEVICES_FILE: FILER, PEER_LEFT_GRACE_MS: String(GRACE_MS),
+      },
+      stdio: ['ignore', 'ignore', 'inherit'],
+    });
+    const r1 = start();
+    await wait(600);
+    const x = client(PORTR);
+    await x.open();
+    x.send({ type: 'join', key: KEY, room: 'restart', name: 'X', side: 'A', mode: 'listening' });
+    const xFirst = await x.expect('joined');
+    const y = client(PORTR);
+    await y.open();
+    y.send({ type: 'join', key: KEY, room: 'restart', name: 'Y', side: 'B', mode: 'listening' });
+    await y.expect('joined');
+    await wait(300);
+    const gone1 = new Promise((r) => r1.once('exit', r));
+    r1.kill('SIGTERM');
+    await gone1;
+    const r2 = start();
+    await wait(600);
+    const x2 = client(PORTR);
+    await x2.open();
+    x2.send({ type: 'join', key: KEY, room: 'restart', name: 'X', side: 'A', mode: 'listening' });
+    const xAgain = await x2.expect('joined');
+    check(xAgain.since === xFirst.since,
+      'after a restart of the server, a phone in the same state keeps its moment');
+    const y2 = client(PORTR);
+    await y2.open();
+    y2.send({ type: 'join', key: KEY, room: 'restart', name: 'Y', side: 'B', mode: 'active' });
+    const yAgain = await y2.expect('joined');
+    check(yAgain.peerSince === xFirst.since, 'and the other is told the old moment');
+    check(yAgain.since > xFirst.since, 'while one that came back in another state starts again');
+    x2.close(); y2.close();
+    const gone2 = new Promise((r) => r2.once('exit', r));
+    r2.kill('SIGTERM');
+    await gone2;
+    try { unlinkSync(FILER); } catch { /* never written */ }
+  }
+
   // On the way out, it must leave on its own feet even with sockets
   // still open: a shutdown that waits for everybody's close handshake
   // can wait for ever.

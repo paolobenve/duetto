@@ -45,7 +45,7 @@ import {
 import {
   addInvitation, adopt, isBroken, markBroken, noteGuest, noteRoom, mayOpen, read, refresh,
   remove as removePerson, removeInvitation, removeRoom, roomOf, useInvitation,
-  awaitRoom, pendingRoom, dropPending, leaveMail, takeMail,
+  awaitRoom, pendingRoom, dropPending, leaveMail, takeMail, saveMoments, takeMoments,
 } from './devices.js';
 import { credentialsFor as turnCredentials, drop as dropTurn } from './turn.js';
 
@@ -492,6 +492,45 @@ const returning = new Map();
 const departed = new Map();
 
 /** The other side's departure, for whoever is on `side`; null if none is known. */
+/**
+ * The states the last shutdown left behind, per room and side, for the
+ * phones coming back after a restart: whoever rejoins in the same state
+ * within RESUME_MS carries on from its old moment. Past that it counts
+ * as an ordinary return, and the moment starts again.
+ *
+ * @type {Map<string, { mode: string, since: number }>}
+ */
+const resumable = new Map();
+const RESUME_MS = ms(process.env.RESUME_MS, 10 * 60_000);
+let resumableUntil = 0;
+{
+  const saved = takeMoments();
+  if (saved && Date.now() - Number(saved.saved) < RESUME_MS) {
+    resumableUntil = Number(saved.saved) + RESUME_MS;
+    for (const st of saved.states ?? []) {
+      if (st?.room && st?.side && st?.mode && Number(st.since) > 0) {
+        resumable.set(`${st.room}\n${st.side}`, { mode: st.mode, since: Number(st.since) });
+      }
+    }
+    for (const d of saved.departed ?? []) {
+      if (d?.key && Number(d.at) > 0) {
+        departed.set(d.key, { at: Number(d.at), reason: d.reason === 'bye' ? 'bye' : 'dropped' });
+      }
+    }
+    console.log(`[duetto] moments from before the restart: ${resumable.size} state(s), `
+      + `${departed.size} departure(s)`);
+  }
+}
+
+/** What was left before a restart for this side, taken once. */
+function resumeFor(roomId, side) {
+  if (!side || Date.now() > resumableUntil) return null;
+  const key = `${roomId}\n${side}`;
+  const st = resumable.get(key);
+  resumable.delete(key);
+  return st ?? null;
+}
+
 function goneFor(roomId, side) {
   if (side !== 'A' && side !== 'B') return null;
   return departed.get(`${roomId}\n${side === 'A' ? 'B' : 'A'}`) ?? null;
@@ -1077,7 +1116,9 @@ wss.on('connection', (ws, req) => {
       // Since when this phone is in this state. A phone coming back on
       // a fresh socket - a change of network - in the state it had is
       // not starting anything: it carries on.
-      if (!before && side) before = returning.get(`${roomId}\n${side}`) ?? null;
+      if (!before && side) {
+        before = returning.get(`${roomId}\n${side}`) ?? resumeFor(roomId, side);
+      }
       ws.since = before && before.mode === ws.mode && before.since ? before.since : Date.now();
       // Its own departure is over: it is here.
       if (side) departed.delete(`${roomId}\n${side}`);
@@ -1707,6 +1748,21 @@ httpServer.listen(PORT, HOST, () => {
 for (const sig of ['SIGINT', 'SIGTERM']) {
   process.on(sig, () => {
     console.log(`\n[duetto] ${sig}, shutting down...`);
+    // Before the sockets close: closing them writes departures of
+    // their own, which are not true - it is the server leaving.
+    const states = [];
+    for (const [room, set] of rooms) {
+      for (const ws of set) {
+        if (ws.side && ws.mode && ws.since) {
+          states.push({ room, side: ws.side, mode: ws.mode, since: ws.since });
+        }
+      }
+    }
+    saveMoments({
+      saved: Date.now(),
+      states,
+      departed: [...departed].map(([key, d]) => ({ key, ...d })),
+    });
     for (const ws of wss.clients) ws.close(1001, 'server-shutdown');
     httpServer.close(() => process.exit(0));
     // A client that never finishes its close handshake would keep the
