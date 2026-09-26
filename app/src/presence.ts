@@ -365,6 +365,9 @@ const log = logger('[duetto-presence]');
  * until a screen came on. Now the second caller waits for the first.
  */
 let starting: Promise<boolean> | null = null;
+/** the refusal for being unavailable is journaled once, not at every try */
+let saidUnavailable = false;
+
 export function startListening(): Promise<boolean> {
   if (signaling) return Promise.resolve(true);
   if (starting) return starting;
@@ -378,6 +381,22 @@ async function listenNow(): Promise<boolean> {
     log('the app already has its own connection: not opening another');
     return false;
   }
+  /**
+   * Unavailable by choice: nothing starts.
+   *
+   * Every road back to listening - the reboot, the watchdog alarm, the
+   * handover - read the choice on its own, except the idle net, which
+   * put the presence back on its feet fourteen seconds after somebody
+   * had asked to be out of reach. Asked here, it holds for every road,
+   * the ones still to come too.
+   */
+  if (!(await Foreground.isAvailable().catch(() => true))) {
+    // Once: the idle net asks again every five minutes.
+    if (!saidUnavailable) Journal.mark('presence:skipped:unavailable').catch(() => { /* noop */ });
+    saidUnavailable = true;
+    return false;
+  }
+  saidUnavailable = false;
 
   const cfg = await loadConfig();
   // Here too, before the first line: the headless side has settings of

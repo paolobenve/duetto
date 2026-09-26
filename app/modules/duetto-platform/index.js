@@ -88,6 +88,8 @@ export const Foreground = isAndroid && NativeForeground
        * erase it.
        */
       setAvailable: (v) => call(NativeForeground, 'setAvailable', !!v),
+      /** that choice, read back */
+      isAvailable: () => call(NativeForeground, 'isAvailable'),
 
       /**
        * Whether the watchdog alarm has anything to watch over: false
@@ -171,6 +173,7 @@ export const Foreground = isAndroid && NativeForeground
       setCameraActive: unavailable,
       setInChannel: unavailable,
       setAvailable: unavailable,
+      isAvailable: () => Promise.resolve(true),
       watchdogWanted: unavailable,
       setText: unavailable,
       stop: unavailable,

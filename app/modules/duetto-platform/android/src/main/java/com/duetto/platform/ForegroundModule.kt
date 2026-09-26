@@ -139,6 +139,12 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
         promise.resolve(true)
     }
 
+    /** The same choice, read back: the presence asks before starting. */
+    @ReactMethod
+    fun isAvailable(promise: Promise) {
+        promise.resolve(WatchdogAlarm.available(ctx))
+    }
+
     /**
      * Whether there is anything for the watchdog alarm to watch over:
      * false while no pair is set up, true again the moment one is.
