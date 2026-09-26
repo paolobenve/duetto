@@ -1715,7 +1715,7 @@ export default function ChannelScreen(props: Props) {
                   onPressIn={markDown}
                   onPress={(e) => { signTouch('leave-detach-no', e); setLeaveMenu(false); }}>
                   <View style={styles.sheetText}>
-                    <Text style={styles.sheetLabel}>
+                    <Text style={styles.sheetAnswer}>
                       {entered !== false
                         ? t('channel.detachConfirmStay')
                         : t('channel.detachConfirmStayWaiting')}
@@ -1733,7 +1733,7 @@ export default function ChannelScreen(props: Props) {
                     onLeave(false);
                   }}>
                   <View style={styles.sheetText}>
-                    <Text style={styles.sheetLabel}>{t('channel.detachConfirmYes')}</Text>
+                    <Text style={styles.sheetAnswer}>{t('channel.detachConfirmYes')}</Text>
                   </View>
                 </TouchableOpacity>
               </>
@@ -1790,7 +1790,7 @@ export default function ChannelScreen(props: Props) {
                 onPressIn={markDown}
                 onPress={(e) => { signTouch('leave-cancel', e); setLeaveMenu(false); }}>
                 <View style={styles.sheetText}>
-                  <Text style={styles.sheetLabel}>{t('channel.stayInChannel')}</Text>
+                  <Text style={styles.sheetAnswer}>{t('channel.stayInChannel')}</Text>
                 </View>
               </TouchableOpacity>
             )}
@@ -2714,6 +2714,12 @@ const styles = StyleSheet.create({
   },
   sheetIcon: { fontSize: 20 },
   sheetLabel: { color: '#c9d2de', fontSize: 17, flex: 1 },
+  /**
+   * A label alone in its row. The one above grows to fill what is left
+   * (flex: 1) and, with no note under it to give the row a height, it
+   * was given none: the buttons stood there empty.
+   */
+  sheetAnswer: { color: '#c9d2de', fontSize: 17 },
   sheetText: { flex: 1 },
   sheetNote: { color: '#6b7686', fontSize: 12.5, marginTop: 2 },
   sheetBody: { color: '#c9d1dc', fontSize: 14, lineHeight: 20, marginBottom: 10 },
