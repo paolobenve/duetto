@@ -20,7 +20,7 @@ import QrCode from './QrCode';
 import type { LanguageChoice } from './i18n';
 import {
   isPaired, opensHere, displayServer, VIDEO_PROFILES,
-  pairName, peerShown,
+  pairName, peerShown, CUE_GAIN,
 } from './config';
 import { peerAvatar } from './avatar';
 import { isRealName } from './presence';
@@ -890,6 +890,29 @@ export default function SettingsScreen({
               </Text>
               <Text style={styles.choiceNote}>
                 {t(v === 'earpiece' ? 'settings.outputOnEntryEarNote' : 'settings.outputOnEntryAsLeftNote')}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+
+        {/* How loud the cues are. Touching a step plays one at that
+            volume: it is chosen by ear, and the stream they use has no
+            slider of its own to look at. */}
+        <Text style={styles.sectionHint}>{t('settings.cueVolume')}</Text>
+        <Text style={styles.hint}>{t('settings.cueVolumeNote')}</Text>
+        {(['off', 'veryLow', 'low', 'medium', 'high'] as const).map((v) => (
+          <TouchableOpacity
+            key={v}
+            style={[styles.choice, (cfg.cueVolume ?? 'veryLow') === v && styles.choicePicked]}
+            onPress={() => {
+              setCfg({ ...cfg, cueVolume: v });
+              onLive?.({ cueVolume: v });
+              if (CUE_GAIN[v] > 0) Alarm.play('cue_enter', true, 0, CUE_GAIN[v]).catch(() => {});
+            }}>
+            <View style={[styles.radio, (cfg.cueVolume ?? 'veryLow') === v && styles.radioPicked]} />
+            <View style={styles.choiceText}>
+              <Text style={styles.choiceLabel}>
+                {t(`settings.cue${v[0].toUpperCase()}${v.slice(1)}`)}
               </Text>
             </View>
           </TouchableOpacity>

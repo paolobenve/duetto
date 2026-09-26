@@ -27,6 +27,7 @@ import {
   isServerConfigured, isPaired, displayServer, opensHere, VIDEO_PROFILES,
   addPair, switchToPair, forgetPair, markPairBroken, rememberPeerName,
   alertSoundFor, alignPairServer, renamePair, pairFileKey, pairName, peerShown, namePeer,
+  CUE_GAIN,
   storeSettingsInPair,
 } from './config';
 import { Signaling, PresenceStatus } from './signaling';
@@ -276,7 +277,15 @@ const KNOCK_ECHO_MS = 2_000;
  * the touch, over there when the change arrives. On the voice's own
  * stream, quiet, as the knock's echo is: a cue, not an alarm.
  */
-const cue = (name: string) => { Alarm.play(name, true).catch(() => { /* noop */ }); };
+/**
+ * How loud, as the settings say: a share of the stream they come out
+ * of. Kept here, beside the one function that plays them, and set by
+ * the effect that follows the configuration.
+ */
+let cueGain = CUE_GAIN.veryLow;
+const cue = (name: string) => {
+  if (cueGain > 0) Alarm.play(name, true, 0, cueGain).catch(() => { /* noop */ });
+};
 
 /**
  * How long one may stay without a server before rebuilding everything.
@@ -1550,6 +1559,8 @@ export default function App() {
   const connectionName = cfg?.pair?.label || '';
   /** the same, for the message handlers, which are born once */
   const channelRef = useRef(connectionName);
+  useEffect(() => { cueGain = CUE_GAIN[cfg?.cueVolume ?? 'veryLow'] ?? CUE_GAIN.veryLow; },
+    [cfg?.cueVolume]);
   useEffect(() => { channelRef.current = connectionName; }, [connectionName]);
 
   /**
@@ -4226,7 +4237,7 @@ export default function App() {
     // at full volume it would go straight into one's own microphone and
     // come back to the other person doubled, on top of what is already
     // playing over there.
-    Alarm.play(sound, true).catch(() => {});
+    if (cueGain > 0) Alarm.play(sound, true, 0, cueGain).catch(() => {});
     Journal.mark(`alarm-sent:${sound}`).catch(() => {});
   }, []);
 
@@ -4719,7 +4730,7 @@ export default function App() {
           // leaves towards a phone far away and from here nothing would
           // be heard - the button just blinks. Knowing that it left is
           // worth as much as sending it.
-          Alarm.play('knock', true, KNOCK_ECHO_MS).catch(() => {});
+          if (cueGain > 0) Alarm.play('knock', true, KNOCK_ECHO_MS, cueGain).catch(() => {});
           Journal.mark('knock').catch(() => {});
         }}
         onLeave={leaveChannel}

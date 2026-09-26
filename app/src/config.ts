@@ -21,6 +21,12 @@ import { fromItalianStorage } from './legacy';
  *    settled it stays for good: the code is of no further use.
  */
 
+/** The steps of the cues' volume, and what each is worth. */
+export type CueVolume = 'off' | 'veryLow' | 'low' | 'medium' | 'high';
+export const CUE_GAIN: Record<CueVolume, number> = {
+  off: 0, veryLow: 0.08, low: 0.15, medium: 0.33, high: 0.6,
+};
+
 export type PairInfo = {
   /** the code's fingerprint: the only thing the server gets to see */
   id: string;
@@ -327,6 +333,13 @@ export type DuoConfig = {
    */
   shortPackets: boolean;
   /**
+   * How loud the cues are - video, microphone, camera, coming in and
+   * going out - and the echo of a sound one sends: a share of the
+   * stream they come out of. They were a fixed third, and on some
+   * phones a third of that stream is very loud indeed.
+   */
+  cueVolume: CueVolume;
+  /**
    * The microphone on entering the channel: as it was left the last
    * time, or always off, so that going in never means being heard
    * before one meant to. Per connection, like the rest.
@@ -511,6 +524,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   videoQuality: 'better',
   richerAudio: false,
   shortPackets: false,
+  cueVolume: 'veryLow',
   micOnEntry: 'asLeft',
   diagnostics: false,
   delayTotalOnly: false,
