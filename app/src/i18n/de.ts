@@ -79,7 +79,7 @@ export const de: Dictionary = {
   },
 
   death: {
-    theOther: 'Das andere Telefon',
+    theOther: 'Die andere Person',
     outOfMemory: 'dem Telefon ging der Speicher aus',
     crashed: 'die App lief auf einen Fehler',
     frozen: 'die App hing fest',
@@ -100,7 +100,7 @@ export const de: Dictionary = {
   presence: {
     enter: 'Eintreten',
     wait: 'In Bereitschaft gehen',
-    theOther: 'das andere Telefon',
+    theOther: 'die andere Person',
     inChannel: 'Du bist im Kanal{channel}{when}',
     waiting: 'In Bereitschaft{channel}{when}',
     bothWaiting: 'Beide in Bereitschaft{channel}',

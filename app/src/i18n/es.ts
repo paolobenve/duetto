@@ -79,7 +79,7 @@ export const es: Dictionary = {
   },
 
   death: {
-    theOther: 'El otro teléfono',
+    theOther: 'El otro',
     outOfMemory: 'el teléfono se quedó sin memoria',
     crashed: 'la app dio un error',
     frozen: 'la app se había quedado colgada',

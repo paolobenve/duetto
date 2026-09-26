@@ -87,7 +87,7 @@ export const en = {
   },
 
   death: {
-    theOther: 'The other phone',
+    theOther: 'The other',
     outOfMemory: 'the phone had run out of memory',
     crashed: 'the app hit an error',
     frozen: 'the app had frozen',
@@ -111,7 +111,7 @@ export const en = {
   presence: {
     enter: 'Enter',
     wait: 'Go to waiting',
-    theOther: 'the other phone',
+    theOther: 'the other',
     inChannel: 'You are in the channel{channel}{when}',
     waiting: 'Waiting{channel}{when}',
     bothWaiting: 'Both waiting{channel}',
