@@ -421,8 +421,34 @@ try {
   v2.send({ type: 'bye' });
   const saidBye = await v1.expect('peer-left');
   check(saidBye.reason === 'bye', 'whoever says goodbye is announced as gone, not as dropped');
+  check(typeof saidBye.at === 'number' && Date.now() - saidBye.at < 5000,
+    'and with the moment it happened');
 
-  v1.close(); v2.close();
+  // Whoever comes in afterwards learns when, and how, the other left.
+  v1.close();
+  await new Promise((r) => setTimeout(r, 200));
+  const v1b = client();
+  await v1b.open();
+  v1b.send({ type: 'join', key: KEY, room: 'goodbyes', name: 'V1', side: 'A', mode: 'listening' });
+  const back = await v1b.expect('joined');
+  check(back.peerPresent === false && back.peerGone?.reason === 'bye'
+    && back.peerGone?.at === saidBye.at,
+    'coming back, one learns the other said goodbye, and when');
+
+  // And one who is there says since when it is in its state.
+  const v2b = client();
+  await v2b.open();
+  v2b.send({ type: 'join', key: KEY, room: 'goodbyes', name: 'V2', side: 'B', mode: 'listening' });
+  const met = await v2b.expect('joined');
+  check(typeof met.peerSince === 'number' && met.peerGone === undefined,
+    'finding the other there, one learns since when');
+  const joinedV2 = await v1b.expect('peer-joined');
+  check(typeof joinedV2.since === 'number', 'and whoever arrives is announced with its moment');
+  v2b.send({ type: 'mode', mode: 'active' });
+  const moved = await v1b.expect('peer-mode');
+  check(typeof moved.since === 'number' && moved.since >= joinedV2.since,
+    'a change of state carries its moment');
+  v1b.close(); v2b.close();
 
   // --- a drop followed by a quick return is never announced -------------------
   // A drop is usually a change of network: the same phone is back within

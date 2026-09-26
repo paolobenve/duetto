@@ -465,12 +465,39 @@ function peersOf(roomId, exclude) {
  * Keyed by room and side, because the side is the device: whatever
  * socket it comes back on, it is the same phone returning.
  *
- * @type {Map<string, { timer: NodeJS.Timeout, peerId: string, knocks: string[] }>}
+ * @type {Map<string, { timer: NodeJS.Timeout, peerId: string, knocks: string[],
+ *   mode?: string, since?: number }>}
  */
 const returning = new Map();
+
+/**
+ * The last departure from each room: which side, when, and how.
+ *
+ * Whoever connects and finds the other one gone used to learn only
+ * that: gone. When, and whether by a goodbye or a dropped line, was
+ * known to the phone that had watched it happen and to nobody else - a
+ * phone that came back after a restart said "unreachable" about
+ * somebody who had disconnected on purpose, and could say no time at
+ * all. The server saw the moment: it keeps it, and tells it.
+ *
+ * In memory: a restart of the server forgets it, and then the phones
+ * simply say no time, as they did before.
+ *
+ * Keyed by room and side, like `returning`: both may be away, and each
+ * wants to hear about the other.
+ *
+ * @type {Map<string, { at: number, reason: 'bye'|'dropped' }>}
+ */
+const departed = new Map();
+
+/** The other side's departure, for whoever is on `side`; null if none is known. */
+function goneFor(roomId, side) {
+  if (side !== 'A' && side !== 'B') return null;
+  return departed.get(`${roomId}\n${side === 'A' ? 'B' : 'A'}`) ?? null;
+}
 const GRACE_MS = ms(process.env.PEER_LEFT_GRACE_MS, 4000);
 
-function holdDeparture(roomId, ws) {
+function holdDeparture(roomId, ws, at) {
   const key = `${roomId}\n${ws.side}`;
   const held = returning.get(key);
   if (held) clearTimeout(held.timer);
@@ -482,11 +509,16 @@ function holdDeparture(roomId, ws) {
     const set = rooms.get(roomId);
     if (!set) return;
     for (const peer of set) {
-      send(peer, { type: 'peer-left', peerId: ws.peerId, reason: 'dropped' });
+      send(peer, { type: 'peer-left', peerId: ws.peerId, reason: 'dropped', at });
     }
   }, GRACE_MS);
   timer.unref?.();
-  returning.set(key, { timer, peerId: ws.peerId, knocks: held?.knocks ?? [] });
+  returning.set(key, {
+    timer, peerId: ws.peerId, knocks: held?.knocks ?? [],
+    // What they were doing and since when: coming back within the
+    // grace, in the same state, they carry on from where they were.
+    mode: ws.mode, since: ws.since,
+  });
 }
 
 function leaveRoom(ws) {
@@ -502,16 +534,20 @@ function leaveRoom(ws) {
   // taken once more, and announcing it would bring the good connection
   // down.
   if (!ws.replaced) {
+    const at = Date.now();
+    if (ws.side) {
+      departed.set(`${roomId}\n${ws.side}`, { at, reason: ws.saidBye ? 'bye' : 'dropped' });
+    }
     // The reason changes what the other one has to do: whoever said
     // goodbye has really gone, and their picture can disappear at once;
     // whoever dropped is most likely changing network and will be back
     // within seconds - so their departure is held a moment (see
     // `returning`), and only announced if they really stay away.
     if (!ws.saidBye && ws.side) {
-      holdDeparture(roomId, ws);
+      holdDeparture(roomId, ws, at);
     } else {
       const reason = ws.saidBye ? 'bye' : 'dropped';
-      for (const peer of set) send(peer, { type: 'peer-left', peerId: ws.peerId, reason });
+      for (const peer of set) send(peer, { type: 'peer-left', peerId: ws.peerId, reason, at });
     }
   }
   if (set.size === 0) rooms.delete(roomId);
@@ -1008,9 +1044,12 @@ wss.on('connection', (ws, req) => {
       // were a third device, until the heartbeat notices the dead
       // connection: up to a minute of "pair full" for no reason.
       const side = msg.side === 'A' || msg.side === 'B' ? msg.side : null;
+      /** the same phone's state a moment ago, if it is coming back */
+      let before = null;
       if (side) {
         for (const peer of [...set]) {
           if (peer.side === side) {
+            before = { mode: peer.mode, since: peer.since };
             peer.replaced = true;
             send(peer, { type: 'error', error: 'replaced' });
             try { peer.close(4005, 'replaced'); } catch { /* noop */ }
@@ -1034,6 +1073,13 @@ wss.on('connection', (ws, req) => {
       ws.joined = true;
       ws.name = cleanName(msg.name);
       ws.mode = MODES.includes(msg.mode) ? msg.mode : 'listening';
+      // Since when this phone is in this state. A phone coming back on
+      // a fresh socket - a change of network - in the state it had is
+      // not starting anything: it carries on.
+      if (!before && side) before = returning.get(`${roomId}\n${side}`) ?? null;
+      ws.since = before && before.mode === ws.mode && before.since ? before.since : Date.now();
+      // Its own departure is over: it is here.
+      if (side) departed.delete(`${roomId}\n${side}`);
       // One line per coming and going, for the questions of the day
       // after: "when did they disappear?". The room by its first
       // figures only: the log is not the place for a whole code.
@@ -1065,6 +1111,9 @@ wss.on('connection', (ws, req) => {
         peerPresent: !!other,
         peerActive: other ? other.mode === 'active' : false,
         peerName: other ? other.name : '',
+        // Since when the other is in its state, or when and how it left.
+        peerSince: other ? other.since : undefined,
+        peerGone: other ? undefined : goneFor(roomId, side) ?? undefined,
       });
 
       // The mail: what the other half of a code handed over as a link
@@ -1095,6 +1144,7 @@ wss.on('connection', (ws, req) => {
           peerId: ws.peerId,
           name: ws.name,
           mode: ws.mode,
+          since: ws.since,
         });
         // Having just told whoever comes in that the other is there, it
         // is worth making sure it is true, instead of waiting for the
@@ -1115,8 +1165,9 @@ wss.on('connection', (ws, req) => {
       if (!next || next === ws.mode) return;
       const before = ws.mode;
       ws.mode = next;
+      ws.since = Date.now();
       for (const peer of peersOf(ws.roomId, ws)) {
-        send(peer, { type: 'peer-mode', mode: next, name: ws.name });
+        send(peer, { type: 'peer-mode', mode: next, name: ws.name, since: ws.since });
         if (next === 'active') checkPresence(peer);
         // Only the transition that counts is notified: somebody HAS COME
         // INTO the channel while the other was merely listening.
@@ -1252,6 +1303,8 @@ wss.on('connection', (ws, req) => {
         peerPresent: !!other,
         peerActive: other ? other.mode === 'active' : false,
         peerName: other ? other.name : '',
+        peerSince: other ? other.since : undefined,
+        peerGone: other ? undefined : goneFor(ws.roomId, ws.side) ?? undefined,
       });
       if (other) checkPresence(other);
       return;
