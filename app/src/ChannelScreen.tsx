@@ -159,6 +159,9 @@ const loudness = (db: number) => 100 * 2 ** (db / 10);
 /** The rungs, at round loudness, every quarter of the phone's own top. */
 const LOUD_RUNGS = [25, 50, 75, 100, 125, 150, 175, 200, 225];
 
+/** What the volume scale takes from the right edge, with air on both sides. */
+const SCALE_ROOM = 8 + 72 + 8;
+
 function VolumeScale(p: {
   level: number; phone: number; ceiling: number; min: number; max: number;
   pct: number; muted: boolean;
@@ -1207,6 +1210,7 @@ export default function ChannelScreen(props: Props) {
           />
         ) : (
           <PresenceCard
+            clearOfScale={!!levelDb}
             entered={entered}
             onEnter={onEnter}
             openInto={openInto}
@@ -1271,7 +1275,9 @@ export default function ChannelScreen(props: Props) {
         not the words.
       */}
       {!compact && onlyBig && status === 'alone' && !notice ? (
-        <Animated.View style={[styles.waitOver, { opacity }]} pointerEvents="none">
+        <Animated.View
+          style={[styles.waitOver, levelDb ? styles.waitOverClear : null, { opacity }]}
+          pointerEvents="none">
           <Text style={styles.waitText}>
             {t('channel.youAreInChannel')}{'\n'}
             {peerStatusLine(peerName, peerPresent, peerDetached)}
@@ -1938,6 +1944,8 @@ function PresenceMini(props: {
 }
 
 function PresenceCard(props: {
+  /** the volume scale stands at the right edge: the words keep clear of it */
+  clearOfScale?: boolean;
   status: PresenceStatus;
   entered?: boolean;
   onEnter?: () => void;
@@ -1972,7 +1980,7 @@ function PresenceCard(props: {
 
   if (status === 'connecting') {
     return (
-      <View style={styles.card}>
+      <View style={[styles.card, props.clearOfScale && styles.cardClear]}>
         <ActivityIndicator size="large" color="#2f7cf6" />
         <Text style={styles.cardTitle}>{t('channel.connectingToChannel')}</Text>
       </View>
@@ -1984,7 +1992,7 @@ function PresenceCard(props: {
   // "establishing" that never ends: the door, and one touch opens it.
   if (props.entered === false) {
     return (
-      <View style={styles.card}>
+      <View style={[styles.card, props.clearOfScale && styles.cardClear]}>
         <Text style={styles.cardTitle}>{t('channel.notEntered')}</Text>
         <Text style={styles.cardSub}>
           {peerPresent
@@ -2011,7 +2019,7 @@ function PresenceCard(props: {
 
   if (status === 'offline') {
     return (
-      <View style={styles.card}>
+      <View style={[styles.card, props.clearOfScale && styles.cardClear]}>
         <Text style={styles.avatarGhost}>{'\u{1F4F6}'}</Text>
         <Text style={styles.cardTitle}>{t('channel.serverUnreachable')}</Text>
         <Text style={styles.cardSub}>{t('channel.retryingAutomatically')}</Text>
@@ -2021,7 +2029,7 @@ function PresenceCard(props: {
 
   if (status === 'alone') {
     return (
-      <View style={styles.card}>
+      <View style={[styles.card, props.clearOfScale && styles.cardClear]}>
         <PeerFace name={peerName} avatar={peerAvatar} live={false} />
         <Text style={styles.cardTitle}>
           {t('channel.youAreInChannelShort')}
@@ -2065,7 +2073,7 @@ function PresenceCard(props: {
   }
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, props.clearOfScale && styles.cardClear]}>
       <PeerFace name={peerName} avatar={peerAvatar} live />
       <Text style={styles.cardTitle}>
         {t('channel.peerInChannel', { who: peerName || t('channel.theOther') })}
@@ -2476,6 +2484,12 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#0b0e14' },
 
   card: { alignItems: 'center', paddingHorizontal: 32 },
+  /**
+   * With the volume scale at the right edge - 72 points, 8 from the
+   * edge - the words used to run under it. The same room on both sides,
+   * so that they stay in the middle.
+   */
+  cardClear: { paddingHorizontal: SCALE_ROOM },
   avatar: {
     width: 108, height: 108, borderRadius: 54,
     alignItems: 'center', justifyContent: 'center', marginBottom: 20, borderWidth: 3,
@@ -2605,6 +2619,7 @@ const styles = StyleSheet.create({
     position: 'absolute', left: 0, right: 0, top: '42%',
     alignItems: 'center', paddingHorizontal: 24,
   },
+  waitOverClear: { paddingHorizontal: SCALE_ROOM },
   waitText: {
     color: '#e6ebf1', fontSize: 15, textAlign: 'center', lineHeight: 21,
     backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 20,
