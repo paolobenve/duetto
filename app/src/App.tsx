@@ -285,6 +285,9 @@ const KNOCK_ECHO_MS = 2_000;
 let cueGain = CUE_GAIN.veryLow;
 /** how long the other's leaving waits, in case a goodbye follows it */
 const LEAVE_CUE_WAIT_MS = 1000;
+/** how long one's own leaving cues last: the call's audio waits for them */
+const LEAVE_CUE_MS = 1300;
+const DETACH_CUE_MS = 1500;
 const cue = (name: string) => {
   if (cueGain > 0) Alarm.play(name, true, 0, cueGain).catch(() => { /* noop */ });
 };
@@ -1561,6 +1564,32 @@ export default function App() {
   const connectionName = cfg?.pair?.label || '';
   /** the same, for the message handlers, which are born once */
   const channelRef = useRef(connectionName);
+  /**
+   * The call's audio, taken down after one's own leaving cue is heard.
+   *
+   * Leaving played its cue and took the audio down in the same instant:
+   * the phone left "communication" mode, and the cue - which comes out
+   * of that very mode's signalling stream - was cut or thrown elsewhere
+   * halfway. Everything else goes at once - microphone, connection, the
+   * word to the other side, the window - and only the mode waits for
+   * the cue to end. Coming back in within that moment calls it off.
+   */
+  const audioTailUntil = useRef(0);
+  const audioDownTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stopCallAudio = () => {
+    if (audioDownTimer.current) { clearTimeout(audioDownTimer.current); audioDownTimer.current = null; }
+    const wait = audioTailUntil.current - Date.now();
+    if (wait <= 0) {
+      try { InCallManager.stop(); } catch { /* noop */ }
+      return;
+    }
+    audioDownTimer.current = setTimeout(() => {
+      audioDownTimer.current = null;
+      if (inChannelRef.current) return;
+      try { InCallManager.stop(); } catch { /* noop */ }
+    }, wait);
+  };
+
   /** the other's leaving, waiting to be heard: see onPeerMode */
   const leaveCueDue = useRef<ReturnType<typeof setTimeout> | null>(null);
   const forgetLeaveCue = () => {
@@ -3191,7 +3220,7 @@ export default function App() {
         Foreground.setInChannel(false).catch(() => {});
       }
       closeLane('torn-down');
-      try { InCallManager.stop(); } catch { /* noop */ }
+      stopCallAudio();
       Audio.claimVolumeKeys(false).catch(() => {});
     };
     // attachPeer is stable: it only uses refs. `cfg` is read from the
@@ -3486,6 +3515,9 @@ export default function App() {
     // long time, and during that wait there is nothing to send.
     setAudioOn(sessionRef.current.isAudioEnabled());
 
+    // Back in before the last leaving's audio came down: it stays up.
+    if (audioDownTimer.current) { clearTimeout(audioDownTimer.current); audioDownTimer.current = null; }
+    audioTailUntil.current = 0;
     try {
       InCallManager.start({ media: 'audio' });
       // InCallManager, like a phone app in a call, sets "keep the
@@ -3761,8 +3793,12 @@ export default function App() {
    *   us off - and there is something on the screen to read.
    */
   const leaveChannel = useCallback(async (stayAvailable = true, quiet = false) => {
-    // Said before the audio comes down: going out, or going out for good.
-    if (inChannelRef.current) cue(stayAvailable ? 'cue_leave' : 'cue_detach');
+    // Said before the audio comes down: going out, or going out for good
+    // - and the audio waits for it to end (see stopCallAudio).
+    if (inChannelRef.current && cueGain > 0) {
+      cue(stayAvailable ? 'cue_leave' : 'cue_detach');
+      audioTailUntil.current = Date.now() + (stayAvailable ? LEAVE_CUE_MS : DETACH_CUE_MS);
+    }
     await putAwayChannel(
       stayAvailable ? 'left-channel' : 'unavailable', cfg?.pair?.id,
     );
@@ -3770,7 +3806,7 @@ export default function App() {
     const sig = signalingRef.current;
     sessionRef.current?.leaveChannel();
     sessionRef.current = null;
-    try { InCallManager.stop(); } catch { /* noop */ }
+    stopCallAudio();
     Audio.claimVolumeKeys(false).catch(() => {});
     Foreground.setCameraActive(false).catch(() => {});
     // Waiting again: the wake lock goes, the watchdog alarm remains -
