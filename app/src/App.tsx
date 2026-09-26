@@ -807,6 +807,12 @@ export default function App() {
    */
   const [peerDetached, setPeerDetached] = useState(false);
   /**
+   * Since when the other person is in the state the notification tells
+   * - waiting, out of reach, disconnected - as the server saw it; 0
+   * when nobody knows, and then no time is said.
+   */
+  const [peerSince, setPeerSince] = useState(0);
+  /**
    * They are waiting because their phone closed the app on them.
    *
    * Worth telling apart: "waiting" suggests a choice of theirs, and on
@@ -1618,6 +1624,7 @@ export default function App() {
     peerPresent,
     detached: peerDetached,
     tornDown: peerTornDown,
+    since: peerSince,
     name: shownName,
     server: shownStatus === 'offline' ? 'down'
       : shownStatus === 'connecting' ? 'connecting' : 'ok',
@@ -1626,7 +1633,7 @@ export default function App() {
     // something else happened to move. It was masked - `shownStatus`
     // follows `status` a breath later and dragged the line along - but
     // masked is not cured.
-  }), [inChannel, status, shownStatus, peerPresent, peerDetached, peerTornDown, shownName,
+  }), [inChannel, status, shownStatus, peerPresent, peerDetached, peerTornDown, shownName, peerSince,
     // The words change with the language: the line is written again.
     cfg?.language]);
 
@@ -2645,7 +2652,14 @@ export default function App() {
 
           onJoined: ({
             peerPresent: present, peerActive, peerName: n, turn, stun, owner, opens, reports,
+            peerSince: since, peerGone,
           }) => {
+            // Found as they are: the server says since when, and if
+            // they are away, whether they said goodbye - a phone that
+            // comes back after a restart used to call "unreachable"
+            // somebody who had disconnected on purpose.
+            setPeerSince(present ? since : peerGone?.at ?? 0);
+            if (!present && peerGone) setPeerDetached(peerGone.reason === 'bye');
             setCanInvite(owner);
             setReportsOpen(reports);
             replacedWait.current = 3000;
@@ -2694,9 +2708,10 @@ export default function App() {
             }
           },
 
-          onPeerJoined: (n, mode) => {
+          onPeerJoined: (n, mode, since) => {
             Journal.mark(`peer-back:${mode === 'active' ? 'channel' : 'waiting'}`)
               .catch(() => { /* noop */ });
+            setPeerSince(since);
             setPeerPresent(true);
             setPeerDetached(false);
             noteName(n);
@@ -2707,7 +2722,8 @@ export default function App() {
             if (mode === 'active' && inChannelRef.current) { attachPeer(true); cue('cue_enter'); }
           },
 
-          onPeerLeft: (why) => {
+          onPeerLeft: (why, at) => {
+            setPeerSince(at);
             // Into the journal, because it is the question one asks
             // afterwards: "they disappeared - did they close it or did
             // they drop?". The notification says it on the spot to
@@ -2740,7 +2756,13 @@ export default function App() {
            * the chance to catch up instead of sitting in front of a
            * waiting screen while they wait for us.
            */
-          onPresence: ({ peerPresent: present, peerActive, peerName: n }) => {
+          onPresence: ({
+            peerPresent: present, peerActive, peerName: n, peerSince: since, peerGone,
+          }) => {
+            // An older server says no moment: then what we know stays.
+            const moment = present ? since : peerGone?.at ?? 0;
+            if (moment) setPeerSince(moment);
+            if (!present && peerGone) setPeerDetached(peerGone.reason === 'bye');
             // The server has answered: whatever doubt we had about the
             // socket, it is alive. It goes for the probe after a change
             // of network, for the heartbeat's own, and for the
@@ -2768,7 +2790,8 @@ export default function App() {
             }
           },
 
-          onPeerMode: (mode, n) => {
+          onPeerMode: (mode, n, since) => {
+            setPeerSince(since);
             if (n) noteName(n);
             peerActiveRef.current = mode === 'active';
             if (inChannelRef.current) cue(mode === 'active' ? 'cue_enter' : 'cue_leave');

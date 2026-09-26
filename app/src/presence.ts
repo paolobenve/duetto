@@ -363,11 +363,13 @@ async function listenNow(): Promise<boolean> {
   let present = false;
   let active = false;
   let detached = false;
+  /** since when they are in their state, as the server saw it; 0 = unknown */
+  let since = 0;
   let name = pair.peerName || '';
 
   const refresh = () => {
     Foreground.setText(presenceLine({
-      inChannel: false, peerActive: active, peerPresent: present, name, detached,
+      inChannel: false, peerActive: active, peerPresent: present, name, detached, since,
     }), connectionName, detached ? '' : 'enter',
     { enter: t('presence.enter'), wait: t('presence.wait') }).catch(() => { /* noop */ });
     // A stale alert is worse than no alert: "waiting for you in the
@@ -416,7 +418,9 @@ async function listenNow(): Promise<boolean> {
         Journal.mark('presence:replaced:stale').catch(() => { /* noop */ });
         stopListening();
       },
-      onJoined: ({ peerPresent, peerActive, peerName }) => {
+      onJoined: ({ peerPresent, peerActive, peerName, peerSince, peerGone }) => {
+        since = peerPresent ? peerSince : peerGone?.at ?? 0;
+        if (!peerPresent && peerGone) detached = peerGone.reason === 'bye';
         // "I did not leave": said once, as soon as we are connected, and
         // only if there is somebody there to hear it.
         if (tornDown && peerPresent) {
@@ -434,7 +438,8 @@ async function listenNow(): Promise<boolean> {
         if (peerPresent) sayHello();
         refresh();
       },
-      onPeerJoined: (peerName, mode) => {
+      onPeerJoined: (peerName, mode, at) => {
+        since = at;
         present = true;
         detached = false;
         active = mode === 'active';
@@ -442,13 +447,15 @@ async function listenNow(): Promise<boolean> {
         sayHello();
         refresh();
       },
-      onPeerLeft: (why) => {
+      onPeerLeft: (why, at) => {
+        since = at;
         present = false;
         active = false;
         detached = why === 'bye';
         refresh();
       },
-      onPeerMode: (mode, peerName) => {
+      onPeerMode: (mode, peerName, at) => {
+        since = at;
         present = true;
         active = mode === 'active';
         if (peerName) name = peerName;
@@ -504,8 +511,11 @@ async function listenNow(): Promise<boolean> {
        * side is doing, the notification line catches up with any
        * announcement that got lost along the way.
        */
-      onPresence: ({ peerPresent, peerActive, peerName }) => {
+      onPresence: ({ peerPresent, peerActive, peerName, peerSince, peerGone }) => {
         watchdog?.noteAnswer();
+        const moment = peerPresent ? peerSince : peerGone?.at ?? 0;
+        if (moment) since = moment;
+        if (!peerPresent && peerGone) detached = peerGone.reason === 'bye';
         present = peerPresent;
         if (peerPresent) detached = false;
         active = peerActive;

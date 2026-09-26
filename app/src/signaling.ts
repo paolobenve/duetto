@@ -30,6 +30,20 @@ import { VERSION_LABEL, BUILD } from './version';
  * (`listening`) or inside the channel (`active`).
  */
 
+/** When and how the other person left, as the server saw it. */
+export type PeerGone = { at: number; reason: 'bye' | 'dropped' } | null;
+
+/** A moment from the server: a positive number of milliseconds, or 0. */
+function moment(v: unknown): number {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+function gone(v: any): PeerGone {
+  const at = moment(v?.at);
+  return at ? { at, reason: v.reason === 'bye' ? 'bye' : 'dropped' } : null;
+}
+
 export type SignalMessage =
   | { kind: 'desc'; type: 'offer' | 'answer'; sdp: string }
   | { kind: 'ice'; candidate: any }
@@ -166,6 +180,10 @@ export type SignalingEvents = {
     opens: boolean;
     /** whether this server carries reports to the beta testers' work items */
     reports: boolean;
+    /** since when the other is in its state, as the server saw it; 0 if unknown */
+    peerSince: number;
+    /** when and how the other left, if they are away and the server knows */
+    peerGone: PeerGone;
   }) => void;
   /** the answer to a report sent through the server */
   onReportResult?: (ok: boolean, error?: string, url?: string) => void;
@@ -178,12 +196,19 @@ export type SignalingEvents = {
    * each other out every second, for an hour, on a real phone.
    */
   onReplaced?: () => void;
-  onPeerJoined?: (name: string, mode: Mode) => void;
-  /** @param why 'bye' if they left, 'dropped' if the network went */
-  onPeerLeft?: (why: 'bye' | 'dropped') => void;
-  onPeerMode?: (mode: Mode, name: string) => void;
+  /** @param since the moment they came, as the server says it */
+  onPeerJoined?: (name: string, mode: Mode, since: number) => void;
+  /**
+   * @param why 'bye' if they left, 'dropped' if the network went
+   * @param at the moment, as the server says it
+   */
+  onPeerLeft?: (why: 'bye' | 'dropped', at: number) => void;
+  onPeerMode?: (mode: Mode, name: string, since: number) => void;
   /** the answer to `askPresence`: how the other side is doing now */
-  onPresence?: (info: { peerPresent: boolean; peerActive: boolean; peerName: string }) => void;
+  onPresence?: (info: {
+    peerPresent: boolean; peerActive: boolean; peerName: string;
+    peerSince: number; peerGone: PeerGone;
+  }) => void;
   /** the server tells us: the other one came in, or knocked */
   onNotify?: (reason: 'peer-active' | 'knock', name: string) => void;
   onSignal?: (msg: SignalMessage) => void;
@@ -626,6 +651,8 @@ export class Signaling {
           turn: msg.turn ?? null,
           stun: msg.stun ?? null,
           reports: msg.reports === true,
+          peerSince: moment(msg.peerSince),
+          peerGone: gone(msg.peerGone),
         });
         break;
 
@@ -643,6 +670,8 @@ export class Signaling {
         if (msg.mode === 'active') this.events.onStatus?.('together');
         this.events.onPeerJoined?.(
           msg.name || 'Someone', msg.mode === 'active' ? 'active' : 'listening',
+          // An older server says no moment: the news is fresh, so now.
+          moment(msg.since) || Date.now(),
         );
         break;
 
@@ -653,7 +682,8 @@ export class Signaling {
         // they will most likely be back. Older servers do not say
         // which: with no reason given we treat it as a drop, which is
         // the case where being wrong costs less.
-        this.events.onPeerLeft?.(msg.reason === 'bye' ? 'bye' : 'dropped');
+        this.events.onPeerLeft?.(msg.reason === 'bye' ? 'bye' : 'dropped',
+          moment(msg.at) || Date.now());
         break;
 
       case 'presence':
@@ -663,12 +693,14 @@ export class Signaling {
           peerPresent: !!msg.peerPresent,
           peerActive: !!msg.peerActive,
           peerName: msg.peerName || '',
+          peerSince: moment(msg.peerSince),
+          peerGone: gone(msg.peerGone),
         });
         break;
 
       case 'peer-mode':
         this.events.onStatus?.(msg.mode === 'active' ? 'together' : 'alone');
-        this.events.onPeerMode?.(msg.mode, msg.name || '');
+        this.events.onPeerMode?.(msg.mode, msg.name || '', moment(msg.since) || Date.now());
         break;
 
       case 'notify':
