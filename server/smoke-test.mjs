@@ -637,6 +637,8 @@ try {
     const xAgain = await x2.expect('joined');
     check(xAgain.since === xFirst.since,
       'after a restart of the server, a phone in the same state keeps its moment');
+    check(xAgain.peerGone?.reason === 'dropped' && xAgain.peerGone.at > xFirst.since,
+      'and the other, not back yet, is out of reach since the restart');
     const y2 = client(PORTR);
     await y2.open();
     y2.send({ type: 'join', key: KEY, room: 'restart', name: 'Y', side: 'B', mode: 'active' });

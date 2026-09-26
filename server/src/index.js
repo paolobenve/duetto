@@ -510,6 +510,10 @@ let resumableUntil = 0;
     for (const st of saved.states ?? []) {
       if (st?.room && st?.side && st?.mode && Number(st.since) > 0) {
         resumable.set(`${st.room}\n${st.side}`, { mode: st.mode, since: Number(st.since) });
+        // Connected before the restart and not back yet: out of reach
+        // since the restart, and the other is told so - "unreachable
+        // since 19:12:24" - until it returns, which wipes this out.
+        departed.set(`${st.room}\n${st.side}`, { at: Number(saved.saved), reason: 'dropped' });
       }
     }
     for (const d of saved.departed ?? []) {
