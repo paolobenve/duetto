@@ -1699,18 +1699,27 @@ export default function ChannelScreen(props: Props) {
                * alert reaches you until you open the app again. One
                * afternoon it was chosen three times by somebody sure
                * they had never left, once with a finger that landed
-               * just below the border between the two rows. "No" sits
-               * where the row that led here was, so that a touch
-               * repeated in the same place goes back.
+               * just below the border between the two rows. The
+               * explanation is plain text under the question, not part
+               * of a button to be touched while reading it - and a
+               * touch repeated where the first one landed falls on
+               * those words, not on "Yes". "No" closes everything:
+               * going back to the first question was the same question
+               * twice.
                */
               <>
                 <Text style={styles.sheetTitle}>{t('channel.detachConfirm')}</Text>
+                <Text style={styles.sheetExplain}>{t('channel.leaveDetachNote')}</Text>
                 <TouchableOpacity
                   style={[styles.sheetRow, styles.sheetBox]}
                   onPressIn={markDown}
-                  onPress={(e) => { signTouch('leave-detach-no', e); setConfirmDetach(false); }}>
+                  onPress={(e) => { signTouch('leave-detach-no', e); setLeaveMenu(false); }}>
                   <View style={styles.sheetText}>
-                    <Text style={styles.sheetLabel}>{t('channel.detachConfirmNo')}</Text>
+                    <Text style={styles.sheetLabel}>
+                      {entered !== false
+                        ? t('channel.detachConfirmStay')
+                        : t('channel.detachConfirmStayWaiting')}
+                    </Text>
                   </View>
                 </TouchableOpacity>
                 <View style={styles.sheetGap} />
@@ -1725,7 +1734,6 @@ export default function ChannelScreen(props: Props) {
                   }}>
                   <View style={styles.sheetText}>
                     <Text style={styles.sheetLabel}>{t('channel.detachConfirmYes')}</Text>
-                    <Text style={styles.sheetNote}>{t('channel.leaveDetachNote')}</Text>
                   </View>
                 </TouchableOpacity>
               </>
@@ -2676,6 +2684,11 @@ const styles = StyleSheet.create({
   },
   /** the space between the two ways out: a finger falling short lands on nothing */
   sheetGap: { height: 28 },
+  /** the explanation under a question: read, not touched */
+  sheetExplain: {
+    color: '#8892a0', fontSize: 13.5, lineHeight: 19,
+    paddingHorizontal: 14, paddingBottom: 12,
+  },
   /** a way out in a box of its own: the two are told apart at a glance */
   sheetBox: { backgroundColor: '#1e2531', borderWidth: 1, borderColor: '#2f3846' },
   sheetRow: {
