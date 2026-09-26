@@ -93,6 +93,14 @@ def fade(x, seconds=0.06):
     y[-tail:] *= np.linspace(1, 0, tail)
     return y
 
+def soft_tail(x, seconds):
+    """A fade that starts imperceptibly and ends the same way: the cues
+    die away instead of stopping."""
+    tail = min(len(x), int(SR * seconds))
+    y = x.copy()
+    y[-tail:] *= np.cos(np.linspace(0, np.pi / 2, tail)) ** 2
+    return y
+
 def drumroll():
     bar = sample(DRUMROLL)
     # Where the bar stops sounding: from there on it is its own pause.
@@ -215,22 +223,23 @@ def knock():
 # glissando is one tone sliding, and there is nothing a recording would
 # add. A third of a second, and quiet: they go out on the voice's own
 # stream during a conversation and must not startle anybody.
-def glissando(f_from, f_to, dur=0.32, harmonics=((1, 1.0), (2, 0.25), (3, 0.08))):
-    n = int(SR * dur)
-    time = t(dur)
+def glissando(f_from, f_to, dur=0.32, harmonics=((1, 1.0), (2, 0.25), (3, 0.08)), ring=0.25):
+    # The slide, and after it the last pitch held for `ring` seconds
+    # while it dies away: the tone fades, it is not cut.
+    total = dur + ring
+    n = int(SR * total)
+    time = t(total)
     # The pitch slides on a log scale, as the ear hears it: the phase is
     # the integral of the instantaneous frequency.
-    freq = f_from * (f_to / f_from) ** (time / dur)
+    freq = f_from * (f_to / f_from) ** (np.minimum(time, dur) / dur)
     phase = 2 * np.pi * np.cumsum(freq) / SR
     x = np.zeros(n)
     for k, weight in harmonics:
         x += np.sin(phase * k) * weight
     env = np.ones(n)
     up = int(SR * 0.02)
-    down = int(SR * 0.10)
     env[:up] = np.linspace(0, 1, up)
-    env[-down:] = np.linspace(1, 0, down)
-    return normalise(x * env, peak=0.6)
+    return normalise(soft_tail(x * env, ring + 0.12), peak=0.6)
 
 def cue_video_on():
     return glissando(520.0, 880.0, harmonics=((1, 1.0), (2, 0.35), (3, 0.15), (4, 0.06)))
@@ -247,9 +256,9 @@ def cue_audio_off():
 # The camera turning round: a tone that goes up and comes back, one
 # quick turn, unlike the one-way slides of on and off.
 def cue_camera():
-    up = glissando(600.0, 900.0, dur=0.13, harmonics=((1, 1.0), (2, 0.3), (3, 0.1)))
-    down = glissando(900.0, 600.0, dur=0.13, harmonics=((1, 1.0), (2, 0.3), (3, 0.1)))
-    return normalise(fade(np.concatenate([up[:-int(SR * 0.06)], down]), 0.05), peak=0.6)
+    up = glissando(600.0, 900.0, dur=0.13, harmonics=((1, 1.0), (2, 0.3), (3, 0.1)), ring=0.0)
+    down = glissando(900.0, 600.0, dur=0.13, harmonics=((1, 1.0), (2, 0.3), (3, 0.1)), ring=0.22)
+    return normalise(np.concatenate([up[:-int(SR * 0.03)], down]), peak=0.6)
 
 # Coming in and going out: arpeggios, not slides - notes one after the
 # other, each struck like a small bell and left to ring under the next,
@@ -257,7 +266,7 @@ def cue_camera():
 # cues above. The C major chord: E-G-C going up to come in, G-E-C going
 # down to go out, and for going out for good one note more, C-G-E-C,
 # down to the C an octave below the one where leaving stops.
-def arpeggio(freqs, step=0.13, last=0.55):
+def arpeggio(freqs, step=0.13, last=0.9):
     dur = step * (len(freqs) - 1) + last
     x = np.zeros(int(SR * dur))
     for i, f in enumerate(freqs):
@@ -268,11 +277,11 @@ def arpeggio(freqs, step=0.13, last=0.55):
         for k, weight in ((1, 1.0), (2, 0.3), (3, 0.1)):
             note += np.sin(2 * np.pi * f * k * time) * weight
         # The last one dies away slowly: the arpeggio is not cut, it fades.
-        env = decay(len(time), 0.35 if i == len(freqs) - 1 else 0.22)
+        env = decay(len(time), 0.55 if i == len(freqs) - 1 else 0.22)
         up = int(SR * 0.005)
         env[:up] *= np.linspace(0, 1, up)
         put(x, i * step, note * env)
-    return normalise(fade(x, 0.25), peak=0.6)
+    return normalise(soft_tail(x, 0.5), peak=0.6)
 
 C3, E3, G3 = 130.81, 164.81, 196.00
 C4, E4, G4 = 261.63, 329.63, 392.00
@@ -285,7 +294,7 @@ def cue_leave():
     return arpeggio((G4, E4, C4))
 
 def cue_detach():
-    return arpeggio((C4, G3, E3, C3), last=0.65)
+    return arpeggio((C4, G3, E3, C3), last=1.0)
 
 # --- writing ---------------------------------------------------------------
 def save(name, data):
