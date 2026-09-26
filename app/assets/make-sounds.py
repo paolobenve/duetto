@@ -257,7 +257,7 @@ def cue_camera():
 # cues above. The C major chord: E-G-C going up to come in, G-E-C going
 # down to go out, and for going out for good one note more, C-G-E-C,
 # down to the C an octave below the one where leaving stops.
-def arpeggio(freqs, step=0.13, last=0.29):
+def arpeggio(freqs, step=0.13, last=0.55):
     dur = step * (len(freqs) - 1) + last
     x = np.zeros(int(SR * dur))
     for i, f in enumerate(freqs):
@@ -267,11 +267,12 @@ def arpeggio(freqs, step=0.13, last=0.29):
         note = np.zeros(len(time))
         for k, weight in ((1, 1.0), (2, 0.3), (3, 0.1)):
             note += np.sin(2 * np.pi * f * k * time) * weight
-        env = decay(len(time), 0.22)
+        # The last one dies away slowly: the arpeggio is not cut, it fades.
+        env = decay(len(time), 0.35 if i == len(freqs) - 1 else 0.22)
         up = int(SR * 0.005)
         env[:up] *= np.linspace(0, 1, up)
         put(x, i * step, note * env)
-    return normalise(fade(x, 0.05), peak=0.6)
+    return normalise(fade(x, 0.25), peak=0.6)
 
 C3, E3, G3 = 130.81, 164.81, 196.00
 C4, E4, G4 = 261.63, 329.63, 392.00
@@ -284,7 +285,7 @@ def cue_leave():
     return arpeggio((G4, E4, C4))
 
 def cue_detach():
-    return arpeggio((C4, G3, E3, C3), last=0.36)
+    return arpeggio((C4, G3, E3, C3), last=0.65)
 
 # --- writing ---------------------------------------------------------------
 def save(name, data):
