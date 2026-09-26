@@ -404,25 +404,19 @@ async function listenNow(): Promise<boolean> {
    */
   const channel = pair.label || '';
   /**
-   * "You were in the channel: touch to go back in."
+   * Whether the app was killed while in the channel.
    *
-   * The presence comes up by itself after a reboot, or after the phone
-   * tore the app down - but the channel needs the app open, and from
-   * Android 14 the microphone is refused to anything started in the
-   * background: nobody can put you back in but your own finger. So
-   * the drawer the app writes at every touch is read here: if it says
-   * "in the channel" - written by an app that was killed, not by one
-   * that left - a notification says so, and one touch opens the app
-   * straight into the channel.
+   * It used to be said with a notification of its own - "you were in
+   * the channel: touch to go back in" - which the standing one now says
+   * already, with the moment and an Enter button: "Waiting in the
+   * channel since 18:40:44". Only the journal keeps it, for whoever
+   * reads afterwards why the channel was left.
    */
   try {
     const raw = await AsyncStorage.getItem('duetto.how-it-was');
     const was = raw ? (JSON.parse(raw)?.[pair.id] ?? null) : null;
     if (was && was.live === true) {
-      const who = peerShown(pair) || t('presence.theOther');
-      Foreground.note('', t('presence.wereInChannel', { who, channel: channelName(channel) }))
-        .catch(() => { /* noop */ });
-      Journal.mark('note:were-in-channel').catch(() => { /* noop */ });
+      Journal.mark('were-in-channel').catch(() => { /* noop */ });
     }
   } catch { /* an unreadable drawer says nothing */ }
 

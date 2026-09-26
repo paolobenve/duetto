@@ -100,7 +100,6 @@ export const es: Dictionary = {
   presence: {
     enter: 'Entrar',
     wait: 'Ir a la espera',
-    wereInChannel: 'Estabas en el canal{channel} con {who}: toca para volver a entrar.',
     theOther: 'el otro',
     inChannel: 'Estás en el canal{channel}{when}',
     waiting: 'A la espera{channel}{when}',
