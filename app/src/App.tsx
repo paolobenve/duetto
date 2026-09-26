@@ -812,6 +812,8 @@ export default function App() {
    * when nobody knows, and then no time is said.
    */
   const [peerSince, setPeerSince] = useState(0);
+  /** since when WE are in our state - in the channel, waiting - on the server's clock */
+  const [mySince, setMySince] = useState(0);
   /**
    * They are waiting because their phone closed the app on them.
    *
@@ -1625,6 +1627,8 @@ export default function App() {
     detached: peerDetached,
     tornDown: peerTornDown,
     since: peerSince,
+    mySince,
+    channel: connectionName,
     name: shownName,
     server: shownStatus === 'offline' ? 'down'
       : shownStatus === 'connecting' ? 'connecting' : 'ok',
@@ -1634,6 +1638,7 @@ export default function App() {
     // follows `status` a breath later and dragged the line along - but
     // masked is not cured.
   }), [inChannel, status, shownStatus, peerPresent, peerDetached, peerTornDown, shownName, peerSince,
+    mySince, connectionName,
     // The words change with the language: the line is written again.
     cfg?.language]);
 
@@ -1705,7 +1710,8 @@ export default function App() {
     const text = noticeTextRef.current;
     // The button beside the line: "Enter" while waiting, "Go to
     // waiting" while in.
-    Foreground.setText(text, alertNameRef.current, inChannelRef.current ? 'wait' : 'enter',
+    // No name in front: the channel's name is inside the line itself.
+    Foreground.setText(text, '', inChannelRef.current ? 'wait' : 'enter',
       { enter: t('presence.enter'), wait: t('presence.wait') }).then(() => {
       writtenNotice.current = text;
     }).catch(() => {
@@ -2652,8 +2658,9 @@ export default function App() {
 
           onJoined: ({
             peerPresent: present, peerActive, peerName: n, turn, stun, owner, opens, reports,
-            peerSince: since, peerGone,
+            peerSince: since, peerGone, since: ownSince,
           }) => {
+            setMySince(ownSince || Date.now());
             // Found as they are: the server says since when, and if
             // they are away, whether they said goodbye - a phone that
             // comes back after a restart used to call "unreachable"
@@ -2789,6 +2796,8 @@ export default function App() {
               sessionRef.current?.detachPeer();
             }
           },
+
+          onModeSince: (since) => { if (since) setMySince(since); },
 
           onPeerMode: (mode, n, since) => {
             setPeerSince(since);
@@ -3496,6 +3505,8 @@ export default function App() {
     inChannelRef.current = true;
     setScreen('channel');
     sig.setMode('active');
+    // Now, until the server says its own moment (onModeSince).
+    setMySince(Date.now());
     cue('cue_enter');
 
     if (peerActiveRef.current) attachPeer();
@@ -3770,6 +3781,7 @@ export default function App() {
     setInChannel(false);
     inChannelRef.current = false;
     sig?.setMode('listening');
+    setMySince(Date.now());
     // Detaching is not something to do by hand here: it is enough to
     // declare ourselves unavailable, and the connection effect tears
     // everything down by itself - session, signalling, foreground

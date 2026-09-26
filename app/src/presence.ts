@@ -231,29 +231,51 @@ export function presenceLine(o: {
    * server saw it; 0 when nobody knows, and then no time is said.
    */
   since?: number;
+  /** since when WE are in our state, on the same clock; 0 = unknown */
+  mySince?: number;
+  /**
+   * The name given to this connection, said inside the line: one may
+   * not remember which channel one was left in. Empty: no name.
+   */
+  channel?: string;
 }): string {
-  const ours = o.inChannel ? t('presence.inChannel') : t('presence.waiting');
+  // Disconnecting is a moment ("at"), waiting and being out of reach
+  // are states that last ("since").
+  const at = (moment: number | undefined, key: 'sinceTime' | 'atTime' = 'sinceTime') =>
+    (moment && moment > 0 ? t(`presence.${key}`, { time: clockTime(moment) }) : '');
+  const name = (o.channel || '').trim();
+  // "In the channel Home", "Waiting in the channel Home": the name
+  // reads after "channel", and where the line has no "channel" of its
+  // own it brings one.
+  const channel = name ? t('presence.channelName', { name }) : '';
+  const inTheChannel = name ? t('presence.inTheChannel', { name }) : '';
+  const mine = at(o.mySince);
+  const ours = o.inChannel
+    ? t('presence.inChannel', { channel, when: mine })
+    : t('presence.waiting', { channel: inTheChannel, when: mine });
   const who = named(o.name) ? o.name : t('presence.theOther');
+  const theirs = at(o.since);
   if (o.server === 'down') return t('presence.noServer', { ours });
   if (o.server === 'connecting') return ours;
   if (o.peerActive) {
-    return o.inChannel
-      ? t('presence.withPeer', { who })
-      : t('presence.peerInChannel', { ours, who });
+    if (!o.inChannel) return t('presence.peerInChannel', { ours, who, when: theirs });
+    return mine || theirs
+      ? t('presence.withPeerSince', { channel, mine, who, theirs })
+      : t('presence.withPeer', { channel, who });
   }
-  // Disconnecting is a moment ("at"), waiting and being out of reach
-  // are states that last ("since").
-  const when = (key: 'sinceTime' | 'atTime') => (o.since && o.since > 0
-    ? t(`presence.${key}`, { time: clockTime(o.since) }) : '');
   if (!o.peerPresent) {
     return o.detached
-      ? t('presence.peerDetached', { ours, who, when: when('atTime') })
-      : t('presence.peerUnreachable', { ours, who, when: when('sinceTime') });
+      ? t('presence.peerDetached', { ours, who, when: at(o.since, 'atTime') })
+      : t('presence.peerUnreachable', { ours, who, when: theirs });
   }
-  if (!o.inChannel) return t('presence.bothWaiting');
+  if (!o.inChannel) {
+    return mine || theirs
+      ? t('presence.bothWaitingSince', { channel: inTheChannel, mine, who, theirs })
+      : t('presence.bothWaiting', { channel: inTheChannel });
+  }
   return o.tornDown
-    ? t('presence.peerWaitingTornDown', { ours, who, when: when('sinceTime') })
-    : t('presence.peerWaiting', { ours, who, when: when('sinceTime') });
+    ? t('presence.peerWaitingTornDown', { ours, who, when: theirs })
+    : t('presence.peerWaiting', { ours, who, when: theirs });
 }
 
 /**
@@ -365,12 +387,15 @@ async function listenNow(): Promise<boolean> {
   let detached = false;
   /** since when they are in their state, as the server saw it; 0 = unknown */
   let since = 0;
+  /** since when WE are waiting, as the server saw it */
+  let mySince = 0;
   let name = pair.peerName || '';
 
   const refresh = () => {
     Foreground.setText(presenceLine({
       inChannel: false, peerActive: active, peerPresent: present, name, detached, since,
-    }), connectionName, detached ? '' : 'enter',
+      mySince, channel: pair.label || '',
+    }), '', detached ? '' : 'enter',
     { enter: t('presence.enter'), wait: t('presence.wait') }).catch(() => { /* noop */ });
     // A stale alert is worse than no alert: "waiting for you in the
     // channel" is only true while they are actually in there.
@@ -418,7 +443,8 @@ async function listenNow(): Promise<boolean> {
         Journal.mark('presence:replaced:stale').catch(() => { /* noop */ });
         stopListening();
       },
-      onJoined: ({ peerPresent, peerActive, peerName, peerSince, peerGone }) => {
+      onJoined: ({ peerPresent, peerActive, peerName, peerSince, peerGone, since: own }) => {
+        mySince = own || Date.now();
         since = peerPresent ? peerSince : peerGone?.at ?? 0;
         if (!peerPresent && peerGone) detached = peerGone.reason === 'bye';
         // "I did not leave": said once, as soon as we are connected, and

@@ -180,6 +180,8 @@ export type SignalingEvents = {
     opens: boolean;
     /** whether this server carries reports to the beta testers' work items */
     reports: boolean;
+    /** since when WE are in our state, as the server saw it; 0 if unknown */
+    since: number;
     /** since when the other is in its state, as the server saw it; 0 if unknown */
     peerSince: number;
     /** when and how the other left, if they are away and the server knows */
@@ -204,6 +206,8 @@ export type SignalingEvents = {
    */
   onPeerLeft?: (why: 'bye' | 'dropped', at: number) => void;
   onPeerMode?: (mode: Mode, name: string, since: number) => void;
+  /** the moment the server took note of OUR change of state */
+  onModeSince?: (since: number) => void;
   /** the answer to `askPresence`: how the other side is doing now */
   onPresence?: (info: {
     peerPresent: boolean; peerActive: boolean; peerName: string;
@@ -651,9 +655,14 @@ export class Signaling {
           turn: msg.turn ?? null,
           stun: msg.stun ?? null,
           reports: msg.reports === true,
+          since: moment(msg.since),
           peerSince: moment(msg.peerSince),
           peerGone: gone(msg.peerGone),
         });
+        break;
+
+      case 'mode-since':
+        this.events.onModeSince?.(moment(msg.since));
         break;
 
       case 'report-result':
