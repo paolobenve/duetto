@@ -522,6 +522,29 @@ let resumableUntil = 0;
   }
 }
 
+/**
+ * The state of a phone that dropped without a goodbye, kept a minute.
+ *
+ * An update of the app, or the phone restarting it, takes a few
+ * seconds - more than the grace of `returning` - and a phone in the
+ * channel since 18:51 came back from one "in the channel since 19:02".
+ * Back in the same state within the minute, it carries on; away
+ * longer, it was really out of reach, and its moment starts again.
+ *
+ * @type {Map<string, { mode: string, since: number, until: number }>}
+ */
+const recentlyGone = new Map();
+const RECENT_MS = ms(process.env.RECENT_MS, 60_000);
+
+/** What a phone that dropped a moment ago was doing, taken once. */
+function recentFor(roomId, side) {
+  if (!side) return null;
+  const key = `${roomId}\n${side}`;
+  const st = recentlyGone.get(key);
+  recentlyGone.delete(key);
+  return st && Date.now() <= st.until ? st : null;
+}
+
 /** What was left before a restart for this side, taken once. */
 function resumeFor(roomId, side) {
   if (!side || Date.now() > resumableUntil) return null;
@@ -575,6 +598,9 @@ function leaveRoom(ws) {
   // down.
   if (!ws.replaced) {
     const at = Date.now();
+    if (!ws.saidBye && ws.side && ws.mode && ws.since) {
+      recentlyGone.set(`${roomId}\n${ws.side}`, { mode: ws.mode, since: ws.since, until: at + RECENT_MS });
+    }
     if (ws.side) {
       departed.set(`${roomId}\n${ws.side}`, { at, reason: ws.saidBye ? 'bye' : 'dropped' });
     }
@@ -1117,7 +1143,8 @@ wss.on('connection', (ws, req) => {
       // a fresh socket - a change of network - in the state it had is
       // not starting anything: it carries on.
       if (!before && side) {
-        before = returning.get(`${roomId}\n${side}`) ?? resumeFor(roomId, side);
+        before = returning.get(`${roomId}\n${side}`) ?? resumeFor(roomId, side)
+          ?? recentFor(roomId, side);
       }
       ws.since = before && before.mode === ws.mode && before.since ? before.since : Date.now();
       // Its own departure is over: it is here.

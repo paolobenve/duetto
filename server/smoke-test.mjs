@@ -474,7 +474,7 @@ try {
   const gr2b = client();
   await gr2b.open();
   gr2b.send({ type: 'join', key: KEY, room: 'grace', name: 'G2', side: 'B', mode: 'listening' });
-  await gr2b.expect('joined');
+  const gr2bJoined = await gr2b.expect('joined');
   await gr1.expect('peer-joined');
   check(await gr1.expectNone('peer-left', GRACE_MS * 3),
     'a drop followed by a quick return is never announced');
@@ -485,6 +485,15 @@ try {
   const stayedAway = await gr1.expect('peer-left');
   check(stayedAway.reason === 'dropped',
     'whoever stays away is announced as dropped, after the wait');
+  // Back within the minute - an update of the app takes a few seconds -
+  // in the same state: it carries on from its old moment.
+  const gr2c = client();
+  await gr2c.open();
+  gr2c.send({ type: 'join', key: KEY, room: 'grace', name: 'G2', side: 'B', mode: 'listening' });
+  const gr2cJoined = await gr2c.expect('joined');
+  check(gr2cJoined.since === gr2bJoined.since,
+    'back within the minute in the same state, a phone keeps its moment');
+  gr2c.close();
   gr1.close();
 
   // --- a knock into the hole waits on the doormat ------------------------------
