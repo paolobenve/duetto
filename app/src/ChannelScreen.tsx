@@ -1224,7 +1224,7 @@ export default function ChannelScreen(props: Props) {
                 <View style={styles.cardMarkRow}>
                   {peerMark(17, '#0b0e14')}
                   {showStats ? (
-                    <Text style={styles.cardVolume} numberOfLines={1}>
+                    <Text style={[styles.cardVolume, styles.cardVolumeWrap]} numberOfLines={2}>
                       {[
                         // "you hear" is on the scale beside: said once
                         peerState.volume != null
@@ -1236,7 +1236,7 @@ export default function ChannelScreen(props: Props) {
                   {showStats ? ownOutputMark(17, '#0b0e14') : null}
                 </View>
                 {showStats && (battery || peerState.battery) ? (
-                  <Text style={styles.cardVolume} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+                  <Text style={[styles.cardVolume, styles.cardVolumeWrap]} numberOfLines={2}>
                     {batteryLine(battery, peerState.battery, network, peerState.net)}
                   </Text>
                 ) : null}
@@ -2489,10 +2489,12 @@ const styles = StyleSheet.create({
   card: { alignItems: 'center', paddingHorizontal: 32 },
   /**
    * With the volume scale at the right edge - 72 points, 8 from the
-   * edge - the words used to run under it. The same room on both sides,
-   * so that they stay in the middle.
+   * edge - the words used to run under it. The room is taken on the
+   * right only: taken on both sides too, to stay in the middle of the
+   * screen, it left the card a quarter narrower and the lines cut.
+   * Face and words sit in the middle of what is left.
    */
-  cardClear: { paddingHorizontal: SCALE_ROOM },
+  cardClear: { paddingLeft: 16, paddingRight: SCALE_ROOM },
   avatar: {
     width: 108, height: 108, borderRadius: 54,
     alignItems: 'center', justifyContent: 'center', marginBottom: 20, borderWidth: 3,
@@ -2629,7 +2631,7 @@ const styles = StyleSheet.create({
     position: 'absolute', left: 0, right: 0, top: '42%',
     alignItems: 'center', paddingHorizontal: 24,
   },
-  waitOverClear: { paddingHorizontal: SCALE_ROOM },
+  waitOverClear: { paddingLeft: 16, paddingRight: SCALE_ROOM },
   waitText: {
     color: '#e6ebf1', fontSize: 15, textAlign: 'center', lineHeight: 21,
     backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 20,
@@ -2639,6 +2641,8 @@ const styles = StyleSheet.create({
   cardMark: { marginTop: 12 },
   cardMarkRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   cardVolume: { color: '#7d8794', fontSize: 13 },
+  /** two lines at most, rather than cut or shrunk to nothing */
+  cardVolumeWrap: { flexShrink: 1, textAlign: 'center' },
   cardMarkCol: { alignItems: 'center', gap: 4 },
 
   miniCard: { alignItems: 'center', paddingHorizontal: 10 },
