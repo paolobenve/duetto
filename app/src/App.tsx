@@ -17,7 +17,7 @@ import { PETITION_LINK, parseLink, type DuettoLink } from './links';
 import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
 import {
-  Foreground, Pip, AppWindow, Visibility, Codecs, Audio, Alerts, Journal, Volume,
+  Foreground, Pip, AppWindow, Visibility, Codecs, Audio, Alerts, Journal, Volume, Call,
   Heartbeat, Network,
   Alarm,
 } from 'duetto-platform';
@@ -1581,14 +1581,17 @@ export default function App() {
   const stopCallAudio = () => {
     if (audioDownTimer.current) { clearTimeout(audioDownTimer.current); audioDownTimer.current = null; }
     const wait = audioTailUntil.current - Date.now();
+    // The call Android sees closes with the audio: see Calls.kt.
     if (wait <= 0) {
       try { InCallManager.stop(); } catch { /* noop */ }
+      Call.end().catch(() => { /* noop */ });
       return;
     }
     audioDownTimer.current = setTimeout(() => {
       audioDownTimer.current = null;
       if (inChannelRef.current) return;
       try { InCallManager.stop(); } catch { /* noop */ }
+      Call.end().catch(() => { /* noop */ });
     }, wait);
   };
 
@@ -3523,6 +3526,15 @@ export default function App() {
     // Back in before the last leaving's audio came down: it stays up.
     if (audioDownTimer.current) { clearTimeout(audioDownTimer.current); audioDownTimer.current = null; }
     audioTailUntil.current = 0;
+    /**
+     * The channel, as Android's telephony sees it: a call of our own.
+     * A process in a call is one the system keeps; a Motorola closed
+     * Duetto at the stroke of the hour in the middle of a conversation.
+     * Refused, nothing else changes - the journal says why.
+     */
+    Call.start(channelRef.current || shownNameRef.current || '').then((r) => {
+      if (r !== 'placed' && r !== 'already') Journal.mark(`call:not:${r}`).catch(() => {});
+    }).catch(() => { /* noop */ });
     try {
       InCallManager.start({ media: 'audio' });
       // InCallManager, like a phone app in a call, sets "keep the
