@@ -839,6 +839,8 @@ export default function App() {
    * know that nothing was decided on the other side.
    */
   const [peerTornDown, setPeerTornDown] = useState(false);
+  /** and what took their window away: a swipe out of the recents, or the phone */
+  const [peerTornDownBy, setPeerTornDownBy] = useState<'phone' | 'recents'>('phone');
   const [peerName, setPeerName] = useState('');
   /**
    * Who this server lets in, when it lets us ask.
@@ -1659,6 +1661,7 @@ export default function App() {
     detached: peerDetached,
     tornDown: peerTornDown,
     since: peerSince,
+    tornDownBy: peerTornDownBy,
     mySince,
     channel: connectionName,
     name: shownName,
@@ -1670,7 +1673,7 @@ export default function App() {
     // follows `status` a breath later and dragged the line along - but
     // masked is not cured.
   }), [inChannel, status, shownStatus, peerPresent, peerDetached, peerTornDown, shownName, peerSince,
-    mySince, connectionName,
+    mySince, connectionName, peerTornDownBy,
     // The words change with the language: the line is written again.
     cfg?.language]);
 
@@ -2923,8 +2926,10 @@ export default function App() {
 
             // "I did not leave, the app was closed on me."
             if (msg.kind === 'tornDown') {
+              const by = msg.how === 'recents' ? 'recents' : 'phone';
               setPeerTornDown(true);
-              Journal.mark('peer-torn-down').catch(() => {});
+              setPeerTornDownBy(by);
+              Journal.mark(by === 'recents' ? 'peer-torn-down:recents' : 'peer-torn-down').catch(() => {});
               return;
             }
 
@@ -4694,6 +4699,7 @@ export default function App() {
         peerPresent={peerPresent}
         peerDetached={peerDetached}
         peerTornDown={peerTornDown}
+        peerTornDownBy={peerTornDownBy}
         videoStats={videoStats}
         peerSendDelay={peerState.sendDelay ?? null}
         peerRecvDelay={peerState.recvDelay ?? null}

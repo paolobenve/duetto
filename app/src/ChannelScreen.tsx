@@ -396,6 +396,8 @@ type Props = {
    * too, and whoever reads it deserves to know.
    */
   peerTornDown?: boolean;
+  /** a swipe out of the recents, or the phone */
+  peerTornDownBy?: 'phone' | 'recents';
   /** the real resolution and bandwidth, outgoing and incoming */
   videoStats: VideoStats;
   /** the two halves the other phone times; null if it does not say */
@@ -587,7 +589,7 @@ type Props = {
 export default function ChannelScreen(props: Props) {
   const {
     entered, onEnter, openInto, onEnterAlways, lossSheet, onLossChoice, ownGain, network,
-    connectionName, peerName, peerAvatar, peerPresent, peerDetached, peerTornDown, videoStats, peerSendDelay, peerRecvDelay, delayTotalOnly, qualityLabel, showStats, controls, onSelectControls, news, onNewsRead, peerGain, systemVolume, onChangeLevel,
+    connectionName, peerName, peerAvatar, peerPresent, peerDetached, peerTornDown, peerTornDownBy, videoStats, peerSendDelay, peerRecvDelay, delayTotalOnly, qualityLabel, showStats, controls, onSelectControls, news, onNewsRead, peerGain, systemVolume, onChangeLevel,
     versionWarning, frontCamera, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes,
@@ -1243,6 +1245,7 @@ export default function ChannelScreen(props: Props) {
             peerPresent={peerPresent}
             peerDetached={peerDetached}
             peerTornDown={peerTornDown}
+            peerTornDownBy={peerTornDownBy}
             status={status}
             // What the card calls "linked" is the link CARRYING: during
             // a restart the state leaves "connected" while every word
@@ -1966,6 +1969,8 @@ function PresenceCard(props: {
   peerDetached: boolean;
   /** waiting because the phone closed the app on them, not by choice */
   peerTornDown?: boolean;
+  /** a swipe out of the recents, or the phone */
+  peerTornDownBy?: 'phone' | 'recents';
   /** the mark of their audio output, at the summary's size */
   peerMark: React.ReactNode;
   /** the name given to this connection, if there is more than one */
@@ -1973,7 +1978,7 @@ function PresenceCard(props: {
 }) {
   const {
     status, linked, connectionState, peerName, peerAvatar, peerAudio, peerBusy, onCall, pairBroken, peerPresent,
-    peerDetached, peerTornDown, peerMark, connectionName,
+    peerDetached, peerTornDown, peerTornDownBy, peerMark, connectionName,
   } = props;
 
   if (status === 'connecting') {
@@ -2042,7 +2047,7 @@ function PresenceCard(props: {
             // themselves, at night too, and saying so keeps us from
             // crediting them with a decision they never took.
             <>
-              {t('channel.phoneClosedApp')}
+              {t(peerTornDownBy === 'recents' ? 'channel.recentsClearedApp' : 'channel.phoneClosedApp')}
               {'\n'}{t('channel.callArrivesAnyway')}
               <Text style={styles.bold}>{t('buttons.call')}</Text>
               {t('channel.touchSuffix')}

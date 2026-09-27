@@ -87,7 +87,9 @@ export type SignalMessage =
   // that was torn down without anybody asking. On the other side the
   // two arrived identical - "waiting" - and whoever read it had to
   // guess which of the two it was.
-  | { kind: 'tornDown' }
+  // `how`: 'recents' when the window went with a swipe out of the
+  // recent apps; missing from an older Duetto, and then it was the phone
+  | { kind: 'tornDown'; how?: 'phone' | 'recents' }
   // The answering side cannot offer: if it ends up without a link and
   // the other one does not notice, the only way out is to ask.
   // Which Duetto is on the other phone, said as soon as the two find

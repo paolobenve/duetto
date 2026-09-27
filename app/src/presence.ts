@@ -67,6 +67,8 @@ let uiInCharge = false;
  * soon as the headless presence reopens the connection.
  */
 let tornDown = false;
+/** how recent a swipe out of the recents must be to explain a teardown */
+const RECENTS_WINDOW_MS = 60_000;
 
 export function interfaceInCharge(alive: boolean, closedByThePhone = false) {
   uiInCharge = alive;
@@ -282,6 +284,8 @@ export function presenceLine(o: {
    * too.
    */
   tornDown?: boolean;
+  /** what took their window away: a swipe out of the recents, or the phone */
+  tornDownBy?: 'phone' | 'recents';
   name: string;
   /** how OUR own link to the server is doing */
   server?: 'ok' | 'down' | 'connecting';
@@ -330,6 +334,9 @@ export function presenceLine(o: {
     return mine || theirs
       ? t('presence.bothWaitingSince', { channel: inChannelNamed, mine, who, theirs })
       : t('presence.bothWaiting', { channel: inChannelNamed });
+  }
+  if (o.tornDown && o.tornDownBy === 'recents') {
+    return t('presence.peerWaitingRecents', { ours, who, when: theirs });
   }
   return o.tornDown
     ? t('presence.peerWaitingTornDown', { ours, who, when: theirs })
@@ -519,7 +526,13 @@ async function listenNow(): Promise<boolean> {
         // only if there is somebody there to hear it.
         if (tornDown && peerPresent) {
           tornDown = false;
-          signaling?.sendSignal({ kind: 'tornDown' });
+          // Which gesture took the window away: a swipe out of the
+          // recents a moment ago is the person's, anything else the
+          // phone's.
+          Foreground.recentsClearedAt().catch(() => 0).then((at) => {
+            const how = Date.now() - Number(at) < RECENTS_WINDOW_MS ? 'recents' : 'phone';
+            signaling?.sendSignal({ kind: 'tornDown', how });
+          });
         }
         present = peerPresent;
         if (peerPresent) detached = false;
