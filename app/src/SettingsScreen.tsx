@@ -10,8 +10,14 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity,
-  KeyboardAvoidingView, Platform, Alert, Modal, Pressable, Clipboard, Linking, Share,
+  KeyboardAvoidingView, Platform, Alert, Modal, Pressable, Clipboard, Linking, Share, Switch,
 } from 'react-native';
+
+/** The switches' colours: grey off, the app's blue on. */
+const SWITCH_COLOURS = {
+  trackColor: { false: '#3a4250', true: '#2f7cf6' },
+  thumbColor: '#e6ebf1',
+} as const;
 import type { DuoConfig, PairInfo, PendingPair, VideoQuality } from './config';
 import type { PersonOnServer, InvitationOnServer } from './signaling';
 import { t, LANGUAGES, longDate } from './i18n';
@@ -772,38 +778,32 @@ export default function SettingsScreen({
         <Text style={styles.subsection}>{t('settings.videoQuality')}</Text>
         <Text style={styles.sectionHint}>{t('settings.videoQualityHint')}</Text>
         <Text style={styles.sectionHint}>{t('settings.bandwidthHint')}</Text>
-        {(Object.keys(VIDEO_PROFILES) as VideoQuality[]).map((q) => (
-          <TouchableOpacity
-            key={q}
-            style={[styles.choice, cfg.videoQuality === q && styles.choicePicked]}
-            onPress={() => {
-              setCfg({ ...cfg, videoQuality: q });
-              onQualityChange?.(q);
-            }}>
-            <View style={[styles.radio, cfg.videoQuality === q && styles.radioPicked]} />
-            <View style={styles.choiceText}>
-              <Text style={styles.choiceLabel}>{t(`quality.${VIDEO_PROFILES[q].key}`)}</Text>
-              <Text style={styles.choiceNote}>{t(`quality.${VIDEO_PROFILES[q].key}Note`)}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+        <View style={styles.group}>
+          {(Object.keys(VIDEO_PROFILES) as VideoQuality[]).map((q) => (
+            <TouchableOpacity
+              key={q}
+              style={[styles.option, cfg.videoQuality === q && styles.optionPicked]}
+              onPress={() => {
+                setCfg({ ...cfg, videoQuality: q });
+                onQualityChange?.(q);
+              }}>
+              <View style={[styles.radio, cfg.videoQuality === q && styles.radioPicked]} />
+              <View style={styles.choiceText}>
+                <Text style={styles.choiceLabel}>{t(`quality.${VIDEO_PROFILES[q].key}`)}</Text>
+                <Text style={styles.choiceNote}>{t(`quality.${VIDEO_PROFILES[q].key}Note`)}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
         <Text style={styles.sectionHint}>{t('settings.ceilingsHint')}</Text>
 
         <TouchableOpacity
           disabled={!vp9Available}
-          style={[
-            styles.choice,
-            vp9Available && cfg.videoCodec === 'vp9' && styles.choicePicked,
-            !vp9Available && styles.choiceOff,
-          ]}
+          style={[styles.switchRow, !vp9Available && styles.choiceOff]}
           onPress={() => setCfg({
             ...cfg,
             videoCodec: cfg.videoCodec === 'vp9' ? 'auto' : 'vp9',
           })}>
-          <View style={[
-            styles.radio,
-            vp9Available && cfg.videoCodec === 'vp9' && styles.radioPicked,
-          ]} />
           <View style={styles.choiceText}>
             <Text style={[styles.choiceLabel, !vp9Available && styles.textOff]}>
               {t('settings.vp9Codec')}
@@ -812,20 +812,25 @@ export default function SettingsScreen({
               {vp9Why}
             </Text>
           </View>
+          <View pointerEvents="none">
+            <Switch value={vp9Available && cfg.videoCodec === 'vp9'} {...SWITCH_COLOURS} />
+          </View>
         </TouchableOpacity>
 
         <Text style={styles.subsection}>{t('settings.audio')}</Text>
         <TouchableOpacity
-          style={[styles.choice, cfg.richerAudio && styles.choicePicked]}
+          style={styles.switchRow}
           onPress={() => {
             const v = !cfg.richerAudio;
             setCfg({ ...cfg, richerAudio: v });
             onLive?.({ richerAudio: v });
           }}>
-          <View style={[styles.radio, cfg.richerAudio && styles.radioPicked]} />
           <View style={styles.choiceText}>
             <Text style={styles.choiceLabel}>{t('settings.richerVoice')}</Text>
             <Text style={styles.choiceNote}>{t('settings.richerVoiceNote')}</Text>
+          </View>
+          <View pointerEvents="none">
+            <Switch value={!!(cfg.richerAudio)} {...SWITCH_COLOURS} />
           </View>
         </TouchableOpacity>
 
@@ -839,170 +844,184 @@ export default function SettingsScreen({
         ] as const).filter((o) => o.when).map((o) => (
           <TouchableOpacity
             key={o.key}
-            style={[styles.choice, cfg[o.key] && styles.choicePicked]}
+            style={styles.switchRow}
             onPress={() => {
               const v = !cfg[o.key];
               setCfg({ ...cfg, [o.key]: v });
               onLive?.({ [o.key]: v });
             }}>
-            <View style={[styles.radio, cfg[o.key] && styles.radioPicked]} />
             <View style={styles.choiceText}>
               <Text style={styles.choiceLabel}>{t(`settings.${o.key}`)}</Text>
               <Text style={styles.choiceNote}>{t(`settings.${o.key}Note`)}</Text>
+            </View>
+            <View pointerEvents="none">
+              <Switch value={!!cfg[o.key]} {...SWITCH_COLOURS} />
             </View>
           </TouchableOpacity>
         ))}
 
         <Text style={styles.sectionHint}>{t('settings.openInto')}</Text>
-        {(['door', 'channel'] as const).map((v) => (
-          <TouchableOpacity
-            key={v}
-            style={[styles.choice, (cfg.openInto ?? 'door') === v && styles.choicePicked]}
-            onPress={() => {
-              setCfg({ ...cfg, openInto: v });
-              onLive?.({ openInto: v });
-            }}>
-            <View style={[styles.radio, (cfg.openInto ?? 'door') === v && styles.radioPicked]} />
-            <View style={styles.choiceText}>
-              <Text style={styles.choiceLabel}>
-                {t(v === 'door' ? 'settings.openIntoDoor' : 'settings.openIntoChannel')}
-              </Text>
-              <Text style={styles.choiceNote}>
-                {t(v === 'door' ? 'settings.openIntoDoorNote' : 'settings.openIntoChannelNote')}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+        <View style={styles.group}>
+          {(['door', 'channel'] as const).map((v) => (
+            <TouchableOpacity
+              key={v}
+              style={[styles.option, (cfg.openInto ?? 'door') === v && styles.optionPicked]}
+              onPress={() => {
+                setCfg({ ...cfg, openInto: v });
+                onLive?.({ openInto: v });
+              }}>
+              <View style={[styles.radio, (cfg.openInto ?? 'door') === v && styles.radioPicked]} />
+              <View style={styles.choiceText}>
+                <Text style={styles.choiceLabel}>
+                  {t(v === 'door' ? 'settings.openIntoDoor' : 'settings.openIntoChannel')}
+                </Text>
+                <Text style={styles.choiceNote}>
+                  {t(v === 'door' ? 'settings.openIntoDoorNote' : 'settings.openIntoChannelNote')}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
 
         <Text style={styles.sectionHint}>{t('settings.outputOnEntry')}</Text>
-        {(['earpiece', 'asLeft'] as const).map((v) => (
-          <TouchableOpacity
-            key={v}
-            style={[styles.choice, (cfg.outputOnEntry ?? 'earpiece') === v && styles.choicePicked]}
-            onPress={() => {
-              setCfg({ ...cfg, outputOnEntry: v });
-              onLive?.({ outputOnEntry: v });
-            }}>
-            <View style={[styles.radio, (cfg.outputOnEntry ?? 'earpiece') === v && styles.radioPicked]} />
-            <View style={styles.choiceText}>
-              <Text style={styles.choiceLabel}>
-                {t(v === 'earpiece' ? 'settings.outputOnEntryEar' : 'settings.outputOnEntryAsLeft')}
-              </Text>
-              <Text style={styles.choiceNote}>
-                {t(v === 'earpiece' ? 'settings.outputOnEntryEarNote' : 'settings.outputOnEntryAsLeftNote')}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+        <View style={styles.group}>
+          {(['earpiece', 'asLeft'] as const).map((v) => (
+            <TouchableOpacity
+              key={v}
+              style={[styles.option, (cfg.outputOnEntry ?? 'earpiece') === v && styles.optionPicked]}
+              onPress={() => {
+                setCfg({ ...cfg, outputOnEntry: v });
+                onLive?.({ outputOnEntry: v });
+              }}>
+              <View style={[styles.radio, (cfg.outputOnEntry ?? 'earpiece') === v && styles.radioPicked]} />
+              <View style={styles.choiceText}>
+                <Text style={styles.choiceLabel}>
+                  {t(v === 'earpiece' ? 'settings.outputOnEntryEar' : 'settings.outputOnEntryAsLeft')}
+                </Text>
+                <Text style={styles.choiceNote}>
+                  {t(v === 'earpiece' ? 'settings.outputOnEntryEarNote' : 'settings.outputOnEntryAsLeftNote')}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
 
         {/* How loud the cues are. Touching a step plays one at that
             volume: it is chosen by ear, and the stream they use has no
             slider of its own to look at. */}
         <Text style={styles.sectionHint}>{t('settings.cueVolume')}</Text>
         <Text style={styles.hint}>{t('settings.cueVolumeNote')}</Text>
-        {(['off', 'veryLow', 'low', 'medium', 'high'] as const).map((v) => (
-          <TouchableOpacity
-            key={v}
-            style={[styles.choice, (cfg.cueVolume ?? 'veryLow') === v && styles.choicePicked]}
-            onPress={() => {
-              setCfg({ ...cfg, cueVolume: v });
-              onLive?.({ cueVolume: v });
-              if (CUE_GAIN[v] > 0) Alarm.play('cue_enter', true, 0, CUE_GAIN[v]).catch(() => {});
-            }}>
-            <View style={[styles.radio, (cfg.cueVolume ?? 'veryLow') === v && styles.radioPicked]} />
-            <View style={styles.choiceText}>
-              <Text style={styles.choiceLabel}>
-                {t(`settings.cue${v[0].toUpperCase()}${v.slice(1)}`)}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+        <View style={styles.group}>
+          {(['off', 'veryLow', 'low', 'medium', 'high'] as const).map((v) => (
+            <TouchableOpacity
+              key={v}
+              style={[styles.option, (cfg.cueVolume ?? 'veryLow') === v && styles.optionPicked]}
+              onPress={() => {
+                setCfg({ ...cfg, cueVolume: v });
+                onLive?.({ cueVolume: v });
+                if (CUE_GAIN[v] > 0) Alarm.play('cue_enter', true, 0, CUE_GAIN[v]).catch(() => {});
+              }}>
+              <View style={[styles.radio, (cfg.cueVolume ?? 'veryLow') === v && styles.radioPicked]} />
+              <View style={styles.choiceText}>
+                <Text style={styles.choiceLabel}>
+                  {t(`settings.cue${v[0].toUpperCase()}${v.slice(1)}`)}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
 
         <Text style={styles.sectionHint}>{t('settings.micOnEntry')}</Text>
-        {(['asLeft', 'off'] as const).map((v) => (
-          <TouchableOpacity
-            key={v}
-            style={[styles.choice, (cfg.micOnEntry ?? 'asLeft') === v && styles.choicePicked]}
-            onPress={() => {
-              setCfg({ ...cfg, micOnEntry: v });
-              onLive?.({ micOnEntry: v });
-            }}>
-            <View style={[styles.radio, (cfg.micOnEntry ?? 'asLeft') === v && styles.radioPicked]} />
-            <View style={styles.choiceText}>
-              <Text style={styles.choiceLabel}>
-                {t(v === 'off' ? 'settings.micOnEntryOff' : 'settings.micOnEntryAsLeft')}
-              </Text>
-              <Text style={styles.choiceNote}>
-                {t(v === 'off' ? 'settings.micOnEntryOffNote' : 'settings.micOnEntryAsLeftNote')}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+        <View style={styles.group}>
+          {(['asLeft', 'off'] as const).map((v) => (
+            <TouchableOpacity
+              key={v}
+              style={[styles.option, (cfg.micOnEntry ?? 'asLeft') === v && styles.optionPicked]}
+              onPress={() => {
+                setCfg({ ...cfg, micOnEntry: v });
+                onLive?.({ micOnEntry: v });
+              }}>
+              <View style={[styles.radio, (cfg.micOnEntry ?? 'asLeft') === v && styles.radioPicked]} />
+              <View style={styles.choiceText}>
+                <Text style={styles.choiceLabel}>
+                  {t(v === 'off' ? 'settings.micOnEntryOff' : 'settings.micOnEntryAsLeft')}
+                </Text>
+                <Text style={styles.choiceNote}>
+                  {t(v === 'off' ? 'settings.micOnEntryOffNote' : 'settings.micOnEntryAsLeftNote')}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
 
         <Text style={styles.subsection}>{t('settings.whenTheyCall')}</Text>
         <Text style={styles.sectionHint}>{t('settings.whenTheyCallHint')}</Text>
 
         <Text style={styles.sectionHint}>{t('settings.vibration')}</Text>
-        {VIBRATIONS().map((v) => (
-          <TouchableOpacity
-            key={v.value}
-            style={[styles.choice, cfg.alertVibration === v.value && styles.choicePicked]}
-            onPress={() => {
-              setCfg({ ...cfg, alertVibration: v.value });
-              onLive?.({ alertVibration: v.value });
-            }}>
-            <View style={[styles.radio, cfg.alertVibration === v.value && styles.radioPicked]} />
-            <View style={styles.choiceText}>
-              <Text style={styles.choiceLabel}>{v.label}</Text>
-              <Text style={styles.choiceNote}>{v.note}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+        <View style={styles.group}>
+          {VIBRATIONS().map((v) => (
+            <TouchableOpacity
+              key={v.value}
+              style={[styles.option, cfg.alertVibration === v.value && styles.optionPicked]}
+              onPress={() => {
+                setCfg({ ...cfg, alertVibration: v.value });
+                onLive?.({ alertVibration: v.value });
+              }}>
+              <View style={[styles.radio, cfg.alertVibration === v.value && styles.radioPicked]} />
+              <View style={styles.choiceText}>
+                <Text style={styles.choiceLabel}>{v.label}</Text>
+                <Text style={styles.choiceNote}>{v.note}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
 
         <Text style={styles.sectionHint}>{t('settings.sound')}</Text>
-        {SOUNDS().map((s) => (
-          <TouchableOpacity
-            key={s.value}
-            style={[styles.choice, cfg.alertSound === s.value && styles.choicePicked]}
-            onPress={() => {
-              setCfg({ ...cfg, alertSound: s.value });
-              onLive?.({ alertSound: s.value });
-            }}>
-            <View style={[styles.radio, cfg.alertSound === s.value && styles.radioPicked]} />
-            <View style={styles.choiceText}>
-              <Text style={styles.choiceLabel}>{s.label}</Text>
-              <Text style={styles.choiceNote}>{s.note}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+        <View style={styles.group}>
+          {SOUNDS().map((s) => (
+            <TouchableOpacity
+              key={s.value}
+              style={[styles.option, cfg.alertSound === s.value && styles.optionPicked]}
+              onPress={() => {
+                setCfg({ ...cfg, alertSound: s.value });
+                onLive?.({ alertSound: s.value });
+              }}>
+              <View style={[styles.radio, cfg.alertSound === s.value && styles.radioPicked]} />
+              <View style={styles.choiceText}>
+                <Text style={styles.choiceLabel}>{s.label}</Text>
+                <Text style={styles.choiceNote}>{s.note}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
 
-        {/* The sound picked from the phone's own is an entry like the
-            others: it shows the name it has, and touching it chooses
-            it. Before, that same touch opened the system screen again -
-            so the sound in use could not be picked back without going
-            to look for it a second time. */}
-        {/* The sound picked, whichever kind it is: one of Duetto's own
-            or one taken from the phone. It is here only once it has
-            been picked - before that there are the phone's own sound
-            and silence, and nothing else - and it stays after a turn
-            through those two, so it can be taken up again without
-            going to look for it a second time. */}
-        {picked ? (
-          <TouchableOpacity
-            style={[styles.choice, cfg.alertSound === cfg.alertPicked && styles.choicePicked]}
-            onPress={() => {
-              setCfg({ ...cfg, alertSound: cfg.alertPicked as 'chosen' | 'duetto' });
-              onLive?.({ alertSound: cfg.alertPicked as 'chosen' | 'duetto' });
-            }}>
-            <View style={[
-              styles.radio, cfg.alertSound === cfg.alertPicked && styles.radioPicked,
-            ]} />
-            <View style={styles.choiceText}>
-              <Text style={styles.choiceLabel}>{picked.label}</Text>
-              <Text style={styles.choiceNote}>{picked.note}</Text>
-            </View>
-          </TouchableOpacity>
-        ) : null}
+          {/* The sound picked from the phone's own is an entry like the
+              others: it shows the name it has, and touching it chooses
+              it. Before, that same touch opened the system screen again -
+              so the sound in use could not be picked back without going
+              to look for it a second time. */}
+          {/* The sound picked, whichever kind it is: one of Duetto's own
+              or one taken from the phone. It is here only once it has
+              been picked - before that there are the phone's own sound
+              and silence, and nothing else - and it stays after a turn
+              through those two, so it can be taken up again without
+              going to look for it a second time. */}
+          {picked ? (
+            <TouchableOpacity
+              style={[styles.option, cfg.alertSound === cfg.alertPicked && styles.optionPicked]}
+              onPress={() => {
+                setCfg({ ...cfg, alertSound: cfg.alertPicked as 'chosen' | 'duetto' });
+                onLive?.({ alertSound: cfg.alertPicked as 'chosen' | 'duetto' });
+              }}>
+              <View style={[
+                styles.radio, cfg.alertSound === cfg.alertPicked && styles.radioPicked,
+              ]} />
+              <View style={styles.choiceText}>
+                <Text style={styles.choiceLabel}>{picked.label}</Text>
+                <Text style={styles.choiceNote}>{picked.note}</Text>
+              </View>
+            </TouchableOpacity>
+          ) : null}
+        </View>
 
         <TouchableOpacity
           style={[styles.rowButton, styles.rowAfterChoices]}
@@ -1039,40 +1058,44 @@ export default function SettingsScreen({
 
         <Text style={styles.subsection}>{t('settings.controlsWhileWatching')}</Text>
         <Text style={styles.sectionHint}>{t('settings.controlsHint')}</Text>
-        {CONTROLS().map((c) => (
-          <TouchableOpacity
-            key={c.value}
-            style={[styles.choice, cfg.controls === c.value && styles.choicePicked]}
-            onPress={() => {
-              setCfg({ ...cfg, controls: c.value });
-              onLive?.({ controls: c.value });
-            }}>
-            <View style={[styles.radio, cfg.controls === c.value && styles.radioPicked]} />
-            <View style={styles.choiceText}>
-              <Text style={styles.choiceLabel}>{c.label}</Text>
-              <Text style={styles.choiceNote}>{c.note}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+        <View style={styles.group}>
+          {CONTROLS().map((c) => (
+            <TouchableOpacity
+              key={c.value}
+              style={[styles.option, cfg.controls === c.value && styles.optionPicked]}
+              onPress={() => {
+                setCfg({ ...cfg, controls: c.value });
+                onLive?.({ controls: c.value });
+              }}>
+              <View style={[styles.radio, cfg.controls === c.value && styles.radioPicked]} />
+              <View style={styles.choiceText}>
+                <Text style={styles.choiceLabel}>{c.label}</Text>
+                <Text style={styles.choiceNote}>{c.note}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
 
         <Text style={styles.subsection}>{t('settings.language')}</Text>
         <Text style={styles.sectionHint}>{t('settings.languageHint')}</Text>
-        {(['auto', ...LANGUAGES] as LanguageChoice[]).map((l) => (
-          <TouchableOpacity
-            key={l}
-            style={[styles.choice, (cfg.language ?? 'auto') === l && styles.choicePicked]}
-            onPress={() => {
-              setCfg({ ...cfg, language: l });
-              onLive?.({ language: l });
-            }}>
-            <View style={[
-              styles.radio, (cfg.language ?? 'auto') === l && styles.radioPicked,
-            ]} />
-            <View style={styles.choiceText}>
-              <Text style={styles.choiceLabel}>{t(`language.${l}`)}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+        <View style={styles.group}>
+          {(['auto', ...LANGUAGES] as LanguageChoice[]).map((l) => (
+            <TouchableOpacity
+              key={l}
+              style={[styles.option, (cfg.language ?? 'auto') === l && styles.optionPicked]}
+              onPress={() => {
+                setCfg({ ...cfg, language: l });
+                onLive?.({ language: l });
+              }}>
+              <View style={[
+                styles.radio, (cfg.language ?? 'auto') === l && styles.radioPicked,
+              ]} />
+              <View style={styles.choiceText}>
+                <Text style={styles.choiceLabel}>{t(`language.${l}`)}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
 
         <TouchableOpacity style={styles.toggle} onPress={() => setAdvanced(!advanced)}>
           <Text style={styles.toggleText}>
@@ -1144,45 +1167,51 @@ export default function SettingsScreen({
         {/* A technical knob, kept here on purpose: it pays on a road
             that loses packets and costs on every other. */}
         <TouchableOpacity
-          style={[styles.choice, cfg.shortPackets && styles.choicePicked]}
+          style={styles.switchRow}
           onPress={() => {
             const v = !cfg.shortPackets;
             setCfg({ ...cfg, shortPackets: v });
             onLive?.({ shortPackets: v });
           }}>
-          <View style={[styles.radio, cfg.shortPackets && styles.radioPicked]} />
           <View style={styles.choiceText}>
             <Text style={styles.choiceLabel}>{t('settings.shortPackets')}</Text>
             <Text style={styles.choiceNote}>{t('settings.shortPacketsNote')}</Text>
           </View>
+          <View pointerEvents="none">
+            <Switch value={!!(cfg.shortPackets)} {...SWITCH_COLOURS} />
+          </View>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.choice, cfg.diagnostics && styles.choicePicked]}
+          style={styles.switchRow}
           onPress={() => {
             const v = !cfg.diagnostics;
             setCfg({ ...cfg, diagnostics: v });
             onLive?.({ diagnostics: v });
           }}>
-          <View style={[styles.radio, cfg.diagnostics && styles.radioPicked]} />
           <View style={styles.choiceText}>
             <Text style={styles.choiceLabel}>{t('settings.diagnosticsOn')}</Text>
             <Text style={styles.choiceNote}>{t('settings.diagnosticsOnNote')}</Text>
+          </View>
+          <View pointerEvents="none">
+            <Switch value={!!(cfg.diagnostics)} {...SWITCH_COLOURS} />
           </View>
         </TouchableOpacity>
 
         {cfg.diagnostics ? (
           <>
           <TouchableOpacity
-            style={[styles.choice, cfg.delayTotalOnly && styles.choicePicked]}
+            style={styles.switchRow}
             onPress={() => {
               const v = !cfg.delayTotalOnly;
               setCfg({ ...cfg, delayTotalOnly: v });
               onLive?.({ delayTotalOnly: v });
             }}>
-            <View style={[styles.radio, cfg.delayTotalOnly && styles.radioPicked]} />
             <View style={styles.choiceText}>
               <Text style={styles.choiceLabel}>{t('settings.delayTotalOnly')}</Text>
               <Text style={styles.choiceNote}>{t('settings.delayTotalOnlyNote')}</Text>
+            </View>
+            <View pointerEvents="none">
+              <Switch value={!!(cfg.delayTotalOnly)} {...SWITCH_COLOURS} />
             </View>
           </TouchableOpacity>
 
@@ -1476,12 +1505,14 @@ export default function SettingsScreen({
               maxLength={4000}
             />
             <TouchableOpacity
-              style={[styles.choice, reportWithJournal && styles.choicePicked]}
+              style={styles.switchRow}
               onPress={() => setReportWithJournal(!reportWithJournal)}>
-              <View style={[styles.radio, reportWithJournal && styles.radioPicked]} />
               <View style={styles.choiceText}>
                 <Text style={styles.choiceLabel}>{t('settings.reportAttach')}</Text>
                 <Text style={styles.choiceNote}>{t('settings.reportAttachNote')}</Text>
+              </View>
+              <View pointerEvents="none">
+                <Switch value={!!(reportWithJournal)} {...SWITCH_COLOURS} />
               </View>
             </TouchableOpacity>
             <View style={styles.sheetActions}>
@@ -1586,6 +1617,25 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#252c38',
   },
   choicePicked: { borderColor: '#2f7cf6', backgroundColor: '#16203050' },
+  /**
+   * One question, one box: its answers are rows of the same list, split
+   * by thin lines, and only the one picked is lit. A switch, on the
+   * other hand, is a row of its own with the switch on the right: at a
+   * glance one tells "one of these" from "on or off".
+   */
+  group: {
+    backgroundColor: '#151a23', borderRadius: 12, marginTop: 8,
+    borderWidth: 1, borderColor: '#252c38', overflow: 'hidden',
+  },
+  option: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#252c38',
+  },
+  optionPicked: { backgroundColor: '#16203a' },
+  switchRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 12, paddingHorizontal: 4, marginTop: 4,
+  },
   choiceOff: { opacity: 0.45 },
   textOff: { color: '#6b7480' },
   radio: {
