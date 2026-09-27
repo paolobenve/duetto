@@ -1224,21 +1224,23 @@ export default function ChannelScreen(props: Props) {
                 <View style={styles.cardMarkRow}>
                   {peerMark(17, '#0b0e14')}
                   {showStats ? (
-                    <Text style={[styles.cardVolume, styles.cardVolumeWrap]} numberOfLines={2}>
-                      {[
+                    <SplitLine
+                      style={[styles.cardVolume, styles.cardVolumeWrap]}
+                      text={[
                         // "you hear" is on the scale beside: said once
                         peerState.volume != null
                           ? t('channel.hearsYou', { pct: levelText(peerState.volume, peerState.volSys, peerState.gain) })
                           : '',
                       ].filter(Boolean).join(' · ')}
-                    </Text>
+                    />
                   ) : null}
                   {showStats ? ownOutputMark(17, '#0b0e14') : null}
                 </View>
                 {showStats && (battery || peerState.battery) ? (
-                  <Text style={[styles.cardVolume, styles.cardVolumeWrap]} numberOfLines={2}>
-                    {batteryLine(battery, peerState.battery, network, peerState.net)}
-                  </Text>
+                  <SplitLine
+                    style={[styles.cardVolume, styles.cardVolumeWrap]}
+                    text={batteryLine(battery, peerState.battery, network, peerState.net)}
+                  />
                 ) : null}
               </View>
             }
@@ -2154,6 +2156,33 @@ export const STATS_LINE_H = 18;
 /** "su wifi" / "su rete mobile", or nothing when unknown */
 function netWord(n: string | null | undefined): string {
   return n === 'wifi' ? ` ${t('channel.onWifi')}` : n === 'mobile' ? ` ${t('channel.onMobile')}` : '';
+}
+
+/**
+ * A line made of pieces joined by " · ", which breaks between the
+ * pieces when it does not fit on one line - "you 63% on wifi" above,
+ * "the other 80%" below - instead of wherever the width runs out, in
+ * the middle of one of them.
+ *
+ * It is laid out once as a single line; if that takes more than one,
+ * the separators become line breaks. It stays broken while the words
+ * are at least that long, so that a figure changing does not make it
+ * jump back and forth.
+ */
+function SplitLine({ text, style }: { text: string; style: any }) {
+  const [splitFrom, setSplitFrom] = useState(Infinity);
+  const pieces = text.split(' · ');
+  const split = pieces.length > 1 && text.length >= splitFrom;
+  return (
+    <Text
+      style={style}
+      numberOfLines={split ? pieces.length * 2 : 2}
+      onTextLayout={(e) => {
+        if (!split && pieces.length > 1 && e.nativeEvent.lines.length > 1) setSplitFrom(text.length);
+      }}>
+      {split ? pieces.join('\n') : text}
+    </Text>
+  );
 }
 
 function batteryLine(
