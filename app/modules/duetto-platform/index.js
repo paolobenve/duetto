@@ -90,6 +90,8 @@ export const Foreground = isAndroid && NativeForeground
       setAvailable: (v) => call(NativeForeground, 'setAvailable', !!v),
       /** that choice, read back */
       isAvailable: () => call(NativeForeground, 'isAvailable'),
+      /** when Duetto was last swiped out of the recents, 0 if never */
+      recentsClearedAt: () => call(NativeForeground, 'recentsClearedAt'),
 
       /**
        * Whether the watchdog alarm has anything to watch over: false
@@ -174,6 +176,7 @@ export const Foreground = isAndroid && NativeForeground
       setInChannel: unavailable,
       setAvailable: unavailable,
       isAvailable: () => Promise.resolve(true),
+      recentsClearedAt: () => Promise.resolve(0),
       watchdogWanted: unavailable,
       setText: unavailable,
       stop: unavailable,

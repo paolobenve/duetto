@@ -98,6 +98,19 @@ class ChannelForegroundService : Service() {
     }
 
     companion object {
+        private const val TEARDOWN_PREFS = "duetto.teardown"
+        private const val KEY_RECENTS_AT = "recentsClearedAt"
+
+        fun noteRecentsCleared(ctx: Context) {
+            ctx.getSharedPreferences(TEARDOWN_PREFS, Context.MODE_PRIVATE).edit()
+                .putLong(KEY_RECENTS_AT, System.currentTimeMillis()).apply()
+        }
+
+        /** When the app was last swiped out of the recents; 0 if never. */
+        fun recentsClearedAt(ctx: Context): Long =
+            ctx.getSharedPreferences(TEARDOWN_PREFS, Context.MODE_PRIVATE)
+                .getLong(KEY_RECENTS_AT, 0L)
+
         const val CHANNEL_ID = "duetto_presence"
         const val NOTIFICATION_ID = 4711
         const val EXTRA_TEXT = "text"
@@ -309,6 +322,10 @@ class ChannelForegroundService : Service() {
      */
     override fun onTaskRemoved(rootIntent: Intent?) {
         Journal.sample(applicationContext, "recents-cleared")
+        // Remembered with its moment: the presence that comes back tells
+        // the other side it was this gesture, not the phone, that took
+        // the window away (see ForegroundModule.recentsClearedAt).
+        noteRecentsCleared(applicationContext)
         // The JavaScript engine goes with the activity: with nobody to
         // take the connection back up, this service would be left showing
         // a presence that is not there any more. It hands over to

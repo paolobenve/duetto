@@ -139,6 +139,16 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
         promise.resolve(true)
     }
 
+    /**
+     * When Duetto was last swiped out of the recents, 0 if never: the
+     * presence that comes back after a window vanished tells the other
+     * side whether it was that gesture or the phone.
+     */
+    @ReactMethod
+    fun recentsClearedAt(promise: Promise) {
+        promise.resolve(ChannelForegroundService.recentsClearedAt(ctx).toDouble())
+    }
+
     /** The same choice, read back: the presence asks before starting. */
     @ReactMethod
     fun isAvailable(promise: Promise) {

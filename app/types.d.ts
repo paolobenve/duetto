@@ -89,6 +89,7 @@ declare module 'duetto-platform' {
     /** "leave and become unavailable", written where a reboot cannot erase it */
     setAvailable(v: boolean): Promise<boolean>;
     isAvailable(): Promise<boolean>;
+    recentsClearedAt(): Promise<number>;
     /** whether the watchdog alarm has anything to watch over */
     watchdogWanted(v: boolean): Promise<boolean>;
     /** text of the standing notification, and the connection name to put in front */
