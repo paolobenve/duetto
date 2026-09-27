@@ -25,6 +25,7 @@ const NativeJournal = NativeModules.DuettoJournal;
 const NativeReport = NativeModules.DuettoReport;
 const NativeVolume = NativeModules.DuettoVolume;
 const NativeAlarm = NativeModules.DuettoAlarm;
+const NativeCalls = NativeModules.DuettoCalls;
 
 /**
  * Calls a native method only if it really exists.
@@ -436,6 +437,24 @@ export const Proximity = isAndroid && NativeProximity
  * receives anyway. See HeartbeatModule.
  */
 let beatListeners = 0;
+/**
+ * The channel as a call, for Android's telephony: opened on entering,
+ * closed on leaving. See Calls.kt.
+ */
+export const Call = isAndroid && NativeCalls
+  ? {
+      /** "placed", or why not: the state follows through subscribe */
+      start: (name) => call(NativeCalls, 'start', String(name || '')),
+      end: () => call(NativeCalls, 'end'),
+      /** `cb(state)`: active, held, failed, ended, ended-by-system */
+      subscribe(cb) {
+        const emitter = new NativeEventEmitter(NativeCalls);
+        const sub = emitter.addListener('duetto-call', (s) => cb(String(s)));
+        return () => sub.remove();
+      },
+    }
+  : { start: () => Promise.resolve('unavailable'), end: unavailable, subscribe: () => () => {} };
+
 export const Heartbeat = isAndroid && NativeHeartbeat
   ? {
       /**

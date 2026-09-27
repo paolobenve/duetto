@@ -41,6 +41,7 @@ class DuettoPackage : ReactPackage {
         VolumeModule(reactContext),
         AlarmModule(reactContext),
         ScannerModule(reactContext),
+        CallsModule(reactContext),
     )
 
     override fun createViewManagers(

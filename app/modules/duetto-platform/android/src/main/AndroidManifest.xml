@@ -26,6 +26,11 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Asking for unrestricted battery use -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- The channel as a call of its own, "self-managed": its own
+         interface, no dialer, no call log. A process in a call is one
+         the system keeps; a Motorola closed Duetto at the stroke of the
+         hour in the middle of a conversation. Granted without asking. -->
+    <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
 
     <application>
         <!-- Hands the journal's files to other apps, through the share
@@ -105,6 +110,17 @@
              a death - is granted no microphone. It asks for this type
              then, and the type has to be declared here or the request
              is refused before it is even judged. -->
+        <!-- Where Android's telephony asks for the channel's call to be
+             made: see Calls.kt. -->
+        <service
+            android:name=".DuettoConnectionService"
+            android:exported="true"
+            android:permission="android.permission.BIND_TELECOM_CONNECTION_SERVICE">
+            <intent-filter>
+                <action android:name="android.telecom.ConnectionService" />
+            </intent-filter>
+        </service>
+
         <service
             android:name=".ChannelForegroundService"
             android:exported="false"

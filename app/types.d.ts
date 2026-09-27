@@ -28,6 +28,13 @@ declare module 'duetto-platform' {
     list(): Promise<string[]>;
   };
 
+  /** The channel as a call, for Android's telephony. */
+  export const Call: {
+    start(name: string): Promise<string>;
+    end(): Promise<boolean>;
+    subscribe(cb: (state: string) => void): () => void;
+  };
+
   export const Volume: {
     /** in the channel the app takes the volume keys; outside it leaves them */
     takeKeys(active: boolean): Promise<boolean>;
