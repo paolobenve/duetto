@@ -143,7 +143,7 @@ export const es: Dictionary = {
 
   channel: {
     ringPermTitle: 'Tono de llamada en el canal',
-    ringPermBody: 'Mientras estás en el canal, para Android ya estás en una llamada: una llamada que llega solo da los pitidos de llamada en espera. Con el permiso de teléfono, Duetto sabe cuándo suena el teléfono y reproduce tu tono. No lee números ni llamadas.',
+    ringPermBody: 'El permiso es opcional. Mientras estás en el canal, para Android ya estás en una llamada: sin él, una llamada que llega se anuncia solo con unos pitidos muy débiles, fáciles de no oír. Con el permiso de teléfono, Duetto sabe cuándo suena el teléfono y reproduce tu tono. No lee números ni llamadas.',
     ringPermOk: 'Continuar',
     ringPermNo: 'Ahora no',
     onWifi: 'por wifi',

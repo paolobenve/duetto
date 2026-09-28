@@ -154,7 +154,7 @@ export const en = {
 
   channel: {
     ringPermTitle: 'Ringtone in the channel',
-    ringPermBody: 'While you are in the channel, Android counts you as in a call: a phone call arriving only gives the call-waiting beeps. With the phone permission, Duetto knows when the phone rings and plays your ringtone. It reads no numbers and no calls.',
+    ringPermBody: 'The permission is optional. While you are in the channel, Android counts you as in a call: without it, a phone call arriving is announced only by very faint beeps, easy to miss. With the phone permission, Duetto knows when the phone rings and plays your ringtone. It reads no numbers and no calls.',
     ringPermOk: 'Continue',
     ringPermNo: 'Not now',
     onWifi: 'on wifi',

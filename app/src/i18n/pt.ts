@@ -143,7 +143,7 @@ export const pt: Dictionary = {
 
   channel: {
     ringPermTitle: 'Toque durante o canal',
-    ringPermBody: 'Enquanto você está no canal, para o Android você já está numa chamada: uma ligação que chega só dá os bipes de chamada em espera. Com a permissão de telefone, o Duetto sabe quando o telefone toca e toca o seu toque. Não lê números nem chamadas.',
+    ringPermBody: 'A permissão é opcional. Enquanto você está no canal, para o Android você já está numa chamada: sem ela, uma ligação que chega se anuncia só com bipes muito fracos, fáceis de não ouvir. Com a permissão de telefone, o Duetto sabe quando o telefone toca e toca o seu toque. Não lê números nem chamadas.',
     ringPermOk: 'Continuar',
     ringPermNo: 'Agora não',
     onWifi: 'no wifi',

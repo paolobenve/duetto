@@ -143,7 +143,7 @@ export const fr: Dictionary = {
 
   channel: {
     ringPermTitle: 'Sonnerie dans le canal',
-    ringPermBody: 'Quand tu es dans le canal, pour Android tu es déjà en appel : un appel qui arrive ne donne que les bips du double appel. Avec la permission téléphone, Duetto sait quand le téléphone sonne et joue ta sonnerie. Il ne lit ni numéros ni appels.',
+    ringPermBody: 'La permission est facultative. Quand tu es dans le canal, pour Android tu es déjà en appel : sans elle, un appel qui arrive ne s\'annonce que par des bips très faibles, faciles à manquer. Avec la permission téléphone, Duetto sait quand le téléphone sonne et joue ta sonnerie. Il ne lit ni numéros ni appels.',
     ringPermOk: 'Continuer',
     ringPermNo: 'Pas maintenant',
     onWifi: 'en wifi',
