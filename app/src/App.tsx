@@ -285,6 +285,8 @@ const KNOCK_ECHO_MS = 2_000;
 let cueGain = CUE_GAIN.veryLow;
 /** how long the other's leaving waits, in case a goodbye follows it */
 const LEAVE_CUE_WAIT_MS = 1000;
+/** how long after our own call goes active its taking of the audio is read as ours */
+const OWN_CALL_GRAB_MS = 3000;
 /** how long one's own leaving cues last: the call's audio waits for them */
 const LEAVE_CUE_MS = 1300;
 const DETACH_CUE_MS = 1800;
@@ -541,6 +543,18 @@ export default function App() {
       const media = what === 'AUDIOFOCUS_LOSS';
       const duck = what === 'AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK';
       if (!call && !media && !duck) { back('told'); return; }
+      // Our own call taking the audio: the telecom framework grabs it
+      // for the channel's call the moment that goes active (Calls.kt),
+      // and this read it as a telephone - "a call on the phone", both
+      // sides silent, every time one came in. It is taken back instead,
+      // so that a real call later still takes it from us and is heard.
+      if (call && Date.now() - callActiveAt.current < OWN_CALL_GRAB_MS) {
+        Journal.mark('audio-focus:own-call').catch(() => {});
+        setTimeout(() => {
+          Promise.resolve((InCallManager as any).requestAudioFocus?.()).catch(() => {});
+        }, 500);
+        return;
+      }
       lost = true;
       if (call) {
         // Ringing or answered: the mode says which.
@@ -1594,6 +1608,25 @@ export default function App() {
       Call.end().catch(() => { /* noop */ });
     }, wait);
   };
+
+  /**
+   * When the channel's call last went active, for Android's telephony
+   * (see Calls.kt): the audio focus it takes in that moment is ours, not
+   * a telephone's.
+   */
+  const callActiveAt = useRef(0);
+  useEffect(() => Call.subscribe((st) => {
+    if (st === 'active' || st === 'resumed') callActiveAt.current = Date.now();
+    // A real call answered puts ours on hold: silent both ways, and the
+    // card says why. Given back when that call ends.
+    if (st === 'held') {
+      sessionRef.current?.hush(true);
+      setOnCall(true);
+    } else if (st === 'resumed') {
+      sessionRef.current?.hush(false);
+      setOnCall(false);
+    }
+  }), []);
 
   /** the other's leaving, waiting to be heard: see onPeerMode */
   const leaveCueDue = useRef<ReturnType<typeof setTimeout> | null>(null);
