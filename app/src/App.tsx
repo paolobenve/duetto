@@ -1304,7 +1304,13 @@ export default function App() {
    * put the phone's share a little above the rung that means the
    * phone's top.
    */
-  const sysFraction = systemVolume.max > 0
+  /**
+   * The phone's knob does nothing to the voice on some phones (the
+   * volume test said so): there Duetto's gain is the only knob, below
+   * the top too, as it always was before.
+   */
+  const knobIgnored = cfg?.knobWorks === 'no';
+  const sysFraction = systemVolume.max > 0 && !knobIgnored
     ? ofDb(stepDb(Math.min(systemVolume.volume, systemVolume.max), systemVolume.max, stepsDb))
     : 1;
   /**
@@ -1318,7 +1324,7 @@ export default function App() {
    * voice already low. In Duetto, going up moves the knob first and the
    * gain after; going down takes the gain off first and the knob after.
    */
-  const boost = Math.max(1, gain);
+  const boost = knobIgnored ? gain : Math.max(1, gain);
   /** the top the level can reach: four times the phone's top */
   const levelCeiling = ofDb(LEVEL_MAX_DB);
   const level = sysFraction > 0
@@ -1576,7 +1582,7 @@ export default function App() {
     }
     const target = ofDb(next);
     const g = Math.max(1, cfgRef.current?.gains?.[output] ?? 1);
-    if (phone.max <= 0) {
+    if (phone.max <= 0 || cfgRef.current?.knobWorks === 'no') {
       // No knob known: the gain alone, as it always was.
       setGain(output, Math.round(target * 1000) / 1000);
       return;
@@ -1630,15 +1636,18 @@ export default function App() {
     setControlsWakeAt(Date.now());
     const output = audioRouteRef.current;
     const phone = systemVolumeRef.current;
-    const g = Math.max(1, cfgRef.current?.gains?.[output] ?? 1);
+    const ignored = cfgRef.current?.knobWorks === 'no';
+    const raw = cfgRef.current?.gains?.[output] ?? 1;
+    const g = ignored ? raw : Math.max(1, raw);
     setOutputMuted(false);
     const gainStep = (d: number) => {
       const now = Math.round(dbOf(g) / LEVEL_STEP_DB) * LEVEL_STEP_DB;
-      const next = Math.min(LEVEL_MAX_DB, now + d * LEVEL_STEP_DB);
+      const floor = ignored ? LEVEL_MIN_DB : 0;
+      const next = Math.max(floor, Math.min(LEVEL_MAX_DB, now + d * LEVEL_STEP_DB));
       Journal.mark(`level:gain ${next > 0 ? '+' : ''}${Math.round(next)}dB`).catch(() => { /* noop */ });
-      setGain(output, next <= 0 ? 1 : Math.round(ofDb(next) * 1000) / 1000);
+      setGain(output, !ignored && next <= 0 ? 1 : Math.round(ofDb(next) * 1000) / 1000);
     };
-    if (phone.max <= 0) { gainStep(direction); return; }
+    if (phone.max <= 0 || ignored) { gainStep(direction); return; }
     if (direction > 0) {
       // Up: the phone's knob first, a step at a time; at its top, the gain.
       if (phone.volume < phone.max) {
@@ -1663,11 +1672,66 @@ export default function App() {
    * phone's step it amounted to, and the gain back to 1.
    */
   useEffect(() => {
-    if (!inChannel || systemVolume.max <= 0 || gain >= 0.999) return;
+    if (!inChannel || systemVolume.max <= 0 || gain >= 0.999 || knobIgnored) return;
     const was = sysFraction * gain;
     Journal.mark(`level:gain-below-one ${gain}`).catch(() => { /* noop */ });
     setLevelTo(was > 0 ? dbOf(was) : LEVEL_MIN_DB, true);
-  }, [inChannel, gain, systemVolume.max, sysFraction, setLevelTo]);
+  }, [inChannel, gain, systemVolume.max, sysFraction, setLevelTo, knobIgnored]);
+
+  /**
+   * The volume test: does the phone's call volume change what one hears?
+   *
+   * Three beeps on the voice's own stream with the phone's knob at its
+   * top, three more with it at a third; then the question. The answer
+   * decides the knob: "no" - a Motorola Edge moved its knob and the ear
+   * heard nothing - makes Duetto's gain the only one. Asked once, on
+   * the first entry after it exists, and again from the settings.
+   */
+  const volumeTestAsked = useRef(false);
+  const runVolumeTest = useCallback(async () => {
+    if (!inChannelRef.current) {
+      Alert.alert(t('volumeTest.title'), t('volumeTest.needChannel'));
+      return;
+    }
+    const phone = systemVolumeRef.current;
+    if (phone.max <= 0) return;
+    const was = phone.volume;
+    const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    Journal.mark('volume-test:start').catch(() => {});
+    await Volume.set(phone.max).catch(() => {});
+    await pause(400);
+    await Alarm.test().catch(() => {});
+    await pause(1700);
+    await Volume.set(Math.max(1, Math.round(phone.max / 3))).catch(() => {});
+    await pause(400);
+    await Alarm.test().catch(() => {});
+    await pause(1700);
+    await Volume.set(was).catch(() => {});
+    const answer = (works: 'yes' | 'no') => {
+      Journal.mark(`volume-test:${works}`).catch(() => {});
+      setCfg((prev) => (prev ? saveCfg({ ...prev, knobWorks: works }) : prev));
+      // Duetto's gain alone: the phone's knob to its top, where it can do
+      // no harm if it ever starts working.
+      if (works === 'no') Volume.set(phone.max).catch(() => {});
+    };
+    Alert.alert(t('volumeTest.title'), t('volumeTest.question'), [
+      { text: t('volumeTest.again'), onPress: () => { runVolumeTest(); } },
+      { text: t('volumeTest.no'), onPress: () => answer('no') },
+      { text: t('volumeTest.yes'), onPress: () => answer('yes') },
+    ]);
+  }, [saveCfg]);
+  const offerVolumeTest = useCallback(() => {
+    Alert.alert(t('volumeTest.title'), t('volumeTest.intro'), [
+      { text: t('volumeTest.later'), style: 'cancel', onPress: () => Journal.mark('volume-test:later').catch(() => {}) },
+      { text: t('volumeTest.start'), onPress: () => { runVolumeTest(); } },
+    ]);
+  }, [runVolumeTest]);
+  useEffect(() => {
+    if (!inChannel || volumeTestAsked.current || cfg?.knobWorks !== 'unknown') return;
+    volumeTestAsked.current = true;
+    const tm = setTimeout(offerVolumeTest, 4000);
+    return () => clearTimeout(tm);
+  }, [inChannel, cfg?.knobWorks, offerVolumeTest]);
 
   /** The steps of the output in use, read again at every change of output. */
   useEffect(() => {
@@ -4800,6 +4864,7 @@ export default function App() {
         <StatusBar barStyle="light-content" />
         <SettingsScreen
           initial={cfg}
+          onVolumeTest={runVolumeTest}
           onChangeServer={() => setScreen('welcome')}
           onLeaveServer={onLeaveServer}
           onForgetPair={onForgetPair}

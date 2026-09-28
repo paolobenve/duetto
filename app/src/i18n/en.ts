@@ -91,6 +91,22 @@ export const en = {
     onDay: '{time} on {day}',
   },
 
+  volumeTest: {
+    title: 'Volume test',
+    intro: 'Duetto checks whether the call volume really works on this phone. Three beeps will play twice: listen whether the second time they are lower. Best done when nobody is talking.',
+    later: 'Later',
+    start: 'Start',
+    question: 'Was the second group of beeps lower than the first?',
+    yes: 'Yes, lower',
+    no: 'No, the same',
+    again: 'Again',
+    needChannel: 'The test is done in the channel: go in, then try again.',
+    button: 'Test the volume',
+    stateYes: 'The phone\'s volume works: the phone sets it up to 100%, Duetto above.',
+    stateNo: 'The phone\'s volume has no effect: Duetto sets the voice itself, at every level.',
+    stateUnknown: 'The test has not been done yet.',
+  },
+
   death: {
     theOther: 'The other',
     outOfMemory: 'the phone had run out of memory',

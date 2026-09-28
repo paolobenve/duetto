@@ -346,6 +346,13 @@ export type DuoConfig = {
    */
   ringPermissionAsked: boolean;
   /**
+   * Whether the phone's call volume really changes what one hears in
+   * the channel, as the volume test answered. 'no' - a Motorola Edge
+   * moved its knob and the ear heard nothing - makes Duetto's own gain
+   * the only knob, below the top too; 'unknown' until the test is done.
+   */
+  knobWorks: 'unknown' | 'yes' | 'no';
+  /**
    * The microphone on entering the channel: as it was left the last
    * time, or always off, so that going in never means being heard
    * before one meant to. Per connection, like the rest.
@@ -532,6 +539,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   shortPackets: false,
   cueVolume: 'veryLow',
   ringPermissionAsked: false,
+  knobWorks: 'unknown',
   micOnEntry: 'asLeft',
   diagnostics: false,
   delayTotalOnly: false,

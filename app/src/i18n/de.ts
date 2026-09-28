@@ -83,6 +83,22 @@ export const de: Dictionary = {
     onDay: '{time} am {day}',
   },
 
+  volumeTest: {
+    title: 'Lautstärketest',
+    intro: 'Duetto prüft, ob die Anruflautstärke auf diesem Telefon wirklich wirkt. Zweimal ertönen drei Pieptöne: hör hin, ob sie beim zweiten Mal leiser sind. Am besten, wenn niemand spricht.',
+    later: 'Später',
+    start: 'Starten',
+    question: 'War die zweite Gruppe Pieptöne leiser als die erste?',
+    yes: 'Ja, leiser',
+    no: 'Nein, gleich',
+    again: 'Wiederholen',
+    needChannel: 'Der Test wird im Kanal gemacht: geh hinein und wiederhole.',
+    button: 'Lautstärke testen',
+    stateYes: 'Die Telefonlautstärke wirkt: bis 100 % regelt sie das Telefon, darüber Duetto.',
+    stateNo: 'Die Telefonlautstärke wirkt nicht: Duetto regelt die Stimme selbst, auf allen Stufen.',
+    stateUnknown: 'Der Test wurde noch nicht gemacht.',
+  },
+
   death: {
     theOther: 'Die andere Person',
     outOfMemory: 'dem Telefon ging der Speicher aus',

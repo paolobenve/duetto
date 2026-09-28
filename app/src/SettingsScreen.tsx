@@ -136,6 +136,8 @@ type Props = {
   onClose?: () => void;
   /** opens the screen of system settings again */
   onOpenSetup: () => void;
+  /** the volume test: does the phone's call volume do anything? */
+  onVolumeTest?: () => void;
   /**
    * VP9 in hardware, on the two phones separately.
    *
@@ -177,6 +179,7 @@ type Props = {
  */
 export default function SettingsScreen({
   initial, onForgetPair, onSwitchPair, onRenamePair, onChangeServer, onLeaveServer, onRepair, onHaveCode, onClose, onOpenSetup,
+  onVolumeTest,
   vp9Here, vp9Peer, onQualityChange, onLive, reportsOpen, onReport, onInviteToWorkItem,
   canInvite, canAddPair, people = [], invitations = [],
   onAskPeople, onInvite, onForget, onForgetInvitation, pending = [], onForgetPending,
@@ -909,6 +912,17 @@ export default function SettingsScreen({
         {/* How loud the cues are. Touching a step plays one at that
             volume: it is chosen by ear, and the stream they use has no
             slider of its own to look at. */}
+        {/* Whether the phone's own call volume does anything here: the
+            test says, and decides which knob Duetto moves. */}
+        <Text style={styles.sectionHint}>
+          {t(initial.knobWorks === 'yes' ? 'volumeTest.stateYes'
+            : initial.knobWorks === 'no' ? 'volumeTest.stateNo' : 'volumeTest.stateUnknown')}
+        </Text>
+        <TouchableOpacity style={styles.rowButton} onPress={() => onVolumeTest?.()}>
+          <Text style={styles.rowButtonText}>{t('volumeTest.button')}</Text>
+          <Text style={styles.rowButtonArrow}>{'\u203A'}</Text>
+        </TouchableOpacity>
+
         <Text style={styles.sectionHint}>{t('settings.cueVolume')}</Text>
         <Text style={styles.hint}>{t('settings.cueVolumeNote')}</Text>
         <View style={styles.group}>

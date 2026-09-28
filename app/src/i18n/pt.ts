@@ -83,6 +83,22 @@ export const pt: Dictionary = {
     onDay: '{time} de {day}',
   },
 
+  volumeTest: {
+    title: 'Teste do volume',
+    intro: 'O Duetto verifica se neste telefone o volume de chamada funciona de verdade. Três bipes vão tocar duas vezes: ouça se da segunda vez estão mais baixos. Melhor quando ninguém está falando.',
+    later: 'Mais tarde',
+    start: 'Começar',
+    question: 'O segundo grupo de bipes estava mais baixo que o primeiro?',
+    yes: 'Sim, mais baixo',
+    no: 'Não, igual',
+    again: 'Repetir',
+    needChannel: 'O teste é feito no canal: entre e repita.',
+    button: 'Testar o volume',
+    stateYes: 'O volume do telefone funciona: até 100% quem regula é o telefone, acima o Duetto.',
+    stateNo: 'O volume do telefone não tem efeito: o Duetto regula a voz sozinho, em todos os níveis.',
+    stateUnknown: 'O teste ainda não foi feito.',
+  },
+
   death: {
     theOther: 'O outro',
     outOfMemory: 'o telefone ficou sem memória',
