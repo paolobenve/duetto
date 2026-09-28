@@ -1253,7 +1253,8 @@ export default function ChannelScreen(props: Props) {
                       ].filter(Boolean).join(' · ')}
                     />
                   ) : null}
-                  {showStats ? ownOutputMark(17, '#0b0e14') : null}
+                  {/* Our own output mark stood here too: the output
+                      button says it already. */}
                 </View>
                 {showStats && (battery || peerState.battery) ? (
                   <SplitLine
