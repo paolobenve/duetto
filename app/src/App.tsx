@@ -3565,6 +3565,10 @@ export default function App() {
      * Duetto at the stroke of the hour in the middle of a conversation.
      * Refused, nothing else changes - the journal says why.
      */
+    // Counted from the asking, not from the answer: the audio is taken
+    // the moment the call goes active, and that news reached JavaScript
+    // before the call's own - the grab was read as a telephone.
+    callActiveAt.current = Date.now();
     Call.start(channelRef.current || shownNameRef.current || '').then((r) => {
       if (r !== 'placed' && r !== 'already') Journal.mark(`call:not:${r}`).catch(() => {});
     }).catch(() => { /* noop */ });
