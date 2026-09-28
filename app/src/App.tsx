@@ -1671,8 +1671,15 @@ export default function App() {
    * a telephone's.
    */
   const callActiveAt = useRef(0);
+  /** entered over a telephone call: the channel waits silent for it to end */
+  const phoneBusy = useRef(false);
   useEffect(() => Call.subscribe((st) => {
-    if (st === 'active' || st === 'resumed') callActiveAt.current = Date.now();
+    if (st === 'active' || st === 'resumed' || st === 'phone-free') callActiveAt.current = Date.now();
+    if (st === 'active' && phoneBusy.current) {
+      phoneBusy.current = false;
+      sessionRef.current?.hush(false);
+      setOnCall(false);
+    }
   }), []);
 
   /**
@@ -3640,6 +3647,15 @@ export default function App() {
     // before the call's own - the grab was read as a telephone.
     callActiveAt.current = Date.now();
     Call.start(channelRef.current || shownNameRef.current || '').then((r) => {
+      if (r === 'waiting-phone') {
+        // Come in over a telephone call - restarted by an update in the
+        // middle of one: silent both ways until it ends, when our call
+        // is placed (Calls.kt).
+        phoneBusy.current = true;
+        sessionRef.current?.hush(true);
+        setOnCall(true);
+        return;
+      }
       if (r !== 'placed' && r !== 'already') {
         Journal.mark(`call:not:${r}`).catch(() => {});
         return;

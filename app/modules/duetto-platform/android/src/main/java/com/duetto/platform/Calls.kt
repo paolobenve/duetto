@@ -92,6 +92,67 @@ object Calls {
         appCtx = ctx.applicationContext
         // Other apps' calls are watched whether telecom takes ours or not.
         watchOthers(ctx)
+        /**
+         * Not over a telephone call.
+         *
+         * A call of ours going active puts the one in progress on hold:
+         * Duetto restarted by an update in the middle of a phone call
+         * came back into the channel, opened its call, and the person on
+         * the phone found themselves on hold. While the phone is busy the
+         * call waits, and is placed the moment it is free.
+         */
+        if (phoneBusy(ctx)) {
+            waitForPhone(ctx, name)
+            return "waiting-phone"
+        }
+        return place(ctx, name)
+    }
+
+    private val clock = Handler(Looper.getMainLooper())
+    private var waiting: Runnable? = null
+
+    /** In a call or ringing: by the audio mode, and by the call state when allowed. */
+    private fun phoneBusy(ctx: Context): Boolean {
+        val mode = ctx.getSystemService(AudioManager::class.java)?.mode
+        if (mode == AudioManager.MODE_IN_CALL || mode == AudioManager.MODE_RINGTONE) return true
+        if (ctx.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
+            try {
+                @Suppress("DEPRECATION")
+                val st = ctx.getSystemService(TelephonyManager::class.java)?.callState
+                if (st != null && st != TelephonyManager.CALL_STATE_IDLE) return true
+            } catch (_: Exception) { /* not known: the mode said it */ }
+        }
+        return false
+    }
+
+    private fun waitForPhone(ctx: Context, name: String) {
+        stopWaiting()
+        say("wait-phone")
+        var free = 0
+        val r = object : Runnable {
+            override fun run() {
+                free = if (phoneBusy(ctx)) 0 else free + 1
+                if (free >= 2) {
+                    waiting = null
+                    // Said first: the audio our call takes on going active
+                    // must be read as ours from this moment.
+                    say("phone-free")
+                    place(ctx, name)
+                    return
+                }
+                clock.postDelayed(this, 1000)
+            }
+        }
+        waiting = r
+        clock.postDelayed(r, 1000)
+    }
+
+    private fun stopWaiting() {
+        waiting?.let { clock.removeCallbacks(it) }
+        waiting = null
+    }
+
+    private fun place(ctx: Context, name: String): String {
         return try {
             val telecom = ctx.getSystemService(TelecomManager::class.java) ?: return "no-telecom"
             val account = handle(ctx)
@@ -283,6 +344,7 @@ object Calls {
 
     /** Closes the call, if there is one. */
     fun end() {
+        stopWaiting()
         unwatchOthers()
         unwatchRinging()
         val c = connection ?: return
