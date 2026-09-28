@@ -1308,18 +1308,17 @@ export default function App() {
     ? ofDb(stepDb(Math.min(systemVolume.volume, systemVolume.max), systemVolume.max, stepsDb))
     : 1;
   /**
-   * One knob up to the phone's top, our gain only above it.
+   * The phone's knob times our gain, and the gain never below 1.
    *
-   * Below the top the level IS the phone's call volume - the same
-   * figure the keys show outside Duetto - and our gain is 1. Above it
-   * the phone's knob stands at its top and our gain lifts the voice. It
-   * used to be two knobs multiplied at every level: lowered in Duetto to
-   * a quarter, the gain went to a quarter and the phone's knob stayed at
-   * its top, and outside the keys started from 100% over a voice already
-   * low.
+   * The gain is a choice made in Duetto and stays where it is whatever
+   * the phone's knob does: lowered from outside by a step, the voice is
+   * a step lower, not stripped of its lift. It used to go below 1 too -
+   * lowered in Duetto to a quarter, the gain went to a quarter under a
+   * knob left at its top, and outside the keys started from 100% over a
+   * voice already low. In Duetto, going up moves the knob first and the
+   * gain after; going down takes the gain off first and the knob after.
    */
-  const atTop = systemVolume.max <= 0 || systemVolume.volume >= systemVolume.max;
-  const boost = atTop ? Math.max(1, gain) : 1;
+  const boost = Math.max(1, gain);
   /** the top the level can reach: four times the phone's top */
   const levelCeiling = ofDb(LEVEL_MAX_DB);
   const level = sysFraction > 0
@@ -1564,6 +1563,7 @@ export default function App() {
   const setLevelTo = useCallback((db: number, done: boolean) => {
     const output = audioRouteRef.current;
     const phone = systemVolumeRef.current;
+    const steps = stepsRef.current;
     // The controls are called back once, when the finger lands: doing
     // it at every move would restart their fading a hundred times.
     if (!done) setControlsWakeAt((was) => (Date.now() - was > 2000 ? Date.now() : was));
@@ -1574,15 +1574,32 @@ export default function App() {
       Journal.mark(`level:${next > 0 ? '+' : ''}${Math.round(next)}dB:dragged`)
         .catch(() => { /* noop */ });
     }
-    let wanted = 1;
-    if (phone.max > 0 && next <= 0) {
-      // Below the phone's top: the phone's own step nearest to it.
-      moveKnob(nearestStep(next, phone.max, stepsRef.current));
-    } else {
-      if (phone.max > 0) moveKnob(phone.max);
-      wanted = Math.round(ofDb(Math.max(0, next)) * 1000) / 1000;
+    const target = ofDb(next);
+    const g = Math.max(1, cfgRef.current?.gains?.[output] ?? 1);
+    if (phone.max <= 0) {
+      // No knob known: the gain alone, as it always was.
+      setGain(output, Math.round(target * 1000) / 1000);
+      return;
     }
-    setGain(output, wanted);
+    const sys = ofDb(stepDb(Math.min(phone.volume, phone.max), phone.max, steps));
+    if (target < sys * g) {
+      // Down: the gain off first, then the knob.
+      if (target >= sys) {
+        setGain(output, Math.round((target / sys) * 1000) / 1000);
+      } else {
+        setGain(output, 1);
+        moveKnob(nearestStep(dbOf(target), phone.max, steps));
+      }
+    } else {
+      // Up: the knob first, then the gain.
+      const need = target / g;
+      if (need <= 1) {
+        moveKnob(nearestStep(dbOf(need), phone.max, steps));
+      } else {
+        moveKnob(phone.max);
+        setGain(output, Math.round(target * 1000) / 1000);
+      }
+    }
   }, [saveCfg]);
 
   /** The phone's call volume put at a step, and remembered for this output. */
@@ -1613,38 +1630,32 @@ export default function App() {
     setControlsWakeAt(Date.now());
     const output = audioRouteRef.current;
     const phone = systemVolumeRef.current;
-    const g = cfgRef.current?.gains?.[output] ?? 1;
+    const g = Math.max(1, cfgRef.current?.gains?.[output] ?? 1);
     setOutputMuted(false);
-    if (phone.max <= 0) return;
-    const top = phone.volume >= phone.max;
+    const gainStep = (d: number) => {
+      const now = Math.round(dbOf(g) / LEVEL_STEP_DB) * LEVEL_STEP_DB;
+      const next = Math.min(LEVEL_MAX_DB, now + d * LEVEL_STEP_DB);
+      Journal.mark(`level:gain ${next > 0 ? '+' : ''}${Math.round(next)}dB`).catch(() => { /* noop */ });
+      setGain(output, next <= 0 ? 1 : Math.round(ofDb(next) * 1000) / 1000);
+    };
+    if (phone.max <= 0) { gainStep(direction); return; }
     if (direction > 0) {
-      if (!top) {
-        // The phone's own knob first, a step at a time.
+      // Up: the phone's knob first, a step at a time; at its top, the gain.
+      if (phone.volume < phone.max) {
         moveKnob(phone.volume + 1);
         Journal.mark(`level:knob ${phone.volume + 1}/${phone.max}`).catch(() => { /* noop */ });
-        setGain(output, 1);
-        return;
+      } else {
+        gainStep(1);
       }
-      // At its top, our gain, by the ladder's rungs.
-      const now = Math.round(dbOf(Math.max(1, g)) / LEVEL_STEP_DB) * LEVEL_STEP_DB;
-      const next = Math.min(LEVEL_MAX_DB, now + LEVEL_STEP_DB);
-      Journal.mark(`level:+${Math.round(next)}dB`).catch(() => { /* noop */ });
-      setGain(output, Math.round(ofDb(next) * 1000) / 1000);
       return;
     }
-    // Down: our gain off first, then the phone's knob.
-    if (top && g > 1.001) {
-      const now = Math.round(dbOf(g) / LEVEL_STEP_DB) * LEVEL_STEP_DB;
-      const next = now - LEVEL_STEP_DB;
-      Journal.mark(`level:${next > 0 ? '+' : ''}${Math.round(next)}dB`).catch(() => { /* noop */ });
-      setGain(output, next <= 0 ? 1 : Math.round(ofDb(next) * 1000) / 1000);
-      return;
-    }
-    if (phone.volume > 1) {
+    // Down: the gain off first; at 1, the phone's knob.
+    if (g > 1.001) {
+      gainStep(-1);
+    } else if (phone.volume > 1) {
       moveKnob(phone.volume - 1);
       Journal.mark(`level:knob ${phone.volume - 1}/${phone.max}`).catch(() => { /* noop */ });
     }
-    setGain(output, 1);
   }, [saveCfg]);
 
   /**
