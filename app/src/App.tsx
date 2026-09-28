@@ -309,6 +309,8 @@ const KNOCK_ECHO_MS = 2_000;
 let cueGain = CUE_GAIN.veryLow;
 /** how long the other's leaving waits, in case a goodbye follows it */
 const LEAVE_CUE_WAIT_MS = 1000;
+/** how long a read-back of the knob after our own move is taken as its echo */
+const OWN_KNOB_ECHO_MS = 600;
 /** how long after our own call goes active its taking of the audio is read as ours */
 const OWN_CALL_GRAB_MS = 3000;
 /** how long one's own leaving cues last: the call's audio waits for them */
@@ -800,6 +802,8 @@ export default function App() {
    */
   const [stepsDb, setStepsDb] = useState<number[]>([]);
   const stepsRef = useRef<number[]>([]);
+  /** the step Duetto last set the phone's knob to, and when */
+  const ownKnob = useRef<{ step: number; at: number } | null>(null);
   useEffect(() => { stepsRef.current = stepsDb; }, [stepsDb]);
   /** the battery, shown with the diagnostics beside the volumes */
   const [battery, setBattery] = useState<{ percent: number; charging: boolean } | null>(null);
@@ -1482,6 +1486,12 @@ export default function App() {
     const reread = (settled: boolean) => {
       Volume.read().then((v) => {
         if (!alive || !v || !(v.max > 0)) return;
+        // The echo of our own move: a key held down moves the knob a step
+        // at a time, and each move's announcement, read back late, brought
+        // an older step back - up one, down one, up two. What differs from
+        // the step just set, within half a second of setting it, is ours.
+        const own = ownKnob.current;
+        if (own && Date.now() - own.at < OWN_KNOB_ECHO_MS && v.volume !== own.step) return;
         if (settled) knownVolume.current[where] = { volume: v.volume, max: v.max };
         // Nothing remembered: even an answer about the output before is
         // better than the zero the strip starts from.
@@ -1639,6 +1649,7 @@ export default function App() {
     systemVolumeRef.current = v;
     setSystemVolume(v);
     knownVolume.current[audioRouteRef.current] = v;
+    ownKnob.current = { step, at: Date.now() };
     Volume.set(step).catch(() => { /* the read-back puts the truth back */ });
   };
 
