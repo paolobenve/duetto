@@ -141,6 +141,10 @@ export const it: Dictionary = {
   },
 
   channel: {
+    ringPermTitle: 'Suoneria durante il canale',
+    ringPermBody: 'Mentre sei nel canale, per Android sei già in una chiamata: una telefonata che arriva fa solo il bip-bip dell\'avviso di chiamata. Con il permesso «telefono», Duetto sa quando il telefono squilla e suona la tua suoneria. Non legge numeri né chiamate.',
+    ringPermOk: 'Continua',
+    ringPermNo: 'Non ora',
     onWifi: 'su wifi',
     onMobile: 'su rete mobile',
     notEntered: 'Sei fuori dal canale',

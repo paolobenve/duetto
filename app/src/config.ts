@@ -340,6 +340,12 @@ export type DuoConfig = {
    */
   cueVolume: CueVolume;
   /**
+   * Whether the phone permission - to play the ringtone during the
+   * channel's call, instead of Android's call-waiting beeps - has been
+   * asked for already: it is asked once.
+   */
+  ringPermissionAsked: boolean;
+  /**
    * The microphone on entering the channel: as it was left the last
    * time, or always off, so that going in never means being heard
    * before one meant to. Per connection, like the rest.
@@ -525,6 +531,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   richerAudio: false,
   shortPackets: false,
   cueVolume: 'veryLow',
+  ringPermissionAsked: false,
   micOnEntry: 'asLeft',
   diagnostics: false,
   delayTotalOnly: false,

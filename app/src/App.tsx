@@ -1644,6 +1644,29 @@ export default function App() {
     if (st === 'active' || st === 'resumed') callActiveAt.current = Date.now();
   }), []);
 
+  /**
+   * The phone permission, asked once, on the first entry with the
+   * channel's call: with it Duetto plays the ringtone that Android
+   * replaces with call-waiting beeps while a call - ours - is on.
+   */
+  const askRingPermission = () => {
+    const c = cfgRef.current;
+    if (!c || c.ringPermissionAsked || Platform.OS !== 'android') return;
+    setCfg((prev) => (prev ? saveCfg({ ...prev, ringPermissionAsked: true }) : prev));
+    Alert.alert(t('channel.ringPermTitle'), t('channel.ringPermBody'), [
+      { text: t('channel.ringPermNo'), style: 'cancel', onPress: () => Journal.mark('ring-permission:not-now').catch(() => {}) },
+      {
+        text: t('channel.ringPermOk'),
+        onPress: () => {
+          PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE).then((r) => {
+            Journal.mark(`ring-permission:${r}`).catch(() => {});
+            if (r === PermissionsAndroid.RESULTS.GRANTED) Call.watchRinging().catch(() => {});
+          }).catch(() => {});
+        },
+      },
+    ]);
+  };
+
   /** the other's leaving, waiting to be heard: see onPeerMode */
   const leaveCueDue = useRef<ReturnType<typeof setTimeout> | null>(null);
   const forgetLeaveCue = () => {
@@ -3586,7 +3609,11 @@ export default function App() {
     // before the call's own - the grab was read as a telephone.
     callActiveAt.current = Date.now();
     Call.start(channelRef.current || shownNameRef.current || '').then((r) => {
-      if (r !== 'placed' && r !== 'already') Journal.mark(`call:not:${r}`).catch(() => {});
+      if (r !== 'placed' && r !== 'already') {
+        Journal.mark(`call:not:${r}`).catch(() => {});
+        return;
+      }
+      askRingPermission();
     }).catch(() => { /* noop */ });
     try {
       InCallManager.start({ media: 'audio' });

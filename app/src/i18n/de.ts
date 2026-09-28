@@ -142,6 +142,10 @@ export const de: Dictionary = {
   },
 
   channel: {
+    ringPermTitle: 'Klingelton im Kanal',
+    ringPermBody: 'Solange du im Kanal bist, gilt das für Android als Anruf: ein ankommender Anruf gibt nur die Anklopftöne. Mit der Telefon-Berechtigung weiß Duetto, wann das Telefon klingelt, und spielt deinen Klingelton. Es liest keine Nummern und keine Anrufe.',
+    ringPermOk: 'Weiter',
+    ringPermNo: 'Nicht jetzt',
     onWifi: 'im WLAN',
     onMobile: 'im Mobilfunknetz',
     notEntered: 'Du bist außerhalb des Kanals',
