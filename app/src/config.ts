@@ -353,6 +353,12 @@ export type DuoConfig = {
    */
   knobWorks: 'unknown' | 'yes' | 'no';
   /**
+   * The gains below 1 of the old two knobs have been laid out on the
+   * ladder once: after that a gain below 1 under a knob raised from
+   * outside is a choice, and is left alone.
+   */
+  ladderLaidOut?: boolean;
+  /**
    * The microphone on entering the channel: as it was left the last
    * time, or always off, so that going in never means being heard
    * before one meant to. Per connection, like the rest.

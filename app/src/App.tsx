@@ -193,6 +193,15 @@ function stepDb(step: number, max: number, steps: number[]): number {
   return step > 0 ? dbOf(step / max) : -96;
 }
 
+/** The lowest step the call volume has: Android's table says, else 1. */
+function minStep(max: number, steps: number[]): number {
+  if (steps.length === max + 1) {
+    const i = steps.findIndex((d) => d > -90);
+    if (i >= 1) return i;
+  }
+  return 1;
+}
+
 /** The step whose level is nearest to `db`, never below the first. */
 function nearestStep(db: number, max: number, steps: number[]): number {
   let best = max;
@@ -1324,7 +1333,7 @@ export default function App() {
    * voice already low. In Duetto, going up moves the knob first and the
    * gain after; going down takes the gain off first and the knob after.
    */
-  const boost = knobIgnored ? gain : Math.max(1, gain);
+  const boost = gain;
   /** the top the level can reach: four times the phone's top */
   const levelCeiling = ofDb(LEVEL_MAX_DB);
   const level = sysFraction > 0
@@ -1581,30 +1590,44 @@ export default function App() {
         .catch(() => { /* noop */ });
     }
     const target = ofDb(next);
-    const g = Math.max(1, cfgRef.current?.gains?.[output] ?? 1);
+    const g = cfgRef.current?.gains?.[output] ?? 1;
+    const r3 = (x: number) => Math.round(x * 1000) / 1000;
     if (phone.max <= 0 || cfgRef.current?.knobWorks === 'no') {
       // No knob known: the gain alone, as it always was.
-      setGain(output, Math.round(target * 1000) / 1000);
+      setGain(output, r3(target));
       return;
     }
-    const sys = ofDb(stepDb(Math.min(phone.volume, phone.max), phone.max, steps));
+    const low = minStep(phone.max, steps);
+    const sysAt = (i: number) => ofDb(stepDb(i, phone.max, steps));
+    const sys = sysAt(Math.min(phone.volume, phone.max));
+    /**
+     * The ladder in three stretches: the gain above 1 with the knob at
+     * its top; the knob, step by step, with the gain at 1; the gain
+     * below 1 with the knob at its lowest step - on a Motorola Edge on
+     * speaker even that step was very loud. Down, the gain above 1 goes
+     * first, then the knob, then the gain below 1; up, the other way.
+     */
     if (target < sys * g) {
-      // Down: the gain off first, then the knob.
-      if (target >= sys) {
-        setGain(output, Math.round((target / sys) * 1000) / 1000);
-      } else {
-        setGain(output, 1);
+      if (g > 1 && target >= sys) { setGain(output, r3(target / sys)); return; }
+      const floor = sysAt(low);
+      if (target >= floor) {
         moveKnob(nearestStep(dbOf(target), phone.max, steps));
-      }
-    } else {
-      // Up: the knob first, then the gain.
-      const need = target / g;
-      if (need <= 1) {
-        moveKnob(nearestStep(dbOf(need), phone.max, steps));
+        setGain(output, 1);
       } else {
-        moveKnob(phone.max);
-        setGain(output, Math.round(target * 1000) / 1000);
+        moveKnob(low);
+        setGain(output, r3(target / floor));
       }
+      return;
+    }
+    if (g < 1 && target <= sys) { setGain(output, r3(target / sys)); return; }
+    const lift = Math.max(1, g);
+    const need = target / lift;
+    if (need <= 1) {
+      moveKnob(nearestStep(dbOf(need), phone.max, steps));
+      setGain(output, lift);
+    } else {
+      moveKnob(phone.max);
+      setGain(output, r3(target));
     }
   }, [saveCfg]);
 
@@ -1637,19 +1660,20 @@ export default function App() {
     const output = audioRouteRef.current;
     const phone = systemVolumeRef.current;
     const ignored = cfgRef.current?.knobWorks === 'no';
-    const raw = cfgRef.current?.gains?.[output] ?? 1;
-    const g = ignored ? raw : Math.max(1, raw);
+    const g = cfgRef.current?.gains?.[output] ?? 1;
     setOutputMuted(false);
-    const gainStep = (d: number) => {
+    /** the gain by a rung, kept between `lo` and `hi` decibels */
+    const gainStep = (d: number, lo = LEVEL_MIN_DB, hi = LEVEL_MAX_DB) => {
       const now = Math.round(dbOf(g) / LEVEL_STEP_DB) * LEVEL_STEP_DB;
-      const floor = ignored ? LEVEL_MIN_DB : 0;
-      const next = Math.max(floor, Math.min(LEVEL_MAX_DB, now + d * LEVEL_STEP_DB));
+      const next = Math.max(lo, Math.min(hi, now + d * LEVEL_STEP_DB));
       Journal.mark(`level:gain ${next > 0 ? '+' : ''}${Math.round(next)}dB`).catch(() => { /* noop */ });
-      setGain(output, !ignored && next <= 0 ? 1 : Math.round(ofDb(next) * 1000) / 1000);
+      setGain(output, next === 0 ? 1 : Math.round(ofDb(next) * 1000) / 1000);
     };
     if (phone.max <= 0 || ignored) { gainStep(direction); return; }
+    const low = minStep(phone.max, stepsRef.current);
     if (direction > 0) {
-      // Up: the phone's knob first, a step at a time; at its top, the gain.
+      // Up: the gain below 1 first, then the knob, then the gain above 1.
+      if (g < 0.999) { gainStep(1, LEVEL_MIN_DB, 0); return; }
       if (phone.volume < phone.max) {
         moveKnob(phone.volume + 1);
         Journal.mark(`level:knob ${phone.volume + 1}/${phone.max}`).catch(() => { /* noop */ });
@@ -1658,12 +1682,14 @@ export default function App() {
       }
       return;
     }
-    // Down: the gain off first; at 1, the phone's knob.
+    // Down: the gain above 1 first, then the knob, then the gain below 1.
     if (g > 1.001) {
-      gainStep(-1);
-    } else if (phone.volume > 1) {
+      gainStep(-1, 0, LEVEL_MAX_DB);
+    } else if (phone.volume > low) {
       moveKnob(phone.volume - 1);
       Journal.mark(`level:knob ${phone.volume - 1}/${phone.max}`).catch(() => { /* noop */ });
+    } else {
+      gainStep(-1, LEVEL_MIN_DB, 0);
     }
   }, [saveCfg]);
 
@@ -1672,11 +1698,28 @@ export default function App() {
    * phone's step it amounted to, and the gain back to 1.
    */
   useEffect(() => {
-    if (!inChannel || systemVolume.max <= 0 || gain >= 0.999 || knobIgnored) return;
-    const was = sysFraction * gain;
+    if (!inChannel || systemVolume.max <= 0 || knobIgnored || cfg?.ladderLaidOut) return;
+    if (gain >= 0.999) {
+      setCfg((prev) => (prev ? saveCfg({ ...prev, ladderLaidOut: true }) : prev));
+      return;
+    }
+    // Below 1 is the ladder's bottom stretch, with the knob at its lowest.
+    if (systemVolume.volume <= minStep(systemVolume.max, stepsDb)) return;
+    // Left over from the two knobs of before, with the knob higher: the
+    // same level, laid out on the ladder.
+    const was = Math.max(ofDb(LEVEL_MIN_DB), sysFraction * gain);
+    const low = minStep(systemVolume.max, stepsDb);
+    const floor = ofDb(stepDb(low, systemVolume.max, stepsDb));
     Journal.mark(`level:gain-below-one ${gain}`).catch(() => { /* noop */ });
-    setLevelTo(was > 0 ? dbOf(was) : LEVEL_MIN_DB, true);
-  }, [inChannel, gain, systemVolume.max, sysFraction, setLevelTo, knobIgnored]);
+    if (was >= floor) {
+      moveKnob(nearestStep(dbOf(was), systemVolume.max, stepsDb));
+      setGain(audio.route, 1);
+    } else {
+      moveKnob(low);
+      setGain(audio.route, Math.round((was / floor) * 1000) / 1000);
+    }
+    setCfg((prev) => (prev ? saveCfg({ ...prev, ladderLaidOut: true }) : prev));
+  }, [inChannel, gain, systemVolume.max, systemVolume.volume, stepsDb, sysFraction, knobIgnored, cfg?.ladderLaidOut]);
 
   /**
    * The volume test: does the phone's call volume change what one hears?
