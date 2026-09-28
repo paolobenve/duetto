@@ -173,7 +173,6 @@ function VolumeScale(p: {
   level: number; phone: number; ceiling: number; min: number; max: number;
   pct: number; muted: boolean;
   route: AudioRoute;
-  onToggleMute?: () => void;
   onPick?: (db: number, done: boolean) => void;
 }) {
   const [h, setH] = useState(0);
@@ -209,7 +208,6 @@ function VolumeScale(p: {
     }
   }, [p.level]);
   const figure = p.muted ? t('channel.muted') : `${Math.round(loudness(shown))}`;
-  const Icon = OUTPUT_ICON[p.route] ?? OUTPUT_ICON.SPEAKER_PHONE;
   const phone = up(p.phone);
   const level = up(shown);
 
@@ -348,12 +346,6 @@ function VolumeScale(p: {
         ) : null}
         </View>
       </View>
-      <TouchableOpacity
-        style={styles.hushButton}
-        onPress={p.onToggleMute}
-        accessibilityLabel={t(p.muted ? 'channel.outputOn' : 'channel.outputOff')}>
-        <Icon size={20} color="#e6ebf1" off={p.muted} background="#1e1f22" />
-      </TouchableOpacity>
     </View>
   );
 }
@@ -604,6 +596,7 @@ export default function ChannelScreen(props: Props) {
     onAlarm, onZoom, onOpenSettings, onCall, pairBroken, battery,
   } = props;
   const { levelDb, onToggleOutputMute, onSetLevel, wakeAt } = props;
+  const outputMuted = !!levelDb?.muted;
 
   // In Picture-in-Picture the window is tiny: no controls. The width
   // is kept as a second witness for the phones where the activity's
@@ -1428,7 +1421,6 @@ export default function ChannelScreen(props: Props) {
           <VolumeScale
             {...levelDb}
             route={audioRoute}
-            onToggleMute={onToggleOutputMute}
             // Covered, the glass decides nothing: it is the same rule
             // as for the buttons.
             onPick={(db, done) => { if (!blocked()) onSetLevel?.(db, done); }}
@@ -1474,16 +1466,31 @@ export default function ChannelScreen(props: Props) {
           // thing being judged.
           onLongPress={press(() => setQualityMenu(true))}
         />
+        {/* The voice both ways, a button each: the microphone - what
+            they hear of me - and the output - what I hear of them -
+            silenced by a touch. Held down, either opens where one
+            speaks and hears from: on Android the microphone follows
+            the output. The output's own little button under the scale
+            is gone into this one. */}
         <CircleButton
           covered={covered}
-          // Touch: muted/unmuted. Long press: where the audio comes out.
-          name={audioOn ? 'audio' : 'muted'}
-          label={audioOn ? t('buttons.audio') : t('buttons.muted')}
+          name={audioOn ? 'mic' : 'mic-off'}
+          label={audioOn ? t('buttons.mic') : t('buttons.micOff')}
           icon={<MicrophoneIcon off={!audioOn} {...(audioOn ? ON_LIGHT : {})} />}
           active={audioOn}
           onPress={press(onToggleAudio)}
           onLongPress={press(() => setRouteMenu(true))}
-          badge={OUTPUT_ICON[audioRoute]}
+        />
+        <CircleButton
+          covered={covered}
+          name={outputMuted ? 'output-off' : 'output'}
+          label={outputMuted ? t('buttons.outputOff') : t('buttons.output')}
+          icon={React.createElement(OUTPUT_ICON[audioRoute] ?? OUTPUT_ICON.SPEAKER_PHONE, {
+            off: outputMuted, ...(outputMuted ? {} : ON_LIGHT),
+          })}
+          active={!outputMuted}
+          onPress={press(() => onToggleOutputMute?.())}
+          onLongPress={press(() => setRouteMenu(true))}
         />
         <CircleButton
           covered={covered}
@@ -1849,9 +1856,12 @@ export default function ChannelScreen(props: Props) {
                 style={styles.sheetRow}
                 onPress={() => { onSelectRoute(r); setRouteMenu(false); }}>
                 {React.createElement(OUTPUT_ICON[r], { size: 22, color: '#e6ebf1' })}
-                <Text style={[styles.sheetLabel, r === audioRoute && styles.sheetLabelOn]}>
-                  {routeLabel(r)}
-                </Text>
+                <View style={styles.sheetText}>
+                  <Text style={[styles.sheetLabel, r === audioRoute && styles.sheetLabelOn]}>
+                    {routeLabel(r)}
+                  </Text>
+                  <Text style={styles.sheetNote}>{t(`channel.route${r}`)}</Text>
+                </View>
                 {r === audioRoute ? <Text style={styles.sheetCheck}>{'\u2713'}</Text> : null}
               </TouchableOpacity>
             ))}

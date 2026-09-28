@@ -146,6 +146,10 @@ export const en = {
   },
 
   buttons: {
+    mic: 'Mic',
+    micOff: 'Muted',
+    output: 'Listen',
+    outputOff: 'Silent',
     video: 'Video',
     audio: 'Audio',
     muted: 'Muted',
@@ -156,6 +160,10 @@ export const en = {
   },
 
   channel: {
+    routeEARPIECE: 'You speak into the phone and hear from the earpiece',
+    routeSPEAKER_PHONE: 'You speak into the phone and hear from the speaker',
+    routeWIRED_HEADSET: 'You speak and hear through the wired headset',
+    routeBLUETOOTH: 'You speak and hear through the Bluetooth headset',
     ringPermTitle: 'Ringtone in the channel',
     ringPermBody: 'The permission is optional. While you are in the channel, Android counts you as in a call: without it, a phone call arriving is announced only by very faint beeps, easy to miss. With the phone permission, Duetto knows when the phone rings and plays your ringtone. It reads no numbers and no calls.',
     ringPermOk: 'Continue',
@@ -220,7 +228,7 @@ export const en = {
     detachConfirmYes: 'Yes, make me unavailable',
     detachConfirmStay: 'No, stay in the channel',
     detachConfirmStayWaiting: 'No, stay waiting',
-    audioOutput: 'Audio output',
+    audioOutput: 'Input and output',
     moreOutputsHint: 'Connect headphones or a Bluetooth device for more choices.',
     phoneVolume: 'phone {volume}/{max}',
     voiceHint: 'This is how loud you are hearing the other person, in decibels against the phone\'s top: 0 is the phone\'s top, above zero Duetto raises on its own. The volume keys move only this; the phone\'s knob stays where it is, and if you move it from outside the level follows.',

@@ -135,6 +135,10 @@ export const pt: Dictionary = {
   },
 
   buttons: {
+    mic: 'Micro',
+    micOff: 'Mudo',
+    output: 'Ouvir',
+    outputOff: 'Silêncio',
     video: 'Vídeo',
     audio: 'Áudio',
     muted: 'Mudo',
@@ -145,6 +149,10 @@ export const pt: Dictionary = {
   },
 
   channel: {
+    routeEARPIECE: 'Você fala no telefone e ouve pelo fone',
+    routeSPEAKER_PHONE: 'Você fala no telefone e ouve pelo alto-falante',
+    routeWIRED_HEADSET: 'Você fala e ouve pelo fone com fio',
+    routeBLUETOOTH: 'Você fala e ouve pelo fone Bluetooth',
     ringPermTitle: 'Toque durante o canal',
     ringPermBody: 'A permissão é opcional. Enquanto você está no canal, para o Android você já está numa chamada: sem ela, uma ligação que chega se anuncia só com bipes muito fracos, fáceis de não ouvir. Com a permissão de telefone, o Duetto sabe quando o telefone toca e toca o seu toque. Não lê números nem chamadas.',
     ringPermOk: 'Continuar',
@@ -209,7 +217,7 @@ export const pt: Dictionary = {
     detachConfirmYes: 'Sim, deixe-me indisponível',
     detachConfirmStay: 'Não, fique no canal',
     detachConfirmStayWaiting: 'Não, continue à espera',
-    audioOutput: 'Saída de áudio',
+    audioOutput: 'Entrada e saída',
     moreOutputsHint: 'Conecte fones ou um aparelho Bluetooth para ter mais escolhas.',
     phoneVolume: 'telefone {volume}/{max}',
     voiceHint: 'É o volume em que você está ouvindo o outro, em decibéis em relação ao máximo do telefone: 0 é o máximo do telefone, acima de zero o Duetto sobe por conta própria. As teclas de volume movem só isto; o botão do telefone fica onde está, e se você o mover por fora o nível o acompanha.',

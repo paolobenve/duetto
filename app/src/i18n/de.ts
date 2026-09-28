@@ -135,6 +135,10 @@ export const de: Dictionary = {
   },
 
   buttons: {
+    mic: 'Mikro',
+    micOff: 'Stumm',
+    output: 'Hören',
+    outputOff: 'Still',
     video: 'Video',
     audio: 'Ton',
     muted: 'Stumm',
@@ -145,6 +149,10 @@ export const de: Dictionary = {
   },
 
   channel: {
+    routeEARPIECE: 'Du sprichst ins Telefon und hörst über die Hörmuschel',
+    routeSPEAKER_PHONE: 'Du sprichst ins Telefon und hörst über den Lautsprecher',
+    routeWIRED_HEADSET: 'Du sprichst und hörst über das Kabel-Headset',
+    routeBLUETOOTH: 'Du sprichst und hörst über das Bluetooth-Headset',
     ringPermTitle: 'Klingelton im Kanal',
     ringPermBody: 'Die Berechtigung ist freiwillig. Solange du im Kanal bist, gilt das für Android als Anruf: ohne sie meldet sich ein ankommender Anruf nur mit sehr leisen Anklopftönen, die man leicht überhört. Mit der Telefon-Berechtigung weiß Duetto, wann das Telefon klingelt, und spielt deinen Klingelton. Es liest keine Nummern und keine Anrufe.',
     ringPermOk: 'Weiter',
@@ -209,7 +217,7 @@ export const de: Dictionary = {
     detachConfirmYes: 'Ja, mach mich nicht erreichbar',
     detachConfirmStay: 'Nein, im Kanal bleiben',
     detachConfirmStayWaiting: 'Nein, in Bereitschaft bleiben',
-    audioOutput: 'Tonausgabe',
+    audioOutput: 'Eingang und Ausgang',
     moreOutputsHint: 'Schließe Kopfhörer oder ein Bluetooth-Gerät an, dann gibt es mehr zur Auswahl.',
     phoneVolume: 'Telefon {volume}/{max}',
     voiceHint: 'So laut hörst du die andere Person, in Dezibel gegenüber dem Höchsten des Telefons: 0 ist das Höchste des Telefons, darüber hebt Duetto von sich aus an. Die Lautstärketasten bewegen nur das; der Regler des Telefons bleibt, wo er ist, und wenn du ihn von außen bewegst, folgt der Pegel.',
