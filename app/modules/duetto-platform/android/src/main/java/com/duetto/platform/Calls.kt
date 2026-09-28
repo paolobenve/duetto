@@ -26,6 +26,7 @@ import android.os.Looper
 import android.telephony.PhoneStateListener
 import android.telephony.TelephonyCallback
 import android.telephony.TelephonyManager
+import android.telecom.CallAudioState
 import android.telecom.Connection
 import android.telecom.ConnectionRequest
 import android.telecom.ConnectionService
@@ -347,6 +348,40 @@ object Calls {
         otherCall = false
     }
 
+    /**
+     * The output, asked of Android for our call.
+     *
+     * With a call of its own the output is Android's to move too: it put
+     * the call on a Bluetooth earpiece the moment one connected, against
+     * a choice of "only when asked", and what the app set by the other
+     * road was overwritten. So while the call is on, the output goes
+     * through it. Gives back false with no call - then the old road.
+     */
+    fun setRoute(route: String): Boolean {
+        val c = connection ?: return false
+        if (c.state != Connection.STATE_ACTIVE) return false
+        val r = when (route) {
+            "EARPIECE" -> CallAudioState.ROUTE_EARPIECE
+            "BLUETOOTH" -> CallAudioState.ROUTE_BLUETOOTH
+            "WIRED_HEADSET" -> CallAudioState.ROUTE_WIRED_HEADSET
+            "SPEAKER_PHONE" -> CallAudioState.ROUTE_SPEAKER
+            else -> return false
+        }
+        return try {
+            @Suppress("DEPRECATION")
+            c.setAudioRoute(r)
+            true
+        } catch (_: Exception) { false }
+    }
+
+    fun routeName(r: Int): String = when (r) {
+        CallAudioState.ROUTE_EARPIECE -> "EARPIECE"
+        CallAudioState.ROUTE_BLUETOOTH -> "BLUETOOTH"
+        CallAudioState.ROUTE_WIRED_HEADSET -> "WIRED_HEADSET"
+        CallAudioState.ROUTE_SPEAKER -> "SPEAKER_PHONE"
+        else -> "OTHER"
+    }
+
     /** Closes the call, if there is one. */
     fun end() {
         stopWaiting()
@@ -406,6 +441,17 @@ class DuettoConnection : Connection() {
         clearReadings = 0
         sawInCall = false
         clock.postDelayed(watch, 1000)
+    }
+
+    /** Where Android put the call's sound: told, so that the app can agree or not. */
+    private var lastRoute = -1
+
+    @Deprecated("Deprecated in Java")
+    override fun onCallAudioStateChanged(state: CallAudioState?) {
+        val r = state?.route ?: return
+        if (r == lastRoute) return
+        lastRoute = r
+        Calls.say("route:${Calls.routeName(r)}")
     }
 
     override fun onUnhold() {

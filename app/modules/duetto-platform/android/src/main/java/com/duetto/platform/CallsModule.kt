@@ -52,6 +52,12 @@ class CallsModule(private val ctx: ReactApplicationContext) :
         promise.resolve(true)
     }
 
+    /** The output, through our call: false with no call. */
+    @ReactMethod
+    fun setRoute(route: String, promise: Promise) {
+        promise.resolve(Calls.setRoute(route))
+    }
+
     /** Closes it on leaving. */
     @ReactMethod
     fun end(promise: Promise) {

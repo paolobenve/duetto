@@ -34,6 +34,7 @@ declare module 'duetto-platform' {
     end(): Promise<boolean>;
     resume(): Promise<boolean>;
     watchRinging(): Promise<boolean>;
+    setRoute(route: string): Promise<boolean>;
     subscribe(cb: (state: string) => void): () => void;
   };
 

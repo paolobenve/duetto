@@ -450,6 +450,8 @@ export const Call = isAndroid && NativeCalls
       resume: () => call(NativeCalls, 'resume'),
       /** the phone permission was just granted */
       watchRinging: () => call(NativeCalls, 'watchRinging'),
+      /** the output through our call; false with no call */
+      setRoute: (route) => call(NativeCalls, 'setRoute', String(route)),
       /** `cb(state)`: active, held, failed, ended, ended-by-system */
       subscribe(cb) {
         const emitter = new NativeEventEmitter(NativeCalls);
@@ -457,7 +459,7 @@ export const Call = isAndroid && NativeCalls
         return () => sub.remove();
       },
     }
-  : { start: () => Promise.resolve('unavailable'), end: unavailable, resume: unavailable, watchRinging: unavailable, subscribe: () => () => {} };
+  : { start: () => Promise.resolve('unavailable'), end: unavailable, resume: unavailable, watchRinging: unavailable, setRoute: () => Promise.resolve(false), subscribe: () => () => {} };
 
 export const Heartbeat = isAndroid && NativeHeartbeat
   ? {
