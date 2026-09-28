@@ -1058,11 +1058,19 @@ export default function ChannelScreen(props: Props) {
    * to see which half moves under the volume keys, and which does not.
    * Without the halves (an older app on the other side) the product alone.
    */
+  /**
+   * The level they hear at, and - when Duetto lifts it above their
+   * phone's top - how: "230% (100% × 2,3)". All three in the same
+   * measure, the loudness the ear hears, so that the product holds: the
+   * phone's part used to be its step taken as a share, and the gain an
+   * amplitude, and the three figures never multiplied back.
+   */
   const levelText = (applied?: number, sys?: number | null, gain?: number) => {
-    if (sys == null || gain == null) return dbText(applied);
+    if (sys == null || gain == null || gain <= 1.001 || !(sys > 0)) return dbText(applied);
     const comma = currentLanguage() !== 'en';
-    const g = (Math.round(gain * 100) / 100).toString().replace('.', comma ? ',' : '.');
-    return `${dbText(applied)} (${Math.round(sys * 100)}%×${g})`;
+    const factor = 2 ** (20 * Math.log10(gain) / 10);
+    const g = (Math.round(factor * 10) / 10).toString().replace('.', comma ? ',' : '.');
+    return `${dbText(applied)} (${dbText(sys)} × ${g})`;
   };
 
   const peerBadge = React.useMemo(() => (

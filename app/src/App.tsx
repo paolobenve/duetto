@@ -180,14 +180,29 @@ async function readWithBridge(fresh: string, old: string): Promise<string | null
 const LEVEL_STEP_DB = 2;
 const LEVEL_MIN_DB = -26;
 const LEVEL_MAX_DB = 12;
-/**
- * WebRTC multiplies a voice at most ten times: with the knob under
- * forty per cent the top of the scale is out of reach, and the scale
- * shows where the reachable stretch ends.
- */
-const GAIN_CEILING = 10;
 const dbOf = (x: number) => 20 * Math.log10(x);
 const ofDb = (d: number) => Math.pow(10, d / 20);
+
+/**
+ * A step of the phone's call volume, in dB below its top: from
+ * Android's own table when it gives one (Volume.steps), else as the
+ * step's share, as it always was.
+ */
+function stepDb(step: number, max: number, steps: number[]): number {
+  if (steps.length === max + 1) return steps[step];
+  return step > 0 ? dbOf(step / max) : -96;
+}
+
+/** The step whose level is nearest to `db`, never below the first. */
+function nearestStep(db: number, max: number, steps: number[]): number {
+  let best = max;
+  let gap = Infinity;
+  for (let i = 1; i <= max; i++) {
+    const d = Math.abs(stepDb(i, max, steps) - db);
+    if (d < gap) { gap = d; best = i; }
+  }
+  return best;
+}
 
 
 
@@ -769,6 +784,14 @@ export default function App() {
    * goes up at once, and the system's own answer corrects it.
    */
   const knownVolume = useRef<Record<string, { volume: number; max: number }>>({});
+  /**
+   * The call volume's steps for the output in use, in dB below its top
+   * (Volume.steps). Empty where Android cannot say: then a step is taken
+   * as its share, as it always was.
+   */
+  const [stepsDb, setStepsDb] = useState<number[]>([]);
+  const stepsRef = useRef<number[]>([]);
+  useEffect(() => { stepsRef.current = stepsDb; }, [stepsDb]);
   /** the battery, shown with the diagnostics beside the volumes */
   const [battery, setBattery] = useState<{ percent: number; charging: boolean } | null>(null);
   /** the network carrying us, shown and told with the battery */
@@ -1282,15 +1305,28 @@ export default function App() {
    * phone's top.
    */
   const sysFraction = systemVolume.max > 0
-    ? Math.min(1, systemVolume.volume / systemVolume.max)
+    ? ofDb(stepDb(Math.min(systemVolume.volume, systemVolume.max), systemVolume.max, stepsDb))
     : 1;
-  /** the top the level can reach: four times the phone's top, or ten times the knob */
-  const levelCeiling = Math.min(ofDb(LEVEL_MAX_DB), Math.max(sysFraction, 0.001) * GAIN_CEILING);
+  /**
+   * One knob up to the phone's top, our gain only above it.
+   *
+   * Below the top the level IS the phone's call volume - the same
+   * figure the keys show outside Duetto - and our gain is 1. Above it
+   * the phone's knob stands at its top and our gain lifts the voice. It
+   * used to be two knobs multiplied at every level: lowered in Duetto to
+   * a quarter, the gain went to a quarter and the phone's knob stayed at
+   * its top, and outside the keys started from 100% over a voice already
+   * low.
+   */
+  const atTop = systemVolume.max <= 0 || systemVolume.volume >= systemVolume.max;
+  const boost = atTop ? Math.max(1, gain) : 1;
+  /** the top the level can reach: four times the phone's top */
+  const levelCeiling = ofDb(LEVEL_MAX_DB);
   const level = sysFraction > 0
-    ? Math.round(Math.min(levelCeiling, Math.max(ofDb(LEVEL_MIN_DB), sysFraction * gain)) * 1000) / 1000
+    ? Math.round(Math.min(levelCeiling, Math.max(ofDb(LEVEL_MIN_DB), sysFraction * boost)) * 1000) / 1000
     : 0;
-  /** the gain actually put on the voice: the level over the knob */
-  const appliedGain = sysFraction > 0 ? level / sysFraction : gain;
+  /** the gain actually put on the voice */
+  const appliedGain = boost;
   useEffect(() => { if (!inChannel) setOutputMuted(false); }, [inChannel]);
   const toggleOutputMute = useCallback(() => {
     setOutputMuted((m) => {
@@ -1528,28 +1564,46 @@ export default function App() {
   const setLevelTo = useCallback((db: number, done: boolean) => {
     const output = audioRouteRef.current;
     const phone = systemVolumeRef.current;
-    const sys = phone.max > 0 ? phone.volume / phone.max : 1;
-    if (sys <= 0) return;
     // The controls are called back once, when the finger lands: doing
     // it at every move would restart their fading a hundred times.
     if (!done) setControlsWakeAt((was) => (Date.now() - was > 2000 ? Date.now() : was));
-    const ceiling = Math.min(LEVEL_MAX_DB, dbOf(sys * GAIN_CEILING));
     const rung = Math.round(db / LEVEL_STEP_DB) * LEVEL_STEP_DB;
-    const next = Math.min(ceiling, Math.max(LEVEL_MIN_DB, rung));
-    const wanted = Math.round((ofDb(next) / sys) * 1000) / 1000;
+    const next = Math.min(LEVEL_MAX_DB, Math.max(LEVEL_MIN_DB, rung));
     setOutputMuted(false);
-    // Written down when the finger is lifted: during the drag it would
-    // be a line every few pixels.
     if (done) {
       Journal.mark(`level:${next > 0 ? '+' : ''}${Math.round(next)}dB:dragged`)
         .catch(() => { /* noop */ });
     }
+    let wanted = 1;
+    if (phone.max > 0 && next <= 0) {
+      // Below the phone's top: the phone's own step nearest to it.
+      moveKnob(nearestStep(next, phone.max, stepsRef.current));
+    } else {
+      if (phone.max > 0) moveKnob(phone.max);
+      wanted = Math.round(ofDb(Math.max(0, next)) * 1000) / 1000;
+    }
+    setGain(output, wanted);
+  }, [saveCfg]);
+
+  /** The phone's call volume put at a step, and remembered for this output. */
+  const moveKnob = (step: number) => {
+    const phone = systemVolumeRef.current;
+    if (phone.max <= 0 || step === phone.volume) return;
+    const v = { volume: step, max: phone.max };
+    systemVolumeRef.current = v;
+    setSystemVolume(v);
+    knownVolume.current[audioRouteRef.current] = v;
+    Volume.set(step).catch(() => { /* the read-back puts the truth back */ });
+  };
+
+  /** Our gain for an output, written down only when it changes. */
+  const setGain = (output: string, wanted: number) => {
     setCfg((prev) => {
       if (!prev) return prev;
       if (wanted === (prev.gains?.[output] ?? 1)) return prev;
       return saveCfg({ ...prev, gains: { ...(prev.gains ?? {}), [output]: wanted } });
     });
-  }, [saveCfg]);
+  };
 
   const changeLevel = useCallback((direction: number) => {
     if (!direction) return;
@@ -1559,40 +1613,65 @@ export default function App() {
     setControlsWakeAt(Date.now());
     const output = audioRouteRef.current;
     const phone = systemVolumeRef.current;
-    const sys = phone.max > 0 ? phone.volume / phone.max : 1;
-    // The knob at zero multiplies nothing: there is no level to move.
-    if (sys <= 0) return;
-    const ceiling = Math.min(LEVEL_MAX_DB, dbOf(sys * GAIN_CEILING));
-    const now = levelRef.current > 0 ? dbOf(levelRef.current) : LEVEL_MIN_DB;
-    // On the ladder's rungs: the nearest rung, then one up or down. A
-    // level that sits between two rungs - the knob moved from outside
-    // - still moves in the direction pressed, by at least a decibel.
-    const rung = Math.round(now / LEVEL_STEP_DB) * LEVEL_STEP_DB;
-    let next = Math.min(ceiling, Math.max(LEVEL_MIN_DB, rung + direction * LEVEL_STEP_DB));
-    let knob = sys;
-    // At WebRTC's ceiling, and only there, the phone's knob is moved:
-    // one step up makes room, and the gain is set so that the level
-    // rises by its usual two decibels, not by the knob's own jump.
-    if (direction > 0 && rung + LEVEL_STEP_DB > ceiling && phone.max > 0 && phone.volume < phone.max) {
-      knob = (phone.volume + 1) / phone.max;
-      next = Math.min(LEVEL_MAX_DB, Math.min(dbOf(knob * GAIN_CEILING), rung + LEVEL_STEP_DB));
-      setSystemVolume({ ...phone, volume: phone.volume + 1 });
-      Volume.set(phone.volume + 1).catch(() => { /* the read-back puts the truth back */ });
-      Journal.mark(`level:knob ${phone.volume + 1}/${phone.max}`).catch(() => { /* noop */ });
-    }
-    const wanted = Math.round((ofDb(next) / knob) * 1000) / 1000;
-    // A key while hushed: the sound comes back, at the level pressed.
+    const g = cfgRef.current?.gains?.[output] ?? 1;
     setOutputMuted(false);
-    Journal.mark(`level:${next > 0 ? '+' : ''}${Math.round(next)}dB`).catch(() => { /* noop */ });
-    setCfg((prev) => {
-      if (!prev) return prev;
-      if (wanted === (prev.gains?.[output] ?? 1)) return prev;
-      return saveCfg({
-        ...prev,
-        gains: { ...(prev.gains ?? {}), [output]: wanted },
-      });
-    });
+    if (phone.max <= 0) return;
+    const top = phone.volume >= phone.max;
+    if (direction > 0) {
+      if (!top) {
+        // The phone's own knob first, a step at a time.
+        moveKnob(phone.volume + 1);
+        Journal.mark(`level:knob ${phone.volume + 1}/${phone.max}`).catch(() => { /* noop */ });
+        setGain(output, 1);
+        return;
+      }
+      // At its top, our gain, by the ladder's rungs.
+      const now = Math.round(dbOf(Math.max(1, g)) / LEVEL_STEP_DB) * LEVEL_STEP_DB;
+      const next = Math.min(LEVEL_MAX_DB, now + LEVEL_STEP_DB);
+      Journal.mark(`level:+${Math.round(next)}dB`).catch(() => { /* noop */ });
+      setGain(output, Math.round(ofDb(next) * 1000) / 1000);
+      return;
+    }
+    // Down: our gain off first, then the phone's knob.
+    if (top && g > 1.001) {
+      const now = Math.round(dbOf(g) / LEVEL_STEP_DB) * LEVEL_STEP_DB;
+      const next = now - LEVEL_STEP_DB;
+      Journal.mark(`level:${next > 0 ? '+' : ''}${Math.round(next)}dB`).catch(() => { /* noop */ });
+      setGain(output, next <= 0 ? 1 : Math.round(ofDb(next) * 1000) / 1000);
+      return;
+    }
+    if (phone.volume > 1) {
+      moveKnob(phone.volume - 1);
+      Journal.mark(`level:knob ${phone.volume - 1}/${phone.max}`).catch(() => { /* noop */ });
+    }
+    setGain(output, 1);
   }, [saveCfg]);
+
+  /**
+   * A gain below 1 is a leftover of the two knobs: it is turned into the
+   * phone's step it amounted to, and the gain back to 1.
+   */
+  useEffect(() => {
+    if (!inChannel || systemVolume.max <= 0 || gain >= 0.999) return;
+    const was = sysFraction * gain;
+    Journal.mark(`level:gain-below-one ${gain}`).catch(() => { /* noop */ });
+    setLevelTo(was > 0 ? dbOf(was) : LEVEL_MIN_DB, true);
+  }, [inChannel, gain, systemVolume.max, sysFraction, setLevelTo]);
+
+  /** The steps of the output in use, read again at every change of output. */
+  useEffect(() => {
+    if (!inChannel) return;
+    let alive = true;
+    Volume.steps(audio.route).then((st) => {
+      if (!alive || !Array.isArray(st)) return;
+      setStepsDb(st);
+      if (st.length) {
+        Journal.mark(`volume-steps:${audio.route}:${st.map((d) => Math.round(d)).join(',')}`)
+          .catch(() => { /* noop */ });
+      }
+    }).catch(() => { /* noop */ });
+    return () => { alive = false; };
+  }, [inChannel, audio.route]);
 
   useEffect(() => {
     if (!inChannel) return;
