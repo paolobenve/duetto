@@ -94,24 +94,44 @@ class VolumeModule(private val ctx: ReactApplicationContext) :
             promise.resolve(out)
             return
         }
-        try {
-            val device = when (route) {
-                "EARPIECE" -> AudioDeviceInfo.TYPE_BUILTIN_EARPIECE
-                "WIRED_HEADSET" -> AudioDeviceInfo.TYPE_WIRED_HEADSET
-                "BLUETOOTH" -> AudioDeviceInfo.TYPE_BLUETOOTH_SCO
-                else -> AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
-            }
-            val stream = AudioManager.STREAM_VOICE_CALL
-            val max = a.getStreamMaxVolume(stream)
-            val top = a.getStreamVolumeDb(stream, max, device)
-            for (i in 0..max) {
-                val db = a.getStreamVolumeDb(stream, i, device) - top
-                out.pushDouble(if (db.isFinite()) db.toDouble() else -96.0)
-            }
-        } catch (_: Exception) {
-            promise.resolve(Arguments.createArray())
-            return
+        val stream = AudioManager.STREAM_VOICE_CALL
+        val byRoute = when (route) {
+            "EARPIECE" -> AudioDeviceInfo.TYPE_BUILTIN_EARPIECE
+            "WIRED_HEADSET" -> AudioDeviceInfo.TYPE_WIRED_HEADSET
+            "BLUETOOTH" -> AudioDeviceInfo.TYPE_BLUETOOTH_SCO
+            else -> AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
         }
+        // The device the call is really on, where Android says it (12+),
+        // then the one the route names: a phone refused the second.
+        val candidates = mutableListOf<Int>()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            a.communicationDevice?.type?.let { candidates.add(it) }
+        }
+        if (byRoute !in candidates) candidates.add(byRoute)
+        var why = ""
+        for (device in candidates) {
+            try {
+                val max = a.getStreamMaxVolume(stream)
+                val top = a.getStreamVolumeDb(stream, max, device)
+                val list = Arguments.createArray()
+                var usable = top.isFinite()
+                for (i in 0..max) {
+                    val db = a.getStreamVolumeDb(stream, i, device) - top
+                    if (i == max - 1 && !(db < 0f)) usable = false
+                    list.pushDouble(if (db.isFinite()) db.toDouble() else -96.0)
+                }
+                if (usable) {
+                    promise.resolve(list)
+                    return
+                }
+                why += "device $device: flat; "
+            } catch (e: Exception) {
+                why += "device $device: ${e.javaClass.simpleName} ${e.message}; "
+            }
+        }
+        // Said in the journal: without it, "no table" cannot be told from
+        // "never asked".
+        Journal.sample(ctx, "volume-steps:none:${why.take(160)}")
         promise.resolve(out)
     }
 
