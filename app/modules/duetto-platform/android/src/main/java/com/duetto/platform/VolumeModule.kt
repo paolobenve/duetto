@@ -115,7 +115,12 @@ class VolumeModule(private val ctx: ReactApplicationContext) :
                 val top = a.getStreamVolumeDb(stream, max, device)
                 val list = Arguments.createArray()
                 var usable = top.isFinite()
+                // The call volume has no step 0 - a call cannot be silenced
+                // from the knob - and asking for it threw the whole table
+                // away: "Invalid stream volume index 0".
+                val min = a.getStreamMinVolume(stream)
                 for (i in 0..max) {
+                    if (i < min) { list.pushDouble(-96.0); continue }
                     val db = a.getStreamVolumeDb(stream, i, device) - top
                     if (i == max - 1 && !(db < 0f)) usable = false
                     list.pushDouble(if (db.isFinite()) db.toDouble() else -96.0)
