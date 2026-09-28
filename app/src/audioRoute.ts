@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DeviceEventEmitter } from 'react-native';
 import InCallManager from 'react-native-incall-manager';
-import { Journal } from 'duetto-platform';
+import { Journal, Call } from 'duetto-platform';
 import { t } from './i18n';
 
 /**
@@ -112,8 +112,20 @@ export function useAudioRoute(
     if (r === 'SPEAKER_PHONE' || r === 'EARPIECE') builtIn.current = r;
   };
 
-  /** Applies an output, with a fallback if the library will not choose. */
+  /**
+   * Applies an output: through the channel's call when there is one
+   * (Calls.kt) - with a call of its own the output is Android's to move
+   * as well, and what the app set by the other road was overwritten -
+   * else through the call library, with a fallback if it will not
+   * choose.
+   */
   const applyRoute = useCallback((route: AudioRoute) => {
+    Call.setRoute(route).then((through) => {
+      if (!through) applyByLibrary(route);
+    }).catch(() => applyByLibrary(route));
+  }, []);
+
+  const applyByLibrary = (route: AudioRoute) => {
     const icm = InCallManager as any;
     try {
       if (typeof icm.chooseAudioRoute === 'function') {
@@ -126,7 +138,45 @@ export function useAudioRoute(
     } catch {
       /* noop */
     }
-  }, []);
+  };
+
+  /**
+   * Where Android puts the call's sound, when the channel is a call.
+   *
+   * It moves it by itself as a phone does: a Bluetooth earpiece that
+   * connects takes the call. With "only when asked" that is refused and
+   * the output of before put back; asked for, or with the automatic
+   * choice on, it is kept. And the call, born on Android's default -
+   * the earpiece - is put on the output wanted.
+   */
+  useEffect(() => {
+    if (!enabled) return;
+    return Call.subscribe((st) => {
+      if (st === 'active' || st === 'resumed') {
+        const w = wanted.current;
+        if (w) setTimeout(() => applyRoute(w), 300);
+        return;
+      }
+      if (!st.startsWith('route:')) return;
+      const r = st.slice('route:'.length);
+      if (!isRoute(r)) return;
+      const a = autoRef.current;
+      const headset = r === 'BLUETOOTH' || r === 'WIRED_HEADSET';
+      if (headset && wanted.current !== r) {
+        const allowed = r === 'BLUETOOTH' ? a?.bluetooth : a?.wired;
+        if (!allowed) {
+          const back = wanted.current && wanted.current !== r ? wanted.current : builtIn.current;
+          Journal.mark(`route:${r === 'BLUETOOTH' ? 'bt' : 'wired'}-declined`).catch(() => { /* noop */ });
+          applyRoute(back);
+          return;
+        }
+        wanted.current = r;
+      }
+      currentRef.current = r;
+      setCurrent(r);
+      noteBuiltIn(r);
+    });
+  }, [enabled, applyRoute]);
 
   // The preference comes from the connection in use, and changes with it.
   useEffect(() => {
