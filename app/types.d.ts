@@ -33,6 +33,7 @@ declare module 'duetto-platform' {
     start(name: string): Promise<string>;
     end(): Promise<boolean>;
     resume(): Promise<boolean>;
+    watchRinging(): Promise<boolean>;
     subscribe(cb: (state: string) => void): () => void;
   };
 

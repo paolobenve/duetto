@@ -13,8 +13,17 @@ import android.content.ComponentName
 import android.content.Context
 import android.graphics.drawable.Icon
 import android.net.Uri
+import android.Manifest
+import android.content.pm.PackageManager
+import android.media.AudioAttributes
+import android.media.AudioManager
+import android.media.Ringtone
+import android.media.RingtoneManager
 import android.os.Build
 import android.os.Bundle
+import android.telephony.PhoneStateListener
+import android.telephony.TelephonyCallback
+import android.telephony.TelephonyManager
 import android.telecom.Connection
 import android.telecom.ConnectionRequest
 import android.telecom.ConnectionService
@@ -117,8 +126,97 @@ object Calls {
         say("resumed")
     }
 
+    /**
+     * The phone's own ringtone, while the channel's call is on.
+     *
+     * With a call in progress - and ours is one - Android does not ring
+     * for a new one: it plays the call-waiting beeps, which one does not
+     * recognise as the telephone. Knowing that the phone rings takes the
+     * phone permission; granted, Duetto plays the ringtone itself until
+     * the call is answered or gone. Refused, the beeps stay.
+     */
+    private var ringtone: Ringtone? = null
+    private var callback: Any? = null
+
+    private fun onCallState(state: Int) {
+        val ctx = appCtx ?: return
+        if (state == TelephonyManager.CALL_STATE_RINGING && connection?.state == Connection.STATE_ACTIVE) {
+            val am = ctx.getSystemService(AudioManager::class.java)
+            if (am?.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
+            if (ringtone?.isPlaying == true) return
+            try {
+                val uri = RingtoneManager.getActualDefaultRingtoneUri(ctx, RingtoneManager.TYPE_RINGTONE)
+                    ?: return
+                ringtone = RingtoneManager.getRingtone(ctx, uri)?.apply {
+                    audioAttributes = AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) isLooping = true
+                    play()
+                }
+                Journal.sample(ctx, "call:ringtone")
+            } catch (e: Exception) {
+                Log.w(TAG, "ringtone: ${e.message}")
+            }
+        } else {
+            stopRinging()
+        }
+    }
+
+    fun stopRingingNow() = stopRinging()
+
+    private fun stopRinging() {
+        try { ringtone?.stop() } catch (_: Exception) { /* noop */ }
+        ringtone = null
+    }
+
+    /** Starts listening for the phone ringing, if the permission is there. */
+    fun watchRinging(ctx: Context) {
+        if (callback != null) return
+        if (ctx.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) return
+        val tm = ctx.getSystemService(TelephonyManager::class.java) ?: return
+        appCtx = ctx.applicationContext
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val cb = object : TelephonyCallback(), TelephonyCallback.CallStateListener {
+                    override fun onCallStateChanged(state: Int) = onCallState(state)
+                }
+                tm.registerTelephonyCallback(ctx.mainExecutor, cb)
+                callback = cb
+            } else {
+                @Suppress("DEPRECATION")
+                val l = object : PhoneStateListener() {
+                    @Deprecated("Deprecated in Java")
+                    override fun onCallStateChanged(state: Int, number: String?) = onCallState(state)
+                }
+                @Suppress("DEPRECATION")
+                tm.listen(l, PhoneStateListener.LISTEN_CALL_STATE)
+                callback = l
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "ringing not watched: ${e.message}")
+        }
+    }
+
+    private fun unwatchRinging() {
+        stopRinging()
+        val cb = callback ?: return
+        callback = null
+        val tm = appCtx?.getSystemService(TelephonyManager::class.java) ?: return
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && cb is TelephonyCallback) {
+                tm.unregisterTelephonyCallback(cb)
+            } else if (cb is PhoneStateListener) {
+                @Suppress("DEPRECATION")
+                tm.listen(cb, PhoneStateListener.LISTEN_NONE)
+            }
+        } catch (_: Exception) { /* noop */ }
+    }
+
     /** Closes the call, if there is one. */
     fun end() {
+        unwatchRinging()
         val c = connection ?: return
         connection = null
         try {
@@ -139,6 +237,7 @@ class DuettoConnection : Connection() {
 
     override fun onHold() {
         // A real call was answered: ours waits, and says so.
+        Calls.stopRingingNow()
         setOnHold()
         Calls.say("held")
     }
@@ -177,6 +276,7 @@ class DuettoConnectionService : ConnectionService() {
         c.setActive()
         Calls.connection = c
         Calls.say("active")
+        Calls.watchRinging(this)
         return c
     }
 

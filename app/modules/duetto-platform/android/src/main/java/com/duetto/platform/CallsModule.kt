@@ -38,6 +38,13 @@ class CallsModule(private val ctx: ReactApplicationContext) :
         promise.resolve(Calls.start(ctx, name))
     }
 
+    /** The phone permission was just granted: the ringing is watched from now. */
+    @ReactMethod
+    fun watchRinging(promise: Promise) {
+        Calls.watchRinging(ctx)
+        promise.resolve(true)
+    }
+
     /** Gives it back after a real call ended: see Calls.resume. */
     @ReactMethod
     fun resume(promise: Promise) {

@@ -31,6 +31,10 @@
          the system keeps; a Motorola closed Duetto at the stroke of the
          hour in the middle of a conversation. Granted without asking. -->
     <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
+    <!-- Knowing that the phone rings while the channel's call is on, to
+         play the ringtone Android replaces with call-waiting beeps. Asked
+         once, with a word of why; refused, the beeps stay. -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
 
     <application>
         <!-- Hands the journal's files to other apps, through the share
