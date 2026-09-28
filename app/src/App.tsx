@@ -559,6 +559,12 @@ export default function App() {
         if (retry) { clearInterval(retry); retry = null; }
         lost = true;
         silence(':held');
+      } else if (st === 'resumed' && held) {
+        // Given back by the native side - the call focus returned, or
+        // the telephone's mode ended: the silence goes with it.
+        held = false;
+        callActiveAt.current = Date.now();
+        back('call-resumed');
       }
     });
     const sub = DeviceEventEmitter.addListener('onAudioFocusChange', (data: any) => {

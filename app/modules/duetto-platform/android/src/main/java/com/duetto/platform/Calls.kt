@@ -21,6 +21,8 @@ import android.media.Ringtone
 import android.media.RingtoneManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.telephony.PhoneStateListener
 import android.telephony.TelephonyCallback
 import android.telephony.TelephonyManager
@@ -235,14 +237,45 @@ object Calls {
 @RequiresApi(Build.VERSION_CODES.O)
 class DuettoConnection : Connection() {
 
+    /**
+     * The net for a telephone call: the phone was "in a call" when ours
+     * was held, and it leaving that mode says the call ended. A WhatsApp
+     * call is in the same mode as ours, and there this net would lie -
+     * so it is cast only for a telephone; the focus given back
+     * (DuettoConnectionService) and the audio returning cover the rest.
+     */
+    private val clock = Handler(Looper.getMainLooper())
+    private var clearReadings = 0
+    private val watch = object : Runnable {
+        override fun run() {
+            if (state != STATE_HOLDING) return
+            val mode = Calls.appCtx?.getSystemService(AudioManager::class.java)?.mode
+                ?: AudioManager.MODE_IN_CALL
+            clearReadings = if (mode == AudioManager.MODE_IN_CALL || mode == AudioManager.MODE_RINGTONE) 0
+            else clearReadings + 1
+            if (clearReadings >= 2) {
+                Calls.resume()
+                return
+            }
+            clock.postDelayed(this, 1000)
+        }
+    }
+
     override fun onHold() {
         // A real call was answered: ours waits, and says so.
         Calls.stopRingingNow()
         setOnHold()
         Calls.say("held")
+        clock.removeCallbacks(watch)
+        val mode = Calls.appCtx?.getSystemService(AudioManager::class.java)?.mode
+        if (mode == AudioManager.MODE_IN_CALL) {
+            clearReadings = 0
+            clock.postDelayed(watch, 1000)
+        }
     }
 
     override fun onUnhold() {
+        clock.removeCallbacks(watch)
         setActive()
         Calls.say("resumed")
     }
@@ -278,6 +311,16 @@ class DuettoConnectionService : ConnectionService() {
         Calls.say("active")
         Calls.watchRinging(this)
         return c
+    }
+
+    /**
+     * The call focus is ours again: the other call - a telephone's, a
+     * WhatsApp's - ended, and Telecom gives the focus back to the one
+     * left, which is ours. The signal meant for exactly this.
+     */
+    override fun onConnectionServiceFocusGained() {
+        super.onConnectionServiceFocusGained()
+        Calls.resume()
     }
 
     override fun onCreateOutgoingConnectionFailed(
