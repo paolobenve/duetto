@@ -13,8 +13,11 @@ import android.content.ComponentName
 import android.content.Context
 import android.graphics.drawable.Icon
 import android.net.Uri
+import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.telecom.Connection
 import android.telecom.ConnectionRequest
 import android.telecom.ConnectionService
@@ -59,7 +62,8 @@ object Calls {
     @Volatile var listener: ((String) -> Unit)? = null
 
     /** for the journal: the states arrive from Telecom, with no context of their own */
-    @Volatile private var appCtx: Context? = null
+    @Volatile var appCtx: Context? = null
+        private set
 
     fun say(state: String) {
         appCtx?.let { Journal.sample(it, "call:$state") }
@@ -120,19 +124,52 @@ object Calls {
 @RequiresApi(Build.VERSION_CODES.O)
 class DuettoConnection : Connection() {
 
+    /**
+     * Watching for the real call to end.
+     *
+     * Telecom puts a self-managed call on hold when a real one is
+     * answered, and does not give it back when that one ends: it is up
+     * to the app. The phone's audio mode says it - "in a call" while the
+     * other lasts - so while ours is held it is read every second, and
+     * two readings in a row out of "in a call" and "ringing" bring ours
+     * back.
+     */
+    private val clock = Handler(Looper.getMainLooper())
+    private var clearReadings = 0
+    private val watch = object : Runnable {
+        override fun run() {
+            if (state != STATE_HOLDING) return
+            val am = Calls.appCtx?.getSystemService(AudioManager::class.java)
+            val mode = am?.mode ?: AudioManager.MODE_IN_CALL
+            clearReadings = if (mode == AudioManager.MODE_IN_CALL || mode == AudioManager.MODE_RINGTONE) 0
+            else clearReadings + 1
+            if (clearReadings >= 2) {
+                setActive()
+                Calls.say("resumed")
+                return
+            }
+            clock.postDelayed(this, 1000)
+        }
+    }
+
     override fun onHold() {
         // A real call was answered: ours waits, and says so.
         setOnHold()
         Calls.say("held")
+        clearReadings = 0
+        clock.removeCallbacks(watch)
+        clock.postDelayed(watch, 1000)
     }
 
     override fun onUnhold() {
+        clock.removeCallbacks(watch)
         setActive()
-        Calls.say("active")
+        Calls.say("resumed")
     }
 
     /** Closed by the system, not by us: the channel is told. */
     override fun onDisconnect() {
+        clock.removeCallbacks(watch)
         if (Calls.connection === this) Calls.connection = null
         setDisconnected(DisconnectCause(DisconnectCause.REMOTE))
         destroy()
