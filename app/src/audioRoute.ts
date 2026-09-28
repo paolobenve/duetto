@@ -172,6 +172,21 @@ export function useAudioRoute(
         }
         wanted.current = r;
       }
+      // A headset gone: Android falls back on the earpiece, its own
+      // default; the person expects the built-in output of before - on
+      // speaker, a Bluetooth earpiece put on and taken off left the call
+      // at the ear.
+      const was = currentRef.current;
+      const wasHeadset = was === 'BLUETOOTH' || was === 'WIRED_HEADSET';
+      if (wasHeadset && !headset && r !== builtIn.current && wanted.current !== r) {
+        const back = builtIn.current;
+        wanted.current = back;
+        currentRef.current = back;
+        setCurrent(back);
+        applyRoute(back);
+        Journal.mark(`output:back:${back}`).catch(() => { /* noop */ });
+        return;
+      }
       currentRef.current = r;
       setCurrent(r);
       noteBuiltIn(r);
