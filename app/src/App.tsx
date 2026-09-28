@@ -477,6 +477,8 @@ export default function App() {
      * middle of a WhatsApp call, and taken from it.
      */
     let held = false;
+    /** another app's call is on: see the call subscription below */
+    let otherCall = false;
     const stopRinging = () => {
       if (ringing) { clearInterval(ringing); ringing = null; }
     };
@@ -510,6 +512,7 @@ export default function App() {
       }, 500);
     };
     const back = (why: string) => {
+      if (otherCall) return;
       if (held) {
         // Only the audio given back says the other call ended.
         if (why !== 'told') return;
@@ -559,6 +562,22 @@ export default function App() {
         if (retry) { clearInterval(retry); retry = null; }
         lost = true;
         silence(':held');
+      } else if (st.startsWith('other-call:')) {
+        /**
+         * Another app's call - WhatsApp, where it does not go through
+         * telecom - seen by our microphone taken away or by its voice
+         * playing beside ours (Calls.kt). Silent both ways while it
+         * lasts, and the card says why.
+         */
+        if (st === 'other-call:over') {
+          otherCall = false;
+          // Over: back to hearing, unless a telephone holds our call.
+          if (!held) back('other-call-over');
+        } else {
+          otherCall = true;
+          sessionRef.current?.hush(true);
+          setOnCall(true);
+        }
       } else if (st === 'resumed' && held) {
         // Given back by the native side - the call focus returned, or
         // the telephone's mode ended: the silence goes with it.

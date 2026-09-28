@@ -90,6 +90,8 @@ object Calls {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return "too-old"
         if (connection != null) return "already"
         appCtx = ctx.applicationContext
+        // Other apps' calls are watched whether telecom takes ours or not.
+        watchOthers(ctx)
         return try {
             val telecom = ctx.getSystemService(TelecomManager::class.java) ?: return "no-telecom"
             val account = handle(ctx)
@@ -216,8 +218,72 @@ object Calls {
         } catch (_: Exception) { /* noop */ }
     }
 
+    /**
+     * Another app's call, seen by the microphone and by the speaker.
+     *
+     * WhatsApp does not go through telecom on every phone, and there its
+     * call reached us by no road: no hold, and the audio focus it took
+     * was the telecom framework's, held for our call. Two things show it
+     * all the same, with no permission: the system silences our
+     * microphone when another app's call takes it, and another app plays
+     * a voice-communication stream beside ours. Either one says "another
+     * call"; both gone, it is over.
+     */
+    private var recCb: AudioManager.AudioRecordingCallback? = null
+    private var playCb: AudioManager.AudioPlaybackCallback? = null
+    private var micTaken = false
+    private var voiceBeside = false
+    private var otherCall = false
+
+    private fun judgeOthers() {
+        val now = micTaken || voiceBeside
+        if (now == otherCall) return
+        otherCall = now
+        say(if (now) "other-call:${if (micTaken) "mic" else "voice"}" else "other-call:over")
+    }
+
+    fun watchOthers(ctx: Context) {
+        if (recCb != null) return
+        appCtx = ctx.applicationContext
+        val am = ctx.getSystemService(AudioManager::class.java) ?: return
+        val main = Handler(Looper.getMainLooper())
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            recCb = object : AudioManager.AudioRecordingCallback() {
+                override fun onRecordingConfigChanged(configs: MutableList<android.media.AudioRecordingConfiguration>?) {
+                    micTaken = configs?.any { it.isClientSilenced } == true
+                    judgeOthers()
+                }
+            }.also { am.registerAudioRecordingCallback(it, main) }
+        }
+        playCb = object : AudioManager.AudioPlaybackCallback() {
+            override fun onPlaybackConfigChanged(configs: MutableList<android.media.AudioPlaybackConfiguration>?) {
+                // Ours is one voice stream, WebRTC's; a second one is
+                // somebody else's call.
+                val voices = configs?.count {
+                    it.audioAttributes.usage == AudioAttributes.USAGE_VOICE_COMMUNICATION
+                } ?: 0
+                voiceBeside = voices >= 2
+                judgeOthers()
+            }
+        }.also { am.registerAudioPlaybackCallback(it, main) }
+    }
+
+    fun unwatchOthers() {
+        val am = appCtx?.getSystemService(AudioManager::class.java)
+        try {
+            recCb?.let { if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) am?.unregisterAudioRecordingCallback(it) }
+            playCb?.let { am?.unregisterAudioPlaybackCallback(it) }
+        } catch (_: Exception) { /* noop */ }
+        recCb = null
+        playCb = null
+        micTaken = false
+        voiceBeside = false
+        otherCall = false
+    }
+
     /** Closes the call, if there is one. */
     fun end() {
+        unwatchOthers()
         unwatchRinging()
         val c = connection ?: return
         connection = null
