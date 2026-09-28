@@ -32,6 +32,7 @@ declare module 'duetto-platform' {
   export const Call: {
     start(name: string): Promise<string>;
     end(): Promise<boolean>;
+    resume(): Promise<boolean>;
     subscribe(cb: (state: string) => void): () => void;
   };
 

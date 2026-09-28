@@ -469,6 +469,14 @@ export default function App() {
     let ringing: ReturnType<typeof setInterval> | null = null;
     /** lost the audio and not given it back yet */
     let lost = false;
+    /**
+     * The channel's call is on hold (Calls.kt): a real call - a phone
+     * call, a WhatsApp call - was answered. While it lasts nothing is
+     * asked back, and only the audio returning by itself (AUDIOFOCUS_GAIN)
+     * says it is over: asked for, it would have been granted in the
+     * middle of a WhatsApp call, and taken from it.
+     */
+    let held = false;
     const stopRinging = () => {
       if (ringing) { clearInterval(ringing); ringing = null; }
     };
@@ -479,7 +487,7 @@ export default function App() {
       sess?.duck(false);
       setOnCall(true);
       Journal.mark(`audio-focus:call${why}`).catch(() => {});
-      keepAsking();
+      if (!held) keepAsking();
     };
     const watchRinging = () => {
       if (ringing) return;
@@ -502,6 +510,14 @@ export default function App() {
       }, 500);
     };
     const back = (why: string) => {
+      if (held) {
+        // Only the audio given back says the other call ended.
+        if (why !== 'told') return;
+        held = false;
+        // Given back, our call takes the audio again: that is ours too.
+        callActiveAt.current = Date.now();
+        Call.resume().catch(() => { /* noop */ });
+      }
       lost = false;
       stopRinging();
       if (retry) { clearInterval(retry); retry = null; }
@@ -536,6 +552,14 @@ export default function App() {
       if (a !== 'wait') return;
       Journal.mark('command:notification:wait').catch(() => {});
       leaveChannelRef.current?.();
+    });
+    const callSub = Call.subscribe((st) => {
+      if (st === 'held') {
+        held = true;
+        if (retry) { clearInterval(retry); retry = null; }
+        lost = true;
+        silence(':held');
+      }
     });
     const sub = DeviceEventEmitter.addListener('onAudioFocusChange', (data: any) => {
       const what = String(data?.eventText || '');
@@ -575,6 +599,7 @@ export default function App() {
     });
     return () => {
       sub.remove();
+      callSub();
       actions.remove();
       askBeat();
       if (retry) clearInterval(retry);
@@ -1617,15 +1642,6 @@ export default function App() {
   const callActiveAt = useRef(0);
   useEffect(() => Call.subscribe((st) => {
     if (st === 'active' || st === 'resumed') callActiveAt.current = Date.now();
-    // A real call answered puts ours on hold: silent both ways, and the
-    // card says why. Given back when that call ends.
-    if (st === 'held') {
-      sessionRef.current?.hush(true);
-      setOnCall(true);
-    } else if (st === 'resumed') {
-      sessionRef.current?.hush(false);
-      setOnCall(false);
-    }
   }), []);
 
   /** the other's leaving, waiting to be heard: see onPeerMode */

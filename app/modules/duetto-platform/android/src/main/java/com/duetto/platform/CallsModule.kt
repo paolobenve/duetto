@@ -38,6 +38,13 @@ class CallsModule(private val ctx: ReactApplicationContext) :
         promise.resolve(Calls.start(ctx, name))
     }
 
+    /** Gives it back after a real call ended: see Calls.resume. */
+    @ReactMethod
+    fun resume(promise: Promise) {
+        Calls.resume()
+        promise.resolve(true)
+    }
+
     /** Closes it on leaving. */
     @ReactMethod
     fun end(promise: Promise) {

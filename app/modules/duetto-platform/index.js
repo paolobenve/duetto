@@ -446,6 +446,8 @@ export const Call = isAndroid && NativeCalls
       /** "placed", or why not: the state follows through subscribe */
       start: (name) => call(NativeCalls, 'start', String(name || '')),
       end: () => call(NativeCalls, 'end'),
+      /** gives the call back after a real one ended */
+      resume: () => call(NativeCalls, 'resume'),
       /** `cb(state)`: active, held, failed, ended, ended-by-system */
       subscribe(cb) {
         const emitter = new NativeEventEmitter(NativeCalls);
@@ -453,7 +455,7 @@ export const Call = isAndroid && NativeCalls
         return () => sub.remove();
       },
     }
-  : { start: () => Promise.resolve('unavailable'), end: unavailable, subscribe: () => () => {} };
+  : { start: () => Promise.resolve('unavailable'), end: unavailable, resume: unavailable, subscribe: () => () => {} };
 
 export const Heartbeat = isAndroid && NativeHeartbeat
   ? {
