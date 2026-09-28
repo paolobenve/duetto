@@ -657,6 +657,8 @@ export const Alarm = isAndroid && NativeAlarm
         call(NativeAlarm, 'play', String(name), !!echo, Number(maxMs) || 0,
           volume === undefined ? -1 : Number(volume)),
       stop: () => call(NativeAlarm, 'stop'),
+      /** the volume test's beeps, on the voice's own stream */
+      test: () => call(NativeAlarm, 'test'),
       list: () => call(NativeAlarm, 'list'),
     }
-  : { play: unavailable, stop: unavailable, list: () => Promise.resolve([]) };
+  : { play: unavailable, stop: unavailable, test: unavailable, list: () => Promise.resolve([]) };

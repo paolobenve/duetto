@@ -31,6 +31,13 @@ class AlarmModule(private val ctx: ReactApplicationContext) :
         promise.resolve(true)
     }
 
+    /** The volume test's beeps, on the voice's own stream. */
+    @ReactMethod
+    fun test(promise: Promise) {
+        Alarm.playTest(ctx)
+        promise.resolve(true)
+    }
+
     @ReactMethod
     fun stop(promise: Promise) {
         Alarm.stop()

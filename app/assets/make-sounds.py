@@ -307,6 +307,16 @@ def cue_detach():
     # leaving, twice as far.
     return arpeggio(DETACH, last=1.0) * ARPEGGIO_GAIN
 
+# --- The volume test ---------------------------------------------------------
+# Three plain beeps, the same every time: played twice, at two steps of
+# the phone's call volume, so that the ear can tell whether the knob
+# does anything on this phone. Nothing to remember, nothing musical.
+def test_tone():
+    beep = np.sin(2 * np.pi * 660.0 * t(0.25)) * 0.6
+    beep = fade(beep, 0.02)
+    gap = np.zeros(int(SR * 0.15))
+    return np.concatenate([beep, gap, beep, gap, beep])
+
 # --- writing ---------------------------------------------------------------
 def save(name, data):
     os.makedirs(OUT, exist_ok=True)
@@ -335,3 +345,4 @@ if __name__ == '__main__':
     save('cue_enter', cue_enter())
     save('cue_leave', cue_leave())
     save('cue_detach', cue_detach())
+    save('test_tone', test_tone())

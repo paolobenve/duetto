@@ -25,6 +25,8 @@ declare module 'duetto-platform' {
      */
     play(name: string, echo?: boolean, maxMs?: number, volume?: number): Promise<boolean>;
     stop(): Promise<boolean>;
+    /** the volume test's beeps, on the voice's own stream */
+    test(): Promise<boolean>;
     list(): Promise<string[]>;
   };
 

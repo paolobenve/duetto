@@ -98,6 +98,8 @@ object Alarm {
         "cue_enter" -> R.raw.cue_enter
         "cue_leave" -> R.raw.cue_leave
         "cue_detach" -> R.raw.cue_detach
+        // The volume test's beeps: see playTest.
+        "test_tone" -> R.raw.test_tone
         // The names as the older Duetto said them: they come from a
         // phone that has not been updated yet. These six lines go away
         // with the next version.
@@ -173,6 +175,33 @@ object Alarm {
             }
         } catch (e: Exception) {
             Log.w(TAG, "cue: $name does not play: ${e.message}")
+        }
+    }
+
+    /**
+     * The volume test's beeps, on the voice's own stream.
+     *
+     * Not on the cues' signalling stream: the question is whether the
+     * phone's call volume changes what the other voice sounds like, and
+     * only a sound on the voice's stream goes the same road.
+     */
+    fun playTest(ctx: Context) {
+        stopCue()
+        try {
+            val attributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build()
+            val mp = MediaPlayer.create(ctx, R.raw.test_tone, attributes, AudioManager.AUDIO_SESSION_ID_GENERATE)
+                ?: return
+            mp.setOnCompletionListener {
+                it.release()
+                if (cuePlayer === it) cuePlayer = null
+            }
+            cuePlayer = mp
+            mp.start()
+        } catch (e: Exception) {
+            Log.w(TAG, "test tone: ${e.message}")
         }
     }
 
