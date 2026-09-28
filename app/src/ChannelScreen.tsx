@@ -355,6 +355,14 @@ function VolumeScale(p: {
                 }]} />
               ) : null}
             </View>
+            {/* Rungs in the bottom band too: every four decibels, and one
+                at the phone's lowest step, where the band begins. */}
+            {band > 0 ? [0, 4, 8, 12, 16].map((d) => (
+              <View
+                key={`band-${d}`}
+                style={[styles.rung, d === 0 ? styles.rungBandTop : null, { bottom: up(base - d) }]}
+              />
+            )) : null}
             {LOUD_RUNGS.map((l) => {
               const db = 10 * Math.log2(l / 100);
               const top = l === 100;
@@ -2730,6 +2738,8 @@ const styles = StyleSheet.create({
     position: 'absolute', left: 21, width: 22, height: 1,
     backgroundColor: 'rgba(11,14,20,0.55)',
   },
+  /** the rung where the bottom band begins: the phone's lowest step */
+  rungBandTop: { left: 19, width: 26, height: 1.5, backgroundColor: 'rgba(11,14,20,0.8)' },
   rungMajor: {
     left: 17, width: 30, height: 2.5, backgroundColor: 'rgba(11,14,20,0.9)',
   },
