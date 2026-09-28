@@ -113,14 +113,17 @@ object Calls {
     private var waiting: Runnable? = null
 
     /**
-     * In a call or ringing. A call in progress by the audio mode alone:
+     * In a call or ringing. A call in progress by the "in a call" mode alone:
      * the call state stayed "off hook" for minutes after a call ended on
      * a dual-SIM phone, and the channel waited silent all that while.
      * The call state, when allowed, only for the ringing.
      */
     private fun phoneBusy(ctx: Context): Boolean {
+        // Not the "ringtone" mode: Android passes through it after our own
+        // call is closed, with nobody calling, and a quick way out and
+        // back in showed "a call on the phone" for a couple of seconds.
         val mode = ctx.getSystemService(AudioManager::class.java)?.mode
-        if (mode == AudioManager.MODE_IN_CALL || mode == AudioManager.MODE_RINGTONE) return true
+        if (mode == AudioManager.MODE_IN_CALL) return true
         if (ctx.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
             try {
                 @Suppress("DEPRECATION")
