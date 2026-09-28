@@ -571,8 +571,14 @@ export default function App() {
          */
         if (st === 'other-call:over') {
           otherCall = false;
-          // Over: back to hearing, unless a telephone holds our call.
-          if (!held) back('other-call-over');
+          if (held) {
+            // The microphone given back while a telephone held our call:
+            // that call has ended, and ours comes back.
+            held = false;
+            callActiveAt.current = Date.now();
+            Call.resume().catch(() => { /* noop */ });
+          }
+          back('other-call-over');
         } else {
           otherCall = true;
           sessionRef.current?.hush(true);

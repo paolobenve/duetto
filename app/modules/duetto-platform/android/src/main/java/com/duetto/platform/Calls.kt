@@ -304,22 +304,25 @@ object Calls {
 class DuettoConnection : Connection() {
 
     /**
-     * The net for a telephone call: the phone was "in a call" when ours
-     * was held, and it leaving that mode says the call ended. A WhatsApp
-     * call is in the same mode as ours, and there this net would lie -
-     * so it is cast only for a telephone; the focus given back
-     * (DuettoConnectionService) and the audio returning cover the rest.
+     * The net for a telephone call: the phone seen "in a call" while ours
+     * is held, and then out of it, says the call ended. Android enters
+     * that mode a moment AFTER the hold - read at the hold itself, it was
+     * still ours, and the net was never cast - so it is watched all the
+     * hold long, and only a mode seen and then left counts. A WhatsApp
+     * call never enters it, and the net stays quiet there.
      */
     private val clock = Handler(Looper.getMainLooper())
     private var clearReadings = 0
+    private var sawInCall = false
     private val watch = object : Runnable {
         override fun run() {
             if (state != STATE_HOLDING) return
             val mode = Calls.appCtx?.getSystemService(AudioManager::class.java)?.mode
                 ?: AudioManager.MODE_IN_CALL
+            if (mode == AudioManager.MODE_IN_CALL) sawInCall = true
             clearReadings = if (mode == AudioManager.MODE_IN_CALL || mode == AudioManager.MODE_RINGTONE) 0
             else clearReadings + 1
-            if (clearReadings >= 2) {
+            if (sawInCall && clearReadings >= 2) {
                 Calls.resume()
                 return
             }
@@ -333,11 +336,9 @@ class DuettoConnection : Connection() {
         setOnHold()
         Calls.say("held")
         clock.removeCallbacks(watch)
-        val mode = Calls.appCtx?.getSystemService(AudioManager::class.java)?.mode
-        if (mode == AudioManager.MODE_IN_CALL) {
-            clearReadings = 0
-            clock.postDelayed(watch, 1000)
-        }
+        clearReadings = 0
+        sawInCall = false
+        clock.postDelayed(watch, 1000)
     }
 
     override fun onUnhold() {
