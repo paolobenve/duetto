@@ -10,7 +10,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated,
-  useWindowDimensions, Modal, Pressable, PanResponder,
+  useWindowDimensions, Modal, Pressable, PanResponder, LayoutAnimation, UIManager, Platform,
 } from 'react-native';
 import type { GestureResponderEvent } from 'react-native';
 import { MediaStream } from 'react-native-webrtc';
@@ -158,6 +158,13 @@ const SCALE_STEP_DB = 2;
 const loudness = (db: number) => 100 * 2 ** (db / 10);
 /** The rungs, at round loudness, every quarter of the phone's own top. */
 const LOUD_RUNGS = [25, 50, 75, 100, 125, 150, 175, 200, 225];
+
+// On Android, with the old architecture, layout animations have to be
+// switched on by hand, or the card jumps instead of sliding.
+if (Platform.OS === 'android') UIManager.setLayoutAnimationEnabledExperimental?.(true);
+
+/** How the card slides between its place beside the scale and the middle. */
+const SLIDE = LayoutAnimation.create(250, 'easeInEaseOut', 'opacity');
 
 /** What the volume scale takes from the right edge, with air on both sides. */
 const SCALE_ROOM = 8 + 72 + 8;
@@ -854,6 +861,8 @@ export default function ChannelScreen(props: Props) {
    * without two touches.
    */
   const [gone, setGone] = useState(false);
+  const goneRef = useRef(false);
+  useEffect(() => { goneRef.current = gone; }, [gone]);
 
   /** The fade: it starts at once and lasts ten seconds. */
   const fade = useCallback((duration = FADE_MS) => {
@@ -866,7 +875,11 @@ export default function ChannelScreen(props: Props) {
       useNativeDriver: true,
     }).start(({ finished }) => {
       // Only once the fade is over: on the way down they can still be seen.
-      if (finished && target === 0) setGone(true);
+      if (finished && target === 0) {
+        // The card slides to the middle as the scale goes: see SCALE_ROOM.
+        LayoutAnimation.configureNext(SLIDE);
+        setGone(true);
+      }
     });
   }, [opacity, controls]);
 
@@ -914,6 +927,9 @@ export default function ChannelScreen(props: Props) {
   const toIgnore = blocked;
 
   const wake = useCallback(() => {
+    // Only when it changes: a layout animation armed for nothing would
+    // catch the next change of anything else.
+    if (goneRef.current) LayoutAnimation.configureNext(SLIDE);
     setGone(false);
     fadeEnd.current = 0;
     if (idleTimer.current) clearTimeout(idleTimer.current);
@@ -1210,7 +1226,9 @@ export default function ChannelScreen(props: Props) {
           />
         ) : (
           <PresenceCard
-            clearOfScale={!!levelDb}
+            // Room for the scale only while it can be seen: with the
+            // controls gone the card sits in the middle of the screen.
+            clearOfScale={!!levelDb && !gone}
             entered={entered}
             onEnter={onEnter}
             openInto={openInto}
@@ -1279,7 +1297,7 @@ export default function ChannelScreen(props: Props) {
       */}
       {!compact && onlyBig && status === 'alone' && !notice ? (
         <Animated.View
-          style={[styles.waitOver, levelDb ? styles.waitOverClear : null, { opacity }]}
+          style={[styles.waitOver, levelDb && !gone ? styles.waitOverClear : null, { opacity }]}
           pointerEvents="none">
           <Text style={styles.waitText}>
             {t('channel.youAreInChannel')}{'\n'}
