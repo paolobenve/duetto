@@ -179,6 +179,8 @@ async function readWithBridge(fresh: string, old: string): Promise<string | null
  */
 const LEVEL_STEP_DB = 2;
 const LEVEL_MIN_DB = -26;
+/** how far Duetto's gain takes the voice below the phone's lowest step */
+const ATTENUATION_SPAN_DB = 20;
 const LEVEL_MAX_DB = 12;
 const dbOf = (x: number) => 20 * Math.log10(x);
 const ofDb = (d: number) => Math.pow(10, d / 20);
@@ -1338,10 +1340,24 @@ export default function App() {
    * gain after; going down takes the gain off first and the knob after.
    */
   const boost = gain;
+  /**
+   * The ladder's bottom: twenty decibels below the phone's lowest step,
+   * or the old -26 dB where that is lower. A Motorola Edge's lowest step
+   * is already -21 dB, and the old bottom left Duetto five decibels of
+   * its own below it.
+   */
+  const knobFloorDb = !knobIgnored && systemVolume.max > 0
+    ? stepDb(minStep(systemVolume.max, stepsDb), systemVolume.max, stepsDb)
+    : null;
+  const levelMinDb = knobFloorDb != null
+    ? Math.min(LEVEL_MIN_DB, knobFloorDb - ATTENUATION_SPAN_DB)
+    : LEVEL_MIN_DB;
+  const levelMinRef = useRef(levelMinDb);
+  levelMinRef.current = levelMinDb;
   /** the top the level can reach: four times the phone's top */
   const levelCeiling = ofDb(LEVEL_MAX_DB);
   const level = sysFraction > 0
-    ? Math.round(Math.min(levelCeiling, Math.max(ofDb(LEVEL_MIN_DB), sysFraction * boost)) * 1000) / 1000
+    ? Math.round(Math.min(levelCeiling, Math.max(ofDb(levelMinDb), sysFraction * boost)) * 100000) / 100000
     : 0;
   /** the gain actually put on the voice */
   const appliedGain = boost;
@@ -1593,7 +1609,7 @@ export default function App() {
     // it at every move would restart their fading a hundred times.
     if (!done) setControlsWakeAt((was) => (Date.now() - was > 2000 ? Date.now() : was));
     const rung = Math.round(db / LEVEL_STEP_DB) * LEVEL_STEP_DB;
-    const next = Math.min(LEVEL_MAX_DB, Math.max(LEVEL_MIN_DB, rung));
+    const next = Math.min(LEVEL_MAX_DB, Math.max(levelMinRef.current, rung));
     setOutputMuted(false);
     if (done) {
       Journal.mark(`level:${next > 0 ? '+' : ''}${Math.round(next)}dB:dragged`)
@@ -1684,7 +1700,7 @@ export default function App() {
     const low = minStep(phone.max, stepsRef.current);
     if (direction > 0) {
       // Up: the gain below 1 first, then the knob, then the gain above 1.
-      if (g < 0.999) { gainStep(1, LEVEL_MIN_DB, 0); return; }
+      if (g < 0.999) { gainStep(1, -ATTENUATION_SPAN_DB, 0); return; }
       if (phone.volume < phone.max) {
         moveKnob(phone.volume + 1);
         Journal.mark(`level:knob ${phone.volume + 1}/${phone.max}`).catch(() => { /* noop */ });
@@ -1700,7 +1716,7 @@ export default function App() {
       moveKnob(phone.volume - 1);
       Journal.mark(`level:knob ${phone.volume - 1}/${phone.max}`).catch(() => { /* noop */ });
     } else {
-      gainStep(-1, LEVEL_MIN_DB, 0);
+      gainStep(-1, -ATTENUATION_SPAN_DB, 0);
     }
   }, [saveCfg]);
 
@@ -5069,10 +5085,11 @@ export default function App() {
         peerGain={outputMuted ? 0 : level}
         levelDb={{
           pct: Math.round(100 * 2 ** (dbOf(level) / 10)),
-          level: level > 0 ? dbOf(level) : LEVEL_MIN_DB,
-          phone: sysFraction > 0 ? dbOf(sysFraction) : LEVEL_MIN_DB,
+          level: level > 0 ? dbOf(level) : levelMinDb,
+          phone: sysFraction > 0 ? dbOf(sysFraction) : levelMinDb,
           ceiling: dbOf(levelCeiling),
-          min: LEVEL_MIN_DB,
+          min: levelMinDb,
+          knobFloor: knobFloorDb ?? undefined,
           max: LEVEL_MAX_DB,
           muted: outputMuted,
         }}

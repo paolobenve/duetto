@@ -166,23 +166,49 @@ if (Platform.OS === 'android') UIManager.setLayoutAnimationEnabledExperimental?.
 /** How the card slides between its place beside the scale and the middle. */
 const SLIDE = LayoutAnimation.create(250, 'easeInEaseOut', 'opacity');
 
+/** a touch followed this soon by the screen being covered is a cover's */
+const UNDO_COVER_MS = 700;
+/** a press shorter than this is not a finger */
+const MIN_PRESS_MS = 40;
+
+/** The share of the strip given to the stretch below the phone's lowest step. */
+const BOTTOM_BAND = 0.18;
+
 /** What the volume scale takes from the right edge, with air on both sides. */
 const SCALE_ROOM = 8 + 72 + 8;
 
 function VolumeScale(p: {
   level: number; phone: number; ceiling: number; min: number; max: number;
   pct: number; muted: boolean;
+  /**
+   * The phone's lowest step, in dB: below it only Duetto lowers the
+   * voice, and the strip gives that stretch a band of its own at the
+   * bottom. Missing where the phone's knob is not used.
+   */
+  knobFloor?: number;
   route: AudioRoute;
   onPick?: (db: number, done: boolean) => void;
 }) {
   const [h, setH] = useState(0);
-  const floor = loudness(p.min);
+  /**
+   * The bottom band: below the phone's lowest step, a fixed stretch of
+   * the strip, even in decibels. Drawn in loudness like the rest it
+   * would be a few pixels - on a Motorola Edge the lowest step is
+   * already -21 dB - and the level sat on the bottom while the voice
+   * went on getting lower.
+   */
+  const band = p.knobFloor != null && p.knobFloor > p.min ? h * BOTTOM_BAND : 0;
+  const base = band > 0 ? p.knobFloor! : p.min;
+  const floor = loudness(base);
   const roof = loudness(p.max);
   const span = roof - floor;
-  /** how far up the strip a loudness stands, from the bottom */
+  /** how far up the strip a level stands, from the bottom */
   const up = (db: number) => {
+    if (band > 0 && db < base) {
+      return (Math.max(0, db - p.min) / (base - p.min)) * band;
+    }
     const l = Math.min(roof, Math.max(floor, loudness(db)));
-    return ((l - floor) / span) * h;
+    return band + ((l - floor) / span) * (h - band);
   };
   /**
    * Where the finger is, while it is down.
@@ -220,10 +246,12 @@ function VolumeScale(p: {
    */
   const pick = (locationY: number, done: boolean) => {
     if (!p.onPick || h <= 0) return;
-    const share = 1 - Math.min(1, Math.max(0, locationY / h));
-    // Back from loudness to decibels, which is what the level is kept in.
-    const loud = floor + share * span;
-    const db = 10 * Math.log2(loud / 100);
+    const fromBottom = (1 - Math.min(1, Math.max(0, locationY / h))) * h;
+    // Back to decibels, which is what the level is kept in: evenly in
+    // the bottom band, from loudness above it.
+    const db = fromBottom < band
+      ? p.min + (fromBottom / band) * (base - p.min)
+      : 10 * Math.log2((floor + ((fromBottom - band) / (h - band)) * span) / 100);
     const rung = Math.min(p.ceiling, Math.max(p.min, Math.round(db / SCALE_STEP_DB) * SCALE_STEP_DB));
     setDragging(rung);
     asked.current = rung;
@@ -305,11 +333,19 @@ function VolumeScale(p: {
                 instead of a line, and the eye read it as a boundary
                 that did not fall on the rung. */}
             <View style={[styles.stripClip, { height: h }]}>
+              {/* Below the phone's lowest step: only Duetto lowers the
+                  voice there, and the band says so, darker. */}
+              {band > 0 ? <View style={[styles.stripBand, { bottom: 0, height: band }]} /> : null}
               <View style={[styles.stripHeard, { bottom: 0, height: Math.min(level, phone) }]} />
               {level > phone ? (
                 <View style={[styles.stripBoost, { bottom: phone, height: level - phone }]} />
               ) : level < phone ? (
                 <View style={[styles.stripGiven, { bottom: level, height: phone - level }]} />
+              ) : null}
+              {/* What is heard inside the bottom band: attenuated by
+                  Duetto, and drawn dimmer. */}
+              {band > 0 ? (
+                <View style={[styles.stripBand, { bottom: 0, height: Math.min(level, band) }]} />
               ) : null}
               {/* Above what the road can carry there is no answer to a
                   press: the strip says so by going dim. */}
@@ -474,6 +510,8 @@ type Props = {
     /** the level as a share of the phone's own top: 100 is that top */
     pct: number;
     muted: boolean;
+    /** the phone's lowest step, in dB; missing where its knob is not used */
+    knobFloor?: number;
   };
   onToggleOutputMute?: () => void;
   /**
@@ -998,8 +1036,18 @@ export default function ChannelScreen(props: Props) {
    * without asking anything. With the controls faded and untouched for
    * a minute, that touch now does not press: it lights.
    */
+  /**
+   * The last button touched, with what undoes it.
+   *
+   * A flip cover closing on a Motorola Edge touched the glass on its
+   * way down - the microphone went off - and the proximity sensor saw
+   * the cover only a moment later, when the touch had counted. A touch
+   * followed within UNDO_COVER_MS by the screen being covered is the
+   * cover's, and is undone.
+   */
+  const lastTap = useRef<{ undo: () => void; at: number } | null>(null);
   const press = useCallback(
-    (action: () => void) => () => {
+    (action: () => void, undo: (() => void) | null = action) => () => {
       // The screen is covered: whatever touched the glass, it is
       // nobody's choice - unless somebody insists, see `blocked`.
       if (blocked()) return;
@@ -1014,6 +1062,7 @@ export default function ChannelScreen(props: Props) {
       }
       wake();
       action();
+      lastTap.current = undo ? { undo, at: Date.now() } : null;
     },
     [wake, toWatch, controls],
   );
@@ -1125,6 +1174,12 @@ export default function ChannelScreen(props: Props) {
     const stop = Proximity.subscribe((v) => {
       coveredRef.current = v;
       setCovered(v);
+      const tap = lastTap.current;
+      if (v && tap && Date.now() - tap.at < UNDO_COVER_MS) {
+        lastTap.current = null;
+        tap.undo();
+        Journal.mark('command:undone:cover').catch(() => { /* noop */ });
+      }
     });
     return () => { alive = false; stop(); };
   }, [compact]);
@@ -1402,7 +1457,7 @@ export default function ChannelScreen(props: Props) {
           style={styles.badge}
           // The name already carries the version: that is where one
           // goes to look for why something has changed.
-          onPress={press(() => setChangelogOpen(true))}>
+          onPress={press(() => setChangelogOpen(true), () => setChangelogOpen(false))}>
           <View style={[styles.dot, together ? styles.dotGreen : styles.dotGrey]} />
           {/* In italics when it is a name you gave: that tells it from
               a word of the app's, and it is the same shape it has at
@@ -1412,7 +1467,7 @@ export default function ChannelScreen(props: Props) {
           </Text>
           <Text style={styles.version}>  {VERSION_LABEL}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.gear} onPress={press(onOpenSettings)}>
+        <TouchableOpacity style={styles.gear} onPress={press(onOpenSettings, null)}>
           <SettingsIcon size={21} color="#e6ebf1" />
         </TouchableOpacity>
       </Animated.View>
@@ -1547,7 +1602,7 @@ export default function ChannelScreen(props: Props) {
           // channel but distracted, and insisting is exactly what one
           // wants to do when the first call got no answer.
           disabled={!reachable}
-          onPress={press(knock)}
+          onPress={press(knock, null)}
           // Held down, the sounds for calling them back. As long as
           // they can be reached, not only while you are both in the
           // channel: the sound travels in the encrypted envelope and
@@ -1578,7 +1633,7 @@ export default function ChannelScreen(props: Props) {
            * wants. A single touch no longer takes anybody out of
            * anywhere.
            */
-          onPress={press(openLeaveMenu)}
+          onPress={press(openLeaveMenu, () => setLeaveMenu(false))}
           onLongPress={press(openLeaveMenu)}
         />
         </View>
@@ -2508,6 +2563,13 @@ function CircleButton(props: {
         };
       }}
       onPress={() => {
+        // Shorter than a finger presses: the glass touched by something
+        // else - a cover closing, a cheek.
+        const g = down.current;
+        if (g && Date.now() - g.t < MIN_PRESS_MS) {
+          sign(`ignored:too-short:${props.name}`);
+          return;
+        }
         sign(props.name);
         props.onPress();
       }}
@@ -2639,6 +2701,11 @@ const styles = StyleSheet.create({
   stripClip: {
     position: 'absolute', bottom: 0, left: 25, width: 14, borderRadius: 7,
     overflow: 'hidden', backgroundColor: 'rgba(230,235,241,0.14)',
+  },
+  /** the bottom band, below the phone's lowest step */
+  stripBand: {
+    position: 'absolute', left: 0, right: 0,
+    backgroundColor: 'rgba(11,14,20,0.55)',
   },
   /** what is heard, up to the phone's own volume */
   stripHeard: {
