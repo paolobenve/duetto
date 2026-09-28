@@ -240,7 +240,7 @@ export const de: Dictionary = {
     phoneClosedApp: ': ihr Telefon hat ihnen die App geschlossen.',
     recentsClearedApp: ': Duetto wurde aus den letzten Apps entfernt.',
     callArrivesAnyway: 'Der Ruf kommt trotzdem an. Tippe auf ',
-    notInChannelButCall: ': sie sind nicht im Kanal, aber der Ruf erreicht sie.',
+    notInChannelButCall: ': sie sind nicht im Kanal,\naber der Ruf erreicht sie.',
     touchWord: 'Tippe auf ',
     backWhenReopened: 'Sie sind wieder erreichbar, sobald sie die App neu öffnen.',
     untilBackNoCall: 'Bis sie zurück sind, kann der Ruf sie nicht erreichen.',

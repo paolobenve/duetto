@@ -239,7 +239,7 @@ export const it: Dictionary = {
     phoneClosedApp: ': il suo telefono gli ha chiuso l’app.',
     recentsClearedApp: ': ha tolto Duetto dalle app recenti.',
     callArrivesAnyway: 'L’avviso gli arriva lo stesso. Tocca ',
-    notInChannelButCall: ': non è nel canale, ma l’avviso gli arriva.',
+    notInChannelButCall: ': non è nel canale,\nma l’avviso gli arriva.',
     touchWord: 'Tocca ',
     backWhenReopened: 'Tornerà raggiungibile quando riaprirà l’app.',
     untilBackNoCall: 'Finché non torna, l’avviso non può raggiungerlo.',

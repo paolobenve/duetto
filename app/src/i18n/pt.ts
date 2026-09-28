@@ -240,7 +240,7 @@ export const pt: Dictionary = {
     phoneClosedApp: ': o telefone dele fechou o app.',
     recentsClearedApp: ': tirou o Duetto dos apps recentes.',
     callArrivesAnyway: 'O aviso chega mesmo assim. Toque em ',
-    notInChannelButCall: ': não está no canal, mas o aviso chega a ele.',
+    notInChannelButCall: ': não está no canal,\nmas o aviso chega a ele.',
     touchWord: 'Toque em ',
     backWhenReopened: 'Voltará a ser alcançável quando reabrir o app.',
     untilBackNoCall: 'Até ele voltar, o aviso não pode alcançá-lo.',

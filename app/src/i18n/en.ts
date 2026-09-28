@@ -251,7 +251,7 @@ export const en = {
     phoneClosedApp: ': their phone closed the app on them.',
     recentsClearedApp: ': they swiped Duetto out of the recent apps.',
     callArrivesAnyway: 'The call reaches them all the same. Touch ',
-    notInChannelButCall: ': they are not in the channel, but the call reaches them.',
+    notInChannelButCall: ': they are not in the channel,\nbut the call reaches them.',
     touchWord: 'Touch ',
     backWhenReopened: 'They will be reachable again when they reopen the app.',
     untilBackNoCall: 'Until they are back, the call cannot reach them.',
