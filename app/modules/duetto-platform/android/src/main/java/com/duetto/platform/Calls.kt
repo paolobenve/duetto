@@ -111,7 +111,12 @@ object Calls {
     private val clock = Handler(Looper.getMainLooper())
     private var waiting: Runnable? = null
 
-    /** In a call or ringing: by the audio mode, and by the call state when allowed. */
+    /**
+     * In a call or ringing. A call in progress by the audio mode alone:
+     * the call state stayed "off hook" for minutes after a call ended on
+     * a dual-SIM phone, and the channel waited silent all that while.
+     * The call state, when allowed, only for the ringing.
+     */
     private fun phoneBusy(ctx: Context): Boolean {
         val mode = ctx.getSystemService(AudioManager::class.java)?.mode
         if (mode == AudioManager.MODE_IN_CALL || mode == AudioManager.MODE_RINGTONE) return true
@@ -119,7 +124,7 @@ object Calls {
             try {
                 @Suppress("DEPRECATION")
                 val st = ctx.getSystemService(TelephonyManager::class.java)?.callState
-                if (st != null && st != TelephonyManager.CALL_STATE_IDLE) return true
+                if (st == TelephonyManager.CALL_STATE_RINGING) return true
             } catch (_: Exception) { /* not known: the mode said it */ }
         }
         return false
