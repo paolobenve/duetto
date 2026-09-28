@@ -13,7 +13,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.media.AudioDeviceInfo
 import android.media.AudioManager
+import android.os.Build
 import androidx.core.content.ContextCompat
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
@@ -73,6 +75,44 @@ class VolumeModule(private val ctx: ReactApplicationContext) :
             m.putInt("max", 0)
         }
         promise.resolve(m)
+    }
+
+    /**
+     * The call volume's steps, in decibels below the top, for an output.
+     *
+     * A step is not a share of the volume: Android has a table of its
+     * own, a few decibels a step, and "6 of 12" is not half. Reading the
+     * steps as shares made the level shown - the phone's part times
+     * ours - come out wrong. Gives back one figure per step, 0 for the
+     * top; an empty list where Android cannot say (before 9).
+     */
+    @ReactMethod
+    fun steps(route: String, promise: Promise) {
+        val a = am
+        val out = Arguments.createArray()
+        if (a == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+            promise.resolve(out)
+            return
+        }
+        try {
+            val device = when (route) {
+                "EARPIECE" -> AudioDeviceInfo.TYPE_BUILTIN_EARPIECE
+                "WIRED_HEADSET" -> AudioDeviceInfo.TYPE_WIRED_HEADSET
+                "BLUETOOTH" -> AudioDeviceInfo.TYPE_BLUETOOTH_SCO
+                else -> AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
+            }
+            val stream = AudioManager.STREAM_VOICE_CALL
+            val max = a.getStreamMaxVolume(stream)
+            val top = a.getStreamVolumeDb(stream, max, device)
+            for (i in 0..max) {
+                val db = a.getStreamVolumeDb(stream, i, device) - top
+                out.pushDouble(if (db.isFinite()) db.toDouble() else -96.0)
+            }
+        } catch (_: Exception) {
+            promise.resolve(Arguments.createArray())
+            return
+        }
+        promise.resolve(out)
     }
 
     /** Puts the call volume at an exact value. */

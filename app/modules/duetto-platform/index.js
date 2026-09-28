@@ -617,6 +617,9 @@ export const Volume = isAndroid && NativeVolume
       /** Puts it at an exact value, with no sounds and no system bar. */
       set: (value) => call(NativeVolume, 'set', Math.round(Number(value) || 0)),
 
+      /** the call volume's steps in dB below the top, for an output; [] if unknown */
+      steps: (route) => call(NativeVolume, 'steps', String(route || '')),
+
       /**
        * Calls `cb(value)` when the call volume changes, by another app's
        * hand as well.
@@ -633,6 +636,7 @@ export const Volume = isAndroid && NativeVolume
       subscribe: () => () => {},
       read: () => Promise.resolve({ volume: 0, max: 0 }),
       set: unavailable,
+      steps: () => Promise.resolve([]),
       listenToSystem: () => () => {},
     };
 
