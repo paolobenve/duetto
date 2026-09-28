@@ -86,6 +86,11 @@ export const en = {
     bluetooth: 'Bluetooth',
   },
 
+  moment: {
+    // A moment not of today: the hour, then the day it belongs to.
+    onDay: '{time} on {day}',
+  },
+
   death: {
     theOther: 'The other',
     outOfMemory: 'the phone had run out of memory',
@@ -98,14 +103,12 @@ export const en = {
     phoneClosedIt: 'the phone closed it',
     unknown: 'nobody knows why',
     atTime: 'at {time}',
-    onDayAtTime: 'on {date} at {time}',
     // The return first: the shade cuts the sentence at its first
     // words, and "disappeared" next to "in the channel" read as a
     // denial of the present. What is true now leads; the story follows.
     story: '{who} is reachable again{channel} since {back}. Not reachable {when}: {why}.',
     mineStory: 'The phone closed Duetto {when}: {why}. You were unreachable from then until now. If it happens again, lift the background limits on Duetto in the phone\'s battery settings.',
     sinceTime: 'since {time}',
-    onDaySinceTime: 'since {date} {time}',
   },
 
   presence: {

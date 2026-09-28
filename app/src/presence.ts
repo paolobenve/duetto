@@ -16,7 +16,7 @@ import {
 import { pairFromLetter } from './pairing';
 import { Signaling } from './signaling';
 import { attachWatchdog, Watchdog } from './watchdog';
-import { t } from './i18n';
+import { t, momentText } from './i18n';
 import { alarmLabel } from './alarms';
 import { logger, setLogging } from './log';
 import { VERSION_LABEL, BUILD } from './version';
@@ -127,11 +127,7 @@ function deathWhy(cause: string): string {
 
 /** The moment of a death, as this phone would say it aloud. */
 function deathWhen(when: number): string {
-  const died = new Date(when);
-  const time = died.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  return died.toDateString() === new Date().toDateString()
-    ? t('death.atTime', { time })
-    : t('death.onDayAtTime', { date: died.toLocaleDateString(), time });
+  return t('death.atTime', { time: momentText(when) });
 }
 
 /**
@@ -151,13 +147,7 @@ export function deathStory(
   const why = deathWhy(cause);
   // "Not reachable since 12:00:03": to the second, like every other
   // moment the notifications say.
-  const died = new Date(when);
-  const time = died.toLocaleTimeString(undefined, {
-    hour: '2-digit', minute: '2-digit', second: '2-digit',
-  });
-  const whenSaid = died.toDateString() === new Date().toDateString()
-    ? t('death.sinceTime', { time })
-    : t('death.onDaySinceTime', { date: died.toLocaleDateString(), time });
+  const whenSaid = t('death.sinceTime', { time: momentText(when) });
 
   /**
    * The time of the return, down to the second.
@@ -170,10 +160,7 @@ export function deathStory(
    * does not send it, and then we fall back on now, which is what we
    * used to do.
    */
-  const backAt = new Date(back && back > 0 ? back : Date.now())
-    .toLocaleTimeString(undefined, {
-      hour: '2-digit', minute: '2-digit', second: '2-digit',
-    });
+  const backAt = momentText(back && back > 0 ? back : Date.now());
 
   return t('death.story', {
     who, when: whenSaid, why, back: backAt, channel: inTheChannel(channel),
@@ -344,17 +331,10 @@ export function presenceLine(o: {
 }
 
 /**
- * A moment down to the second, with the day in front when it is not
- * today: "since 15:45:27" read tomorrow morning would lie.
+ * A moment down to the second, with its day when it is not today:
+ * "since 15:45:27" read tomorrow morning would lie. See momentText.
  */
-function clockTime(at: number): string {
-  const d = new Date(at);
-  const time = d.toLocaleTimeString(undefined, {
-    hour: '2-digit', minute: '2-digit', second: '2-digit',
-  });
-  return d.toDateString() === new Date().toDateString()
-    ? time : `${d.toLocaleDateString()} ${time}`;
-}
+const clockTime = momentText;
 
 const log = logger('[duetto-presence]');
 

@@ -78,6 +78,11 @@ export const es: Dictionary = {
     bluetooth: 'Bluetooth',
   },
 
+  moment: {
+    // A moment not of today: the hour, then the day it belongs to.
+    onDay: '{time} del {day}',
+  },
+
   death: {
     theOther: 'El otro',
     outOfMemory: 'el teléfono se quedó sin memoria',
@@ -90,11 +95,9 @@ export const es: Dictionary = {
     phoneClosedIt: 'el teléfono la cerró',
     unknown: 'no se sabe por qué',
     atTime: 'a las {time}',
-    onDayAtTime: 'el {date} a las {time}',
     story: '{who} vuelve a estar localizable{channel} desde las {back}. No lo estaba {when}: {why}.',
     mineStory: 'El teléfono cerró Duetto {when}: {why}. Desde entonces y hasta ahora no eras localizable. Si se repite, quita a Duetto los límites en segundo plano en los ajustes de batería del teléfono.',
     sinceTime: 'desde las {time}',
-    onDaySinceTime: 'desde el {date} a las {time}',
   },
 
   presence: {

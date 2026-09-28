@@ -74,6 +74,11 @@ export const it: Dictionary = {
     bluetooth: 'Bluetooth',
   },
 
+  moment: {
+    // A moment not of today: the hour, then the day it belongs to.
+    onDay: '{time} di {day}',
+  },
+
   death: {
     theOther: 'L’altro',
     outOfMemory: 'il telefono era senza memoria',
@@ -86,14 +91,12 @@ export const it: Dictionary = {
     phoneClosedIt: 'il telefono l’ha chiusa',
     unknown: 'non si sa perché',
     atTime: 'alle {time}',
-    onDayAtTime: 'il {date} alle {time}',
     // Il ritorno per primo: la tendina tronca la frase alle prime
     // parole, e «è sparito» accanto a «nel canale» leggeva come una
     // smentita del presente. Prima ciò che è vero ora, poi la storia.
     story: '{who} è di nuovo raggiungibile{channel} dalle {back}. Non lo era {when}: {why}.',
     mineStory: 'Il telefono ha chiuso Duetto {when}: {why}. Da allora non eri raggiungibile, fino a ora. Se si ripete, togli a Duetto i limiti in sottofondo nelle impostazioni della batteria del telefono.',
     sinceTime: 'dalle {time}',
-    onDaySinceTime: 'dal {date} alle {time}',
   },
 
   presence: {

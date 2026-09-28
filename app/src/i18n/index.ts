@@ -107,6 +107,39 @@ export function longDate(iso: string): string {
   }
 }
 
+/**
+ * A moment down to the second, as the notifications say it.
+ *
+ * Today it is the hour alone, "13:05:02". Another day it carries the
+ * day it belongs to, in the app's language and in words - "13:05:02 di
+ * sabato 26" - with the month only when it is not this month, and the
+ * year only when it is not this year. It used to be "2026-09-26
+ * 13:05:02", in the phone's own format and language.
+ */
+export function momentText(at: number): string {
+  const d = new Date(at);
+  const locale = {
+    en: 'en-GB', it: 'it-IT', es: 'es-ES', pt: 'pt-BR', fr: 'fr-FR', de: 'de-DE',
+  }[current];
+  const two = (n: number) => String(n).padStart(2, '0');
+  const time = `${two(d.getHours())}:${two(d.getMinutes())}:${two(d.getSeconds())}`;
+  const now = new Date();
+  if (d.toDateString() === now.toDateString()) return time;
+  const sameYear = d.getFullYear() === now.getFullYear();
+  const sameMonth = sameYear && d.getMonth() === now.getMonth();
+  let day: string;
+  try {
+    day = d.toLocaleDateString(locale, {
+      weekday: 'long', day: 'numeric',
+      ...(sameMonth ? {} : { month: 'long' }),
+      ...(sameYear ? {} : { year: 'numeric' }),
+    });
+  } catch {
+    day = d.toLocaleDateString();
+  }
+  return t('moment.onDay', { time, day });
+}
+
 export function t(path: string, values?: Record<string, string | number>): string {
   let text = look(dictionaries[current], path);
   if (text === path && current !== 'en') text = look(en, path);
