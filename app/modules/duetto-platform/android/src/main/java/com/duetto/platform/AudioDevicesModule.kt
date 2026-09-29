@@ -59,7 +59,10 @@ class AudioDevicesModule(private val ctx: ReactApplicationContext) :
         val address = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) d.address.orEmpty() else ""
         val m = Arguments.createMap()
         m.putString("name", name)
-        m.putString("id", if (address.isNotEmpty() && !address.startsWith("XX")) address else name)
+        // The name first: a headset shows itself twice - calls and music -
+        // and the two can carry different or hidden addresses, while the
+        // name is the same. The address only where there is no name.
+        m.putString("id", name.ifEmpty { address })
         return m
     }
 

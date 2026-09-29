@@ -1412,7 +1412,9 @@ export default function App() {
         ...prev,
         btDevices: { ...(prev.btDevices ?? {}), [dev.id]: { name, auto } },
       }) : prev));
-      if (auto) audio.select('BLUETOOTH');
+      // Whatever the hook believes the output is: after refusing the
+      // headset a moment ago, it could think it was there already.
+      if (auto) resumeRouteRef.current?.('BLUETOOTH');
     };
     const always = { text: t('settings.btAskAlways'), onPress: () => answer(true) };
     const only = { text: t('settings.btAskOnly'), onPress: () => answer(false) };
