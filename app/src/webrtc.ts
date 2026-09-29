@@ -356,6 +356,8 @@ export class ChannelSession {
    * asks only for room, and gets their voice lowered for a moment.
    */
   private hushed = false;
+  /** the voice's energy counters at the last reading, out and in */
+  private voicePrev: { mic?: [number, number]; rx?: [number, number] } = {};
   private ducked = false;
   /** the battery, told to the other side for their diagnostics */
   private battery: { percent: number; charging: boolean } | null = null;
@@ -1544,7 +1546,14 @@ export class ChannelSession {
         got?: number; lost?: number; jitter?: number; far?: number; rtt?: number;
       }> = {};
       const onRoad = (kind: string) => (road[kind] ??= {});
+      /** the voice's energy counters, out and in: see voicePrev */
+      const energy: { mic?: [number, number]; rx?: [number, number] } = {};
       stats.forEach((r: any) => {
+        if (r.kind === 'audio' && typeof r.totalAudioEnergy === 'number'
+          && typeof r.totalSamplesDuration === 'number') {
+          if (r.type === 'media-source') energy.mic = [r.totalAudioEnergy, r.totalSamplesDuration];
+          if (r.type === 'inbound-rtp') energy.rx = [r.totalAudioEnergy, r.totalSamplesDuration];
+        }
         // The round trip of the media itself, which RTCP measures on
         // the stream and not on the ICE ping.
         if (r.type === 'remote-inbound-rtp') {
@@ -1780,6 +1789,18 @@ export class ChannelSession {
         };
       }
       out.audioLossIn = audioIn;
+      // How loud the voice went out and came in since the last reading:
+      // mean power over the stretch, in dBFS.
+      const level = (now?: [number, number], prev?: [number, number]) => {
+        if (!now || !prev) return '';
+        const dE = now[0] - prev[0];
+        const dT = now[1] - prev[1];
+        if (!(dT > 0) || !(dE >= 0)) return '';
+        return dE > 0 ? (10 * Math.log10(dE / dT)).toFixed(0) : '-96';
+      };
+      Journal.voice(level(energy.mic, this.voicePrev.mic), level(energy.rx, this.voicePrev.rx))
+        .catch(() => { /* noop */ });
+      this.voicePrev = energy;
       if (cells.audio || cells.video) {
         const a = cells.audio;
         const v = cells.video;

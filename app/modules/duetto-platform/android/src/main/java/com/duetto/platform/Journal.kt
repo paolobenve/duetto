@@ -74,6 +74,8 @@ object Journal {
         "cause", "was", "status", "pss", "rss", "description",
         // what the road loses: see road()
         "loss", "peerLoss", "jitter", "rtt", "vLoss", "vPeerLoss",
+        // how loud the voice is, going out and coming in: see voice()
+        "micLevel", "rxLevel",
     )
     val HEADER = COLUMNS.joinToString("\t")
     fun day(now: Long): String = dayFormat.format(Date(now - DAY_TURNS_AT_MS))
@@ -201,6 +203,19 @@ object Journal {
     @Volatile private var rtt = ""
     @Volatile private var vLoss = ""
     @Volatile private var vPeerLoss = ""
+    @Volatile private var micLevel = ""
+    @Volatile private var rxLevel = ""
+
+    /**
+     * How loud the voice is, in dBFS averaged over the last stretch: our
+     * microphone's, going out, and the other's, coming in. Asked for when
+     * one side heard the other too low: from these two, a voice sent low
+     * is told from a voice played low.
+     */
+    fun voice(mic: String, rx: String) {
+        micLevel = mic; rxLevel = rx
+    }
+
     fun road(loss: String, peerLoss: String, jitter: String, rtt: String,
              vLoss: String, vPeerLoss: String) {
         this.loss = loss; this.peerLoss = peerLoss; this.jitter = jitter; this.rtt = rtt
@@ -488,6 +503,8 @@ object Journal {
             values["rtt"] = rtt
             values["vLoss"] = vLoss
             values["vPeerLoss"] = vPeerLoss
+            values["micLevel"] = micLevel
+            values["rxLevel"] = rxLevel
             values["net"] = network(ctx)
             if (minutes >= 0) values["min"] = String.format(Locale.US, "%.1f", minutes)
             if (dCpu >= 0) values["cpu"] = dCpu / 1000

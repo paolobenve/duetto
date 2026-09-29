@@ -76,6 +76,13 @@ class JournalModule(private val ctx: ReactApplicationContext) :
     }
 
     /** What the road loses, for the six columns: see Journal.road. */
+    /** How loud the voice is, out and in, in dBFS: see Journal.voice. */
+    @ReactMethod
+    fun voice(mic: String, rx: String, promise: Promise) {
+        Journal.voice(mic, rx)
+        promise.resolve(true)
+    }
+
     @ReactMethod
     fun road(loss: String, peerLoss: String, jitter: String, rtt: String,
              vLoss: String, vPeerLoss: String, promise: Promise) {

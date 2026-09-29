@@ -160,6 +160,7 @@ declare module 'duetto-platform' {
     /** who has the microphone open and who the camera, on both phones */
     using(mic: boolean, peerMic: boolean, peerVideo: boolean): Promise<boolean>;
     /** what the road loses, six cells on every line; '' where unknown */
+    voice(mic: string, rx: string): Promise<boolean>;
     road(loss: string, peerLoss: string, jitter: string, rtt: string,
       vLoss: string, vPeerLoss: string): Promise<boolean>;
     mark(why: string): Promise<boolean>;

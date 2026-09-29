@@ -287,6 +287,8 @@ export const Journal = isAndroid && NativeJournal
       road: (loss, peerLoss, jitter, rtt, vLoss, vPeerLoss) =>
         call(NativeJournal, 'road', String(loss ?? ''), String(peerLoss ?? ''),
           String(jitter ?? ''), String(rtt ?? ''), String(vLoss ?? ''), String(vPeerLoss ?? '')),
+      /** how loud the voice is, out and in, in dBFS: '' for unknown */
+      voice: (mic, rx) => call(NativeJournal, 'voice', String(mic ?? ''), String(rx ?? '')),
       /** A line right now, to mark a moment that counts. */
       mark: (why) => call(NativeJournal, 'mark', String(why)),
       /** the level really heard, in percent: it goes on the periodic line */
@@ -318,6 +320,7 @@ export const Journal = isAndroid && NativeJournal
       state: unavailable,
       using: unavailable,
       road: unavailable,
+      voice: unavailable,
       mark: unavailable,
       sampling: unavailable,
       level: unavailable,
