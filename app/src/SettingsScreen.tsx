@@ -11,6 +11,7 @@ import React, { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity,
   KeyboardAvoidingView, Platform, Alert, Modal, Pressable, Clipboard, Linking, Share, Switch,
+  PermissionsAndroid,
 } from 'react-native';
 
 /** The switches' colours: grey off, the app's blue on. */
@@ -31,7 +32,7 @@ import {
 import { peerAvatar } from './avatar';
 import { isRealName } from './presence';
 import { VERSION_FULL } from './version';
-import { Alarm, Alerts, Journal } from 'duetto-platform';
+import { Alarm, Alerts, Journal, Call } from 'duetto-platform';
 import { ALARMS } from './alarms';
 import { TOKEN_PAGE } from './gitlab';
 import type { ReportOutcome } from './gitlab';
@@ -295,6 +296,27 @@ export default function SettingsScreen({
   // The list is asked for when this screen opens: it lives on the
   // server, and it may have changed since the last look.
   useEffect(() => { if (canInvite) onAskPeople?.(); }, [canInvite]);
+
+  /** the phone permission, for the ringtone during the channel */
+  const [ringGranted, setRingGranted] = useState(false);
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE)
+      .then(setRingGranted).catch(() => {});
+  }, []);
+  const askRing = () => {
+    if (ringGranted) { Linking.openSettings().catch(() => {}); return; }
+    PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE).then((r) => {
+      Journal.mark(`ring-permission:settings:${r}`).catch(() => {});
+      if (r === PermissionsAndroid.RESULTS.GRANTED) {
+        setRingGranted(true);
+        Call.watchRinging().catch(() => {});
+      } else if (r === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
+        // Android asks no more: its own screen is the only way left.
+        Linking.openSettings().catch(() => {});
+      }
+    }).catch(() => {});
+  };
 
   /** the connection being named, and the name in progress */
   const [naming, setNaming] = useState<PairInfo | null>(null);
@@ -912,6 +934,19 @@ export default function SettingsScreen({
         {/* How loud the cues are. Touching a step plays one at that
             volume: it is chosen by ear, and the stream they use has no
             slider of its own to look at. */}
+        {/* The phone permission, for the ringtone during the channel:
+            asked once on entering, and here whenever one changes one's
+            mind. Taking it back is Android's to do. */}
+        <TouchableOpacity style={styles.switchRow} onPress={askRing}>
+          <View style={styles.choiceText}>
+            <Text style={styles.choiceLabel}>{t('channel.ringPermTitle')}</Text>
+            <Text style={styles.choiceNote}>{t('channel.ringPermSwitchNote')}</Text>
+          </View>
+          <View pointerEvents="none">
+            <Switch value={ringGranted} {...SWITCH_COLOURS} />
+          </View>
+        </TouchableOpacity>
+
         {/* Whether the phone's own call volume does anything here: the
             test says, and decides which knob Duetto moves. */}
         <Text style={styles.sectionHint}>

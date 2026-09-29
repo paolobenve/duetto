@@ -171,6 +171,7 @@ export const fr: Dictionary = {
     routeBLUETOOTH: 'Tu parles et entends par le casque Bluetooth',
     ringPermTitle: 'Sonnerie dans le canal',
     ringPermBody: 'La permission est facultative. Quand tu es dans le canal, pour Android tu es déjà en appel : sans elle, un appel qui arrive ne s\'annonce que par des bips très faibles, faciles à manquer. Avec la permission téléphone, Duetto sait quand le téléphone sonne et joue ta sonnerie. Il ne lit ni numéros ni appels.',
+    ringPermSwitchNote: 'Avec la permission téléphone, pendant le canal Duetto joue ta sonnerie quand un appel arrive ; sans elle, seulement des bips faibles. Pour la retirer, Duetto ouvre les réglages d\'Android.',
     ringPermOk: 'Continuer',
     ringPermNo: 'Pas maintenant',
     onWifi: 'en wifi',
