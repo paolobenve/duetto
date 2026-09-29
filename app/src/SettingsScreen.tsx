@@ -304,6 +304,10 @@ export default function SettingsScreen({
     AudioDevices.ownEffects().then(setOwnEffects).catch(() => {});
   }, []);
 
+  const restartOwnEffects = (own: boolean) => {
+    restartDuetto(`voice-effects:${own ? 'own' : 'phone'}`).catch(() => {});
+  };
+
   /** the phone permission, for the ringtone during the channel */
   const [ringGranted, setRingGranted] = useState(false);
   useEffect(() => {
@@ -871,6 +875,12 @@ export default function SettingsScreen({
             const v = !ownEffects.wanted;
             setOwnEffects({ ...ownEffects, wanted: v });
             AudioDevices.setOwnEffects(v).catch(() => {});
+            // Back to what is in use, nothing to restart for.
+            if (v === ownEffects.inUse) return;
+            Alert.alert(t('settings.ownEffectsAskTitle'), t('settings.ownEffectsAsk'), [
+              { text: t('settings.ownEffectsLater'), style: 'cancel' },
+              { text: t('settings.ownEffectsRestartNow'), onPress: () => restartOwnEffects(v) },
+            ]);
           }}>
           <View style={styles.choiceText}>
             <Text style={styles.choiceLabel}>{t('settings.ownEffects')}</Text>
@@ -883,12 +893,8 @@ export default function SettingsScreen({
         {/* The audio is built when Duetto starts: the choice waits for
             a new start, which can be had here at once. */}
         {ownEffects.wanted !== ownEffects.inUse && (
-          <TouchableOpacity
-            style={styles.option}
-            onPress={() => {
-              restartDuetto(`voice-effects:${ownEffects.wanted ? 'own' : 'phone'}`).catch(() => {});
-            }}>
-            <Text style={styles.choiceLabel}>{t('settings.ownEffectsRestart')}</Text>
+          <TouchableOpacity style={styles.rowButton} onPress={() => restartOwnEffects(ownEffects.wanted)}>
+            <Text style={styles.rowButtonText}>{t('settings.ownEffectsRestart')}</Text>
           </TouchableOpacity>
         )}
 
