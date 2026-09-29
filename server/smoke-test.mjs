@@ -454,6 +454,13 @@ try {
   const moved = await v1b.expect('peer-mode');
   check(typeof moved.since === 'number' && moved.since >= joinedV2.since,
     'a change of state carries its moment');
+  // Out and straight back in: the same stretch, the same moment.
+  v2b.send({ type: 'mode', mode: 'listening' });
+  await v1b.expect('peer-mode');
+  await wait(50);
+  v2b.send({ type: 'mode', mode: 'active' });
+  const backIn = await v1b.expect('peer-mode');
+  check(backIn.since === moved.since, 'out and back in within half a minute keeps the moment');
   v1b.close(); v2b.close();
 
   // --- a drop followed by a quick return is never announced -------------------

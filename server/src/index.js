@@ -539,6 +539,8 @@ let resumableUntil = 0;
  */
 const recentlyGone = new Map();
 const RECENT_MS = ms(process.env.RECENT_MS, 60_000);
+/** out and back within this is not a new stretch: its moment carries on */
+const QUICK_RETURN_MS = ms(process.env.QUICK_RETURN_MS, 30_000);
 
 /** What a phone that dropped a moment ago was doing, taken once. */
 function recentFor(roomId, side) {
@@ -584,7 +586,7 @@ function holdDeparture(roomId, ws, at) {
     timer, peerId: ws.peerId, knocks: held?.knocks ?? [],
     // What they were doing and since when: coming back within the
     // grace, in the same state, they carry on from where they were.
-    mode: ws.mode, since: ws.since,
+    mode: ws.mode, since: ws.since, was: ws.was,
   });
 }
 
@@ -602,8 +604,14 @@ function leaveRoom(ws) {
   // down.
   if (!ws.replaced) {
     const at = Date.now();
-    if (!ws.saidBye && ws.side && ws.mode && ws.since) {
-      recentlyGone.set(`${roomId}\n${ws.side}`, { mode: ws.mode, since: ws.since, until: at + RECENT_MS });
+    if (ws.side && ws.mode && ws.since) {
+      // A goodbye too, for half a minute: out for good and straight
+      // back in is a test, not a new stretch.
+      recentlyGone.set(`${roomId}\n${ws.side}`, {
+        mode: ws.mode, since: ws.since,
+        until: at + (ws.saidBye ? QUICK_RETURN_MS : RECENT_MS),
+        was: ws.was,
+      });
     }
     if (ws.side) {
       departed.set(`${roomId}\n${ws.side}`, { at, reason: ws.saidBye ? 'bye' : 'dropped' });
@@ -1119,7 +1127,7 @@ wss.on('connection', (ws, req) => {
       if (side) {
         for (const peer of [...set]) {
           if (peer.side === side) {
-            before = { mode: peer.mode, since: peer.since };
+            before = { mode: peer.mode, since: peer.since, was: peer.was };
             peer.replaced = true;
             send(peer, { type: 'error', error: 'replaced' });
             try { peer.close(4005, 'replaced'); } catch { /* noop */ }
@@ -1150,7 +1158,13 @@ wss.on('connection', (ws, req) => {
         before = returning.get(`${roomId}\n${side}`) ?? resumeFor(roomId, side)
           ?? recentFor(roomId, side);
       }
-      ws.since = before && before.mode === ws.mode && before.since ? before.since : Date.now();
+      const now0 = Date.now();
+      ws.since = before && before.mode === ws.mode && before.since ? before.since
+        // Or the state before that one: out of the channel, gone, and
+        // straight back in, within half a minute.
+        : before?.was && before.was.mode === ws.mode && now0 < before.was.until ? before.was.since
+          : now0;
+      ws.was = before?.was;
       // Its own departure is over: it is here.
       if (side) departed.delete(`${roomId}\n${side}`);
       // One line per coming and going, for the questions of the day
@@ -1240,8 +1254,16 @@ wss.on('connection', (ws, req) => {
       const next = MODES.includes(msg.mode) ? msg.mode : null;
       if (!next || next === ws.mode) return;
       const before = ws.mode;
+      const now = Date.now();
+      /**
+       * Out and back in within half a minute is not a new stretch: a
+       * test, a slip of the finger, an update. The state left is kept a
+       * while, and coming back to it carries its moment on.
+       */
+      const back = ws.was && ws.was.mode === next && now < ws.was.until ? ws.was.since : 0;
+      ws.was = { mode: before, since: ws.since, until: now + QUICK_RETURN_MS };
       ws.mode = next;
-      ws.since = Date.now();
+      ws.since = back || now;
       // The phone that moved is told the moment too: its own "in the
       // channel since", in its notification, is on the server's clock
       // like the other's.
