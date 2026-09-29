@@ -47,6 +47,7 @@ import ChannelScreen from './ChannelScreen';
 import { loadPipPosition } from './VideoStage';
 import { useAudioRoute, type AudioRoute } from './audioRoute';
 import { pairFromLetter } from './pairing';
+import { RESTART_KEY, RESTART_WINDOW_MS } from './restart';
 import { reportDirectly, inviteOnWorkItem } from './gitlab';
 import type { ReportOutcome } from './gitlab';
 import {
@@ -2619,6 +2620,12 @@ export default function App() {
       const d = JSON.parse((await AsyncStorage.getItem(DETACHED_KEY)) || 'null');
       if (d && d.from && m.when >= d.from && (!d.to || m.when <= d.to)) {
         Journal.mark('death:while-detached').catch(() => {});
+        return;
+      }
+      // Nor is a restart asked for from the settings: see restart.ts.
+      const restartAt = Number(await AsyncStorage.getItem(RESTART_KEY));
+      if (restartAt && m.when >= restartAt && m.when - restartAt < RESTART_WINDOW_MS) {
+        Journal.mark('death:restart:not-told').catch(() => {});
         return;
       }
       const told = await readWithBridge(DEATH_TOLD_KEY, OLD_KEYS.death);

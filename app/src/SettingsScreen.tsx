@@ -33,6 +33,7 @@ import { peerAvatar } from './avatar';
 import { isRealName } from './presence';
 import { VERSION_FULL } from './version';
 import { Alarm, Alerts, Journal, Call, AudioDevices } from 'duetto-platform';
+import { restartDuetto } from './restart';
 import { ALARMS } from './alarms';
 import { TOKEN_PAGE } from './gitlab';
 import type { ReportOutcome } from './gitlab';
@@ -885,9 +886,7 @@ export default function SettingsScreen({
           <TouchableOpacity
             style={styles.option}
             onPress={() => {
-              Journal.mark(`voice-effects:restart:${ownEffects.wanted ? 'own' : 'phone'}`)
-                .catch(() => {})
-                .finally(() => { AudioDevices.restart().catch(() => {}); });
+              restartDuetto(`voice-effects:${ownEffects.wanted ? 'own' : 'phone'}`).catch(() => {});
             }}>
             <Text style={styles.choiceLabel}>{t('settings.ownEffectsRestart')}</Text>
           </TouchableOpacity>
