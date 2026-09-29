@@ -45,7 +45,7 @@ import WelcomeScreen from './WelcomeScreen';
 import { leaveServer, knock, watchDoor } from './door';
 import ChannelScreen from './ChannelScreen';
 import { loadPipPosition } from './VideoStage';
-import { useAudioRoute } from './audioRoute';
+import { useAudioRoute, type AudioRoute } from './audioRoute';
 import { pairFromLetter } from './pairing';
 import { reportDirectly, inviteOnWorkItem } from './gitlab';
 import type { ReportOutcome } from './gitlab';
@@ -1376,6 +1376,8 @@ export default function App() {
    */
   const reapplyRouteRef = useRef<(() => void) | null>(null);
   useEffect(() => { reapplyRouteRef.current = audio.reapply; }, [audio.reapply]);
+  const resumeRouteRef = useRef<((r: AudioRoute) => void) | null>(null);
+  useEffect(() => { resumeRouteRef.current = audio.resume; }, [audio.resume]);
 
   /**
    * The other side should know where we are listening from.
@@ -3948,6 +3950,12 @@ export default function App() {
     }
     if (before) {
       const still = Date.now() - before.when;
+      // Closed under us while in the channel: the output in use then.
+      const was = cfgRef.current?.audioOutput;
+      if (before.live && was && ['SPEAKER_PHONE', 'EARPIECE', 'WIRED_HEADSET', 'BLUETOOTH'].includes(was)) {
+        Journal.mark(`resume-output:${was}`).catch(() => { /* noop */ });
+        resumeRouteRef.current?.(was as AudioRoute);
+      }
       // The microphone: as it was left, however long ago. The clock
       // below judges only the camera.
       if (!before.audio && cfg.micOnEntry !== 'off') {

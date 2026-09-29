@@ -300,7 +300,13 @@ export function useAudioRoute(
           // we force nothing of our own accord.
           if (!initialised.current && routes.length > 0) {
             initialised.current = true;
-            const want = wanted.current;
+            let want = wanted.current;
+            // A headset remembered and not here: the phone's own output
+            // used last, not Android's default earpiece.
+            if (want && !routes.includes(want) && routes.includes(builtIn.current)) {
+              want = builtIn.current;
+              wanted.current = want;
+            }
             if (want && routes.includes(want) && want !== data?.selectedAudioDevice) {
               setCurrent(want);
               applyRoute(want);
@@ -383,6 +389,35 @@ export function useAudioRoute(
     }
   }, [applyRoute]);
 
+  /**
+   * The output really in use, remembered at every change - not only the
+   * ones picked by hand. "As it was left" took the last one picked: a
+   * Bluetooth earpiece chosen once and taken off later, and the next
+   * entry looked for it, did not find it, and sat on the earpiece.
+   * The ear's own passing turn, with the phone against the head, is not
+   * remembered: it is not a choice.
+   */
+  useEffect(() => {
+    // Only a settled output: the one wanted, reached. On entering,
+    // Android passes through its earpiece for a moment, and remembered
+    // it would have become the preference while the wanted one was
+    // still on its way.
+    if (!enabled || earFrom.current || current !== wanted.current) return;
+    remember?.(current);
+  }, [enabled, current, remember]);
+
+  /**
+   * Back in after the app was closed under us - an update, Android: the
+   * output that was in use, whatever the entry's setting says. That
+   * setting is for entries one makes.
+   */
+  const resume = useCallback((route: AudioRoute) => {
+    wanted.current = route;
+    noteBuiltIn(route);
+    setCurrent(route);
+    applyRoute(route);
+  }, [applyRoute]);
+
   /** Picks one output in particular, and remembers it. */
   const select = useCallback((route: AudioRoute) => {
     if (route === current) return;
@@ -396,6 +431,7 @@ export function useAudioRoute(
   return {
     route: current,
     reapply,
+    resume,
     /** only the ones really plugged in, in the order they are shown */
     available: ORDER.filter((r) => available.includes(r)),
     /** with a single output there is nothing to choose */
