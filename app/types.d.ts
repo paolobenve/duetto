@@ -30,6 +30,12 @@ declare module 'duetto-platform' {
     list(): Promise<string[]>;
   };
 
+  /** The Bluetooth audio devices, each by name. */
+  export const AudioDevices: {
+    list(): Promise<{ id: string; name: string }[]>;
+    subscribe(cb: (d: { event: 'added' | 'removed'; id: string; name: string }) => void): () => void;
+  };
+
   /** The channel as a call, for Android's telephony. */
   export const Call: {
     start(name: string): Promise<string>;

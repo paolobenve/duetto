@@ -42,6 +42,7 @@ class DuettoPackage : ReactPackage {
         AlarmModule(reactContext),
         ScannerModule(reactContext),
         CallsModule(reactContext),
+        AudioDevicesModule(reactContext),
     )
 
     override fun createViewManagers(

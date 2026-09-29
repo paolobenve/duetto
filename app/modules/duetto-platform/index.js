@@ -26,6 +26,7 @@ const NativeReport = NativeModules.DuettoReport;
 const NativeVolume = NativeModules.DuettoVolume;
 const NativeAlarm = NativeModules.DuettoAlarm;
 const NativeCalls = NativeModules.DuettoCalls;
+const NativeAudioDevices = NativeModules.DuettoAudioDevices;
 
 /**
  * Calls a native method only if it really exists.
@@ -460,6 +461,24 @@ export const Call = isAndroid && NativeCalls
       },
     }
   : { start: () => Promise.resolve('unavailable'), end: unavailable, resume: unavailable, watchRinging: unavailable, setRoute: () => Promise.resolve(false), subscribe: () => () => {} };
+
+/**
+ * The Bluetooth audio devices, each by name: which are connected, and
+ * which come and go. See AudioDevicesModule.kt.
+ */
+export const AudioDevices = isAndroid && NativeAudioDevices
+  ? {
+      /** `[{ id, name }]`, the ones connected now */
+      list: () => call(NativeAudioDevices, 'list'),
+      /** `cb({ event: 'added' | 'removed', id, name })`; gives back the stop */
+      subscribe(cb) {
+        call(NativeAudioDevices, 'watch');
+        const emitter = new NativeEventEmitter(NativeAudioDevices);
+        const sub = emitter.addListener('duetto-audio-device', (d) => cb(d));
+        return () => sub.remove();
+      },
+    }
+  : { list: () => Promise.resolve([]), subscribe: () => () => {} };
 
 export const Heartbeat = isAndroid && NativeHeartbeat
   ? {
