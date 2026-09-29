@@ -171,7 +171,7 @@ export const de: Dictionary = {
     routeBLUETOOTH: 'Du sprichst und hörst über das Bluetooth-Headset',
     ringPermTitle: 'Klingelton im Kanal',
     ringPermBody: 'Die Berechtigung ist freiwillig. Solange du im Kanal bist, gilt das für Android als Anruf: ohne sie meldet sich ein ankommender Anruf nur mit sehr leisen Anklopftönen, die man leicht überhört. Mit der Telefon-Berechtigung weiß Duetto, wann das Telefon klingelt, und spielt deinen Klingelton. Es liest keine Nummern und keine Anrufe.',
-    ringPermSwitchNote: 'Mit der Telefon-Berechtigung spielt Duetto während des Kanals deinen Klingelton, wenn ein Anruf kommt; ohne sie nur leise Anklopftöne. Zum Entziehen öffnet Duetto die Android-Einstellungen.',
+    ringPermSwitchNote: 'Mit der Berechtigung „Telefon“ spielt Duetto während des Kanals deinen Klingelton, wenn ein Anruf kommt; ohne sie nur leise Anklopftöne. Zum Entziehen öffnet Duetto seine Android-Einstellungen: Berechtigungen → Telefon → Nicht zulassen. Android startet Duetto dann neu, wie jede App, der man eine Berechtigung entzieht.',
     ringPermOk: 'Weiter',
     ringPermNo: 'Nicht jetzt',
     onWifi: 'im WLAN',

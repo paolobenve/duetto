@@ -171,7 +171,7 @@ export const es: Dictionary = {
     routeBLUETOOTH: 'Hablas y oyes por los auriculares Bluetooth',
     ringPermTitle: 'Tono de llamada en el canal',
     ringPermBody: 'El permiso es opcional. Mientras estás en el canal, para Android ya estás en una llamada: sin él, una llamada que llega se anuncia solo con unos pitidos muy débiles, fáciles de no oír. Con el permiso de teléfono, Duetto sabe cuándo suena el teléfono y reproduce tu tono. No lee números ni llamadas.',
-    ringPermSwitchNote: 'Con el permiso de teléfono, durante el canal Duetto reproduce tu tono cuando llega una llamada; sin él, solo unos pitidos débiles. Para quitarlo, Duetto abre los ajustes de Android.',
+    ringPermSwitchNote: 'Con el permiso «Teléfono», durante el canal Duetto reproduce tu tono cuando llega una llamada; sin él, solo unos pitidos débiles. Para quitarlo, Duetto abre sus ajustes de Android: Permisos → Teléfono → No permitir. Después Android reinicia Duetto, como con cualquier app a la que se quita un permiso.',
     ringPermOk: 'Continuar',
     ringPermNo: 'Ahora no',
     onWifi: 'por wifi',

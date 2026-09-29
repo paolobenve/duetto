@@ -171,7 +171,7 @@ export const pt: Dictionary = {
     routeBLUETOOTH: 'Você fala e ouve pelo fone Bluetooth',
     ringPermTitle: 'Toque durante o canal',
     ringPermBody: 'A permissão é opcional. Enquanto você está no canal, para o Android você já está numa chamada: sem ela, uma ligação que chega se anuncia só com bipes muito fracos, fáceis de não ouvir. Com a permissão de telefone, o Duetto sabe quando o telefone toca e toca o seu toque. Não lê números nem chamadas.',
-    ringPermSwitchNote: 'Com a permissão de telefone, durante o canal o Duetto toca o seu toque quando chega uma ligação; sem ela, só bipes fracos. Para tirá-la, o Duetto abre as configurações do Android.',
+    ringPermSwitchNote: 'Com a permissão «Telefone», durante o canal o Duetto toca o seu toque quando chega uma ligação; sem ela, só bipes fracos. Para tirá-la, o Duetto abre as configurações dele no Android: Permissões → Telefone → Não permitir. Depois o Android reinicia o Duetto, como faz com qualquer app de que se tira uma permissão.',
     ringPermOk: 'Continuar',
     ringPermNo: 'Agora não',
     onWifi: 'no wifi',

@@ -182,7 +182,7 @@ export const en = {
     routeBLUETOOTH: 'You speak and hear through the Bluetooth headset',
     ringPermTitle: 'Ringtone in the channel',
     ringPermBody: 'The permission is optional. While you are in the channel, Android counts you as in a call: without it, a phone call arriving is announced only by very faint beeps, easy to miss. With the phone permission, Duetto knows when the phone rings and plays your ringtone. It reads no numbers and no calls.',
-    ringPermSwitchNote: 'With the phone permission, during the channel Duetto plays your ringtone when a phone call arrives; without it, only faint beeps. To take it back, Duetto opens Android\'s settings.',
+    ringPermSwitchNote: 'With the "Phone" permission, during the channel Duetto plays your ringtone when a phone call arrives; without it, only faint beeps. To take it back, Duetto opens its Android settings: Permissions → Phone → Don\'t allow. Android then restarts Duetto, as it does with any app a permission is taken from.',
     ringPermOk: 'Continue',
     ringPermNo: 'Not now',
     onWifi: 'on wifi',

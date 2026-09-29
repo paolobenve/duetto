@@ -170,7 +170,7 @@ export const it: Dictionary = {
     routeBLUETOOTH: 'Parli e senti dalle cuffie Bluetooth',
     ringPermTitle: 'Suoneria durante il canale',
     ringPermBody: 'Il permesso è facoltativo. Mentre sei nel canale, per Android sei già in una chiamata: senza il permesso, una telefonata che arriva si annuncia solo con un bip-bip molto tenue, facile da non sentire. Con il permesso «telefono», Duetto sa quando il telefono squilla e suona la tua suoneria. Non legge numeri né chiamate.',
-    ringPermSwitchNote: 'Con il permesso «telefono», durante il canale Duetto suona la tua suoneria quando arriva una telefonata; senza, arriva solo un bip-bip tenue. Per toglierlo, Duetto apre le impostazioni di Android.',
+    ringPermSwitchNote: 'Con il permesso «Telefono», durante il canale Duetto suona la tua suoneria quando arriva una telefonata; senza, arriva solo un bip-bip tenue. Per toglierlo, Duetto apre le sue impostazioni di Android: Autorizzazioni → Telefono → Non consentire. Android poi riavvia Duetto, come fa con ogni app a cui si toglie un permesso.',
     ringPermOk: 'Continua',
     ringPermNo: 'Non ora',
     onWifi: 'su wifi',
