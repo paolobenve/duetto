@@ -2556,6 +2556,13 @@ export default function App() {
       // app gets replaced, and announcing it would be an alarm about
       // something wanted.
       if (/installPackage|PackageUpdate/i.test(m.description || '')) return;
+      // Nor is a permission taken away: Android closes any app it takes
+      // one from, and whoever took it knows. Told as a death, it spoke of
+      // the battery to somebody who had only switched a permission off.
+      if (m.cause === 'permissions-changed') {
+        Journal.mark('death:permissions-changed:not-told').catch(() => {});
+        return;
+      }
       // Closed while unavailable by choice: nobody missed anything, the
       // leaving had already been told when it happened.
       const d = JSON.parse((await AsyncStorage.getItem(DETACHED_KEY)) || 'null');
