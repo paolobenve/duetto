@@ -308,6 +308,16 @@ export const en = {
   },
 
   settings: {
+    btAskTitle: 'Headset “{name}” connected',
+    btAskBody: 'When it connects during the channel, use it for Duetto at once?',
+    btAskAlways: 'Yes, always',
+    btAskOnly: 'Only when I pick it',
+    btList: 'Bluetooth devices',
+    btListNote: 'Each with its own choice: on, it takes the channel as soon as it connects. Hold one down to take it off the list: next time Duetto will ask again.',
+    btListEmpty: 'None yet: connect one during the channel.',
+    btForget: 'Take “{name}” off the list?',
+    btForgetYes: 'Take off',
+    btUnnamed: 'Unnamed device',
     openInto: 'On opening the app',
     openIntoDoor: 'The door, with Enter',
     openIntoDoorNote: 'The app opens on the door: one touch on Enter and you are in the channel. Nobody hears you before that.',

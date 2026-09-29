@@ -295,6 +295,16 @@ export const de: Dictionary = {
   },
 
   settings: {
+    btAskTitle: 'Kopfhörer „{name}“ verbunden',
+    btAskBody: 'Wenn sie sich während des Kanals verbinden, sofort für Duetto nutzen?',
+    btAskAlways: 'Ja, immer',
+    btAskOnly: 'Nur wenn ich sie wähle',
+    btList: 'Bluetooth-Geräte',
+    btListNote: 'Jedes mit seiner Wahl: eingeschaltet übernimmt es den Kanal, sobald es sich verbindet. Lange drücken, um es aus der Liste zu nehmen: beim nächsten Mal fragt Duetto wieder.',
+    btListEmpty: 'Noch keins: verbinde eins während des Kanals.',
+    btForget: '„{name}“ aus der Liste nehmen?',
+    btForgetYes: 'Entfernen',
+    btUnnamed: 'Gerät ohne Namen',
     openInto: 'Beim Öffnen der App',
     openIntoDoor: 'Die Tür, mit Eintreten',
     openIntoDoorNote: 'Die App öffnet sich an der Tür: ein Tippen auf Eintreten, und du bist im Kanal. Vorher hört dich niemand.',

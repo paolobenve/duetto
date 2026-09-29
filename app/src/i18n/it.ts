@@ -294,6 +294,16 @@ export const it: Dictionary = {
   },
 
   settings: {
+    btAskTitle: 'Cuffie «{name}» collegate',
+    btAskBody: 'Quando si collegano durante il canale, usarle subito per Duetto?',
+    btAskAlways: 'Sì, sempre',
+    btAskOnly: 'Solo se le scelgo',
+    btList: 'Dispositivi Bluetooth',
+    btListNote: 'Ognuno con la sua scelta: acceso, prende il canale appena si collega. Tieni premuto per toglierlo dalla lista: la prossima volta Duetto chiederà di nuovo.',
+    btListEmpty: 'Nessuno ancora: collegane uno durante il canale.',
+    btForget: 'Togliere «{name}» dalla lista?',
+    btForgetYes: 'Togli',
+    btUnnamed: 'Dispositivo senza nome',
     openInto: 'All\'apertura dell\'app',
     openIntoDoor: 'La porta, con Entra',
     openIntoDoorNote: 'L\'app si apre sulla porta: un tocco su Entra e sei nel canale. Prima nessuno ti sente.',

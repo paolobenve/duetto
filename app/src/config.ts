@@ -480,6 +480,13 @@ export type DuoConfig = {
   speakerNoticeShown: boolean;
   /** a Bluetooth earpiece that connects takes the sound at once */
   autoBluetooth: boolean;
+  /**
+   * Each Bluetooth audio device met, by its key (address, or name where
+   * the address is hidden): its name, and whether it takes the channel
+   * the moment it connects. Asked the first time each one is met; the
+   * old single choice, autoBluetooth, is the answer offered first.
+   */
+  btDevices: Record<string, { name: string; auto: boolean }>;
   /** a wired headset that is plugged in takes the sound at once */
   autoWired: boolean;
 
@@ -565,6 +572,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   lossAsk: true,
   speakerNoticeShown: false,
   autoBluetooth: true,
+  btDevices: {},
   autoWired: true,
   language: 'auto',
   gains: {},

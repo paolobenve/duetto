@@ -864,7 +864,6 @@ export default function SettingsScreen({
         {([
           { key: 'earOnProximity', when: true },
           { key: 'earEvenWithVideo', when: !!cfg.earOnProximity },
-          { key: 'autoBluetooth', when: true },
           { key: 'autoWired', when: true },
         ] as const).filter((o) => o.when).map((o) => (
           <TouchableOpacity
@@ -881,6 +880,44 @@ export default function SettingsScreen({
             </View>
             <View pointerEvents="none">
               <Switch value={!!cfg[o.key]} {...SWITCH_COLOURS} />
+            </View>
+          </TouchableOpacity>
+        ))}
+
+        {/* Each Bluetooth device its own choice: met in the channel, it
+            is asked about once; here the choice can be changed, or the
+            device forgotten so that it is asked about again. */}
+        <Text style={styles.sectionHint}>{t('settings.btList')}</Text>
+        <Text style={styles.hint}>{t('settings.btListNote')}</Text>
+        {Object.keys(cfg.btDevices ?? {}).length === 0 ? (
+          <Text style={styles.hint}>{t('settings.btListEmpty')}</Text>
+        ) : Object.entries(cfg.btDevices ?? {}).map(([id, d]) => (
+          <TouchableOpacity
+            key={id}
+            style={styles.switchRow}
+            onPress={() => {
+              const btDevices = { ...(cfg.btDevices ?? {}), [id]: { ...d, auto: !d.auto } };
+              setCfg({ ...cfg, btDevices });
+              onLive?.({ btDevices });
+            }}
+            onLongPress={() => Alert.alert(t('settings.btForget', { name: d.name }), '', [
+              { text: t('settings.cancel'), style: 'cancel' },
+              {
+                text: t('settings.btForgetYes'),
+                style: 'destructive',
+                onPress: () => {
+                  const btDevices = { ...(cfg.btDevices ?? {}) };
+                  delete btDevices[id];
+                  setCfg({ ...cfg, btDevices });
+                  onLive?.({ btDevices });
+                },
+              },
+            ])}>
+            <View style={styles.choiceText}>
+              <Text style={styles.choiceLabel}>{d.name || t('settings.btUnnamed')}</Text>
+            </View>
+            <View pointerEvents="none">
+              <Switch value={d.auto} {...SWITCH_COLOURS} />
             </View>
           </TouchableOpacity>
         ))}

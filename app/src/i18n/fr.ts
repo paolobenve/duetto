@@ -295,6 +295,16 @@ export const fr: Dictionary = {
   },
 
   settings: {
+    btAskTitle: 'Écouteurs « {name} » connectés',
+    btAskBody: 'Quand ils se connectent pendant le canal, les utiliser tout de suite pour Duetto ?',
+    btAskAlways: 'Oui, toujours',
+    btAskOnly: 'Seulement si je les choisis',
+    btList: 'Appareils Bluetooth',
+    btListNote: 'Chacun avec son choix : activé, il prend le canal dès qu\'il se connecte. Appuie longuement pour le retirer de la liste : la prochaine fois Duetto redemandera.',
+    btListEmpty: 'Aucun pour l\'instant : connectes-en un pendant le canal.',
+    btForget: 'Retirer « {name} » de la liste ?',
+    btForgetYes: 'Retirer',
+    btUnnamed: 'Appareil sans nom',
     openInto: 'À l\'ouverture de l\'appli',
     openIntoDoor: 'La porte, avec Entrer',
     openIntoDoorNote: 'L\'appli s\'ouvre sur la porte : une touche sur Entrer et tu es dans le canal. Avant, personne ne t\'entend.',

@@ -17,7 +17,7 @@ import { PETITION_LINK, parseLink, type DuettoLink } from './links';
 import { MediaStream } from 'react-native-webrtc';
 import InCallManager from 'react-native-incall-manager';
 import {
-  Foreground, Pip, AppWindow, Visibility, Codecs, Audio, Alerts, Journal, Volume, Call,
+  Foreground, Pip, AppWindow, Visibility, Codecs, Audio, Alerts, Journal, Volume, Call, AudioDevices,
   Heartbeat, Network,
   Alarm,
 } from 'duetto-platform';
@@ -1277,11 +1277,29 @@ export default function App() {
   // way; the option only decides what the entry starts from.
   const preferredOutput = (cfg?.outputOnEntry ?? 'earpiece') === 'asLeft'
     ? cfg?.audioOutput : 'EARPIECE';
+  /**
+   * The Bluetooth audio device connected now, if any, and whether it
+   * takes the channel on connecting: each device its own choice, asked
+   * the first time it is met (see below). The old single choice holds
+   * only where no device can be named.
+   */
+  const [btHere, setBtHere] = useState<{ id: string; name: string } | null>(null);
+  useEffect(() => {
+    AudioDevices.list().then((l) => setBtHere(l[0] ?? null)).catch(() => {});
+    return AudioDevices.subscribe((d) => {
+      Journal.mark(`bt-device:${d.event}:${d.name}`).catch(() => {});
+      if (d.event === 'added') setBtHere({ id: d.id, name: d.name });
+      else setBtHere((was) => (was && was.id === d.id ? null : was));
+    });
+  }, []);
+  const btAuto = btHere
+    ? (cfg?.btDevices?.[btHere.id]?.auto ?? false)
+    : (cfg?.autoBluetooth ?? true);
   const audio = useAudioRoute(inChannel, preferredOutput, rememberOutput, {
     ear: cfg?.earOnProximity ?? true,
     earWithVideo: cfg?.earEvenWithVideo ?? false,
     videoOn: videoOn || remoteHasVideo,
-    bluetooth: cfg?.autoBluetooth ?? true,
+    bluetooth: btAuto,
     wired: cfg?.autoWired ?? true,
   });
 
@@ -1376,6 +1394,35 @@ export default function App() {
    */
   const reapplyRouteRef = useRef<(() => void) | null>(null);
   useEffect(() => { reapplyRouteRef.current = audio.reapply; }, [audio.reapply]);
+  /**
+   * A Bluetooth device met for the first time, in the channel: what to
+   * do with it, asked once and remembered for it. The answer offered
+   * first is the old single choice.
+   */
+  const btAsked = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!inChannel || !btHere || !cfg || cfg.btDevices?.[btHere.id]) return;
+    if (btAsked.current.has(btHere.id)) return;
+    btAsked.current.add(btHere.id);
+    const dev = btHere;
+    const name = dev.name || t('settings.btUnnamed');
+    const answer = (auto: boolean) => {
+      Journal.mark(`bt-device:chosen:${auto ? 'auto' : 'asked'}:${name}`).catch(() => {});
+      setCfg((prev) => (prev ? saveCfg({
+        ...prev,
+        btDevices: { ...(prev.btDevices ?? {}), [dev.id]: { name, auto } },
+      }) : prev));
+      if (auto) audio.select('BLUETOOTH');
+    };
+    const always = { text: t('settings.btAskAlways'), onPress: () => answer(true) };
+    const only = { text: t('settings.btAskOnly'), onPress: () => answer(false) };
+    Alert.alert(
+      t('settings.btAskTitle', { name }),
+      t('settings.btAskBody'),
+      cfg.autoBluetooth ?? true ? [only, always] : [always, only],
+    );
+  }, [inChannel, btHere, cfg, saveCfg, audio]);
+
   const resumeRouteRef = useRef<((r: AudioRoute) => void) | null>(null);
   useEffect(() => { resumeRouteRef.current = audio.resume; }, [audio.resume]);
 
