@@ -1425,7 +1425,9 @@ export default function App() {
     );
   }, [inChannel, btHere, cfg, saveCfg, audio]);
 
-  const resumeRouteRef = useRef<((r: AudioRoute) => void) | null>(null);
+  const resumeRouteRef = useRef<((r: AudioRoute, present?: boolean) => void) | null>(null);
+  const btHereRef = useRef(btHere);
+  btHereRef.current = btHere;
   useEffect(() => { resumeRouteRef.current = audio.resume; }, [audio.resume]);
 
   /**
@@ -4010,7 +4012,9 @@ export default function App() {
       const was = cfgRef.current?.audioOutput;
       if (before.live && was && ['SPEAKER_PHONE', 'EARPIECE', 'WIRED_HEADSET', 'BLUETOOTH'].includes(was)) {
         Journal.mark(`resume-output:${was}`).catch(() => { /* noop */ });
-        resumeRouteRef.current?.(was as AudioRoute);
+        // A Bluetooth headset remembered that is not connected now: the
+        // phone's own output instead of Android's earpiece.
+        resumeRouteRef.current?.(was as AudioRoute, was !== 'BLUETOOTH' || !!btHereRef.current);
       }
       // The microphone: as it was left, however long ago. The clock
       // below judges only the camera.

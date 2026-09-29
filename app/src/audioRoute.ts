@@ -187,6 +187,11 @@ export function useAudioRoute(
         Journal.mark(`output:back:${back}`).catch(() => { /* noop */ });
         return;
       }
+      // Out of a headset onto the phone's own output: that is what is
+      // wanted now. Left on the headset, the speaker the sound came back
+      // to was never remembered, and the next restart looked for the
+      // headset that had gone.
+      if (wasHeadset && !headset) wanted.current = r;
       currentRef.current = r;
       setCurrent(r);
       noteBuiltIn(r);
@@ -411,7 +416,9 @@ export function useAudioRoute(
    * output that was in use, whatever the entry's setting says. That
    * setting is for entries one makes.
    */
-  const resume = useCallback((route: AudioRoute) => {
+  const resume = useCallback((route: AudioRoute, present = true) => {
+    // A headset remembered and not connected: the phone's own output.
+    if (!present) route = builtIn.current;
     wanted.current = route;
     noteBuiltIn(route);
     setCurrent(route);
