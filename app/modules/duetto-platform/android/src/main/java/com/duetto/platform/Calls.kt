@@ -438,6 +438,21 @@ class DuettoConnection : Connection() {
     override fun onHold() {
         // A real call was answered: ours waits, and says so.
         Calls.stopRingingNow()
+        /**
+         * To the ear, if we were on speaker.
+         *
+         * The output is telecom's for every call at once, and the call
+         * just answered took ours: on speaker in the channel, a phone
+         * call opened on speaker too. Headsets are left alone - there
+         * the call belongs in them. Our output is put back on resuming.
+         */
+        if (lastRoute == CallAudioState.ROUTE_SPEAKER) {
+            try {
+                @Suppress("DEPRECATION")
+                setAudioRoute(CallAudioState.ROUTE_EARPIECE)
+                Calls.say("route:call-to-ear")
+            } catch (_: Exception) { /* the call keeps the speaker */ }
+        }
         setOnHold()
         Calls.say("held")
         clock.removeCallbacks(watch)
