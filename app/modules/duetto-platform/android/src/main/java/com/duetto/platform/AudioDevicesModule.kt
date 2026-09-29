@@ -106,6 +106,35 @@ class AudioDevicesModule(private val ctx: ReactApplicationContext) :
         }
     }
 
+    /** How the voice is taken now, as a line for the journal. See VoiceEffects. */
+    @ReactMethod
+    fun voice(promise: Promise) {
+        promise.resolve(VoiceEffects.describe(ctx))
+    }
+
+    /** Whether WebRTC's own voice effects are wanted, and in use now. */
+    @ReactMethod
+    fun ownEffects(promise: Promise) {
+        val m = Arguments.createMap()
+        m.putBoolean("wanted", VoiceEffects.wanted(ctx))
+        m.putBoolean("inUse", VoiceEffects.inUse == true)
+        promise.resolve(m)
+    }
+
+    /** Takes effect at the next start of Duetto. */
+    @ReactMethod
+    fun setOwnEffects(own: Boolean, promise: Promise) {
+        VoiceEffects.want(ctx, own)
+        promise.resolve(true)
+    }
+
+    /** Starts Duetto afresh, for the choice to take effect. */
+    @ReactMethod
+    fun restart(promise: Promise) {
+        promise.resolve(true)
+        RestartActivity.restart(ctx)
+    }
+
     @ReactMethod fun addListener(eventName: String) {}
     @ReactMethod fun removeListeners(count: Int) {}
 

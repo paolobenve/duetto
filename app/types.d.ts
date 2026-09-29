@@ -34,6 +34,14 @@ declare module 'duetto-platform' {
   export const AudioDevices: {
     list(): Promise<{ id: string; name: string }[]>;
     subscribe(cb: (d: { event: 'added' | 'removed'; id: string; name: string }) => void): () => void;
+    /** how the voice is taken now, one line for the journal */
+    voice(): Promise<string>;
+    /** WebRTC's own echo cancelling and noise suppression, instead of the phone's */
+    ownEffects(): Promise<{ wanted: boolean; inUse: boolean }>;
+    /** from the next start of Duetto */
+    setOwnEffects(own: boolean): Promise<boolean>;
+    /** starts Duetto afresh, as after an update */
+    restart(): Promise<boolean>;
   };
 
   /** The channel as a call, for Android's telephony. */

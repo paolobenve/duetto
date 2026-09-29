@@ -480,8 +480,22 @@ export const AudioDevices = isAndroid && NativeAudioDevices
         const sub = emitter.addListener('duetto-audio-device', (d) => cb(d));
         return () => sub.remove();
       },
+      /** how the voice is taken now, one line for the journal */
+      voice: () => call(NativeAudioDevices, 'voice'),
+      /** `{ wanted, inUse }`: WebRTC's own voice effects, instead of the phone's */
+      ownEffects: () => call(NativeAudioDevices, 'ownEffects'),
+      /** from the next start of Duetto */
+      setOwnEffects: (own) => call(NativeAudioDevices, 'setOwnEffects', !!own),
+      /** starts Duetto afresh, as after an update */
+      restart: () => call(NativeAudioDevices, 'restart'),
     }
-  : { list: () => Promise.resolve([]), subscribe: () => () => {} };
+  : {
+      list: () => Promise.resolve([]), subscribe: () => () => {},
+      voice: () => Promise.resolve(''),
+      ownEffects: () => Promise.resolve({ wanted: false, inUse: false }),
+      setOwnEffects: () => Promise.resolve(false),
+      restart: () => Promise.resolve(false),
+    };
 
 export const Heartbeat = isAndroid && NativeHeartbeat
   ? {

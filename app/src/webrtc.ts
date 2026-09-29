@@ -16,7 +16,7 @@ import {
   mediaDevices,
   MediaStream,
 } from 'react-native-webrtc';
-import { Journal, Heartbeat } from 'duetto-platform';
+import { Journal, Heartbeat, AudioDevices } from 'duetto-platform';
 import type { DuoConfig } from './config';
 import { iceServers, VIDEO_PROFILES, CAPTURE_FPS } from './config';
 import type { Signaling, SignalMessage } from './signaling';
@@ -735,6 +735,15 @@ export class ChannelSession {
         this.lastInbound = null;
         this.logOutboundVideo();
         setTimeout(() => this.logOutboundVideo(), 1000);
+        // How the voice is taken - microphone, effects, silenced or not -
+        // once the recording has surely started: a voice leaving far too
+        // quiet on one phone is otherwise a guess.
+        setTimeout(() => {
+          if (!isCurrent()) return;
+          AudioDevices.voice()
+            .then((v) => { if (v) Journal.mark(`voice-path:${v}`).catch(() => { /* noop */ }); })
+            .catch(() => { /* noop */ });
+        }, 3000);
          /**
          * As soon as we are connected we declare our state again.
          *
