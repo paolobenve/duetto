@@ -206,8 +206,8 @@ const STALL_CURES = 2;
  */
 /** Their picture grainy: under this share of the profile's ceiling, this long, on a clean road. */
 const GRAINY_BELOW_SHARE = 0.1;
-const GRAINY_MS = 10_000;
-const GRAINY_AFTER_LINK_MS = 15_000;
+const GRAINY_MS = 6_000;
+const GRAINY_AFTER_LINK_MS = 8_000;
 const BALANCE_RATIO = 3;
 const BALANCE_TICKS = 10;
 const BALANCE_STEP = 0.7;
@@ -488,6 +488,28 @@ export class ChannelSession {
     if (track) track.enabled = this.audioDesired && !this.hushed;
     this.localStream = stream;
     this.events.onLocalStream?.(stream);
+  }
+
+  /**
+   * A new microphone track in place of the old one, the session kept.
+   *
+   * A trial: the grainy picture came right only when the whole session
+   * was thrown away, and of what the session carries from one link to
+   * the next the microphone's track is the thing nothing else renews -
+   * switching the microphone off and on only disables it. The link is
+   * made again by the caller, and the new track goes on it.
+   */
+  async renewMic(): Promise<boolean> {
+    const old = this.localStream?.getAudioTracks()[0];
+    if (!this.localStream || !old) return false;
+    const fresh = await mediaDevices.getUserMedia({ audio: true, video: false });
+    const track = fresh.getAudioTracks()[0];
+    if (!track) return false;
+    track.enabled = this.audioDesired && !this.hushed;
+    this.localStream.removeTrack(old);
+    old.stop();
+    this.localStream.addTrack(track);
+    return true;
   }
 
   /**
@@ -1949,9 +1971,10 @@ export class ChannelSession {
    * seconds: and that throws the whole session away. So the receiver,
    * who sees the stamp, asks for that much: their video declared on,
    * ours watching, under 10% of the profile's ceiling - the floor, not
-   * a mobile network's honest half megabit - and below its height, losses under 1% and the round trip under 200 ms, for 10
-   * seconds, and not in the first 15 of a link. The app decides how
-   * often (see onSessionRenewWanted).
+   * a mobile network's honest half megabit - and below its height,
+   * losses under 1% and the round trip under 200 ms, for 6 seconds, and
+   * not in the first 8 of a link. The app decides what and how often
+   * (see renewSession).
    */
   private grainySince = 0;
   private linkedAt = 0;

@@ -818,6 +818,8 @@ export default function App() {
   const [sessionGen, setSessionGen] = useState(0);
   /** the last renewal, for not renewing more than once in two minutes */
   const renewedAt = useRef(0);
+  /** the last microphone renewed alone, the trial before the whole session */
+  const micRenewedAt = useRef(0);
   /** the battery, shown with the diagnostics beside the volumes */
   const [battery, setBattery] = useState<{ percent: number; charging: boolean } | null>(null);
   /** the network carrying us, shown and told with the battery */
@@ -4140,6 +4142,27 @@ export default function App() {
   const renewSession = useCallback(async (why: string) => {
     const old = sessionRef.current;
     if (!old || !inChannelRef.current || !peerActiveRef.current) return;
+    /**
+     * First the trial: the microphone's track alone, and the link made
+     * again. If the picture comes right, that was the brake, and the
+     * whole renewal is never needed; if it is still grainy at the next
+     * look, the session goes, as before.
+     */
+    if (Date.now() - micRenewedAt.current >= RENEW_GAP_MS) {
+      micRenewedAt.current = Date.now();
+      Journal.mark(`session:renew-mic:${why}`).catch(() => { /* noop */ });
+      try {
+        if (!(await old.renewMic())) Journal.mark('session:renew-mic:no-track').catch(() => {});
+      } catch (e: any) {
+        Journal.mark(`session:renew-mic:failed:${String(e?.message ?? e)}`).catch(() => {});
+      }
+      // The old link goes on this side too, so that the new one is born
+      // here with the new track: the offering side makes it, and the
+      // other, having let go of its own, asks for it.
+      attachPeer(true);
+      if (politeRef.current) signalingRef.current?.sendSignal({ kind: 'renegotiate' });
+      return;
+    }
     if (Date.now() - renewedAt.current < RENEW_GAP_MS) return;
     renewedAt.current = Date.now();
     Journal.mark(`session:renew:${why}`).catch(() => { /* noop */ });
@@ -4150,7 +4173,7 @@ export default function App() {
     old.leaveChannel();
     sessionRef.current = null;
     await enterChannel(carried);
-  }, [enterChannel]);
+  }, [enterChannel, attachPeer]);
   useEffect(() => { renewSessionRef.current = renewSession; }, [renewSession]);
   useEffect(() => { attachPeerRef.current = attachPeer; }, [attachPeer]);
 
