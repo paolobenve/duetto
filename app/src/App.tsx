@@ -2351,18 +2351,17 @@ export default function App() {
         relayRetried.current = false;
         recoveryBegunAt.current = Date.now();
         /**
-         * A new network: the link is made again from scratch, on both
-         * sides. Only a new link starts the bandwidth estimate afresh: a
-         * change of road kept the mobile data's, and on the wifi again
-         * the other phone went on sending a stamp - once nailed to the
-         * floor for over two minutes. The price is a black picture for
-         * a few seconds instead of a still one. A twitch of the same
-         * network is handled as before.
+         * A new network: a change of road, not a rebuild. Making the link
+         * again at every change was tried, and it blacked out a picture
+         * that was already at its best; the rebuild is left to the
+         * stuck-estimate watch, which in the half minute after the change
+         * acts within seconds - and only when the picture needs it.
          */
         if (what === 'arrived') {
-          Journal.mark('network:rebuild').catch(() => { /* noop */ });
-          if (politeRef.current) sig.sendSignal({ kind: 'renegotiate' });
-          else attachPeerRef.current?.(true);
+          sessionRef.current?.noteNetworkChange();
+          Journal.mark('network:ice-restart').catch(() => { /* noop */ });
+          if (politeRef.current) sig.sendSignal({ kind: 'renegotiate', road: true });
+          else sessionRef.current?.restartIce();
           return;
         }
         Journal.mark('network:ice-restart').catch(() => { /* noop */ });

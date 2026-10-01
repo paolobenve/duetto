@@ -204,15 +204,15 @@ const STALL_CURES = 2;
  * climbs back a step at a time, and at the profile's own ceiling it is
  * taken away altogether.
  */
-/** The estimate stuck: under this, for this long, on a clean road. */
-const BWE_STUCK_BELOW = 300_000;
+/** The estimate stuck: under this share of the profile's ceiling, for this long, on a clean road. */
+const BWE_STUCK_BELOW_SHARE = 0.4;
 const BWE_STUCK_MS = 12_000;
 /** In the half minute after a link made again: see stuckQuickUntil. */
 const BWE_STUCK_QUICK_MS = 4_000;
 const BWE_QUICK_WINDOW_MS = 30_000;
 const BWE_STUCK_CURES = 3;
-/** Above this the estimate is free again, and the cures count from zero. */
-const BWE_STUCK_CLEAR = 1_000_000;
+/** Above this share of the ceiling the estimate is free again, and the cures count from zero. */
+const BWE_STUCK_CLEAR_SHARE = 0.8;
 const BALANCE_RATIO = 3;
 const BALANCE_TICKS = 10;
 const BALANCE_STEP = 0.7;
@@ -1594,6 +1594,9 @@ export class ChannelSession {
         // is read the day after only if the road before it is known.
         const road = `${out.path}${out.relayLeg ? '/' + out.relayLeg : ''}`;
         if (road !== this.lastRoad) {
+          // A new road, ours or theirs: the estimate is watched closely
+          // for the half minute after it.
+          if (this.lastRoad) this.stuckQuickUntil = Date.now() + BWE_QUICK_WINDOW_MS;
           this.lastRoad = road;
           // A new road counts from its own zero.
           this.lastWire = null;
@@ -1952,10 +1955,11 @@ export class ChannelSession {
    * either way, forty milliseconds, two and a half megabits coming in.
    * It did not climb back by itself; leaving and entering again, by
    * hand, brought 720p in seconds. This is the same cure, without the
-   * hand: after 12 seconds stuck on a clean road - 4 in the half minute
-   * after a link made again - the link is made again: three times at
-   * most, the wait doubling, then written down and left alone until the
-   * estimate is above a megabit again.
+   * hand: an estimate under 40% of the profile's ceiling for 12 seconds
+   * on a clean road - 4 in the half minute after a new road or a new
+   * link - and the link is made again: three times at most, the wait
+   * doubling, then written down and left alone until the estimate is
+   * above 80% of the ceiling again.
    */
   private stuckSince = 0;
   private stuckCures = 0;
@@ -1967,15 +1971,22 @@ export class ChannelSession {
    * and it is a second one, made moments later, that climbs.
    */
   private stuckQuickUntil = 0;
+  /** This phone changed network: the estimate is watched closely for a while. */
+  noteNetworkChange() {
+    this.stuckQuickUntil = Date.now() + BWE_QUICK_WINDOW_MS;
+  }
   private weighStuckEstimate(avail: number | null, limit: string,
     rttMs: number | null, lossPct: number | null) {
-    if (avail !== null && avail > BWE_STUCK_CLEAR) {
+    // Against the profile's own ceiling: 300 kbit/s is the whole of the
+    // saver profile and a stamp in the best one.
+    const ceiling = (VIDEO_PROFILES[this.cfg.videoQuality] ?? VIDEO_PROFILES.better).maxBitrate;
+    if (avail !== null && avail > ceiling * BWE_STUCK_CLEAR_SHARE) {
       this.stuckSince = 0;
       this.stuckCures = 0;
       return;
     }
     const stuck = this.isVideoEnabled() && this.videoShouldFlow()
-      && avail !== null && avail < BWE_STUCK_BELOW && limit === 'bandwidth'
+      && avail !== null && avail < ceiling * BWE_STUCK_BELOW_SHARE && limit === 'bandwidth'
       && lossPct !== null && lossPct < 1 && rttMs !== null && rttMs < 200;
     if (!stuck) { this.stuckSince = 0; return; }
     const now = Date.now();
