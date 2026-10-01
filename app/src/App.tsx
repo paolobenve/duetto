@@ -2379,6 +2379,12 @@ export default function App() {
           Journal.mark('network:ice-restart').catch(() => { /* noop */ });
           if (politeRef.current) sig.sendSignal({ kind: 'renegotiate', road: true });
           else sessionRef.current?.restartIce();
+          // And a fresh microphone track on the link as it stands: see
+          // freshMicOnRoad.
+          sessionRef.current?.freshMicOnRoad()
+            .then((ok) => Journal.mark(`mic:fresh-track:road${ok ? '' : ':none'}`))
+            .catch((e) => Journal.mark(`mic:fresh-track:road:failed:${String(e?.message ?? e)}`))
+            .catch(() => { /* noop */ });
           return;
         }
         Journal.mark('network:ice-restart').catch(() => { /* noop */ });

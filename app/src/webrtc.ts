@@ -513,6 +513,27 @@ export class ChannelSession {
   }
 
   /**
+   * A new microphone track on the link as it stands, for a change of
+   * road.
+   *
+   * A change of network usually changes the road of the same link
+   * (ICE restart): no rebuild, so no fresh track, and the old one held
+   * the other phone's estimate on the floor once more - 480x240 coming
+   * in until the safety net rebuilt the link. The new track takes the
+   * old one's place in the sender, with no rebuild and no black. A
+   * trial: so far a fresh track always rode a new link.
+   */
+  async freshMicOnRoad(): Promise<boolean> {
+    const sender = this.liveAudioSender();
+    if (!sender) return false;
+    if (!(await this.renewMic())) return false;
+    const track = this.localStream?.getAudioTracks()[0];
+    if (!track) return false;
+    await sender.replaceTrack(track);
+    return true;
+  }
+
+  /**
    * How far to lift the other voice inside WebRTC.
    *
    * It is needed where the phone's call volume does not move - on
