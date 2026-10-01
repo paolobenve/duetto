@@ -650,6 +650,24 @@ export class ChannelSession {
 
   private async buildPeer(polite: boolean, mine: number) {
     await this.ensureMic();
+    /**
+     * Every link after the first gets a microphone track of its own.
+     *
+     * The old one, carried from link to link, kept the other phone's
+     * bandwidth estimate on the floor after a change of network: a
+     * 320x176 stamp coming in over a clean road, for minutes, on the
+     * wifi and on the mobile data, until a new track was opened - twice
+     * out of twice that alone brought 720p back within seconds, where
+     * rebuilding the link and switching the microphone off and on did
+     * nothing. The track is reopened while the link is down anyway.
+     */
+    if (this.builtOnce && mine === this.generation) {
+      try {
+        if (await this.renewMic()) Journal.mark('mic:fresh-track').catch(() => { /* noop */ });
+      } catch (e) {
+        Journal.mark(`mic:fresh-track:failed:${String(e)}`).catch(() => { /* noop */ });
+      }
+    }
     // Somebody else may have built it in the meantime, or somebody may
     // have torn everything down: either way this build is out of date.
     if (this.pc || mine !== this.generation) return;
@@ -660,6 +678,7 @@ export class ChannelSession {
       servers.map((s2) => s2.urls).join(', '));
     const pc = new RTCPeerConnection({ iceServers: servers });
     this.pc = pc;
+    this.builtOnce = true;
     this.peerBornAt = Date.now();
 
     this.remoteStream = new MediaStream();
@@ -1976,6 +1995,8 @@ export class ChannelSession {
    * not in the first 8 of a link. The app decides what and how often
    * (see renewSession).
    */
+  /** a link has been built in this session: the next gets a fresh microphone track */
+  private builtOnce = false;
   private grainySince = 0;
   private linkedAt = 0;
   private weighGrainyIncoming(
