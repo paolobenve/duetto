@@ -2257,48 +2257,28 @@ export function statsLineCount(stats: VideoStats, hasVideo = false, withBattery 
 /** One line of the box is this tall; the height comes from the count. */
 export const STATS_LINE_H = 18;
 
-/**
- * "battery: you 57% charging · the other 56% not charging" - one short
- * line, mine first, theirs after when they say.
- */
-/** "su wifi" / "su rete mobile", or nothing when unknown */
-function netWord(n: string | null | undefined): string {
-  return n === 'wifi' ? ` ${t('channel.onWifi')}` : n === 'mobile' ? ` ${t('channel.onMobile')}` : '';
-}
-
 /** Battery with its figure, the bolt on the charger, the network: one row of marks. */
-function StatusMarks({ battery, net }: {
+function StatusMarks({ battery, net, tone = '#9aa4b0' }: {
   battery?: { percent: number; charging: boolean } | null;
   net?: string | null;
+  tone?: string;
 }) {
   if (!battery && net !== 'wifi' && net !== 'mobile') return null;
   return (
     <View style={styles.statusMarks}>
       {battery ? (
         <>
-          <CarBatteryIcon size={15} color="#9aa4b0" />
-          <Text style={styles.cardVolume}>{battery.percent}%</Text>
-          {battery.charging ? <ChargingIcon size={14} color="#9aa4b0" /> : null}
+          <CarBatteryIcon size={15} color={tone} />
+          <Text style={[styles.cardVolume, { color: tone }]}>{battery.percent}%</Text>
+          {battery.charging ? <ChargingIcon size={14} color={tone} /> : null}
         </>
       ) : null}
-      {net === 'wifi' ? <WifiIcon size={15} color="#9aa4b0" />
-        : net === 'mobile' ? <MobileDataIcon size={15} color="#9aa4b0" /> : null}
+      {net === 'wifi' ? <WifiIcon size={15} color={tone} />
+        : net === 'mobile' ? <MobileDataIcon size={15} color={tone} /> : null}
     </View>
   );
 }
 
-function batteryLine(
-  mine: { percent: number; charging: boolean } | null | undefined,
-  theirs: { percent: number; charging: boolean } | null | undefined,
-  mineNet?: string | null,
-  theirsNet?: string | null,
-): string {
-  const part = (b: { percent: number; charging: boolean }, n?: string | null) =>
-    `${b.percent}% ${t(b.charging ? 'channel.charging' : 'channel.notCharging')}${netWord(n)}`;
-  if (mine && theirs) return t('channel.batteryBoth', { mine: part(mine, mineNet), theirs: part(theirs, theirsNet) });
-  if (mine) return t('channel.batteryMine', { mine: part(mine, mineNet) });
-  return theirs ? t('channel.batteryTheirsOnly', { theirs: part(theirs, theirsNet) }) : '';
-}
 
 function StatsLine({
   stats, quality, showUp, showDown, peerSend, peerRecv, totalOnly, battery, peerBattery, network, peerNet,
@@ -2482,12 +2462,25 @@ function StatsLine({
       {/* The third line: the waits, and - with the video on, the card
           gone and the battery with it - the battery beside them. */}
       {hasVideo && (waitSaid || battery || peerBattery) ? (
-        <Text style={styles.stats} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-          {[
-            waitSaid,
-            battery || peerBattery ? batteryLine(battery, peerBattery, network, peerNet) : '',
-          ].filter(Boolean).join(' · ')}
-        </Text>
+        // Batteries and networks as marks, the same as the card's: in
+        // words the line shrank until it could not be read.
+        <View style={styles.statsRow}>
+          {waitSaid ? (
+            <Text style={styles.stats} numberOfLines={1}>{waitSaid}</Text>
+          ) : null}
+          {battery || network ? (
+            <>
+              <Text style={styles.stats}>{t('channel.you')}</Text>
+              <StatusMarks battery={battery} net={network} tone="#c9d2de" />
+            </>
+          ) : null}
+          {peerBattery || peerNet ? (
+            <>
+              <Text style={styles.stats}>{t('channel.theOther')}</Text>
+              <StatusMarks battery={peerBattery} net={peerNet} tone="#c9d2de" />
+            </>
+          ) : null}
+        </View>
       ) : null}
     </>
   );
@@ -2785,6 +2778,7 @@ const styles = StyleSheet.create({
   cardTiny: { color: '#4a5462', fontSize: 12, marginTop: 10 },
   cardMark: { marginTop: 12 },
   cardMarkRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  statsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 16 },
   statusMarks: { flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 6 },
   cardOwn: { marginTop: 14 },
   cardVolume: { color: '#7d8794', fontSize: 13 },
