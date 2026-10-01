@@ -100,6 +100,8 @@ const uiLog = logger('[duetto-ui]');
 
 /** The last death already told to the other phone: it is not repeated. */
 const DEATH_TOLD_KEY = 'duetto.death.told';
+/** A session renewed in place at most this often: see renewSession. */
+const RENEW_GAP_MS = 120_000;
 /**
  * The last stretch of being unavailable by choice: `from` when it was
  * chosen, `to` when the app was opened again (0 while it lasts).
@@ -808,6 +810,14 @@ export default function App() {
   /** the step Duetto last set the phone's knob to, and when */
   const ownKnob = useRef<{ step: number; at: number } | null>(null);
   useEffect(() => { stepsRef.current = stepsDb; }, [stepsDb]);
+  /**
+   * Counts the sessions born in the channel: a session renewed in place
+   * (see renewSession) is told again what the effects below had told the
+   * old one - battery, network, output, gain, level, watching.
+   */
+  const [sessionGen, setSessionGen] = useState(0);
+  /** the last renewal, for not renewing more than once in two minutes */
+  const renewedAt = useRef(0);
   /** the battery, shown with the diagnostics beside the volumes */
   const [battery, setBattery] = useState<{ percent: number; charging: boolean } | null>(null);
   /** the network carrying us, shown and told with the battery */
@@ -845,7 +855,7 @@ export default function App() {
     const beat = Heartbeat.subscribe(read);
     const sub = AppState.addEventListener('change', (st) => { if (st === 'active') read(); });
     return () => { alive = false; clearInterval(timer); beat(); sub.remove(); };
-  }, [inChannel, cfg?.diagnostics]);
+  }, [inChannel, cfg?.diagnostics, sessionGen]);
 
   /** the last moment something asked for the controls to be seen */
   const [controlsWakeAt, setControlsWakeAt] = useState(0);
@@ -1070,6 +1080,8 @@ export default function App() {
   const batteryWarned = useRef(false);
   /** enterChannel is needed inside an effect that is born before it */
   const enterChannelRef = useRef<(() => void) | null>(null);
+  /** renewSession, for the session's own events, born before it */
+  const renewSessionRef = useRef<((why: string) => void) | null>(null);
   /** leaving, for whoever is born before the function that does it */
   const leaveChannelRef = useRef<(() => void) | null>(null);
   /** and forgetting a pair, for the same reason */
@@ -1444,7 +1456,7 @@ export default function App() {
    */
   useEffect(() => {
     sessionRef.current?.setOutput(audio.route);
-  }, [audio.route, inChannel]);
+  }, [audio.route, inChannel, sessionGen]);
 
   /**
    * What the other person is called: whatever they called themselves,
@@ -1617,7 +1629,7 @@ export default function App() {
    */
   useEffect(() => {
     sessionRef.current?.setRemoteGain(outputMuted ? 0 : appliedGain);
-  }, [appliedGain, outputMuted, inChannel]);
+  }, [appliedGain, outputMuted, inChannel, sessionGen]);
 
   /**
    * What is declared to the other side is the LEVEL, not the gain.
@@ -1633,7 +1645,7 @@ export default function App() {
       systemVolume.max > 0 ? sysFraction : null,
       appliedGain,
     );
-  }, [level, inChannel, systemVolume.max, sysFraction, appliedGain, outputMuted]);
+  }, [level, inChannel, systemVolume.max, sysFraction, appliedGain, outputMuted, sessionGen]);
 
   /**
    * Turns the LEVEL up or down, sharing the work between the two
@@ -2924,7 +2936,7 @@ export default function App() {
     return Visibility.subscribe((visible: boolean) => {
       sessionRef.current?.setLocalWatching(visible);
     });
-  }, []);
+  }, [sessionGen]);
 
   // --- start-up ------------------------------------------------------------
   useEffect(() => {
@@ -3775,7 +3787,12 @@ export default function App() {
   }, [attachPeer, clearRecovery]);
 
   // --- coming into the channel and going out ------------------------------
-  const enterChannel = useCallback(async () => {
+  /**
+   * @param renew the session renewed in place, inside a channel we never
+   *   left: what it carried is passed on, and nothing of the entering is
+   *   done again - no call, no cue, no word to the server.
+   */
+  const enterChannel = useCallback(async (renew?: { audio: boolean; video: boolean; hushed: boolean }) => {
     const sig = signalingRef.current;
     if (!sig || !cfg) return;
 
@@ -3886,6 +3903,7 @@ export default function App() {
         onVideoStats: setVideoStats,
         // Made again from scratch, as leaving and entering does: the
         // offering side rebuilds, the other asks it to.
+        onSessionRenewWanted: (why) => { renewSessionRef.current?.(why); },
         onRebuildWanted: () => {
           if (!inChannelRef.current || !peerActiveRef.current) return;
           recoveryBegunAt.current = Date.now();
@@ -3959,6 +3977,18 @@ export default function App() {
       });
     }
     sessionRef.current.setServerIceServers(serverTurnRef.current);
+    if (renew) {
+      const s = sessionRef.current;
+      if (s.isAudioEnabled() !== renew.audio) setAudioOn(s.toggleAudio());
+      if (renew.hushed) s.hush(true);
+      setSessionGen((g) => g + 1);
+      // The link from scratch: the offering side makes it, the other
+      // asks for it.
+      if (politeRef.current) sig.sendSignal({ kind: 'renegotiate' });
+      else attachPeer(true);
+      if (renew.video) setTimeout(() => { turnVideoBackOnRef.current?.(); }, 300);
+      return;
+    }
     // The microphone is not opened here: the session opens it when the
     // other person really arrives. Whoever comes in first may wait a
     // long time, and during that wait there is nothing to send.
@@ -4090,6 +4120,29 @@ export default function App() {
   }, [cfg, attachPeer, stopWaiting]);
 
   useEffect(() => { enterChannelRef.current = enterChannel; }, [enterChannel]);
+
+  /**
+   * The session thrown away and made again, inside the channel.
+   *
+   * Leaving and entering again was the one thing that brought back a
+   * picture stuck grainy - every time, within seconds - where rebuilding
+   * the link and switching the camera or the microphone off and on did
+   * nothing. This is that throwing away, without the leaving: the
+   * telephony call, the audio, the server and the other side's notices
+   * stay as they are. Not more than once in two minutes.
+   */
+  const renewSession = useCallback(async (why: string) => {
+    const old = sessionRef.current;
+    if (!old || !inChannelRef.current || !peerActiveRef.current) return;
+    if (Date.now() - renewedAt.current < RENEW_GAP_MS) return;
+    renewedAt.current = Date.now();
+    Journal.mark(`session:renew:${why}`).catch(() => { /* noop */ });
+    const carried = { audio: old.isAudioEnabled(), video: old.isVideoEnabled(), hushed: old.isHushed() };
+    old.leaveChannel();
+    sessionRef.current = null;
+    await enterChannel(carried);
+  }, [enterChannel]);
+  useEffect(() => { renewSessionRef.current = renewSession; }, [renewSession]);
   useEffect(() => { attachPeerRef.current = attachPeer; }, [attachPeer]);
 
   /**

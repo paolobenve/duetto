@@ -85,6 +85,8 @@ export type ChannelEvents = {
   onVideoStats?: (st: VideoStats) => void;
   /** the link should be made again from scratch: see weighStuckEstimate */
   onRebuildWanted?: (why: string) => void;
+  /** the whole session should be renewed: see weighGrainyIncoming */
+  onSessionRenewWanted?: (why: string) => void;
 };
 
 export type VideoStats = {
@@ -209,6 +211,9 @@ const BWE_STUCK_BELOW_SHARE = 0.4;
 /** In the half minute after a new road or link: see stuckQuickUntil. */
 const BWE_STUCK_QUICK_MS = 4_000;
 const BWE_QUICK_WINDOW_MS = 30_000;
+/** Their picture grainy this long on a clean road: see weighGrainyIncoming. */
+const GRAINY_MS = 10_000;
+const GRAINY_AFTER_LINK_MS = 15_000;
 /** Above 80% of the ceiling for this long: free again, see freeSince. */
 const BWE_FREE_MS = 30_000;
 /** Above this share of the ceiling the estimate is free again, and the cures count from zero. */
@@ -768,6 +773,7 @@ export class ChannelSession {
           Journal.mark('balance:hold').catch(() => { /* noop */ });
         }
         this.linkedOnce = true;
+        this.linkedAt = Date.now();
         // The wish held back during the repair is granted now: see
         // applyPeerWatching.
         this.applyPeerWatching();
@@ -1926,6 +1932,8 @@ export class ChannelSession {
         .filter((v) => v !== '').map(Number);
       this.weighStuckEstimate(avail > 0 ? avail : null, limit, out.latency ?? null,
         losses.length ? Math.max(...losses) : null);
+      this.weighGrainyIncoming(out.in ?? null, out.latency ?? null,
+        losses.length ? Math.max(...losses) : null);
 
       // One line in the log now and then is enough: the rest is under
       // the controls.
@@ -2037,6 +2045,42 @@ export class ChannelSession {
     this.stuckCures = 0;
   }
 
+
+  /**
+   * Their picture arriving grainy on a clean road: the session wants
+   * renewing.
+   *
+   * The sender's estimate fell to the floor after a change of network
+   * and stayed there, and nothing made on the link brought it back -
+   * neither its rebuilds nor our camera or microphone switched off and
+   * on. Leaving the channel and entering again did, every time, within
+   * seconds: and that throws the whole session away. So the receiver,
+   * who sees the stamp, asks for that much: their video declared on,
+   * ours watching, under 40% of the profile's ceiling and below its
+   * height, losses under 1% and the round trip under 200 ms, for 10
+   * seconds, and not in the first 15 of a link. The app decides how
+   * often (see onSessionRenewWanted).
+   */
+  private grainySince = 0;
+  private linkedAt = 0;
+  private weighGrainyIncoming(
+    pic: { w: number; h: number; kbps: number | null } | null,
+    rttMs: number | null, lossPct: number | null,
+  ) {
+    const profile = VIDEO_PROFILES[this.cfg.videoQuality] ?? VIDEO_PROFILES.better;
+    const now = Date.now();
+    const grainy = this.peerVideoDeclared && this.localWatching
+      && now - this.linkedAt > GRAINY_AFTER_LINK_MS
+      && pic !== null && pic.kbps !== null && pic.h > 0
+      && pic.kbps * 1000 < profile.maxBitrate * BWE_STUCK_BELOW_SHARE
+      && pic.h < profile.capture.height
+      && lossPct !== null && lossPct < 1 && rttMs !== null && rttMs < 200;
+    if (!grainy) { this.grainySince = 0; return; }
+    if (!this.grainySince) { this.grainySince = now; return; }
+    if (now - this.grainySince < GRAINY_MS) return;
+    this.grainySince = 0;
+    this.events.onSessionRenewWanted?.(`${pic!.w}x${pic!.h}:${pic!.kbps}k:rtt=${rttMs}`);
+  }
 
   /** The balancing ceiling on the outgoing video, in bit/s; null = none. */
   private balanceCap: number | null = null;
