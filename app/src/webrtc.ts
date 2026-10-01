@@ -211,6 +211,8 @@ const BWE_STUCK_MS = 12_000;
 const BWE_STUCK_QUICK_MS = 4_000;
 const BWE_QUICK_WINDOW_MS = 30_000;
 const BWE_STUCK_CURES = 3;
+/** Above 80% of the ceiling for this long: free again, see freeSince. */
+const BWE_FREE_MS = 30_000;
 /** Above this share of the ceiling the estimate is free again, and the cures count from zero. */
 const BWE_STUCK_CLEAR_SHARE = 0.8;
 const BALANCE_RATIO = 3;
@@ -1971,6 +1973,10 @@ export class ChannelSession {
    * and it is a second one, made moments later, that climbs.
    */
   private stuckQuickUntil = 0;
+  /** since when the estimate has been above 80% of the ceiling */
+  private freeSince = 0;
+  /** the estimate at the last rebuild, to tell a stuck one from the road's own */
+  private cureFrom: number | null = null;
   /** This phone changed network: the estimate is watched closely for a while. */
   noteNetworkChange() {
     this.stuckQuickUntil = Date.now() + BWE_QUICK_WINDOW_MS;
@@ -1980,20 +1986,44 @@ export class ChannelSession {
     // Against the profile's own ceiling: 300 kbit/s is the whole of the
     // saver profile and a stamp in the best one.
     const ceiling = (VIDEO_PROFILES[this.cfg.videoQuality] ?? VIDEO_PROFILES.better).maxBitrate;
+    const now = Date.now();
     if (avail !== null && avail > ceiling * BWE_STUCK_CLEAR_SHARE) {
       this.stuckSince = 0;
-      this.stuckCures = 0;
+      // Free for good only after a while: every new link probes the road
+      // in its first second and the estimate leaps for an instant - and
+      // that leap, taken for freedom, started the count again at every
+      // rebuild: six of them in 75 seconds, a black picture every 14.
+      if (!this.freeSince) this.freeSince = now;
+      if (now - this.freeSince >= BWE_FREE_MS) {
+        this.stuckCures = 0;
+        this.cureFrom = null;
+      }
       return;
     }
+    this.freeSince = 0;
     const stuck = this.isVideoEnabled() && this.videoShouldFlow()
       && avail !== null && avail < ceiling * BWE_STUCK_BELOW_SHARE && limit === 'bandwidth'
       && lossPct !== null && lossPct < 1 && rttMs !== null && rttMs < 200;
     if (!stuck) { this.stuckSince = 0; return; }
-    const now = Date.now();
     if (!this.stuckSince) { this.stuckSince = now; return; }
     const base = now < this.stuckQuickUntil ? BWE_STUCK_QUICK_MS : BWE_STUCK_MS;
     if (now - this.stuckSince < base * 2 ** this.stuckCures) return;
     this.stuckSince = 0;
+    /**
+     * The same level after a second link made again: it is the road.
+     * Back on a weak wifi the moto's estimate came back to 500 kbit/s
+     * after every rebuild, six milliseconds, no losses - that was all
+     * the wifi had there, and each new link only blacked the picture
+     * out. Two tries are given (the first link after a change can fall
+     * before the network settles); then the same level within a factor
+     * of two stops the cure until the estimate is free again.
+     */
+    if (this.stuckCures >= 2 && this.cureFrom !== null && this.stuckCures <= BWE_STUCK_CURES
+        && avail! <= this.cureFrom * 2 && avail! >= this.cureFrom / 2) {
+      this.stuckCures = BWE_STUCK_CURES + 1;
+      Journal.mark(`bwe:stuck:real:${Math.round(avail! / 1000)}k`).catch(() => { /* noop */ });
+      return;
+    }
     if (this.stuckCures >= BWE_STUCK_CURES) {
       if (this.stuckCures === BWE_STUCK_CURES) {
         this.stuckCures += 1;
@@ -2002,6 +2032,7 @@ export class ChannelSession {
       return;
     }
     this.stuckCures += 1;
+    this.cureFrom = avail;
     Journal.mark(`bwe:stuck:rebuild:${Math.round(avail! / 1000)}k:rtt=${rttMs}:loss=${lossPct}`)
       .catch(() => { /* noop */ });
     log('bandwidth estimate stuck at the floor on a clean road: making the link again');
