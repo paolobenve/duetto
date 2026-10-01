@@ -83,6 +83,8 @@ export type ChannelEvents = {
   onRemoteVideo?: (present: boolean) => void;
   /** what is really going out and coming in, to show under the controls */
   onVideoStats?: (st: VideoStats) => void;
+  /** the link should be made again from scratch: see weighStuckEstimate */
+  onRebuildWanted?: (why: string) => void;
 };
 
 export type VideoStats = {
@@ -202,6 +204,12 @@ const STALL_CURES = 2;
  * climbs back a step at a time, and at the profile's own ceiling it is
  * taken away altogether.
  */
+/** The estimate stuck: under this, for this long, on a clean road. */
+const BWE_STUCK_BELOW = 300_000;
+const BWE_STUCK_MS = 45_000;
+const BWE_STUCK_CURES = 2;
+/** Above this the estimate is free again, and the cures count from zero. */
+const BWE_STUCK_CLEAR = 1_000_000;
 const BALANCE_RATIO = 3;
 const BALANCE_TICKS = 10;
 const BALANCE_STEP = 0.7;
@@ -1907,6 +1915,10 @@ export class ChannelSession {
         out.out ? limit : '',
         this.balanceCap !== null ? String(Math.round(this.balanceCap / 1000)) : '')
         .catch(() => { /* noop */ });
+      const losses = Object.values(cells).flatMap((c) => [c.in, c.out])
+        .filter((v) => v !== '').map(Number);
+      this.weighStuckEstimate(avail > 0 ? avail : null, limit, out.latency ?? null,
+        losses.length ? Math.max(...losses) : null);
 
       // One line in the log now and then is enough: the rest is under
       // the controls.
@@ -1927,6 +1939,50 @@ export class ChannelSession {
    * this connection, and while it is there, the voice's extra few kbits
    * are noticed nowhere.
    */
+  /**
+   * The bandwidth estimate nailed to the floor: the link made again.
+   *
+   * Back on the wifi after the mobile data, the Edge's estimate fell to
+   * 101 kbit/s - WebRTC's floor - and stayed there for over two
+   * minutes, a 320x176 stamp going out over a clean road: no losses
+   * either way, forty milliseconds, two and a half megabits coming in.
+   * It did not climb back by itself; leaving and entering again, by
+   * hand, brought 720p in seconds. This is the same cure, without the
+   * hand: after 45 seconds stuck on a clean road the link is made
+   * again - twice at most, the wait doubling, then written down and
+   * left alone until the estimate is above a megabit again.
+   */
+  private stuckSince = 0;
+  private stuckCures = 0;
+  private weighStuckEstimate(avail: number | null, limit: string,
+    rttMs: number | null, lossPct: number | null) {
+    if (avail !== null && avail > BWE_STUCK_CLEAR) {
+      this.stuckSince = 0;
+      this.stuckCures = 0;
+      return;
+    }
+    const stuck = this.isVideoEnabled() && this.videoShouldFlow()
+      && avail !== null && avail < BWE_STUCK_BELOW && limit === 'bandwidth'
+      && lossPct !== null && lossPct < 1 && rttMs !== null && rttMs < 200;
+    if (!stuck) { this.stuckSince = 0; return; }
+    const now = Date.now();
+    if (!this.stuckSince) { this.stuckSince = now; return; }
+    if (now - this.stuckSince < BWE_STUCK_MS * 2 ** this.stuckCures) return;
+    this.stuckSince = 0;
+    if (this.stuckCures >= BWE_STUCK_CURES) {
+      if (this.stuckCures === BWE_STUCK_CURES) {
+        this.stuckCures += 1;
+        Journal.mark('bwe:stuck:giving-up').catch(() => { /* noop */ });
+      }
+      return;
+    }
+    this.stuckCures += 1;
+    Journal.mark(`bwe:stuck:rebuild:${Math.round(avail! / 1000)}k:rtt=${rttMs}:loss=${lossPct}`)
+      .catch(() => { /* noop */ });
+    log('bandwidth estimate stuck at the floor on a clean road: making the link again');
+    this.events.onRebuildWanted?.('bwe-stuck');
+  }
+
   /** The balancing ceiling on the outgoing video, in bit/s; null = none. */
   private balanceCap: number | null = null;
   /**

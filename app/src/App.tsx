@@ -3861,6 +3861,14 @@ export default function App() {
           }, 12000);
         },
         onVideoStats: setVideoStats,
+        // Made again from scratch, as leaving and entering does: the
+        // offering side rebuilds, the other asks it to.
+        onRebuildWanted: () => {
+          if (!inChannelRef.current || !peerActiveRef.current) return;
+          recoveryBegunAt.current = Date.now();
+          if (politeRef.current) signalingRef.current?.sendSignal({ kind: 'renegotiate' });
+          else attachPeerRef.current?.(true);
+        },
         onPeerState: (st) => {
           // The first state after meeting says how things stand, not
           // what changed: no cue for it, or every meeting would ring
