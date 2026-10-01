@@ -83,8 +83,6 @@ export type ChannelEvents = {
   onRemoteVideo?: (present: boolean) => void;
   /** what is really going out and coming in, to show under the controls */
   onVideoStats?: (st: VideoStats) => void;
-  /** the link should be made again from scratch: see weighStuckEstimate */
-  onRebuildWanted?: (why: string) => void;
   /** the whole session should be renewed: see weighGrainyIncoming */
   onSessionRenewWanted?: (why: string) => void;
 };
@@ -206,18 +204,10 @@ const STALL_CURES = 2;
  * climbs back a step at a time, and at the profile's own ceiling it is
  * taken away altogether.
  */
-/** The estimate stuck: under this share of the profile's ceiling, for this long, on a clean road. */
-const BWE_STUCK_BELOW_SHARE = 0.4;
-/** In the half minute after a new road or link: see stuckQuickUntil. */
-const BWE_STUCK_QUICK_MS = 4_000;
-const BWE_QUICK_WINDOW_MS = 30_000;
-/** Their picture grainy this long on a clean road: see weighGrainyIncoming. */
+/** Their picture grainy: under this share of the profile's ceiling, this long, on a clean road. */
+const GRAINY_BELOW_SHARE = 0.1;
 const GRAINY_MS = 10_000;
 const GRAINY_AFTER_LINK_MS = 15_000;
-/** Above 80% of the ceiling for this long: free again, see freeSince. */
-const BWE_FREE_MS = 30_000;
-/** Above this share of the ceiling the estimate is free again, and the cures count from zero. */
-const BWE_STUCK_CLEAR_SHARE = 0.8;
 const BALANCE_RATIO = 3;
 const BALANCE_TICKS = 10;
 const BALANCE_STEP = 0.7;
@@ -769,7 +759,6 @@ export class ChannelSession {
       if (pc.connectionState === 'connected') {
         if (this.linkedOnce) {
           this.balanceHoldUntil = Date.now() + BALANCE_HOLD_MS;
-          this.stuckQuickUntil = Date.now() + BWE_QUICK_WINDOW_MS;
           Journal.mark('balance:hold').catch(() => { /* noop */ });
         }
         this.linkedOnce = true;
@@ -1600,9 +1589,6 @@ export class ChannelSession {
         // is read the day after only if the road before it is known.
         const road = `${out.path}${out.relayLeg ? '/' + out.relayLeg : ''}`;
         if (road !== this.lastRoad) {
-          // A new road, ours or theirs: the estimate is watched closely
-          // for the half minute after it.
-          if (this.lastRoad) this.stuckQuickUntil = Date.now() + BWE_QUICK_WINDOW_MS;
           this.lastRoad = road;
           // A new road counts from its own zero.
           this.lastWire = null;
@@ -1930,8 +1916,6 @@ export class ChannelSession {
         .catch(() => { /* noop */ });
       const losses = Object.values(cells).flatMap((c) => [c.in, c.out])
         .filter((v) => v !== '').map(Number);
-      this.weighStuckEstimate(avail > 0 ? avail : null, limit, out.latency ?? null,
-        losses.length ? Math.max(...losses) : null);
       this.weighGrainyIncoming(out.in ?? null, out.latency ?? null,
         losses.length ? Math.max(...losses) : null);
 
@@ -1955,98 +1939,6 @@ export class ChannelSession {
    * are noticed nowhere.
    */
   /**
-   * The bandwidth estimate nailed to the floor: the link made again.
-   *
-   * Back on the wifi after the mobile data, the Edge's estimate fell to
-   * 101 kbit/s - WebRTC's floor - and stayed there for over two
-   * minutes, a 320x176 stamp going out over a clean road: no losses
-   * either way, forty milliseconds, two and a half megabits coming in.
-   * It did not climb back by itself; leaving and entering again, by
-   * hand, brought 720p in seconds. A rebuild without the hand: in the
-   * half minute after a new road or a new link, an estimate under 40%
-   * of the profile's ceiling for 4 seconds on a clean road makes the
-   * link again - once for each episode, which a change of network or
-   * 30 seconds above 80% of the ceiling starts again. It is not all of
-   * what leaving and entering does, and often not enough: see below.
-   */
-  private stuckSince = 0;
-  private stuckCures = 0;
-  /**
-   * Until then the stuck estimate is judged in seconds, not tens of
-   * seconds: the half minute after a link made again - a change of
-   * network, ours or theirs. A link made at the very moment of the
-   * change can fall to the floor at once, the new wifi not settled yet,
-   * and it is a second one, made moments later, that climbs.
-   */
-  private stuckQuickUntil = 0;
-  /** since when the estimate has been above 80% of the ceiling */
-  private freeSince = 0;
-  /**
-   * A phone changed network, this one or the other: the estimate is
-   * watched closely for a while, and the cure starts a new episode -
-   * what was learnt of the old road says nothing of the new one.
-   */
-  noteNetworkChange() {
-    this.stuckQuickUntil = Date.now() + BWE_QUICK_WINDOW_MS;
-    this.stuckSince = 0;
-    this.newStuckEpisode();
-  }
-  private weighStuckEstimate(avail: number | null, limit: string,
-    rttMs: number | null, lossPct: number | null) {
-    // Against the profile's own ceiling: 300 kbit/s is the whole of the
-    // saver profile and a stamp in the best one.
-    const ceiling = (VIDEO_PROFILES[this.cfg.videoQuality] ?? VIDEO_PROFILES.better).maxBitrate;
-    const now = Date.now();
-    if (avail !== null && avail > ceiling * BWE_STUCK_CLEAR_SHARE) {
-      this.stuckSince = 0;
-      // Free for good only after a while: every new link probes the road
-      // in its first second and the estimate leaps for an instant - and
-      // that leap, taken for freedom, started the count again at every
-      // rebuild: six of them in 75 seconds, a black picture every 14.
-      if (!this.freeSince) this.freeSince = now;
-      if (now - this.freeSince >= BWE_FREE_MS) this.newStuckEpisode();
-      return;
-    }
-    this.freeSince = 0;
-    const stuck = this.isVideoEnabled() && this.videoShouldFlow()
-      && avail !== null && avail < ceiling * BWE_STUCK_BELOW_SHARE && limit === 'bandwidth'
-      && lossPct !== null && lossPct < 1 && rttMs !== null && rttMs < 200;
-    // Only in the half minute after a new road or a new link: there a
-    // rebuild once brought a moto from 110 kbit/s to 4.9 Mbit/s. Outside
-    // it the rebuilds cured nothing - five in four minutes, on a clean
-    // wifi, every new link back under 300 kbit/s within seconds, while
-    // leaving the channel and entering again put it right at once - and
-    // each one blacked the picture out.
-    if (!stuck || now >= this.stuckQuickUntil) { this.stuckSince = 0; return; }
-    if (!this.stuckSince) { this.stuckSince = now; return; }
-    if (now - this.stuckSince < BWE_STUCK_QUICK_MS) return;
-    this.stuckSince = 0;
-    // One try for each episode: a second one never helped.
-    if (this.stuckCures >= 1) {
-      if (this.stuckCures === 1) {
-        this.stuckCures += 1;
-        Journal.mark(`bwe:stuck:after-cure:${Math.round(avail! / 1000)}k`).catch(() => { /* noop */ });
-      }
-      return;
-    }
-    this.cure(avail!, rttMs, lossPct);
-  }
-
-  private cure(avail: number, rttMs: number | null, lossPct: number | null) {
-    this.stuckCures += 1;
-    Journal.mark(`bwe:stuck:rebuild:${Math.round(avail / 1000)}k:rtt=${rttMs}:loss=${lossPct}`)
-      .catch(() => { /* noop */ });
-    log('bandwidth estimate stuck on a clean road: making the link again');
-    this.events.onRebuildWanted?.('bwe-stuck');
-  }
-
-  /** The count of tries and the verdict start again: freed, or a new network. */
-  private newStuckEpisode() {
-    this.stuckCures = 0;
-  }
-
-
-  /**
    * Their picture arriving grainy on a clean road: the session wants
    * renewing.
    *
@@ -2056,8 +1948,8 @@ export class ChannelSession {
    * on. Leaving the channel and entering again did, every time, within
    * seconds: and that throws the whole session away. So the receiver,
    * who sees the stamp, asks for that much: their video declared on,
-   * ours watching, under 40% of the profile's ceiling and below its
-   * height, losses under 1% and the round trip under 200 ms, for 10
+   * ours watching, under 10% of the profile's ceiling - the floor, not
+   * a mobile network's honest half megabit - and below its height, losses under 1% and the round trip under 200 ms, for 10
    * seconds, and not in the first 15 of a link. The app decides how
    * often (see onSessionRenewWanted).
    */
@@ -2072,7 +1964,7 @@ export class ChannelSession {
     const grainy = this.peerVideoDeclared && this.localWatching
       && now - this.linkedAt > GRAINY_AFTER_LINK_MS
       && pic !== null && pic.kbps !== null && pic.h > 0
-      && pic.kbps * 1000 < profile.maxBitrate * BWE_STUCK_BELOW_SHARE
+      && pic.kbps * 1000 < profile.maxBitrate * GRAINY_BELOW_SHARE
       && pic.h < profile.capture.height
       && lossPct !== null && lossPct < 1 && rttMs !== null && rttMs < 200;
     if (!grainy) { this.grainySince = 0; return; }

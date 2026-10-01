@@ -2374,8 +2374,6 @@ export default function App() {
          * acts within seconds - and only when the picture needs it.
          */
         if (what === 'arrived') {
-          sessionRef.current?.noteNetworkChange();
-          sig.sendSignal({ kind: 'netChanged' });
           Journal.mark('network:ice-restart').catch(() => { /* noop */ });
           if (politeRef.current) sig.sendSignal({ kind: 'renegotiate', road: true });
           else sessionRef.current?.restartIce();
@@ -3418,10 +3416,9 @@ export default function App() {
             if (!sess) return;
             // They have been left without a connection and ask us to
             // make the offer again: it is up to us, the offering side.
-            if (msg.kind === 'netChanged') {
-              sessionRef.current?.noteNetworkChange();
-              return;
-            }
+            // Sent by the builds that rebuilt the link on a stuck
+            // estimate; nothing to do with it now.
+            if (msg.kind === 'netChanged') return;
             if (msg.kind === 'renegotiate') {
               if (politeRef.current || !inChannelRef.current) return;
               // A change of road does not demolish anything: the voice
@@ -3792,7 +3789,9 @@ export default function App() {
    *   left: what it carried is passed on, and nothing of the entering is
    *   done again - no call, no cue, no word to the server.
    */
-  const enterChannel = useCallback(async (renew?: { audio: boolean; video: boolean; hushed: boolean }) => {
+  const enterChannel = useCallback(async (renew?: {
+    audio: boolean; video: boolean; front: boolean; hushed: boolean;
+  }) => {
     const sig = signalingRef.current;
     if (!sig || !cfg) return;
 
@@ -3904,12 +3903,6 @@ export default function App() {
         // Made again from scratch, as leaving and entering does: the
         // offering side rebuilds, the other asks it to.
         onSessionRenewWanted: (why) => { renewSessionRef.current?.(why); },
-        onRebuildWanted: () => {
-          if (!inChannelRef.current || !peerActiveRef.current) return;
-          recoveryBegunAt.current = Date.now();
-          if (politeRef.current) signalingRef.current?.sendSignal({ kind: 'renegotiate' });
-          else attachPeerRef.current?.(true);
-        },
         onPeerState: (st) => {
           // The first state after meeting says how things stand, not
           // what changed: no cue for it, or every meeting would ring
@@ -3982,11 +3975,24 @@ export default function App() {
       if (s.isAudioEnabled() !== renew.audio) setAudioOn(s.toggleAudio());
       if (renew.hushed) s.hush(true);
       setSessionGen((g) => g + 1);
+      // The camera before the link, and not by its button: the button
+      // sounds, and a link made first told the other side "video off,
+      // video on" - both phones rang for a picture nobody touched.
+      if (renew.video) {
+        if (s.isFrontCamera() !== renew.front) s.switchCamera();
+        try {
+          await s.enableVideo();
+          setLocalAspect(s.getLocalVideoAspect());
+        } catch (e: any) {
+          Journal.mark(`session:renew:camera-failed:${String(e?.message ?? e)}`).catch(() => {});
+          setVideoOn(false);
+          Foreground.setCameraActive(false).catch(() => {});
+        }
+      }
       // The link from scratch: the offering side makes it, the other
       // asks for it.
       if (politeRef.current) sig.sendSignal({ kind: 'renegotiate' });
       else attachPeer(true);
-      if (renew.video) setTimeout(() => { turnVideoBackOnRef.current?.(); }, 300);
       return;
     }
     // The microphone is not opened here: the session opens it when the
@@ -4137,7 +4143,10 @@ export default function App() {
     if (Date.now() - renewedAt.current < RENEW_GAP_MS) return;
     renewedAt.current = Date.now();
     Journal.mark(`session:renew:${why}`).catch(() => { /* noop */ });
-    const carried = { audio: old.isAudioEnabled(), video: old.isVideoEnabled(), hushed: old.isHushed() };
+    const carried = {
+      audio: old.isAudioEnabled(), video: old.isVideoEnabled(),
+      front: old.isFrontCamera(), hushed: old.isHushed(),
+    };
     old.leaveChannel();
     sessionRef.current = null;
     await enterChannel(carried);
