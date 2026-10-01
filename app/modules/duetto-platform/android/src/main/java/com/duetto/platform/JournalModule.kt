@@ -83,6 +83,13 @@ class JournalModule(private val ctx: ReactApplicationContext) :
         promise.resolve(true)
     }
 
+    /** The picture, out and in, and what holds it: see Journal.video. */
+    @ReactMethod
+    fun video(out: String, inn: String, bwe: String, limit: String, cap: String, promise: Promise) {
+        Journal.video(out, inn, bwe, limit, cap)
+        promise.resolve(true)
+    }
+
     @ReactMethod
     fun road(loss: String, peerLoss: String, jitter: String, rtt: String,
              vLoss: String, vPeerLoss: String, promise: Promise) {

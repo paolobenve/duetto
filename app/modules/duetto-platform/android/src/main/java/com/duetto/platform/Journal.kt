@@ -76,6 +76,8 @@ object Journal {
         "loss", "peerLoss", "jitter", "rtt", "vLoss", "vPeerLoss",
         // how loud the voice is, going out and coming in: see voice()
         "micLevel", "rxLevel",
+        // the picture, going out and coming in, and what holds it: see video()
+        "vOut", "vIn", "bwe", "vLimit", "vCap",
     )
     val HEADER = COLUMNS.joinToString("\t")
     fun day(now: Long): String = dayFormat.format(Date(now - DAY_TURNS_AT_MS))
@@ -205,6 +207,11 @@ object Journal {
     @Volatile private var vPeerLoss = ""
     @Volatile private var micLevel = ""
     @Volatile private var rxLevel = ""
+    @Volatile private var vOut = ""
+    @Volatile private var vIn = ""
+    @Volatile private var bwe = ""
+    @Volatile private var vLimit = ""
+    @Volatile private var vCap = ""
 
     /**
      * How loud the voice is, in dBFS averaged over the last stretch: our
@@ -214,6 +221,17 @@ object Journal {
      */
     fun voice(mic: String, rx: String) {
         micLevel = mic; rxLevel = rx
+    }
+
+    /**
+     * The picture: what goes out (size, frames, kbit/s), what comes in,
+     * the bandwidth WebRTC thinks there is towards the other phone, what
+     * holds the encoder back, and our balancing ceiling, if any. Asked
+     * for when, after a change of network, the Edge went on sending a
+     * stamp over a clean wifi until the channel was entered again.
+     */
+    fun video(out: String, inn: String, bwe: String, limit: String, cap: String) {
+        vOut = out; vIn = inn; this.bwe = bwe; vLimit = limit; vCap = cap
     }
 
     fun road(loss: String, peerLoss: String, jitter: String, rtt: String,
@@ -505,6 +523,11 @@ object Journal {
             values["vPeerLoss"] = vPeerLoss
             values["micLevel"] = micLevel
             values["rxLevel"] = rxLevel
+            values["vOut"] = vOut
+            values["vIn"] = vIn
+            values["bwe"] = bwe
+            values["vLimit"] = vLimit
+            values["vCap"] = vCap
             values["net"] = network(ctx)
             if (minutes >= 0) values["min"] = String.format(Locale.US, "%.1f", minutes)
             if (dCpu >= 0) values["cpu"] = dCpu / 1000

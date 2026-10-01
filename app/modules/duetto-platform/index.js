@@ -289,6 +289,9 @@ export const Journal = isAndroid && NativeJournal
           String(jitter ?? ''), String(rtt ?? ''), String(vLoss ?? ''), String(vPeerLoss ?? '')),
       /** how loud the voice is, out and in, in dBFS: '' for unknown */
       voice: (mic, rx) => call(NativeJournal, 'voice', String(mic ?? ''), String(rx ?? '')),
+      /** the picture out and in, the estimated bandwidth, the limit, our ceiling: '' for unknown */
+      video: (out, inn, bwe, limit, cap) => call(NativeJournal, 'video', String(out ?? ''),
+        String(inn ?? ''), String(bwe ?? ''), String(limit ?? ''), String(cap ?? '')),
       /** A line right now, to mark a moment that counts. */
       mark: (why) => call(NativeJournal, 'mark', String(why)),
       /** the level really heard, in percent: it goes on the periodic line */

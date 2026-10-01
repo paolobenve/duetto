@@ -169,6 +169,8 @@ declare module 'duetto-platform' {
     using(mic: boolean, peerMic: boolean, peerVideo: boolean): Promise<boolean>;
     /** what the road loses, six cells on every line; '' where unknown */
     voice(mic: string, rx: string): Promise<boolean>;
+    /** the picture out and in, the estimated bandwidth, the limit, our ceiling; '' where unknown */
+    video(out: string, inn: string, bwe: string, limit: string, cap: string): Promise<boolean>;
     road(loss: string, peerLoss: string, jitter: string, rtt: string,
       vLoss: string, vPeerLoss: string): Promise<boolean>;
     mark(why: string): Promise<boolean>;

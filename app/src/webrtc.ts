@@ -1890,6 +1890,17 @@ export class ChannelSession {
       this.events.onVideoStats?.(out);
       this.weighVideo((out.out?.kbps ?? 0) + (out.in?.kbps ?? 0));
       this.weighBalance(out.out?.kbps ?? null, out.in?.kbps ?? null);
+      // The picture for the journal: after a change of network the
+      // Edge went on sending a stamp until the channel was entered
+      // again, and only the debugging log knew why.
+      const pic = (v?: { w: number; h: number; fps: number; kbps: number | null }) =>
+        v && v.w > 0 ? `${v.w}x${v.h}@${v.fps} ${v.kbps ?? '?'}k` : '';
+      const avail = Number(pairStat?.availableOutgoingBitrate);
+      Journal.video(pic(out.out), pic(out.in),
+        avail > 0 ? String(Math.round(avail / 1000)) : '',
+        out.out ? limit : '',
+        this.balanceCap !== null ? String(Math.round(this.balanceCap / 1000)) : '')
+        .catch(() => { /* noop */ });
 
       // One line in the log now and then is enough: the rest is under
       // the controls.
@@ -1955,6 +1966,8 @@ export class ChannelSession {
       this.balanceCap = next;
       log('balance: giving way,', Math.round(next / 1000), 'kbit/s ceiling',
         `(sending ${outKbps}, receiving ${inKbps})`);
+      Journal.mark(`balance:down:${Math.round(next / 1000)}k:out=${outKbps}:in=${inKbps}`)
+        .catch(() => { /* noop */ });
       this.applyBalance();
       return;
     }
@@ -1967,6 +1980,8 @@ export class ChannelSession {
       this.balanceCap = next >= profile.maxBitrate ? null : next;
       log('balance: climbing back,',
         this.balanceCap === null ? 'ceiling gone' : `${Math.round(next / 1000)} kbit/s`);
+      Journal.mark(`balance:up:${this.balanceCap === null ? 'none'
+        : `${Math.round(next / 1000)}k`}:out=${outKbps}:in=${inKbps}`).catch(() => { /* noop */ });
       this.applyBalance();
       return;
     }
