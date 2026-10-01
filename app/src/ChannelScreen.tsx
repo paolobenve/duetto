@@ -2470,12 +2470,14 @@ function StatsLine({
           ) : null}
           {battery || network ? (
             <>
+              {waitSaid ? <Text style={styles.stats}>·</Text> : null}
               <Text style={styles.stats}>{t('channel.you')}</Text>
               <StatusMarks battery={battery} net={network} tone="#c9d2de" />
             </>
           ) : null}
           {peerBattery || peerNet ? (
             <>
+              {waitSaid || battery || network ? <Text style={styles.stats}>·</Text> : null}
               <Text style={styles.stats}>{t('channel.theOther')}</Text>
               <StatusMarks battery={peerBattery} net={peerNet} tone="#c9d2de" />
             </>
