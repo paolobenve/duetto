@@ -30,6 +30,7 @@ import {
   VideoIcon, MicrophoneIcon, BellIcon, BellRingingIcon, LeaveIcon,
   SettingsIcon, FrontCameraIcon, BackCameraIcon,
   SpeakerIcon, EarpieceIcon, HeadphonesIcon, BluetoothIcon,
+  CarBatteryIcon, ChargingIcon, WifiIcon, MobileDataIcon,
 } from './Icons';
 
 /**
@@ -1102,13 +1103,22 @@ export default function ChannelScreen(props: Props) {
    * not arrive and the speaker is shown, which is the normal case on
    * coming into the channel.
    */
+  /**
+   * They do not hear us: listening off, the volume at zero, or a call of
+   * their own. Their output crossed out, as our own button is when we
+   * hush ours; their microphone has a mark of its own beside it.
+   */
+  const peerDeaf = peerState.busy === true || (peerState.volume != null && peerState.volume <= 0);
   const peerMark = React.useCallback((size: number, background: string) => {
     const where = (peerState.output as AudioRoute) ?? 'SPEAKER_PHONE';
     const Icon = OUTPUT_ICON[where] ?? OUTPUT_ICON.SPEAKER_PHONE;
     // The background is what lets the crossing-out bar stand apart from
     // the drawing: it changes with whatever the mark rests on.
-    return <Icon size={size} color="#e6ebf1" off={!peerState.audio} background={background} />;
-  }, [peerState.output, peerState.audio]);
+    return <Icon size={size} color="#e6ebf1" off={peerDeaf} background={background} />;
+  }, [peerState.output, peerDeaf]);
+  const peerMicMark = React.useCallback((size: number, background: string) => (
+    <MicrophoneIcon size={size} color="#e6ebf1" off={!peerState.audio} background={background} />
+  ), [peerState.audio]);
   /**
    * The level with its two halves: "25%×2.5=62%" - the phone's knob,
    * Duetto's gain, what is really heard. With diagnostics on one wants
@@ -1132,12 +1142,13 @@ export default function ChannelScreen(props: Props) {
 
   const peerBadge = React.useMemo(() => (
     <>
+      {peerState.audio ? null : peerMicMark(13, '#1b1d21')}
       {peerMark(13, '#1b1d21')}
       {showStats && peerState.volume != null ? (
         <Text style={styles.pillVolume}>{dbText(peerState.volume)}</Text>
       ) : null}
     </>
-  ), [peerMark, showStats, peerState.volume]);
+  ), [peerMark, peerMicMark, peerState.audio, showStats, peerState.volume]);
 
   /** Where the sound comes out HERE, as `peerMark` does for theirs. */
   const ownOutputMark = React.useCallback((size: number, background: string) => {
@@ -1298,35 +1309,29 @@ export default function ChannelScreen(props: Props) {
             openInto={openInto}
             onEnterAlways={onEnterAlways}
             connectionName={connectionName}
+            // Everything about them under their name, on one line:
+            // microphone, output - crossed out when they do not hear us -
+            // how loud they hear us, and with the diagnostics their
+            // battery and network. Ours on a line of our own, lower down;
+            // our microphone and output are the buttons already.
             peerMark={
-              <View style={styles.cardMarkCol}>
-                {/* The two output marks flank the voices alone - theirs
-                    before "hears you", mine after "you hear" - and the
-                    batteries sit on a line of their own underneath. */}
-                <View style={styles.cardMarkRow}>
-                  {peerMark(17, '#0b0e14')}
-                  {showStats ? (
-                    <SplitLine
-                      style={[styles.cardVolume, styles.cardVolumeWrap]}
-                      text={[
-                        // "you hear" is on the scale beside: said once
-                        peerState.volume != null
-                          ? t('channel.hearsYou', { pct: levelText(peerState.volume, peerState.volSys, peerState.gain) })
-                          : '',
-                      ].filter(Boolean).join(' · ')}
-                    />
-                  ) : null}
-                  {/* Our own output mark stood here too: the output
-                      button says it already. */}
-                </View>
-                {showStats && (battery || peerState.battery) ? (
-                  <SplitLine
-                    style={[styles.cardVolume, styles.cardVolumeWrap]}
-                    text={batteryLine(battery, peerState.battery, network, peerState.net)}
-                  />
+              <View style={styles.cardMarkRow}>
+                {peerMicMark(17, '#0b0e14')}
+                {peerMark(17, '#0b0e14')}
+                {showStats && !peerDeaf && peerState.volume != null ? (
+                  <Text style={styles.cardVolume}>
+                    {levelText(peerState.volume, peerState.volSys, peerState.gain)}
+                  </Text>
                 ) : null}
+                {showStats ? <StatusMarks battery={peerState.battery} net={peerState.net} /> : null}
               </View>
             }
+            ownMarks={showStats && (battery || network) ? (
+              <View style={styles.cardMarkRow}>
+                <Text style={styles.cardVolume}>{t('channel.you')}</Text>
+                <StatusMarks battery={battery} net={network} />
+              </View>
+            ) : null}
             peerPresent={peerPresent}
             peerDetached={peerDetached}
             peerTornDown={peerTornDown}
@@ -2073,8 +2078,10 @@ function PresenceCard(props: {
   peerTornDown?: boolean;
   /** a swipe out of the recents, or the phone */
   peerTornDownBy?: 'phone' | 'recents';
-  /** the mark of their audio output, at the summary's size */
+  /** what is theirs - microphone, output, battery, network - under their name */
   peerMark: React.ReactNode;
+  /** what is ours - battery, network - on a line of its own lower down */
+  ownMarks?: React.ReactNode;
   /** the name given to this connection, if there is more than one */
   connectionName?: string;
 }) {
@@ -2198,6 +2205,7 @@ function PresenceCard(props: {
       </Text>
       {/* Our own call: said here, where the silence is felt. */}
       {onCall ? <Text style={styles.cardOnCall}>{t('channel.onPhoneCall')}</Text> : null}
+      {linked && props.ownMarks ? <View style={styles.cardOwn}>{props.ownMarks}</View> : null}
       {/* The pair broken from the other side: nothing here can bring
           them back, and waiting would be waiting for nobody. */}
       {pairBroken ? (
@@ -2258,30 +2266,24 @@ function netWord(n: string | null | undefined): string {
   return n === 'wifi' ? ` ${t('channel.onWifi')}` : n === 'mobile' ? ` ${t('channel.onMobile')}` : '';
 }
 
-/**
- * A line made of pieces joined by " · ", which breaks between the
- * pieces when it does not fit on one line - "you 63% on wifi" above,
- * "the other 80%" below - instead of wherever the width runs out, in
- * the middle of one of them.
- *
- * It is laid out once as a single line; if that takes more than one,
- * the separators become line breaks. It stays broken while the words
- * are at least that long, so that a figure changing does not make it
- * jump back and forth.
- */
-function SplitLine({ text, style }: { text: string; style: any }) {
-  const [splitFrom, setSplitFrom] = useState(Infinity);
-  const pieces = text.split(' · ');
-  const split = pieces.length > 1 && text.length >= splitFrom;
+/** Battery with its figure, the bolt on the charger, the network: one row of marks. */
+function StatusMarks({ battery, net }: {
+  battery?: { percent: number; charging: boolean } | null;
+  net?: string | null;
+}) {
+  if (!battery && net !== 'wifi' && net !== 'mobile') return null;
   return (
-    <Text
-      style={style}
-      numberOfLines={split ? pieces.length * 2 : 2}
-      onTextLayout={(e) => {
-        if (!split && pieces.length > 1 && e.nativeEvent.lines.length > 1) setSplitFrom(text.length);
-      }}>
-      {split ? pieces.join('\n') : text}
-    </Text>
+    <View style={styles.statusMarks}>
+      {battery ? (
+        <>
+          <CarBatteryIcon size={15} color="#9aa4b0" />
+          <Text style={styles.cardVolume}>{battery.percent}%</Text>
+          {battery.charging ? <ChargingIcon size={14} color="#9aa4b0" /> : null}
+        </>
+      ) : null}
+      {net === 'wifi' ? <WifiIcon size={15} color="#9aa4b0" />
+        : net === 'mobile' ? <MobileDataIcon size={15} color="#9aa4b0" /> : null}
+    </View>
   );
 }
 
@@ -2783,6 +2785,8 @@ const styles = StyleSheet.create({
   cardTiny: { color: '#4a5462', fontSize: 12, marginTop: 10 },
   cardMark: { marginTop: 12 },
   cardMarkRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  statusMarks: { flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 6 },
+  cardOwn: { marginTop: 14 },
   cardVolume: { color: '#7d8794', fontSize: 13 },
   /** two lines at most, rather than cut or shrunk to nothing */
   cardVolumeWrap: { flexShrink: 1, textAlign: 'center' },

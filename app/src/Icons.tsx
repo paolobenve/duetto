@@ -297,3 +297,61 @@ export function SettingsIcon(p: Props) {
     </Base>
   );
 }
+
+/**
+ * The status marks of the channel card: battery, charger, network.
+ *
+ * Words used to say them - "57% not charging on wifi" for each of the
+ * two - and the line broke in two or three. A mark each keeps the
+ * whole on one line: the level is in the figure beside it, so the
+ * battery is the outline every driver knows, a car's, with its two
+ * poles.
+ */
+export function CarBatteryIcon(p: Props) {
+  const c = p.color ?? '#fff';
+  return (
+    <Base {...p}>
+      <Rect x={2.5} y={7.5} width={19} height={12.5} rx={2} stroke={c} strokeWidth={STROKE} />
+      <Line x1={6} y1={7.5} x2={6} y2={4.5} stroke={c} strokeWidth={STROKE + 0.6} strokeLinecap="round" />
+      <Line x1={18} y1={7.5} x2={18} y2={4.5} stroke={c} strokeWidth={STROKE + 0.6} strokeLinecap="round" />
+      <Line x1={6.5} y1={13.75} x2={10} y2={13.75} stroke={c} strokeWidth={STROKE} strokeLinecap="round" />
+      <Line x1={14} y1={13.75} x2={17.5} y2={13.75} stroke={c} strokeWidth={STROKE} strokeLinecap="round" />
+      <Line x1={15.75} y1={12} x2={15.75} y2={15.5} stroke={c} strokeWidth={STROKE} strokeLinecap="round" />
+    </Base>
+  );
+}
+
+/** On the charger: a bolt. */
+export function ChargingIcon(p: Props) {
+  const c = p.color ?? '#fff';
+  return (
+    <Base {...p}>
+      <Path d="M13.5 2.5L5.5 13.5h6l-1 8 8-11h-6z" stroke={c} strokeWidth={STROKE} strokeLinejoin="round" />
+    </Base>
+  );
+}
+
+/** On a wifi: three arcs over a point. */
+export function WifiIcon(p: Props) {
+  const c = p.color ?? '#fff';
+  return (
+    <Base {...p}>
+      <Path d="M2.5 9a14 14 0 0119 0M5.8 12.5a9.4 9.4 0 0112.4 0M9.1 16a4.6 4.6 0 015.8 0"
+        stroke={c} strokeWidth={STROKE} strokeLinecap="round" />
+      <Circle cx={12} cy={19.5} r={1.3} fill={c} />
+    </Base>
+  );
+}
+
+/** On mobile data: the four rising bars of the signal. */
+export function MobileDataIcon(p: Props) {
+  const c = p.color ?? '#fff';
+  return (
+    <Base {...p}>
+      <Line x1={4.5} y1={20} x2={4.5} y2={16.5} stroke={c} strokeWidth={STROKE + 0.6} strokeLinecap="round" />
+      <Line x1={9.5} y1={20} x2={9.5} y2={13} stroke={c} strokeWidth={STROKE + 0.6} strokeLinecap="round" />
+      <Line x1={14.5} y1={20} x2={14.5} y2={9} stroke={c} strokeWidth={STROKE + 0.6} strokeLinecap="round" />
+      <Line x1={19.5} y1={20} x2={19.5} y2={4.5} stroke={c} strokeWidth={STROKE + 0.6} strokeLinecap="round" />
+    </Base>
+  );
+}
