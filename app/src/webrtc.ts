@@ -275,6 +275,14 @@ export class ChannelSession {
    * way, must leave the video on rather than switch it off for good.
    */
   private peerWatching = true;
+  /**
+   * The other side hears us: listening on, a volume above zero, not in
+   * another call. Like `peerWatching`, it starts at `true` and only an
+   * explicit word brings it down: an older build does not say it.
+   */
+  private peerHears = true;
+  /** what the audio sender was last set to: sending or not */
+  private voiceSent: boolean | null = null;
   /** `degradationPreference` is written once, never while running */
   private degradationSet = false;
   /** the last samples, to work out the real bitrate between two reads */
@@ -525,9 +533,17 @@ export class ChannelSession {
       }
       const rich = this.richAudio();
       params.encodings[0].maxBitrate = rich ? AUDIO_RICH : AUDIO_PLAIN;
+      const send = this.voiceWanted();
+      params.encodings[0].active = send;
       await sender.setParameters(params);
       log('audio:', rich ? '64 kbit/s ceiling' : '32 kbit/s ceiling',
-        !this.cfg.richerAudio && rich ? '(because of the video)' : '');
+        !this.cfg.richerAudio && rich ? '(because of the video)' : '',
+        send ? '' : '(not sent)');
+      if (send !== this.voiceSent) {
+        this.voiceSent = send;
+        Journal.mark(`voice-sent:${send ? 'yes' : `no:${this.voiceHeldWhy()}`}`)
+          .catch(() => { /* noop */ });
+      }
     } catch (e) {
       log('cannot apply the audio quality:', String(e));
     }
@@ -546,6 +562,24 @@ export class ChannelSession {
    * on Android. The option that reopened the microphone with exactly
    * the same parameters was removed rather than left there pretending.
    */
+  /**
+   * Whether our voice is worth sending.
+   *
+   * A muted microphone still sent silence - a packet every 400 ms with
+   * DTX - and a voice nobody was hearing went out whole: packets that
+   * keep the radio awake for nothing. The sender is paused, not
+   * emptied: no renegotiation, and it starts again at once.
+   */
+  private voiceWanted(): boolean {
+    return this.audioDesired && !this.hushed && this.peerHears;
+  }
+
+  private voiceHeldWhy(): string {
+    if (!this.audioDesired) return 'mic-off';
+    if (this.hushed) return 'in-call';
+    return 'not-heard';
+  }
+
   private richAudio(): boolean {
     return this.cfg.richerAudio || this.heavyVideo;
   }
@@ -719,6 +753,8 @@ export class ChannelSession {
         // The wish held back during the repair is granted now: see
         // applyPeerWatching.
         this.applyPeerWatching();
+        // And whether our voice goes out, on the sender of this link.
+        this.applyAudioQuality();
         this.logSelectedPath(pc);
         /**
          * The path is read at once, and again a second later.
@@ -787,6 +823,7 @@ export class ChannelSession {
       pc.addTrack(audioTrack, this.localStream as MediaStream);
       // The ceiling has to be set again on every new connection: the
       // parameters live on the sender, which is born with it.
+      this.voiceSent = null;
       setTimeout(() => this.applyAudioQuality(), 0);
     }
 
@@ -1040,6 +1077,12 @@ export class ChannelSession {
         net: typeof msg.net === 'string' ? msg.net : null,
       });
       this.setPeerWatching(msg.watching !== false);
+      // Not heard: listening off or at zero, or in another call.
+      const hears = msg.busy !== true && !(typeof msg.volume === 'number' && msg.volume <= 0);
+      if (hears !== this.peerHears) {
+        this.peerHears = hears;
+        this.applyAudioQuality();
+      }
       // What the other side declares goes into the judgement on
       // "is their video there": when it changes, that has to be redone.
       this.reportRemoteVideo();
@@ -1987,6 +2030,7 @@ export class ChannelSession {
     this.audioDesired = !this.audioDesired;
     const track = this.localStream?.getAudioTracks()[0];
     if (track) track.enabled = this.audioDesired && !this.hushed;
+    this.applyAudioQuality();
     this.broadcastState();
     return this.audioDesired;
   }
@@ -1997,6 +2041,7 @@ export class ChannelSession {
     this.hushed = on;
     const track = this.localStream?.getAudioTracks()[0];
     if (track) track.enabled = this.audioDesired && !this.hushed;
+    this.applyAudioQuality();
     this.applyGain();
     this.broadcastState();
   }
