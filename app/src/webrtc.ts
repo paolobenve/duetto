@@ -205,7 +205,8 @@ const STALL_CURES = 2;
 const BALANCE_RATIO = 3;
 const BALANCE_TICKS = 10;
 const BALANCE_STEP = 0.7;
-const BALANCE_CLIMB = 1.5;
+/** No balancing for this long after a link made again: see balanceHoldUntil. */
+const BALANCE_HOLD_MS = 120_000;
 const BALANCE_FLOOR = 200_000;
 
 const AUDIO_PLAIN = 32000;
@@ -750,6 +751,11 @@ export class ChannelSession {
       if (this.statsTimer && isCurrent()) this.startStats();
       this.events.onConnectionState?.(pc.connectionState);
       if (pc.connectionState === 'connected') {
+        if (this.linkedOnce) {
+          this.balanceHoldUntil = Date.now() + BALANCE_HOLD_MS;
+          Journal.mark('balance:hold').catch(() => { /* noop */ });
+        }
+        this.linkedOnce = true;
         // The wish held back during the repair is granted now: see
         // applyPeerWatching.
         this.applyPeerWatching();
@@ -1923,6 +1929,19 @@ export class ChannelSession {
    */
   /** The balancing ceiling on the outgoing video, in bit/s; null = none. */
   private balanceCap: number | null = null;
+  /**
+   * No balancing until then: the two minutes after a link made again.
+   *
+   * A change of network - ours or theirs - leaves one side receiving
+   * little for a while, the wifi at the edge of its reach, the
+   * bandwidth estimate climbing back. The balancing read that as an
+   * imbalance and lowered the other picture too, three steps, for a
+   * minute and a half after the first had recovered: worse for both,
+   * better for nobody.
+   */
+  private balanceHoldUntil = 0;
+  /** a link has been made in this channel: the next one is made again */
+  private linkedOnce = false;
   private lopsidedTicks = 0;
   private evenTicks = 0;
 
@@ -1954,6 +1973,17 @@ export class ChannelSession {
       }
       return;
     }
+    if (Date.now() < this.balanceHoldUntil) {
+      this.lopsidedTicks = 0;
+      this.evenTicks = 0;
+      if (this.balanceCap !== null) {
+        // A ceiling chosen before the change was chosen against
+        // another road.
+        this.balanceCap = null;
+        this.applyBalance();
+      }
+      return;
+    }
     const profile = VIDEO_PROFILES[this.cfg.videoQuality] ?? VIDEO_PROFILES.better;
     if (outKbps > inKbps * BALANCE_RATIO) {
       this.evenTicks = 0;
@@ -1976,12 +2006,12 @@ export class ChannelSession {
       this.evenTicks += 1;
       if (this.evenTicks < BALANCE_TICKS) return;
       this.evenTicks = 0;
-      const next = Math.round(this.balanceCap * BALANCE_CLIMB);
-      this.balanceCap = next >= profile.maxBitrate ? null : next;
-      log('balance: climbing back,',
-        this.balanceCap === null ? 'ceiling gone' : `${Math.round(next / 1000)} kbit/s`);
-      Journal.mark(`balance:up:${this.balanceCap === null ? 'none'
-        : `${Math.round(next / 1000)}k`}:out=${outKbps}:in=${inKbps}`).catch(() => { /* noop */ });
+      // All at once, not a step at a time: the other side keeping up
+      // again means the reason is gone, and the climb in steps left the
+      // ceiling standing half a minute after.
+      this.balanceCap = null;
+      log('balance: the other side keeps up, ceiling gone');
+      Journal.mark(`balance:up:none:out=${outKbps}:in=${inKbps}`).catch(() => { /* noop */ });
       this.applyBalance();
       return;
     }
@@ -2619,6 +2649,8 @@ export class ChannelSession {
   /** Leaves the channel and releases microphone and camera. */
   leaveChannel() {
     this.detachPeer();
+    this.linkedOnce = false;
+    this.balanceHoldUntil = 0;
     this.localStream?.getTracks().forEach((t) => t.stop());
     this.localStream = null;
     this.events.onLocalStream?.(null);
