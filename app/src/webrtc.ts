@@ -202,8 +202,6 @@ const STALL_CURES = 2;
  * climbs back a step at a time, and at the profile's own ceiling it is
  * taken away altogether.
  */
-/** How long the voice goes on out, unneeded, before it is paused. */
-const VOICE_PAUSE_MS = 60_000;
 const BALANCE_RATIO = 3;
 const BALANCE_TICKS = 10;
 const BALANCE_STEP = 0.7;
@@ -285,9 +283,6 @@ export class ChannelSession {
   private peerHears = true;
   /** what the audio sender was last set to: sending or not */
   private voiceSent: boolean | null = null;
-  /** the minute of grace before the voice is paused: see voiceWanted */
-  private voicePauseTimer: ReturnType<typeof setTimeout> | null = null;
-  private voicePauseDue = false;
   /** `degradationPreference` is written once, never while running */
   private degradationSet = false;
   /** the last samples, to work out the real bitrate between two reads */
@@ -538,7 +533,7 @@ export class ChannelSession {
       }
       const rich = this.richAudio();
       params.encodings[0].maxBitrate = rich ? AUDIO_RICH : AUDIO_PLAIN;
-      const send = this.voiceGoesOut();
+      const send = this.voiceWanted();
       params.encodings[0].active = send;
       await sender.setParameters(params);
       log('audio:', rich ? '64 kbit/s ceiling' : '32 kbit/s ceiling',
@@ -577,32 +572,6 @@ export class ChannelSession {
    */
   private voiceWanted(): boolean {
     return this.audioDesired && !this.hushed && this.peerHears;
-  }
-
-  /**
-   * Whether the sender is left running, after the minute of grace.
-   *
-   * Paused, the sender takes the microphone with it: with nothing to
-   * send, WebRTC stops recording. That saves the battery in a long
-   * silence, but a microphone given back loses its precedence over
-   * other apps; a muting of a few seconds is not worth that. So the
-   * pause comes after a minute of not being needed, and the voice
-   * starts again at once.
-   */
-  private voiceGoesOut(): boolean {
-    if (this.voiceWanted()) {
-      if (this.voicePauseTimer) { clearTimeout(this.voicePauseTimer); this.voicePauseTimer = null; }
-      this.voicePauseDue = false;
-      return true;
-    }
-    if (!this.voicePauseDue && !this.voicePauseTimer) {
-      this.voicePauseTimer = setTimeout(() => {
-        this.voicePauseTimer = null;
-        this.voicePauseDue = true;
-        this.applyAudioQuality();
-      }, VOICE_PAUSE_MS);
-    }
-    return !this.voicePauseDue;
   }
 
   private voiceHeldWhy(): string {
@@ -2650,7 +2619,6 @@ export class ChannelSession {
   /** Leaves the channel and releases microphone and camera. */
   leaveChannel() {
     this.detachPeer();
-    if (this.voicePauseTimer) { clearTimeout(this.voicePauseTimer); this.voicePauseTimer = null; }
     this.localStream?.getTracks().forEach((t) => t.stop());
     this.localStream = null;
     this.events.onLocalStream?.(null);
