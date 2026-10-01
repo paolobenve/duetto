@@ -206,8 +206,11 @@ const STALL_CURES = 2;
  */
 /** The estimate stuck: under this, for this long, on a clean road. */
 const BWE_STUCK_BELOW = 300_000;
-const BWE_STUCK_MS = 45_000;
-const BWE_STUCK_CURES = 2;
+const BWE_STUCK_MS = 12_000;
+/** In the half minute after a link made again: see stuckQuickUntil. */
+const BWE_STUCK_QUICK_MS = 4_000;
+const BWE_QUICK_WINDOW_MS = 30_000;
+const BWE_STUCK_CURES = 3;
 /** Above this the estimate is free again, and the cures count from zero. */
 const BWE_STUCK_CLEAR = 1_000_000;
 const BALANCE_RATIO = 3;
@@ -761,6 +764,7 @@ export class ChannelSession {
       if (pc.connectionState === 'connected') {
         if (this.linkedOnce) {
           this.balanceHoldUntil = Date.now() + BALANCE_HOLD_MS;
+          this.stuckQuickUntil = Date.now() + BWE_QUICK_WINDOW_MS;
           Journal.mark('balance:hold').catch(() => { /* noop */ });
         }
         this.linkedOnce = true;
@@ -1948,12 +1952,21 @@ export class ChannelSession {
    * either way, forty milliseconds, two and a half megabits coming in.
    * It did not climb back by itself; leaving and entering again, by
    * hand, brought 720p in seconds. This is the same cure, without the
-   * hand: after 45 seconds stuck on a clean road the link is made
-   * again - twice at most, the wait doubling, then written down and
-   * left alone until the estimate is above a megabit again.
+   * hand: after 12 seconds stuck on a clean road - 4 in the half minute
+   * after a link made again - the link is made again: three times at
+   * most, the wait doubling, then written down and left alone until the
+   * estimate is above a megabit again.
    */
   private stuckSince = 0;
   private stuckCures = 0;
+  /**
+   * Until then the stuck estimate is judged in seconds, not tens of
+   * seconds: the half minute after a link made again - a change of
+   * network, ours or theirs. A link made at the very moment of the
+   * change can fall to the floor at once, the new wifi not settled yet,
+   * and it is a second one, made moments later, that climbs.
+   */
+  private stuckQuickUntil = 0;
   private weighStuckEstimate(avail: number | null, limit: string,
     rttMs: number | null, lossPct: number | null) {
     if (avail !== null && avail > BWE_STUCK_CLEAR) {
@@ -1967,7 +1980,8 @@ export class ChannelSession {
     if (!stuck) { this.stuckSince = 0; return; }
     const now = Date.now();
     if (!this.stuckSince) { this.stuckSince = now; return; }
-    if (now - this.stuckSince < BWE_STUCK_MS * 2 ** this.stuckCures) return;
+    const base = now < this.stuckQuickUntil ? BWE_STUCK_QUICK_MS : BWE_STUCK_MS;
+    if (now - this.stuckSince < base * 2 ** this.stuckCures) return;
     this.stuckSince = 0;
     if (this.stuckCures >= BWE_STUCK_CURES) {
       if (this.stuckCures === BWE_STUCK_CURES) {

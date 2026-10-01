@@ -2350,6 +2350,21 @@ export default function App() {
         // appeared: the escape from the relay earns a fresh try.
         relayRetried.current = false;
         recoveryBegunAt.current = Date.now();
+        /**
+         * A new network: the link is made again from scratch, on both
+         * sides. Only a new link starts the bandwidth estimate afresh: a
+         * change of road kept the mobile data's, and on the wifi again
+         * the other phone went on sending a stamp - once nailed to the
+         * floor for over two minutes. The price is a black picture for
+         * a few seconds instead of a still one. A twitch of the same
+         * network is handled as before.
+         */
+        if (what === 'arrived') {
+          Journal.mark('network:rebuild').catch(() => { /* noop */ });
+          if (politeRef.current) sig.sendSignal({ kind: 'renegotiate' });
+          else attachPeerRef.current?.(true);
+          return;
+        }
         Journal.mark('network:ice-restart').catch(() => { /* noop */ });
         if (politeRef.current) sig.sendSignal({ kind: 'renegotiate' });
         else sessionRef.current?.restartIce();
