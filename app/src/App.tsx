@@ -4157,14 +4157,10 @@ export default function App() {
     if (Date.now() - micRenewedAt.current >= RENEW_GAP_MS) {
       micRenewedAt.current = Date.now();
       Journal.mark(`session:renew-mic:${why}`).catch(() => { /* noop */ });
-      try {
-        if (!(await old.renewMic())) Journal.mark('session:renew-mic:no-track').catch(() => {});
-      } catch (e: any) {
-        Journal.mark(`session:renew-mic:failed:${String(e?.message ?? e)}`).catch(() => {});
-      }
       // The old link goes on this side too, so that the new one is born
-      // here with the new track: the offering side makes it, and the
-      // other, having let go of its own, asks for it.
+      // here - and every new link opens a fresh microphone track (see
+      // buildPeer): the offering side makes it, and the other, having
+      // let go of its own, asks for it.
       attachPeer(true);
       if (politeRef.current) signalingRef.current?.sendSignal({ kind: 'renegotiate' });
       return;
