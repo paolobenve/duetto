@@ -206,15 +206,11 @@ const STALL_CURES = 2;
  */
 /** The estimate stuck: under this share of the profile's ceiling, for this long, on a clean road. */
 const BWE_STUCK_BELOW_SHARE = 0.4;
-const BWE_STUCK_MS = 12_000;
-/** In the half minute after a link made again: see stuckQuickUntil. */
+/** In the half minute after a new road or link: see stuckQuickUntil. */
 const BWE_STUCK_QUICK_MS = 4_000;
 const BWE_QUICK_WINDOW_MS = 30_000;
-const BWE_STUCK_CURES = 3;
 /** Above 80% of the ceiling for this long: free again, see freeSince. */
 const BWE_FREE_MS = 30_000;
-/** Still down this long after the verdict "it is the road": one more try. */
-const BWE_REAL_RETRY_MS = 60_000;
 /** Above this share of the ceiling the estimate is free again, and the cures count from zero. */
 const BWE_STUCK_CLEAR_SHARE = 0.8;
 const BALANCE_RATIO = 3;
@@ -1958,12 +1954,12 @@ export class ChannelSession {
    * minutes, a 320x176 stamp going out over a clean road: no losses
    * either way, forty milliseconds, two and a half megabits coming in.
    * It did not climb back by itself; leaving and entering again, by
-   * hand, brought 720p in seconds. This is the same cure, without the
-   * hand: an estimate under 40% of the profile's ceiling for 12 seconds
-   * on a clean road - 4 in the half minute after a new road or a new
-   * link - and the link is made again: three times at most, the wait
-   * doubling, then written down and left alone until the estimate is
-   * above 80% of the ceiling again.
+   * hand, brought 720p in seconds. A rebuild without the hand: in the
+   * half minute after a new road or a new link, an estimate under 40%
+   * of the profile's ceiling for 4 seconds on a clean road makes the
+   * link again - once for each episode, which a change of network or
+   * 30 seconds above 80% of the ceiling starts again. It is not all of
+   * what leaving and entering does, and often not enough: see below.
    */
   private stuckSince = 0;
   private stuckCures = 0;
@@ -1977,14 +1973,6 @@ export class ChannelSession {
   private stuckQuickUntil = 0;
   /** since when the estimate has been above 80% of the ceiling */
   private freeSince = 0;
-  /** the estimate at the last rebuild, to tell a stuck one from the road's own */
-  private cureFrom: number | null = null;
-  /** the road the last rebuild was asked on: levels compare only on it */
-  private cureRoad: string | null = null;
-  /** when the low level was judged the road's own; 0 = not judged */
-  private realAt = 0;
-  /** the one retry after that verdict has been spent */
-  private realRetried = false;
   /**
    * A phone changed network, this one or the other: the estimate is
    * watched closely for a while, and the cure starts a new episode -
@@ -2015,48 +2003,21 @@ export class ChannelSession {
     const stuck = this.isVideoEnabled() && this.videoShouldFlow()
       && avail !== null && avail < ceiling * BWE_STUCK_BELOW_SHARE && limit === 'bandwidth'
       && lossPct !== null && lossPct < 1 && rttMs !== null && rttMs < 200;
-    if (!stuck) { this.stuckSince = 0; return; }
+    // Only in the half minute after a new road or a new link: there a
+    // rebuild once brought a moto from 110 kbit/s to 4.9 Mbit/s. Outside
+    // it the rebuilds cured nothing - five in four minutes, on a clean
+    // wifi, every new link back under 300 kbit/s within seconds, while
+    // leaving the channel and entering again put it right at once - and
+    // each one blacked the picture out.
+    if (!stuck || now >= this.stuckQuickUntil) { this.stuckSince = 0; return; }
     if (!this.stuckSince) { this.stuckSince = now; return; }
-    /**
-     * Judged to be the road's own level: one more try after a minute
-     * still down - the phone may have been carried from the weak edge
-     * of the wifi to its heart without the road changing name - and
-     * then no more until a new episode.
-     */
-    if (this.realAt) {
-      if (this.realRetried || now - this.realAt < BWE_REAL_RETRY_MS) return;
-      this.realRetried = true;
-      this.realAt = 0;
-      this.stuckSince = 0;
-      this.cure(avail!, rttMs, lossPct);
-      return;
-    }
-    const base = now < this.stuckQuickUntil ? BWE_STUCK_QUICK_MS : BWE_STUCK_MS;
-    if (now - this.stuckSince < base * 2 ** Math.min(this.stuckCures, BWE_STUCK_CURES)) return;
+    if (now - this.stuckSince < BWE_STUCK_QUICK_MS) return;
     this.stuckSince = 0;
-    /**
-     * The same level after a link made again, on the same road: it is
-     * the road. Back on a weak wifi the moto's estimate came back to
-     * 500 kbit/s after every rebuild, six milliseconds, no losses - all
-     * the wifi had there. Two tries are given (the first link after a
-     * change can fall before the network settles), or one after the
-     * minute's retry; then the same level within a factor of two, on
-     * the road it was measured on, stops the cure. A figure from
-     * another road proves nothing: 441 kbit/s on the mobile data and
-     * 410 on the wifi just after looked alike by chance.
-     */
-    const sameRoad = this.cureRoad !== null && this.cureRoad === this.lastRoad;
-    if (sameRoad && this.cureFrom !== null && (this.stuckCures >= 2 || this.realRetried)
-        && avail! <= this.cureFrom * 2 && avail! >= this.cureFrom / 2) {
-      if (!this.realRetried) this.realAt = now;
-      else this.stuckCures = BWE_STUCK_CURES + 1;
-      Journal.mark(`bwe:stuck:real:${Math.round(avail! / 1000)}k`).catch(() => { /* noop */ });
-      return;
-    }
-    if (this.stuckCures >= BWE_STUCK_CURES) {
-      if (this.stuckCures === BWE_STUCK_CURES) {
+    // One try for each episode: a second one never helped.
+    if (this.stuckCures >= 1) {
+      if (this.stuckCures === 1) {
         this.stuckCures += 1;
-        Journal.mark('bwe:stuck:giving-up').catch(() => { /* noop */ });
+        Journal.mark(`bwe:stuck:after-cure:${Math.round(avail! / 1000)}k`).catch(() => { /* noop */ });
       }
       return;
     }
@@ -2065,8 +2026,6 @@ export class ChannelSession {
 
   private cure(avail: number, rttMs: number | null, lossPct: number | null) {
     this.stuckCures += 1;
-    this.cureFrom = avail;
-    this.cureRoad = this.lastRoad;
     Journal.mark(`bwe:stuck:rebuild:${Math.round(avail / 1000)}k:rtt=${rttMs}:loss=${lossPct}`)
       .catch(() => { /* noop */ });
     log('bandwidth estimate stuck on a clean road: making the link again');
@@ -2076,10 +2035,6 @@ export class ChannelSession {
   /** The count of tries and the verdict start again: freed, or a new network. */
   private newStuckEpisode() {
     this.stuckCures = 0;
-    this.cureFrom = null;
-    this.cureRoad = null;
-    this.realAt = 0;
-    this.realRetried = false;
   }
 
 
