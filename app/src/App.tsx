@@ -1384,6 +1384,9 @@ export default function App() {
   const toggleOutputMute = useCallback(() => {
     setOutputMuted((m) => {
       Journal.mark(m ? 'output:on' : 'output:hushed').catch(() => { /* noop */ });
+      // Heard on both phones, as the microphone's: the cue goes out on
+      // a player of its own, so a hushed output does not hush it.
+      cue(m ? 'cue_output_on' : 'cue_output_off');
       return !m;
     });
   }, []);
@@ -1466,6 +1469,7 @@ export default function App() {
    */
   const peerStateRef = useRef<{
     audio?: boolean; video?: boolean; camera?: string; output?: string; busy?: boolean;
+    volume?: number;
   }>({});
 
   /**
@@ -3903,6 +3907,15 @@ export default function App() {
             Journal.mark(`peer-audio:${st.audio ? 'on' : 'off'}`).catch(() => {});
             if (heard && inChannelRef.current) cue(st.audio ? 'cue_audio_on' : 'cue_audio_off');
           }
+          // Their listening hushed or back: the volume they hear us at
+          // goes to zero and comes back. Not a call of theirs, which has
+          // its own telling.
+          const deafBefore = typeof before.volume === 'number' && before.volume <= 0;
+          const deafNow = typeof st.volume === 'number' && st.volume <= 0;
+          if (deafBefore !== deafNow && !before.busy && !st.busy
+              && heard && inChannelRef.current) {
+            cue(deafNow ? 'cue_output_off' : 'cue_output_on');
+          }
           if (before.video !== st.video) {
             Journal.mark(`peer-video:${st.video ? 'on' : 'off'}`).catch(() => {});
             if (heard && inChannelRef.current) cue(st.video ? 'cue_video_on' : 'cue_video_off');
@@ -3919,7 +3932,7 @@ export default function App() {
           }
           peerStateRef.current = {
             audio: st.audio, video: st.video, camera: st.camera, output: st.output,
-            busy: st.busy,
+            busy: st.busy, volume: st.volume,
           };
           // If they send us their state they are back, whatever the
           // countdown was saying: without stopping it, a moment later

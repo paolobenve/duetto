@@ -253,6 +253,16 @@ def cue_audio_on():
 def cue_audio_off():
     return glissando(520.0, 330.0)
 
+# The listening - our output hushed and back: the microphone's slides a
+# whole tone higher, kin to them and told apart.
+TONE = 2 ** (2 / 12)
+
+def cue_output_on():
+    return glissando(330.0 * TONE, 520.0 * TONE)
+
+def cue_output_off():
+    return glissando(520.0 * TONE, 330.0 * TONE)
+
 # The camera turning round: a tone that goes up and comes back, one
 # quick turn, unlike the one-way slides of on and off.
 def cue_camera():
@@ -341,6 +351,8 @@ if __name__ == '__main__':
     save('cue_video_off', cue_video_off())
     save('cue_audio_on', cue_audio_on())
     save('cue_audio_off', cue_audio_off())
+    save('cue_output_on', cue_output_on())
+    save('cue_output_off', cue_output_off())
     save('cue_camera', cue_camera())
     save('cue_enter', cue_enter())
     save('cue_leave', cue_leave())
