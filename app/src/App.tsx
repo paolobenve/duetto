@@ -2359,6 +2359,7 @@ export default function App() {
          */
         if (what === 'arrived') {
           sessionRef.current?.noteNetworkChange();
+          sig.sendSignal({ kind: 'netChanged' });
           Journal.mark('network:ice-restart').catch(() => { /* noop */ });
           if (politeRef.current) sig.sendSignal({ kind: 'renegotiate', road: true });
           else sessionRef.current?.restartIce();
@@ -3401,6 +3402,10 @@ export default function App() {
             if (!sess) return;
             // They have been left without a connection and ask us to
             // make the offer again: it is up to us, the offering side.
+            if (msg.kind === 'netChanged') {
+              sessionRef.current?.noteNetworkChange();
+              return;
+            }
             if (msg.kind === 'renegotiate') {
               if (politeRef.current || !inChannelRef.current) return;
               // A change of road does not demolish anything: the voice

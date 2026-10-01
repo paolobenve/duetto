@@ -108,6 +108,12 @@ export type SignalMessage =
    * app ignores the field and rebuilds, which is what it always did.
    */
   | { kind: 'renegotiate'; road?: boolean }
+  /**
+   * This phone has just changed network: the other watches its own
+   * bandwidth estimate closely, a new episode for the stuck-estimate
+   * cure. An older app ignores it.
+   */
+  | { kind: 'netChanged' }
   /** short packets, for both: `permanent` when it was written in the settings */
   | { kind: 'shortPackets'; on: boolean; permanent?: boolean }
   // Video quality belongs to both: changing it on one phone changes it
