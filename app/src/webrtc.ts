@@ -1611,6 +1611,8 @@ export class ChannelSession {
       const stats = await pc.getStats();
       const out: VideoStats = {};
       let limit = '?';
+      let framesEncodedSum = 0;
+      let framesEncodedSeen = false;
 
       /**
        * The path is read again at every sample, not only on connecting.
@@ -1775,44 +1777,10 @@ export class ChannelSession {
           };
           this.lastOutbound = { ts: r.timestamp, bytes: r.bytesSent };
           limit = r.qualityLimitationReason ?? '?';
-          // The encoder standing still with the video on: black over
-          // there - but only when the frames should really be going
-          // out. With the other side not watching, our own app behind
-          // or no camera alive, it is us holding them back, and there
-          // is nothing to put right: the cure - rebuilding the whole
-          // channel - was being applied every eight seconds for hours
-          // to a channel with nothing wrong with it, and on the other
-          // phone the link was made and unmade in the middle of a
-          // conversation that was audio only.
-          const fe = Number(r.framesEncoded ?? 0);
-          if (this.isVideoEnabled() && this.videoShouldFlow()) {
-            if (fe > this.lastFramesEncoded) {
-              this.lastFramesEncoded = fe;
-              this.stalledSince = 0;
-              this.stallCures = 0;
-            } else if (!this.stalledSince) {
-              this.stalledSince = Date.now();
-            } else if (Date.now() - this.stalledSince > STALL_CURE_MS * 2 ** this.stallCures) {
-              // And a cure that does not work is not repeated for ever:
-              // twice, the wait doubling, then it is written down and
-              // left alone until the frames move again.
-              this.stalledSince = Date.now();
-              if (this.stallCures >= STALL_CURES) {
-                this.stalledSince = 0;
-                this.lastFramesEncoded = fe;
-                Journal.mark('video:stalled:giving-up').catch(() => { /* noop */ });
-                log('video encoder still standing still: leaving the channel alone');
-              } else {
-                this.stallCures += 1;
-                log('video encoder standing still: putting the channel right');
-                this.ensureVideoSending('stalled').catch(() => { /* noop */ });
-              }
-            }
-          } else {
-            this.lastFramesEncoded = fe;
-            this.stalledSince = 0;
-            this.stallCures = 0;
-          }
+          // Counted for the stall watch below, every video report of
+          // the tick together: see there.
+          framesEncodedSum += Number(r.framesEncoded ?? 0);
+          framesEncodedSeen = true;
         } else if (r.type === 'inbound-rtp') {
           out.in = {
             w: r.frameWidth ?? 0,
@@ -1823,6 +1791,56 @@ export class ChannelSession {
           this.lastInbound = { ts: r.timestamp, bytes: r.bytesReceived };
         }
       });
+
+      /**
+       * The encoder standing still with the video on: black over there -
+       * but only when the frames should really be going out. With the
+       * other side not watching, our own app behind or no camera alive,
+       * it is us holding them back, and there is nothing to put right:
+       * the cure was being applied every eight seconds for hours to a
+       * channel with nothing wrong with it.
+       *
+       * The frames of every video report of the tick, together, and a
+       * count that goes down taken as a new start: after a renegotiation
+       * the sender's report can begin again from zero, or an old one can
+       * linger beside the new, and either was read as an encoder
+       * standing still - eight false alarms in two minutes, on a video
+       * going out at thirty frames a second.
+       */
+      if (framesEncodedSeen) {
+        const fe = framesEncodedSum;
+        if (this.isVideoEnabled() && this.videoShouldFlow()) {
+          if (fe < this.lastFramesEncoded) {
+            this.lastFramesEncoded = fe;
+            this.stalledSince = 0;
+          } else if (fe > this.lastFramesEncoded) {
+            this.lastFramesEncoded = fe;
+            this.stalledSince = 0;
+            this.stallCures = 0;
+          } else if (!this.stalledSince) {
+            this.stalledSince = Date.now();
+          } else if (Date.now() - this.stalledSince > STALL_CURE_MS * 2 ** this.stallCures) {
+            // And a cure that does not work is not repeated for ever:
+            // twice, the wait doubling, then it is written down and
+            // left alone until the frames move again.
+            this.stalledSince = Date.now();
+            if (this.stallCures >= STALL_CURES) {
+              this.stalledSince = 0;
+              this.lastFramesEncoded = fe;
+              Journal.mark('video:stalled:giving-up').catch(() => { /* noop */ });
+              log('video encoder still standing still: leaving the channel alone');
+            } else {
+              this.stallCures += 1;
+              log('video encoder standing still: putting the channel right');
+              this.ensureVideoSending('stalled').catch(() => { /* noop */ });
+            }
+          }
+        } else {
+          this.lastFramesEncoded = fe;
+          this.stalledSince = 0;
+          this.stallCures = 0;
+        }
+      }
 
       /**
        * What the channel costs: everything that goes in and out over
