@@ -3826,7 +3826,10 @@ export default function App() {
     if (!s || !s.hasPeer()) { attachPeer(true, 'outage-no-link'); return; }
 
     rtcLog('network back: restarting ICE without rebuilding');
-    if (politeRef.current) signalingRef.current?.sendSignal({ kind: 'renegotiate', why: 'outage' });
+    // A change of road, said as such: asked without the word, the other
+    // side rebuilt the whole link - a black picture at every return of
+    // the server, the very thing this restart is here to spare.
+    if (politeRef.current) signalingRef.current?.sendSignal({ kind: 'renegotiate', road: true, why: 'outage' });
     else s.restartIce();
 
     clearRecovery();
