@@ -1001,7 +1001,7 @@ export class ChannelSession {
     if (dir === 'sendrecv' && cur === 'sendrecv' && why === 'on') return;
     if (this.polite) {
       log('renegotiation asked of them');
-      this.signaling.sendSignal({ kind: 'renegotiate', why: `video-${why}` });
+      this.signaling.sendSignal({ kind: 'renegotiate', offer: true, why: `video-${why}` });
     } else {
       await this.negotiate();
     }
@@ -1090,7 +1090,7 @@ export class ChannelSession {
     else this.shortThisTime = on;
     Journal.mark(`packets:${this.ptime()}ms${permanent ? '' : ':this-time'}`).catch(() => { /* noop */ });
     if (!this.pc) return;
-    if (this.polite) this.signaling.sendSignal({ kind: 'renegotiate', why: 'packets' });
+    if (this.polite) this.signaling.sendSignal({ kind: 'renegotiate', offer: true, why: 'packets' });
     else await this.negotiate();
   }
 
@@ -1119,6 +1119,19 @@ export class ChannelSession {
       new RegExp(`(a=rtpmap:${pt} opus\\/48000\\/2[^\\r\\n]*\\r?\\n)`),
       (all) => `${all}a=fmtp:${pt} ${shaped('')}\r\n`,
     );
+  }
+
+  /**
+   * A new offer on the link as it stands, asked by the other side: they
+   * cannot offer, and asking for it used to rebuild the whole link - a
+   * black picture to open a video channel. With no link, false: the
+   * caller builds one.
+   */
+  async offerAgain(why: string): Promise<boolean> {
+    if (!this.pc || this.polite) return false;
+    Journal.mark(`link:renegotiate:asked:${why}`).catch(() => { /* noop */ });
+    await this.negotiate();
+    return true;
   }
 
   /** The link's own state, for the app; null with no link. */

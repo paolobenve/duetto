@@ -107,7 +107,12 @@ export type SignalMessage =
    * voice goes on carrying it while the new road is tried. An older
    * app ignores the field and rebuilds, which is what it always did.
    */
-  | { kind: 'renegotiate'; road?: boolean; why?: string }
+  /**
+   * `offer`: a renegotiation of the link as it stands - a video channel
+   * to open, packets to change - not a rebuild. An older app ignores it
+   * and rebuilds, as it always did.
+   */
+  | { kind: 'renegotiate'; road?: boolean; offer?: boolean; why?: string }
   /**
    * This phone has just changed network: the other watches its own
    * bandwidth estimate closely, a new episode for the stuck-estimate

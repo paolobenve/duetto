@@ -3473,7 +3473,10 @@ export default function App() {
               // A change of road does not demolish anything: the voice
               // keeps going while the new road is tried.
               if (msg.road) sessionRef.current?.restartIce();
-              else attachPeer(true, `asked:${msg.why ?? '?'}`);
+              else if (msg.offer) {
+                const done = await sessionRef.current?.offerAgain(msg.why ?? '?').catch(() => false);
+                if (!done) attachPeer(true, `asked:${msg.why ?? '?'}`);
+              } else attachPeer(true, `asked:${msg.why ?? '?'}`);
               return;
             }
             // They changed the quality: it holds for both, so that one
