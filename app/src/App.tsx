@@ -3782,8 +3782,19 @@ export default function App() {
     if (!sig || !s) return;
     // Every forced rebuild says who asked for it: one at 08:45, on a
     // settled wifi, could not be told apart from the others.
-    if (force) Journal.mark(`link:rebuild:${why ?? '?'}`).catch(() => { /* noop */ });
-    if (force || !s.isPeerHealthy()) s.detachPeer();
+    if (force) {
+      Journal.mark(`link:rebuild:${why ?? '?'}`).catch(() => { /* noop */ });
+      s.detachPeer();
+    } else if (!s.isPeerHealthy()) {
+      const st = s.linkState();
+      // Disconnected is a road being changed, not a death: a word from
+      // the server arriving in those seconds demolished a link that was
+      // mending - a black picture at 08:54:53. Its own ladder rebuilds
+      // it if it does not come back.
+      if (st === 'disconnected') return;
+      if (st) Journal.mark(`link:rebuild:unhealthy:${st}`).catch(() => { /* noop */ });
+      s.detachPeer();
+    }
 
     // The answering side rebuilds nothing on its own initiative: it
     // waits for the offer, which will bring the connection to life at

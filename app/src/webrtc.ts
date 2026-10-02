@@ -1121,6 +1121,11 @@ export class ChannelSession {
     );
   }
 
+  /** The link's own state, for the app; null with no link. */
+  linkState(): string | null {
+    return this.pc?.connectionState ?? null;
+  }
+
   private async negotiate() {
     const pc = this.pc;
     if (!pc) return;
