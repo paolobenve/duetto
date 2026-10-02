@@ -100,6 +100,8 @@ const uiLog = logger('[duetto-ui]');
 
 /** The last death already told to the other phone: it is not repeated. */
 const DEATH_TOLD_KEY = 'duetto.death.told';
+/** A return of the other side to the server, given this long before the link is rebuilt. */
+const PEER_BACK_WAIT_MS = 4_000;
 /** A session renewed in place at most this often: see renewSession. */
 const RENEW_GAP_MS = 120_000;
 /**
@@ -816,6 +818,8 @@ export default function App() {
    * old one - battery, network, output, gain, level, watching.
    */
   const [sessionGen, setSessionGen] = useState(0);
+  /** the wait after the other side came back to the server: see onPeerJoined */
+  const peerBackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** the last renewal, for not renewing more than once in two minutes */
   const renewedAt = useRef(0);
   /** the last microphone renewed alone, the trial before the whole session */
@@ -3200,7 +3204,37 @@ export default function App() {
             stopWaiting();
             peerActiveRef.current = mode === 'active';
             forgetLeaveCue();
-            if (mode === 'active' && inChannelRef.current) { attachPeer(true); cue('cue_enter'); }
+            if (mode === 'active' && inChannelRef.current) {
+              cue('cue_enter');
+              /**
+               * Back on the server is not back from scratch.
+               *
+               * A change of network brings the other phone back to the
+               * server once or twice - the socket again, then the
+               * mobile-data lane - and every return used to rebuild the
+               * link: two black pictures in two seconds for a link that
+               * was carrying, whose road the other side was already
+               * changing. Now a return is given four seconds: a link up
+               * and packets arriving mean it was only the server, and it
+               * is left alone; nothing arriving means they started
+               * afresh - an update, a restart - and the link is made
+               * again. Two returns close together are one.
+               */
+              if (peerBackTimer.current) clearTimeout(peerBackTimer.current);
+              if (!sessionRef.current?.hasPeer()) { attachPeer(true); return; }
+              peerBackTimer.current = setTimeout(() => {
+                peerBackTimer.current = null;
+                if (!inChannelRef.current || !peerActiveRef.current) return;
+                const sess = sessionRef.current;
+                if (sess?.hasPeer() && connStateRef.current === 'connected'
+                    && sess.mediaArrivedWithin(2000)) {
+                  Journal.mark('peer-back:link-kept').catch(() => { /* noop */ });
+                  return;
+                }
+                Journal.mark('peer-back:rebuild').catch(() => { /* noop */ });
+                attachPeer(true);
+              }, PEER_BACK_WAIT_MS);
+            }
           },
 
           onPeerLeft: (why, at) => {
