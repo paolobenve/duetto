@@ -933,10 +933,12 @@ export default function App() {
   }, [reportsOpen]);
   /**
    * The output hushed by its button: the level stays where it was, and
-   * comes back at the second touch. Not kept between one entry and the
-   * next - one enters and hears.
+   * comes back at the second touch. Kept from one entry to the next, as
+   * the microphone is: see noteHowItIs.
    */
   const [outputMuted, setOutputMuted] = useState(false);
+  const outputMutedRef = useRef(false);
+  outputMutedRef.current = outputMuted;
   /**
    * They left on purpose; their line did not drop.
    *
@@ -1398,7 +1400,8 @@ export default function App() {
     : 0;
   /** the gain actually put on the voice */
   const appliedGain = boost;
-  useEffect(() => { if (!inChannel) setOutputMuted(false); }, [inChannel]);
+  // Remembered like the microphone, at every touch: see noteHowItIs.
+  useEffect(() => { if (inChannel) noteHowItIsRef.current?.(); }, [outputMuted]);
   const toggleOutputMute = useCallback(() => {
     setOutputMuted((m) => {
       Journal.mark(m ? 'output:on' : 'output:hushed').catch(() => { /* noop */ });
@@ -4131,6 +4134,11 @@ export default function App() {
     // entry could win and find nothing. Not before the reading is done.
     await howItWasLoading.current;
     const before = mine ? howItWas.current[mine] : undefined;
+    // The listening: as it was left, however long ago - like the
+    // microphone. It used to come back on at every entry.
+    const hushedBefore = before?.output === false;
+    if (hushedBefore) Journal.mark('resume-output-hushed').catch(() => { /* noop */ });
+    setOutputMuted(hushedBefore);
     // The microphone: always off when the connection says so, else as
     // it was left the last time.
     if (cfg.micOnEntry === 'off') {
@@ -4281,7 +4289,8 @@ export default function App() {
    * when the app disappeared", and that is worth restoring whenever it
    * comes back.
    */
-  type HowItWas = { when: number; video: boolean; audio: boolean; live?: boolean };
+  /** `output`: the listening on (false: hushed by its button) */
+  type HowItWas = { when: number; video: boolean; audio: boolean; output?: boolean; live?: boolean };
   const howItWas = useRef<Record<string, HowItWas>>({});
 
   /**
@@ -4301,6 +4310,7 @@ export default function App() {
       when: Date.now(),
       video: s ? s.isVideoEnabled() === true : videoOnRef.current,
       audio: s ? s.isAudioEnabled() !== false : audioOnRef.current,
+      output: !outputMutedRef.current,
       live: true,
     };
     saveHowItWasRef.current?.();
@@ -4371,6 +4381,7 @@ export default function App() {
         when: Date.now(),
         video: sessionRef.current?.isVideoEnabled() === true,
         audio: sessionRef.current?.isAudioEnabled() !== false,
+        output: !outputMutedRef.current,
         live: false,
       };
       saveHowItWas();
