@@ -3453,6 +3453,15 @@ export default function App() {
               applyAudio(msg.richer, false);
               return;
             }
+            // They made their link from scratch while ours is the old
+            // one: ours goes too, and a new one - with a fresh
+            // microphone track - receives their offer. See
+            // fromNewPeerConnection.
+            if (msg.kind === 'desc' && msg.type === 'offer' && inChannelRef.current
+                && sess.fromNewPeerConnection(msg.sdp)) {
+              Journal.mark('link:rebuilt-for-peer').catch(() => { /* noop */ });
+              sess.detachPeer();
+            }
             // If they rebuilt before us, their offer arrives when we
             // still have nothing to receive it with and would be thrown
             // away: first we get ready, then we deal with it.

@@ -490,6 +490,32 @@ export class ChannelSession {
     this.events.onLocalStream?.(stream);
   }
 
+  /** the session id of the other side's last description: see fromNewPeerConnection */
+  private remoteSessionId: string | null = null;
+
+  /** The "o=" line's session id: a new RTCPeerConnection, a new id. */
+  private static sessionId(sdp: string): string | null {
+    return /^o=\S+ (\S+) /m.exec(sdp)?.[1] ?? null;
+  }
+
+  /**
+   * This offer comes from a link the other side has just made from
+   * scratch, while ours is the old one.
+   *
+   * The side that answers took the new offer onto its old link and
+   * kept it - and every picture stuck on the floor came after that:
+   * the other phone back after an update, a rebuild of theirs, the
+   * links made again after the server dropped. What cured it each time
+   * was a new link on this side too: leaving and entering, the session
+   * renewed, the microphone renewed with the link. The app makes ours
+   * again before answering.
+   */
+  fromNewPeerConnection(sdp: string): boolean {
+    if (!this.pc || !this.remoteSessionId) return false;
+    const id = ChannelSession.sessionId(sdp);
+    return id !== null && id !== this.remoteSessionId;
+  }
+
   /**
    * A new microphone track in place of the old one, the session kept.
    *
@@ -1194,6 +1220,7 @@ export class ChannelSession {
       await pc.setRemoteDescription(
         new RTCSessionDescription({ type: msg.type, sdp: this.shapeRemote(msg.sdp) }),
       );
+      this.remoteSessionId = ChannelSession.sessionId(msg.sdp);
       // Something came back: whatever was waiting, it is not stalled.
       this.offerPendingSince = 0;
       await this.flushCandidates();
@@ -2722,6 +2749,7 @@ export class ChannelSession {
   detachPeer() {
     // From here on, every build started earlier is stale goods.
     this.generation += 1;
+    this.remoteSessionId = null;
     this.creating = null;
     if (this.statsTimer) { clearInterval(this.statsTimer); this.statsTimer = null; }
     if (this.statsBeat) { this.statsBeat(); this.statsBeat = null; }
