@@ -355,3 +355,14 @@ export function MobileDataIcon(p: Props) {
     </Base>
   );
 }
+
+/** The wait: a small clock, where the word took half the line. */
+export function ClockIcon(p: Props) {
+  const c = p.color ?? '#fff';
+  return (
+    <Base {...p}>
+      <Circle cx={12} cy={12} r={8.5} stroke={c} strokeWidth={STROKE} />
+      <Path d="M12 7.5V12l3 2" stroke={c} strokeWidth={STROKE} strokeLinecap="round" strokeLinejoin="round" />
+    </Base>
+  );
+}

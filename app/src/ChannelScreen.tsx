@@ -30,7 +30,7 @@ import {
   VideoIcon, MicrophoneIcon, BellIcon, BellRingingIcon, LeaveIcon,
   SettingsIcon, FrontCameraIcon, BackCameraIcon,
   SpeakerIcon, EarpieceIcon, HeadphonesIcon, BluetoothIcon,
-  CarBatteryIcon, ChargingIcon, WifiIcon, MobileDataIcon,
+  CarBatteryIcon, ChargingIcon, WifiIcon, MobileDataIcon, ClockIcon,
 } from './Icons';
 
 /**
@@ -2257,6 +2257,27 @@ export function statsLineCount(stats: VideoStats, hasVideo = false, withBattery 
 /** One line of the box is this tall; the height comes from the count. */
 export const STATS_LINE_H = 18;
 
+/**
+ * A row of words and marks that shrinks to the width it has, as the
+ * text lines beside it do (adjustsFontSizeToFit): the marks made it a
+ * row of pieces, and a row does not shrink by itself - it ran off the
+ * screen.
+ */
+function FitRow({ children }: { children: React.ReactNode }) {
+  const [room, setRoom] = useState(0);
+  const [need, setNeed] = useState(0);
+  const scale = room > 0 && need > room ? room / need : 1;
+  return (
+    <View style={styles.fitRowBox} onLayout={(e) => setRoom(e.nativeEvent.layout.width)}>
+      <View
+        style={[styles.statsRow, { transform: [{ scale }] }]}
+        onLayout={(e) => setNeed(e.nativeEvent.layout.width)}>
+        {children}
+      </View>
+    </View>
+  );
+}
+
 /** Battery with its figure, the bolt on the charger, the network: one row of marks. */
 function StatusMarks({ battery, net, tone = '#9aa4b0' }: {
   battery?: { percent: number; charging: boolean } | null;
@@ -2412,6 +2433,16 @@ function StatsLine({
         ? t('channel.delayDown', { ms: downDelay })
         : '';
 
+  // The same wait without its word, for the line of marks: a clock
+  // stands in front of it.
+  const waitShort = totalOnly && together != null
+    ? `${together}ms`
+    : upDelay != null && downDelay != null
+      ? `\u2191${upDelay} \u2193${downDelay}ms`
+      : downDelay != null
+        ? `\u2193${downDelay}ms`
+        : '';
+
   const path = stats.path === 'local'
     ? t('channel.pathLocal')
     : stats.path === 'direct'
@@ -2464,25 +2495,28 @@ function StatsLine({
       {hasVideo && (waitSaid || battery || peerBattery) ? (
         // Batteries and networks as marks, the same as the card's: in
         // words the line shrank until it could not be read.
-        <View style={styles.statsRow}>
-          {waitSaid ? (
-            <Text style={styles.stats} numberOfLines={1}>{waitSaid}</Text>
+        <FitRow>
+          {waitShort ? (
+            <>
+              <ClockIcon size={12} color="#c9d2de" />
+              <Text style={styles.stats} numberOfLines={1}>{waitShort}</Text>
+            </>
           ) : null}
           {battery || network ? (
             <>
-              {waitSaid ? <Text style={styles.stats}>·</Text> : null}
+              {waitShort ? <Text style={styles.stats}>·</Text> : null}
               <Text style={styles.stats}>{t('channel.you')}</Text>
               <StatusMarks battery={battery} net={network} tone="#c9d2de" />
             </>
           ) : null}
           {peerBattery || peerNet ? (
             <>
-              {waitSaid || battery || network ? <Text style={styles.stats}>·</Text> : null}
+              {waitShort || battery || network ? <Text style={styles.stats}>·</Text> : null}
               <Text style={styles.stats}>{t('channel.theOther')}</Text>
               <StatusMarks battery={peerBattery} net={peerNet} tone="#c9d2de" />
             </>
           ) : null}
-        </View>
+        </FitRow>
       ) : null}
     </>
   );
@@ -2781,6 +2815,7 @@ const styles = StyleSheet.create({
   cardMark: { marginTop: 12 },
   cardMarkRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   statsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 16 },
+  fitRowBox: { alignSelf: 'stretch', alignItems: 'center', overflow: 'visible' },
   statusMarks: { flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 6 },
   cardOwn: { marginTop: 14 },
   cardVolume: { color: '#7d8794', fontSize: 13 },
