@@ -818,6 +818,8 @@ export default function App() {
    * old one - battery, network, output, gain, level, watching.
    */
   const [sessionGen, setSessionGen] = useState(0);
+  /** counts the changes of network: the network mark is read again at each */
+  const [netTick, setNetTick] = useState(0);
   /** the wait after the other side came back to the server: see onPeerJoined */
   const peerBackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** the last renewal, for not renewing more than once in two minutes */
@@ -861,7 +863,7 @@ export default function App() {
     const beat = Heartbeat.subscribe(read);
     const sub = AppState.addEventListener('change', (st) => { if (st === 'active') read(); });
     return () => { alive = false; clearInterval(timer); beat(); sub.remove(); };
-  }, [inChannel, cfg?.diagnostics, sessionGen]);
+  }, [inChannel, cfg?.diagnostics, sessionGen, netTick]);
 
   /** the last moment something asked for the controls to be seen */
   const [controlsWakeAt, setControlsWakeAt] = useState(0);
@@ -2337,6 +2339,9 @@ export default function App() {
        * rejoining already restarts everything.
        */
       onNetwork: (what) => {
+        // The network mark under the controls is read again now, not at
+        // the next half minute - and told to the other side with it.
+        setNetTick((n) => n + 1);
         /**
          * The wifi is back in health while the lane is open: the lane
          * closes, but in no hurry - twenty seconds of proven health,
