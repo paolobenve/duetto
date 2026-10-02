@@ -1095,7 +1095,7 @@ export default function App() {
   /** and forgetting a pair, for the same reason */
   const onForgetPairRef = useRef<((id: string) => void) | null>(null);
   /** attachPeer too: the watchdog's beat is born before it */
-  const attachPeerRef = useRef<((force?: boolean) => void) | null>(null);
+  const attachPeerRef = useRef<((force?: boolean, why?: string) => void) | null>(null);
   /**
    * When the last repair of the link was set off, whoever set it off.
    *
@@ -2319,8 +2319,8 @@ export default function App() {
         if (Date.now() - recoveryBegunAt.current < 15_000) return;
         recoveryBegunAt.current = Date.now();
         Journal.mark('heartbeat:peer-sick').catch(() => { /* noop */ });
-        if (politeRef.current) signalingRef.current?.sendSignal({ kind: 'renegotiate' });
-        else attachPeerRef.current?.(true);
+        if (politeRef.current) signalingRef.current?.sendSignal({ kind: 'renegotiate', why: 'heartbeat' });
+        else attachPeerRef.current?.(true, 'heartbeat');
       },
       /**
        * The network changed under our feet: the link goes looking for
@@ -2395,7 +2395,7 @@ export default function App() {
           return;
         }
         Journal.mark('network:ice-restart').catch(() => { /* noop */ });
-        if (politeRef.current) sig.sendSignal({ kind: 'renegotiate' });
+        if (politeRef.current) sig.sendSignal({ kind: 'renegotiate', why: 'network-twitch' });
         else sessionRef.current?.restartIce();
       },
     });
@@ -2430,7 +2430,7 @@ export default function App() {
       tries += 1;
       Journal.mark(`stuck:no-offer:${tries}`).catch(() => { /* noop */ });
       signalingRef.current?.askPresence();
-      if (peerActiveRef.current) signalingRef.current?.sendSignal({ kind: 'renegotiate' });
+      if (peerActiveRef.current) signalingRef.current?.sendSignal({ kind: 'renegotiate', why: 'no-offer' });
     };
     const first = setTimeout(ask, 10_000);
     const again = setInterval(ask, 15_000);
@@ -3224,7 +3224,7 @@ export default function App() {
                * again. Two returns close together are one.
                */
               if (peerBackTimer.current) clearTimeout(peerBackTimer.current);
-              if (!sessionRef.current?.hasPeer()) { attachPeer(true); return; }
+              if (!sessionRef.current?.hasPeer()) { attachPeer(true, 'peer-back-no-link'); return; }
               peerBackTimer.current = setTimeout(() => {
                 peerBackTimer.current = null;
                 if (!inChannelRef.current || !peerActiveRef.current) return;
@@ -3234,8 +3234,7 @@ export default function App() {
                   Journal.mark('peer-back:link-kept').catch(() => { /* noop */ });
                   return;
                 }
-                Journal.mark('peer-back:rebuild').catch(() => { /* noop */ });
-                attachPeer(true);
+                attachPeer(true, 'peer-back');
               }, PEER_BACK_WAIT_MS);
             }
           },
@@ -3469,7 +3468,7 @@ export default function App() {
               // A change of road does not demolish anything: the voice
               // keeps going while the new road is tried.
               if (msg.road) sessionRef.current?.restartIce();
-              else attachPeer(true);
+              else attachPeer(true, `asked:${msg.why ?? '?'}`);
               return;
             }
             // They changed the quality: it holds for both, so that one
@@ -3772,10 +3771,13 @@ export default function App() {
    * and nothing was seen any more until the app was closed: the code
    * found a connection already there and did nothing.
    */
-  const attachPeer = useCallback(async (force = false) => {
+  const attachPeer = useCallback(async (force = false, why?: string) => {
     const sig = signalingRef.current;
     const s = sessionRef.current;
     if (!sig || !s) return;
+    // Every forced rebuild says who asked for it: one at 08:45, on a
+    // settled wifi, could not be told apart from the others.
+    if (force) Journal.mark(`link:rebuild:${why ?? '?'}`).catch(() => { /* noop */ });
     if (force || !s.isPeerHealthy()) s.detachPeer();
 
     // The answering side rebuilds nothing on its own initiative: it
@@ -3821,10 +3823,10 @@ export default function App() {
    */
   const resumeAfterOutage = useCallback(() => {
     const s = sessionRef.current;
-    if (!s || !s.hasPeer()) { attachPeer(true); return; }
+    if (!s || !s.hasPeer()) { attachPeer(true, 'outage-no-link'); return; }
 
     rtcLog('network back: restarting ICE without rebuilding');
-    if (politeRef.current) signalingRef.current?.sendSignal({ kind: 'renegotiate' });
+    if (politeRef.current) signalingRef.current?.sendSignal({ kind: 'renegotiate', why: 'outage' });
     else s.restartIce();
 
     clearRecovery();
@@ -3833,7 +3835,7 @@ export default function App() {
       if (connStateRef.current === 'connected') return;
       if (!inChannelRef.current || !peerActiveRef.current) return;
       rtcLog('the restart was not enough: rebuilding');
-      attachPeer(true);
+      attachPeer(true, 'outage-restart-failed');
     }, 6000);
   }, [attachPeer, clearRecovery]);
 
@@ -3910,11 +3912,11 @@ export default function App() {
               const sig0 = signalingRef.current;
               if (!s0 || !sig0) return;
               recoveryBegunAt.current = Date.now();
-              if (politeRef.current) sig0.sendSignal({ kind: 'renegotiate' });
+              if (politeRef.current) sig0.sendSignal({ kind: 'renegotiate', why: 'failed' });
               else s0.restartIce();
               hardTimer.current = setTimeout(() => {
                 if (connStateRef.current === 'connected') return;
-                if (inChannelRef.current && peerActiveRef.current) attachPeer(true);
+                if (inChannelRef.current && peerActiveRef.current) attachPeer(true, 'failed-hard');
               }, 8000);
             }, FAILED_PATIENCE_MS);
           }
@@ -3938,7 +3940,7 @@ export default function App() {
 
             if (politeRef.current) {
               // We cannot offer: we ask the other side to.
-              signalingRef.current?.sendSignal({ kind: 'renegotiate' });
+              signalingRef.current?.sendSignal({ kind: 'renegotiate', why: 'disconnected' });
             } else {
               await sessionRef.current?.restartIce();
             }
@@ -3946,7 +3948,7 @@ export default function App() {
             hardTimer.current = setTimeout(() => {
               if (connStateRef.current === 'connected') return;
               if (signalingWasDown.current) return;
-              if (inChannelRef.current && peerActiveRef.current) attachPeer(true);
+              if (inChannelRef.current && peerActiveRef.current) attachPeer(true, 'disconnected-hard');
             }, 8000);
             // Only `disconnected` comes this way now - `failed` is the
             // gear timer's alone - and a wobble deserves the longer
@@ -4045,8 +4047,8 @@ export default function App() {
       }
       // The link from scratch: the offering side makes it, the other
       // asks for it.
-      if (politeRef.current) sig.sendSignal({ kind: 'renegotiate' });
-      else attachPeer(true);
+      if (politeRef.current) sig.sendSignal({ kind: 'renegotiate', why: 'session-renew' });
+      else attachPeer(true, 'session-renew');
       return;
     }
     // The microphone is not opened here: the session opens it when the
@@ -4212,8 +4214,8 @@ export default function App() {
       // here - and every new link opens a fresh microphone track (see
       // buildPeer): the offering side makes it, and the other, having
       // let go of its own, asks for it.
-      attachPeer(true);
-      if (politeRef.current) signalingRef.current?.sendSignal({ kind: 'renegotiate' });
+      attachPeer(true, 'renew-mic');
+      if (politeRef.current) signalingRef.current?.sendSignal({ kind: 'renegotiate', why: 'renew-mic' });
       return;
     }
     if (Date.now() - renewedAt.current < RENEW_GAP_MS) return;
@@ -4533,8 +4535,8 @@ export default function App() {
       // Noted for the heartbeat's sake: its medicine and this one are
       // the same, and they must not demolish on each other's toes.
       recoveryBegunAt.current = Date.now();
-      if (politeRef.current) sig.sendSignal({ kind: 'renegotiate' });
-      else attachPeer(true);
+      if (politeRef.current) sig.sendSignal({ kind: 'renegotiate', why: 'net-sick' });
+      else attachPeer(true, 'net-sick');
     };
     const timer = setInterval(check, 5000);
     const beat = Heartbeat.subscribe(check);

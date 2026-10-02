@@ -1001,7 +1001,7 @@ export class ChannelSession {
     if (dir === 'sendrecv' && cur === 'sendrecv' && why === 'on') return;
     if (this.polite) {
       log('renegotiation asked of them');
-      this.signaling.sendSignal({ kind: 'renegotiate' });
+      this.signaling.sendSignal({ kind: 'renegotiate', why: `video-${why}` });
     } else {
       await this.negotiate();
     }
@@ -1090,7 +1090,7 @@ export class ChannelSession {
     else this.shortThisTime = on;
     Journal.mark(`packets:${this.ptime()}ms${permanent ? '' : ':this-time'}`).catch(() => { /* noop */ });
     if (!this.pc) return;
-    if (this.polite) this.signaling.sendSignal({ kind: 'renegotiate' });
+    if (this.polite) this.signaling.sendSignal({ kind: 'renegotiate', why: 'packets' });
     else await this.negotiate();
   }
 
