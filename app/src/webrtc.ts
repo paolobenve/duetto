@@ -1431,6 +1431,37 @@ export class ChannelSession {
    * arrived at all (the answering side). After a good while, that
    * silence is a verdict - and the ordinary medicine applies.
    */
+  /**
+   * Packets from the other side arriving right now: the received bytes
+   * read twice, `ms` apart.
+   *
+   * The sampled counter behind mediaArrivedWithin is read every ten
+   * seconds with the app behind, and a question about the last two
+   * seconds was answered "no" on a link that was carrying - rebuilt for
+   * nothing, a black picture.
+   */
+  async mediaFlowingNow(ms = 1000): Promise<boolean> {
+    const read = async (): Promise<number> => {
+      const pc: any = this.pc;
+      if (!pc) return -1;
+      let bytes = 0;
+      const stats = await pc.getStats();
+      stats.forEach((r: any) => {
+        if (r.type === 'inbound-rtp') bytes += Number(r.bytesReceived ?? 0);
+      });
+      return bytes;
+    };
+    try {
+      const before = await read();
+      if (before < 0) return false;
+      await new Promise((done) => setTimeout(done, ms));
+      const after = await read();
+      return after > before;
+    } catch {
+      return false;
+    }
+  }
+
   /** Bytes from the other side landed here within the last `ms`. */
   mediaArrivedWithin(ms: number): boolean {
     return this.lastMediaAt > 0 && Date.now() - this.lastMediaAt < ms;

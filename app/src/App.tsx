@@ -3230,15 +3230,20 @@ export default function App() {
                */
               if (peerBackTimer.current) clearTimeout(peerBackTimer.current);
               if (!sessionRef.current?.hasPeer()) { attachPeer(true, 'peer-back-no-link'); return; }
-              peerBackTimer.current = setTimeout(() => {
+              peerBackTimer.current = setTimeout(async () => {
                 peerBackTimer.current = null;
                 if (!inChannelRef.current || !peerActiveRef.current) return;
                 const sess = sessionRef.current;
-                if (sess?.hasPeer() && connStateRef.current === 'connected'
-                    && sess.mediaArrivedWithin(2000)) {
+                // Asked of the link itself, now: with the app behind the
+                // sampled counters are ten seconds old and the timer
+                // itself can fire late - a link carrying audio was
+                // rebuilt 45 seconds after the return it answered.
+                if (sess?.hasPeer() && await sess.mediaFlowingNow()) {
                   Journal.mark('peer-back:link-kept').catch(() => { /* noop */ });
                   return;
                 }
+                if (!inChannelRef.current || !peerActiveRef.current) return;
+                if (sessionRef.current !== sess) return;
                 attachPeer(true, 'peer-back');
               }, PEER_BACK_WAIT_MS);
             }
