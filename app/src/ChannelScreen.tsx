@@ -1572,11 +1572,21 @@ export default function ChannelScreen(props: Props) {
         <CircleButton
           covered={covered}
           name={outputMuted ? 'output-off' : 'output'}
-          // On a Bluetooth headset its battery too: the one figure one
-          // checks before walking off with it.
-          label={(outputMuted ? t('buttons.outputOff') : t('buttons.output'))
-            + (btBattery != null ? ` ${btBattery}%` : '')}
-          icon={React.createElement(OUTPUT_ICON[audioRoute] ?? OUTPUT_ICON.SPEAKER_PHONE, {
+          label={outputMuted ? t('buttons.outputOff') : t('buttons.output')}
+          // On a Bluetooth headset its battery too, small, under the
+          // headset's mark inside the button: the one figure one checks
+          // before walking off with it. Beside the word it made the
+          // label too long.
+          icon={btBattery != null ? (
+            <View style={styles.iconWithFigure}>
+              {React.createElement(OUTPUT_ICON[audioRoute] ?? OUTPUT_ICON.SPEAKER_PHONE, {
+                size: 20, off: outputMuted, ...(outputMuted ? {} : ON_LIGHT),
+              })}
+              <Text style={[styles.iconFigure, !outputMuted && styles.iconFigureOnLight]}>
+                {btBattery}%
+              </Text>
+            </View>
+          ) : React.createElement(OUTPUT_ICON[audioRoute] ?? OUTPUT_ICON.SPEAKER_PHONE, {
             off: outputMuted, ...(outputMuted ? {} : ON_LIGHT),
           })}
           active={!outputMuted}
@@ -2828,6 +2838,9 @@ const styles = StyleSheet.create({
   cardTiny: { color: '#4a5462', fontSize: 12, marginTop: 10 },
   cardMark: { marginTop: 12 },
   cardMarkRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  iconWithFigure: { alignItems: 'center', justifyContent: 'center' },
+  iconFigure: { color: '#e6ebf1', fontSize: 9, fontWeight: '700', lineHeight: 10, marginTop: -1 },
+  iconFigureOnLight: { color: '#1e1f22' },
   statsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 16 },
   fitRowBox: { alignSelf: 'stretch', alignItems: 'center', overflow: 'visible' },
   statusMarks: { flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 6 },
