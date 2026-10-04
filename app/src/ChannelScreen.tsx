@@ -1326,12 +1326,20 @@ export default function ChannelScreen(props: Props) {
                 {showStats ? <StatusMarks battery={peerState.battery} net={peerState.net} /> : null}
               </View>
             }
-            ownMarks={showStats && (battery || network) ? (
+            // Ours too, always: with the controls hidden this is the one
+            // place that says whether we can be heard and whether we
+            // hear - the microphone crossed out when off, the output
+            // when hushed, as the buttons say them.
+            ownMarks={(
               <View style={styles.cardMarkRow}>
                 <Text style={styles.cardVolume}>{t('channel.you')}</Text>
-                <StatusMarks battery={battery} net={network} />
+                <MicrophoneIcon size={17} color="#e6ebf1" off={!audioOn} background="#0b0e14" />
+                {React.createElement(OUTPUT_ICON[audioRoute] ?? OUTPUT_ICON.SPEAKER_PHONE, {
+                  size: 17, color: '#e6ebf1', off: outputMuted, background: '#0b0e14',
+                })}
+                {showStats ? <StatusMarks battery={battery} net={network} /> : null}
               </View>
-            ) : null}
+            )}
             peerPresent={peerPresent}
             peerDetached={peerDetached}
             peerTornDown={peerTornDown}
