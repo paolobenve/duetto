@@ -1580,7 +1580,7 @@ export default function ChannelScreen(props: Props) {
           icon={btBattery != null ? (
             <View style={styles.iconWithFigure}>
               {React.createElement(OUTPUT_ICON[audioRoute] ?? OUTPUT_ICON.SPEAKER_PHONE, {
-                size: 20, off: outputMuted, ...(outputMuted ? {} : ON_LIGHT),
+                size: 24, off: outputMuted, ...(outputMuted ? {} : ON_LIGHT),
               })}
               <Text style={[styles.iconFigure, !outputMuted && styles.iconFigureOnLight]}>
                 {btBattery}%
