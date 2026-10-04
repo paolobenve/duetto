@@ -83,6 +83,13 @@ export type ChannelEvents = {
   onRemoteVideo?: (present: boolean) => void;
   /** what is really going out and coming in, to show under the controls */
   onVideoStats?: (st: VideoStats) => void;
+  /**
+   * Their video frames arriving again after a pause - or for the first
+   * time on a track that had been waiting for them. A view built when
+   * the announcement came, before any frame, could stay black for good
+   * with the picture flowing underneath: this is when to build it.
+   */
+  onRemoteVideoFlowing?: () => void;
   /** the whole session should be renewed: see weighGrainyIncoming */
   onSessionRenewWanted?: (why: string) => void;
 };
@@ -802,6 +809,9 @@ export class ChannelSession {
       incoming?.addEventListener?.('unmute', () => {
         log('track resumed:', incoming.kind);
         this.reportRemoteVideo();
+        // The frames are really back: the moment to draw them on a view
+        // of their own - see onRemoteVideoFlowing.
+        if (incoming.kind === 'video') this.events.onRemoteVideoFlowing?.();
       });
     });
 

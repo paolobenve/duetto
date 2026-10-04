@@ -4158,6 +4158,15 @@ export default function App() {
           setPeerState(st);
           setPeerVp9(st.hwVp9 === true);
         },
+        // The frames really arriving: the view is made again on them.
+        // Made when "video on" was announced, before the first frame, it
+        // stayed black with 720p flowing underneath - on 4 October,
+        // for over a minute, until leaving and entering again.
+        onRemoteVideoFlowing: () => {
+          Journal.mark('remote-video:flowing').catch(() => { /* noop */ });
+          setRemoteVideoKey((k) => k + 1);
+          hadRemoteVideo.current = true;
+        },
         onRemoteVideo: (present) => {
           setRemoteHasVideo(present);
           // Only when the video COMES BACK after having been missing.
