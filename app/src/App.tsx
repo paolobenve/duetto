@@ -1427,6 +1427,15 @@ export default function App() {
    * first is the old single choice.
    */
   const btAsked = useRef<Set<string>>(new Set());
+  // A device forgotten in the settings is a device met for the first
+  // time again: the memory of having asked goes with it. It stayed for
+  // the whole session, and the question never came back until the app
+  // was started again.
+  useEffect(() => {
+    for (const id of [...btAsked.current]) {
+      if (!cfg?.btDevices?.[id]) btAsked.current.delete(id);
+    }
+  }, [cfg?.btDevices]);
   useEffect(() => {
     if (!inChannel || !btHere || !cfg || cfg.btDevices?.[btHere.id]) return;
     if (btAsked.current.has(btHere.id)) return;
