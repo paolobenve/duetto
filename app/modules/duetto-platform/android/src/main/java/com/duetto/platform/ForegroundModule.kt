@@ -290,11 +290,24 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
         }
     }
 
-    /** A call from a connection not in use: touched, it opens the app on it. */
+    /**
+     * A call from a connection not in use: touched, it opens the app on
+     * it, and it sounds and buzzes as that connection was set to - empty
+     * words keep the connection in use's.
+     */
     @ReactMethod
-    fun notifyFor(name: String, text: String, pairId: String, promise: Promise) {
+    fun notifyFor(
+        name: String, text: String, pairId: String,
+        vibration: String, sound: String, uri: String, promise: Promise,
+    ) {
         try {
-            Notifier.show(ctx, name, text, pairId)
+            val own = Alerts.stored(ctx)
+            val choice = Alerts.Choice(
+                vibration.ifEmpty { own.vibration },
+                sound.ifEmpty { own.sound },
+                if (sound.isEmpty()) own.uri else uri,
+            )
+            Notifier.show(ctx, name, text, pairId, choice)
             promise.resolve(true)
         } catch (e: Exception) {
             promise.reject("notify_error", e)

@@ -8,7 +8,7 @@
  * <https://www.gnu.org/licenses/>.
  */
 import { Foreground, Journal, Alarm } from 'duetto-platform';
-import { DuoConfig, PairInfo, peerShown } from './config';
+import { DuoConfig, PairInfo, peerShown, alertSoundFor } from './config';
 import { Signaling } from './signaling';
 import { news } from './presence';
 import { alarmLabel } from './alarms';
@@ -76,6 +76,17 @@ export function stopStandby() {
   standing.clear();
 }
 
+/**
+ * How this connection's calls sound and buzz: its own settings, the
+ * ones chosen while it was in use. A connection born before settings
+ * travelled with it has none, and the one in use's are heard.
+ */
+function soundOf(pair: PairInfo) {
+  const s = pair.settings;
+  if (!s) return {};
+  return { vibration: s.alertVibration, sound: s.alertSound, uri: alertSoundFor(s) };
+}
+
 function open(cfg: DuoConfig, pair: PairInfo) {
   const channel = pair.label || '';
   let name = pair.peerName || '';
@@ -106,7 +117,7 @@ function open(cfg: DuoConfig, pair: PairInfo) {
           const text = news.called(who, channel, at);
           log('call from a connection not in use:', text);
           Journal.mark(`standby:knock:${pair.id.slice(0, 8)}`).catch(() => { /* noop */ });
-          Foreground.notifyFor('', text, pair.id).catch(() => { /* noop */ });
+          Foreground.notifyFor('', text, pair.id, soundOf(pair)).catch(() => { /* noop */ });
           onCall?.(pair.id, text, who);
           return;
         }
@@ -121,7 +132,7 @@ function open(cfg: DuoConfig, pair: PairInfo) {
           alarmLabel(String(msg.sound ?? '')));
         Journal.mark(`standby:alarm:${pair.id.slice(0, 8)}:${msg.sound}`).catch(() => { /* noop */ });
         Alarm.play(String(msg.sound ?? '')).catch(() => { /* noop */ });
-        Foreground.notifyFor('', text, pair.id).catch(() => { /* noop */ });
+        Foreground.notifyFor('', text, pair.id, soundOf(pair)).catch(() => { /* noop */ });
         onCall?.(pair.id, text, who);
       },
     },

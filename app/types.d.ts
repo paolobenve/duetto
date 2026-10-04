@@ -128,8 +128,12 @@ declare module 'duetto-platform' {
     setText(text: string, name?: string, actions?: 'enter' | 'wait' | '', labels?: { enter: string; wait: string }): Promise<boolean>;
     stop(): Promise<boolean>;
     notify(name: string, text: string): Promise<boolean>;
-    /** a call from a connection not in use: touched, it opens the app on it */
-    notifyFor(name: string, text: string, pairId: string): Promise<boolean>;
+    /**
+     * a call from a connection not in use: touched, it opens the app on
+     * it; it sounds as that connection was set to (empty: the one in use's)
+     */
+    notifyFor(name: string, text: string, pairId: string,
+      sound?: { vibration?: string; sound?: string; uri?: string }): Promise<boolean>;
     /** the connection the app was opened for by a call's notification, once; null if none */
     takeOpenedPair(): Promise<string | null>;
     /** quiet news: it does not sound and does not buzz */

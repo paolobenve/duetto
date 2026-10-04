@@ -138,12 +138,15 @@ object Notifier {
     /** The extra that says which connection a call came from: see OpenedFrom. */
     const val EXTRA_PAIR = "duetto.pair"
 
-    fun show(ctx: Context, name: String, text: String, pairId: String? = null) {
+    fun show(
+        ctx: Context, name: String, text: String, pairId: String? = null,
+        choice: Alerts.Choice = Alerts.stored(ctx),
+    ) {
         // The channel depends on the preferences: see Alerts. The sound in
         // the ordinary case comes from there; vibration and sound during
         // the conversation are done by Alerts.alertNow below, because the
         // channel cannot.
-        val channel = Alerts.channel(ctx)
+        val channel = Alerts.channel(ctx, c = choice)
 
         val launch = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)?.apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -174,8 +177,8 @@ object Notifier {
         // are said here. From Android 8 on they are ignored: the channel
         // is in command, and repeating them does no harm.
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-            builder.setSound(Alerts.chosenSound(ctx))
-            Alerts.chosenRhythm(ctx)?.let { builder.setVibrate(it) }
+            builder.setSound(Alerts.chosenSound(ctx, choice))
+            Alerts.chosenRhythm(ctx, choice)?.let { builder.setVibrate(it) }
         }
 
         val notification = builder.build()
@@ -192,7 +195,7 @@ object Notifier {
         // guarantee: see Alerts.alertNow. It goes after, not before: if
         // the notification cannot be shown, an alert that merely sounds is
         // still better than nothing, but the natural order stays this one.
-        Alerts.alertNow(ctx)
+        Alerts.alertNow(ctx, choice)
     }
 
     /** Where we keep the last title, to find it again after a reboot. */

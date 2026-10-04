@@ -63,29 +63,34 @@ object Alerts {
             .apply()
     }
 
-    private fun vibration(ctx: Context) =
-        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString(KEY_VIBRATION, "default") ?: "default"
+    /**
+     * What an alert sounds and buzzes like: the connection in use's,
+     * kept in the preferences - or another connection's, for a call
+     * from a connection not in use, which brings its own (see standby.ts).
+     */
+    data class Choice(val vibration: String, val sound: String, val uri: String)
 
-    private fun sound(ctx: Context) =
-        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString(KEY_SOUND, "default") ?: "default"
-
-    private fun uri(ctx: Context) =
-        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString(KEY_URI, "") ?: ""
+    /** The connection in use's choice, as saved. */
+    fun stored(ctx: Context): Choice {
+        val prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return Choice(
+            prefs.getString(KEY_VIBRATION, "default") ?: "default",
+            prefs.getString(KEY_SOUND, "default") ?: "default",
+            prefs.getString(KEY_URI, "") ?: "",
+        )
+    }
 
     /** The sound to use, or null when none is to be heard. */
-    fun chosenSound(ctx: Context): Uri? = when (sound(ctx)) {
+    fun chosenSound(ctx: Context, c: Choice = stored(ctx)): Uri? = when (c.sound) {
         "none" -> null
-        "chosen" -> uri(ctx).takeIf { it.isNotEmpty() }?.let { Uri.parse(it) }
+        "chosen" -> c.uri.takeIf { it.isNotEmpty() }?.let { Uri.parse(it) }
             ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
         // One of Duetto's own, which live in res/raw: the short name
         // travels - "fanfare" - and the address is built here, where
         // the package and the resources are known. The same names the
         // alarms go by, so that what one hears in the list is what the
         // notification will play.
-        "duetto" -> Alarm.resourceFor(uri(ctx))
+        "duetto" -> Alarm.resourceFor(c.uri)
             ?.let { Uri.parse("android.resource://${ctx.packageName}/$it") }
             ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
         else -> RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
@@ -96,7 +101,7 @@ object Alerts {
      * on the notification. With "always" it stays null, because the
      * buzzing is done by alertNow(), on every version.
      */
-    fun chosenRhythm(ctx: Context): LongArray? = when (vibration(ctx)) {
+    fun chosenRhythm(ctx: Context, c: Choice = stored(ctx)): LongArray? = when (c.vibration) {
         "default" -> RHYTHM
         else -> null
     }
@@ -123,15 +128,15 @@ object Alerts {
      *    mute alert alerts nobody. So it is played on the conversation
      *    stream, which is the road phones use for the call-waiting beep.
      */
-    fun alertNow(ctx: Context) {
-        vibrateNow(ctx)
-        playIfInConversation(ctx)
+    fun alertNow(ctx: Context, c: Choice = stored(ctx)) {
+        vibrateNow(ctx, c)
+        playIfInConversation(ctx, c)
     }
 
-    private fun vibrateNow(ctx: Context) {
+    private fun vibrateNow(ctx: Context, c: Choice) {
         // "default" means letting the system decide, and there the channel
         // already does its part; "never" means never.
-        if (vibration(ctx) != "always") return
+        if (c.vibration != "always") return
         try {
             val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 (ctx.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)
@@ -168,14 +173,14 @@ object Alerts {
         }
     }
 
-    private fun playIfInConversation(ctx: Context) {
-        if (sound(ctx) == "none") return
+    private fun playIfInConversation(ctx: Context, c: Choice) {
+        if (c.sound == "none") return
         val am = ctx.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
         // Outside the conversation the notification sees to it, and
         // sounding twice would be worse than not sounding.
         if (am.mode != AudioManager.MODE_IN_COMMUNICATION) return
         try {
-            val uri = chosenSound(ctx) ?: return
+            val uri = chosenSound(ctx, c) ?: return
             val ringtone = RingtoneManager.getRingtone(ctx, uri) ?: return
             ringtone.setAudioAttributes(
                 AudioAttributes.Builder()
@@ -195,13 +200,13 @@ object Alerts {
      * It changes when the configuration changes: that is what makes a new
      * channel be born instead of reusing one that was set up otherwise.
      */
-    private fun channelId(ctx: Context): String {
-        val s = when (sound(ctx)) {
+    private fun channelId(c: Choice): String {
+        val s = when (c.sound) {
             "none" -> "mute"
-            "chosen", "duetto" -> "s" + Integer.toHexString(uri(ctx).hashCode())
+            "chosen", "duetto" -> "s" + Integer.toHexString(c.uri.hashCode())
             else -> "default"
         }
-        return "${CHANNEL_PREFIX}_${vibration(ctx)}_$s"
+        return "${CHANNEL_PREFIX}_${c.vibration}_$s"
     }
 
     /**
@@ -211,8 +216,8 @@ object Alerts {
      * one under the other in Android's settings, all called "Alerts from
      * the channel", with no way of telling which one is the live one.
      */
-    fun channel(ctx: Context, tidyUp: Boolean = false): String {
-        val id = channelId(ctx)
+    fun channel(ctx: Context, tidyUp: Boolean = false, c: Choice = stored(ctx)): String {
+        val id = channelId(c)
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return id
 
         val manager = ctx.getSystemService(NotificationManager::class.java) ?: return id
@@ -244,7 +249,7 @@ object Alerts {
             // Android sees fit, and it is the system that decides,
             // knowing things we do not (silent mode, do not disturb,
             // headphones plugged in).
-            when (vibration(ctx)) {
+            when (c.vibration) {
                 // With "always" the vibration is ours, in alertNow(),
                 // because the channel's own can be suppressed by a system
                 // setting. Here it has to be off, otherwise whoever has
@@ -252,10 +257,10 @@ object Alerts {
                 "always", "never" -> enableVibration(false)
             }
 
-            when (sound(ctx)) {
+            when (c.sound) {
                 "none" -> setSound(null, null)
                 "chosen" -> {
-                    val u = uri(ctx)
+                    val u = c.uri
                     if (u.isNotEmpty()) {
                         setSound(
                             Uri.parse(u),

@@ -121,8 +121,9 @@ export const Foreground = isAndroid && NativeForeground
       notify: (name, text) =>
         call(NativeForeground, 'notify', String(name || ''), String(text)),
       /** a call from a connection not in use: touched, it opens the app on it */
-      notifyFor: (name, text, pairId) =>
-        call(NativeForeground, 'notifyFor', String(name || ''), String(text), String(pairId)),
+      notifyFor: (name, text, pairId, sound = {}) =>
+        call(NativeForeground, 'notifyFor', String(name || ''), String(text), String(pairId),
+          String(sound.vibration ?? ''), String(sound.sound ?? ''), String(sound.uri ?? '')),
       /** the connection the app was opened for by a call's notification, once; null if none */
       takeOpenedPair: () => call(NativeForeground, 'takeOpenedPair'),
 
