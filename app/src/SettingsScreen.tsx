@@ -270,6 +270,20 @@ export default function SettingsScreen({
    */
   const connections = initial.pairs;
   const inUse = initial.pair?.id;
+  /**
+   * Waiting on a connection when it is not the one in use (see
+   * standby.ts): on unless switched off. Written on the connection in
+   * the list and, for the one in use, on its copy in use too - the save
+   * writes that one back over the list.
+   */
+  const toggleStandby = (id: string) => {
+    const flip = (p: typeof connections[number]) => (
+      p.id === id ? { ...p, standby: p.standby === false } : p);
+    const pairs = initial.pairs.map(flip);
+    const pair = initial.pair ? flip(initial.pair) : initial.pair;
+    setCfg({ ...cfg, pairs, pair });
+    onLive?.({ pairs, pair });
+  };
 
   const nameOf = (p: PairInfo) => pairName(p) || t('settings.unnamed');
 
@@ -614,6 +628,16 @@ export default function SettingsScreen({
                     onPress={() => confirmBreakUp(p)}>
                     <Text style={styles.pairAwayText}>{'\u2715'}</Text>
                   </TouchableOpacity>
+                  {/* With more than one connection: whether this one
+                      stays reachable when another is in use. */}
+                  {connections.length > 1 ? (
+                    <TouchableOpacity style={styles.pairStandby} onPress={() => toggleStandby(p.id)}>
+                      <Text style={styles.pairMeta}>{t('settings.standby')}</Text>
+                      <View pointerEvents="none">
+                        <Switch value={p.standby !== false} {...SWITCH_COLOURS} />
+                      </View>
+                    </TouchableOpacity>
+                  ) : null}
                 </View>
               );
             })}
@@ -1794,7 +1818,11 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#252c38',
   },
   hint: { color: '#6b7686', fontSize: 12, marginTop: 6, lineHeight: 17 },
-  pairRow: { flexDirection: 'row', alignItems: 'stretch', gap: 8, marginTop: 10 },
+  pairRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'stretch', gap: 8, marginTop: 10 },
+  pairStandby: {
+    flexBasis: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingLeft: 12,
+  },
   pairBox: {
     flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14,
     backgroundColor: '#151a23', borderRadius: 12, padding: 16,
