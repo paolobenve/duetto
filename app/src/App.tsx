@@ -47,6 +47,7 @@ import ChannelScreen from './ChannelScreen';
 import { loadPipPosition } from './VideoStage';
 import { useAudioRoute, type AudioRoute } from './audioRoute';
 import { pairFromLetter } from './pairing';
+import CallAlert, { CALL_ALERT_MS } from './CallAlert';
 import { RESTART_KEY, RESTART_WINDOW_MS } from './restart';
 import { reportDirectly, inviteOnWorkItem } from './gitlab';
 import type { ReportOutcome } from './gitlab';
@@ -818,6 +819,27 @@ export default function App() {
    * old one - battery, network, output, gain, level, watching.
    */
   const [sessionGen, setSessionGen] = useState(0);
+  /**
+   * A call or a sound from the other side, in the middle of the screen
+   * until `until` or a touch: see CallAlert. Set with the app behind
+   * too, so that opening it within the half minute still finds it.
+   */
+  const [callAlert, setCallAlert] = useState<{ text: string; until: number } | null>(null);
+  const showCallAlert = useCallback((text: string) => {
+    setCallAlert({ text, until: Date.now() + CALL_ALERT_MS });
+  }, []);
+  useEffect(() => {
+    if (!callAlert) return;
+    const left = callAlert.until - Date.now();
+    if (left <= 0) { setCallAlert(null); return; }
+    const timer = setTimeout(() => setCallAlert(null), left);
+    // Behind, the timer may sleep past its hour: coming to the front,
+    // a call already old is not shown.
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st === 'active' && Date.now() >= callAlert.until) setCallAlert(null);
+    });
+    return () => { clearTimeout(timer); sub.remove(); };
+  }, [callAlert]);
   /** counts the changes of network: the network mark is read again at each */
   const [netTick, setNetTick] = useState(0);
   /** the wait after the other side came back to the server: see onPeerJoined */
@@ -3406,6 +3428,9 @@ export default function App() {
               // other one is not answering, and the phone may be lying
               // lit on a table with nobody in front of it.
               Foreground.notify('', news.called(who, channel, at)).catch(() => {});
+              // And in the middle of the screen, for half a minute: in a
+              // noisy room the sound and the shade go unnoticed.
+              showCallAlert(news.called(who, channel, at));
               // The vibration is no longer done here: it lives in the
               // notification channel, together with the sound, because
               // that is where they can be adjusted - and because
@@ -3480,12 +3505,14 @@ export default function App() {
               // going off on a phone lying on a table, with nothing on
               // the screen, is a riddle. It is the same case as a call
               // - somebody wants you - and it gets the same words.
-              if (!inChannelRef.current) {
-                Foreground.notify('', news.called(
-                  shownNameRef.current, channelRef.current,
-                  Number((msg as any).at) || Date.now(), alarmLabel(String(msg.sound ?? '')),
-                )).catch(() => { /* noop */ });
-              }
+              const said = news.called(
+                shownNameRef.current, channelRef.current,
+                Number((msg as any).at) || Date.now(), alarmLabel(String(msg.sound ?? '')),
+              );
+              if (!inChannelRef.current) Foreground.notify('', said).catch(() => { /* noop */ });
+              // In the middle of the screen, in the channel too: the
+              // sound may be drowned by the room.
+              showCallAlert(said);
               return;
             }
 
@@ -5516,6 +5543,7 @@ export default function App() {
           enterChannel();
         }}
       />
+      {callAlert ? <CallAlert text={callAlert.text} onClose={() => setCallAlert(null)} /> : null}
     </View>
   );
 }

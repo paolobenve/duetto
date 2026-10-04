@@ -141,6 +141,7 @@ export const pt: Dictionary = {
 
   alert: {
     calledYouFrom: '{who} chamou você{channel}{when}',
+    tapToClose: 'Toque para fechar',
     calledYou: 'Chamaram você{channel}{when}',
     alarmFrom: '{who} chamou você{channel}{when} ({sound})',
     alarm: 'Chamaram você{channel}{when} ({sound})',

@@ -152,6 +152,7 @@ export const en = {
 
   alert: {
     calledYouFrom: '{who} called you{channel}{when}',
+    tapToClose: 'Touch to close',
     calledYou: 'Somebody called you{channel}{when}',
     alarmFrom: '{who} called you{channel}{when} ({sound})',
     alarm: 'Somebody called you{channel}{when} ({sound})',
