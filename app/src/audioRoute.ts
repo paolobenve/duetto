@@ -74,6 +74,8 @@ export type AutoOutput = {
   bluetooth: boolean;
   /** a wired headset that is plugged in takes the sound */
   wired: boolean;
+  /** for the journal: which Bluetooth device was seen, and its choice */
+  btSeen?: string;
 };
 
 export function useAudioRoute(
@@ -166,7 +168,8 @@ export function useAudioRoute(
         const allowed = r === 'BLUETOOTH' ? a?.bluetooth : a?.wired;
         if (!allowed) {
           const back = wanted.current && wanted.current !== r ? wanted.current : builtIn.current;
-          Journal.mark(`route:${r === 'BLUETOOTH' ? 'bt' : 'wired'}-declined`).catch(() => { /* noop */ });
+          Journal.mark(`route:${r === 'BLUETOOTH' ? `bt-declined:${a?.btSeen ?? '?'}` : 'wired-declined'}`)
+            .catch(() => { /* noop */ });
           applyRoute(back);
           return;
         }

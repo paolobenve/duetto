@@ -1395,8 +1395,15 @@ export default function App() {
         return;
       }
       Journal.mark(`bt-device:${d.event}:${d.name}`).catch(() => {});
-      if (d.event === 'added') setBtHere({ id: d.id, name: d.name });
-      else setBtHere((was) => (was && was.id === d.id ? null : was));
+      if (d.event === 'added') { setBtHere({ id: d.id, name: d.name }); return; }
+      // A headset shows itself twice - calls and music - and one of the
+      // two going is not the headset going: the system is asked what is
+      // still there. Clearing it at the first removal made the choice
+      // made for it vanish, and the old single choice took its place.
+      AudioDevices.list().then((l) => setBtHere((was) => {
+        if (!was) return l[0] ?? null;
+        return l.find((x) => x.id === was.id) ?? l[0] ?? null;
+      })).catch(() => setBtHere((was) => (was && was.id === d.id ? null : was)));
     });
   }, []);
   /**
@@ -1429,6 +1436,12 @@ export default function App() {
     videoOn: videoOn || remoteHasVideo,
     bluetooth: btAuto,
     wired: cfg?.autoWired ?? true,
+    // Said in the line of a refusal: which device the app saw then, and
+    // the choice it had for it - a headset set to "always" was refused
+    // for days, and the journal could not say why.
+    btSeen: btHere
+      ? `${btHere.name || btHere.id}=${cfg?.btDevices?.[btHere.id] ? (cfg.btDevices[btHere.id].auto ? 'always' : 'asked') : 'unknown'}`
+      : `none:global=${(cfg?.autoBluetooth ?? true) ? 'always' : 'asked'}`,
   });
 
   /**
