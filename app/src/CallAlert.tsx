@@ -8,7 +8,7 @@
  * <https://www.gnu.org/licenses/>.
  */
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BellRingingIcon } from './Icons';
 import { t } from './i18n';
 
@@ -24,12 +24,23 @@ export const CALL_ALERT_MS = 30_000;
  * it big, over everything - the video, the hidden controls - for half
  * a minute, or until it is touched.
  */
-export default function CallAlert({ text, onClose }: { text: string; onClose: () => void }) {
+export default function CallAlert({ text, onClose, switchLabel, onSwitch }: {
+  text: string;
+  onClose: () => void;
+  /** from a connection not in use: the button that moves to it and goes in */
+  switchLabel?: string;
+  onSwitch?: () => void;
+}) {
   return (
     <Pressable style={styles.veil} onPress={onClose}>
       <View style={styles.card}>
         <BellRingingIcon size={72} color="#1e1f22" />
         <Text style={styles.text}>{text}</Text>
+        {onSwitch && switchLabel ? (
+          <TouchableOpacity style={styles.switch} onPress={onSwitch}>
+            <Text style={styles.switchText}>{switchLabel}</Text>
+          </TouchableOpacity>
+        ) : null}
         <Text style={styles.hint}>{t('alert.tapToClose')}</Text>
       </View>
     </Pressable>
@@ -57,4 +68,9 @@ const styles = StyleSheet.create({
   },
   text: { color: '#1e1f22', fontSize: 26, fontWeight: '700', textAlign: 'center' },
   hint: { color: '#3a3320', fontSize: 14, textAlign: 'center' },
+  switch: {
+    backgroundColor: '#1e1f22', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 22,
+    alignSelf: 'stretch', alignItems: 'center',
+  },
+  switchText: { color: '#ffc83d', fontSize: 20, fontWeight: '700' },
 });

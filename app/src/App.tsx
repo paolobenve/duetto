@@ -836,10 +836,14 @@ export default function App() {
    * shows, it waits (`until` null) and counts from the moment the app
    * comes back to the front.
    */
-  const [callAlert, setCallAlert] = useState<{ text: string; until: number | null } | null>(null);
-  const showCallAlert = useCallback((text: string) => {
+  const [callAlert, setCallAlert] = useState<{
+    text: string; until: number | null;
+    /** from a connection not in use: which one, and who, for the button */
+    pairId?: string; who?: string;
+  } | null>(null);
+  const showCallAlert = useCallback((text: string, pairId?: string, who?: string) => {
     setCallAlert({
-      text,
+      text, pairId, who,
       until: AppState.currentState === 'active' ? Date.now() + CALL_ALERT_MS : null,
     });
   }, []);
@@ -856,7 +860,44 @@ export default function App() {
   }, [callAlert]);
   // A call from a connection not in use, in the middle of the screen
   // too: see standby.ts.
-  useEffect(() => onStandbyCall((_pairId, text) => showCallAlert(text)), [showCallAlert]);
+  useEffect(() => onStandbyCall((pairId, text, who) => showCallAlert(text, pairId, who)), [showCallAlert]);
+  /** the next connection made goes into the channel: see the call's button */
+  const enterOnConnect = useRef(false);
+  /** onSwitchPair, for what is born before it */
+  const onSwitchPairRef = useRef<((id: string) => void) | null>(null);
+  /**
+   * "Go to them", from a call of a connection not in use: out of the
+   * channel we are in, onto theirs, and in.
+   */
+  const switchToCaller = useCallback((pairId: string) => {
+    setCallAlert(null);
+    Journal.mark(`standby:switch:${pairId.slice(0, 8)}`).catch(() => { /* noop */ });
+    if (cfgRef.current?.pair?.id === pairId) {
+      if (!inChannelRef.current) enterChannelRef.current?.();
+      return;
+    }
+    enterOnConnect.current = true;
+    onSwitchPairRef.current?.(pairId);
+  }, []);
+  /**
+   * Opened by the touch of a call's notification from a connection not
+   * in use: the app comes up on that connection - not into its channel,
+   * which stays one's own choice. Asked at the start and at every
+   * return to the front.
+   */
+  useEffect(() => {
+    const take = () => {
+      Foreground.takeOpenedPair().then((id) => {
+        const c = cfgRef.current;
+        if (!id || !c || c.pair?.id === id || !c.pairs.some((p) => p.id === id)) return;
+        Journal.mark(`standby:opened-for:${id.slice(0, 8)}`).catch(() => { /* noop */ });
+        onSwitchPairRef.current?.(id);
+      }).catch(() => { /* noop */ });
+    };
+    take();
+    const sub = AppState.addEventListener('change', (st) => { if (st === 'active') take(); });
+    return () => sub.remove();
+  }, []);
   /** counts the changes of network: the network mark is read again at each */
   const [netTick, setNetTick] = useState(0);
   /** the wait after the other side came back to the server: see onPeerJoined */
@@ -3766,7 +3807,11 @@ export default function App() {
       // follows carries it already right: there is no need to wait for
       // the connection. With the door instead, the card with Enter is
       // what one sees, and one touch opens it.
-      if (!cancelled && (cfgRef.current?.openInto ?? 'door') === 'channel') await enterChannel();
+      // Or asked by the button of a call from this connection, when it
+      // was not the one in use: "go to them" means into the channel.
+      const asked = enterOnConnect.current;
+      enterOnConnect.current = false;
+      if (!cancelled && (asked || (cfgRef.current?.openInto ?? 'door') === 'channel')) await enterChannel();
     })();
 
     return () => {
@@ -4996,6 +5041,7 @@ export default function App() {
     stopWaiting();
     setScreen('channel');
   }, [cfg, stopWaiting, resetPeerMemory, putAwayChannel]);
+  useEffect(() => { onSwitchPairRef.current = onSwitchPair; }, [onSwitchPair]);
 
   /**
    * The name I give a connection myself.
@@ -5356,7 +5402,12 @@ export default function App() {
         />
         {/* A call found in the settings too: one may be adjusting the
             volume with the phone at arm's length. */}
-        {callAlert ? <CallAlert text={callAlert.text} onClose={() => setCallAlert(null)} /> : null}
+        {callAlert ? <CallAlert
+          text={callAlert.text}
+          onClose={() => setCallAlert(null)}
+          switchLabel={callAlert.pairId ? t('alert.switchTo', { who: callAlert.who || t('death.theOther') }) : undefined}
+          onSwitch={callAlert.pairId ? () => switchToCaller(callAlert.pairId!) : undefined}
+        /> : null}
       </View>
     );
   }
@@ -5565,7 +5616,12 @@ export default function App() {
       />
       {/* Not in the little window of picture-in-picture: it would
           cover the picture, and nobody can touch it away there. */}
-      {callAlert && !inPip ? <CallAlert text={callAlert.text} onClose={() => setCallAlert(null)} /> : null}
+      {callAlert && !inPip ? <CallAlert
+          text={callAlert.text}
+          onClose={() => setCallAlert(null)}
+          switchLabel={callAlert.pairId ? t('alert.switchTo', { who: callAlert.who || t('death.theOther') }) : undefined}
+          onSwitch={callAlert.pairId ? () => switchToCaller(callAlert.pairId!) : undefined}
+        /> : null}
     </View>
   );
 }

@@ -33,9 +33,10 @@ const log = logger('[duetto-standby]');
  */
 const standing = new Map<string, Signaling>();
 
-/** The interface's ear: a call or a sound from a connection not in use. */
-let onCall: ((pairId: string, text: string) => void) | null = null;
-export function onStandbyCall(cb: (pairId: string, text: string) => void): () => void {
+/** The interface's ear: a call or a sound from a connection not in use, and who. */
+type CallHeard = (pairId: string, text: string, who: string) => void;
+let onCall: CallHeard | null = null;
+export function onStandbyCall(cb: CallHeard): () => void {
   onCall = cb;
   return () => { if (onCall === cb) onCall = null; };
 }
@@ -105,8 +106,8 @@ function open(cfg: DuoConfig, pair: PairInfo) {
           const text = news.called(who, channel, at);
           log('call from a connection not in use:', text);
           Journal.mark(`standby:knock:${pair.id.slice(0, 8)}`).catch(() => { /* noop */ });
-          Foreground.notify('', text).catch(() => { /* noop */ });
-          onCall?.(pair.id, text);
+          Foreground.notifyFor('', text, pair.id).catch(() => { /* noop */ });
+          onCall?.(pair.id, text, who);
           return;
         }
         // Their coming into the channel: said quietly, on the line that
@@ -115,12 +116,13 @@ function open(cfg: DuoConfig, pair: PairInfo) {
       },
       onSignal: (msg) => {
         if (msg.kind !== 'alarm') return;
-        const text = news.called(peerShown(pair, name), channel, Number(msg.at) || Date.now(),
+        const who = peerShown(pair, name);
+        const text = news.called(who, channel, Number(msg.at) || Date.now(),
           alarmLabel(String(msg.sound ?? '')));
         Journal.mark(`standby:alarm:${pair.id.slice(0, 8)}:${msg.sound}`).catch(() => { /* noop */ });
         Alarm.play(String(msg.sound ?? '')).catch(() => { /* noop */ });
-        Foreground.notify('', text).catch(() => { /* noop */ });
-        onCall?.(pair.id, text);
+        Foreground.notifyFor('', text, pair.id).catch(() => { /* noop */ });
+        onCall?.(pair.id, text, who);
       },
     },
   );

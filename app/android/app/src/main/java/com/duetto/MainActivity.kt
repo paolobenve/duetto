@@ -1,6 +1,8 @@
 package com.duetto
 
 import android.content.Intent
+import android.os.Bundle
+import com.duetto.platform.OpenedFrom
 import android.view.KeyEvent
 import com.duetto.platform.Volume
 import android.content.res.Configuration
@@ -59,7 +61,14 @@ class MainActivity : ReactActivity() {
    */
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
+    OpenedFrom.read(intent)
     PipModule.opened()
+  }
+
+  /** Opened from a call's notification: which connection it came from. */
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    OpenedFrom.read(intent)
   }
 
   /** The little window begins or ends: the app changes its clothes. */

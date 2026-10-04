@@ -135,7 +135,10 @@ object Notifier {
         }
     }
 
-    fun show(ctx: Context, name: String, text: String) {
+    /** The extra that says which connection a call came from: see OpenedFrom. */
+    const val EXTRA_PAIR = "duetto.pair"
+
+    fun show(ctx: Context, name: String, text: String, pairId: String? = null) {
         // The channel depends on the preferences: see Alerts. The sound in
         // the ordinary case comes from there; vibration and sound during
         // the conversation are done by Alerts.alertNow below, because the
@@ -144,6 +147,10 @@ object Notifier {
 
         val launch = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)?.apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            // A call from a connection not in use: touching it opens the
+            // app on that connection. Without it, the extra is cleared -
+            // FLAG_UPDATE_CURRENT would keep the last one's.
+            putExtra(EXTRA_PAIR, pairId ?: "")
         }
         val pending = PendingIntent.getActivity(
             ctx,

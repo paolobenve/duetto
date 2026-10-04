@@ -142,6 +142,7 @@ export const es: Dictionary = {
   alert: {
     calledYouFrom: '{who} te ha llamado{channel}{when}',
     tapToClose: 'Toca para cerrar',
+    switchTo: 'Ir con {who}',
     calledYou: 'Te han llamado{channel}{when}',
     alarmFrom: '{who} te ha llamado{channel}{when} ({sound})',
     alarm: 'Te han llamado{channel}{when} ({sound})',

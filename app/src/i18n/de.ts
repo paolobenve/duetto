@@ -142,6 +142,7 @@ export const de: Dictionary = {
   alert: {
     calledYouFrom: '{who} ruft dich{channel}{when}',
     tapToClose: 'Zum Schließen berühren',
+    switchTo: 'Zu {who} wechseln',
     calledYou: 'Jemand ruft dich{channel}{when}',
     alarmFrom: '{who} ruft dich{channel}{when} ({sound})',
     alarm: 'Jemand ruft dich{channel}{when} ({sound})',

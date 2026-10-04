@@ -290,6 +290,25 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
         }
     }
 
+    /** A call from a connection not in use: touched, it opens the app on it. */
+    @ReactMethod
+    fun notifyFor(name: String, text: String, pairId: String, promise: Promise) {
+        try {
+            Notifier.show(ctx, name, text, pairId)
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("notify_error", e)
+        }
+    }
+
+    /** The connection the app was opened for, once: see OpenedFrom. */
+    @ReactMethod
+    fun takeOpenedPair(promise: Promise) {
+        val id = OpenedFrom.pair
+        OpenedFrom.pair = null
+        promise.resolve(id)
+    }
+
     /** Takes the alert away, when the user has come back into the app. */
     @ReactMethod
     fun clearNotification(promise: Promise) {
