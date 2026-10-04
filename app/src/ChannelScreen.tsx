@@ -1336,10 +1336,14 @@ export default function ChannelScreen(props: Props) {
               <View style={styles.cardMarkRow}>
                 <Text style={styles.cardVolume}>{t('channel.you')}</Text>
                 <MicrophoneIcon size={17} color="#e6ebf1" off={!audioOn} background="#0b0e14" />
-                {React.createElement(OUTPUT_ICON[audioRoute] ?? OUTPUT_ICON.SPEAKER_PHONE, {
-                  size: 17, color: '#e6ebf1', off: outputMuted, background: '#0b0e14',
-                })}
-                {btBattery != null ? <Text style={styles.cardVolume}>{btBattery}%</Text> : null}
+                {/* The headset and its battery side by side: the row's
+                    spacing between them read as two separate things. */}
+                <View style={styles.markWithFigure}>
+                  {React.createElement(OUTPUT_ICON[audioRoute] ?? OUTPUT_ICON.SPEAKER_PHONE, {
+                    size: 17, color: '#e6ebf1', off: outputMuted, background: '#0b0e14',
+                  })}
+                  {btBattery != null ? <Text style={styles.cardVolume}>{btBattery}%</Text> : null}
+                </View>
                 {showStats ? <StatusMarks battery={battery} net={network} /> : null}
               </View>
             )}
@@ -2839,6 +2843,7 @@ const styles = StyleSheet.create({
   cardMark: { marginTop: 12 },
   cardMarkRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconWithFigure: { alignItems: 'center', justifyContent: 'center' },
+  markWithFigure: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   iconFigure: { color: '#e6ebf1', fontSize: 9, fontWeight: '700', lineHeight: 10, marginTop: -1 },
   iconFigureOnLight: { color: '#1e1f22' },
   statsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 16 },
