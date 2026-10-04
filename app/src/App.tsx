@@ -821,23 +821,27 @@ export default function App() {
   const [sessionGen, setSessionGen] = useState(0);
   /**
    * A call or a sound from the other side, in the middle of the screen
-   * until `until` or a touch: see CallAlert. Set with the app behind
-   * too, so that opening it within the half minute still finds it.
+   * until `until` or a touch: see CallAlert. The half minute runs only
+   * with the app in front: arriving behind, or going behind while it
+   * shows, it waits (`until` null) and counts from the moment the app
+   * comes back to the front.
    */
-  const [callAlert, setCallAlert] = useState<{ text: string; until: number } | null>(null);
+  const [callAlert, setCallAlert] = useState<{ text: string; until: number | null } | null>(null);
   const showCallAlert = useCallback((text: string) => {
-    setCallAlert({ text, until: Date.now() + CALL_ALERT_MS });
+    setCallAlert({
+      text,
+      until: AppState.currentState === 'active' ? Date.now() + CALL_ALERT_MS : null,
+    });
   }, []);
   useEffect(() => {
     if (!callAlert) return;
-    const left = callAlert.until - Date.now();
-    if (left <= 0) { setCallAlert(null); return; }
-    const timer = setTimeout(() => setCallAlert(null), left);
-    // Behind, the timer may sleep past its hour: coming to the front,
-    // a call already old is not shown.
     const sub = AppState.addEventListener('change', (st) => {
-      if (st === 'active' && Date.now() >= callAlert.until) setCallAlert(null);
+      setCallAlert((was) => (was ? {
+        ...was, until: st === 'active' ? Date.now() + CALL_ALERT_MS : null,
+      } : was));
     });
+    if (callAlert.until === null) return () => sub.remove();
+    const timer = setTimeout(() => setCallAlert(null), Math.max(0, callAlert.until - Date.now()));
     return () => { clearTimeout(timer); sub.remove(); };
   }, [callAlert]);
   /** counts the changes of network: the network mark is read again at each */
@@ -5543,7 +5547,9 @@ export default function App() {
           enterChannel();
         }}
       />
-      {callAlert ? <CallAlert text={callAlert.text} onClose={() => setCallAlert(null)} /> : null}
+      {/* Not in the little window of picture-in-picture: it would
+          cover the picture, and nobody can touch it away there. */}
+      {callAlert && !inPip ? <CallAlert text={callAlert.text} onClose={() => setCallAlert(null)} /> : null}
     </View>
   );
 }
