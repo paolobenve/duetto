@@ -1342,7 +1342,15 @@ export default function ChannelScreen(props: Props) {
                   {React.createElement(OUTPUT_ICON[audioRoute] ?? OUTPUT_ICON.SPEAKER_PHONE, {
                     size: 17, color: '#e6ebf1', off: outputMuted, background: '#0b0e14',
                   })}
-                  {btBattery != null ? <Text style={styles.cardVolume}>{btBattery}%</Text> : null}
+                  {/* The battery's mark before the figure, the same as the
+                      phone's: a bare percentage beside the headset read
+                      as a volume. */}
+                  {btBattery != null ? (
+                    <>
+                      <CarBatteryIcon size={13} color="#9aa4b0" />
+                      <Text style={styles.cardVolume}>{btBattery}%</Text>
+                    </>
+                  ) : null}
                 </View>
                 {showStats ? <StatusMarks battery={battery} net={network} /> : null}
               </View>
