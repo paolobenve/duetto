@@ -9,7 +9,15 @@
  */
 package com.duetto.platform
 
+import android.Manifest
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothManager
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
@@ -45,6 +53,81 @@ class AudioDevicesModule(private val ctx: ReactApplicationContext) :
         get() = ctx.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
 
     private var callback: AudioDeviceCallback? = null
+    private var batteryReceiver: BroadcastReceiver? = null
+
+    /**
+     * The battery of a Bluetooth headset, as Android last heard it.
+     *
+     * Android knows it - the headset says it - but keeps the reading
+     * behind a method it does not publish and a broadcast it does not
+     * document: both are tried, the method first, the broadcast's last
+     * word kept here by name and by address. Both need "Nearby devices",
+     * the permission asked at the first start for seeing the headset at
+     * all: without it, no figure, and nothing else changes.
+     */
+    private val batteries = mutableMapOf<String, Int>()
+
+    private fun mayConnect(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            ContextCompat.checkSelfPermission(ctx, Manifest.permission.BLUETOOTH_CONNECT) ==
+            PackageManager.PERMISSION_GRANTED
+
+    @Suppress("MissingPermission")
+    private fun deviceName(d: BluetoothDevice): String =
+        try { d.name?.trim().orEmpty() } catch (_: SecurityException) { "" }
+
+    @Suppress("MissingPermission")
+    private fun batteryOf(d: BluetoothDevice): Int? {
+        val viaMethod = try {
+            d.javaClass.getMethod("getBatteryLevel").invoke(d) as? Int
+        } catch (_: Throwable) { null }
+        if (viaMethod != null && viaMethod in 0..100) return viaMethod
+        return batteries[d.address] ?: batteries[deviceName(d)]
+    }
+
+    /** The battery of the device known as `id` (its name, or its address): null if unknown. */
+    @ReactMethod
+    @Suppress("MissingPermission")
+    fun battery(id: String, promise: Promise) {
+        if (!mayConnect()) { promise.resolve(null); return }
+        val manager = ctx.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+        val bonded = try { manager?.adapter?.bondedDevices.orEmpty() } catch (_: SecurityException) { emptySet() }
+        val dev = bonded.firstOrNull { deviceName(it) == id || it.address == id }
+        val level = dev?.let { batteryOf(it) } ?: batteries[id]
+        promise.resolve(level)
+    }
+
+    private fun watchBattery() {
+        if (batteryReceiver != null || !mayConnect()) return
+        val receiver = object : BroadcastReceiver() {
+            @Suppress("MissingPermission", "DEPRECATION")
+            override fun onReceive(c: Context, intent: Intent) {
+                val dev = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE) ?: return
+                val level = intent.getIntExtra(EXTRA_BATTERY_LEVEL, -1)
+                if (level !in 0..100) return
+                val name = deviceName(dev)
+                batteries[dev.address] = level
+                if (name.isNotEmpty()) batteries[name] = level
+                if (!ctx.hasActiveReactInstance()) return
+                val m = Arguments.createMap()
+                m.putString("event", "battery")
+                m.putString("id", name.ifEmpty { dev.address })
+                m.putString("name", name)
+                m.putInt("level", level)
+                try {
+                    ctx.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+                        .emit(EVENT, m)
+                } catch (_: Exception) { /* nobody listening */ }
+            }
+        }
+        try {
+            ContextCompat.registerReceiver(
+                ctx, receiver, IntentFilter(ACTION_BATTERY_LEVEL_CHANGED),
+                ContextCompat.RECEIVER_EXPORTED,
+            )
+            batteryReceiver = receiver
+        } catch (_: Exception) { /* no figure, nothing else changes */ }
+    }
 
     private fun isBluetooth(d: AudioDeviceInfo): Boolean {
         if (!d.isSink) return false
@@ -81,6 +164,7 @@ class AudioDevicesModule(private val ctx: ReactApplicationContext) :
     /** Starts telling JavaScript of the devices that come and go. */
     @ReactMethod
     fun watch(promise: Promise) {
+        watchBattery()
         if (callback != null) { promise.resolve(true); return }
         val cb = object : AudioDeviceCallback() {
             override fun onAudioDevicesAdded(added: Array<out AudioDeviceInfo>) = tell("added", added)
@@ -140,5 +224,9 @@ class AudioDevicesModule(private val ctx: ReactApplicationContext) :
 
     companion object {
         const val EVENT = "duetto-audio-device"
+        // Not in the public SDK: the strings the system sends with.
+        private const val ACTION_BATTERY_LEVEL_CHANGED =
+            "android.bluetooth.device.action.BATTERY_LEVEL_CHANGED"
+        private const val EXTRA_BATTERY_LEVEL = "android.bluetooth.device.extra.BATTERY_LEVEL"
     }
 }

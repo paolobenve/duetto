@@ -591,6 +591,8 @@ type Props = {
   remoteAspect?: number;
   knockPending: boolean;
   audioRoute: AudioRoute;
+  /** the Bluetooth headset's battery, while the sound goes through it */
+  btBattery?: number | null;
   /** the audio outputs really connected right now */
   audioRoutes: AudioRoute[];
   onToggleAudio: () => void;
@@ -638,7 +640,7 @@ export default function ChannelScreen(props: Props) {
     connectionName, peerName, peerAvatar, peerPresent, peerDetached, peerTornDown, peerTornDownBy, videoStats, peerSendDelay, peerRecvDelay, delayTotalOnly, qualityLabel, showStats, controls, onSelectControls, news, onNewsRead, peerGain, systemVolume, onChangeLevel,
     versionWarning, frontCamera, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
-    knockPending, audioRoute, audioRoutes,
+    knockPending, audioRoute, audioRoutes, btBattery,
     onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, leaving,
     onAlarm, onZoom, onOpenSettings, onCall, pairBroken, battery,
   } = props;
@@ -1337,6 +1339,7 @@ export default function ChannelScreen(props: Props) {
                 {React.createElement(OUTPUT_ICON[audioRoute] ?? OUTPUT_ICON.SPEAKER_PHONE, {
                   size: 17, color: '#e6ebf1', off: outputMuted, background: '#0b0e14',
                 })}
+                {btBattery != null ? <Text style={styles.cardVolume}>{btBattery}%</Text> : null}
                 {showStats ? <StatusMarks battery={battery} net={network} /> : null}
               </View>
             )}
@@ -1569,7 +1572,10 @@ export default function ChannelScreen(props: Props) {
         <CircleButton
           covered={covered}
           name={outputMuted ? 'output-off' : 'output'}
-          label={outputMuted ? t('buttons.outputOff') : t('buttons.output')}
+          // On a Bluetooth headset its battery too: the one figure one
+          // checks before walking off with it.
+          label={(outputMuted ? t('buttons.outputOff') : t('buttons.output'))
+            + (btBattery != null ? ` ${btBattery}%` : '')}
           icon={React.createElement(OUTPUT_ICON[audioRoute] ?? OUTPUT_ICON.SPEAKER_PHONE, {
             off: outputMuted, ...(outputMuted ? {} : ON_LIGHT),
           })}

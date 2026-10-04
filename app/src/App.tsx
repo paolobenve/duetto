@@ -1310,11 +1310,36 @@ export default function App() {
   useEffect(() => {
     AudioDevices.list().then((l) => setBtHere(l[0] ?? null)).catch(() => {});
     return AudioDevices.subscribe((d) => {
+      if (d.event === 'battery') {
+        if (d.level != null && d.id === btHereIdRef.current) setBtBattery(d.level);
+        return;
+      }
       Journal.mark(`bt-device:${d.event}:${d.name}`).catch(() => {});
       if (d.event === 'added') setBtHere({ id: d.id, name: d.name });
       else setBtHere((was) => (was && was.id === d.id ? null : was));
     });
   }, []);
+  /**
+   * The headset's battery, shown on the output button and in the card
+   * while the sound goes through it. Asked when it arrives and every
+   * minute after - the headset's own news comes in between, when the
+   * phone passes it on.
+   */
+  const [btBattery, setBtBattery] = useState<number | null>(null);
+  const btHereIdRef = useRef<string | null>(null);
+  btHereIdRef.current = btHere?.id ?? null;
+  useEffect(() => {
+    setBtBattery(null);
+    if (!btHere || !inChannel) return;
+    const read = () => {
+      AudioDevices.battery(btHere.id)
+        .then((l) => { if (l != null) setBtBattery(l); })
+        .catch(() => {});
+    };
+    read();
+    const timer = setInterval(read, 60_000);
+    return () => clearInterval(timer);
+  }, [btHere, inChannel]);
   const btAuto = btHere
     ? (cfg?.btDevices?.[btHere.id]?.auto ?? false)
     : (cfg?.autoBluetooth ?? true);
@@ -5410,6 +5435,7 @@ export default function App() {
         remoteAspect={peerState.aspect}
         knockPending={knockPending}
         audioRoute={audio.route}
+        btBattery={audio.route === 'BLUETOOTH' ? btBattery : null}
         audioRoutes={audio.available}
         onToggleAudio={() => {
           if (!sessionRef.current || !inChannelRef.current) {

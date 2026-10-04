@@ -33,7 +33,11 @@ declare module 'duetto-platform' {
   /** The Bluetooth audio devices, each by name. */
   export const AudioDevices: {
     list(): Promise<{ id: string; name: string }[]>;
-    subscribe(cb: (d: { event: 'added' | 'removed'; id: string; name: string }) => void): () => void;
+    subscribe(cb: (d: {
+      event: 'added' | 'removed' | 'battery'; id: string; name: string; level?: number;
+    }) => void): () => void;
+    /** the battery of the Bluetooth device `id`, 0-100, or null when unknown */
+    battery(id: string): Promise<number | null>;
     /** how the voice is taken now, one line for the journal */
     voice(): Promise<string>;
     /** WebRTC's own echo cancelling and noise suppression, instead of the phone's */

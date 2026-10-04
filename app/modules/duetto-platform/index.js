@@ -476,7 +476,7 @@ export const AudioDevices = isAndroid && NativeAudioDevices
   ? {
       /** `[{ id, name }]`, the ones connected now */
       list: () => call(NativeAudioDevices, 'list'),
-      /** `cb({ event: 'added' | 'removed', id, name })`; gives back the stop */
+      /** `cb({ event: 'added' | 'removed' | 'battery', id, name, level? })`; gives back the stop */
       subscribe(cb) {
         call(NativeAudioDevices, 'watch');
         const emitter = new NativeEventEmitter(NativeAudioDevices);
@@ -485,6 +485,8 @@ export const AudioDevices = isAndroid && NativeAudioDevices
       },
       /** how the voice is taken now, one line for the journal */
       voice: () => call(NativeAudioDevices, 'voice'),
+      /** the battery of the Bluetooth device `id`, 0-100, or null when unknown */
+      battery: (id) => call(NativeAudioDevices, 'battery', String(id)),
       /** `{ wanted, inUse }`: WebRTC's own voice effects, instead of the phone's */
       ownEffects: () => call(NativeAudioDevices, 'ownEffects'),
       /** from the next start of Duetto */
@@ -495,6 +497,7 @@ export const AudioDevices = isAndroid && NativeAudioDevices
   : {
       list: () => Promise.resolve([]), subscribe: () => () => {},
       voice: () => Promise.resolve(''),
+      battery: () => Promise.resolve(null),
       ownEffects: () => Promise.resolve({ wanted: false, inUse: false }),
       setOwnEffects: () => Promise.resolve(false),
       restart: () => Promise.resolve(false),
