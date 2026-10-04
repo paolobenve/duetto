@@ -3311,6 +3311,17 @@ export default function App() {
             if (n) noteName(n);
             if (peerActive && inChannelRef.current) {
               if (afterOutage) resumeAfterOutage(); else attachPeer();
+              /**
+               * Started afresh - an update, a restart, another connection
+               * just taken up - with no link at all, on the side that
+               * cannot offer: the other side is told at once. It used to
+               * find out by itself, waiting four seconds to see whether
+               * its old link still carried (see onPeerJoined) and more
+               * with its app behind: ten seconds to connect at opening.
+               */
+              if (politeRef.current && !sessionRef.current?.hasPeer()) {
+                signalingRef.current?.sendSignal({ kind: 'renegotiate', why: 'fresh' });
+              }
             }
           },
 
@@ -3596,6 +3607,9 @@ export default function App() {
               if (politeRef.current || !inChannelRef.current) return;
               // A change of road does not demolish anything: the voice
               // keeps going while the new road is tried.
+              // "Started afresh" finding a link built a moment ago - for
+              // the very return it announces - is already answered.
+              if (msg.why === 'fresh' && (sessionRef.current?.linkAge() ?? Infinity) < 3000) return;
               if (msg.road) sessionRef.current?.restartIce();
               else if (msg.offer) {
                 const done = await sessionRef.current?.offerAgain(msg.why ?? '?').catch(() => false);
@@ -4274,7 +4288,14 @@ export default function App() {
     setMySince(Date.now());
     cue('cue_enter');
 
-    if (peerActiveRef.current) attachPeer();
+    if (peerActiveRef.current) {
+      attachPeer();
+      // As at joining the server: no link, and the side that cannot
+      // offer - the other is told at once (see onJoined).
+      if (politeRef.current && !sessionRef.current?.hasPeer()) {
+        sig.sendSignal({ kind: 'renegotiate', why: 'fresh' });
+      }
+    }
     // And the server is asked how the other side really is: what is
     // remembered from before the wait may be stale - a phone that went
     // back to listening while we were out - and a stale "active" on

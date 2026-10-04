@@ -1144,6 +1144,11 @@ export class ChannelSession {
     return true;
   }
 
+  /** How long ago the link in use was built, in ms; Infinity with none. */
+  linkAge(): number {
+    return this.pc && this.peerBornAt ? Date.now() - this.peerBornAt : Infinity;
+  }
+
   /** The link's own state, for the app; null with no link. */
   linkState(): string | null {
     return this.pc?.connectionState ?? null;
