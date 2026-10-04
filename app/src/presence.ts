@@ -20,6 +20,7 @@ import { t, momentText } from './i18n';
 import { alarmLabel } from './alarms';
 import { logger, setLogging } from './log';
 import { VERSION_LABEL, BUILD } from './version';
+import { refreshStandby, stopStandby } from './standby';
 
 /**
  * Presence with no interface.
@@ -381,6 +382,8 @@ async function listenNow(): Promise<boolean> {
     // Once: the idle net asks again every five minutes.
     if (!saidUnavailable) Journal.mark('presence:skipped:unavailable').catch(() => { /* noop */ });
     saidUnavailable = true;
+    // Out of reach by choice is out of reach on every connection.
+    stopStandby();
     return false;
   }
   saidUnavailable = false;
@@ -655,6 +658,8 @@ async function listenNow(): Promise<boolean> {
   );
   signaling = sig;
   sig.connect();
+  // And the other connections, waiting too: see standby.ts.
+  refreshStandby(cfg).catch(() => { /* noop */ });
   // Nobody else is watching over this connection: the pace-setting is
   // the watchdog's too (driveFast), one beat a minute when all is well
   // and one every fifteen seconds while the server is out of reach.

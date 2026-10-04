@@ -116,6 +116,12 @@ export type PairInfo = {
    * use apply, and become theirs at the first save.
    */
   settings?: PairSettings;
+  /**
+   * Waiting on this connection when it is not the one in use: see
+   * standby.ts. Missing means yes; false switches it off, for a
+   * connection seldom used whose waiting is not worth its battery.
+   */
+  standby?: boolean;
 };
 
 /**

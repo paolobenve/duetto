@@ -48,6 +48,7 @@ import { loadPipPosition } from './VideoStage';
 import { useAudioRoute, type AudioRoute } from './audioRoute';
 import { pairFromLetter } from './pairing';
 import CallAlert, { CALL_ALERT_MS } from './CallAlert';
+import { refreshStandby, onStandbyCall } from './standby';
 import { RESTART_KEY, RESTART_WINDOW_MS } from './restart';
 import { reportDirectly, inviteOnWorkItem } from './gitlab';
 import type { ReportOutcome } from './gitlab';
@@ -742,6 +743,15 @@ export default function App() {
    */
   const [available, setAvailable] = useState(true);
   /**
+   * The connections not in use, waiting: kept in line with the
+   * configuration and with being available - see standby.ts. Asked at
+   * every save; opening one already open costs nothing.
+   */
+  useEffect(() => {
+    if (!cfg) return;
+    refreshStandby(available ? cfg : null).catch(() => { /* noop */ });
+  }, [cfg?.pairs, cfg?.pair?.id, available]);
+  /**
    * The next close is a goodbye, not a handover.
    *
    * Raised by whoever leaves on purpose - "make yourself unavailable",
@@ -844,6 +854,9 @@ export default function App() {
     const timer = setTimeout(() => setCallAlert(null), Math.max(0, callAlert.until - Date.now()));
     return () => { clearTimeout(timer); sub.remove(); };
   }, [callAlert]);
+  // A call from a connection not in use, in the middle of the screen
+  // too: see standby.ts.
+  useEffect(() => onStandbyCall((_pairId, text) => showCallAlert(text)), [showCallAlert]);
   /** counts the changes of network: the network mark is read again at each */
   const [netTick, setNetTick] = useState(0);
   /** the wait after the other side came back to the server: see onPeerJoined */
