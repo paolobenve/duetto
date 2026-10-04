@@ -461,6 +461,16 @@ try {
   v2b.send({ type: 'mode', mode: 'active' });
   const backIn = await v1b.expect('peer-mode');
   check(backIn.since === moved.since, 'out and back in within half a minute keeps the moment');
+  // Available: since when on the server at all, in the channel or not.
+  check(typeof met.available === 'number' && met.available === joinedV2.available,
+    'whoever comes in is told since when it is available, and announced with it');
+  check(met.peerAvailable === back.available,
+    'and learns since when the other is available');
+  check(moved.since > joinedV2.available || moved.since === joinedV2.available,
+    'going into the channel does not move the moment one became available');
+  v2b.send({ type: 'presence' });
+  const asked = await v2b.expect('presence');
+  check(asked.peerAvailable === back.available, 'asked, the server says it again');
   v1b.close(); v2b.close();
 
   // --- a drop followed by a quick return is never announced -------------------
@@ -500,6 +510,8 @@ try {
   const gr2cJoined = await gr2c.expect('joined');
   check(gr2cJoined.since === gr2bJoined.since,
     'back within the minute in the same state, a phone keeps its moment');
+  check(gr2cJoined.available === gr2bJoined.available,
+    'and its moment of being available too');
   gr2c.close();
   gr1.close();
 
@@ -644,6 +656,8 @@ try {
     const xAgain = await x2.expect('joined');
     check(xAgain.since === xFirst.since,
       'after a restart of the server, a phone in the same state keeps its moment');
+    check(xAgain.available === xFirst.available,
+      'and its moment of being available');
     check(xAgain.peerGone?.reason === 'dropped' && xAgain.peerGone.at > xFirst.since,
       'and the other, not back yet, is out of reach since the restart');
     const y2 = client(PORTR);

@@ -467,7 +467,7 @@ function peersOf(roomId, exclude) {
  *
  * @type {Map<string, { timer: NodeJS.Timeout, peerId: string,
  *   knocks: { name: string, at: number }[],
- *   mode?: string, since?: number }>}
+ *   mode?: string, since?: number, present?: number }>}
  */
 const returning = new Map();
 
@@ -498,7 +498,7 @@ const departed = new Map();
  * within RESUME_MS carries on from its old moment. Past that it counts
  * as an ordinary return, and the moment starts again.
  *
- * @type {Map<string, { mode: string, since: number }>}
+ * @type {Map<string, { mode: string, since: number, present?: number }>}
  */
 const resumable = new Map();
 const RESUME_MS = ms(process.env.RESUME_MS, 10 * 60_000);
@@ -509,7 +509,9 @@ let resumableUntil = 0;
     resumableUntil = Number(saved.saved) + RESUME_MS;
     for (const st of saved.states ?? []) {
       if (st?.room && st?.side && st?.mode && Number(st.since) > 0) {
-        resumable.set(`${st.room}\n${st.side}`, { mode: st.mode, since: Number(st.since) });
+        resumable.set(`${st.room}\n${st.side}`, {
+          mode: st.mode, since: Number(st.since), present: Number(st.present) || undefined,
+        });
         // Connected before the restart and not back yet: out of reach
         // since the restart, and the other is told so - "unreachable
         // since 19:12:24" - until it returns, which wipes this out.
@@ -535,7 +537,7 @@ let resumableUntil = 0;
  * Back in the same state within the minute, it carries on; away
  * longer, it was really out of reach, and its moment starts again.
  *
- * @type {Map<string, { mode: string, since: number, until: number }>}
+ * @type {Map<string, { mode: string, since: number, until: number, present?: number }>}
  */
 const recentlyGone = new Map();
 const RECENT_MS = ms(process.env.RECENT_MS, 60_000);
@@ -586,7 +588,7 @@ function holdDeparture(roomId, ws, at) {
     timer, peerId: ws.peerId, knocks: held?.knocks ?? [],
     // What they were doing and since when: coming back within the
     // grace, in the same state, they carry on from where they were.
-    mode: ws.mode, since: ws.since, was: ws.was,
+    mode: ws.mode, since: ws.since, was: ws.was, present: ws.present,
   });
 }
 
@@ -611,6 +613,7 @@ function leaveRoom(ws) {
         mode: ws.mode, since: ws.since,
         until: at + (ws.saidBye ? QUICK_RETURN_MS : RECENT_MS),
         was: ws.was,
+        present: ws.present,
       });
     }
     if (ws.side) {
@@ -1127,7 +1130,7 @@ wss.on('connection', (ws, req) => {
       if (side) {
         for (const peer of [...set]) {
           if (peer.side === side) {
-            before = { mode: peer.mode, since: peer.since, was: peer.was };
+            before = { mode: peer.mode, since: peer.since, was: peer.was, present: peer.present };
             peer.replaced = true;
             send(peer, { type: 'error', error: 'replaced' });
             try { peer.close(4005, 'replaced'); } catch { /* noop */ }
@@ -1165,6 +1168,14 @@ wss.on('connection', (ws, req) => {
         : before?.was && before.was.mode === ws.mode && now0 < before.was.until ? before.was.since
           : now0;
       ws.was = before?.was;
+      /**
+       * Since when this phone is available - on the server, in the
+       * channel or waiting - without a break: unlike `since`, going in
+       * and out of the channel does not move it, and neither does a
+       * return within the grace of a drop or of a goodbye (a change of
+       * connection, an update). A longer absence starts it again.
+       */
+      ws.present = before?.present || now0;
       // Its own departure is over: it is here.
       if (side) departed.delete(`${roomId}\n${side}`);
       // One line per coming and going, for the questions of the day
@@ -1183,6 +1194,8 @@ wss.on('connection', (ws, req) => {
         // Since when this phone is in its state: carried over when it
         // is only coming back on a fresh socket.
         since: ws.since,
+        // And since when it has been available at all: see ws.present.
+        available: ws.present,
         // The other side broke this pair while this phone was away:
         // said now, or it would go on waiting for somebody who is not
         // coming.
@@ -1203,6 +1216,7 @@ wss.on('connection', (ws, req) => {
         peerName: other ? other.name : '',
         // Since when the other is in its state, or when and how it left.
         peerSince: other ? other.since : undefined,
+        peerAvailable: other ? other.present : undefined,
         peerGone: other ? undefined : goneFor(roomId, side) ?? undefined,
       });
 
@@ -1235,6 +1249,7 @@ wss.on('connection', (ws, req) => {
           name: ws.name,
           mode: ws.mode,
           since: ws.since,
+          available: ws.present,
         });
         // Having just told whoever comes in that the other is there, it
         // is worth making sure it is true, instead of waiting for the
@@ -1406,6 +1421,7 @@ wss.on('connection', (ws, req) => {
         peerActive: other ? other.mode === 'active' : false,
         peerName: other ? other.name : '',
         peerSince: other ? other.since : undefined,
+        peerAvailable: other ? other.present : undefined,
         peerGone: other ? undefined : goneFor(ws.roomId, ws.side) ?? undefined,
       });
       if (other) checkPresence(other);
@@ -1807,7 +1823,7 @@ for (const sig of ['SIGINT', 'SIGTERM']) {
     for (const [room, set] of rooms) {
       for (const ws of set) {
         if (ws.side && ws.mode && ws.since) {
-          states.push({ room, side: ws.side, mode: ws.mode, since: ws.since });
+          states.push({ room, side: ws.side, mode: ws.mode, since: ws.since, present: ws.present });
         }
       }
     }
