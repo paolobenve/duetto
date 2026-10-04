@@ -861,6 +861,13 @@ export default function App() {
   // A call from a connection not in use, in the middle of the screen
   // too: see standby.ts.
   useEffect(() => onStandbyCall((pairId, text, who) => showCallAlert(text, pairId, who)), [showCallAlert]);
+  /**
+   * The next entry comes from a change of connection: the output is the
+   * one that connection was left with, whatever the entry's own rule
+   * says. Moving away and back used to open in the earpiece a pair left
+   * on the Bluetooth headset.
+   */
+  const enteringBySwitch = useRef(false);
   /** the next connection made goes into the channel: see the call's button */
   const enterOnConnect = useRef(false);
   /** onSwitchPair, for what is born before it */
@@ -4329,6 +4336,8 @@ export default function App() {
     // entry could win and find nothing. Not before the reading is done.
     await howItWasLoading.current;
     const before = mine ? howItWas.current[mine] : undefined;
+    const bySwitch = enteringBySwitch.current;
+    enteringBySwitch.current = false;
     // The listening: as it was left, however long ago - like the
     // microphone. It used to come back on at every entry.
     const hushedBefore = before?.output === false;
@@ -4345,10 +4354,11 @@ export default function App() {
     }
     if (before) {
       const still = Date.now() - before.when;
-      // Closed under us while in the channel: the output in use then.
+      // Closed under us while in the channel, or come here from another
+      // connection: the output in use then.
       const was = cfgRef.current?.audioOutput;
-      if (before.live && was && ['SPEAKER_PHONE', 'EARPIECE', 'WIRED_HEADSET', 'BLUETOOTH'].includes(was)) {
-        Journal.mark(`resume-output:${was}`).catch(() => { /* noop */ });
+      if ((before.live || bySwitch) && was && ['SPEAKER_PHONE', 'EARPIECE', 'WIRED_HEADSET', 'BLUETOOTH'].includes(was)) {
+        Journal.mark(`resume-output:${was}${bySwitch ? ':switch' : ''}`).catch(() => { /* noop */ });
         // A Bluetooth headset remembered that is not connected now: the
         // phone's own output instead of Android's earpiece.
         resumeRouteRef.current?.(was as AudioRoute, was !== 'BLUETOOTH' || !!btHereRef.current);
@@ -5075,6 +5085,9 @@ export default function App() {
     // there you disappear by choice, not because the line dropped. The
     // service is not stopped: you stay reachable, on the other person.
     await putAwayChannel('pair-switch', cfg.pair?.id);
+    // Coming into the next one is a resumption, not an entry: see
+    // enterChannel.
+    enteringBySwitch.current = true;
     sayGoodbye.current = true;
     setCfg(saveCfg(next));
     setPeerName(next.pair?.peerName || '');
