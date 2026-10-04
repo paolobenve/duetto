@@ -78,6 +78,10 @@ export type AutoOutput = {
   btSeen?: string;
 };
 
+/** More than this many changes of output within the window is a fight: see the brake. */
+const ROUTE_MAX_CHANGES = 4;
+const ROUTE_WINDOW_MS = 10_000;
+
 export function useAudioRoute(
   enabled: boolean,
   preferred?: string,
@@ -99,6 +103,12 @@ export function useAudioRoute(
   /** The last output picked by hand, restored on coming back in. */
   const wanted = useRef<AudioRoute | null>(null);
   const initialised = useRef(false);
+  /** the channel's call is up: the telephony decides the output */
+  const inCall = useRef(false);
+  /** the latest changes of output, for the brake; and until when it holds */
+  const routeTimes = useRef<number[]>([]);
+  const frozenUntil = useRef(0);
+  const frozen = () => frozenUntil.current > Date.now();
   /**
    * The last built-in output - speaker or earpiece - the sound came out
    * of. When a Bluetooth earpiece or a wired headset goes away, the
@@ -152,16 +162,43 @@ export function useAudioRoute(
    * the earpiece - is put on the output wanted.
    */
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) { inCall.current = false; return; }
     return Call.subscribe((st) => {
+      if (st === 'ended' || st === 'ended-by-system' || st === 'failed') {
+        inCall.current = false;
+        return;
+      }
       if (st === 'active' || st === 'resumed') {
+        inCall.current = true;
         const w = wanted.current;
-        if (w) setTimeout(() => applyRoute(w), 300);
+        if (w && !frozen()) setTimeout(() => applyRoute(w), 300);
         return;
       }
       if (!st.startsWith('route:')) return;
       const r = st.slice('route:'.length);
       if (!isRoute(r)) return;
+      inCall.current = true;
+      /**
+       * The brake: more than four changes of output in ten seconds is a
+       * fight, not a choice - on 4 October two directors, the telephony
+       * and the old audio library, tossed the sound between headset and
+       * speaker several times a second for a minute and a half, and the
+       * app was too busy to keep the link. Frozen, the output is taken
+       * as it comes and nothing is applied, until ten quiet seconds.
+       */
+      const now = Date.now();
+      routeTimes.current = [...routeTimes.current.filter((x) => now - x < ROUTE_WINDOW_MS), now];
+      if (frozenUntil.current === 0 && routeTimes.current.length > ROUTE_MAX_CHANGES) {
+        Journal.mark(`output:oscillation:${r}`).catch(() => { /* noop */ });
+      }
+      if (routeTimes.current.length > ROUTE_MAX_CHANGES) frozenUntil.current = now + ROUTE_WINDOW_MS;
+      if (frozen()) {
+        wanted.current = r;
+        currentRef.current = r;
+        setCurrent(r);
+        return;
+      }
+      frozenUntil.current = 0;
       const a = autoRef.current;
       const headset = r === 'BLUETOOTH' || r === 'WIRED_HEADSET';
       if (headset && wanted.current !== r) {
@@ -279,6 +316,19 @@ export function useAudioRoute(
           if (Array.isArray(list)) {
             routes = list.filter(isRoute) as AudioRoute[];
             if (routes.length > 0) setAvailable(routes);
+          }
+          /**
+           * One director only. With the channel's call up, the output is
+           * the telephony's to decide (see the subscription above); this
+           * library, which managed it before the call existed, is only
+           * asked which outputs there are. Left to decide too, it read a
+           * headset missing from its own list as a headset gone, put the
+           * speaker back, then saw the headset and took it again - and
+           * the telephony answered every move.
+           */
+          if (inCall.current || frozen()) {
+            known.current = routes.length > 0 ? routes : known.current;
+            return;
           }
 
           const selected: AudioRoute | null = isRoute(data?.selectedAudioDevice)
