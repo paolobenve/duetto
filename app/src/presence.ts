@@ -250,7 +250,7 @@ export function presenceCode(o: {
   return o.tornDown ? 'peer-waiting-torn-down' : 'peer-waiting';
 }
 
-export function presenceLine(o: {
+function presenceFirstLine(o: {
   /** we are in the channel */
   inChannel: boolean;
   /** the other person is in the channel */
@@ -329,6 +329,32 @@ export function presenceLine(o: {
   return o.tornDown
     ? t('presence.peerWaitingTornDown', { ours, who, when: theirs })
     : t('presence.peerWaiting', { ours, who, when: theirs });
+}
+
+/**
+ * The standing line: how things stand, and - on a second line, read
+ * with the notification opened - since when the two are available at
+ * all, on the server, in the channel or waiting. Going in and out of the
+ * channel moves the first line's moments, not these: they are the
+ * server's (see ws.present there), and an older server says none.
+ */
+export function presenceLine(o: Parameters<typeof presenceFirstLine>[0] & {
+  /** since when WE are available; 0 = unknown */
+  myAvailable?: number;
+  /** since when the other is available; 0 = unknown or away */
+  peerAvailable?: number;
+}): string {
+  const first = presenceFirstLine(o);
+  if (o.server === 'down' || o.server === 'connecting') return first;
+  const since = (at?: number) => (at && at > 0 ? t('presence.sinceTime', { time: momentText(at) }).trim() : '');
+  const mine = since(o.myAvailable);
+  const theirs = o.peerPresent ? since(o.peerAvailable) : '';
+  const who = named(o.name) ? o.name : t('presence.theOther');
+  const second = mine && theirs ? t('presence.availableBoth', { mine, who, theirs })
+    : mine ? t('presence.availableMine', { mine })
+      : theirs ? t('presence.availableTheirs', { who, theirs })
+        : '';
+  return second ? `${first}\n${second}` : first;
 }
 
 /**
@@ -446,13 +472,16 @@ async function listenNow(): Promise<boolean> {
   let since = 0;
   /** since when WE are waiting, as the server saw it */
   let mySince = 0;
+  /** since when each of the two is available at all: see presenceLine */
+  let myAvailable = 0;
+  let peerAvailable = 0;
   let name = pair.peerName || '';
 
   const refresh = () => {
     Foreground.setText(presenceLine({
       inChannel: false, peerActive: active, peerPresent: present, name: peerShown(pair, name),
       detached, since,
-      mySince, channel: pair.label || '',
+      mySince, channel: pair.label || '', myAvailable, peerAvailable,
     }), '', detached ? '' : 'enter',
     { enter: t('presence.enter'), wait: t('presence.wait') }).catch(() => { /* noop */ });
     // A stale alert is worse than no alert: "waiting for you in the
@@ -501,8 +530,13 @@ async function listenNow(): Promise<boolean> {
         Journal.mark('presence:replaced:stale').catch(() => { /* noop */ });
         stopListening();
       },
-      onJoined: ({ peerPresent, peerActive, peerName, peerSince, peerGone, since: own }) => {
+      onJoined: ({
+        peerPresent, peerActive, peerName, peerSince, peerGone, since: own,
+        available, peerAvailable: theirs,
+      }) => {
         mySince = own || Date.now();
+        myAvailable = available;
+        peerAvailable = peerPresent ? theirs : 0;
         since = peerPresent ? peerSince : peerGone?.at ?? 0;
         if (!peerPresent && peerGone) detached = peerGone.reason === 'bye';
         // "I did not leave": said once, as soon as we are connected, and
@@ -528,8 +562,9 @@ async function listenNow(): Promise<boolean> {
         if (peerPresent) sayHello();
         refresh();
       },
-      onPeerJoined: (peerName, mode, at) => {
+      onPeerJoined: (peerName, mode, at, available) => {
         since = at;
+        peerAvailable = available;
         present = true;
         detached = false;
         active = mode === 'active';
@@ -540,6 +575,7 @@ async function listenNow(): Promise<boolean> {
       onPeerLeft: (why, at) => {
         since = at;
         present = false;
+        peerAvailable = 0;
         active = false;
         detached = why === 'bye';
         refresh();
@@ -603,8 +639,9 @@ async function listenNow(): Promise<boolean> {
        * side is doing, the notification line catches up with any
        * announcement that got lost along the way.
        */
-      onPresence: ({ peerPresent, peerActive, peerName, peerSince, peerGone }) => {
+      onPresence: ({ peerPresent, peerActive, peerName, peerSince, peerGone, peerAvailable: theirs }) => {
         watchdog?.noteAnswer();
+        peerAvailable = peerPresent ? theirs : 0;
         const moment = peerPresent ? peerSince : peerGone?.at ?? 0;
         if (moment) since = moment;
         if (!peerPresent && peerGone) detached = peerGone.reason === 'bye';

@@ -1046,6 +1046,9 @@ export default function App() {
   const [peerSince, setPeerSince] = useState(0);
   /** since when WE are in our state - in the channel, waiting - on the server's clock */
   const [mySince, setMySince] = useState(0);
+  /** since when each of the two is available at all, as the server says: see presenceLine */
+  const [myAvailable, setMyAvailable] = useState(0);
+  const [peerAvailable, setPeerAvailable] = useState(0);
   /**
    * They are waiting because their phone closed the app on them.
    *
@@ -2215,6 +2218,8 @@ export default function App() {
     since: peerSince,
     tornDownBy: peerTornDownBy,
     mySince,
+    myAvailable,
+    peerAvailable,
     channel: connectionName,
     name: shownName,
     server: shownStatus === 'offline' ? 'down'
@@ -2225,7 +2230,7 @@ export default function App() {
     // follows `status` a breath later and dragged the line along - but
     // masked is not cured.
   }), [inChannel, status, shownStatus, peerPresent, peerDetached, peerTornDown, shownName, peerSince,
-    mySince, connectionName, peerTornDownBy,
+    mySince, connectionName, peerTornDownBy, myAvailable, peerAvailable,
     // The words change with the language: the line is written again.
     cfg?.language]);
 
@@ -3277,9 +3282,11 @@ export default function App() {
 
           onJoined: ({
             peerPresent: present, peerActive, peerName: n, turn, stun, owner, opens, reports,
-            peerSince: since, peerGone, since: ownSince,
+            peerSince: since, peerGone, since: ownSince, available, peerAvailable: theirs,
           }) => {
             setMySince(ownSince || Date.now());
+            setMyAvailable(available);
+            setPeerAvailable(present ? theirs : 0);
             // Found as they are: the server says since when, and if
             // they are away, whether they said goodbye - a phone that
             // comes back after a restart used to call "unreachable"
@@ -3345,7 +3352,8 @@ export default function App() {
             }
           },
 
-          onPeerJoined: (n, mode, since) => {
+          onPeerJoined: (n, mode, since, available) => {
+            setPeerAvailable(available);
             Journal.mark(`peer-back:${mode === 'active' ? 'channel' : 'waiting'}`)
               .catch(() => { /* noop */ });
             setPeerSince(since);
@@ -3396,6 +3404,7 @@ export default function App() {
 
           onPeerLeft: (why, at) => {
             setPeerSince(at);
+            setPeerAvailable(0);
             // Into the journal, because it is the question one asks
             // afterwards: "they disappeared - did they close it or did
             // they drop?". The notification says it on the spot to
@@ -3435,7 +3444,9 @@ export default function App() {
            */
           onPresence: ({
             peerPresent: present, peerActive, peerName: n, peerSince: since, peerGone,
+            peerAvailable: theirs,
           }) => {
+            setPeerAvailable(present ? theirs : 0);
             // An older server says no moment: then what we know stays.
             const moment = present ? since : peerGone?.at ?? 0;
             if (moment) setPeerSince(moment);

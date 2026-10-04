@@ -90,7 +90,7 @@ object Notifier {
     fun withName(name: String, text: String): CharSequence {
         if (name.isEmpty()) return text
         return HtmlCompat.fromHtml(
-            "<i>${escape(name)}</i> · ${escape(text)}",
+            "<i>${escape(name)}</i> · ${escape(text).replace("\n", "<br>")}",
             HtmlCompat.FROM_HTML_MODE_LEGACY,
         )
     }

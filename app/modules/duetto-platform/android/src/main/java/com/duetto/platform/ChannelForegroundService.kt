@@ -380,11 +380,17 @@ class ChannelForegroundService : Service() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
 
+        val name = currentName ?: Notifier.name(this)
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Duetto")
-            .setContentText(Notifier.withName(currentName ?: Notifier.name(this), currentText))
+            // Closed, the first line; opened, all of them - the second
+            // says since when the two are available (see presenceLine).
+            .setContentText(Notifier.withName(name, currentText.substringBefore('\n')))
             .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(pending)
+        if ('\n' in currentText) {
+            builder.setStyle(NotificationCompat.BigTextStyle().bigText(Notifier.withName(name, currentText)))
+        }
         // The buttons: "Enter" while waiting, "Go to waiting" while in
         // the channel. Leaving for good stays in the app, behind its
         // question: one touch in the shade is too little for that.

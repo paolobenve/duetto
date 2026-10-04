@@ -199,6 +199,10 @@ export type SignalingEvents = {
     peerSince: number;
     /** when and how the other left, if they are away and the server knows */
     peerGone: PeerGone;
+    /** since when WE are available - on the server, in the channel or not; 0 if unknown */
+    available: number;
+    /** since when the other is available; 0 if unknown or away */
+    peerAvailable: number;
   }) => void;
   /** the answer to a report sent through the server */
   onReportResult?: (ok: boolean, error?: string, url?: string) => void;
@@ -212,7 +216,7 @@ export type SignalingEvents = {
    */
   onReplaced?: () => void;
   /** @param since the moment they came, as the server says it */
-  onPeerJoined?: (name: string, mode: Mode, since: number) => void;
+  onPeerJoined?: (name: string, mode: Mode, since: number, available: number) => void;
   /**
    * @param why 'bye' if they left, 'dropped' if the network went
    * @param at the moment, as the server says it
@@ -225,6 +229,8 @@ export type SignalingEvents = {
   onPresence?: (info: {
     peerPresent: boolean; peerActive: boolean; peerName: string;
     peerSince: number; peerGone: PeerGone;
+    /** since when the other is available; 0 if unknown or away */
+    peerAvailable: number;
   }) => void;
   /** the server tells us: the other one came in, or knocked */
   /** @param at the moment it happened, as the server says it */
@@ -672,6 +678,8 @@ export class Signaling {
           since: moment(msg.since),
           peerSince: moment(msg.peerSince),
           peerGone: gone(msg.peerGone),
+          available: moment(msg.available),
+          peerAvailable: moment(msg.peerAvailable),
         });
         break;
 
@@ -695,6 +703,7 @@ export class Signaling {
           msg.name || 'Someone', msg.mode === 'active' ? 'active' : 'listening',
           // An older server says no moment: the news is fresh, so now.
           moment(msg.since) || Date.now(),
+          moment(msg.available),
         );
         break;
 
@@ -718,6 +727,7 @@ export class Signaling {
           peerName: msg.peerName || '',
           peerSince: moment(msg.peerSince),
           peerGone: gone(msg.peerGone),
+          peerAvailable: moment(msg.peerAvailable),
         });
         break;
 
