@@ -5341,6 +5341,9 @@ export default function App() {
           vp9Here={localVp9}
           vp9Peer={peerVp9}
         />
+        {/* A call found in the settings too: one may be adjusting the
+            volume with the phone at arm's length. */}
+        {callAlert ? <CallAlert text={callAlert.text} onClose={() => setCallAlert(null)} /> : null}
       </View>
     );
   }
