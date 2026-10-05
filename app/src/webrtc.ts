@@ -215,6 +215,10 @@ const STALL_CURES = 2;
 const GRAINY_BELOW_SHARE = 0.1;
 const GRAINY_MS = 6_000;
 const GRAINY_AFTER_LINK_MS = 8_000;
+/** Their picture decoded at a trickle while arriving in full: see weighStalledDecoder. */
+const DECODER_BUSY_SHARE = 0.25;
+const DECODER_STALLED_FPS = 3;
+const DECODER_STALLED_MS = 8_000;
 const BALANCE_RATIO = 3;
 const BALANCE_TICKS = 10;
 const BALANCE_STEP = 0.7;
@@ -2130,7 +2134,7 @@ export class ChannelSession {
   private grainySince = 0;
   private linkedAt = 0;
   private weighGrainyIncoming(
-    pic: { w: number; h: number; kbps: number | null } | null,
+    pic: { w: number; h: number; fps: number; kbps: number | null } | null,
     rttMs: number | null, lossPct: number | null,
   ) {
     const profile = VIDEO_PROFILES[this.cfg.videoQuality] ?? VIDEO_PROFILES.better;
@@ -2141,11 +2145,40 @@ export class ChannelSession {
       && pic.kbps * 1000 < profile.maxBitrate * GRAINY_BELOW_SHARE
       && pic.h < profile.capture.height
       && lossPct !== null && lossPct < 1 && rttMs !== null && rttMs < 200;
+    this.weighStalledDecoder(pic, rttMs, lossPct, profile.maxBitrate, now);
     if (!grainy) { this.grainySince = 0; return; }
     if (!this.grainySince) { this.grainySince = now; return; }
     if (now - this.grainySince < GRAINY_MS) return;
     this.grainySince = 0;
     this.events.onSessionRenewWanted?.(`${pic!.w}x${pic!.h}:${pic!.kbps}k:rtt=${rttMs}`);
+  }
+
+  /**
+   * Their picture arriving in full and decoded at a trickle: the
+   * decoder stuck.
+   *
+   * On 5 October the Edge went on receiving 720p at 2.4 Mbit/s and drew
+   * it at 0 to 5 frames a second, its own encoder limited by the CPU at
+   * 320x176, for over four minutes on a clean road; leaving and
+   * entering - a new decoder and a new encoder - put it right at once.
+   * The same cure, asked here: a quarter of the profile's ceiling
+   * arriving, under 3 frames a second drawn, for 8 seconds.
+   */
+  private stalledDecoderSince = 0;
+  private weighStalledDecoder(
+    pic: { w: number; h: number; fps: number; kbps: number | null } | null,
+    rttMs: number | null, lossPct: number | null, ceiling: number, now: number,
+  ) {
+    const stuck = this.peerVideoDeclared && this.localWatching
+      && now - this.linkedAt > GRAINY_AFTER_LINK_MS
+      && pic !== null && pic.kbps !== null && pic.kbps * 1000 >= ceiling * DECODER_BUSY_SHARE
+      && pic.fps <= DECODER_STALLED_FPS
+      && lossPct !== null && lossPct < 1 && rttMs !== null && rttMs < 200;
+    if (!stuck) { this.stalledDecoderSince = 0; return; }
+    if (!this.stalledDecoderSince) { this.stalledDecoderSince = now; return; }
+    if (now - this.stalledDecoderSince < DECODER_STALLED_MS) return;
+    this.stalledDecoderSince = 0;
+    this.events.onSessionRenewWanted?.(`decoder-stalled:${pic!.w}x${pic!.h}@${pic!.fps}:${pic!.kbps}k`);
   }
 
   /** The balancing ceiling on the outgoing video, in bit/s; null = none. */
