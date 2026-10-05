@@ -36,6 +36,59 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.9.19',
+    notes: {
+      en: [
+        'Duetto now works as a call, like WhatsApp; before it was a different kind of app.',
+        'Two separate buttons, microphone and listening.',
+        'Bluetooth headsets: each device remembers whether it should take the sound by itself; its battery level is in the button.',
+        'The other connections stay reachable even when they are not in use.',
+        'The screen without video shows with icons the microphone and output, yours and the other person\'s.',
+        'And various other minor improvements.',
+      ],
+      it: [
+        'Duetto è ora implementato come una chiamata, come WhatsApp; prima era un\'app di tipo diverso.',
+        'Due pulsanti separati, microfono e ascolto.',
+        'Cuffie Bluetooth: ogni dispositivo ricorda se deve prendere l\'audio da solo; c\'è il livello della batteria nel pulsante.',
+        'Le altre connessioni restano raggiungibili anche quando non sono in uso.',
+        'La schermata senza video mostra con delle icone microfono e uscita tuoi e dell\'altro.',
+        'E vari altri miglioramenti minori.',
+      ],
+      es: [
+        'Duetto ahora funciona como una llamada, como WhatsApp; antes era una app de otro tipo.',
+        'Dos botones separados, micrófono y escucha.',
+        'Auriculares Bluetooth: cada dispositivo recuerda si debe tomar el sonido por sí solo; el nivel de su batería está en el botón.',
+        'Las otras conexiones siguen localizables aunque no estén en uso.',
+        'La pantalla sin vídeo muestra con iconos el micrófono y la salida, tuyos y del otro.',
+        'Y varias otras mejoras menores.',
+      ],
+      fr: [
+        'Duetto fonctionne maintenant comme un appel, comme WhatsApp ; avant, c\'était une app d\'un autre type.',
+        'Deux boutons séparés, micro et écoute.',
+        'Casques Bluetooth : chaque appareil se souvient s\'il doit prendre le son de lui-même ; le niveau de sa batterie est dans le bouton.',
+        'Les autres connexions restent joignables même quand elles ne sont pas utilisées.',
+        'L\'écran sans vidéo montre avec des icônes le micro et la sortie, les tiens et ceux de l\'autre.',
+        'Et diverses autres petites améliorations.',
+      ],
+      de: [
+        'Duetto funktioniert jetzt wie ein Anruf, wie bei WhatsApp; vorher war es eine App anderer Art.',
+        'Zwei getrennte Knöpfe, Mikrofon und Hören.',
+        'Bluetooth-Kopfhörer: jedes Gerät merkt sich, ob es den Ton von selbst übernehmen soll; sein Akkustand steht im Knopf.',
+        'Die anderen Verbindungen bleiben erreichbar, auch wenn sie nicht benutzt werden.',
+        'Der Bildschirm ohne Video zeigt mit Symbolen Mikrofon und Ausgang, deine und die der anderen Person.',
+        'Und verschiedene weitere kleine Verbesserungen.',
+      ],
+      pt: [
+        'O Duetto agora funciona como uma chamada, como o WhatsApp; antes era um app de outro tipo.',
+        'Dois botões separados, microfone e escuta.',
+        'Fones Bluetooth: cada dispositivo lembra se deve pegar o som sozinho; o nível da bateria dele está no botão.',
+        'As outras conexões continuam alcançáveis mesmo quando não estão em uso.',
+        'A tela sem vídeo mostra com ícones o microfone e a saída, seus e do outro.',
+        'E várias outras melhorias menores.',
+      ],
+    },
+  },
+  {
     version: '0.9.18',
     notes: {
       en: [
