@@ -32,8 +32,7 @@ import {
 import { peerAvatar } from './avatar';
 import { isRealName } from './presence';
 import { VERSION_FULL } from './version';
-import { Alarm, Alerts, Journal, Call, AudioDevices } from 'duetto-platform';
-import { restartDuetto } from './restart';
+import { Alarm, Alerts, Journal, Call } from 'duetto-platform';
 import { ALARMS } from './alarms';
 import { TOKEN_PAGE } from './gitlab';
 import type { ReportOutcome } from './gitlab';
@@ -311,16 +310,6 @@ export default function SettingsScreen({
   // The list is asked for when this screen opens: it lives on the
   // server, and it may have changed since the last look.
   useEffect(() => { if (canInvite) onAskPeople?.(); }, [canInvite]);
-
-  /** WebRTC's own voice effects: wanted, and in use since Duetto started */
-  const [ownEffects, setOwnEffects] = useState({ wanted: false, inUse: false });
-  useEffect(() => {
-    AudioDevices.ownEffects().then(setOwnEffects).catch(() => {});
-  }, []);
-
-  const restartOwnEffects = (own: boolean) => {
-    restartDuetto(`voice-effects:${own ? 'own' : 'phone'}`).catch(() => {});
-  };
 
   /** the phone permission, for the ringtone during the channel */
   const [ringGranted, setRingGranted] = useState(false);
@@ -893,35 +882,6 @@ export default function SettingsScreen({
             <Switch value={!!(cfg.richerAudio)} {...SWITCH_COLOURS} />
           </View>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.switchRow}
-          onPress={() => {
-            const v = !ownEffects.wanted;
-            setOwnEffects({ ...ownEffects, wanted: v });
-            AudioDevices.setOwnEffects(v).catch(() => {});
-            // Back to what is in use, nothing to restart for.
-            if (v === ownEffects.inUse) return;
-            Alert.alert(t('settings.ownEffectsAskTitle'), t('settings.ownEffectsAsk'), [
-              { text: t('settings.ownEffectsLater'), style: 'cancel' },
-              { text: t('settings.ownEffectsRestartNow'), onPress: () => restartOwnEffects(v) },
-            ]);
-          }}>
-          <View style={styles.choiceText}>
-            <Text style={styles.choiceLabel}>{t('settings.ownEffects')}</Text>
-            <Text style={styles.choiceNote}>{t('settings.ownEffectsNote')}</Text>
-          </View>
-          <View pointerEvents="none">
-            <Switch value={ownEffects.wanted} {...SWITCH_COLOURS} />
-          </View>
-        </TouchableOpacity>
-        {/* The audio is built when Duetto starts: the choice waits for
-            a new start, which can be had here at once. */}
-        {ownEffects.wanted !== ownEffects.inUse && (
-          <TouchableOpacity style={styles.rowButton} onPress={() => restartOwnEffects(ownEffects.wanted)}>
-            <Text style={styles.rowButtonText}>{t('settings.ownEffectsRestart')}</Text>
-          </TouchableOpacity>
-        )}
-
         {/* What moves the sound by itself. Each a switch of its own; the
             second only makes sense under the first. */}
         {([

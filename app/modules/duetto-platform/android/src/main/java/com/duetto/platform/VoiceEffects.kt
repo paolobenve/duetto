@@ -18,32 +18,14 @@ import android.media.audiofx.NoiseSuppressor
 import android.os.Build
 
 /**
- * Whose echo cancelling and noise suppression clean the voice: the
- * phone's, or WebRTC's own.
+ * How the voice is taken: the phone's echo cancelling and noise
+ * suppression, the microphone, the source - for the journal.
  *
- * The phone's are the default, and cheap on the battery. On a Motorola
- * edge 50 fusion on speaker the voice left some 50 dB too quiet - what
- * such effects do when they take the voice for the echo of the other
- * side. WebRTC's own can be chosen instead.
- *
- * The audio machinery is built once, when the process starts, so the
- * choice is read then, by the application, and holds until the next
- * start.
+ * WebRTC's own effects could once be chosen instead of the phone's; they
+ * went, as nobody found them of use.
  */
 object VoiceEffects {
     private const val PREFS = "duetto-voice"
-    private const val KEY = "ownEffects"
-
-    /** What the running process was started with; null before the start. */
-    @Volatile var inUse: Boolean? = null
-
-    /** WebRTC's own effects wanted, instead of the phone's. */
-    fun wanted(ctx: Context): Boolean =
-        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY, false)
-
-    fun want(ctx: Context, own: Boolean) {
-        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY, own).apply()
-    }
 
     private const val KEY_WEBRTC_LOG = "webrtcLog"
 
@@ -51,7 +33,7 @@ object VoiceEffects {
      * WebRTC's own warnings and errors in Android's log, with the
      * diagnostics on. A crash inside its video encoder left nothing to
      * read: no message, and a library with no names in it. Read at the
-     * start, like the effects - the logging is set up with the engine.
+     * start: the logging is set up with the engine.
      */
     fun webrtcLogWanted(ctx: Context): Boolean =
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_WEBRTC_LOG, false)
@@ -59,9 +41,6 @@ object VoiceEffects {
     fun wantWebrtcLog(ctx: Context, on: Boolean) {
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_WEBRTC_LOG, on).apply()
     }
-
-    /** Read by the application at start, to build the audio with. */
-    fun atStart(ctx: Context): Boolean = wanted(ctx).also { inUse = it }
 
     private fun sourceName(s: Int) = when (s) {
         MediaRecorder.AudioSource.MIC -> "mic"
@@ -89,15 +68,14 @@ object VoiceEffects {
     }
 
     /**
-     * How the voice is taken now, for the journal: whose effects, and for
-     * each recording of ours the source, the microphone, the effects
+     * How the voice is taken now, for the journal: the phone's effects,
+     * and for each recording of ours the source, the microphone, the effects
      * applied, whether Android silences it. Only our own recordings are
      * visible to an app.
      */
     fun describe(ctx: Context): String {
         val am = ctx.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
         val parts = mutableListOf<String>()
-        parts += "effects=" + when (inUse) { true -> "own"; false -> "phone"; null -> "?" }
         parts += "phone-has=" + listOfNotNull(
             if (AcousticEchoCanceler.isAvailable()) "aec" else null,
             if (NoiseSuppressor.isAvailable()) "ns" else null,

@@ -495,12 +495,6 @@ export const AudioDevices = isAndroid && NativeAudioDevices
       voice: () => call(NativeAudioDevices, 'voice'),
       /** the battery of the Bluetooth device `id`, 0-100, or null when unknown */
       battery: (id) => call(NativeAudioDevices, 'battery', String(id)),
-      /** `{ wanted, inUse }`: WebRTC's own voice effects, instead of the phone's */
-      ownEffects: () => call(NativeAudioDevices, 'ownEffects'),
-      /** from the next start of Duetto */
-      setOwnEffects: (own) => call(NativeAudioDevices, 'setOwnEffects', !!own),
-      /** starts Duetto afresh, as after an update */
-      restart: () => call(NativeAudioDevices, 'restart'),
       /** WebRTC's warnings in Android's log, from the next start */
       setWebrtcLog: (on) => call(NativeAudioDevices, 'setWebrtcLog', !!on),
     }
@@ -508,9 +502,6 @@ export const AudioDevices = isAndroid && NativeAudioDevices
       list: () => Promise.resolve([]), subscribe: () => () => {},
       voice: () => Promise.resolve(''),
       battery: () => Promise.resolve(null),
-      ownEffects: () => Promise.resolve({ wanted: false, inUse: false }),
-      setOwnEffects: () => Promise.resolve(false),
-      restart: () => Promise.resolve(false),
       setWebrtcLog: () => Promise.resolve(false),
     };
 

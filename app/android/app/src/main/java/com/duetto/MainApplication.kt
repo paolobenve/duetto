@@ -14,7 +14,6 @@ import com.facebook.soloader.SoLoader
 import com.duetto.platform.VoiceEffects
 import com.oney.WebRTCModule.WebRTCModuleOptions
 import org.webrtc.Logging
-import org.webrtc.audio.JavaAudioDeviceModule
 
 class MainApplication : Application(), ReactApplication {
 
@@ -44,21 +43,10 @@ class MainApplication : Application(), ReactApplication {
       // If you opted-in for the New Architecture, we load the native entry point for this app.
       load()
     }
-    // WebRTC's own echo cancelling and noise suppression instead of the
-    // phone's, when chosen: see VoiceEffects. Built before the WebRTC
-    // module is, and only then; otherwise the library's default stands.
     // With the diagnostics on, WebRTC says its warnings and errors in
     // Android's log: what a crash inside it leaves to read.
     if (VoiceEffects.webrtcLogWanted(this)) {
       WebRTCModuleOptions.getInstance().loggingSeverity = Logging.Severity.LS_WARNING
-    }
-    if (VoiceEffects.atStart(this)) {
-      WebRTCModuleOptions.getInstance().audioDeviceModule =
-          JavaAudioDeviceModule.builder(this)
-              .setEnableVolumeLogger(false)
-              .setUseHardwareAcousticEchoCanceler(false)
-              .setUseHardwareNoiseSuppressor(false)
-              .createAudioDeviceModule()
     }
   }
 }

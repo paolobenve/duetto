@@ -50,16 +50,6 @@
                 android:resource="@xml/duetto_file_paths" />
         </provider>
 
-        <!-- Starts Duetto afresh, from a process of its own: see
-             RestartActivity. -->
-        <activity
-            android:name=".RestartActivity"
-            android:exported="false"
-            android:process=":restart"
-            android:excludeFromRecents="true"
-            android:noHistory="true"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
-
         <!-- The screen that reads a QR code: a pairing code or an
              invitation held up by the phone next to this one. -->
         <activity
