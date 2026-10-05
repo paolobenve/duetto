@@ -81,6 +81,8 @@ export type AutoOutput = {
 /** More than this many changes of output within the window is a fight: see the brake. */
 const ROUTE_MAX_CHANGES = 4;
 const ROUTE_WINDOW_MS = 10_000;
+/** The headset left by the sound: how long before asking whether it is still there. */
+const KEEP_WAIT_MS = 1_500;
 
 export function useAudioRoute(
   enabled: boolean,
@@ -96,6 +98,9 @@ export function useAudioRoute(
     'SPEAKER_PHONE',
     'EARPIECE',
   ]);
+  /** the outputs there are, for a decision taken in a timer */
+  const availableRef = useRef(available);
+  availableRef.current = available;
   const [current, setCurrent] = useState<AudioRoute>('SPEAKER_PHONE');
   const currentRef = useRef<AudioRoute>('SPEAKER_PHONE');
   useEffect(() => { currentRef.current = current; }, [current]);
@@ -109,6 +114,8 @@ export function useAudioRoute(
   const routeTimes = useRef<number[]>([]);
   const frozenUntil = useRef(0);
   const frozen = () => frozenUntil.current > Date.now();
+  /** the wait before deciding whether a headset left by the sound is still there */
+  const keepTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /**
    * The last built-in output - speaker or earpiece - the sound came out
    * of. When a Bluetooth earpiece or a wired headset goes away, the
@@ -212,6 +219,39 @@ export function useAudioRoute(
         }
         wanted.current = r;
       }
+      /**
+       * The headset wanted, and the sound moved off it to the phone's
+       * own output: by whom? If the headset is still there, by somebody
+       * that was not asked - at entry, a moment after the headset was
+       * put back, the earpiece took it and kept it. If it has gone, it
+       * is the fallback of a headset switched off. The list of outputs
+       * may say so a moment late: the answer waits a second and a half,
+       * then puts the headset back, or goes to the phone's own output
+       * used last.
+       */
+      const wantedHeadset = wanted.current === 'BLUETOOTH' || wanted.current === 'WIRED_HEADSET';
+      if (!headset && wantedHeadset && !earFrom.current) {
+        currentRef.current = r;
+        setCurrent(r);
+        if (keepTimer.current) clearTimeout(keepTimer.current);
+        keepTimer.current = setTimeout(() => {
+          keepTimer.current = null;
+          const w = wanted.current;
+          if ((w !== 'BLUETOOTH' && w !== 'WIRED_HEADSET') || currentRef.current === w || frozen()) return;
+          if (availableRef.current.includes(w)) {
+            Journal.mark(`output:kept:${w}`).catch(() => { /* noop */ });
+            applyRoute(w);
+            return;
+          }
+          const back = builtIn.current;
+          wanted.current = back;
+          currentRef.current = back;
+          setCurrent(back);
+          applyRoute(back);
+          Journal.mark(`output:back:${back}`).catch(() => { /* noop */ });
+        }, KEEP_WAIT_MS);
+        return;
+      }
       // A headset gone: Android falls back on the earpiece, its own
       // default; the person expects the built-in output of before - on
       // speaker, a Bluetooth earpiece put on and taken off left the call
@@ -234,7 +274,11 @@ export function useAudioRoute(
       if (wasHeadset && !headset) wanted.current = r;
       currentRef.current = r;
       setCurrent(r);
-      noteBuiltIn(r);
+      // The phone's own output used last is the one chosen or reached,
+      // not one Android passed through: the earpiece of a moment noted
+      // here sent the sound to the ear when the headset was switched
+      // off, instead of to the speaker in use before.
+      if (r === wanted.current) noteBuiltIn(r);
     });
   }, [enabled, applyRoute]);
 
