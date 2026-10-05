@@ -45,6 +45,21 @@ object VoiceEffects {
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY, own).apply()
     }
 
+    private const val KEY_WEBRTC_LOG = "webrtcLog"
+
+    /**
+     * WebRTC's own warnings and errors in Android's log, with the
+     * diagnostics on. A crash inside its video encoder left nothing to
+     * read: no message, and a library with no names in it. Read at the
+     * start, like the effects - the logging is set up with the engine.
+     */
+    fun webrtcLogWanted(ctx: Context): Boolean =
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_WEBRTC_LOG, false)
+
+    fun wantWebrtcLog(ctx: Context, on: Boolean) {
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_WEBRTC_LOG, on).apply()
+    }
+
     /** Read by the application at start, to build the audio with. */
     fun atStart(ctx: Context): Boolean = wanted(ctx).also { inUse = it }
 

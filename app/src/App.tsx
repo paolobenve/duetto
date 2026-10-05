@@ -913,6 +913,11 @@ export default function App() {
   const renewedAt = useRef(0);
   /** the last microphone renewed alone, the trial before the whole session */
   const micRenewedAt = useRef(0);
+  // With the diagnostics on, WebRTC's own warnings go to Android's log
+  // from the next start: see VoiceEffects.webrtcLogWanted.
+  useEffect(() => {
+    if (cfg) AudioDevices.setWebrtcLog(!!cfg.diagnostics).catch(() => {});
+  }, [cfg?.diagnostics]);
   /** the battery, shown with the diagnostics beside the volumes */
   const [battery, setBattery] = useState<{ percent: number; charging: boolean } | null>(null);
   /** the network carrying us, shown and told with the battery */

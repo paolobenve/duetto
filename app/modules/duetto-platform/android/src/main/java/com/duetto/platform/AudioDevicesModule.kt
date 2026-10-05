@@ -212,6 +212,13 @@ class AudioDevicesModule(private val ctx: ReactApplicationContext) :
         promise.resolve(true)
     }
 
+    /** WebRTC's warnings in Android's log from the next start: see VoiceEffects. */
+    @ReactMethod
+    fun setWebrtcLog(on: Boolean, promise: Promise) {
+        VoiceEffects.wantWebrtcLog(ctx, on)
+        promise.resolve(true)
+    }
+
     /** Starts Duetto afresh, for the choice to take effect. */
     @ReactMethod
     fun restart(promise: Promise) {

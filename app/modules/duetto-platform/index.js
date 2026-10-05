@@ -501,6 +501,8 @@ export const AudioDevices = isAndroid && NativeAudioDevices
       setOwnEffects: (own) => call(NativeAudioDevices, 'setOwnEffects', !!own),
       /** starts Duetto afresh, as after an update */
       restart: () => call(NativeAudioDevices, 'restart'),
+      /** WebRTC's warnings in Android's log, from the next start */
+      setWebrtcLog: (on) => call(NativeAudioDevices, 'setWebrtcLog', !!on),
     }
   : {
       list: () => Promise.resolve([]), subscribe: () => () => {},
@@ -509,6 +511,7 @@ export const AudioDevices = isAndroid && NativeAudioDevices
       ownEffects: () => Promise.resolve({ wanted: false, inUse: false }),
       setOwnEffects: () => Promise.resolve(false),
       restart: () => Promise.resolve(false),
+      setWebrtcLog: () => Promise.resolve(false),
     };
 
 export const Heartbeat = isAndroid && NativeHeartbeat

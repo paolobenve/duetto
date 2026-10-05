@@ -46,6 +46,8 @@ declare module 'duetto-platform' {
     setOwnEffects(own: boolean): Promise<boolean>;
     /** starts Duetto afresh, as after an update */
     restart(): Promise<boolean>;
+    /** WebRTC's warnings in Android's log, from the next start */
+    setWebrtcLog(on: boolean): Promise<boolean>;
   };
 
   /** The channel as a call, for Android's telephony. */
