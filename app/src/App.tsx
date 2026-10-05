@@ -102,6 +102,8 @@ const uiLog = logger('[duetto-ui]');
 
 /** The last death already told to the other phone: it is not repeated. */
 const DEATH_TOLD_KEY = 'duetto.death.told';
+/** The other's view rebuilt on frames coming back, at most this often. */
+const FLOWING_REBUILD_GAP_MS = 10_000;
 /** A return of the other side to the server, given this long before the link is rebuilt. */
 const PEER_BACK_WAIT_MS = 4_000;
 /** A session renewed in place at most this often: see renewSession. */
@@ -907,6 +909,8 @@ export default function App() {
   }, []);
   /** counts the changes of network: the network mark is read again at each */
   const [netTick, setNetTick] = useState(0);
+  /** the last time the other's view was rebuilt on frames coming back */
+  const flowingRebuiltAt = useRef(0);
   /** the wait after the other side came back to the server: see onPeerJoined */
   const peerBackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** the last renewal, for not renewing more than once in two minutes */
@@ -4212,10 +4216,16 @@ export default function App() {
         // Made when "video on" was announced, before the first frame, it
         // stayed black with 720p flowing underneath - on 4 October,
         // for over a minute, until leaving and entering again.
+        // Not more than once in ten seconds: a picture coming at a
+        // trickle stops and resumes every couple of seconds, and each
+        // resumption rebuilt the view - the picture flashed on and off.
         onRemoteVideoFlowing: () => {
+          hadRemoteVideo.current = true;
+          const now = Date.now();
+          if (now - flowingRebuiltAt.current < FLOWING_REBUILD_GAP_MS) return;
+          flowingRebuiltAt.current = now;
           Journal.mark('remote-video:flowing').catch(() => { /* noop */ });
           setRemoteVideoKey((k) => k + 1);
-          hadRemoteVideo.current = true;
         },
         onRemoteVideo: (present) => {
           setRemoteHasVideo(present);
