@@ -926,14 +926,19 @@ export default function ChannelScreen(props: Props) {
   }, [opacity, controls]);
 
   /**
-   * There is something to look at under the controls.
+   * There is something to look at under the controls: a video in the
+   * big place, theirs or our own taken full screen.
    *
    * With no video the controls cover nothing, and fading them would
    * leave a dark screen with faded buttons on it: they step aside to
    * let a picture be seen, and if there is no picture there is no
    * reason.
    */
-  const toWatch = localHasVideo || remoteHasVideo;
+  // And only in the big place: our own picture alone in the little
+  // square, with the card in the big place, covers nothing the controls
+  // stand on - the little square never comes down over them - and fading
+  // them there only hid them.
+  const toWatch = onlyBig !== null;
 
   /**
    * Whether a touch is to be dropped because the screen is covered -
