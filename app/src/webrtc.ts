@@ -217,7 +217,7 @@ const GRAINY_MS = 6_000;
 const GRAINY_AFTER_LINK_MS = 8_000;
 /** Their picture decoded at a trickle while arriving in full: see weighStalledDecoder. */
 const DECODER_BUSY_SHARE = 0.25;
-const DECODER_STALLED_FPS = 3;
+const DECODER_STALLED_FPS = 6;
 const DECODER_STALLED_MS = 8_000;
 const BALANCE_RATIO = 3;
 const BALANCE_TICKS = 10;
@@ -2162,7 +2162,7 @@ export class ChannelSession {
    * 320x176, for over four minutes on a clean road; leaving and
    * entering - a new decoder and a new encoder - put it right at once.
    * The same cure, asked here: a quarter of the profile's ceiling
-   * arriving, under 3 frames a second drawn, for 8 seconds.
+   * arriving, 6 frames a second drawn or fewer, for 8 seconds.
    */
   private stalledDecoderSince = 0;
   private weighStalledDecoder(
