@@ -260,6 +260,22 @@ export default function SettingsScreen({
   );
   const cfgRefForEdit = React.useRef(cfg);
   cfgRefForEdit.current = cfg;
+  /**
+   * What can change from elsewhere while this screen is open, followed
+   * here: the copy above is taken on opening, and a switch showed the
+   * old state - diagnostics turned on from the card the other phone's
+   * request brings up, the quality or the packets changed from over
+   * there. Only these: a name being typed must not be written over.
+   */
+  useEffect(() => {
+    setCfg((prev) => ({
+      ...prev,
+      diagnostics: initial.diagnostics,
+      videoQuality: initial.videoQuality,
+      shortPackets: initial.shortPackets,
+      richerAudio: initial.richerAudio,
+    }));
+  }, [initial.diagnostics, initial.videoQuality, initial.shortPackets, initial.richerAudio]);
   const [advanced, setAdvanced] = useState(false);
   /**
    * Which tab is open. Once paired, the one touched most often: how the
