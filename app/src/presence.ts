@@ -21,6 +21,7 @@ import { alarmLabel } from './alarms';
 import { logger, setLogging } from './log';
 import { VERSION_LABEL, BUILD } from './version';
 import { refreshStandby, stopStandby } from './standby';
+import { keepCall } from './callsUnseen';
 
 /**
  * Presence with no interface.
@@ -625,11 +626,11 @@ async function listenNow(): Promise<boolean> {
         if (msg.kind === 'alarm') {
           Alarm.play(String(msg.sound ?? '')).catch(() => { /* noop */ });
           Journal.mark(`alarm:${msg.sound}`).catch(() => { /* noop */ });
-          Foreground.notify(
-            '',
-            news.called(peerShown(pair, name), channel, Number(msg.at) || Date.now(),
-              alarmLabel(String(msg.sound ?? ''))),
-          ).catch(() => { /* noop */ });
+          const text = news.called(peerShown(pair, name), channel, Number(msg.at) || Date.now(),
+            alarmLabel(String(msg.sound ?? '')));
+          Foreground.notify('', text).catch(() => { /* noop */ });
+          // For the middle of the screen, when the app opens: see callsUnseen.ts.
+          keepCall(text);
         }
       },
 
@@ -690,6 +691,7 @@ async function listenNow(): Promise<boolean> {
           : news.inChannel(who, channel, at);
         log('alert:', text);
         Foreground.notify('', text).catch(() => { /* noop */ });
+        if (reason === 'knock') keepCall(text);
       },
     },
   );

@@ -49,6 +49,7 @@ import { useAudioRoute, type AudioRoute } from './audioRoute';
 import { pairFromLetter } from './pairing';
 import CallAlert, { CALL_ALERT_MS } from './CallAlert';
 import { refreshStandby, onStandbyCall } from './standby';
+import { takeCall } from './callsUnseen';
 import { reportDirectly, inviteOnWorkItem } from './gitlab';
 import type { ReportOutcome } from './gitlab';
 import {
@@ -862,6 +863,20 @@ export default function App() {
   // A call from a connection not in use, in the middle of the screen
   // too: see standby.ts.
   useEffect(() => onStandbyCall((pairId, text) => showCallAlert(text, pairId)), [showCallAlert]);
+  // A call heard while Duetto was closed, by the presence with no
+  // window: shown on opening, if it is still news. See callsUnseen.ts.
+  useEffect(() => {
+    const take = () => {
+      takeCall().then((c) => {
+        if (!c) return;
+        Journal.mark('call-alert:unseen').catch(() => { /* noop */ });
+        showCallAlert(c.text, c.pairId);
+      }).catch(() => { /* noop */ });
+    };
+    take();
+    const sub = AppState.addEventListener('change', (st) => { if (st === 'active') take(); });
+    return () => sub.remove();
+  }, [showCallAlert]);
   /**
    * The button of a call from a connection not in use: it goes to a
    * channel, and says which - by its name, when it has one. Who called
