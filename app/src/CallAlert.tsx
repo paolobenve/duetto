@@ -10,7 +10,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BellRingingIcon } from './Icons';
-import { t } from './i18n';
+import { t, around } from './i18n';
 
 /** How long the call stays in the middle of the screen, if not touched away. */
 export const CALL_ALERT_MS = 30_000;
@@ -24,21 +24,29 @@ export const CALL_ALERT_MS = 30_000;
  * it big, over everything - the video, the hidden controls - for half
  * a minute, or until it is touched.
  */
-export default function CallAlert({ text, onClose, switchLabel, onSwitch }: {
+export default function CallAlert({ text, onClose, switchName, onSwitch }: {
   text: string;
   onClose: () => void;
-  /** from a connection not in use: the button that moves to it and goes in */
-  switchLabel?: string;
+  /**
+   * From a connection not in use: the button that moves to it and goes
+   * in, with the channel's name - null when it has none.
+   */
+  switchName?: string | null;
   onSwitch?: () => void;
 }) {
+  const [before, after] = around('alert.switchToChannel', 'name');
   return (
     <Pressable style={styles.veil} onPress={onClose}>
       <View style={styles.card}>
         <BellRingingIcon size={72} color="#1e1f22" />
         <Text style={styles.text}>{text}</Text>
-        {onSwitch && switchLabel ? (
+        {onSwitch && switchName !== undefined ? (
           <TouchableOpacity style={styles.switch} onPress={onSwitch}>
-            <Text style={styles.switchText}>{switchLabel}</Text>
+            <Text style={styles.switchText}>
+              {switchName ? (
+                <>{before}<Text style={styles.switchName}>{switchName}</Text>{after}</>
+              ) : t('alert.switchToCalled')}
+            </Text>
           </TouchableOpacity>
         ) : null}
         <Text style={styles.hint}>{t('alert.tapToClose')}</Text>
@@ -110,5 +118,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#1e1f22', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 22,
     alignSelf: 'stretch', alignItems: 'center',
   },
-  switchText: { color: '#ffc83d', fontSize: 20, fontWeight: '700' },
+  switchText: { color: '#ffc83d', fontSize: 20, fontWeight: '500', textAlign: 'center' },
+  switchName: { fontWeight: '800' },
 });

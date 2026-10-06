@@ -149,3 +149,13 @@ export function t(path: string, values?: Record<string, string | number>): strin
     return value === undefined ? whole : String(value);
   });
 }
+
+/**
+ * The words around a value, for the value to be drawn apart - in bold,
+ * say - as `[before, after]`, in whatever order the language puts them.
+ */
+export function around(path: string, name: string): [string, string] {
+  const mark = '\u0001';
+  const [before, after = ''] = t(path, { [name]: mark }).split(mark);
+  return [before, after];
+}

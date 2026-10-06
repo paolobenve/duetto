@@ -15,7 +15,7 @@ import {
 import type { GestureResponderEvent } from 'react-native';
 import { MediaStream } from 'react-native-webrtc';
 import { Journal, Proximity } from 'duetto-platform';
-import { t, currentLanguage } from './i18n';
+import { t, around, currentLanguage } from './i18n';
 import type { PresenceStatus } from './signaling';
 import VideoStage from './VideoStage';
 import { AudioRoute, routeLabel } from './audioRoute';
@@ -627,8 +627,11 @@ type Props = {
   /** how far the big video was zoomed, once the gesture is over */
   onZoom?: (zoom: number) => void;
   onOpenSettings: () => void;
-  /** the way back to the connection left by the last move, and its words */
-  backLabel?: string;
+  /**
+   * The way back to the connection left by the last move: its channel's
+   * name, null when it has none, undefined when there is no way back.
+   */
+  backName?: string | null;
   onBack?: () => void;
 };
 
@@ -645,7 +648,7 @@ export default function ChannelScreen(props: Props) {
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes, btBattery,
     onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, leaving,
-    onAlarm, onZoom, onOpenSettings, onCall, pairBroken, battery, backLabel, onBack,
+    onAlarm, onZoom, onOpenSettings, onCall, pairBroken, battery, backName, onBack,
   } = props;
   const { levelDb, onToggleOutputMute, onSetLevel, wakeAt } = props;
   const outputMuted = !!levelDb?.muted;
@@ -1065,6 +1068,7 @@ export default function ChannelScreen(props: Props) {
    * cover's, and is undone.
    */
   const lastTap = useRef<{ undo: () => void; at: number } | null>(null);
+  const [backBefore, backAfter] = around('channel.backTo', 'name');
   const press = useCallback(
     (action: () => void, undo: (() => void) | null = action) => () => {
       // The screen is covered: whatever touched the glass, it is
@@ -1421,12 +1425,17 @@ export default function ChannelScreen(props: Props) {
       {/* The way back to the connection left by the last move: small,
           under the name, fading with the controls. Before the news,
           which covers it while it is there. */}
-      {!compact && backLabel && onBack ? (
+      {!compact && backName !== undefined && onBack ? (
         <Animated.View
           pointerEvents={gone ? 'none' : 'box-none'}
           style={[styles.returnRow, { opacity, top: 56 + inset.v, right: 14 + inset.h }]}>
           <TouchableOpacity style={styles.returnPill} onPress={press(onBack, null)}>
-            <Text style={styles.returnText}>{'\u21A9 '}{backLabel}</Text>
+            <Text style={styles.returnText}>
+              {'\u21A9 '}
+              {backName ? (
+                <>{backBefore}<Text style={styles.returnName}>{backName}</Text>{backAfter}</>
+              ) : t('channel.backToPrevious')}
+            </Text>
           </TouchableOpacity>
         </Animated.View>
       ) : null}
@@ -2927,11 +2936,14 @@ const styles = StyleSheet.create({
   badgeText: { color: '#e6ebf1', fontSize: 13, fontWeight: '600' },
   spacer: { flex: 1 },
   returnRow: { position: 'absolute' },
+  // A button, plainly: boxed, light, the words dark.
   returnPill: {
-    backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 14,
-    paddingHorizontal: 10, paddingVertical: 5,
+    backgroundColor: '#e6ebf1', borderRadius: 6,
+    borderWidth: 1, borderColor: '#ffffff',
+    paddingHorizontal: 12, paddingVertical: 7,
   },
-  returnText: { color: '#e6ebf1', fontSize: 12 },
+  returnText: { color: '#1e1f22', fontSize: 14 },
+  returnName: { fontWeight: '800' },
   gear: {
     width: 36, height: 36, borderRadius: 18,
     alignItems: 'center', justifyContent: 'center',

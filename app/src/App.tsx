@@ -899,21 +899,18 @@ export default function App() {
    * is already in the words above it.
    */
   /**
-   * The way back's words: the connection left, by its name when it has
-   * one. None when there is nothing to go back to - no move yet, or
+   * The way back's channel: its name, or null when it has none.
+   * Undefined when there is nothing to go back to - no move yet, or
    * that connection gone, broken, or the one in use again.
    */
-  const backLabel = (c: DuoConfig) => {
+  const backName = (c: DuoConfig) => {
     const prev = previousPair && previousPair.id !== c.pair?.id
       ? c.pairs.find((p) => p.id === previousPair.id && !p.brokenByPeer) : undefined;
     if (!prev) return undefined;
-    const name = prev.label?.trim();
-    return name ? t('channel.backTo', { name }) : t('channel.backToPrevious');
+    return prev.label?.trim() || null;
   };
-  const switchLabel = (pairId: string) => {
-    const name = cfgRef.current?.pairs.find((p) => p.id === pairId)?.label?.trim();
-    return name ? t('alert.switchToChannel', { name }) : t('alert.switchToCalled');
-  };
+  const switchName = (pairId: string) =>
+    cfgRef.current?.pairs.find((p) => p.id === pairId)?.label?.trim() || null;
   /**
    * The next entry comes from a change of connection: the output is the
    * one that connection was left with, whatever the entry's own rule
@@ -5562,7 +5559,7 @@ export default function App() {
         {callAlert ? <CallAlert
           text={callAlert.text}
           onClose={() => setCallAlert(null)}
-          switchLabel={callAlert.pairId ? switchLabel(callAlert.pairId) : undefined}
+          switchName={callAlert.pairId ? switchName(callAlert.pairId) : undefined}
           onSwitch={callAlert.pairId ? () => switchToCaller(callAlert.pairId!) : undefined}
         /> : null}
       </View>
@@ -5753,7 +5750,7 @@ export default function App() {
             .catch(() => {});
         }}
         onOpenSettings={() => setScreen('settings')}
-        backLabel={backLabel(cfg)}
+        backName={backName(cfg)}
         onBack={goBackToPair}
         onCall={onCall}
         pairBroken={!!cfg.pair?.brokenByPeer}
@@ -5780,7 +5777,7 @@ export default function App() {
       {callAlert && !inPip ? <CallAlert
           text={callAlert.text}
           onClose={() => setCallAlert(null)}
-          switchLabel={callAlert.pairId ? switchLabel(callAlert.pairId) : undefined}
+          switchName={callAlert.pairId ? switchName(callAlert.pairId) : undefined}
           onSwitch={callAlert.pairId ? () => switchToCaller(callAlert.pairId!) : undefined}
         /> : null}
     </View>
