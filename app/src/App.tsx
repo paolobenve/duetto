@@ -50,6 +50,7 @@ import { pairFromLetter } from './pairing';
 import CallAlert, { CallBand, CALL_ALERT_MS } from './CallAlert';
 import { refreshStandby, onStandbyCall } from './standby';
 import { takeCall } from './callsUnseen';
+import { sendJournalOver, JOURNAL_PIECE } from './journalSwap';
 import { reportDirectly, inviteOnWorkItem } from './gitlab';
 import type { ReportOutcome } from './gitlab';
 import {
@@ -86,8 +87,6 @@ const RETURN_WAIT_MS = 6000;
  * connected, that is, when the network is already in use.
  */
 const JOURNAL_SWAP_MS = 5 * 60 * 1000;
-/** one piece of journal per message: the server takes 256 KB, this leaves room */
-const JOURNAL_PIECE = 180 * 1024;
 
 const rtcLog = logger('[duetto-rtc]');
 const uiLog = logger('[duetto-ui]');
@@ -2896,40 +2895,14 @@ export default function App() {
   }, [peerPresent, status]);
 
   /**
-   * Sends the other side the journal lines that have not gone yet.
-   *
-   * It is there so that both journals can be read by plugging in one
-   * phone: the other one, in somebody else's hands, no cable ever
-   * reaches. Only the new lines are sent; if the file has been rotated
-   * and now holds fewer lines than we had sent, we start again.
+   * Sends the other side the journal lines that have not gone yet: see
+   * journalSwap.ts.
    *
    * It sits outside the periodic effect because leaving calls it too:
    * that is the last useful moment, with the connection still open and
    * about to stop being so.
    */
-  const sendJournal = useCallback(async () => {
-    const sig = signalingRef.current;
-    if (!sig?.connected) return;
-    try {
-      const { text, cursor } = await Journal.unsent();
-      if (!text || !cursor) return;
-      // In pieces under the server's ceiling, cut between rows: a row
-      // split in two would be glued back with a newline in the middle.
-      let piece = '';
-      for (const line of text.split('\n')) {
-        if (!line) continue;
-        if (piece.length + line.length + 1 > JOURNAL_PIECE) {
-          sig.sendSignal({ kind: 'journal', text: piece });
-          piece = '';
-        }
-        piece += line + '\n';
-      }
-      if (piece) sig.sendSignal({ kind: 'journal', text: piece });
-      await Journal.markSent(cursor);
-    } catch {
-      // the next beat tries again
-    }
-  }, []);
+  const sendJournal = useCallback(() => sendJournalOver(signalingRef.current), []);
 
   useEffect(() => {
     if (!peerPresent) return;

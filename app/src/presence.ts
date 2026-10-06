@@ -23,6 +23,7 @@ import { logger, setLogging } from './log';
 import { VERSION_LABEL, BUILD } from './version';
 import { refreshStandby, stopStandby } from './standby';
 import { keepCall } from './callsUnseen';
+import { sendJournalOver } from './journalSwap';
 
 /**
  * Presence with no interface.
@@ -385,6 +386,8 @@ let starting: Promise<boolean> | null = null;
 let saidUnavailable = false;
 /** said once: the watchdog's net asks again every few minutes */
 let saidBroken = false;
+/** how often the presence sends its journal, at most: see swapJournal */
+const JOURNAL_IDLE_MS = 15 * 60 * 1000;
 
 export function startListening(): Promise<boolean> {
   if (signaling) return Promise.resolve(true);
@@ -516,6 +519,26 @@ async function listenNow(): Promise<boolean> {
   };
 
   /**
+   * Our journal for the other side, from here too.
+   *
+   * Only the app sent it, and a phone whose app keeps being closed
+   * spends its time here, waiting: the lines that say why it was
+   * closed never left. With the diagnostics on and the other side
+   * connected, as in the app: ten seconds after finding each other -
+   * the case it is for - and then at most every quarter of an hour,
+   * only when the watchdog's question has just had its answer: the
+   * radio is awake already, and nothing is woken for this.
+   */
+  let journalSentAt = 0;
+  const swapJournal = (now: boolean) => {
+    if (!cfg.diagnostics || !present) return;
+    if (!now && Date.now() - journalSentAt < JOURNAL_IDLE_MS) return;
+    journalSentAt = Date.now();
+    sendJournalOver(signaling).catch(() => { /* noop */ });
+  };
+  const swapJournalSoon = () => { setTimeout(() => swapJournal(true), 10_000); };
+
+  /**
    * Marked broken, said quietly, and no more knocking: see above. The
    * app finds the pair marked when it opens, with its card.
    */
@@ -599,6 +622,7 @@ async function listenNow(): Promise<boolean> {
         // listening with no interface would otherwise look like one
         // that has nothing to say.
         if (peerPresent) sayHello();
+        if (peerPresent) swapJournalSoon();
         refresh();
       },
       onPeerJoined: (peerName, mode, at, available) => {
@@ -609,6 +633,7 @@ async function listenNow(): Promise<boolean> {
         active = mode === 'active';
         if (peerName) name = peerName;
         sayHello();
+        swapJournalSoon();
         refresh();
       },
       onPeerLeft: (why, at) => {
@@ -688,6 +713,7 @@ async function listenNow(): Promise<boolean> {
         if (peerPresent) detached = false;
         active = peerActive;
         if (peerName) name = peerName;
+        swapJournal(false);
         refresh();
       },
 
