@@ -546,9 +546,10 @@ export default function SettingsScreen({
               <Text style={styles.backText}>{'\u2039'}</Text>
             </TouchableOpacity>
           ) : null}
-          <Text style={styles.title}>Duetto</Text>
+          {/* What this screen is, and nothing more: what Duetto is
+              was said by the welcome, and here it was in the way. */}
+          <Text style={styles.title}>{t('settings.title')}</Text>
         </View>
-        <Text style={styles.subtitle}>{t('settings.subtitle')}</Text>
 
         {/* Two tabs: with whom and through what one talks, and how the
             app behaves. One screen held both, and the things touched
@@ -1702,14 +1703,13 @@ function Field(props: {
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: '#0b0e14' },
   container: { padding: 20, paddingTop: 40, paddingBottom: 60 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20 },
   back: {
     width: 40, height: 40, borderRadius: 20, marginLeft: -8,
     alignItems: 'center', justifyContent: 'center', backgroundColor: '#151a23',
   },
   backText: { color: '#c9d2de', fontSize: 26, lineHeight: 30, marginTop: -4 },
-  title: { fontSize: 34, fontWeight: '800', color: '#fff' },
-  subtitle: { color: '#8892a0', marginTop: 8, marginBottom: 28, lineHeight: 21 },
+  title: { fontSize: 28, fontWeight: '800', color: '#fff' },
   tabs: {
     flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#2a313d',
     marginBottom: 4,

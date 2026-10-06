@@ -337,7 +337,7 @@ export const es: Dictionary = {
     leaveServerTitle: '¿Dejar {server}?',
     leaveServerBody: 'El servidor quita este teléfono de su lista. Las parejas hechas aquí se van con él, y las personas que dejaste entrar pierden la suya. Para volver haría falta una nueva invitación.',
     leave: 'Dejar',
-    subtitle: 'Un canal solo para ustedes dos. Entras y te quedas: cuando entra también el otro, se conectan solos.',
+    title: 'Ajustes',
     haveCode: 'Aceptar una invitación o una conexión',
     waysIn: 'Conéctate con alguien',
     connectWithSomebody: 'Ofrece una conexión a alguien',

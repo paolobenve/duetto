@@ -350,7 +350,7 @@ export const en = {
     leaveServerTitle: 'Leave {server}?',
     leaveServerBody: 'The server takes this phone off its list. The pairs made here go with it, and the people you brought along lose theirs. To come back you would need a new invitation.',
     leave: 'Leave',
-    subtitle: 'A channel for the two of you alone. You come in and you stay: when the other person comes in too, you connect by yourselves.',
+    title: 'Settings',
     haveCode: 'Accept an invitation or a connection',
     waysIn: 'Connect with somebody',
     connectWithSomebody: 'Offer somebody a connection',
