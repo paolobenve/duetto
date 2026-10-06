@@ -14,6 +14,57 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
+## 0.9.19 build 443
+
+**Version 0.9.19: a call, and the connections that wait.** The channel is now a call of
+Android's own telephony, as WhatsApp's are: entering opens it, leaving closes it. A
+telephone call or another app's call silences the channel, which comes back by itself when
+that call ends; the channel's call is never placed over a telephone call, and one answered
+on speaker goes to the ear. During the channel the phone's own ringtone is heard, with
+Android's "Phone" permission - optional, asked once with a word of why, and given or taken
+back from the settings too.
+
+The voice has two buttons, the microphone and the listening, each with its own sound and
+each remembered when coming back. The voice is not sent when nobody hears it. One volume
+knob goes up to the phone's top, with Duetto's gain only above it and a scale that goes
+below the phone's lowest step; a test of three beeps checks it.
+
+Bluetooth headsets are told apart by name: each has its own choice of whether to take the
+sound as it comes, asked once and listed in the settings. A headset taken off gives the
+sound back to the output in use before; during the call a single director moves the
+output, with a brake if something keeps moving it back and forth; coming back to a
+connection resumes its output. The headset's battery is inside the output button and on
+the card.
+
+The connections not in use keep waiting on their servers: the other person sees one
+waiting, and their calls and sounds arrive, ringing as that connection was set. A call
+shows in the middle of the screen for half a minute of the app in front, in the settings
+too, with a button that names the channel it goes to; each connection can be kept from
+waiting. A call heard with Duetto closed shows when it opens, within ten minutes; in the
+little window of picture-in-picture the call's yellow fills the window for half a
+minute. After a move to another connection, a small button at the top goes back to the
+one left, as one was there. The server tells since when each phone is available, in the
+channel or waiting, and the standing notification says it on a second line; a move to
+another connection and back within half a minute keeps the channel's moment.
+
+The screen without video shows with icons the microphone and output of both. Under the
+controls, batteries and networks are marks, the wait has a clock and the line shrinks to
+fit; the network mark changes with the network. The controls fade only when a video fills
+the big place.
+
+The settings are headed "Settings", without the sentence about what Duetto is. With a
+connection made, the connections come first and the server at the bottom; the connection
+touched to move to is lit at once, and each tab is found where it was left.
+
+Underneath, the link holds better: a change of network gives it a new road and a fresh
+microphone track, as does every new link after the first; a picture stuck grainy or drawn
+at a trickle renews the session from the side that sees it; an offer from the other side's
+new link makes ours new too; the other side back on the server gets four seconds before
+anything is rebuilt, and a disconnected link is no longer demolished by a word from the
+server. The other side's video view is made again when its frames really arrive, which
+ends the black screens. With the diagnostics on, WebRTC writes its warnings and errors in
+Android's log.
+
 ## 0.9.18 build 382
 
 **Version 0.9.18: the times and the names.** A telephone that rings no longer silences

@@ -1,0 +1,6 @@
+- Duetto funktioniert jetzt wie ein Anruf, wie bei WhatsApp; vorher war es eine App anderer Art.
+- Zwei getrennte Knöpfe, Mikrofon und Hören.
+- Bluetooth-Kopfhörer: jedes Gerät merkt sich, ob es den Ton von selbst übernimmt; sein Akkustand steht im Knopf.
+- Die anderen Verbindungen bleiben erreichbar, auch wenn sie nicht benutzt werden.
+- Der Bildschirm ohne Video zeigt mit Symbolen Mikrofon und Ausgang, deine und die der anderen Person.
+- Und weitere kleine Verbesserungen.

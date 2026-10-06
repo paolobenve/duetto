@@ -1,0 +1,6 @@
+- Duetto fonctionne maintenant comme un appel, comme WhatsApp ; avant, c'était une app d'un autre type.
+- Deux boutons séparés, micro et écoute.
+- Casques Bluetooth : chaque appareil se souvient s'il prend le son de lui-même ; le niveau de sa batterie est dans le bouton.
+- Les autres connexions restent joignables même inutilisées.
+- L'écran sans vidéo montre avec des icônes le micro et la sortie, les tiens et ceux de l'autre.
+- Et diverses autres petites améliorations.

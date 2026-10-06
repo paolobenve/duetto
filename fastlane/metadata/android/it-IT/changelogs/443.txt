@@ -1,0 +1,6 @@
+- Duetto è ora implementato come una chiamata, come WhatsApp; prima era un'app di tipo diverso.
+- Due pulsanti separati, microfono e ascolto.
+- Cuffie Bluetooth: ogni dispositivo ricorda se deve prendere l'audio da solo; c'è il livello della batteria nel pulsante.
+- Le altre connessioni restano raggiungibili anche quando non sono in uso.
+- La schermata senza video mostra con delle icone microfono e uscita tuoi e dell'altro.
+- E vari altri miglioramenti minori.
