@@ -48,13 +48,15 @@ import { loadPipPosition } from './VideoStage';
 import { useAudioRoute, type AudioRoute } from './audioRoute';
 import { pairFromLetter } from './pairing';
 import CallAlert, { CallBand, CALL_ALERT_MS } from './CallAlert';
-import { refreshStandby, onStandbyCall } from './standby';
+import {
+  refreshStandby, onStandbyCall, onStandbyAsk, helloStandby, sendStandby,
+} from './standby';
 import { takeCall } from './callsUnseen';
 import { sendJournalOver, JOURNAL_PIECE } from './journalSwap';
 import DiagnosticsAskCard from './DiagnosticsAskCard';
 import {
-  type AskState, ourAsk, setOurAsk, deliverAsk, answerHeard, askedOfUs, noteAskedOfUs,
-  laterAskedOfUs, clearAskedOfUs, cardDue, said as saidOfThem,
+  type AskState, ourAsk, setOurAsk, deliverAsk, answerHeard, noteAskedOfUs,
+  laterAskedOfUs, clearAskedOfUs, dueAmong, said as saidOfThem,
 } from './diagnosticsAsk';
 import { reportDirectly, inviteOnWorkItem } from './gitlab';
 import type { ReportOutcome } from './gitlab';
@@ -3223,32 +3225,37 @@ export default function App() {
   const diagnosticsOn = !!cfg?.diagnostics;
   useEffect(() => {
     if (peerPresent) sayHello();
+    // And the connections not in use, which say it too: see standby.ts.
+    helloStandby(diagnosticsOn);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [diagnosticsOn]);
 
   /**
    * Asking the other side for their diagnostics, and being asked: see
    * diagnosticsAsk.ts. Our request's state, for the settings; theirs,
-   * as a card due on this phone - looked at for the connection in use,
-   * and again whenever the app comes to the front.
+   * as a card due on this phone - from any connection, the one in use
+   * or one waiting, since diagnostics are the phone's - looked at on
+   * opening and whenever the app comes to the front.
    */
   const [askState, setAskState] = useState<AskState | null>(null);
-  const [diagAsked, setDiagAsked] = useState(false);
+  /** the connection whose request for our diagnostics shows now */
+  const [diagAskedBy, setDiagAskedBy] = useState<string | null>(null);
   /** their journal has arrived on this connection: their diagnostics are on */
   const [theirJournal, setTheirJournal] = useState(false);
   const pairIdNow = cfg?.pair?.id;
   useEffect(() => {
     setAskState(null);
-    setDiagAsked(false);
     setTheirJournal(false);
     if (!pairIdNow) return;
     ourAsk(pairIdNow).then(setAskState).catch(() => { /* noop */ });
     const look = () => {
-      askedOfUs(pairIdNow).then((a) => setDiagAsked(cardDue(a))).catch(() => { /* noop */ });
+      const ids = (cfgRef.current?.pairs ?? []).map((p) => p.id);
+      dueAmong(ids).then(setDiagAskedBy).catch(() => { /* noop */ });
     };
     look();
     const sub = AppState.addEventListener('change', (st) => { if (st === 'active') look(); });
-    return () => sub.remove();
+    const off = onStandbyAsk((id) => setDiagAskedBy(id));
+    return () => { sub.remove(); off(); };
   }, [pairIdNow]);
   const peerPresentRef = useRef(peerPresent);
   peerPresentRef.current = peerPresent;
@@ -3262,15 +3269,26 @@ export default function App() {
       .catch(() => { /* noop */ });
   }, []);
   const answerAsk = useCallback((answer: 'on' | 'later' | 'no') => {
-    const id = cfgRef.current?.pair?.id;
-    setDiagAsked(false);
+    const id = diagAskedByRef.current;
+    setDiagAskedBy(null);
     if (!id) return;
     Journal.mark(`diagnostics:answered:${answer}`).catch(() => { /* noop */ });
     if (answer === 'later') laterAskedOfUs(id).catch(() => { /* noop */ });
     else clearAskedOfUs(id).catch(() => { /* noop */ });
     if (answer === 'on') setCfg((prev) => (prev ? saveCfg({ ...prev, diagnostics: true }) : prev));
-    signalingRef.current?.sendSignal({ kind: 'diagnosticsAnswer', answer });
+    // Back the way it came: the connection in use, or the one waiting.
+    const msg = { kind: 'diagnosticsAnswer' as const, answer };
+    if (id === cfgRef.current?.pair?.id) signalingRef.current?.sendSignal(msg);
+    else sendStandby(id, msg);
   }, [saveCfg]);
+  const diagAskedByRef = useRef<string | null>(null);
+  diagAskedByRef.current = diagAskedBy;
+  /** who asks, for the card: the name of that connection's other side */
+  const askerName = (c: DuoConfig | null) => {
+    if (!diagAskedBy || !c) return '';
+    if (diagAskedBy === c.pair?.id) return shownName;
+    return peerShown(c.pairs.find((p) => p.id === diagAskedBy)) || '';
+  };
 
   const noteName = useCallback((n: string) => {
     setPeerName(n);
@@ -3689,7 +3707,7 @@ export default function App() {
                 return;
               }
               signalingRef.current?.sendSignal({ kind: 'diagnosticsAnswer', answer: 'received' });
-              noteAskedOfUs(id).then(() => setDiagAsked(true)).catch(() => {});
+              noteAskedOfUs(id).then(() => setDiagAskedBy(id)).catch(() => {});
               if (appStateRef.current !== 'active') {
                 Foreground.note('', saidOfThem('diagAsk.note', shownNameRef.current)).catch(() => {});
               }
@@ -5659,8 +5677,8 @@ export default function App() {
           switchName={callAlert.pairId ? switchName(callAlert.pairId) : undefined}
           onSwitch={callAlert.pairId ? () => switchToCaller(callAlert.pairId!) : undefined}
         /> : null}
-        {diagAsked ? <DiagnosticsAskCard
-          name={shownName}
+        {diagAskedBy ? <DiagnosticsAskCard
+          name={askerName(cfg)}
           onYes={() => answerAsk('on')}
           onLater={() => answerAsk('later')}
           onNo={() => answerAsk('no')}
@@ -5890,8 +5908,8 @@ export default function App() {
           onSwitch={callAlert.pairId ? () => switchToCaller(callAlert.pairId!) : undefined}
         /> : null}
       {/* Asked for this phone's diagnostics: see diagnosticsAsk.ts. */}
-      {diagAsked && !inPip ? <DiagnosticsAskCard
-          name={shownName}
+      {diagAskedBy && !inPip ? <DiagnosticsAskCard
+          name={askerName(cfg)}
           onYes={() => answerAsk('on')}
           onLater={() => answerAsk('later')}
           onNo={() => answerAsk('no')}

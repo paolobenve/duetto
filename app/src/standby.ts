@@ -7,6 +7,7 @@
  * the LICENSE file at the root of the project, and at
  * <https://www.gnu.org/licenses/>.
  */
+import { AppState } from 'react-native';
 import { Foreground, Journal, Alarm } from 'duetto-platform';
 import { DuoConfig, PairInfo, peerShown, alertSoundFor } from './config';
 import { Signaling } from './signaling';
@@ -14,6 +15,8 @@ import { news } from './presence';
 import { alarmLabel } from './alarms';
 import { logger } from './log';
 import { keepCall } from './callsUnseen';
+import { VERSION_LABEL, BUILD } from './version';
+import { deliverAsk, answerHeard, noteAskedOfUs, said as saidOfThem } from './diagnosticsAsk';
 
 const log = logger('[duetto-standby]');
 
@@ -47,6 +50,40 @@ export function onStandbyCall(cb: CallHeard): () => void {
   return () => { if (onCall === cb) onCall = null; };
 }
 
+/**
+ * Asked for our diagnostics on a connection not in use: the interface,
+ * when there is one, shows its card; see diagnosticsAsk.ts.
+ */
+type AskHeard = (pairId: string) => void;
+let onAsk: AskHeard | null = null;
+export function onStandbyAsk(cb: AskHeard): () => void {
+  onAsk = cb;
+  return () => { if (onAsk === cb) onAsk = null; };
+}
+
+/** this phone's diagnostics, as the waiting connections say them */
+let diagnosticsOn = false;
+
+/** Which Duetto, and whether its diagnostics are on: the hello, from here too. */
+function sayHello(sig: Signaling, pairId: string) {
+  sig.sendSignal({ kind: 'hello', version: VERSION_LABEL, build: BUILD, diagnostics: diagnosticsOn });
+  deliverAsk(sig, pairId).catch(() => { /* noop */ });
+}
+
+/** Diagnostics turned on or off: every waiting connection says it again. */
+export function helloStandby(on: boolean) {
+  diagnosticsOn = on;
+  for (const [id, sig] of standing) if (sig.connected) sayHello(sig, id);
+}
+
+/** A word for the other side of a connection not in use, if it is connected. */
+export function sendStandby(pairId: string, msg: Parameters<Signaling['sendSignal']>[0]): boolean {
+  const sig = standing.get(pairId);
+  if (!sig?.connected) return false;
+  sig.sendSignal(msg);
+  return true;
+}
+
 /** The connections that should be waiting: not the one in use, not broken, not switched off. */
 function wanted(cfg: DuoConfig): Map<string, PairInfo> {
   const out = new Map<string, PairInfo>();
@@ -64,6 +101,7 @@ function wanted(cfg: DuoConfig): Map<string, PairInfo> {
  * opened. Unavailable by choice, none.
  */
 export async function refreshStandby(cfg: DuoConfig | null): Promise<void> {
+  if (cfg) diagnosticsOn = cfg.diagnostics === true;
   const available = await Foreground.isAvailable().catch(() => true);
   const want = cfg && available ? wanted(cfg) : new Map<string, PairInfo>();
   for (const [id, sig] of standing) {
@@ -114,8 +152,17 @@ function open(cfg: DuoConfig, pair: PairInfo) {
         if (standing.get(pair.id) === sig) standing.delete(pair.id);
         sig.close(false);
       },
-      onJoined: ({ peerName }) => { if (peerName) name = peerName; },
-      onPeerJoined: (peerName) => { if (peerName) name = peerName; },
+      // The hello goes from here too: the other side of a connection
+      // not in use learnt nothing of this phone - its version, its
+      // diagnostics - and offered to ask for what was there already.
+      onJoined: ({ peerName, peerPresent }) => {
+        if (peerName) name = peerName;
+        if (peerPresent) sayHello(sig, pair.id);
+      },
+      onPeerJoined: (peerName) => {
+        if (peerName) name = peerName;
+        sayHello(sig, pair.id);
+      },
       onNotify: (reason, peerName, at) => {
         if (peerName) name = peerName;
         const who = peerShown(pair, name);
@@ -132,6 +179,32 @@ function open(cfg: DuoConfig, pair: PairInfo) {
         Foreground.note('', news.inChannel(who, channel, at)).catch(() => { /* noop */ });
       },
       onSignal: (msg) => {
+        // Asked for our diagnostics: answered here, the card shown by
+        // the interface or kept for it. See diagnosticsAsk.ts.
+        if (msg.kind === 'askDiagnostics') {
+          Journal.mark(`standby:diagnostics-asked:${pair.id.slice(0, 8)}`).catch(() => { /* noop */ });
+          if (diagnosticsOn) {
+            sig.sendSignal({ kind: 'diagnosticsAnswer', answer: 'on' });
+            return;
+          }
+          sig.sendSignal({ kind: 'diagnosticsAnswer', answer: 'received' });
+          noteAskedOfUs(pair.id).then(() => {
+            onAsk?.(pair.id);
+            // Said quietly too, unless the card is in front of somebody.
+            if (!onAsk || AppState.currentState !== 'active') {
+              Foreground.note('', saidOfThem('diagAsk.note', peerShown(pair, name))).catch(() => { /* noop */ });
+            }
+          }).catch(() => { /* noop */ });
+          return;
+        }
+        if (msg.kind === 'diagnosticsAnswer') {
+          answerHeard(pair.id, msg.answer).then((st) => {
+            const who = peerShown(pair, name);
+            if (st === 'on') Foreground.note('', saidOfThem('diagAsk.turnedOn', who)).catch(() => { /* noop */ });
+            if (st === 'no') Foreground.note('', saidOfThem('diagAsk.refused', who)).catch(() => { /* noop */ });
+          }).catch(() => { /* noop */ });
+          return;
+        }
         if (msg.kind !== 'alarm') return;
         const who = peerShown(pair, name);
         const text = news.called(who, channel, Number(msg.at) || Date.now(),

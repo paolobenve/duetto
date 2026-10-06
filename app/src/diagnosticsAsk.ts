@@ -106,3 +106,9 @@ export function said(key: string, name?: string): string {
   const s = t(key, { who: name?.trim() || t('presence.theOther') });
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
+
+/** The first of these connections whose card is due, if any. */
+export async function dueAmong(pairIds: string[]): Promise<string | null> {
+  const m = await readMap<Asked>(THEIRS);
+  return pairIds.find((id) => cardDue(m[id] ?? null)) ?? null;
+}
