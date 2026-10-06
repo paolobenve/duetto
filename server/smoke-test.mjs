@@ -1008,6 +1008,29 @@ try {
   check(refused.error === 'not-yours', 'and asking anyway gets nowhere');
   g6.close();
 
+  // Anna takes the pair away: the room goes, with its guest. Knocking
+  // again, the guest is told the pair is broken, not only "stranger".
+  const g7 = client(PORT3);
+  await g7.open();
+  await wait(150);
+  g7.send({ type: 'join', room: 'stanza-di-anna', name: 'Anna', side: 'A',
+    pub: anna.pub, sig: anna.signs(g7.nonce()) });
+  await g7.expect('joined');
+  g7.send({ type: 'broken', room: 'stanza-di-anna' });
+  g7.send({ type: 'forget', room: 'stanza-di-anna' });
+  await wait(150);
+  g7.close();
+  const g8 = client(PORT3);
+  await g8.open();
+  await wait(150);
+  g8.send({ type: 'join', room: 'stanza-di-anna', name: 'La madre', side: 'B',
+    pub: guest.pub, sig: guest.signs(g8.nonce()) });
+  const toldBroken = await g8.expect('pair-broken');
+  const stillOut = await g8.expect('error');
+  check(toldBroken.room === 'stanza-di-anna' && stillOut.error === 'not-allowed',
+    'a guest whose room was taken away is told the pair is broken');
+  g8.close();
+
   srv3.kill('SIGTERM');
   await wait(200);
   try { unlinkSync(LIST_FILE); } catch { /* it was never written */ }

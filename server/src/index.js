@@ -1078,6 +1078,12 @@ wss.on('connection', (ws, req) => {
           // sent, looked like any stranger.
           console.log(`[duetto] turned away: ${String(msg.pub || 'no key').slice(0, 12)}`
             + ` from ${ws.ip}, room ${roomId.slice(0, 4)}…, app ${cleanVersion(msg.version) || '?'}`);
+          // A room taken away from the other side: its guest, known in
+          // that room alone, is nobody here any more, and was told only
+          // "stranger" - its app knocked every minute for days. The
+          // server remembers the room was broken: said first, in the
+          // words every app already knows, then the same "no".
+          if (isBroken(roomId)) send(ws, { type: 'pair-broken', room: roomId });
           // The same "no" as always, with the reason beside it: an
           // invitation that did not work is not a missing invitation,
           // and the app can only say so if it is told.
