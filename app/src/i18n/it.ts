@@ -650,6 +650,7 @@ export const it: Dictionary = {
     connectTitle2: 'Collega l\'altro telefono',
     connectBody2: 'Adesso, di persona: detta il codice, o fai inquadrare il quadrato all\'altro telefono. Oppure entro 24 ore: manda il link, e basta toccarlo - porta dentro il server.',
     connectHint2: 'Vale una volta sola: il primo telefono che lo usa è quello che si collega.',
+    cancelCode: 'Annulla il codice',
     copyLink: 'Copia il link',
     linkCopied: 'Link copiato',
     shareLink: 'Condividi il link',

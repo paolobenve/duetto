@@ -664,6 +664,7 @@ export const en = {
     connectTitle2: 'Connect the other phone',
     connectBody2: 'Right now, in the room: dictate the code, or let the other phone scan the square. Or within 24 hours: send the link, and tapping it is enough - it carries the server with it.',
     connectHint2: 'It works once: the first phone to use it is the one that pairs.',
+    cancelCode: 'Cancel the code',
     copyLink: 'Copy the link',
     linkCopied: 'Link copied',
     shareLink: 'Share the link',

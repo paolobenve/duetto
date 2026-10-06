@@ -10,7 +10,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
-  ScrollView, Clipboard, Share,
+  ScrollView, Clipboard, Share, BackHandler,
 } from 'react-native';
 import { DuoConfig, PairInfo, PendingPair, ServerRole, displayServer, isPaired } from './config';
 import { pairLink } from './links';
@@ -34,6 +34,8 @@ type Props = {
    */
   onPending?: (p: PendingPair) => void;
   onBack: () => void;
+  /** a waiting code thrown away from here: out of the list of those waiting */
+  onPendingGone?: (id: string) => void;
   /**
    * What the server is to this phone: it decides which buttons can
    * work. A guest cannot create a code - the room would have nobody to
@@ -82,7 +84,7 @@ const TIMEOUT_MS = 90_000;
 const RETRY_WAIT_S = 20;
 
 export default function PairingScreen({
-  cfg, onPaired, onPending, onBack, role = 'unknown', joinWith, joinWithKey, onRefused, onHaveCode,
+  cfg, onPaired, onPending, onPendingGone, onBack, role = 'unknown', joinWith, joinWithKey, onRefused, onHaveCode,
 }: Props) {
   const [step, setStep] = useState<Step>('choose');
   const [code, setCode] = useState('');
@@ -450,6 +452,53 @@ export default function PairingScreen({
     setStep('choose');
   }, [cleanup]);
 
+  /**
+   * Back from a code just made: it is kept, waiting its day.
+   *
+   * It waited only once its link had left the phone, and going back
+   * before took it away: a connection made and left a moment was lost.
+   * The waiting codes can be handed on again from the settings now, so
+   * going back keeps it there, written down at once - the server's
+   * answer would arrive at a screen already closed. Only "Cancel the
+   * code" throws it away.
+   */
+  const keepWaiting = useCallback(() => {
+    const id = pairIdRef.current;
+    if (doneRef.current || !id || !code || awaitingRef.current) return;
+    if (!signalingRef.current?.connected) return;
+    const until = new Date(Date.now() + 24 * 3600_000).toISOString();
+    signalingRef.current.awaitRoom(Date.parse(until));
+    awaitingRef.current = until;
+    onPending?.({
+      code,
+      id,
+      pub: pubToBase64(keysRef.current.publicKey),
+      sec: keyToBase64(keysRef.current.secretKey),
+      serverUrl: cfg.serverUrl.trim(),
+      until,
+    });
+  }, [code, cfg.serverUrl, onPending]);
+  const leaveKeeping = useCallback(() => {
+    keepWaiting();
+    if (opens) onBack(); else reset();
+  }, [keepWaiting, opens, onBack, reset]);
+  /** The code thrown away, waiting or not: its room goes on the server. */
+  const dropCode = useCallback(() => {
+    const id = pairIdRef.current;
+    if (awaitingRef.current && id) onPendingGone?.(id);
+    awaitingRef.current = '';
+    if (opens) onBack(); else reset();
+  }, [opens, onBack, reset, onPendingGone]);
+  // The phone's own back key, on the code: the same as "Back".
+  useEffect(() => {
+    if (step !== 'create') return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      leaveKeeping();
+      return true;
+    });
+    return () => sub.remove();
+  }, [step, leaveKeeping]);
+
   // --- the screens --------------------------------------------------------
   if (step === 'done' && made) {
     const who = made.peerName || t('pairing.theOtherPerson');
@@ -550,7 +599,8 @@ export default function PairingScreen({
             ? t('pairing.canClose', { when: whenText(awaitingUntil) })
             : t('pairing.connectHint2')}
         </Text>
-        <Secondary label={t(awaitingUntil ? 'pairing.back' : 'pairing.cancel')} onPress={opens ? onBack : reset} />
+        <Secondary label={t('pairing.back')} onPress={leaveKeeping} />
+        <Secondary label={t('pairing.cancelCode')} onPress={dropCode} />
       </Screen>
     );
   }

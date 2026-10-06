@@ -5592,6 +5592,12 @@ export default function App() {
           onPending={(p) => setCfg((prev) => (prev
             ? saveCfg({ ...prev, pending: [...(prev.pending ?? []).filter((x) => x.id !== p.id), p] })
             : prev))}
+          onPendingGone={(id) => {
+            forgottenRooms.current.add(id);
+            setCfg((prev) => (prev
+              ? saveCfg({ ...prev, pending: (prev.pending ?? []).filter((x) => x.id !== id) })
+              : prev));
+          }}
           // Before the first pairing, "change server" means the
           // welcome: there is nothing in the settings yet worth going
           // back to.

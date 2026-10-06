@@ -651,6 +651,7 @@ export const fr: Dictionary = {
     connectTitle2: 'Connecter l\'autre téléphone',
     connectBody2: 'Maintenant, en personne : dicte le code, ou laisse l\'autre téléphone scanner le carré. Ou dans les 24 heures : envoie le lien, il suffit de le toucher - il emporte le serveur avec lui.',
     connectHint2: 'Il ne vaut qu\'une fois : le premier téléphone qui l\'utilise est celui qui se connecte.',
+    cancelCode: 'Annuler le code',
     copyLink: 'Copier le lien',
     linkCopied: 'Lien copié',
     shareLink: 'Partager le lien',
