@@ -884,7 +884,7 @@ export default function App() {
    */
   const switchLabel = (pairId: string) => {
     const name = cfgRef.current?.pairs.find((p) => p.id === pairId)?.label?.trim();
-    return name ? t('alert.switchToChannel', { channel: name }) : t('alert.switchToCalled');
+    return name ? t('alert.switchToChannel', { name }) : t('alert.switchToCalled');
   };
   /**
    * The next entry comes from a change of connection: the output is the

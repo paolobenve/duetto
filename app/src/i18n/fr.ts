@@ -145,7 +145,7 @@ export const fr: Dictionary = {
   alert: {
     calledYouFrom: '{who} t’appelle{channel}{when}',
     tapToClose: 'Touche pour fermer',
-    switchToChannel: 'Aller au canal {channel}',
+    switchToChannel: 'Aller au canal {name}',
     switchToCalled: 'Aller au canal d’où on t’a appelé',
     calledYou: 'On t’appelle{channel}{when}',
     alarmFrom: '{who} t’appelle{channel}{when} ({sound})',

@@ -156,7 +156,7 @@ export const en = {
   alert: {
     calledYouFrom: '{who} called you{channel}{when}',
     tapToClose: 'Touch to close',
-    switchToChannel: 'Go to the channel {channel}',
+    switchToChannel: 'Go to the channel {name}',
     switchToCalled: 'Go to the channel you were called from',
     calledYou: 'Somebody called you{channel}{when}',
     alarmFrom: '{who} called you{channel}{when} ({sound})',
