@@ -473,6 +473,48 @@ try {
   check(asked.peerAvailable === back.available, 'asked, the server says it again');
   v1b.close(); v2b.close();
 
+  // --- a move to another connection and back keeps the moment ---------------
+  // Moving away says goodbye to the channel, and the seat that waits for
+  // calls takes the place at once, listening; back within half a minute,
+  // the channel carries on from its old moment.
+  const mv = client();
+  await mv.open();
+  mv.send({ type: 'join', key: KEY, room: 'moves', name: 'M', side: 'A', mode: 'listening' });
+  await mv.expect('joined');
+  await wait(50);
+  mv.send({ type: 'mode', mode: 'active' });
+  const mvIn = await mv.expect('mode-since');
+  await wait(50);
+  mv.send({ type: 'bye' });
+  await wait(50);
+  const mvWaiting = client();
+  await mvWaiting.open();
+  mvWaiting.send({ type: 'join', key: KEY, room: 'moves', name: 'M', side: 'A', mode: 'listening' });
+  const mvWaitJoined = await mvWaiting.expect('joined');
+  check(mvWaitJoined.since !== mvIn.since, 'the seat that waits does not take the channel\'s moment');
+  await wait(300);
+  const mvBack = client();
+  await mvBack.open();
+  mvBack.send({ type: 'join', key: KEY, room: 'moves', name: 'M', side: 'A', mode: 'listening' });
+  await mvBack.expect('joined');
+  mvBack.send({ type: 'mode', mode: 'active' });
+  const mvBackIn = await mvBack.expect('mode-since');
+  check(mvBackIn.since === mvIn.since,
+    'moved away and back within half a minute, the channel keeps its moment');
+  const mvDirect = client();
+  await mvDirect.open();
+  mvBack.send({ type: 'bye' });
+  await wait(50);
+  mvWaiting.close();
+  const mvWaiting2 = client();
+  await mvWaiting2.open();
+  mvWaiting2.send({ type: 'join', key: KEY, room: 'moves', name: 'M', side: 'A', mode: 'listening' });
+  await mvWaiting2.expect('joined');
+  mvDirect.send({ type: 'join', key: KEY, room: 'moves', name: 'M', side: 'A', mode: 'active' });
+  const mvDirectJoined = await mvDirect.expect('joined');
+  check(mvDirectJoined.since === mvIn.since, 'and so when coming back straight into the channel');
+  mv.close(); mvBack.close(); mvWaiting2.close(); mvDirect.close();
+
   // --- a drop followed by a quick return is never announced -------------------
   // A drop is usually a change of network: the same phone is back within
   // seconds. The departure is held for a moment, and if they return in

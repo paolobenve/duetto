@@ -1167,7 +1167,18 @@ wss.on('connection', (ws, req) => {
         // straight back in, within half a minute.
         : before?.was && before.was.mode === ws.mode && now0 < before.was.until ? before.was.since
           : now0;
-      ws.was = before?.was;
+      /**
+       * Back in another state than the one it left: that one is kept
+       * half a minute, as a change of state keeps it (see 'mode').
+       * Moving to another connection leaves the channel with a goodbye,
+       * and the seat that waits for calls is taken at once in its place,
+       * listening: it took the moment left by the goodbye and started a
+       * stretch of its own, and coming back a few seconds later found
+       * the channel starting again from then.
+       */
+      ws.was = before?.mode && before.mode !== ws.mode && before.since
+        ? { mode: before.mode, since: before.since, until: now0 + QUICK_RETURN_MS }
+        : before?.was;
       /**
        * Since when this phone is available - on the server, in the
        * channel or waiting - without a break: unlike `since`, going in
