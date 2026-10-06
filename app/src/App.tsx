@@ -57,6 +57,7 @@ import DiagnosticsAskCard from './DiagnosticsAskCard';
 import {
   type AskState, ourAsk, setOurAsk, deliverAsk, answerHeard, noteAskedOfUs,
   laterAskedOfUs, clearAskedOfUs, dueAmong, said as saidOfThem,
+  noteTheirJournal, theirJournalRecent,
 } from './diagnosticsAsk';
 import { reportDirectly, inviteOnWorkItem } from './gitlab';
 import type { ReportOutcome } from './gitlab';
@@ -3240,7 +3241,7 @@ export default function App() {
   const [askState, setAskState] = useState<AskState | null>(null);
   /** the connection whose request for our diagnostics shows now */
   const [diagAskedBy, setDiagAskedBy] = useState<string | null>(null);
-  /** their journal has arrived on this connection: their diagnostics are on */
+  /** their journal has arrived on this connection, lately: their diagnostics are on */
   const [theirJournal, setTheirJournal] = useState(false);
   const pairIdNow = cfg?.pair?.id;
   useEffect(() => {
@@ -3248,6 +3249,8 @@ export default function App() {
     setTheirJournal(false);
     if (!pairIdNow) return;
     ourAsk(pairIdNow).then(setAskState).catch(() => { /* noop */ });
+    // Their journal in the last day: see noteTheirJournal.
+    theirJournalRecent(pairIdNow).then((r) => { if (r) setTheirJournal(true); }).catch(() => { /* noop */ });
     const look = () => {
       const ids = (cfgRef.current?.pairs ?? []).map((p) => p.id);
       dueAmong(ids).then(setDiagAskedBy).catch(() => { /* noop */ });
@@ -3783,6 +3786,7 @@ export default function App() {
               // Sent only with their diagnostics on: the proof of it an
               // older app gives, whose hello does not say.
               setTheirJournal(true);
+              noteTheirJournal(cfgRef.current?.pair?.id);
               return;
             }
 

@@ -25,7 +25,7 @@ import { refreshStandby, stopStandby } from './standby';
 import { keepCall } from './callsUnseen';
 import { sendJournalOver } from './journalSwap';
 import {
-  deliverAsk, answerHeard, noteAskedOfUs, said as saidOfThem,
+  deliverAsk, answerHeard, noteAskedOfUs, noteTheirJournal, said as saidOfThem,
 } from './diagnosticsAsk';
 
 /**
@@ -696,6 +696,7 @@ async function listenNow(): Promise<boolean> {
         if (msg.kind === 'journal') {
           Journal.appendOther(String(msg.text ?? ''), pairFileKey(pair))
             .catch(() => { /* noop */ });
+          noteTheirJournal(pair.id);
           return;
         }
         if (msg.kind === 'death') {

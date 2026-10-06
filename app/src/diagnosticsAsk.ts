@@ -112,3 +112,30 @@ export async function dueAmong(pairIds: string[]): Promise<string | null> {
   const m = await readMap<Asked>(THEIRS);
   return pairIds.find((id) => cardDue(m[id] ?? null)) ?? null;
 }
+
+/**
+ * When the other side's journal last arrived, per connection.
+ *
+ * It goes only with their diagnostics on: for an older app, whose hello
+ * does not say, it is the proof. Kept across restarts - an update
+ * restarted the app a minute after the journal had come, and the proof
+ * was gone until the next piece, which an older app sends only with its
+ * window open. A day of it is worth believing.
+ */
+const JOURNALS = 'duetto.their-journal-at';
+const JOURNAL_BELIEVED_MS = 24 * 3600_000;
+const noted = new Map<string, number>();
+
+export function noteTheirJournal(pairId: string | undefined): void {
+  if (!pairId) return;
+  const now = Date.now();
+  // Once a minute is plenty: pieces come in bursts.
+  if (now - (noted.get(pairId) ?? 0) < 60_000) return;
+  noted.set(pairId, now);
+  writeEntry<number>(JOURNALS, pairId, now).catch(() => { /* noop */ });
+}
+
+export async function theirJournalRecent(pairId: string): Promise<boolean> {
+  const at = (await readMap<number>(JOURNALS))[pairId] ?? 0;
+  return Date.now() - at < JOURNAL_BELIEVED_MS;
+}
