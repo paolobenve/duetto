@@ -295,6 +295,18 @@ export default function SettingsScreen({
   const connections = initial.pairs;
   const inUse = initial.pair?.id;
   /**
+   * The connection touched to move to, from the touch on. Leaving the
+   * one in use takes up to two seconds - its journal goes out first -
+   * and meanwhile the old one stayed lit and the touch seemed lost:
+   * the new one is lit at once, says it is on its way, and the others
+   * wait.
+   */
+  const [switchingTo, setSwitchingTo] = useState<string | null>(null);
+  const switchTo = (id: string) => {
+    setSwitchingTo(id);
+    onSwitchPair(id);
+  };
+  /**
    * Waiting on a connection when it is not the one in use (see
    * standby.ts): on unless switched off. Written on the connection in
    * the list and, for the one in use, on its copy in use too - the save
@@ -636,14 +648,14 @@ export default function SettingsScreen({
               <Text style={styles.sectionHint}>{t('settings.connectionsHint')}</Text>
             ) : null}
             {connections.map((p) => {
-              const active = p.id === inUse;
+              const active = p.id === (switchingTo ?? inUse);
               const face = peerAvatar(p.id, p.side);
               return (
                 <View key={p.id} style={styles.pairRow}>
                   <TouchableOpacity
                     style={[styles.pairBox, active && styles.pairBoxInUse]}
-                    disabled={active}
-                    onPress={() => onSwitchPair(p.id)}>
+                    disabled={active || switchingTo !== null}
+                    onPress={() => switchTo(p.id)}>
                     <View style={[styles.pairFace, { backgroundColor: face.color }]}>
                       <Text style={styles.pairFaceText}>{face.symbol}</Text>
                     </View>
@@ -658,10 +670,14 @@ export default function SettingsScreen({
                           {t('settings.withWho', { who: peerShown(p) })}
                         </Text>
                       ) : null}
-                      <Text style={styles.pairMeta}>
-                        {active ? t('settings.inUseSince') : t('settings.since')}
-                        {p.pairedAt ? new Date(p.pairedAt).toLocaleDateString() : '—'}
-                      </Text>
+                      {p.id === switchingTo ? (
+                        <Text style={styles.pairMeta}>{t('settings.switching')}</Text>
+                      ) : (
+                        <Text style={styles.pairMeta}>
+                          {active ? t('settings.inUseSince') : t('settings.since')}
+                          {p.pairedAt ? new Date(p.pairedAt).toLocaleDateString() : '—'}
+                        </Text>
+                      )}
                       {p.brokenByPeer ? (
                         <Text style={styles.pairBroken}>{t('settings.pairBrokenByPeer')}</Text>
                       ) : null}

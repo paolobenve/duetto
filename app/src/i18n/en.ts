@@ -384,6 +384,7 @@ export const en = {
     withWho: 'with {who}',
     inUseSince: 'In use · since ',
     since: 'Since ',
+    switching: 'Switching…',
     addConnection: 'Add a connection',
     addConnectionHint: 'To connect with another person: you create a new code and read it to them, and they type it into their phone. The pairs you have stay: the new one is added and comes into use. It is also for when the other side has broken the pair, because from here there is no way of noticing.',
     standby: 'Reachable when not in use',

@@ -371,6 +371,7 @@ export const de: Dictionary = {
     withWho: 'mit {who}',
     inUseSince: 'In Gebrauch · seit ',
     since: 'Seit ',
+    switching: 'Wechsel läuft…',
     addConnection: 'Eine Verbindung hinzufügen',
     addConnectionHint: 'Um dich mit einer weiteren Person zu verbinden: du machst einen neuen Code und liest ihn ihr vor, und sie tippt ihn in ihr Telefon. Deine Paare bleiben: das neue kommt dazu und geht in Gebrauch. Es ist auch für den Fall, dass die andere Seite das Paar gelöst hat, denn von hier aus merkt man das nicht.',
     standby: 'Erreichbar, wenn nicht in Gebrauch',

@@ -371,6 +371,7 @@ export const es: Dictionary = {
     withWho: 'con {who}',
     inUseSince: 'En uso · desde el ',
     since: 'Desde el ',
+    switching: 'Cambiando…',
     addConnection: 'Añadir una conexión',
     addConnectionHint: 'Para conectarte con otra persona: creas un código nuevo y se lo dictas, y ella lo escribe en su teléfono. Las parejas que tienes se quedan: la nueva se añade y pasa a estar en uso. Sirve también si el otro deshizo la pareja por su lado, porque desde aquí no hay manera de notarlo.',
     standby: 'Localizable cuando no está en uso',
