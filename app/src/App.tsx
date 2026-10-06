@@ -47,7 +47,7 @@ import ChannelScreen from './ChannelScreen';
 import { loadPipPosition } from './VideoStage';
 import { useAudioRoute, type AudioRoute } from './audioRoute';
 import { pairFromLetter } from './pairing';
-import CallAlert, { CALL_ALERT_MS } from './CallAlert';
+import CallAlert, { CallBand, CALL_ALERT_MS } from './CallAlert';
 import { refreshStandby, onStandbyCall } from './standby';
 import { takeCall } from './callsUnseen';
 import { reportDirectly, inviteOnWorkItem } from './gitlab';
@@ -836,29 +836,44 @@ export default function App() {
    * until `until` or a touch: see CallAlert. The half minute runs only
    * with the app in front: arriving behind, or going behind while it
    * shows, it waits (`until` null) and counts from the moment the app
-   * comes back to the front.
+   * comes back to the front. The little window of picture-in-picture
+   * is not the front: there a band says it instead, for the half minute
+   * after it arrived (`at`), and the card waits for the full screen.
    */
   const [callAlert, setCallAlert] = useState<{
-    text: string; until: number | null;
-    /** from a connection not in use: which one, and who, for the button */
+    text: string; until: number | null; at: number;
+    /** from a connection not in use: which one, for the button */
     pairId?: string;
   } | null>(null);
+  /** in the little window: see inPip, below */
+  const inPipRef = useRef(false);
+  const inFront = (st: string) => st === 'active' && !inPipRef.current;
   const showCallAlert = useCallback((text: string, pairId?: string) => {
     setCallAlert({
-      text, pairId,
-      until: AppState.currentState === 'active' ? Date.now() + CALL_ALERT_MS : null,
+      text, pairId, at: Date.now(),
+      until: inFront(AppState.currentState) ? Date.now() + CALL_ALERT_MS : null,
     });
+  }, []);
+  const frontChanged = useCallback((st: string) => {
+    setCallAlert((was) => (was ? {
+      ...was, until: inFront(st) ? Date.now() + CALL_ALERT_MS : null,
+    } : was));
   }, []);
   useEffect(() => {
     if (!callAlert) return;
-    const sub = AppState.addEventListener('change', (st) => {
-      setCallAlert((was) => (was ? {
-        ...was, until: st === 'active' ? Date.now() + CALL_ALERT_MS : null,
-      } : was));
-    });
+    const sub = AppState.addEventListener('change', frontChanged);
     if (callAlert.until === null) return () => sub.remove();
     const timer = setTimeout(() => setCallAlert(null), Math.max(0, callAlert.until - Date.now()));
     return () => { clearTimeout(timer); sub.remove(); };
+  }, [callAlert, frontChanged]);
+  /** the band in the little window, for the half minute after the call */
+  const [callBand, setCallBand] = useState(false);
+  useEffect(() => {
+    const left = callAlert ? callAlert.at + CALL_ALERT_MS - Date.now() : 0;
+    setCallBand(left > 0);
+    if (left <= 0) return;
+    const timer = setTimeout(() => setCallBand(false), left);
+    return () => clearTimeout(timer);
   }, [callAlert]);
   // A call from a connection not in use, in the middle of the screen
   // too: see standby.ts.
@@ -4806,6 +4821,12 @@ export default function App() {
    */
   const [inPip, setInPip] = useState(false);
   useEffect(() => Pip.subscribe(setInPip), []);
+  // In and out of the little window, the call's card stops and starts
+  // its half minute: see callAlert.
+  useEffect(() => {
+    inPipRef.current = inPip;
+    frontChanged(AppState.currentState);
+  }, [inPip, frontChanged]);
 
   const stageAspect =
     (peerState.video ? peerState.aspect : undefined) ??
@@ -5714,7 +5735,9 @@ export default function App() {
         }}
       />
       {/* Not in the little window of picture-in-picture: it would
-          cover the picture, and nobody can touch it away there. */}
+          cover the picture, and nobody can touch it away there. A band
+          says it there instead. */}
+      {callAlert && inPip && callBand ? <CallBand text={callAlert.text} /> : null}
       {callAlert && !inPip ? <CallAlert
           text={callAlert.text}
           onClose={() => setCallAlert(null)}
