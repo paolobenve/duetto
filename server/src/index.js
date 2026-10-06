@@ -1073,8 +1073,11 @@ wss.on('connection', (ws, req) => {
       if (doorIsShut() && !adopted) {
         const who = known;
         if (!who) {
+          // Which room, and which app: a phone knocking for days at a
+          // room taken away, with an app too old for the link it was
+          // sent, looked like any stranger.
           console.log(`[duetto] turned away: ${String(msg.pub || 'no key').slice(0, 12)}`
-            + ` from ${ws.ip}`);
+            + ` from ${ws.ip}, room ${roomId.slice(0, 4)}…, app ${cleanVersion(msg.version) || '?'}`);
           // The same "no" as always, with the reason beside it: an
           // invitation that did not work is not a missing invitation,
           // and the app can only say so if it is told.
