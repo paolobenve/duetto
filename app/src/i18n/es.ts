@@ -214,6 +214,8 @@ export const es: Dictionary = {
     linkLost: 'Enlace perdido, reconectando…',
     linkInterrupted: 'Enlace interrumpido, a la espera…',
     youAreInChannel: 'Estás en el canal.',
+    backTo: 'Volver al canal {name}',
+    backToPrevious: 'Volver al canal anterior',
     touchPrefix: ': toca ',
     touchSuffix: ' para hacérselo saber.',
     detachedOnPurpose: ' a propósito.',

@@ -225,6 +225,8 @@ export const en = {
     linkLost: 'Link lost, reconnecting…',
     linkInterrupted: 'Link interrupted, waiting…',
     youAreInChannel: 'You are in the channel.',
+    backTo: 'Back to the channel {name}',
+    backToPrevious: 'Back to the previous channel',
     touchPrefix: ': touch ',
     touchSuffix: ' to let them know.',
     detachedOnPurpose: ' on purpose.',

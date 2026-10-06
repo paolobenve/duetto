@@ -897,6 +897,18 @@ export default function App() {
    * channel, and says which - by its name, when it has one. Who called
    * is already in the words above it.
    */
+  /**
+   * The way back's words: the connection left, by its name when it has
+   * one. None when there is nothing to go back to - no move yet, or
+   * that connection gone, broken, or the one in use again.
+   */
+  const backLabel = (c: DuoConfig) => {
+    const prev = previousPair && previousPair.id !== c.pair?.id
+      ? c.pairs.find((p) => p.id === previousPair.id && !p.brokenByPeer) : undefined;
+    if (!prev) return undefined;
+    const name = prev.label?.trim();
+    return name ? t('channel.backTo', { name }) : t('channel.backToPrevious');
+  };
   const switchLabel = (pairId: string) => {
     const name = cfgRef.current?.pairs.find((p) => p.id === pairId)?.label?.trim();
     return name ? t('alert.switchToChannel', { name }) : t('alert.switchToCalled');
@@ -908,8 +920,12 @@ export default function App() {
    * on the Bluetooth headset.
    */
   const enteringBySwitch = useRef(false);
-  /** the next connection made goes into the channel: see the call's button */
-  const enterOnConnect = useRef(false);
+  /**
+   * Where the next connection made goes: into the channel (true), not
+   * into it (false), or by the entry's rule (null). See the call's
+   * button, and the way back to the connection left.
+   */
+  const enterOnConnect = useRef<boolean | null>(null);
   /** onSwitchPair, for what is born before it */
   const onSwitchPairRef = useRef<((id: string) => void) | null>(null);
   /**
@@ -3895,9 +3911,10 @@ export default function App() {
       // what one sees, and one touch opens it.
       // Or asked by the button of a call from this connection, when it
       // was not the one in use: "go to them" means into the channel.
+      // Or by the way back to a connection left, as one was there.
       const asked = enterOnConnect.current;
-      enterOnConnect.current = false;
-      if (!cancelled && (asked || (cfgRef.current?.openInto ?? 'door') === 'channel')) await enterChannel();
+      enterOnConnect.current = null;
+      if (!cancelled && (asked ?? (cfgRef.current?.openInto ?? 'door') === 'channel')) await enterChannel();
     })();
 
     return () => {
@@ -5125,6 +5142,13 @@ export default function App() {
   }, []);
 
   /**
+   * The connection left by the last move, and whether one was inside
+   * its channel: the way back, at the top of the channel. Kept while
+   * Duetto runs.
+   */
+  const [previousPair, setPreviousPair] = useState<{ id: string; wasIn: boolean } | null>(null);
+
+  /**
    * Switches to another connection already set up.
    *
    * There is nothing to tear down by hand: changing the pair changes
@@ -5144,6 +5168,7 @@ export default function App() {
     if (!cfg) return;
     const next = switchToPair(cfg, id);
     if (next === cfg) return;
+    if (cfg.pair) setPreviousPair({ id: cfg.pair.id, wasIn: inChannelRef.current });
     // Moving is leaving: the same journal line, the same memory of how
     // it was, the same last exchange - and a goodbye, because from over
     // there you disappear by choice, not because the line dropped. The
@@ -5162,6 +5187,17 @@ export default function App() {
     setScreen('channel');
   }, [cfg, stopWaiting, resetPeerMemory, putAwayChannel]);
   useEffect(() => { onSwitchPairRef.current = onSwitchPair; }, [onSwitchPair]);
+  /**
+   * Back to the connection left by the last move, as one was there:
+   * inside its channel or not. Going back is a move too, so the way
+   * back then leads to the one just left - two channels, to and fro.
+   */
+  const goBackToPair = useCallback(() => {
+    if (!previousPair) return;
+    Journal.mark(`pair-back:${previousPair.id.slice(0, 8)}`).catch(() => { /* noop */ });
+    enterOnConnect.current = previousPair.wasIn;
+    onSwitchPair(previousPair.id);
+  }, [previousPair, onSwitchPair]);
 
   /**
    * The name I give a connection myself.
@@ -5716,6 +5752,8 @@ export default function App() {
             .catch(() => {});
         }}
         onOpenSettings={() => setScreen('settings')}
+        backLabel={backLabel(cfg)}
+        onBack={goBackToPair}
         onCall={onCall}
         pairBroken={!!cfg.pair?.brokenByPeer}
         battery={battery}

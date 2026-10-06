@@ -627,6 +627,9 @@ type Props = {
   /** how far the big video was zoomed, once the gesture is over */
   onZoom?: (zoom: number) => void;
   onOpenSettings: () => void;
+  /** the way back to the connection left by the last move, and its words */
+  backLabel?: string;
+  onBack?: () => void;
 };
 
 /**
@@ -642,7 +645,7 @@ export default function ChannelScreen(props: Props) {
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes, btBattery,
     onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, leaving,
-    onAlarm, onZoom, onOpenSettings, onCall, pairBroken, battery,
+    onAlarm, onZoom, onOpenSettings, onCall, pairBroken, battery, backLabel, onBack,
   } = props;
   const { levelDb, onToggleOutputMute, onSetLevel, wakeAt } = props;
   const outputMuted = !!levelDb?.muted;
@@ -1412,6 +1415,19 @@ export default function ChannelScreen(props: Props) {
               t('channel.phoneNotConnected')
             )}
           </Text>
+        </Animated.View>
+      ) : null}
+
+      {/* The way back to the connection left by the last move: small,
+          under the name, fading with the controls. Before the news,
+          which covers it while it is there. */}
+      {!compact && backLabel && onBack ? (
+        <Animated.View
+          pointerEvents={gone ? 'none' : 'box-none'}
+          style={[styles.returnRow, { opacity, top: 56 + inset.v, right: 14 + inset.h }]}>
+          <TouchableOpacity style={styles.returnPill} onPress={press(onBack, null)}>
+            <Text style={styles.returnText}>{'\u21A9 '}{backLabel}</Text>
+          </TouchableOpacity>
         </Animated.View>
       ) : null}
 
@@ -2910,6 +2926,12 @@ const styles = StyleSheet.create({
   dotGrey: { backgroundColor: '#6b7686' },
   badgeText: { color: '#e6ebf1', fontSize: 13, fontWeight: '600' },
   spacer: { flex: 1 },
+  returnRow: { position: 'absolute' },
+  returnPill: {
+    backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 14,
+    paddingHorizontal: 10, paddingVertical: 5,
+  },
+  returnText: { color: '#e6ebf1', fontSize: 12 },
   gear: {
     width: 36, height: 36, borderRadius: 18,
     alignItems: 'center', justifyContent: 'center',
