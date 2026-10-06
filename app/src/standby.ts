@@ -184,7 +184,7 @@ function open(cfg: DuoConfig, pair: PairInfo) {
         if (msg.kind === 'askDiagnostics') {
           Journal.mark(`standby:diagnostics-asked:${pair.id.slice(0, 8)}`).catch(() => { /* noop */ });
           if (diagnosticsOn) {
-            sig.sendSignal({ kind: 'diagnosticsAnswer', answer: 'on' });
+            sig.sendSignal({ kind: 'diagnosticsAnswer', answer: 'already' });
             return;
           }
           sig.sendSignal({ kind: 'diagnosticsAnswer', answer: 'received' });

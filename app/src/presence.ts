@@ -675,7 +675,7 @@ async function listenNow(): Promise<boolean> {
         if (msg.kind === 'askDiagnostics') {
           Journal.mark('diagnostics:asked').catch(() => { /* noop */ });
           if (cfg.diagnostics) {
-            signaling?.sendSignal({ kind: 'diagnosticsAnswer', answer: 'on' });
+            signaling?.sendSignal({ kind: 'diagnosticsAnswer', answer: 'already' });
             return;
           }
           signaling?.sendSignal({ kind: 'diagnosticsAnswer', answer: 'received' });

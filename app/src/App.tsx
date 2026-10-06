@@ -3710,7 +3710,7 @@ export default function App() {
               if (!id) return;
               Journal.mark('diagnostics:asked').catch(() => {});
               if (cfgRef.current?.diagnostics) {
-                signalingRef.current?.sendSignal({ kind: 'diagnosticsAnswer', answer: 'on' });
+                signalingRef.current?.sendSignal({ kind: 'diagnosticsAnswer', answer: 'already' });
                 return;
               }
               signalingRef.current?.sendSignal({ kind: 'diagnosticsAnswer', answer: 'received' });
@@ -3725,8 +3725,10 @@ export default function App() {
               const id = cfgRef.current?.pair?.id;
               if (!id) return;
               Journal.mark(`diagnostics:answer:${msg.answer}`).catch(() => {});
-              // Turned on: known at once, not at their next hello.
-              if (msg.answer === 'on') setPeerState((prev) => ({ ...prev, diagnostics: true }));
+              // On: known at once, not at their next hello.
+              if (msg.answer === 'on' || msg.answer === 'already') {
+                setPeerState((prev) => ({ ...prev, diagnostics: true }));
+              }
               answerHeard(id, msg.answer).then((st) => {
                 setAskState(st);
                 if (st === 'on') setNotice(saidOfThem('diagAsk.turnedOn', shownNameRef.current));

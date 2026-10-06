@@ -105,7 +105,8 @@ export type SignalMessage =
   | { kind: 'hello'; version: string; build?: number; diagnostics?: boolean }
   /** one phone asking the other to turn diagnostics on: see diagnosticsAsk.ts */
   | { kind: 'askDiagnostics' }
-  | { kind: 'diagnosticsAnswer'; answer: 'received' | 'on' | 'later' | 'no' }
+  // `already`: they were on before the request - nothing to announce.
+  | { kind: 'diagnosticsAnswer'; answer: 'received' | 'on' | 'already' | 'later' | 'no' }
   /**
    * "Do it again". `road` asks for the gentler kind: the channel is
    * shaken to find a better road, not demolished - what carries the

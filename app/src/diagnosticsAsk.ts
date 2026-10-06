@@ -27,7 +27,7 @@ import { t } from './i18n';
  * arrived, then "on", "later" or "no".
  */
 export type AskState = 'waiting' | 'delivered' | 'later' | 'no' | 'on';
-export type Answer = 'received' | 'on' | 'later' | 'no';
+export type Answer = 'received' | 'on' | 'already' | 'later' | 'no';
 
 /** what we asked, per connection */
 const OURS = 'duetto.diagnostics-ask';
@@ -68,8 +68,18 @@ export async function deliverAsk(sig: Signaling | null, pairId: string | undefin
   if ((await ourAsk(pairId)) === 'waiting') sig.sendSignal({ kind: 'askDiagnostics' });
 }
 
-/** Their answer: our request moves on, and its new state is returned. */
-export async function answerHeard(pairId: string, answer: Answer): Promise<AskState> {
+/**
+ * Their answer: our request moves on, and its new state is returned.
+ * On already, it is done with: nothing changed over there, and nothing
+ * is announced - a request left waiting for an older app was delivered
+ * when it was updated, and "turned on" was said of diagnostics on all
+ * along.
+ */
+export async function answerHeard(pairId: string, answer: Answer): Promise<AskState | null> {
+  if (answer === 'already') {
+    await setOurAsk(pairId, null);
+    return null;
+  }
   const state: AskState = answer === 'received' ? 'delivered' : answer;
   await setOurAsk(pairId, state);
   return state;
