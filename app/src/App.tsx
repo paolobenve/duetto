@@ -840,11 +840,11 @@ export default function App() {
   const [callAlert, setCallAlert] = useState<{
     text: string; until: number | null;
     /** from a connection not in use: which one, and who, for the button */
-    pairId?: string; who?: string;
+    pairId?: string;
   } | null>(null);
-  const showCallAlert = useCallback((text: string, pairId?: string, who?: string) => {
+  const showCallAlert = useCallback((text: string, pairId?: string) => {
     setCallAlert({
-      text, pairId, who,
+      text, pairId,
       until: AppState.currentState === 'active' ? Date.now() + CALL_ALERT_MS : null,
     });
   }, []);
@@ -861,7 +861,16 @@ export default function App() {
   }, [callAlert]);
   // A call from a connection not in use, in the middle of the screen
   // too: see standby.ts.
-  useEffect(() => onStandbyCall((pairId, text, who) => showCallAlert(text, pairId, who)), [showCallAlert]);
+  useEffect(() => onStandbyCall((pairId, text) => showCallAlert(text, pairId)), [showCallAlert]);
+  /**
+   * The button of a call from a connection not in use: it goes to a
+   * channel, and says which - by its name, when it has one. Who called
+   * is already in the words above it.
+   */
+  const switchLabel = (pairId: string) => {
+    const name = cfgRef.current?.pairs.find((p) => p.id === pairId)?.label?.trim();
+    return name ? t('alert.switchToChannel', { channel: name }) : t('alert.switchToCalled');
+  };
   /**
    * The next entry comes from a change of connection: the output is the
    * one that connection was left with, whatever the entry's own rule
@@ -5480,7 +5489,7 @@ export default function App() {
         {callAlert ? <CallAlert
           text={callAlert.text}
           onClose={() => setCallAlert(null)}
-          switchLabel={callAlert.pairId ? t('alert.switchTo', { who: callAlert.who || t('death.theOther') }) : undefined}
+          switchLabel={callAlert.pairId ? switchLabel(callAlert.pairId) : undefined}
           onSwitch={callAlert.pairId ? () => switchToCaller(callAlert.pairId!) : undefined}
         /> : null}
       </View>
@@ -5694,7 +5703,7 @@ export default function App() {
       {callAlert && !inPip ? <CallAlert
           text={callAlert.text}
           onClose={() => setCallAlert(null)}
-          switchLabel={callAlert.pairId ? t('alert.switchTo', { who: callAlert.who || t('death.theOther') }) : undefined}
+          switchLabel={callAlert.pairId ? switchLabel(callAlert.pairId) : undefined}
           onSwitch={callAlert.pairId ? () => switchToCaller(callAlert.pairId!) : undefined}
         /> : null}
     </View>

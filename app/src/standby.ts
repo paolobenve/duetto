@@ -33,8 +33,8 @@ const log = logger('[duetto-standby]');
  */
 const standing = new Map<string, Signaling>();
 
-/** The interface's ear: a call or a sound from a connection not in use, and who. */
-type CallHeard = (pairId: string, text: string, who: string) => void;
+/** The interface's ear: a call or a sound from a connection not in use. */
+type CallHeard = (pairId: string, text: string) => void;
 let onCall: CallHeard | null = null;
 export function onStandbyCall(cb: CallHeard): () => void {
   onCall = cb;
@@ -118,7 +118,7 @@ function open(cfg: DuoConfig, pair: PairInfo) {
           log('call from a connection not in use:', text);
           Journal.mark(`standby:knock:${pair.id.slice(0, 8)}`).catch(() => { /* noop */ });
           Foreground.notifyFor('', text, pair.id, soundOf(pair)).catch(() => { /* noop */ });
-          onCall?.(pair.id, text, who);
+          onCall?.(pair.id, text);
           return;
         }
         // Their coming into the channel: said quietly, on the line that
@@ -133,7 +133,7 @@ function open(cfg: DuoConfig, pair: PairInfo) {
         Journal.mark(`standby:alarm:${pair.id.slice(0, 8)}:${msg.sound}`).catch(() => { /* noop */ });
         Alarm.play(String(msg.sound ?? '')).catch(() => { /* noop */ });
         Foreground.notifyFor('', text, pair.id, soundOf(pair)).catch(() => { /* noop */ });
-        onCall?.(pair.id, text, who);
+        onCall?.(pair.id, text);
       },
     },
   );
