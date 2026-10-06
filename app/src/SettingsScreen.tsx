@@ -1359,7 +1359,10 @@ export default function SettingsScreen({
             diagnosticsAsk.ts. On already over there, it is said. */}
         {diagAsk ? (
           diagAsk.theirsOn ? (
-            <Text style={styles.sectionHint}>{said('diagAsk.theirsOn', diagAsk.name)}</Text>
+            // "Too" only when this phone's are on as well.
+            <Text style={styles.sectionHint}>
+              {said(cfg.diagnostics ? 'diagAsk.theirsOn' : 'diagAsk.theirsOnOnly', diagAsk.name)}
+            </Text>
           ) : (
             <>
               <TouchableOpacity style={styles.secondary} onPress={diagAsk.onAsk}>

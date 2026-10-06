@@ -682,6 +682,7 @@ export const it: Dictionary = {
     ask: 'Chiedi a {who} di accendere la diagnostica',
     askAnon: 'Chiedi all’altro di accendere la diagnostica',
     theirsOn: 'Anche {who} ha la diagnostica accesa.',
+    theirsOnOnly: '{who} ha la diagnostica accesa.',
     waiting: 'Richiesta in attesa: arriverà quando {who} si collega.',
     delivered: 'Richiesta consegnata.',
     later: '{who} ha risposto: più tardi.',

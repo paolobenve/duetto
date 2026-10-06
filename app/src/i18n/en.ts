@@ -696,6 +696,7 @@ export const en = {
     ask: 'Ask {who} to turn diagnostics on',
     askAnon: 'Ask the other person to turn diagnostics on',
     theirsOn: '{who} has diagnostics on too.',
+    theirsOnOnly: '{who} has diagnostics on.',
     waiting: 'Request waiting: it will arrive when {who} connects.',
     delivered: 'Request delivered.',
     later: '{who} answered: later.',

@@ -683,6 +683,7 @@ export const de: Dictionary = {
     ask: '{who} bitten, die Diagnose einzuschalten',
     askAnon: 'Die andere Person bitten, die Diagnose einzuschalten',
     theirsOn: 'Auch {who} hat die Diagnose eingeschaltet.',
+    theirsOnOnly: '{who} hat die Diagnose eingeschaltet.',
     waiting: 'Bitte wartet: sie kommt an, sobald sich {who} verbindet.',
     delivered: 'Bitte zugestellt.',
     later: '{who} hat geantwortet: später.',
