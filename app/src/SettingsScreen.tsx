@@ -1330,6 +1330,24 @@ export default function SettingsScreen({
             and not among the settings that travel with a connection. */}
         <Text style={styles.section}>{t('settings.diagnostics')}</Text>
         <Text style={styles.sectionHint}>{t('settings.diagnosticsHint')}</Text>
+        {/* First, and plain to see: it is what one comes here for,
+            and what one is asked for when something goes wrong. */}
+        <TouchableOpacity
+          style={[styles.switchRow, styles.diagnosticsRow, cfg.diagnostics ? styles.diagnosticsRowOn : null]}
+          onPress={() => {
+            const v = !cfg.diagnostics;
+            setCfg({ ...cfg, diagnostics: v });
+            onLive?.({ diagnostics: v });
+          }}>
+          <View style={styles.choiceText}>
+            <Text style={[styles.choiceLabel, styles.diagnosticsLabel]}>{t('settings.diagnosticsOn')}</Text>
+            <Text style={styles.choiceNote}>{t('settings.diagnosticsOnNote')}</Text>
+          </View>
+          <View pointerEvents="none">
+            <Switch value={!!(cfg.diagnostics)} {...SWITCH_COLOURS} />
+          </View>
+        </TouchableOpacity>
+
         {/* A technical knob, kept here on purpose: it pays on a road
             that loses packets and costs on every other. */}
         <TouchableOpacity
@@ -1345,21 +1363,6 @@ export default function SettingsScreen({
           </View>
           <View pointerEvents="none">
             <Switch value={!!(cfg.shortPackets)} {...SWITCH_COLOURS} />
-          </View>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.switchRow}
-          onPress={() => {
-            const v = !cfg.diagnostics;
-            setCfg({ ...cfg, diagnostics: v });
-            onLive?.({ diagnostics: v });
-          }}>
-          <View style={styles.choiceText}>
-            <Text style={styles.choiceLabel}>{t('settings.diagnosticsOn')}</Text>
-            <Text style={styles.choiceNote}>{t('settings.diagnosticsOnNote')}</Text>
-          </View>
-          <View pointerEvents="none">
-            <Switch value={!!(cfg.diagnostics)} {...SWITCH_COLOURS} />
           </View>
         </TouchableOpacity>
 
@@ -1916,6 +1919,13 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#252c38',
   },
   optionPicked: { backgroundColor: '#16203a' },
+  // Diagnostics, first in its tab: a box that stands out, filled when on.
+  diagnosticsRow: {
+    borderColor: '#2f7cf6', borderWidth: 2, borderRadius: 12,
+    paddingVertical: 18, paddingHorizontal: 14, marginTop: 8,
+  },
+  diagnosticsRowOn: { backgroundColor: '#16243a' },
+  diagnosticsLabel: { fontSize: 18 },
   switchRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingVertical: 12, paddingHorizontal: 4, marginTop: 4,
