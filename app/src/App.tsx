@@ -837,8 +837,9 @@ export default function App() {
    * with the app in front: arriving behind, or going behind while it
    * shows, it waits (`until` null) and counts from the moment the app
    * comes back to the front. The little window of picture-in-picture
-   * is not the front: there a band says it instead, for the half minute
-   * after it arrived (`at`), and the card waits for the full screen.
+   * is not the front: there the yellow fills it instead, for the half
+   * minute after the call arrived (`at`), and the card waits for the
+   * full screen.
    */
   const [callAlert, setCallAlert] = useState<{
     text: string; until: number | null; at: number;
@@ -866,7 +867,7 @@ export default function App() {
     const timer = setTimeout(() => setCallAlert(null), Math.max(0, callAlert.until - Date.now()));
     return () => { clearTimeout(timer); sub.remove(); };
   }, [callAlert, frontChanged]);
-  /** the band in the little window, for the half minute after the call */
+  /** the yellow in the little window, for the half minute after the call */
   const [callBand, setCallBand] = useState(false);
   useEffect(() => {
     const left = callAlert ? callAlert.at + CALL_ALERT_MS - Date.now() : 0;
@@ -5773,8 +5774,8 @@ export default function App() {
         }}
       />
       {/* Not in the little window of picture-in-picture: it would
-          cover the picture, and nobody can touch it away there. A band
-          says it there instead. */}
+          cover the picture, and nobody can touch it away there. The
+          yellow fills the little window instead, for half a minute. */}
       {callAlert && inPip && callBand ? <CallBand text={callAlert.text} /> : null}
       {callAlert && !inPip ? <CallAlert
           text={callAlert.text}

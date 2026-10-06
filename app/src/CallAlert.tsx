@@ -51,28 +51,41 @@ export default function CallAlert({ text, onClose, switchLabel, onSwitch }: {
  * The same call in the little window of picture-in-picture.
  *
  * Nothing there can be touched - a touch only makes the window bigger -
- * so no veil and no button: a band at the bottom, over the picture,
- * with the same words, small. The card waits for the full screen.
+ * so no veil and no button. A band at the bottom, three small lines,
+ * cut the words before the channel's name and the time, which are half
+ * the news: the yellow takes the whole little window instead, over the
+ * picture, and the words are as big as fits, shrinking until they are
+ * all there. The card waits for the full screen.
  */
 export function CallBand({ text }: { text: string }) {
   return (
     <View style={styles.band} pointerEvents="none">
-      <BellRingingIcon size={20} color="#1e1f22" />
-      <Text style={styles.bandText} numberOfLines={3}>{text}</Text>
+      <BellRingingIcon size={22} color="#1e1f22" />
+      <Text
+        style={styles.bandText}
+        numberOfLines={8}
+        adjustsFontSizeToFit
+        minimumFontScale={0.3}>
+        {text}
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   band: {
-    position: 'absolute', left: 0, right: 0, bottom: 0,
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingVertical: 6, paddingHorizontal: 8,
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center', justifyContent: 'center', gap: 4,
+    padding: 8,
     backgroundColor: '#ffc83d',
     zIndex: 1000,
     elevation: 1000,
   },
-  bandText: { flex: 1, color: '#1e1f22', fontSize: 12, fontWeight: '700' },
+  bandText: {
+    flexShrink: 1, alignSelf: 'stretch',
+    color: '#1e1f22', fontSize: 26, fontWeight: '700',
+    textAlign: 'center', textAlignVertical: 'center',
+  },
   veil: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.55)',
