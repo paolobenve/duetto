@@ -589,6 +589,8 @@ function holdDeparture(roomId, ws, at) {
     // What they were doing and since when: coming back within the
     // grace, in the same state, they carry on from where they were.
     mode: ws.mode, since: ws.since, was: ws.was, present: ws.present,
+    // And how long a drop keeps that state, as in `recentlyGone`.
+    until: at + RECENT_MS,
   });
 }
 
@@ -1168,16 +1170,21 @@ wss.on('connection', (ws, req) => {
         : before?.was && before.was.mode === ws.mode && now0 < before.was.until ? before.was.since
           : now0;
       /**
-       * Back in another state than the one it left: that one is kept
-       * half a minute, as a change of state keeps it (see 'mode').
-       * Moving to another connection leaves the channel with a goodbye,
-       * and the seat that waits for calls is taken at once in its place,
-       * listening: it took the moment left by the goodbye and started a
-       * stretch of its own, and coming back a few seconds later found
-       * the channel starting again from then.
+       * Back in another state than the one it left: that one is kept, as
+       * a change of state keeps it (see 'mode'). Moving to another
+       * connection leaves the channel with a goodbye, and the seat that
+       * waits for calls is taken at once in its place, listening: it
+       * took the moment left by the goodbye and started a stretch of its
+       * own, and coming back a few seconds later found the channel
+       * starting again from then.
+       *
+       * Kept as long as the leaving allowed - a minute after a drop, an
+       * update say, half a minute after a goodbye - counted from the
+       * leaving, not from this return: after an update Duetto is back at
+       * once, waiting, and into the channel only when it is opened.
        */
       ws.was = before?.mode && before.mode !== ws.mode && before.since
-        ? { mode: before.mode, since: before.since, until: now0 + QUICK_RETURN_MS }
+        ? { mode: before.mode, since: before.since, until: before.until ?? now0 + QUICK_RETURN_MS }
         : before?.was;
       /**
        * Since when this phone is available - on the server, in the

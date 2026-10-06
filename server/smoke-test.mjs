@@ -70,6 +70,10 @@ const srv = spawn('node', ['src/index.js'], {
     HEARTBEAT_TICK_MS: '50',
     ANSWER_WAIT_MS: String(ANSWER_WAIT_MS),
     PEER_LEFT_GRACE_MS: String(GRACE_MS),
+    // A goodbye's half minute and a drop's minute, short enough to be
+    // told apart here.
+    QUICK_RETURN_MS: '1000',
+    RECENT_MS: '4000',
   },
   stdio: ['ignore', 'ignore', 'inherit'],
 });
@@ -514,6 +518,33 @@ try {
   const mvDirectJoined = await mvDirect.expect('joined');
   check(mvDirectJoined.since === mvIn.since, 'and so when coming back straight into the channel');
   mv.close(); mvBack.close(); mvWaiting2.close(); mvDirect.close();
+
+  // An update: Duetto dropped in the channel, back at once waiting, and
+  // into the channel when opened - past a goodbye's half minute, within
+  // a drop's minute, counted from the drop.
+  const up = client();
+  await up.open();
+  up.send({ type: 'join', key: KEY, room: 'update', name: 'U', side: 'A', mode: 'listening' });
+  await up.expect('joined');
+  await wait(50);
+  up.send({ type: 'mode', mode: 'active' });
+  const upIn = await up.expect('mode-since');
+  up.close();
+  await wait(50);
+  const upWaiting = client();
+  await upWaiting.open();
+  upWaiting.send({ type: 'join', key: KEY, room: 'update', name: 'U', side: 'A', mode: 'listening' });
+  await upWaiting.expect('joined');
+  await wait(1500);
+  const upOpened = client();
+  await upOpened.open();
+  upOpened.send({ type: 'join', key: KEY, room: 'update', name: 'U', side: 'A', mode: 'listening' });
+  await upOpened.expect('joined');
+  upOpened.send({ type: 'mode', mode: 'active' });
+  const upBackIn = await upOpened.expect('mode-since');
+  check(upBackIn.since === upIn.since,
+    'after an update, back in the channel within the minute keeps its moment');
+  upWaiting.close(); upOpened.close();
 
   // --- a drop followed by a quick return is never announced -------------------
   // A drop is usually a change of network: the same phone is back within
