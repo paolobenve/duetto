@@ -3210,13 +3210,17 @@ export default function App() {
    * merely waiting - before going in, which is when it is worth
    * something.
    */
-  const sayHello = useCallback(() => {
+  const sayHello = useCallback((diagnostics?: boolean) => {
     // The label, not the bare number: a build on the way to a version
     // calls itself 0.9.14 like the version itself, and the two looked
     // like the same one with different builds.
     signalingRef.current?.sendSignal({
       kind: 'hello', version: VERSION_LABEL, build: BUILD,
-      diagnostics: cfgRef.current?.diagnostics === true,
+      // Said by whoever has just changed it: the configuration's
+      // reference catches up a moment later, and the hello said the old
+      // state - the other side learnt the new one ten seconds on, from
+      // the journal.
+      diagnostics: diagnostics ?? cfgRef.current?.diagnostics === true,
     });
     // And a request for their diagnostics, if one waits to go: the two
     // have just found each other. See diagnosticsAsk.ts.
@@ -3225,7 +3229,7 @@ export default function App() {
   // Turned on or off here: the other side is told, as by the hello.
   const diagnosticsOn = !!cfg?.diagnostics;
   useEffect(() => {
-    if (peerPresent) sayHello();
+    if (peerPresent) sayHello(diagnosticsOn);
     // And the connections not in use, which say it too: see standby.ts.
     helloStandby(diagnosticsOn);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3721,6 +3725,8 @@ export default function App() {
               const id = cfgRef.current?.pair?.id;
               if (!id) return;
               Journal.mark(`diagnostics:answer:${msg.answer}`).catch(() => {});
+              // Turned on: known at once, not at their next hello.
+              if (msg.answer === 'on') setPeerState((prev) => ({ ...prev, diagnostics: true }));
               answerHeard(id, msg.answer).then((st) => {
                 setAskState(st);
                 if (st === 'on') setNotice(saidOfThem('diagAsk.turnedOn', shownNameRef.current));
@@ -5669,7 +5675,11 @@ export default function App() {
           vp9Peer={peerVp9}
           diagAsk={isPaired(cfg) ? {
             name: shownName,
-            theirsOn: peerState.diagnostics === true || theirJournal,
+            // Their hello says it; their journal only for an older app,
+            // whose hello does not - or turning them off over there would
+            // go unseen here for a day.
+            theirsOn: peerState.diagnostics === true
+              || (peerState.diagnostics === undefined && theirJournal),
             // Their hello heard, without the word: an app too old to
             // understand the request - unless their journal says it all.
             tooOld: !!peerState.version && peerState.diagnostics === undefined && !theirJournal,
