@@ -9,7 +9,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity,
+  View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, Animated,
   KeyboardAvoidingView, Platform, Alert, Modal, Pressable, Clipboard, Linking, Share, Switch,
   PermissionsAndroid,
 } from 'react-native';
@@ -96,6 +96,7 @@ const CONTROLS = (): {
 ];
 
 type Tab = 'links' | 'use' | 'diagnostics';
+const TABS: Tab[] = ['links', 'use', 'diagnostics'];
 
 /**
  * How far down each tab was left: coming back to the settings, or to a
@@ -262,24 +263,42 @@ export default function SettingsScreen({
   );
   // Remembered in the configuration: it holds through the session and
   // through an update, which kills the app.
-  const setTab = (k: Tab) => {
-    restoring.current = scrolledTo[k] ?? 0;
+  const pickTab = (k: Tab) => {
+    if (k === tab) return;
     setTabState(k);
     onLive?.({ settingsTab: k });
   };
-  const scroller = React.useRef<ScrollView>(null);
   /**
-   * The place to go back to, until the content is tall enough to hold
-   * it: a tab grows as what it shows arrives. Meanwhile the scrolls are
-   * not the reader's - the one clamped by a shorter tab least of all.
+   * The tabs are pages side by side, and a drag sideways moves from one
+   * to the next, the page following the finger; a touch on a tab's name
+   * slides there. Each page scrolls up and down on its own, and keeps
+   * its place.
    */
-  const restoring = React.useRef<number | null>(scrolledTo[tab] ?? null);
+  const pager = React.useRef<ScrollView>(null);
+  const [pageWidth, setPageWidth] = useState(0);
+  /** how far sideways the pages are, for the line under the tab's name */
+  const pagesX = React.useRef(new Animated.Value(0)).current;
+  const goToTab = (k: Tab) => {
+    pager.current?.scrollTo({ x: TABS.indexOf(k) * pageWidth, animated: true });
+    pickTab(k);
+  };
+  const pageScroll = React.useRef<Partial<Record<Tab, ScrollView | null>>>({});
+  /**
+   * The place each page goes back to, until its content is tall enough
+   * to hold it: a tab grows as what it shows arrives. Meanwhile the
+   * scrolls are not the reader's.
+   */
+  const restoring = React.useRef<Record<Tab, number | null>>({
+    links: scrolledTo.links ?? null,
+    use: scrolledTo.use ?? null,
+    diagnostics: scrolledTo.diagnostics ?? null,
+  });
   const viewHeight = React.useRef(0);
-  const goBack = (contentHeight: number) => {
-    const y = restoring.current;
+  const goBack = (k: Tab, contentHeight: number) => {
+    const y = restoring.current[k];
     if (y === null) return;
-    scroller.current?.scrollTo({ y, animated: false });
-    if (contentHeight - viewHeight.current >= y) restoring.current = null;
+    pageScroll.current[k]?.scrollTo({ y, animated: false });
+    if (contentHeight - viewHeight.current >= y) restoring.current[k] = null;
   };
   const set = (k: keyof DuoConfig) => (v: string) => setCfg({ ...cfg, [k]: v });
 
@@ -572,51 +591,21 @@ export default function SettingsScreen({
     </TouchableOpacity>
   ) : null;
 
-  return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView
-        ref={scroller}
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-        scrollEventThrottle={200}
-        onLayout={(e) => { viewHeight.current = e.nativeEvent.layout.height; }}
-        onContentSizeChange={(_w, h) => goBack(h)}
-        // A hand on the screen ends any going back.
-        onScrollBeginDrag={() => { restoring.current = null; }}
-        onScroll={(e) => {
-          if (restoring.current === null) scrolledTo[tab] = e.nativeEvent.contentOffset.y;
-        }}>
-        <View style={styles.header}>
-          {onClose ? (
-            <TouchableOpacity style={styles.back} onPress={onClose}>
-              <Text style={styles.backText}>{'\u2039'}</Text>
-            </TouchableOpacity>
-          ) : null}
-          {/* What this screen is, and nothing more: what Duetto is
-              was said by the welcome, and here it was in the way. */}
-          <Text style={styles.title}>{t('settings.title')}</Text>
-        </View>
+  /** One tab's page: the title on top, scrolling away with the rest. */
+  const pageBody = (page: Tab) => (
+    <>
+      <View style={styles.header}>
+        {onClose ? (
+          <TouchableOpacity style={styles.back} onPress={onClose}>
+            <Text style={styles.backText}>{'\u2039'}</Text>
+          </TouchableOpacity>
+        ) : null}
+        {/* What this screen is, and nothing more: what Duetto is
+            was said by the welcome, and here it was in the way. */}
+        <Text style={styles.title}>{t('settings.title')}</Text>
+      </View>
 
-        {/* Two tabs: with whom and through what one talks, and how the
-            app behaves. One screen held both, and the things touched
-            most often - the sound, the quality - sat under the list of
-            connections and the server, which are touched once. */}
-        <View style={styles.tabs}>
-          {(['links', 'use', 'diagnostics'] as Tab[]).map((k) => (
-            <TouchableOpacity
-              key={k}
-              style={[styles.tab, tab === k && styles.tabPicked]}
-              onPress={() => setTab(k)}>
-              <Text style={[styles.tabText, tab === k && styles.tabTextPicked]}>
-                {t(k === 'links' ? 'settings.tabLinks' : k === 'use' ? 'settings.tabUse' : 'settings.diagnostics')}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {tab === 'links' ? (
+        {page === 'links' ? (
           <>
         {/* Not paired yet: the step forward is the pairing, and it
             belongs right here, under the server it will be made on. */}
@@ -890,7 +879,7 @@ export default function SettingsScreen({
           </>
         ) : null}
 
-        {tab === 'use' ? (
+        {page === 'use' ? (
           <>
         <Text style={styles.subsection}>{t('settings.videoQuality')}</Text>
         <Text style={styles.sectionHint}>{t('settings.videoQualityHint')}</Text>
@@ -1333,7 +1322,7 @@ export default function SettingsScreen({
           </>
         ) : null}
 
-        {tab === 'diagnostics' ? (
+        {page === 'diagnostics' ? (
           <>
         {/* Diagnostics belong to the phone, like staying reachable, and
             not to the person: the journal is one file and the log one
@@ -1464,7 +1453,90 @@ export default function SettingsScreen({
         ) : null}
 
         <Text style={styles.version}>{VERSION_FULL}</Text>
-      </ScrollView>
+    </>
+  );
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* Two tabs: with whom and through what one talks, and how the
+          app behaves. One screen held both, and the things touched
+          most often - the sound, the quality - sat under the list of
+          connections and the server, which are touched once. */}
+      {/* The tabs' names stay at the top, whatever is scrolled: the
+          line under them follows the pages as they move. */}
+      <View style={styles.tabsFixed}>
+        <View style={styles.tabs}>
+          {TABS.map((k) => (
+            <TouchableOpacity key={k} style={styles.tab} onPress={() => goToTab(k)}>
+              <Text style={[styles.tabText, tab === k && styles.tabTextPicked]}>
+                {t(k === 'links' ? 'settings.tabLinks' : k === 'use' ? 'settings.tabUse' : 'settings.diagnostics')}
+              </Text>
+            </TouchableOpacity>
+          ))}
+          {pageWidth > 0 ? (
+            <Animated.View
+              style={[
+                styles.tabLine,
+                {
+                  width: (pageWidth - 40) / TABS.length,
+                  transform: [{
+                    translateX: pagesX.interpolate({
+                      inputRange: [0, pageWidth * (TABS.length - 1)],
+                      outputRange: [0, ((pageWidth - 40) / TABS.length) * (TABS.length - 1)],
+                      extrapolate: 'clamp',
+                    }),
+                  }],
+                },
+              ]}
+            />
+          ) : null}
+        </View>
+      </View>
+      <View style={styles.flex} onLayout={(e) => setPageWidth(e.nativeEvent.layout.width)}>
+        {pageWidth > 0 ? (
+          <Animated.ScrollView
+            ref={pager}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentOffset={{ x: TABS.indexOf(tab) * pageWidth, y: 0 }}
+            // Opened on the tab left last time: contentOffset alone is
+            // not honoured everywhere.
+            onLayout={() => {
+              pager.current?.scrollTo({ x: TABS.indexOf(tab) * pageWidth, animated: false });
+              pagesX.setValue(TABS.indexOf(tab) * pageWidth);
+            }}
+            scrollEventThrottle={16}
+            onScroll={Animated.event([{ nativeEvent: { contentOffset: { x: pagesX } } }], { useNativeDriver: true })}
+            onMomentumScrollEnd={(e) => {
+              const i = Math.round(e.nativeEvent.contentOffset.x / pageWidth);
+              const k = TABS[Math.max(0, Math.min(TABS.length - 1, i))];
+              pickTab(k);
+            }}>
+            {TABS.map((k) => (
+              <ScrollView
+                key={k}
+                ref={(r) => { pageScroll.current[k] = r; }}
+                style={{ width: pageWidth }}
+                contentContainerStyle={styles.container}
+                keyboardShouldPersistTaps="handled"
+                scrollEventThrottle={200}
+                onLayout={(e) => { viewHeight.current = e.nativeEvent.layout.height; }}
+                onContentSizeChange={(_w, h) => goBack(k, h)}
+                // A hand on the page ends any going back.
+                onScrollBeginDrag={() => { restoring.current[k] = null; }}
+                onScroll={(e) => {
+                  if (restoring.current[k] === null) scrolledTo[k] = e.nativeEvent.contentOffset.y;
+                }}>
+                {pageBody(k)}
+              </ScrollView>
+            ))}
+          </Animated.ScrollView>
+        ) : null}
+      </View>
 
       {/* The invitation held up to the other phone. */}
       <Modal
@@ -1754,7 +1826,8 @@ function Field(props: {
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: '#0b0e14' },
-  container: { padding: 20, paddingTop: 40, paddingBottom: 60 },
+  container: { padding: 20, paddingTop: 18, paddingBottom: 60 },
+  tabsFixed: { paddingHorizontal: 20, paddingTop: 28, backgroundColor: '#0b0e14' },
   header: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20 },
   back: {
     width: 40, height: 40, borderRadius: 20, marginLeft: -8,
@@ -1764,13 +1837,10 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: '800', color: '#fff' },
   tabs: {
     flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#2a313d',
-    marginBottom: 4,
   },
-  tab: {
-    flex: 1, paddingVertical: 12, alignItems: 'center',
-    borderBottomWidth: 2, borderBottomColor: 'transparent', marginBottom: -1,
-  },
-  tabPicked: { borderBottomColor: '#2f7cf6' },
+  tab: { flex: 1, paddingVertical: 12, alignItems: 'center' },
+  // Under the tab's name, following the pages: see pagesX.
+  tabLine: { position: 'absolute', left: 0, bottom: -1, height: 2, backgroundColor: '#2f7cf6' },
   tabText: { color: '#6b7686', fontSize: 15, fontWeight: '700' },
   tabTextPicked: { color: '#fff' },
   section: { color: '#7cc4ff', fontWeight: '700', fontSize: 16, marginTop: 34 },
