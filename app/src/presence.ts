@@ -12,6 +12,7 @@ import { AppState } from 'react-native';
 import { Foreground, Journal, Alarm, Heartbeat } from 'duetto-platform';
 import {
   loadConfig, saveConfig, addPair, isPaired, isServerConfigured, pairFileKey, peerShown,
+  markPairBroken,
 } from './config';
 import { pairFromLetter } from './pairing';
 import { Signaling } from './signaling';
@@ -382,6 +383,8 @@ const log = logger('[duetto-presence]');
 let starting: Promise<boolean> | null = null;
 /** the refusal for being unavailable is journaled once, not at every try */
 let saidUnavailable = false;
+/** said once: the watchdog's net asks again every few minutes */
+let saidBroken = false;
 
 export function startListening(): Promise<boolean> {
   if (signaling) return Promise.resolve(true);
@@ -430,6 +433,23 @@ async function listenNow(): Promise<boolean> {
   Foreground.watchdogWanted(true).catch(() => { /* noop */ });
 
   const pair = cfg.pair!;
+  /**
+   * A pair broken from the other side: there is nobody to knock for.
+   * Its room is gone on the server, and the knocking went on every
+   * minute for days, turned away every time. The other connections
+   * still wait (see standby.ts), and the app's card says it and offers
+   * to take this one away.
+   */
+  if (pair.brokenByPeer) {
+    if (!saidBroken) {
+      log('the pair in use is broken from the other side: not knocking');
+      Journal.mark('presence:skipped:broken').catch(() => { /* noop */ });
+    }
+    saidBroken = true;
+    refreshStandby(cfg).catch(() => { /* noop */ });
+    return false;
+  }
+  saidBroken = false;
   log('listening');
 
   /**
@@ -493,6 +513,24 @@ async function listenNow(): Promise<boolean> {
   /** Which Duetto is on this phone: see the same in App.tsx. */
   const sayHello = () => {
     signaling?.sendSignal({ kind: 'hello', version: VERSION_LABEL, build: BUILD });
+  };
+
+  /**
+   * Marked broken, said quietly, and no more knocking: see above. The
+   * app finds the pair marked when it opens, with its card.
+   */
+  let broken = false;
+  const brokenHere = () => {
+    if (broken) return;
+    broken = true;
+    Journal.mark(`pair-broken:headless:${pair.id.slice(0, 8)}`).catch(() => { /* noop */ });
+    watchdog?.stop();
+    watchdog = null;
+    signaling?.close(false);
+    signaling = null;
+    loadConfig().then((fresh) => saveConfig(markPairBroken(fresh, pair.id))).catch(() => { /* noop */ });
+    const who = peerShown(pair, name) || t('channel.theOther');
+    Foreground.note('', t('channel.pairBrokenByPeer', { who })).catch(() => { /* noop */ });
   };
 
   const sig = new Signaling(
@@ -651,6 +689,14 @@ async function listenNow(): Promise<boolean> {
         active = peerActive;
         if (peerName) name = peerName;
         refresh();
+      },
+
+      // The pair taken away from the other side, said by the server -
+      // or, from an older one, only "stranger", which for somebody's
+      // guest means the same: the room is gone.
+      onPairBroken: (room) => { if (!room || room === pair.id) brokenHere(); },
+      onError: (code, reason) => {
+        if (code === 'not-allowed' && reason === 'stranger') brokenHere();
       },
 
       /**

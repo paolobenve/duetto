@@ -3198,10 +3198,14 @@ export default function App() {
   // server: written after the connection was made, they reached it
   // only at the next one, whenever that was - which is how an
   // invitation typed one evening was never used.
+  /** the pairs the server has just said are broken, before the saved mark arrives */
+  const brokenHeard = useRef(new Set<string>());
   const connKey = cfg
     ? [
         cfg.serverUrl, cfg.serverKey, cfg.invitation, cfg.displayName,
         cfg.pair?.id, cfg.pair?.side, cfg.pair?.key,
+        // Broken from the other side: the connection closes, and stays so.
+        cfg.pair?.brokenByPeer ? 'broken' : '',
       ].join('|')
     : '';
 
@@ -3246,6 +3250,10 @@ export default function App() {
   // to the server.
   useEffect(() => {
     if (!cfg || !isPaired(cfg) || !isServerConfigured(cfg) || !available) return;
+    // A pair broken from the other side has nobody to knock for: its
+    // room is gone, and the knocking went on every few seconds, turned
+    // away every time. The card says it and offers to take it away.
+    if (cfg.pair?.brokenByPeer) return;
     const pair = cfg.pair!;
 
     // If the presence was being kept alive by the headless service
@@ -3769,7 +3777,8 @@ export default function App() {
             // other than the one in use, from another room.
             const id = room || cfgRef.current?.pair?.id;
             const pair = cfgRef.current?.pairs.find((p) => p.id === id);
-            if (!id || !pair || pair.brokenByPeer) return;
+            if (!id || !pair || pair.brokenByPeer || brokenHeard.current.has(id)) return;
+            brokenHeard.current.add(id);
             Journal.mark(`pair-broken:${pair.peerName || id.slice(0, 8)}`).catch(() => { /* noop */ });
             setCfg((prev) => (prev ? saveCfg(markPairBroken(prev, id)) : prev));
             // In the channel of that very pair: out of it. There is
@@ -3876,7 +3885,9 @@ export default function App() {
                 // take it away.
                 const id = cfgRef.current?.pair?.id;
                 const pair = cfgRef.current?.pairs.find((p) => p.id === id);
-                if (id && pair && !pair.brokenByPeer) {
+                // Not when the server has just said the pair is broken:
+                // the refusal that follows is the same news, already told.
+                if (id && pair && !pair.brokenByPeer && !brokenHeard.current.has(id)) {
                   Journal.mark(`stranger:${id.slice(0, 8)}`).catch(() => { /* noop */ });
                   setCfg((prev) => (prev ? saveCfg(markPairBroken(prev, id)) : prev));
                   Alert.alert(t('errors.stranger'), t('errors.strangerBody'));
