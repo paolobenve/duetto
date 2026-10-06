@@ -4367,7 +4367,10 @@ export default function App() {
           // countdown was saying: without stopping it, a moment later
           // it would clear a state that has only just arrived.
           stopWaiting();
-          setPeerState(st);
+          // Their state replaces what we knew of them, but not what only
+          // their hello says: their diagnostics, lost at every state, and
+          // a 0.9.20 taken for an app too old to be asked.
+          setPeerState((prev) => ({ ...st, diagnostics: prev.diagnostics }));
           setPeerVp9(st.hwVp9 === true);
         },
         // The frames really arriving: the view is made again on them.
