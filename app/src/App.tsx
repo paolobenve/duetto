@@ -1188,7 +1188,7 @@ export default function App() {
     version?: string;
     /** which APK of that version; missing if older than this field */
     build?: number;
-    /** whether their diagnostics are on, as their hello says */
+    /** whether their diagnostics are on, as their hello says; missing from an older app */
     diagnostics?: boolean;
     /** the two halves their phone can time: with ours they make both journeys */
     sendDelay?: number;
@@ -3234,10 +3234,13 @@ export default function App() {
    */
   const [askState, setAskState] = useState<AskState | null>(null);
   const [diagAsked, setDiagAsked] = useState(false);
+  /** their journal has arrived on this connection: their diagnostics are on */
+  const [theirJournal, setTheirJournal] = useState(false);
   const pairIdNow = cfg?.pair?.id;
   useEffect(() => {
     setAskState(null);
     setDiagAsked(false);
+    setTheirJournal(false);
     if (!pairIdNow) return;
     ourAsk(pairIdNow).then(setAskState).catch(() => { /* noop */ });
     const look = () => {
@@ -3664,7 +3667,7 @@ export default function App() {
                 ...prev,
                 version: msg.version,
                 build: msg.build,
-                diagnostics: msg.diagnostics === true,
+                diagnostics: typeof msg.diagnostics === 'boolean' ? msg.diagnostics : undefined,
               }));
               // On already: nothing left to ask for.
               const id = cfgRef.current?.pair?.id;
@@ -3759,6 +3762,9 @@ export default function App() {
             if (msg.kind === 'journal') {
               Journal.appendOther(String(msg.text ?? ''), journalKeyRef.current)
                 .catch(() => {});
+              // Sent only with their diagnostics on: the proof of it an
+              // older app gives, whose hello does not say.
+              setTheirJournal(true);
               return;
             }
 
@@ -5637,7 +5643,11 @@ export default function App() {
           vp9Here={localVp9}
           vp9Peer={peerVp9}
           diagAsk={isPaired(cfg) ? {
-            name: shownName, theirsOn: peerState.diagnostics === true,
+            name: shownName,
+            theirsOn: peerState.diagnostics === true || theirJournal,
+            // Their hello heard, without the word: an app too old to
+            // understand the request - unless their journal says it all.
+            tooOld: !!peerState.version && peerState.diagnostics === undefined && !theirJournal,
             state: askState, onAsk: askDiagnostics,
           } : undefined}
         />

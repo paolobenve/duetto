@@ -185,7 +185,12 @@ type Props = {
    * Asking the other phone of the connection in use to turn its
    * diagnostics on: see diagnosticsAsk.ts. None before a pair.
    */
-  diagAsk?: { name: string; theirsOn: boolean; state: AskState | null; onAsk: () => void };
+  diagAsk?: {
+    name: string; theirsOn: boolean;
+    /** their app does not know the request: asking would do nothing */
+    tooOld: boolean;
+    state: AskState | null; onAsk: () => void;
+  };
 };
 
 /**
@@ -1379,6 +1384,8 @@ export default function SettingsScreen({
             <Text style={styles.sectionHint}>
               {said(cfg.diagnostics ? 'diagAsk.theirsOn' : 'diagAsk.theirsOnOnly', diagAsk.name)}
             </Text>
+          ) : diagAsk.tooOld ? (
+            <Text style={styles.sectionHint}>{said('diagAsk.tooOld', diagAsk.name)}</Text>
           ) : (
             <>
               <TouchableOpacity style={styles.secondary} onPress={diagAsk.onAsk}>

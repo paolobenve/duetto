@@ -684,6 +684,7 @@ export const es: Dictionary = {
     askAnon: 'Pide al otro que encienda el diagnóstico',
     theirsOn: '{who} también tiene el diagnóstico encendido.',
     theirsOnOnly: '{who} tiene el diagnóstico encendido.',
+    tooOld: '{who} tiene una versión de Duetto que no conoce esta petición: hay que actualizarla.',
     waiting: 'Petición en espera: llegará cuando {who} se conecte.',
     delivered: 'Petición entregada.',
     later: '{who} ha respondido: más tarde.',

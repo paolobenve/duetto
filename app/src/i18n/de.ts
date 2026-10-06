@@ -684,6 +684,7 @@ export const de: Dictionary = {
     askAnon: 'Die andere Person bitten, die Diagnose einzuschalten',
     theirsOn: 'Auch {who} hat die Diagnose eingeschaltet.',
     theirsOnOnly: '{who} hat die Diagnose eingeschaltet.',
+    tooOld: '{who} hat eine Duetto-Version, die diese Bitte nicht kennt: sie muss aktualisiert werden.',
     waiting: 'Bitte wartet: sie kommt an, sobald sich {who} verbindet.',
     delivered: 'Bitte zugestellt.',
     later: '{who} hat geantwortet: später.',

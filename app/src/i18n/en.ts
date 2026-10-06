@@ -697,6 +697,7 @@ export const en = {
     askAnon: 'Ask the other person to turn diagnostics on',
     theirsOn: '{who} has diagnostics on too.',
     theirsOnOnly: '{who} has diagnostics on.',
+    tooOld: '{who} has a version of Duetto that does not know this request: it needs updating.',
     waiting: 'Request waiting: it will arrive when {who} connects.',
     delivered: 'Request delivered.',
     later: '{who} answered: later.',
