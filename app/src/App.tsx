@@ -51,6 +51,11 @@ import CallAlert, { CallBand, CALL_ALERT_MS } from './CallAlert';
 import { refreshStandby, onStandbyCall } from './standby';
 import { takeCall } from './callsUnseen';
 import { sendJournalOver, JOURNAL_PIECE } from './journalSwap';
+import DiagnosticsAskCard from './DiagnosticsAskCard';
+import {
+  type AskState, ourAsk, setOurAsk, deliverAsk, answerHeard, askedOfUs, noteAskedOfUs,
+  laterAskedOfUs, clearAskedOfUs, cardDue, said as saidOfThem,
+} from './diagnosticsAsk';
 import { reportDirectly, inviteOnWorkItem } from './gitlab';
 import type { ReportOutcome } from './gitlab';
 import {
@@ -1183,6 +1188,8 @@ export default function App() {
     version?: string;
     /** which APK of that version; missing if older than this field */
     build?: number;
+    /** whether their diagnostics are on, as their hello says */
+    diagnostics?: boolean;
     /** the two halves their phone can time: with ours they make both journeys */
     sendDelay?: number;
     recvDelay?: number;
@@ -3204,8 +3211,63 @@ export default function App() {
     // The label, not the bare number: a build on the way to a version
     // calls itself 0.9.14 like the version itself, and the two looked
     // like the same one with different builds.
-    signalingRef.current?.sendSignal({ kind: 'hello', version: VERSION_LABEL, build: BUILD });
+    signalingRef.current?.sendSignal({
+      kind: 'hello', version: VERSION_LABEL, build: BUILD,
+      diagnostics: cfgRef.current?.diagnostics === true,
+    });
+    // And a request for their diagnostics, if one waits to go: the two
+    // have just found each other. See diagnosticsAsk.ts.
+    deliverAsk(signalingRef.current, cfgRef.current?.pair?.id).catch(() => { /* noop */ });
   }, []);
+  // Turned on or off here: the other side is told, as by the hello.
+  const diagnosticsOn = !!cfg?.diagnostics;
+  useEffect(() => {
+    if (peerPresent) sayHello();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [diagnosticsOn]);
+
+  /**
+   * Asking the other side for their diagnostics, and being asked: see
+   * diagnosticsAsk.ts. Our request's state, for the settings; theirs,
+   * as a card due on this phone - looked at for the connection in use,
+   * and again whenever the app comes to the front.
+   */
+  const [askState, setAskState] = useState<AskState | null>(null);
+  const [diagAsked, setDiagAsked] = useState(false);
+  const pairIdNow = cfg?.pair?.id;
+  useEffect(() => {
+    setAskState(null);
+    setDiagAsked(false);
+    if (!pairIdNow) return;
+    ourAsk(pairIdNow).then(setAskState).catch(() => { /* noop */ });
+    const look = () => {
+      askedOfUs(pairIdNow).then((a) => setDiagAsked(cardDue(a))).catch(() => { /* noop */ });
+    };
+    look();
+    const sub = AppState.addEventListener('change', (st) => { if (st === 'active') look(); });
+    return () => sub.remove();
+  }, [pairIdNow]);
+  const peerPresentRef = useRef(peerPresent);
+  peerPresentRef.current = peerPresent;
+  const askDiagnostics = useCallback(() => {
+    const id = cfgRef.current?.pair?.id;
+    if (!id) return;
+    Journal.mark('diagnostics:ask').catch(() => { /* noop */ });
+    setAskState('waiting');
+    setOurAsk(id, 'waiting')
+      .then(() => { if (peerPresentRef.current) return deliverAsk(signalingRef.current, id); })
+      .catch(() => { /* noop */ });
+  }, []);
+  const answerAsk = useCallback((answer: 'on' | 'later' | 'no') => {
+    const id = cfgRef.current?.pair?.id;
+    setDiagAsked(false);
+    if (!id) return;
+    Journal.mark(`diagnostics:answered:${answer}`).catch(() => { /* noop */ });
+    if (answer === 'later') laterAskedOfUs(id).catch(() => { /* noop */ });
+    else clearAskedOfUs(id).catch(() => { /* noop */ });
+    if (answer === 'on') setCfg((prev) => (prev ? saveCfg({ ...prev, diagnostics: true }) : prev));
+    signalingRef.current?.sendSignal({ kind: 'diagnosticsAnswer', answer });
+  }, [saveCfg]);
 
   const noteName = useCallback((n: string) => {
     setPeerName(n);
@@ -3602,7 +3664,44 @@ export default function App() {
                 ...prev,
                 version: msg.version,
                 build: msg.build,
+                diagnostics: msg.diagnostics === true,
               }));
+              // On already: nothing left to ask for.
+              const id = cfgRef.current?.pair?.id;
+              if (msg.diagnostics === true && id) {
+                setOurAsk(id, null).catch(() => { /* noop */ });
+                setAskState(null);
+              }
+              return;
+            }
+
+            // Asked for our diagnostics: see diagnosticsAsk.ts. Said
+            // received at once; the card answers the rest.
+            if (msg.kind === 'askDiagnostics') {
+              const id = cfgRef.current?.pair?.id;
+              if (!id) return;
+              Journal.mark('diagnostics:asked').catch(() => {});
+              if (cfgRef.current?.diagnostics) {
+                signalingRef.current?.sendSignal({ kind: 'diagnosticsAnswer', answer: 'on' });
+                return;
+              }
+              signalingRef.current?.sendSignal({ kind: 'diagnosticsAnswer', answer: 'received' });
+              noteAskedOfUs(id).then(() => setDiagAsked(true)).catch(() => {});
+              if (appStateRef.current !== 'active') {
+                Foreground.note('', saidOfThem('diagAsk.note', shownNameRef.current)).catch(() => {});
+              }
+              return;
+            }
+            // Their answer to ours.
+            if (msg.kind === 'diagnosticsAnswer') {
+              const id = cfgRef.current?.pair?.id;
+              if (!id) return;
+              Journal.mark(`diagnostics:answer:${msg.answer}`).catch(() => {});
+              answerHeard(id, msg.answer).then((st) => {
+                setAskState(st);
+                if (st === 'on') setNotice(saidOfThem('diagAsk.turnedOn', shownNameRef.current));
+                if (st === 'no') setNotice(saidOfThem('diagAsk.refused', shownNameRef.current));
+              }).catch(() => {});
               return;
             }
 
@@ -5537,6 +5636,10 @@ export default function App() {
           })}
           vp9Here={localVp9}
           vp9Peer={peerVp9}
+          diagAsk={isPaired(cfg) ? {
+            name: shownName, theirsOn: peerState.diagnostics === true,
+            state: askState, onAsk: askDiagnostics,
+          } : undefined}
         />
         {/* A call found in the settings too: one may be adjusting the
             volume with the phone at arm's length. */}
@@ -5545,6 +5648,12 @@ export default function App() {
           onClose={() => setCallAlert(null)}
           switchName={callAlert.pairId ? switchName(callAlert.pairId) : undefined}
           onSwitch={callAlert.pairId ? () => switchToCaller(callAlert.pairId!) : undefined}
+        /> : null}
+        {diagAsked ? <DiagnosticsAskCard
+          name={shownName}
+          onYes={() => answerAsk('on')}
+          onLater={() => answerAsk('later')}
+          onNo={() => answerAsk('no')}
         /> : null}
       </View>
     );
@@ -5769,6 +5878,13 @@ export default function App() {
           onClose={() => setCallAlert(null)}
           switchName={callAlert.pairId ? switchName(callAlert.pairId) : undefined}
           onSwitch={callAlert.pairId ? () => switchToCaller(callAlert.pairId!) : undefined}
+        /> : null}
+      {/* Asked for this phone's diagnostics: see diagnosticsAsk.ts. */}
+      {diagAsked && !inPip ? <DiagnosticsAskCard
+          name={shownName}
+          onYes={() => answerAsk('on')}
+          onLater={() => answerAsk('later')}
+          onNo={() => answerAsk('no')}
         /> : null}
     </View>
   );

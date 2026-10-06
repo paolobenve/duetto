@@ -677,4 +677,23 @@ export const es: Dictionary = {
     fr: 'Français',
     de: 'Deutsch',
   },
+
+  /** One phone asking the other to turn diagnostics on: see diagnosticsAsk.ts. */
+  diagAsk: {
+    ask: 'Pide a {who} que encienda el diagnóstico',
+    askAnon: 'Pide al otro que encienda el diagnóstico',
+    theirsOn: '{who} también tiene el diagnóstico encendido.',
+    waiting: 'Petición en espera: llegará cuando {who} se conecte.',
+    delivered: 'Petición entregada.',
+    later: '{who} ha respondido: más tarde.',
+    no: '{who} ha preferido que no.',
+    turnedOn: '{who} ha encendido el diagnóstico.',
+    refused: '{who} ha preferido no encender el diagnóstico.',
+    title: '{who} te pide que enciendas el diagnóstico',
+    body: 'Sirve para entender qué va mal. El diario de este teléfono llegará al suyo.',
+    yes: 'Encender',
+    notNow: 'Más tarde',
+    never: 'No',
+    note: '{who} te pide que enciendas el diagnóstico: abre Duetto para responder.',
+  },
 };

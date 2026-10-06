@@ -100,7 +100,12 @@ export type SignalMessage =
   //
   // It goes in the encrypted envelope and not through the server: what
   // version somebody is running is their business, not his.
-  | { kind: 'hello'; version: string; build?: number }
+  // And whether its diagnostics are on: the other side shows it, and
+  // does not offer to ask for what is there already.
+  | { kind: 'hello'; version: string; build?: number; diagnostics?: boolean }
+  /** one phone asking the other to turn diagnostics on: see diagnosticsAsk.ts */
+  | { kind: 'askDiagnostics' }
+  | { kind: 'diagnosticsAnswer'; answer: 'received' | 'on' | 'later' | 'no' }
   /**
    * "Do it again". `road` asks for the gentler kind: the channel is
    * shaken to find a better road, not demolished - what carries the

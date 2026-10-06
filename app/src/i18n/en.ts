@@ -690,6 +690,25 @@ export const en = {
     fr: 'Français',
     de: 'Deutsch',
   },
+
+  /** One phone asking the other to turn diagnostics on: see diagnosticsAsk.ts. */
+  diagAsk: {
+    ask: 'Ask {who} to turn diagnostics on',
+    askAnon: 'Ask the other person to turn diagnostics on',
+    theirsOn: '{who} has diagnostics on too.',
+    waiting: 'Request waiting: it will arrive when {who} connects.',
+    delivered: 'Request delivered.',
+    later: '{who} answered: later.',
+    no: '{who} would rather not.',
+    turnedOn: '{who} turned diagnostics on.',
+    refused: '{who} would rather not turn diagnostics on.',
+    title: '{who} asks you to turn diagnostics on',
+    body: 'It helps to understand what is going wrong. This phone’s journal will reach theirs.',
+    yes: 'Turn on',
+    notNow: 'Later',
+    never: 'No',
+    note: '{who} asks you to turn diagnostics on: open Duetto to answer.',
+  },
 };
 
 /**

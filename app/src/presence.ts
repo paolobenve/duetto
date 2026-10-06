@@ -24,6 +24,9 @@ import { VERSION_LABEL, BUILD } from './version';
 import { refreshStandby, stopStandby } from './standby';
 import { keepCall } from './callsUnseen';
 import { sendJournalOver } from './journalSwap';
+import {
+  deliverAsk, answerHeard, noteAskedOfUs, said as saidOfThem,
+} from './diagnosticsAsk';
 
 /**
  * Presence with no interface.
@@ -515,7 +518,12 @@ async function listenNow(): Promise<boolean> {
 
   /** Which Duetto is on this phone: see the same in App.tsx. */
   const sayHello = () => {
-    signaling?.sendSignal({ kind: 'hello', version: VERSION_LABEL, build: BUILD });
+    signaling?.sendSignal({
+      kind: 'hello', version: VERSION_LABEL, build: BUILD, diagnostics: cfg.diagnostics === true,
+    });
+    // A request for their diagnostics waiting to go goes now: see
+    // diagnosticsAsk.ts.
+    deliverAsk(signaling, pair.id).catch(() => { /* noop */ });
   };
 
   /**
@@ -661,6 +669,30 @@ async function listenNow(): Promise<boolean> {
        * And they are exactly the lines that tell why that phone died.
        */
       onSignal: (msg) => {
+        // Asked for our diagnostics with no window open: kept for the
+        // app's card, said quietly, and "received" said back. See
+        // diagnosticsAsk.ts.
+        if (msg.kind === 'askDiagnostics') {
+          Journal.mark('diagnostics:asked').catch(() => { /* noop */ });
+          if (cfg.diagnostics) {
+            signaling?.sendSignal({ kind: 'diagnosticsAnswer', answer: 'on' });
+            return;
+          }
+          signaling?.sendSignal({ kind: 'diagnosticsAnswer', answer: 'received' });
+          noteAskedOfUs(pair.id).catch(() => { /* noop */ });
+          Foreground.note('', saidOfThem('diagAsk.note', peerShown(pair, name))).catch(() => { /* noop */ });
+          return;
+        }
+        // Their answer to ours.
+        if (msg.kind === 'diagnosticsAnswer') {
+          Journal.mark(`diagnostics:answer:${msg.answer}`).catch(() => { /* noop */ });
+          answerHeard(pair.id, msg.answer).then((st) => {
+            const who = peerShown(pair, name);
+            if (st === 'on') Foreground.note('', saidOfThem('diagAsk.turnedOn', who)).catch(() => { /* noop */ });
+            if (st === 'no') Foreground.note('', saidOfThem('diagAsk.refused', who)).catch(() => { /* noop */ });
+          }).catch(() => { /* noop */ });
+          return;
+        }
         if (msg.kind === 'journal') {
           Journal.appendOther(String(msg.text ?? ''), pairFileKey(pair))
             .catch(() => { /* noop */ });

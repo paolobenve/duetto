@@ -677,4 +677,23 @@ export const de: Dictionary = {
     fr: 'Français',
     de: 'Deutsch',
   },
+
+  /** One phone asking the other to turn diagnostics on: see diagnosticsAsk.ts. */
+  diagAsk: {
+    ask: '{who} bitten, die Diagnose einzuschalten',
+    askAnon: 'Die andere Person bitten, die Diagnose einzuschalten',
+    theirsOn: 'Auch {who} hat die Diagnose eingeschaltet.',
+    waiting: 'Bitte wartet: sie kommt an, sobald sich {who} verbindet.',
+    delivered: 'Bitte zugestellt.',
+    later: '{who} hat geantwortet: später.',
+    no: '{who} möchte lieber nicht.',
+    turnedOn: '{who} hat die Diagnose eingeschaltet.',
+    refused: '{who} möchte die Diagnose lieber nicht einschalten.',
+    title: '{who} bittet dich, die Diagnose einzuschalten',
+    body: 'Das hilft zu verstehen, was nicht stimmt. Das Tagebuch dieses Telefons kommt bei ihrem an.',
+    yes: 'Einschalten',
+    notNow: 'Später',
+    never: 'Nein',
+    note: '{who} bittet dich, die Diagnose einzuschalten: öffne Duetto, um zu antworten.',
+  },
 };

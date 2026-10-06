@@ -34,6 +34,7 @@ import { isRealName } from './presence';
 import { VERSION_FULL } from './version';
 import { Alarm, Alerts, Journal, Call } from 'duetto-platform';
 import { ALARMS } from './alarms';
+import { said, type AskState } from './diagnosticsAsk';
 import { TOKEN_PAGE } from './gitlab';
 import type { ReportOutcome } from './gitlab';
 
@@ -180,6 +181,11 @@ type Props = {
   onReport?: (text: string, withJournal: boolean) => Promise<ReportOutcome>;
   /** an invitation, written on the work item of the person it is for */
   onInviteToWorkItem?: (name: string, link: string, expires: string) => Promise<ReportOutcome>;
+  /**
+   * Asking the other phone of the connection in use to turn its
+   * diagnostics on: see diagnosticsAsk.ts. None before a pair.
+   */
+  diagAsk?: { name: string; theirsOn: boolean; state: AskState | null; onAsk: () => void };
 };
 
 /**
@@ -192,6 +198,7 @@ export default function SettingsScreen({
   vp9Here, vp9Peer, onQualityChange, onLive, reportsOpen, onReport, onInviteToWorkItem,
   canInvite, canAddPair, people = [], invitations = [],
   onAskPeople, onInvite, onForget, onForgetInvitation, pending = [], onForgetPending,
+  diagAsk,
 }: Props) {
   const vp9Available = !!vp9Here && !!vp9Peer;
   const vp9Why = vp9Available
@@ -1347,6 +1354,25 @@ export default function SettingsScreen({
             <Switch value={!!(cfg.diagnostics)} {...SWITCH_COLOURS} />
           </View>
         </TouchableOpacity>
+
+        {/* The other phone's diagnostics, asked for with a button: see
+            diagnosticsAsk.ts. On already over there, it is said. */}
+        {diagAsk ? (
+          diagAsk.theirsOn ? (
+            <Text style={styles.sectionHint}>{said('diagAsk.theirsOn', diagAsk.name)}</Text>
+          ) : (
+            <>
+              <TouchableOpacity style={styles.secondary} onPress={diagAsk.onAsk}>
+                <Text style={styles.secondaryText}>
+                  {diagAsk.name ? t('diagAsk.ask', { who: diagAsk.name }) : t('diagAsk.askAnon')}
+                </Text>
+              </TouchableOpacity>
+              {diagAsk.state && diagAsk.state !== 'on' ? (
+                <Text style={styles.sectionHint}>{said(`diagAsk.${diagAsk.state}`, diagAsk.name)}</Text>
+              ) : null}
+            </>
+          )
+        ) : null}
 
         {/* A technical knob, kept here on purpose: it pays on a road
             that loses packets and costs on every other. */}
