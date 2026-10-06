@@ -1388,11 +1388,16 @@ export default function SettingsScreen({
             <Text style={styles.sectionHint}>{said('diagAsk.tooOld', diagAsk.name)}</Text>
           ) : (
             <>
-              <TouchableOpacity style={styles.secondary} onPress={diagAsk.onAsk}>
-                <Text style={styles.secondaryText}>
-                  {diagAsk.name ? t('diagAsk.ask', { who: diagAsk.name }) : t('diagAsk.askAnon')}
-                </Text>
-              </TouchableOpacity>
+              {/* Asked and not answered yet: the button gives way to
+                  where the request is. After "later" or "no" it is
+                  back, to ask again. */}
+              {diagAsk.state === 'waiting' || diagAsk.state === 'delivered' ? null : (
+                <TouchableOpacity style={styles.secondary} onPress={diagAsk.onAsk}>
+                  <Text style={styles.secondaryText}>
+                    {diagAsk.name ? t('diagAsk.ask', { who: diagAsk.name }) : t('diagAsk.askAnon')}
+                  </Text>
+                </TouchableOpacity>
+              )}
               {diagAsk.state && diagAsk.state !== 'on' ? (
                 <Text style={styles.sectionHint}>{said(`diagAsk.${diagAsk.state}`, diagAsk.name)}</Text>
               ) : null}
