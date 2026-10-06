@@ -452,6 +452,7 @@ export const fr: Dictionary = {
     waitingCodes: 'Codes en attente',
     waitingCodesHint: 'Créés ici et transmis en lien, chacun attend un jour que l\'autre téléphone l\'ouvre.',
     waitingLine: 'Attend jusqu\'à {date}.',
+    shareWaiting: 'Partager…',
     invitePerson: 'Inviter quelqu’un à utiliser le serveur, avec ses propres paires',
     invitePersonPlaceholder: 'son nom',
     invitePersonHint: 'Le nom est pour toi : c’est ce que diront cette liste et le journal. Lui ne le voit pas.',

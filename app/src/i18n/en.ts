@@ -465,6 +465,7 @@ export const en = {
     waitingCodes: 'Codes that wait',
     waitingCodesHint: 'Made here and handed over as a link, each waits one day for the other phone to open it.',
     waitingLine: 'Waits until {date}.',
+    shareWaiting: 'Share…',
     invitePerson: 'Invite somebody to use the server, with pairs of their own',
     invitePersonPlaceholder: 'their name',
     invitePersonHint: 'The name is for you: it is what this list and the log will say. They never see it.',

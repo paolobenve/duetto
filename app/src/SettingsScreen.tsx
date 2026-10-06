@@ -425,6 +425,9 @@ export default function SettingsScreen({
   const [copiedCode, setCopiedCode] = useState('');
   /** the invitation shown as a QR code, big, for the phone next to this one */
   const [qrFor, setQrFor] = useState<InvitationOnServer | null>(null);
+  /** the waiting code whose QR code and link are shown, to hand on again */
+  const [shareFor, setShareFor] = useState<PendingPair | null>(null);
+  const shareLink = shareFor ? pairLink(shareFor.serverUrl, shareFor.code, shareFor.pub) : '';
   /** the list of Duetto's own sounds, to hear them and pick one */
   const [duettoSounds, setDuettoSounds] = useState(false);
   /**
@@ -739,22 +742,19 @@ export default function SettingsScreen({
             <Text style={styles.sectionHint}>{t('settings.waitingCodesHint')}</Text>
             {pending.map((p) => (
               <View key={p.id} style={styles.choice}>
-                <View style={styles.choiceText}>
+                {/* The code, and a touch on it opens what the pairing
+                    screen showed: the QR code and the link to hand on.
+                    Three small words on the right were all there was,
+                    and they did not read as buttons. */}
+                <TouchableOpacity style={styles.choiceText} onPress={() => setShareFor(p)}>
                   <Text style={styles.choiceLabel}>{`${p.code.slice(0, 4)} ${p.code.slice(4)}`}</Text>
                   <Text style={styles.choiceNote}>
                     {t('settings.waitingLine', { date: longDate(p.until) })}
                   </Text>
-                </View>
+                </TouchableOpacity>
                 <View style={styles.rowLinks}>
-                  <TouchableOpacity onPress={() => copyCode(pairLink(p.serverUrl, p.code, p.pub))}>
-                    <Text style={styles.linkInline}>
-                      {copiedCode === pairLink(p.serverUrl, p.code, p.pub) ? t('settings.copied') : t('settings.copy')}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => {
-                    Share.share({ message: pairLink(p.serverUrl, p.code, p.pub) }).catch(() => { /* noop */ });
-                  }}>
-                    <Text style={styles.linkInline}>{t('settings.share')}</Text>
+                  <TouchableOpacity onPress={() => setShareFor(p)}>
+                    <Text style={styles.linkInline}>{t('settings.shareWaiting')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => onForgetPending?.(p.id)}>
                     <Text style={styles.linkInline}>{t('settings.takeAway')}</Text>
@@ -1554,6 +1554,44 @@ export default function SettingsScreen({
             <Text style={styles.hint}>{t('qr.inviteHint')}</Text>
             <View style={styles.sheetActions}>
               <TouchableOpacity style={styles.sheetAction} onPress={() => setQrFor(null)}>
+                <Text style={styles.sheetOk}>{t('news.close')}</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* A waiting code handed on again: what the pairing screen
+          showed when it was made - the QR code, the link to copy or
+          share. */}
+      <Modal
+        visible={!!shareFor}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShareFor(null)}>
+        <Pressable style={styles.sheetBack} onPress={() => setShareFor(null)}>
+          <Pressable style={styles.sheet} onPress={() => { /* hold it */ }}>
+            <Text style={styles.qrCode}>
+              {shareFor ? `${shareFor.code.slice(0, 4)} ${shareFor.code.slice(4)}` : ''}
+            </Text>
+            <View style={styles.qrWrap}>
+              {shareFor ? <QrCode text={shareLink} size={220} /> : null}
+            </View>
+            <Text style={styles.hint}>
+              {shareFor ? t('settings.waitingLine', { date: longDate(shareFor.until) }) : ''}
+            </Text>
+            <TouchableOpacity style={styles.secondary} onPress={() => copyCode(shareLink)}>
+              <Text style={styles.secondaryText}>
+                {copiedCode === shareLink ? t('pairing.linkCopied') : t('pairing.copyLink')}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.secondary}
+              onPress={() => { Share.share({ message: shareLink }).catch(() => { /* noop */ }); }}>
+              <Text style={styles.secondaryText}>{t('pairing.shareLink')}</Text>
+            </TouchableOpacity>
+            <View style={styles.sheetActions}>
+              <TouchableOpacity style={styles.sheetAction} onPress={() => setShareFor(null)}>
                 <Text style={styles.sheetOk}>{t('news.close')}</Text>
               </TouchableOpacity>
             </View>
