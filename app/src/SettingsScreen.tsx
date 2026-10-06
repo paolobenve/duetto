@@ -97,6 +97,13 @@ const CONTROLS = (): {
 
 type Tab = 'links' | 'use' | 'diagnostics';
 
+/**
+ * How far down each tab was left: coming back to the settings, or to a
+ * tab, finds it there. Out of the screen's life, which ends at every
+ * exit; kept only while Duetto runs, not written anywhere.
+ */
+const scrolledTo: Partial<Record<Tab, number>> = {};
+
 type Props = {
   /** whether this phone may invite: the server says so */
   canInvite?: boolean;
@@ -255,7 +262,25 @@ export default function SettingsScreen({
   );
   // Remembered in the configuration: it holds through the session and
   // through an update, which kills the app.
-  const setTab = (k: Tab) => { setTabState(k); onLive?.({ settingsTab: k }); };
+  const setTab = (k: Tab) => {
+    restoring.current = scrolledTo[k] ?? 0;
+    setTabState(k);
+    onLive?.({ settingsTab: k });
+  };
+  const scroller = React.useRef<ScrollView>(null);
+  /**
+   * The place to go back to, until the content is tall enough to hold
+   * it: a tab grows as what it shows arrives. Meanwhile the scrolls are
+   * not the reader's - the one clamped by a shorter tab least of all.
+   */
+  const restoring = React.useRef<number | null>(scrolledTo[tab] ?? null);
+  const viewHeight = React.useRef(0);
+  const goBack = (contentHeight: number) => {
+    const y = restoring.current;
+    if (y === null) return;
+    scroller.current?.scrollTo({ y, animated: false });
+    if (contentHeight - viewHeight.current >= y) restoring.current = null;
+  };
   const set = (k: keyof DuoConfig) => (v: string) => setCfg({ ...cfg, [k]: v });
 
   const paired = isPaired(cfg);
@@ -539,7 +564,18 @@ export default function SettingsScreen({
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        ref={scroller}
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        scrollEventThrottle={200}
+        onLayout={(e) => { viewHeight.current = e.nativeEvent.layout.height; }}
+        onContentSizeChange={(_w, h) => goBack(h)}
+        // A hand on the screen ends any going back.
+        onScrollBeginDrag={() => { restoring.current = null; }}
+        onScroll={(e) => {
+          if (restoring.current === null) scrolledTo[tab] = e.nativeEvent.contentOffset.y;
+        }}>
         <View style={styles.header}>
           {onClose ? (
             <TouchableOpacity style={styles.back} onPress={onClose}>
