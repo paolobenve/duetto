@@ -460,6 +460,81 @@ export default function SettingsScreen({
     );
   };
 
+  /**
+   * The server and what goes with it: once a connection exists, it is
+   * touched seldom, and it goes to the bottom, under the connections -
+   * which are what one comes here to change. Before, it is all there
+   * is, and it stands at the top.
+   */
+  const serverPart = (heading: object) => (
+    <>
+      {/* The server is shown, not edited: changing it means knocking
+          at another door, and the welcome is the one that knows what
+          that door asks for. What the server asked here - the key -
+          is shown when there is one, and only then. */}
+      <Text style={heading}>{t('settings.server')}</Text>
+      {/* A box like a pair's, with the pencil beside it: the server
+          and what it is to this phone, and the one way to touch it. */}
+      <View style={styles.pairRow}>
+        <View style={styles.pairBox}>
+          <View style={styles.pairWho}>
+            <Text style={styles.pairName}>{displayServer(initial.serverUrl)}</Text>
+            {initial.serverRole === 'owner' || initial.serverRole === 'member'
+              || initial.serverRole === 'guest' ? (
+                <Text style={styles.pairMeta}>
+                  {t(initial.serverRole === 'owner' ? 'pairing.roleOwner'
+                    : initial.serverRole === 'member' ? 'pairing.roleMember' : 'pairing.roleGuest')}
+                </Text>
+              ) : null}
+          </View>
+        </View>
+        <TouchableOpacity style={styles.pairAway} onPress={onChangeServer}>
+          <Text style={styles.pairNameText}>{'\u270E'}</Text>
+        </TouchableOpacity>
+      </View>
+      {initial.serverKey ? (
+        <View style={styles.field}>
+          <Text style={styles.label}>{t('settings.serverKey')}</Text>
+          <Text style={styles.readonly}>{initial.serverKey}</Text>
+          <Text style={styles.hint}>{t('settings.serverKeyShownHint')}</Text>
+        </View>
+      ) : null}
+
+      {/* The same box as the first screen's: once connected, that
+          screen is out of reach, and asking to be a beta tester is
+          something one may want from here too. */}
+      <View style={styles.betaBox}>
+        <Text style={styles.betaTitle}>{t('welcome.betaTitle')}</Text>
+        <Text style={styles.betaBody}>{t('welcome.betaBody')}</Text>
+        <TouchableOpacity
+          style={styles.betaButton}
+          onPress={() => { Linking.openURL(BETA_TESTER_LINK).catch(() => {}); }}>
+          <Text style={styles.betaButtonText}>{t('welcome.betaButton')}</Text>
+        </TouchableOpacity>
+      </View>
+    </>
+  );
+  /*
+   * A member may leave by themselves, as one breaks a pair: being taken
+   * off was the owner's alone. At the end, as an action and not a
+   * setting.
+   */
+  const leaveServer = initial.serverRole === 'member' ? (
+    <TouchableOpacity
+      style={[styles.rowButton, styles.rowAfterChoices]}
+      onPress={() => Alert.alert(
+        t('settings.leaveServerTitle', { server: displayServer(initial.serverUrl) }),
+        t('settings.leaveServerBody'),
+        [
+          { text: t('settings.cancel'), style: 'cancel' },
+          { text: t('settings.leave'), style: 'destructive', onPress: () => onLeaveServer?.() },
+        ],
+      )}>
+      <Text style={styles.rowButtonText}>{t('settings.leaveServer')}</Text>
+      <Text style={styles.rowButtonArrow}>{'\u203A'}</Text>
+    </TouchableOpacity>
+  ) : null;
+
   return (
     <KeyboardAvoidingView
       style={styles.flex}
@@ -494,55 +569,11 @@ export default function SettingsScreen({
 
         {tab === 'links' ? (
           <>
-        {/* The server is shown, not edited: changing it means knocking
-            at another door, and the welcome is the one that knows what
-            that door asks for. What the server asked here - the key -
-            is shown when there is one, and only then. */}
-        <Text style={styles.label}>{t('settings.server')}</Text>
-        {/* A box like a pair's, with the pencil beside it: the server
-            and what it is to this phone, and the one way to touch it. */}
-        <View style={styles.pairRow}>
-          <View style={styles.pairBox}>
-            <View style={styles.pairWho}>
-              <Text style={styles.pairName}>{displayServer(initial.serverUrl)}</Text>
-              {initial.serverRole === 'owner' || initial.serverRole === 'member'
-                || initial.serverRole === 'guest' ? (
-                  <Text style={styles.pairMeta}>
-                    {t(initial.serverRole === 'owner' ? 'pairing.roleOwner'
-                      : initial.serverRole === 'member' ? 'pairing.roleMember' : 'pairing.roleGuest')}
-                  </Text>
-                ) : null}
-            </View>
-          </View>
-          <TouchableOpacity style={styles.pairAway} onPress={onChangeServer}>
-            <Text style={styles.pairNameText}>{'\u270E'}</Text>
-          </TouchableOpacity>
-        </View>
-        {initial.serverKey ? (
-          <View style={styles.field}>
-            <Text style={styles.label}>{t('settings.serverKey')}</Text>
-            <Text style={styles.readonly}>{initial.serverKey}</Text>
-            <Text style={styles.hint}>{t('settings.serverKeyShownHint')}</Text>
-          </View>
-        ) : null}
-
-        {/* The same box as the first screen's: once connected, that
-            screen is out of reach, and asking to be a beta tester is
-            something one may want from here too. */}
-        <View style={styles.betaBox}>
-          <Text style={styles.betaTitle}>{t('welcome.betaTitle')}</Text>
-          <Text style={styles.betaBody}>{t('welcome.betaBody')}</Text>
-          <TouchableOpacity
-            style={styles.betaButton}
-            onPress={() => { Linking.openURL(BETA_TESTER_LINK).catch(() => {}); }}>
-            <Text style={styles.betaButtonText}>{t('welcome.betaButton')}</Text>
-          </TouchableOpacity>
-        </View>
-
         {/* Not paired yet: the step forward is the pairing, and it
             belongs right here, under the server it will be made on. */}
         {!paired ? (
           <>
+            {serverPart(styles.label)}
             <TouchableOpacity style={styles.button} onPress={onRepair}>
               <Text style={styles.buttonText}>
                 {opensHere(initial) ? t('settings.connectWithSomebody') : t('settings.waysIn')}
@@ -800,25 +831,9 @@ export default function SettingsScreen({
           </>
         ) : null}
 
-
-            {/* A member may leave by themselves, as one breaks a pair:
-                being taken off was the owner's alone. At the end, as an
-                action and not a setting. */}
-            {initial.serverRole === 'member' ? (
-              <TouchableOpacity
-                style={[styles.rowButton, styles.rowAfterChoices]}
-                onPress={() => Alert.alert(
-                  t('settings.leaveServerTitle', { server: displayServer(initial.serverUrl) }),
-                  t('settings.leaveServerBody'),
-                  [
-                    { text: t('settings.cancel'), style: 'cancel' },
-                    { text: t('settings.leave'), style: 'destructive', onPress: () => onLeaveServer?.() },
-                  ],
-                )}>
-                <Text style={styles.rowButtonText}>{t('settings.leaveServer')}</Text>
-                <Text style={styles.rowButtonArrow}>{'\u203A'}</Text>
-              </TouchableOpacity>
-            ) : null}
+        {/* Under the connections, a title like theirs. */}
+        {paired ? serverPart(styles.section) : null}
+        {leaveServer}
           </>
         ) : null}
 
