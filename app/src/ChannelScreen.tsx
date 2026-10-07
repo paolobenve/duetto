@@ -852,6 +852,12 @@ export default function ChannelScreen(props: Props) {
   // React would not notice by looking at the reference.
   const localHasVideo =
     !!localStream && videoOn && localStream.getVideoTracks().length > 0;
+  /** the technical lines' inputs: for drawing them and for their height alike */
+  const statsArgs = {
+    stats: videoStats, showUp: localHasVideo, showDown: remoteHasVideo,
+    peerSend: peerSendDelay, peerRecv: peerRecvDelay, totalOnly: delayTotalOnly,
+    battery, peerBattery: peerState.battery,
+  };
 
   /**
    * The news is read and goes: ten seconds, then it fades.
@@ -1289,7 +1295,7 @@ export default function ChannelScreen(props: Props) {
         insetH={compact ? 0 : inset.h}
         insetBottom={
           !compact && showStats
-            ? statsLineCount(videoStats, localHasVideo || remoteHasVideo) * STATS_LINE_H
+            ? statsLineCount(statsArgs) * STATS_LINE_H
             : 0
         }
         onBackground={touch}
@@ -1722,7 +1728,7 @@ export default function ChannelScreen(props: Props) {
           // the buttons moved.
           <View style={[
             styles.statsBox,
-            { height: statsLineCount(videoStats, localHasVideo || remoteHasVideo, !!battery || !!peerState.battery) * STATS_LINE_H },
+            { height: statsLineCount(statsArgs) * STATS_LINE_H },
           ]}>
             <StatsLine
               network={network}
@@ -2312,12 +2318,9 @@ function PresenceCard(props: {
  * type until the one number worth reading was the smallest thing on
  * the screen.
  */
-export function statsLineCount(stats: VideoStats, hasVideo = false, withBattery = false): number {
-  let n = 1;                                    // the resolution: always there
-  if (stats.path || stats.latency != null || stats.recvDelay != null
-      || (hasVideo && stats.audioKbps != null)) n += 1;
-  if (hasVideo && (stats.recvDelay != null || withBattery)) n += 1;
-  return n;
+export function statsLineCount(args: StatsArgs): number {
+  const { second, third } = statsParts(args);
+  return 1 + (second ? 1 : 0) + (third ? 1 : 0);
 }
 
 /** One line of the box is this tall; the height comes from the count. */
@@ -2367,18 +2370,9 @@ function StatusMarks({ battery, net, tone = '#9aa4b0' }: {
 }
 
 
-function StatsLine({
-  stats, quality, showUp, showDown, peerSend, peerRecv, totalOnly, battery, peerBattery, network, peerNet,
-}: {
+/** What decides the technical lines: the same for drawing them and for their height. */
+type StatsArgs = {
   stats: VideoStats;
-  quality: string;
-  /** the battery, with the diagnostics on: with the video the card is gone, and this is where it shows */
-  battery?: { percent: number; charging: boolean } | null;
-  /** and the other side's, when they say */
-  peerBattery?: { percent: number; charging: boolean } | null;
-  /** the networks, ours and theirs, when known */
-  network?: string | null;
-  peerNet?: string | null;
   /** cameras really on: the statistics lag by one sample */
   showUp: boolean;
   showDown: boolean;
@@ -2387,7 +2381,23 @@ function StatsLine({
   peerRecv?: number | null;
   /** only the total, for whoever wants one number and not two */
   totalOnly?: boolean;
-}) {
+  battery?: { percent: number; charging: boolean } | null;
+  peerBattery?: { percent: number; charging: boolean } | null;
+};
+
+/**
+ * The technical lines' pieces, and which lines there are.
+ *
+ * The box under the buttons has a fixed height, and the video above is
+ * inset by as much: it was worked out by a function of its own, with
+ * rules of its own - a camera counted as on the moment it was asked
+ * for, a wait counted before it could be written - and the box grew
+ * for a line that was never drawn, the resolution floating in the
+ * middle of the room left. One function now says it, for both.
+ */
+function statsParts({
+  stats, showUp, showDown, peerSend, peerRecv, totalOnly, battery, peerBattery,
+}: StatsArgs) {
   /**
    * Bytes a second, everywhere on these lines.
    *
@@ -2517,6 +2527,38 @@ function StatsLine({
         ? t('channel.pathRelay')
         : null;
 
+  /** the second line: the road, the latency, the voice or the wait */
+  const second = !!(path || stats.latency != null || (hasVideo ? voiceSaid : waitSaid));
+  /** the third: with a picture flowing, the waits and the batteries */
+  const third = hasVideo && !!(waitSaid || battery || peerBattery);
+  return { up, down, hasVideo, voiceSaid, waitSaid, waitShort, path, second, third };
+}
+
+function StatsLine({
+  stats, quality, showUp, showDown, peerSend, peerRecv, totalOnly, battery, peerBattery, network, peerNet,
+}: {
+  stats: VideoStats;
+  quality: string;
+  /** the battery, with the diagnostics on: with the video the card is gone, and this is where it shows */
+  battery?: { percent: number; charging: boolean } | null;
+  /** and the other side's, when they say */
+  peerBattery?: { percent: number; charging: boolean } | null;
+  /** the networks, ours and theirs, when known */
+  network?: string | null;
+  peerNet?: string | null;
+  /** cameras really on: the statistics lag by one sample */
+  showUp: boolean;
+  showDown: boolean;
+  /** the two halves the other phone times; null while it has not said */
+  peerSend?: number | null;
+  peerRecv?: number | null;
+  /** only the total, for whoever wants one number and not two */
+  totalOnly?: boolean;
+}) {
+  const { up, down, hasVideo, voiceSaid, waitSaid, waitShort, path, second, third } = statsParts({
+    stats, showUp, showDown, peerSend, peerRecv, totalOnly, battery, peerBattery,
+  });
+
   return (
     <>
       <Text
@@ -2535,7 +2577,7 @@ function StatsLine({
         {down ? ` · \u2193${down}` : ''}
 
       </Text>
-      {path || stats.latency != null || (hasVideo ? voiceSaid : waitSaid) ? (
+      {second ? (
         // Like the line above: with the latency at its end it went off
         // the screen, and a line cut in the middle of a number says
         // nothing.
@@ -2558,7 +2600,7 @@ function StatsLine({
           number worth reading was the smallest thing on the screen. */}
       {/* The third line: the waits, and - with the video on, the card
           gone and the battery with it - the battery beside them. */}
-      {hasVideo && (waitSaid || battery || peerBattery) ? (
+      {third ? (
         // Batteries and networks as marks, the same as the card's: in
         // words the line shrank until it could not be read.
         <FitRow>
