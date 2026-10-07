@@ -15,6 +15,9 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -138,9 +141,39 @@ object Notifier {
     /** The extra that says which connection a call came from: see OpenedFrom. */
     const val EXTRA_PAIR = "duetto.pair"
 
+    /**
+     * Calls in quick succession, one a second.
+     *
+     * Several calls one after the other are meant to press: each was the
+     * same notification updated, and on the edge each sound played to its
+     * end before the next began - five calls in two seconds rang for ten.
+     * Android sounds at most one alert a second for an app, too. So each
+     * call now goes out at once if a second has passed since the last, or
+     * a second after it otherwise; and each one takes the previous away
+     * first, which stops its sound. A backlog longer than a few seconds is
+     * dropped: the pressing is said, not dragged out.
+     */
+    private val pacer = Handler(Looper.getMainLooper())
+    private const val ALERT_GAP_MS = 1000L
+    private const val ALERT_BACKLOG_MS = 5000L
+    private var nextAlertAt = 0L
+
+    @Synchronized
     fun show(
         ctx: Context, name: String, text: String, pairId: String? = null,
         choice: Alerts.Choice = Alerts.stored(ctx),
+    ) {
+        val now = SystemClock.uptimeMillis()
+        val at = maxOf(now, nextAlertAt)
+        if (at - now > ALERT_BACKLOG_MS) return
+        nextAlertAt = at + ALERT_GAP_MS
+        val app = ctx.applicationContext
+        if (at <= now) showNow(app, name, text, pairId, choice)
+        else pacer.postAtTime({ showNow(app, name, text, pairId, choice) }, at)
+    }
+
+    private fun showNow(
+        ctx: Context, name: String, text: String, pairId: String?, choice: Alerts.Choice,
     ) {
         // The channel depends on the preferences: see Alerts. The sound in
         // the ordinary case comes from there; vibration and sound during
@@ -187,7 +220,11 @@ object Notifier {
             // If the notification permission is denied it throws a
             // SecurityException: it is a missed alert, not a good reason
             // to bring the app down.
-            NotificationManagerCompat.from(ctx).notify(ALERT_NOTIFICATION_ID, notification)
+            // The previous call taken away first: its sound stops, and this
+            // one is a new notification that sounds, not an update.
+            val nm = NotificationManagerCompat.from(ctx)
+            nm.cancel(ALERT_NOTIFICATION_ID)
+            nm.notify(ALERT_NOTIFICATION_ID, notification)
         } catch (_: SecurityException) {
         }
 

@@ -173,6 +173,9 @@ object Alerts {
         }
     }
 
+    /** the call sounding in the conversation, stopped by the next one */
+    @Volatile private var playing: android.media.Ringtone? = null
+
     private fun playIfInConversation(ctx: Context, c: Choice) {
         if (c.sound == "none") return
         val am = ctx.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
@@ -182,6 +185,9 @@ object Alerts {
         try {
             val uri = chosenSound(ctx, c) ?: return
             val ringtone = RingtoneManager.getRingtone(ctx, uri) ?: return
+            // The call before stops: see Notifier.show, one a second.
+            playing?.stop()
+            playing = ringtone
             ringtone.setAudioAttributes(
                 AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION_SIGNALLING)
