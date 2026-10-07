@@ -868,6 +868,15 @@ export default function ChannelScreen(props: Props) {
    * goes first. It can still be touched to clear it at once.
    */
   const newsOpacity = useRef(new Animated.Value(1)).current;
+  /**
+   * The callback by reference: handed down as a new function at every
+   * render of the app, it started the ten seconds again each time, and
+   * the news stayed for as long as anything moved on the screen.
+   */
+  const onNewsReadRef = useRef(onNewsRead);
+  onNewsReadRef.current = onNewsRead;
+  const newsRef = useRef(news);
+  newsRef.current = news;
   useEffect(() => {
     if (!news) return;
     newsOpacity.setValue(1);
@@ -877,9 +886,12 @@ export default function ChannelScreen(props: Props) {
       duration: 700,
       useNativeDriver: true,
     });
-    anim.start(({ finished }) => { if (finished) onNewsRead?.(); });
+    anim.start(({ finished }) => { if (finished) onNewsReadRef.current?.(); });
     return () => anim.stop();
-  }, [news, newsOpacity, onNewsRead]);
+  }, [news, newsOpacity]);
+  // Leaving the screen with news on it: it has been seen, and does not
+  // come back on returning - it used to, for another ten seconds.
+  useEffect(() => () => { if (newsRef.current) onNewsReadRef.current?.(); }, []);
 
   // The buttons ALWAYS stay on the screen: they never disappear, they
   // only fade, and they come back full at the first touch.
