@@ -713,6 +713,13 @@ export default function ChannelScreen(props: Props) {
     return v;
   }, [bigAspect, winWidth, winHeight]);
 
+  /**
+   * How tall the panel of controls is: the volume scale rests on it, at
+   * the bottom of the room left, a gap above. It hung from a fixed share
+   * of the screen and its top reached the little square of one's own
+   * picture.
+   */
+  const [panelHeight, setPanelHeight] = useState(0);
   const [routeMenu, setRouteMenu] = useState(false);
   const [changelogOpen, setChangelogOpen] = useState(false);
   const [qualityMenu, setQualityMenu] = useState(false);
@@ -1565,7 +1572,12 @@ export default function ChannelScreen(props: Props) {
       {levelDb ? (
         <Animated.View
           pointerEvents={gone ? 'none' : 'box-none'}
-          style={[styles.scale, { opacity, right: 8 + inset.h }]}>
+          style={[
+            styles.scale,
+            { opacity, right: 8 + inset.h },
+            // Resting on the panel, a gap above it: see panelHeight.
+            panelHeight > 0 ? { bottom: 8 + inset.v + panelHeight + SCALE_GAP } : null,
+          ]}>
           <VolumeScale
             {...levelDb}
             route={audioRoute}
@@ -1579,6 +1591,7 @@ export default function ChannelScreen(props: Props) {
       {/* The controls: always there, at the bottom, inside a dark panel */}
       <Animated.View
         pointerEvents={gone ? 'none' : 'auto'}
+        onLayout={(e) => setPanelHeight(Math.round(e.nativeEvent.layout.height))}
         style={[
           styles.panel,
           { opacity, bottom: 8 + inset.v, left: 12 + inset.h, right: 12 + inset.h },
@@ -2338,6 +2351,9 @@ export function statsLineCount(args: StatsArgs): number {
 /** One line of the box is this tall; the height comes from the count. */
 export const STATS_LINE_H = 18;
 
+/** the room between the volume scale and the panel of controls under it */
+const SCALE_GAP = 16;
+
 /**
  * A row of words and marks that shrinks to the width it has, as the
  * text lines beside it do (adjustsFontSizeToFit): the marks made it a
@@ -2843,8 +2859,10 @@ const styles = StyleSheet.create({
     color: '#e6ebf1', fontSize: 16, fontWeight: '600',
   },
   // The loudness scale, on the right, between the top bar and the panel
+  // Until the panel is measured, where it used to be; then on the panel,
+  // a little shorter than before.
   scale: {
-    position: 'absolute', top: '21%', bottom: '31%', width: 72, alignItems: 'center',
+    position: 'absolute', bottom: '31%', height: '42%', width: 72, alignItems: 'center',
   },
   scaleBox: { flex: 1, alignItems: 'center', width: 72 },
   scaleFigure: { color: '#7cc4ff', fontSize: 19, fontWeight: '800', lineHeight: 22 },
