@@ -553,6 +553,8 @@ export const pt: Dictionary = {
     autoStartOpen: 'Abrir os ajustes',
     autoStartReopen: 'Abrir de novo',
     makersHint: 'Em alguns telefones (Xiaomi, Huawei, Oppo) a economia de energia é do fabricante e não do Android: a marca aqui em cima pode ficar cinza mesmo depois de configurada. Se você já fez, siga em frente.',
+    dkmaHint: 'Para cada marca de telefone, o site dontkillmyapp.com explica as configurações que o fabricante acrescenta para fechar os apps, e como mudá-las.',
+    dkmaOpen: 'Abrir dontkillmyapp.com',
     noAutoStartHint: 'O seu telefone não tem tela de início automático: o primeiro ponto basta.',
     autoStartProved: 'A marca aqui em cima não é um palpite: aconteceu de verdade, depois da última reinicialização.',
     autoStartUnknown: 'O estado dessa autorização nenhum app pode ler. O que se pode saber é se funcionou, e isso se descobre na primeira reinicialização do telefone.',

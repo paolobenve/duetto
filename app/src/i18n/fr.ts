@@ -553,6 +553,8 @@ export const fr: Dictionary = {
     autoStartOpen: 'Ouvrir les réglages',
     autoStartReopen: 'Rouvrir',
     makersHint: 'Sur certains téléphones (Xiaomi, Huawei, Oppo) l’économie d’énergie est gérée par le fabricant et non par Android : la coche ci-dessus peut rester grise même après l’avoir réglée. Si tu l’as fait, continue.',
+    dkmaHint: 'Pour chaque marque de téléphone, le site dontkillmyapp.com explique les réglages que le fabricant ajoute pour fermer les applis, et comment les changer.',
+    dkmaOpen: 'Ouvrir dontkillmyapp.com',
     noAutoStartHint: 'Ton téléphone n’a pas d’écran de démarrage automatique : le premier point suffit.',
     autoStartProved: 'La coche ci-dessus n’est pas une supposition : c’est vraiment arrivé, après le dernier redémarrage.',
     autoStartUnknown: 'L’état de cette autorisation, aucune app ne peut le lire. Ce qu’on peut savoir, c’est si ça a marché, et ça se découvre au premier redémarrage du téléphone.',

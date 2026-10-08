@@ -553,6 +553,8 @@ export const es: Dictionary = {
     autoStartOpen: 'Abrir ajustes',
     autoStartReopen: 'Volver a abrir',
     makersHint: 'En algunos teléfonos (Xiaomi, Huawei, Oppo) el ahorro de energía lo gestiona el fabricante y no Android: la marca de aquí arriba puede quedarse gris aun después de configurarlo. Si lo hiciste, sigue adelante.',
+    dkmaHint: 'Para cada marca de teléfono, la web dontkillmyapp.com explica los ajustes que el fabricante añade para cerrar las apps, y cómo cambiarlos.',
+    dkmaOpen: 'Abrir dontkillmyapp.com',
     noAutoStartHint: 'Tu teléfono no tiene pantalla de arranque automático: con el primer punto basta.',
     autoStartProved: 'La marca de aquí arriba no es una suposición: pasó de verdad, tras el último reinicio.',
     autoStartUnknown: 'El estado de esa autorización ninguna app puede leerlo. Lo que sí se puede saber es si funcionó, y se descubre en el primer reinicio del teléfono.',

@@ -552,6 +552,8 @@ export const it: Dictionary = {
     autoStartOpen: 'Apri impostazioni',
     autoStartReopen: 'Riapri',
     makersHint: 'Su alcuni telefoni (Xiaomi, Huawei, Oppo) il risparmio energetico è gestito dal produttore e non da Android: la spunta qui sopra può restare grigia anche dopo averlo impostato. Se l’hai fatto, prosegui.',
+    dkmaHint: 'Per ogni marca di telefono, il sito dontkillmyapp.com spiega le impostazioni che il produttore aggiunge per chiudere le app, e come cambiarle.',
+    dkmaOpen: 'Apri dontkillmyapp.com',
     noAutoStartHint: 'Il tuo telefono non ha una schermata di avvio automatico: il primo punto basta.',
     autoStartProved: 'La spunta qui sopra non è un’ipotesi: è successo davvero, dopo l’ultimo riavvio.',
     autoStartUnknown: 'Lo stato di quell’autorizzazione nessuna app può leggerlo. Quello che si può sapere è se ha funzionato, e lo si scopre al primo riavvio del telefono.',

@@ -566,6 +566,8 @@ export const en = {
     autoStartOpen: 'Open settings',
     autoStartReopen: 'Open again',
     makersHint: 'On some phones (Xiaomi, Huawei, Oppo) power saving is handled by the maker and not by Android: the tick above may stay grey even after you have set it. If you have done it, carry on.',
+    dkmaHint: 'For each make of phone, dontkillmyapp.com explains the settings its maker adds to close apps, and how to change them.',
+    dkmaOpen: 'Open dontkillmyapp.com',
     noAutoStartHint: 'Your phone has no automatic-start screen: the first point is enough.',
     autoStartProved: 'The tick above is not a guess: it really happened, after the last restart.',
     autoStartUnknown: 'No app can read the state of that authorisation. What can be known is whether it worked, and that comes out at the phone\'s first restart.',

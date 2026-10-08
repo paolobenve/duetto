@@ -553,6 +553,8 @@ export const de: Dictionary = {
     autoStartOpen: 'Einstellungen öffnen',
     autoStartReopen: 'Noch einmal öffnen',
     makersHint: 'Auf manchen Telefonen (Xiaomi, Huawei, Oppo) regelt das Energiesparen der Hersteller und nicht Android: der Haken oben kann grau bleiben, auch wenn du es eingestellt hast. Wenn du es getan hast, geh weiter.',
+    dkmaHint: 'Für jede Telefonmarke erklärt dontkillmyapp.com die Einstellungen, mit denen der Hersteller Apps schließt, und wie man sie ändert.',
+    dkmaOpen: 'dontkillmyapp.com öffnen',
     noAutoStartHint: 'Dein Telefon hat keinen Bildschirm für den automatischen Start: der erste Punkt genügt.',
     autoStartProved: 'Der Haken oben ist keine Vermutung: es ist wirklich geschehen, nach dem letzten Neustart.',
     autoStartUnknown: 'Keine App kann den Zustand dieser Erlaubnis lesen. Wissen lässt sich nur, ob es gegangen ist, und das zeigt sich beim ersten Neustart des Telefons.',

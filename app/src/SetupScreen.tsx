@@ -9,10 +9,25 @@
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, AppState,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView, AppState, Linking, Platform,
 } from 'react-native';
 import { Foreground } from 'duetto-platform';
 import { t } from './i18n';
+
+/** The makers dontkillmyapp.com has a page for, by their slug there. */
+const DKMA_MAKERS = [
+  'huawei', 'xiaomi', 'oneplus', 'samsung', 'meizu', 'asus', 'ulefone', 'oppo', 'wiko',
+  'lenovo', 'vivo', 'realme', 'motorola', 'blackview', 'tecno', 'sony', 'unihertz',
+  'google', 'hmd-global', 'htc', 'nokia',
+];
+
+/** This phone's page on dontkillmyapp.com, or its first page for a maker it has none for. */
+function dontKillMyAppPage(): string {
+  const c = (Platform.constants ?? {}) as { Manufacturer?: string; Brand?: string };
+  const slug = (s?: string) => (s ?? '').trim().toLowerCase().replace(/\s+/g, '-');
+  const maker = [slug(c.Manufacturer), slug(c.Brand)].find((m) => DKMA_MAKERS.includes(m));
+  return maker ? `https://dontkillmyapp.com/${maker}` : 'https://dontkillmyapp.com/';
+}
 
 type Props = {
   onDone: () => void;
@@ -117,6 +132,16 @@ export default function SetupScreen({ onDone }: Props) {
       ) : null}
 
       <Text style={styles.hint}>{t('setup.makersHint')}</Text>
+      {/* What each maker adds on top of Android, and how to undo it:
+          on the edge, a setting no screen of ours could reach, found
+          there. The page of this phone's make, when the site has one;
+          opened in the browser, nothing sent anywhere. */}
+      <Text style={styles.hint}>{t('setup.dkmaHint')}</Text>
+      <TouchableOpacity
+        style={styles.outline}
+        onPress={() => { Linking.openURL(dontKillMyAppPage()).catch(() => { /* noop */ }); }}>
+        <Text style={styles.outlineText}>{t('setup.dkmaOpen')}</Text>
+      </TouchableOpacity>
 
       <Text style={styles.hint}>
         {!hasAutoStart
@@ -203,5 +228,10 @@ const styles = StyleSheet.create({
   },
   buttonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
   link: { marginTop: 14, padding: 10, alignItems: 'center' },
+  outline: {
+    borderWidth: 1, borderColor: '#2f7cf6', borderRadius: 12, paddingVertical: 12,
+    alignItems: 'center', marginTop: 4, marginBottom: 12,
+  },
+  outlineText: { color: '#2f7cf6', fontSize: 15, fontWeight: '600' },
   linkText: { color: '#6b7686', fontSize: 15 },
 });
