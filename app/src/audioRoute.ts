@@ -531,22 +531,17 @@ export function useAudioRoute(
     }
   }, [applyRoute]);
 
-  /**
-   * The output really in use, remembered at every change - not only the
-   * ones picked by hand. "As it was left" took the last one picked: a
-   * Bluetooth earpiece chosen once and taken off later, and the next
-   * entry looked for it, did not find it, and sat on the earpiece.
-   * The ear's own passing turn, with the phone against the head, is not
-   * remembered: it is not a choice.
+  /*
+   * Only the outputs picked by hand are remembered - by the button and
+   * the menu, see select and cycle. They used to be remembered at every
+   * settled change too: on entering, before the list of Bluetooth
+   * devices had arrived, a headset looked absent, the earpiece stood in
+   * for it a moment - and was remembered; the next entry, set to take
+   * up the output as it was left, started from the earpiece. A headset
+   * picked by hand and not there at the next entry is not looked for:
+   * the phone's own output used last stands in for it (see the first
+   * event of the device list, and resume).
    */
-  useEffect(() => {
-    // Only a settled output: the one wanted, reached. On entering,
-    // Android passes through its earpiece for a moment, and remembered
-    // it would have become the preference while the wanted one was
-    // still on its way.
-    if (!enabled || earFrom.current || current !== wanted.current) return;
-    remember?.(current);
-  }, [enabled, current, remember]);
 
   /**
    * Back in after the app was closed under us - an update, Android: the
