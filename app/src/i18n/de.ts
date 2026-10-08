@@ -310,6 +310,8 @@ export const de: Dictionary = {
     btList: 'Bluetooth-Geräte',
     btListNote: 'Jedes mit seiner Wahl: eingeschaltet übernimmt es den Kanal, sobald es sich verbindet. Lange drücken, um es aus der Liste zu nehmen: beim nächsten Mal fragt Duetto wieder.',
     btListEmpty: 'Noch keins: verbinde eins während des Kanals.',
+    btUnchosen: 'Noch nicht gewählt',
+    btAskNote: '„{name}“ verbunden: öffne Duetto, um zu wählen, ob der Kanal es nutzt.',
     btForget: '„{name}“ aus der Liste nehmen?',
     btForgetYes: 'Entfernen',
     btUnnamed: 'Gerät ohne Namen',

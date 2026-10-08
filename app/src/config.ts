@@ -489,10 +489,11 @@ export type DuoConfig = {
   /**
    * Each Bluetooth audio device met, by its key (address, or name where
    * the address is hidden): its name, and whether it takes the channel
-   * the moment it connects. Asked the first time each one is met; the
-   * old single choice, autoBluetooth, is the answer offered first.
+   * the moment it connects. Written down when it is met, `auto` missing
+   * until it is chosen - meanwhile the old single choice, autoBluetooth,
+   * holds for it, and is the answer offered first.
    */
-  btDevices: Record<string, { name: string; auto: boolean }>;
+  btDevices: Record<string, { name: string; auto?: boolean }>;
   /** a wired headset that is plugged in takes the sound at once */
   autoWired: boolean;
 

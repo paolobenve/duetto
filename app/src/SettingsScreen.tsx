@@ -1031,7 +1031,10 @@ export default function SettingsScreen({
             key={id}
             style={styles.switchRow}
             onPress={() => {
-              const btDevices = { ...(cfg.btDevices ?? {}), [id]: { ...d, auto: !d.auto } };
+              // Not chosen yet, it does as the old single choice says:
+              // the touch chooses the other way.
+              const now = d.auto ?? (cfg.autoBluetooth ?? true);
+              const btDevices = { ...(cfg.btDevices ?? {}), [id]: { ...d, auto: !now } };
               setCfg({ ...cfg, btDevices });
               onLive?.({ btDevices });
             }}
@@ -1050,9 +1053,12 @@ export default function SettingsScreen({
             ])}>
             <View style={styles.choiceText}>
               <Text style={styles.choiceLabel}>{d.name || t('settings.btUnnamed')}</Text>
+              {d.auto === undefined ? (
+                <Text style={styles.choiceNote}>{t('settings.btUnchosen')}</Text>
+              ) : null}
             </View>
             <View pointerEvents="none">
-              <Switch value={d.auto} {...SWITCH_COLOURS} />
+              <Switch value={d.auto ?? (cfg.autoBluetooth ?? true)} {...SWITCH_COLOURS} />
             </View>
           </TouchableOpacity>
         ))}

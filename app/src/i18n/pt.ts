@@ -310,6 +310,8 @@ export const pt: Dictionary = {
     btList: 'Dispositivos Bluetooth',
     btListNote: 'Cada um com sua escolha: ligado, assume o canal assim que se conecta. Segure para tirá-lo da lista: da próxima vez o Duetto vai perguntar de novo.',
     btListEmpty: 'Nenhum ainda: conecte um durante o canal.',
+    btUnchosen: 'A escolher',
+    btAskNote: '«{name}» conectado: abra o Duetto para escolher se o canal o usa.',
     btForget: 'Tirar «{name}» da lista?',
     btForgetYes: 'Tirar',
     btUnnamed: 'Dispositivo sem nome',

@@ -1522,8 +1522,10 @@ export default function App() {
     const timer = setInterval(read, 60_000);
     return () => clearInterval(timer);
   }, [btHere, inChannel]);
+  // Not chosen yet, the old single choice: a device met and never asked
+  // about - the car's, a helmet's - was refused every time, in silence.
   const btAuto = btHere
-    ? (cfg?.btDevices?.[btHere.id]?.auto ?? false)
+    ? (cfg?.btDevices?.[btHere.id]?.auto ?? (cfg?.autoBluetooth ?? true))
     : (cfg?.autoBluetooth ?? true);
   const audio = useAudioRoute(inChannel, preferredOutput, rememberOutput, {
     ear: cfg?.earOnProximity ?? true,
@@ -1535,7 +1537,7 @@ export default function App() {
     // the choice it had for it - a headset set to "always" was refused
     // for days, and the journal could not say why.
     btSeen: btHere
-      ? `${btHere.name || btHere.id}=${cfg?.btDevices?.[btHere.id] ? (cfg.btDevices[btHere.id].auto ? 'always' : 'asked') : 'unknown'}`
+      ? `${btHere.name || btHere.id}=${cfg?.btDevices?.[btHere.id]?.auto === undefined ? 'unknown' : (cfg.btDevices[btHere.id].auto ? 'always' : 'asked')}`
       : `none:global=${(cfg?.autoBluetooth ?? true) ? 'always' : 'asked'}`,
   });
 
@@ -1635,26 +1637,52 @@ export default function App() {
   const reapplyRouteRef = useRef<(() => void) | null>(null);
   useEffect(() => { reapplyRouteRef.current = audio.reapply; }, [audio.reapply]);
   /**
-   * A Bluetooth device met for the first time, in the channel: what to
-   * do with it, asked once and remembered for it. The answer offered
-   * first is the old single choice.
+   * A Bluetooth device met: written down at once, and what to do with it
+   * asked until it is answered.
+   *
+   * It was asked once per start of the app, and only by a window that
+   * Android shows with the app in front: the car's Blue&Me and a
+   * helmet's Y10 connected with Duetto behind, the question went
+   * nowhere, was taken as asked, and the devices were refused in
+   * silence and never listed in the settings. Now each device is listed
+   * when met, "not chosen yet"; the question comes whenever it is
+   * connected with the app in front and no answer given - once per
+   * connection - and with the app behind a quiet notification says that
+   * it waits.
    */
-  const btAsked = useRef<Set<string>>(new Set());
-  // A device forgotten in the settings is a device met for the first
-  // time again: the memory of having asked goes with it. It stayed for
-  // the whole session, and the question never came back until the app
-  // was started again.
+  const [appActive, setAppActive] = useState(AppState.currentState === 'active');
   useEffect(() => {
-    for (const id of [...btAsked.current]) {
-      if (!cfg?.btDevices?.[id]) btAsked.current.delete(id);
+    const sub = AppState.addEventListener('change', (st) => setAppActive(st === 'active'));
+    return () => sub.remove();
+  }, []);
+  /** asked, or told by notification, for the device connected now */
+  const btAsked = useRef<{ id: string; asked: boolean; noted: boolean } | null>(null);
+  useEffect(() => {
+    if (!btHere || !cfg) return;
+    if (!cfg.btDevices?.[btHere.id]) {
+      const name = btHere.name || t('settings.btUnnamed');
+      setCfg((prev) => (prev && !prev.btDevices?.[btHere.id] ? saveCfg({
+        ...prev,
+        btDevices: { ...(prev.btDevices ?? {}), [btHere.id]: { name } },
+      }) : prev));
     }
-  }, [cfg?.btDevices]);
+  }, [btHere, cfg, saveCfg]);
   useEffect(() => {
-    if (!inChannel || !btHere || !cfg || cfg.btDevices?.[btHere.id]) return;
-    if (btAsked.current.has(btHere.id)) return;
-    btAsked.current.add(btHere.id);
+    if (!btHere) { btAsked.current = null; return; }
+    if (btAsked.current?.id !== btHere.id) btAsked.current = { id: btHere.id, asked: false, noted: false };
+    if (!inChannel || !cfg || cfg.btDevices?.[btHere.id]?.auto !== undefined) return;
     const dev = btHere;
     const name = dev.name || t('settings.btUnnamed');
+    const mark = btAsked.current;
+    if (!appActive) {
+      if (!mark.noted) {
+        mark.noted = true;
+        Foreground.note('', t('settings.btAskNote', { name })).catch(() => {});
+      }
+      return;
+    }
+    if (mark.asked) return;
+    mark.asked = true;
     const answer = (auto: boolean) => {
       Journal.mark(`bt-device:chosen:${auto ? 'auto' : 'asked'}:${name}`).catch(() => {});
       setCfg((prev) => (prev ? saveCfg({
@@ -1671,8 +1699,19 @@ export default function App() {
       t('settings.btAskTitle', { name }),
       t('settings.btAskBody'),
       cfg.autoBluetooth ?? true ? [only, always] : [always, only],
+      // Put away unanswered: asked again the next time the app is in front.
+      { cancelable: true, onDismiss: () => { if (btAsked.current === mark) mark.asked = false; } },
     );
-  }, [inChannel, btHere, cfg, saveCfg, audio]);
+  }, [inChannel, btHere, cfg, saveCfg, audio, appActive]);
+  // Behind again with no answer given: the question comes back in front.
+  useEffect(() => {
+    if (!appActive && btAsked.current && btHere
+        && cfg?.btDevices?.[btHere.id]?.auto === undefined) {
+      btAsked.current.asked = false;
+    }
+    // Only the going behind matters: the device and its choice are read as they are then.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appActive]);
 
   const resumeRouteRef = useRef<((r: AudioRoute, present?: boolean) => void) | null>(null);
   const btHereRef = useRef(btHere);

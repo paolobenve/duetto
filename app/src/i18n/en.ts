@@ -323,6 +323,8 @@ export const en = {
     btList: 'Bluetooth devices',
     btListNote: 'Each with its own choice: on, it takes the channel as soon as it connects. Hold one down to take it off the list: next time Duetto will ask again.',
     btListEmpty: 'None yet: connect one during the channel.',
+    btUnchosen: 'Not chosen yet',
+    btAskNote: '«{name}» connected: open Duetto to choose whether the channel uses it.',
     btForget: 'Take “{name}” off the list?',
     btForgetYes: 'Take off',
     btUnnamed: 'Unnamed device',

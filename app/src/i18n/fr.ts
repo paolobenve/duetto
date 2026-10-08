@@ -310,6 +310,8 @@ export const fr: Dictionary = {
     btList: 'Appareils Bluetooth',
     btListNote: 'Chacun avec son choix : activé, il prend le canal dès qu\'il se connecte. Appuie longuement pour le retirer de la liste : la prochaine fois Duetto redemandera.',
     btListEmpty: 'Aucun pour l\'instant : connectes-en un pendant le canal.',
+    btUnchosen: 'À choisir',
+    btAskNote: '« {name} » connecté : ouvre Duetto pour choisir si le canal l’utilise.',
     btForget: 'Retirer « {name} » de la liste ?',
     btForgetYes: 'Retirer',
     btUnnamed: 'Appareil sans nom',
