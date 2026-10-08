@@ -83,6 +83,8 @@ const ROUTE_MAX_CHANGES = 4;
 const ROUTE_WINDOW_MS = 10_000;
 /** The headset left by the sound: how long before asking whether it is still there. */
 const KEEP_WAIT_MS = 1_500;
+/** how long the call is given to confirm an output asked for: see confirmRoute */
+const CONFIRM_MS = 1_500;
 
 export function useAudioRoute(
   enabled: boolean,
@@ -110,6 +112,8 @@ export function useAudioRoute(
   const initialised = useRef(false);
   /** the channel's call is up: the telephony decides the output */
   const inCall = useRef(false);
+  /** where the call says its sound is, as the telephony last reported it */
+  const callRoute = useRef<AudioRoute | null>(null);
   /** the latest changes of output, for the brake; and until when it holds */
   const routeTimes = useRef<number[]>([]);
   const frozenUntil = useRef(0);
@@ -142,7 +146,41 @@ export function useAudioRoute(
     Call.setRoute(route).then((through) => {
       if (!through) applyByLibrary(route);
     }).catch(() => applyByLibrary(route));
+    confirmRoute(route, 0);
+    // Refs only, in both: the first render's are as good as any.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /**
+   * An output asked for during the call, confirmed.
+   *
+   * Moving from one connection to another closes a call and opens the
+   * next in the same second; the speaker asked for on the new one was
+   * lost between the two - the phone said speaker, the call stayed at
+   * the ear. What the call reports is waited for: not there within a
+   * second and a half, the output is asked once more; still not, it is
+   * written down as refused.
+   */
+  const confirmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const confirmRoute = (route: AudioRoute, attempt: number) => {
+    if (confirmTimer.current) clearTimeout(confirmTimer.current);
+    confirmTimer.current = setTimeout(() => {
+      confirmTimer.current = null;
+      if (!inCall.current || frozen()) return;
+      if (callRoute.current === route) return;
+      // Something newer was chosen meanwhile: that one stands.
+      if (wanted.current && wanted.current !== route) return;
+      if (attempt === 0) {
+        Journal.mark(`output:retry:${route}:${callRoute.current ?? '?'}`).catch(() => { /* noop */ });
+        Call.setRoute(route).then((through) => {
+          if (!through) applyByLibrary(route);
+        }).catch(() => applyByLibrary(route));
+        confirmRoute(route, 1);
+        return;
+      }
+      Journal.mark(`output:refused:${route}:${callRoute.current ?? '?'}`).catch(() => { /* noop */ });
+    }, CONFIRM_MS);
+  };
 
   const applyByLibrary = (route: AudioRoute) => {
     const icm = InCallManager as any;
@@ -173,6 +211,7 @@ export function useAudioRoute(
     return Call.subscribe((st) => {
       if (st === 'ended' || st === 'ended-by-system' || st === 'failed') {
         inCall.current = false;
+        callRoute.current = null;
         return;
       }
       if (st === 'active' || st === 'resumed') {
@@ -185,6 +224,7 @@ export function useAudioRoute(
       const r = st.slice('route:'.length);
       if (!isRoute(r)) return;
       inCall.current = true;
+      callRoute.current = r;
       /**
        * The brake: more than four changes of output in ten seconds is a
        * fight, not a choice - on 4 October two directors, the telephony
