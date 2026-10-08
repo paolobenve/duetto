@@ -2305,32 +2305,48 @@ export default function App() {
    * The channel's call, closed from outside while one is still in the
    * channel, is placed again.
    *
-   * Switched off with its button held down, the Y10 first sent the
-   * phone "hang up": Android closed Duetto's call, the channel went on
-   * without it, and with no call of ours Android's own choice ruled the
-   * sound - the earpiece, when the Y10 went. A headset's hang-up is
-   * not taken as leaving: the call comes back at once. Three times a
-   * minute at most, should something keep closing it.
+   * Switched off with its button held down, or touched by chance, the
+   * Y10 sent the phone "hang up": Android closed Duetto's call, the
+   * channel went on without it, and with no call of ours Android's own
+   * choice ruled the sound and the headset's keys. A headset's hang-up
+   * is not taken as leaving: the call comes back at once.
+   *
+   * Not while another app's call is on, though. During a WhatsApp call
+   * the Y10's button closed Duetto's - the only one Android knows of on
+   * that phone - and Duetto's, placed again at once, put WhatsApp's on
+   * hold: a new call holds the one in progress. Then it waits for that
+   * call to end. Three times a minute at most; past that it is not
+   * given up for good, but tried again a minute later, or as soon as
+   * the app comes to the front or another call ends.
    */
   const replacedAt = useRef<number[]>([]);
-  useEffect(() => Call.subscribe((st) => {
-    if (st === 'active' || st === 'resumed' || st === 'phone-free') callActiveAt.current = Date.now();
-    if (st === 'active' && phoneBusy.current) {
-      phoneBusy.current = false;
-      sessionRef.current?.hush(false);
-      setOnCall(false);
-    }
-    if (st === 'ended-by-system' && inChannelRef.current) {
+  useEffect(() => {
+    /** another app's call, or a telephone holding ours: see the audio focus */
+    let otherCall = false;
+    /** our call closed meanwhile, to be placed again when it may */
+    let owed = false;
+    let retry: ReturnType<typeof setTimeout> | null = null;
+    const placeAgain = (why: string) => {
+      if (retry) { clearTimeout(retry); retry = null; }
+      if (!inChannelRef.current) { owed = false; return; }
+      if (otherCall || phoneBusy.current) {
+        if (!owed) Journal.mark(`call:placed-later:${why}`).catch(() => { /* noop */ });
+        owed = true;
+        return;
+      }
       const now = Date.now();
       replacedAt.current = replacedAt.current.filter((at) => now - at < 60_000);
       if (replacedAt.current.length >= 3) {
-        Journal.mark('call:not-placed-again:too-often').catch(() => { /* noop */ });
+        Journal.mark('call:placed-later:too-often').catch(() => { /* noop */ });
+        owed = true;
+        retry = setTimeout(() => placeAgain('a-minute-later'), 60_000);
         return;
       }
+      owed = false;
       replacedAt.current.push(now);
       setTimeout(() => {
-        if (!inChannelRef.current) return;
-        Journal.mark('call:placed-again').catch(() => { /* noop */ });
+        if (!inChannelRef.current || otherCall) { owed = inChannelRef.current; return; }
+        Journal.mark(`call:placed-again:${why}`).catch(() => { /* noop */ });
         callActiveAt.current = Date.now();
         Call.start(channelRef.current || shownNameRef.current || '').then((r) => {
           if (r === 'waiting-phone') {
@@ -2342,8 +2358,33 @@ export default function App() {
           if (r !== 'placed' && r !== 'already') Journal.mark(`call:not:${r}`).catch(() => {});
         }).catch(() => { /* noop */ });
       }, 500);
-    }
-  }), []);
+    };
+    const stopCalls = Call.subscribe((st) => {
+      if (st === 'active' || st === 'resumed' || st === 'phone-free') callActiveAt.current = Date.now();
+      if (st === 'active' && phoneBusy.current) {
+        phoneBusy.current = false;
+        sessionRef.current?.hush(false);
+        setOnCall(false);
+      }
+      if (st.startsWith('other-call:')) {
+        otherCall = st !== 'other-call:over';
+        if (!otherCall && owed) placeAgain('other-call-over');
+        return;
+      }
+      if (st === 'held') { otherCall = true; return; }
+      if (st === 'resumed' || st === 'active') otherCall = false;
+      if (st === 'phone-free' && owed) { placeAgain('phone-free'); return; }
+      if (st === 'ended-by-system' && inChannelRef.current) placeAgain('closed-outside');
+    });
+    const front = AppState.addEventListener('change', (st) => {
+      if (st === 'active' && owed) placeAgain('front');
+    });
+    return () => {
+      stopCalls();
+      front.remove();
+      if (retry) clearTimeout(retry);
+    };
+  }, []);
 
   /**
    * The phone permission, asked once, on the first entry with the
