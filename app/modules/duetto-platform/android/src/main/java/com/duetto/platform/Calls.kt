@@ -23,6 +23,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.telephony.PhoneStateListener
 import android.telephony.TelephonyCallback
 import android.telephony.TelephonyManager
@@ -305,6 +306,33 @@ object Calls {
     private var voiceBeside = false
     private var otherCall = false
 
+    /**
+     * Our own call's sound, which is not somebody else's call.
+     *
+     * A call arriving in the channel sounds as a voice-communication
+     * stream - Android's own beep for a notification during a call has
+     * that use, and some phones give our ringtone the same - and with
+     * WebRTC's beside it that made two voices: "another call", the
+     * channel hushed for the length of the sound and back. On the OPPO
+     * two calls from the POCO read as two calls of somebody else's. For a
+     * few seconds after a call of ours sounds, a second voice is not
+     * counted; when they are over, the voices are looked at again.
+     */
+    private const val OWN_ALERT_MS = 3000L
+    @Volatile private var ownAlertUntil = 0L
+    private var lastVoices = 0
+    private val judge = Handler(Looper.getMainLooper())
+
+    /** A call of ours is about to sound: see ownAlertUntil. */
+    fun ownAlertNow() {
+        ownAlertUntil = SystemClock.uptimeMillis() + OWN_ALERT_MS
+        judge.removeCallbacksAndMessages(null)
+        judge.postDelayed({
+            voiceBeside = lastVoices >= 2
+            judgeOthers()
+        }, OWN_ALERT_MS + 50)
+    }
+
     private fun judgeOthers() {
         val now = micTaken || voiceBeside
         if (now == otherCall) return
@@ -332,6 +360,9 @@ object Calls {
                 val voices = configs?.count {
                     it.audioAttributes.usage == AudioAttributes.USAGE_VOICE_COMMUNICATION
                 } ?: 0
+                lastVoices = voices
+                // Our own call sounding a moment ago is not another call.
+                if (voices >= 2 && SystemClock.uptimeMillis() < ownAlertUntil) return
                 voiceBeside = voices >= 2
                 judgeOthers()
             }

@@ -175,6 +175,8 @@ object Notifier {
     private fun showNow(
         ctx: Context, name: String, text: String, pairId: String?, choice: Alerts.Choice,
     ) {
+        // Its sound, in the channel, is not another call: see Calls.
+        Calls.ownAlertNow()
         // The channel depends on the preferences: see Alerts. The sound in
         // the ordinary case comes from there; vibration and sound during
         // the conversation are done by Alerts.alertNow below, because the
