@@ -299,6 +299,18 @@ const RESUME_VIDEO_MS = 60_000;
  * given sooner turns an invisible stitch into a black screen.
  */
 const FAILED_PATIENCE_MS = 8_000;
+/**
+ * How long a link may stay "connecting" before it is made again.
+ *
+ * Rebuilt several times over on both sides in a few seconds, the POCO
+ * and the OPPO were left on two versions of the same link: a road
+ * found through the relay, and nothing ever crossing it - "connecting"
+ * for minutes, with no "failed" to set the cures going. Twenty seconds
+ * is well past any honest handshake, relay and TLS included.
+ */
+const STUCK_CONNECTING_MS = 20_000;
+/** one remaking per stuck episode: a second one within this is noted, not tried */
+const STUCK_RETRY_GAP_MS = 120_000;
 
 /** How often we look to see whether we are still without a server. */
 const SERVER_CHECK_MS = 3_000;
@@ -1286,6 +1298,9 @@ export default function App() {
    * whole evenings forced through the server on a stale lesson.
    */
   const failedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** a link stuck "connecting": see STUCK_CONNECTING_MS */
+  const connectingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stuckRetriedAt = useRef(0);
   /** sick rounds of the answerer's net, in a row: two are a sickness */
   const netSickTicks = useRef(0);
   /** the heartbeat saw the link sick at the previous beat too */
@@ -4239,6 +4254,33 @@ export default function App() {
           // Written down: a link that stays "connecting" for half a
           // minute has to be readable the day after.
           Journal.mark(`link:${st}`).catch(() => { /* noop */ });
+
+          if (st !== 'connecting' && connectingTimer.current) {
+            clearTimeout(connectingTimer.current);
+            connectingTimer.current = null;
+          }
+          // Stuck "connecting": made again once, by the side that offers
+          // - asked of it, from the side that answers. A second time
+          // within two minutes is only written down: the trouble is then
+          // elsewhere, and the journal says so.
+          if (st === 'connecting' && !connectingTimer.current) {
+            connectingTimer.current = setTimeout(() => {
+              connectingTimer.current = null;
+              if (connStateRef.current !== 'connecting') return;
+              if (!inChannelRef.current || !peerActiveRef.current) return;
+              if (Date.now() - stuckRetriedAt.current < STUCK_RETRY_GAP_MS) {
+                Journal.mark('link:stuck-again').catch(() => { /* noop */ });
+                return;
+              }
+              stuckRetriedAt.current = Date.now();
+              Journal.mark('link:stuck-connecting').catch(() => { /* noop */ });
+              if (politeRef.current) {
+                signalingRef.current?.sendSignal({ kind: 'renegotiate', why: 'stuck-connecting' });
+              } else {
+                attachPeer(true, 'stuck-connecting');
+              }
+            }, STUCK_CONNECTING_MS);
+          }
 
           if (st === 'connected') {
             clearRecovery();
