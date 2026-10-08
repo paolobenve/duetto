@@ -2301,12 +2301,47 @@ export default function App() {
   const callActiveAt = useRef(0);
   /** entered over a telephone call: the channel waits silent for it to end */
   const phoneBusy = useRef(false);
+  /**
+   * The channel's call, closed from outside while one is still in the
+   * channel, is placed again.
+   *
+   * Switched off with its button held down, the Y10 first sent the
+   * phone "hang up": Android closed Duetto's call, the channel went on
+   * without it, and with no call of ours Android's own choice ruled the
+   * sound - the earpiece, when the Y10 went. A headset's hang-up is
+   * not taken as leaving: the call comes back at once. Three times a
+   * minute at most, should something keep closing it.
+   */
+  const replacedAt = useRef<number[]>([]);
   useEffect(() => Call.subscribe((st) => {
     if (st === 'active' || st === 'resumed' || st === 'phone-free') callActiveAt.current = Date.now();
     if (st === 'active' && phoneBusy.current) {
       phoneBusy.current = false;
       sessionRef.current?.hush(false);
       setOnCall(false);
+    }
+    if (st === 'ended-by-system' && inChannelRef.current) {
+      const now = Date.now();
+      replacedAt.current = replacedAt.current.filter((at) => now - at < 60_000);
+      if (replacedAt.current.length >= 3) {
+        Journal.mark('call:not-placed-again:too-often').catch(() => { /* noop */ });
+        return;
+      }
+      replacedAt.current.push(now);
+      setTimeout(() => {
+        if (!inChannelRef.current) return;
+        Journal.mark('call:placed-again').catch(() => { /* noop */ });
+        callActiveAt.current = Date.now();
+        Call.start(channelRef.current || shownNameRef.current || '').then((r) => {
+          if (r === 'waiting-phone') {
+            phoneBusy.current = true;
+            sessionRef.current?.hush(true);
+            setOnCall(true);
+            return;
+          }
+          if (r !== 'placed' && r !== 'already') Journal.mark(`call:not:${r}`).catch(() => {});
+        }).catch(() => { /* noop */ });
+      }, 500);
     }
   }), []);
 
