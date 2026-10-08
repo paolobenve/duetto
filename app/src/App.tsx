@@ -1438,6 +1438,11 @@ export default function App() {
    * hands the choices back to us, and they end up in the pair in use.
    */
   const rememberOutput = useCallback((route: string) => {
+    // Written down: on 8 October the entry took back the earpiece, and
+    // nothing said when the earpiece had been remembered.
+    if (cfgRef.current?.audioOutput !== route) {
+      Journal.mark(`output:remembered:${route}:by-hand`).catch(() => { /* noop */ });
+    }
     setCfg((prev) => (prev && prev.audioOutput !== route
       ? saveCfg({ ...prev, audioOutput: route })
       : prev));
@@ -1475,6 +1480,13 @@ export default function App() {
   // way; the option only decides what the entry starts from.
   const preferredOutput = (cfg?.outputOnEntry ?? 'earpiece') === 'asLeft'
     ? cfg?.audioOutput : 'EARPIECE';
+  // At every entry: the output it starts from, and by which rule.
+  useEffect(() => {
+    if (!inChannel) return;
+    Journal.mark(`output:entry:${cfgRef.current?.outputOnEntry ?? 'earpiece'}:${preferredOutput ?? '?'}`)
+      .catch(() => { /* noop */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inChannel]);
   /**
    * The Bluetooth audio device connected now, if any, and whether it
    * takes the channel on connecting: each device its own choice, asked
