@@ -352,6 +352,7 @@ export const es: Dictionary = {
     copied: 'copiada',
     share: 'compartir',
     toWorkItem: 'en GitLab',
+    toWorkItemDone: 'enviado en GitLab',
     inviteSentTitle: 'Invitación mandada',
     inviteSent: 'El enlace está en el work item de {name}, con dos líneas sobre qué hacer.',
     inviteNoWorkItem: 'No hay ningún work item abierto con «{name}» en el título. El nombre de la invitación tiene que ser el que la persona puso ahí.',

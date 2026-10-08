@@ -8,6 +8,7 @@
  * <https://www.gnu.org/licenses/>.
  */
 import React, { useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, Animated,
   KeyboardAvoidingView, Platform, Alert, Modal, Pressable, Clipboard, Linking, Share, Switch,
@@ -98,6 +99,8 @@ const CONTROLS = (): {
 
 type Tab = 'links' | 'use' | 'diagnostics';
 const TABS: Tab[] = ['links', 'use', 'diagnostics'];
+/** the invitations written on their work item: see notedOn */
+const NOTED_KEY = 'duetto.invites-noted';
 
 /**
  * How far down each tab was left: coming back to the settings, or to a
@@ -499,6 +502,25 @@ export default function SettingsScreen({
    * never passes through anywhere else.
    */
   const [sendingTo, setSendingTo] = useState('');
+  /**
+   * The invitations already written on their work item: said so, and no
+   * longer a button - a second note would only repeat the first. Kept
+   * on the phone, the codes still listed only.
+   */
+  const [notedOn, setNotedOn] = useState<string[]>([]);
+  useEffect(() => {
+    AsyncStorage.getItem(NOTED_KEY)
+      .then((raw) => { if (raw) setNotedOn(JSON.parse(raw)); })
+      .catch(() => { /* noop */ });
+  }, []);
+  const noteSent = (code: string) => {
+    setNotedOn((was) => {
+      const listed = new Set(invitations.map((x) => x.code));
+      const next = [...was.filter((c) => listed.has(c)), code];
+      AsyncStorage.setItem(NOTED_KEY, JSON.stringify(next)).catch(() => { /* noop */ });
+      return next;
+    });
+  };
   const inviteToWorkItem = async (i: InvitationOnServer) => {
     if (!onInviteToWorkItem || sendingTo) return;
     setSendingTo(i.code);
@@ -506,6 +528,7 @@ export default function SettingsScreen({
       .catch((e): ReportOutcome => ({ ok: false, error: String(e) }));
     setSendingTo('');
     if (out.ok) {
+      noteSent(i.code);
       Alert.alert(t('settings.inviteSentTitle'), t('settings.inviteSent', { name: i.name }));
       return;
     }
@@ -865,11 +888,15 @@ export default function SettingsScreen({
                   <TouchableOpacity onPress={() => shareInvite(i.code)}>
                     <Text style={styles.linkInline}>{t('settings.share')}</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => inviteToWorkItem(i)}>
-                    <Text style={styles.linkInline}>
-                      {sendingTo === i.code ? t('settings.reportSending') : t('settings.toWorkItem')}
-                    </Text>
-                  </TouchableOpacity>
+                  {notedOn.includes(i.code) ? (
+                    <Text style={[styles.linkInline, styles.linkDone]}>{t('settings.toWorkItemDone')}</Text>
+                  ) : (
+                    <TouchableOpacity onPress={() => inviteToWorkItem(i)}>
+                      <Text style={styles.linkInline}>
+                        {sendingTo === i.code ? t('settings.reportSending') : t('settings.toWorkItem')}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                   <TouchableOpacity onPress={() => confirmForgetInvitation(i)}>
                     <Text style={styles.linkInline}>{t('settings.forgetPerson')}</Text>
                   </TouchableOpacity>
@@ -2014,6 +2041,8 @@ const styles = StyleSheet.create({
   },
   betaButtonText: { color: '#7cc4ff', fontSize: 15, fontWeight: '700' },
   linkInline: { color: '#2f7cf6', fontSize: 14, fontWeight: '600', marginTop: 8 },
+  // Done, and no longer a link.
+  linkDone: { color: '#6b7686' },
   input: {
     backgroundColor: '#151a23', color: '#fff', borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 13, fontSize: 16,

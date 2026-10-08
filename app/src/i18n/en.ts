@@ -365,6 +365,7 @@ export const en = {
     copied: 'copied',
     share: 'share',
     toWorkItem: 'on GitLab',
+    toWorkItemDone: 'sent on GitLab',
     inviteSentTitle: 'Invitation sent',
     inviteSent: 'The link is on {name}\'s work item, with two lines on what to do next.',
     inviteNoWorkItem: 'No open work item with "{name}" in its title. The invitation\'s name has to be the one the person put there.',
