@@ -84,7 +84,10 @@ class VolumeModule(private val ctx: ReactApplicationContext) :
      * own, a few decibels a step, and "6 of 12" is not half. Reading the
      * steps as shares made the level shown - the phone's part times
      * ours - come out wrong. Gives back one figure per step, 0 for the
-     * top; an empty list where Android cannot say (before 9).
+     * top; an empty list where Android cannot say (before 9); and [1] -
+     * a figure no step can have - where every step is the same: the knob
+     * does nothing on that output, as on the POCO's Bluetooth, where the
+     * phone leaves the volume to the headset.
      */
     @ReactMethod
     fun steps(route: String, promise: Promise) {
@@ -137,6 +140,9 @@ class VolumeModule(private val ctx: ReactApplicationContext) :
         // Said in the journal: without it, "no table" cannot be told from
         // "never asked".
         Journal.sample(ctx, "volume-steps:none:${why.take(160)}")
+        if (why.isNotEmpty() && why.split("; ").filter { it.isNotBlank() }.all { it.endsWith("flat") }) {
+            out.pushDouble(1.0)
+        }
         promise.resolve(out)
     }
 

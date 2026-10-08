@@ -840,6 +840,18 @@ export default function App() {
    * as its share, as it always was.
    */
   const [stepsDb, setStepsDb] = useState<number[]>([]);
+  /**
+   * The phone's knob does nothing on the output in use.
+   *
+   * On the POCO's Bluetooth every step of the call volume is the same:
+   * the phone leaves the volume to the headset - and the Y10 leaves it
+   * to the phone. Its keys reached the phone, moved the knob, and the
+   * sound stayed as it was. Here the keys move Duetto's own gain
+   * instead, in front or behind: see the effect on the system's knob.
+   */
+  const [knobFlat, setKnobFlat] = useState(false);
+  const knobFlatRef = useRef(false);
+  knobFlatRef.current = knobFlat;
   const stepsRef = useRef<number[]>([]);
   /** the step Duetto last set the phone's knob to, and when */
   const ownKnob = useRef<{ step: number; at: number } | null>(null);
@@ -1593,7 +1605,7 @@ export default function App() {
    * volume test said so): there Duetto's gain is the only knob, below
    * the top too, as it always was before.
    */
-  const knobIgnored = cfg?.knobWorks === 'no';
+  const knobIgnored = cfg?.knobWorks === 'no' || knobFlat;
   const sysFraction = systemVolume.max > 0 && !knobIgnored
     ? ofDb(stepDb(Math.min(systemVolume.volume, systemVolume.max), systemVolume.max, stepsDb))
     : 1;
@@ -2041,7 +2053,7 @@ export default function App() {
     setControlsWakeAt(Date.now());
     const output = audioRouteRef.current;
     const phone = systemVolumeRef.current;
-    const ignored = cfgRef.current?.knobWorks === 'no';
+    const ignored = cfgRef.current?.knobWorks === 'no' || knobFlatRef.current;
     const g = cfgRef.current?.gains?.[output] ?? 1;
     setOutputMuted(false);
     /** the gain by a rung, kept between `lo` and `hi` decibels */
@@ -2160,18 +2172,55 @@ export default function App() {
 
   /** The steps of the output in use, read again at every change of output. */
   useEffect(() => {
+    setKnobFlat(false);
     if (!inChannel) return;
     let alive = true;
-    Volume.steps(audio.route).then((st) => {
-      if (!alive || !Array.isArray(st)) return;
-      setStepsDb(st);
-      if (st.length) {
-        Journal.mark(`volume-steps:${audio.route}:${st.map((d) => Math.round(d)).join(',')}`)
-          .catch(() => { /* noop */ });
-      }
-    }).catch(() => { /* noop */ });
-    return () => { alive = false; };
+    let again: ReturnType<typeof setTimeout> | null = null;
+    const ask = (second: boolean) => {
+      Volume.steps(audio.route).then((st) => {
+        if (!alive || !Array.isArray(st)) return;
+        // [1]: every step the same - see knobFlat. Believed only when it
+        // says so twice, two seconds apart: while the sound moves from
+        // one output to another the speaker too read flat for a moment.
+        const flat = st.length === 1 && st[0] > 0;
+        if (flat && !second) { again = setTimeout(() => ask(true), 2000); return; }
+        setKnobFlat(flat);
+        if (flat) {
+          setStepsDb([]);
+          return;
+        }
+        setStepsDb(st);
+        if (st.length) {
+          Journal.mark(`volume-steps:${audio.route}:${st.map((d) => Math.round(d)).join(',')}`)
+            .catch(() => { /* noop */ });
+        }
+      }).catch(() => { /* noop */ });
+    };
+    ask(false);
+    return () => { alive = false; if (again) clearTimeout(again); };
   }, [inChannel, audio.route]);
+
+  /**
+   * A knob that does nothing, moved by a headset's keys or the phone's
+   * with Duetto behind: each step becomes a rung of Duetto's gain, and
+   * the knob goes back to the middle - harmless here - so that the next
+   * press always has room both ways.
+   */
+  useEffect(() => {
+    if (!inChannel || !knobFlat) return;
+    let last = systemVolumeRef.current.volume;
+    const stop = Volume.listenToSystem((value) => {
+      if (value < 0 || value === last) return;
+      const d = value - last;
+      Journal.mark(`level:flat-knob ${d > 0 ? '+' : ''}${d}`).catch(() => { /* noop */ });
+      for (let i = 0; i < Math.abs(d); i += 1) changeLevel(Math.sign(d));
+      const max = systemVolumeRef.current.max;
+      const mid = Math.max(1, Math.round(max / 2));
+      last = mid;
+      if (max > 0 && value !== mid) Volume.set(mid).catch(() => { /* noop */ });
+    });
+    return stop;
+  }, [inChannel, knobFlat, changeLevel]);
 
   useEffect(() => {
     if (!inChannel) return;

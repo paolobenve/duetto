@@ -63,7 +63,7 @@ declare module 'duetto-platform' {
     read(): Promise<{ volume: number; max: number }>;
     /** puts it at an exact value */
     set(value: number): Promise<boolean>;
-    /** the call volume's steps, in dB below the top, for an output; [] if unknown */
+    /** the call volume's steps, in dB below the top, for an output; [] if unknown, [1] if the knob does nothing there */
     steps(route: string): Promise<number[]>;
     /** `cb(value)` when the call volume changes, from outside as well */
     listenToSystem(cb: (value: number) => void): () => void;
