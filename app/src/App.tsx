@@ -1250,6 +1250,31 @@ export default function App() {
    * an old surface, which would stay black.
    */
   const [remoteVideoKey, setRemoteVideoKey] = useState(0);
+  /**
+   * The other's picture arriving and decoded, and not drawn.
+   *
+   * On 9 October the edge saw the POCO's picture frozen for minutes with
+   * 30 frames a second decoded underneath: the view had stopped drawing,
+   * and only leaving and coming back built it anew. The view itself now
+   * says so (scripts/patch-webrtc-view.js), and it is built anew here -
+   * the other's at once, once in ten seconds at most; one's own only
+   * written down, since the little square can be touched to swap.
+   */
+  const remoteStreamRef = useRef<MediaStream | null>(null);
+  remoteStreamRef.current = remoteStream;
+  const renderRebuiltAt = useRef(0);
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('duetto-render-stalled', (e: { streamURL?: string; arrived?: number }) => {
+      const theirs = !!e?.streamURL && e.streamURL === remoteStreamRef.current?.toURL();
+      Journal.mark(`video:render-stalled:${theirs ? 'peer' : 'own'}:${e?.arrived ?? '?'}`).catch(() => { /* noop */ });
+      if (!theirs) return;
+      const now = Date.now();
+      if (now - renderRebuiltAt.current < 10_000) return;
+      renderRebuiltAt.current = now;
+      setRemoteVideoKey((k) => k + 1);
+    });
+    return () => sub.remove();
+  }, []);
 
   const signalingRef = useRef<Signaling | null>(null);
   const sessionRef = useRef<ChannelSession | null>(null);
