@@ -417,11 +417,32 @@ export const Locale = isAndroid && NativeLocale
   : { language: 'en', current: () => Promise.resolve('en') };
 
 /**
- * When something covers the screen: a pocket, a closed case.
+ * When something covers the screen: a pocket, a closed case - and when
+ * the phone is at the ear.
  *
  * It is there so that the touches reaching the glass of a phone in a
- * pocket are not taken for choices. See ProximityModule.
+ * pocket are not taken for choices, and for the speaker to give way to
+ * the earpiece. A phone lying flat is at nobody's ear. See
+ * ProximityModule.
  */
+function proximityWatch(key, cb) {
+  call(NativeProximity, 'start');
+  const emitter = new NativeEventEmitter(NativeProximity);
+  // Each listener hears only its own changes; the first always, since
+  // whoever asked `get` beforehand may know otherwise.
+  let last = null;
+  const sub = emitter.addListener('duetto-proximity', (v) => {
+    const now = !!(v && v[key]);
+    if (now === last) return;
+    last = now;
+    cb(now);
+  });
+  return () => {
+    sub.remove();
+    call(NativeProximity, 'stop');
+  };
+}
+
 export const Proximity = isAndroid && NativeProximity
   ? {
       /** How it is now. */
@@ -431,17 +452,16 @@ export const Proximity = isAndroid && NativeProximity
        * Calls `cb(covered)` at every change, and starts listening.
        * Gives back the function to stop.
        */
-      subscribe(cb) {
-        call(NativeProximity, 'start');
-        const emitter = new NativeEventEmitter(NativeProximity);
-        const sub = emitter.addListener('duetto-proximity', (v) => cb(!!v));
-        return () => {
-          sub.remove();
-          call(NativeProximity, 'stop');
-        };
-      },
+      subscribe: (cb) => proximityWatch('covered', cb),
+
+      /** Calls `cb(atEar)` at every change; the same, for the sound. */
+      subscribeEar: (cb) => proximityWatch('ear', cb),
     }
-  : { get: () => Promise.resolve(false), subscribe: () => () => {} };
+  : {
+      get: () => Promise.resolve(false),
+      subscribe: () => () => {},
+      subscribeEar: () => () => {},
+    };
 
 /**
  * The heartbeat that arrives with the screen off too.

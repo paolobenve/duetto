@@ -84,6 +84,8 @@ declare module 'duetto-platform' {
   export const Proximity: {
     get(): Promise<boolean>;
     subscribe(cb: (covered: boolean) => void): () => void;
+    /** at the ear: near, and the phone not lying flat */
+    subscribeEar(cb: (atEar: boolean) => void): () => void;
   };
 
   /** A beat every minute, arriving with the screen off too. */

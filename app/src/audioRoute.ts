@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DeviceEventEmitter } from 'react-native';
 import InCallManager from 'react-native-incall-manager';
-import { Journal, Call } from 'duetto-platform';
+import { Journal, Call, Proximity } from 'duetto-platform';
 import { t } from './i18n';
 
 /**
@@ -343,17 +343,30 @@ export function useAudioRoute(
    * decision - and a choice made by hand in the meantime cancels the
    * way back. Not while a headset carries the sound, and not with the
    * video on unless asked, because then the phone is held to be looked
-   * at. The sensor comes from the call library, which listens to it
-   * from the start; it cannot tell an ear from a pocket, which is why
-   * this is an option.
+   * at. It cannot tell an ear from a pocket, which is why this is an
+   * option. With the earpiece already the output, only the screen goes
+   * off and comes back, as a phone does in a call.
+   *
+   * The sensor is Duetto's own, which does not count a phone lying flat
+   * (see ProximityModule): the call library's, listened to before, took
+   * the POCO on the table for a POCO at the ear, and the sound went to
+   * the earpiece by itself. Its sensor is switched off where the
+   * library is started.
    */
   const earFrom = useRef<AudioRoute | null>(null);
+  const earDark = useRef(false);
   useEffect(() => {
-    if (!enabled) { earFrom.current = null; return; }
-    const sub = DeviceEventEmitter.addListener('Proximity', (data: any) => {
+    if (!enabled) { earFrom.current = null; earDark.current = false; return; }
+    const stop = Proximity.subscribeEar((near) => {
       const a = autoRef.current;
-      if (data?.isNear) {
-        if (!a?.ear || earFrom.current) return;
+      if (near) {
+        if (earFrom.current || earDark.current) return;
+        if (currentRef.current === 'EARPIECE') {
+          earDark.current = true;
+          try { InCallManager.turnScreenOff(); } catch { /* noop */ }
+          return;
+        }
+        if (!a?.ear) return;
         if (a.videoOn && !a.earWithVideo) return;
         if (currentRef.current !== 'SPEAKER_PHONE') return;
         earFrom.current = 'SPEAKER_PHONE';
@@ -370,12 +383,16 @@ export function useAudioRoute(
         applyRoute(back);
         try { InCallManager.turnScreenOn(); } catch { /* noop */ }
         Journal.mark('output:ear:back').catch(() => { /* noop */ });
+      } else if (earDark.current) {
+        earDark.current = false;
+        try { InCallManager.turnScreenOn(); } catch { /* noop */ }
       }
     });
     return () => {
-      sub.remove();
-      if (earFrom.current) {
+      stop();
+      if (earFrom.current || earDark.current) {
         earFrom.current = null;
+        earDark.current = false;
         try { InCallManager.turnScreenOn(); } catch { /* noop */ }
       }
     };

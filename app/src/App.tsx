@@ -4678,6 +4678,10 @@ export default function App() {
       // an hour - that emptied one phone. Off here: the phone's own
       // timeout rules, and only the video keeps the screen awake.
       InCallManager.setKeepScreenOn(false);
+      // And its proximity sensor off: it took a phone lying on the table
+      // for one at the ear, and turned the screen off by itself. Duetto
+      // listens to its own, which knows how the phone lies (audioRoute).
+      InCallManager.stopProximitySensor();
     } catch { /* noop */ }
     // From here on the CPU must not doze: the service holds the wake
     // lock only while one is really in the channel.
