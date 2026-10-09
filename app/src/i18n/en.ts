@@ -118,6 +118,12 @@ export const en = {
     permissions: 'permissions changed',
     phoneClosedIt: 'the phone closed it',
     unknown: 'nobody knows why',
+    updatedDuetto: 'Duetto was being updated',
+    updatedWebview: 'Android was updating WebView, its component for web pages',
+    updatedComponent: 'Android was updating one of its components',
+    closedNow: 'Android closed Duetto {when}: {why}.',
+    wereInChannel: 'You were in the channel{channel}: touch Enter to go back in.',
+    waitingAgain: 'You are waiting again.',
     atTime: 'at {time}',
     // The return first: the shade cuts the sentence at its first
     // words, and "disappeared" next to "in the channel" read as a

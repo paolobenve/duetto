@@ -63,7 +63,7 @@ import { reportDirectly, inviteOnWorkItem } from './gitlab';
 import type { ReportOutcome } from './gitlab';
 import {
   startListening, stopListening, presenceCode, presenceLine, deathStory, myDeathStory, interfaceInCharge,
-  news,
+  news, deathCause,
 } from './presence';
 import { avatarFor, peerAvatar } from './avatar';
 
@@ -3032,8 +3032,10 @@ export default function App() {
       if (!m || !m.when) return;
       // An update of the app is not a death: it is the normal way an
       // app gets replaced, and announcing it would be an alarm about
-      // something wanted.
-      if (/installPackage|PackageUpdate/i.test(m.description || '')) return;
+      // something wanted. Android's own updates are, and with their
+      // reason: see deathCause.
+      const cause = deathCause(m);
+      if (cause === 'updated-self') return;
       // Nor is a permission taken away: Android closes any app it takes
       // one from, and whoever took it knows. Told as a death, it spoke of
       // the battery to somebody who had only switched a permission off.
@@ -3052,11 +3054,11 @@ export default function App() {
       if (Number(told) >= m.when) return;
       // The time of the return is now: the app is starting again at
       // this very moment, and this is the only phone that can know it.
-      deathToTell.current = { when: m.when, cause: m.cause, back: Date.now() };
+      deathToTell.current = { when: m.when, cause, back: Date.now() };
       // And it is said on this phone too: whoever holds it was
       // unreachable all that while without knowing, and is the only
       // one who can tell the phone to stop doing it.
-      setNotice(myDeathStory(m.when, m.cause));
+      setNotice(myDeathStory(m.when, cause));
     } catch { /* if the phone does not know, it does not know */ }
   }, []);
 

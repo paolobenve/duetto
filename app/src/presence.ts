@@ -115,6 +115,9 @@ function deathWhy(cause: string): string {
     'permissions-changed': 'permissions',
     signal: 'phoneClosedIt',
     other: 'phoneClosedIt',
+    'updated-self': 'updatedDuetto',
+    'updated-webview': 'updatedWebview',
+    'updated-other': 'updatedComponent',
     // The causes as the older Duetto said them: they arrive from a phone
     // that has not been updated yet. This half of the table goes away
     // with the next version.
@@ -130,6 +133,26 @@ function deathWhy(cause: string): string {
     segnale: 'phoneClosedIt',
     altro: 'phoneClosedIt',
   }[cause] ?? 'unknown'}`);
+}
+
+/**
+ * The cause of a death, with the updates told apart.
+ *
+ * Android closes an app when something it uses is updated - on 9
+ * October the Play Store updated Android System WebView at 20:22, and
+ * Duetto went with it - and says so only in the description: "stop
+ * com.google.android.webview due to installPackageLI". The cause itself
+ * reads "unknown", and the story said "nobody knows why".
+ */
+export function deathCause(m: { cause: string; description?: string }): string {
+  const up = /stop\s+(\S+)\s+due to installPackage/i.exec(m.description || '');
+  if (up) {
+    if (up[1] === 'com.duetto') return 'updated-self';
+    if (/webview/i.test(up[1])) return 'updated-webview';
+    return 'updated-other';
+  }
+  if (/installPackage|PackageUpdate/i.test(m.description || '')) return 'updated-self';
+  return m.cause;
 }
 
 /** The moment of a death, as this phone would say it aloud. */
@@ -399,6 +422,35 @@ export function startListening(): Promise<boolean> {
   return starting;
 }
 
+/** the last death of ours told at once, by its moment */
+const DEATH_SHOWN_KEY = 'duetto.death-shown';
+
+/**
+ * Why Duetto was closed, said the moment it is back.
+ *
+ * A closing heard as a sound and the app found connecting again, with
+ * no word of why: "would you rather know" - yes. Android says why the
+ * last process ended as soon as the next one starts; started again by
+ * itself a few seconds later, Duetto says it at once, quietly, with a
+ * short sound once: the moment, the reason, and whether one was in the
+ * channel - Enter is on the standing notification. Not for a closing
+ * of one's own making, nor for old news.
+ */
+async function tellOwnDeath(channel: string, wasIn: boolean): Promise<void> {
+  const m = await Journal.lastDeath().catch(() => null);
+  if (!m || !m.when || Date.now() - m.when > 10 * 60_000) return;
+  const shown = Number(await AsyncStorage.getItem(DEATH_SHOWN_KEY).catch(() => '0')) || 0;
+  if (shown >= m.when) return;
+  await AsyncStorage.setItem(DEATH_SHOWN_KEY, String(m.when)).catch(() => { /* noop */ });
+  const cause = deathCause(m);
+  if (['force-stopped', 'closed-by-user', 'self-exit', 'permissions-changed'].includes(cause)) return;
+  Journal.mark(`death:told-here:${cause}`).catch(() => { /* noop */ });
+  const text = `${t('death.closedNow', { when: deathWhen(m.when), why: deathWhy(cause) })} ${
+    wasIn ? t('death.wereInChannel', { channel: inTheChannel(channel) }) : t('death.waitingAgain')}`;
+  Foreground.note('', text).catch(() => { /* noop */ });
+  Alarm.play('cue_leave', true, 0, 0.5).catch(() => { /* noop */ });
+}
+
 async function listenNow(): Promise<boolean> {
   if (signaling) return true;
   if (uiInCharge) {
@@ -480,6 +532,7 @@ async function listenNow(): Promise<boolean> {
     if (was && was.live === true) {
       Journal.mark('were-in-channel').catch(() => { /* noop */ });
     }
+    tellOwnDeath(channel, !!(was && was.live === true)).catch(() => { /* noop */ });
   } catch { /* an unreadable drawer says nothing */ }
 
   /**

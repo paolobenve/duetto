@@ -106,6 +106,12 @@ export const it: Dictionary = {
     permissions: 'sono cambiati i permessi',
     phoneClosedIt: 'il telefono l’ha chiusa',
     unknown: 'non si sa perché',
+    updatedDuetto: 'si stava aggiornando Duetto',
+    updatedWebview: 'Android stava aggiornando WebView, il suo componente per le pagine web',
+    updatedComponent: 'Android stava aggiornando un suo componente',
+    closedNow: 'Android ha chiuso Duetto {when}: {why}.',
+    wereInChannel: 'Eri nel canale{channel}: tocca Entra per rientrare.',
+    waitingAgain: 'Sei di nuovo in attesa.',
     atTime: 'alle {time}',
     // Il ritorno per primo: la tendina tronca la frase alle prime
     // parole, e «è sparito» accanto a «nel canale» leggeva come una
