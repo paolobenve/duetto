@@ -152,7 +152,29 @@ class JournalModule(private val ctx: ReactApplicationContext) :
         m.putString("cause", Journal.cause(u.reason))
         m.putString("was", Journal.importance(u.importance))
         m.putString("description", u.description ?: "")
+        m.putString("updatedName", updatedName(u.description))
         promise.resolve(m)
+    }
+
+    /**
+     * The name of whatever Android was updating when it closed the app.
+     *
+     * The description only says the package - "stop com.google.android.gms
+     * due to installPackageLI" - and a package means nothing to whoever
+     * reads it. The name is the one the phone shows under the icon, when
+     * Android lets this app see that package; otherwise nothing, and the
+     * app makes do with what it knows.
+     */
+    private fun updatedName(description: String?): String {
+        val pkg = Regex("""stop\s+(\S+)\s+due to installPackage""", RegexOption.IGNORE_CASE)
+            .find(description ?: "")?.groupValues?.get(1) ?: return ""
+        return try {
+            val pm = ctx.packageManager
+            val name = pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString().trim()
+            if (name == pkg) "" else name
+        } catch (e: Exception) {
+            ""
+        }
     }
 
     /** Where the files are, to tell whoever goes and reads them. */

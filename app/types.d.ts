@@ -203,6 +203,8 @@ declare module 'duetto-platform' {
     /** how the app died last time; null if the phone does not know */
     lastDeath(): Promise<{
       when: number; cause: string; was: string; description: string;
+      /** the name of what Android was updating, if it lets the app see it */
+      updatedName?: string;
     } | null>;
   };
 

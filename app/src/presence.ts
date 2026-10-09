@@ -104,6 +104,9 @@ const named = (name: string) => isRealName(name);
  */
 /** The cause of a death, as a sentence: the same words on both phones. */
 function deathWhy(cause: string): string {
+  if (cause.startsWith('updated:')) {
+    return t('death.updatedNamed', { name: cause.slice('updated:'.length) });
+  }
   return t(`death.${{
     'out-of-memory': 'outOfMemory',
     crash: 'crashed',
@@ -117,7 +120,6 @@ function deathWhy(cause: string): string {
     other: 'phoneClosedIt',
     'updated-self': 'updatedDuetto',
     'updated-webview': 'updatedWebview',
-    'updated-other': 'updatedComponent',
     // The causes as the older Duetto said them: they arrive from a phone
     // that has not been updated yet. This half of the table goes away
     // with the next version.
@@ -135,6 +137,16 @@ function deathWhy(cause: string): string {
   }[cause] ?? 'unknown'}`);
 }
 
+/** The parts of Android that get updated most, by their package. */
+const KNOWN_PARTS: Record<string, string> = {
+  'com.google.android.gms': 'Google Play Services',
+  'com.android.vending': 'Google Play Store',
+  'com.android.chrome': 'Chrome',
+  'com.google.android.tts': 'Speech Services by Google',
+  'com.google.android.inputmethod.latin': 'Gboard',
+  'com.google.android.googlequicksearchbox': 'Google',
+};
+
 /**
  * The cause of a death, with the updates told apart.
  *
@@ -144,12 +156,23 @@ function deathWhy(cause: string): string {
  * com.google.android.webview due to installPackageLI". The cause itself
  * reads "unknown", and the story said "nobody knows why".
  */
-export function deathCause(m: { cause: string; description?: string }): string {
+export function deathCause(
+  m: { cause: string; description?: string; updatedName?: string },
+): string {
   const up = /stop\s+(\S+)\s+due to installPackage/i.exec(m.description || '');
   if (up) {
-    if (up[1] === 'com.duetto') return 'updated-self';
-    if (/webview/i.test(up[1])) return 'updated-webview';
-    return 'updated-other';
+    const pkg = up[1];
+    if (pkg === 'com.duetto') return 'updated-self';
+    // Trichrome is the code WebView and Chrome share: updating it is
+    // updating WebView.
+    if (/webview|trichrome/i.test(pkg)) return 'updated-webview';
+    // Named, so that "one of its components" says which: by the table
+    // first, since Android often keeps other packages out of sight, then
+    // by the name the phone gives it, then by the package itself. The
+    // name travels inside the cause, and the other phone says it as it
+    // is; commas and line breaks would break the journal's rows.
+    const name = KNOWN_PARTS[pkg] || m.updatedName || pkg;
+    return `updated:${name.replace(/[,\r\n]+/g, ' ').trim()}`;
   }
   if (/installPackage|PackageUpdate/i.test(m.description || '')) return 'updated-self';
   return m.cause;

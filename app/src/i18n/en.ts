@@ -120,7 +120,7 @@ export const en = {
     unknown: 'nobody knows why',
     updatedDuetto: 'Duetto was being updated',
     updatedWebview: 'Android was updating WebView, its component for web pages',
-    updatedComponent: 'Android was updating one of its components',
+    updatedNamed: 'Android was updating {name}',
     closedNow: 'Android closed Duetto {when}: {why}.',
     wereInChannel: 'You were in the channel{channel}: touch Enter to go back in.',
     waitingAgain: 'You are waiting again.',

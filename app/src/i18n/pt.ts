@@ -112,7 +112,7 @@ export const pt: Dictionary = {
     unknown: 'não se sabe por quê',
     updatedDuetto: 'o Duetto estava sendo atualizado',
     updatedWebview: 'o Android estava atualizando o WebView, seu componente para páginas web',
-    updatedComponent: 'o Android estava atualizando um de seus componentes',
+    updatedNamed: 'o Android estava atualizando {name}',
     closedNow: 'O Android fechou o Duetto {when}: {why}.',
     wereInChannel: 'Você estava no canal{channel}: toque em Entrar para voltar.',
     waitingAgain: 'Você está à espera de novo.',

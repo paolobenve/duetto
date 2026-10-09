@@ -108,7 +108,7 @@ export const it: Dictionary = {
     unknown: 'non si sa perché',
     updatedDuetto: 'si stava aggiornando Duetto',
     updatedWebview: 'Android stava aggiornando WebView, il suo componente per le pagine web',
-    updatedComponent: 'Android stava aggiornando un suo componente',
+    updatedNamed: 'Android stava aggiornando {name}',
     closedNow: 'Android ha chiuso Duetto {when}: {why}.',
     wereInChannel: 'Eri nel canale{channel}: tocca Entra per rientrare.',
     waitingAgain: 'Sei di nuovo in attesa.',
