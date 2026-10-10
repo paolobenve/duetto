@@ -73,6 +73,8 @@ export type ChannelEvents = {
     battery?: { percent: number; charging: boolean } | null;
     /** the network carrying them, when they say: 'wifi', 'mobile', ... */
     net?: string | null;
+    /** putting back how things were on coming in: no cues for it */
+    restoring?: boolean;
   }) => void;
   /**
    * Whether we are receiving a video track.
@@ -1259,6 +1261,7 @@ export class ChannelSession {
           ? { percent: msg.batteryPct, charging: msg.charging === true }
           : null,
         net: typeof msg.net === 'string' ? msg.net : null,
+        restoring: msg.restoring === true,
       });
       this.setPeerWatching(msg.watching !== false);
       // Not heard: listening off or at zero, or in another call.
@@ -2991,7 +2994,22 @@ export class ChannelSession {
       batteryPct: this.battery?.percent,
       charging: this.battery?.charging,
       net: this.network ?? undefined,
+      restoring: this.restoring || undefined,
     });
+  }
+
+  /**
+   * Putting back how things were, on coming into the channel: the video,
+   * the microphone, the listening, as they were left. Said in the state,
+   * so that the other side does not take it for choices made now - it
+   * played "video on", "microphone on" one after another, each cutting
+   * the one before, the entering sound first of all.
+   */
+  private restoring = false;
+  setRestoring(on: boolean) {
+    if (on === this.restoring) return;
+    this.restoring = on;
+    this.broadcastState();
   }
 
   /** Changes the declared audio output and lets the other side know. */

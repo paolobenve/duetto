@@ -80,7 +80,9 @@ export type SignalMessage =
       busy?: boolean;
       /** the battery, for the other side's diagnostics */
       batteryPct?: number; charging?: boolean; volSys?: number | null; gain?: number;
-      net?: string }
+      net?: string;
+      /** putting back how things were on coming in: not choices of the moment */
+      restoring?: boolean }
   // "I did not leave: the phone closed the window on me."
   //
   // Sent by the headless presence when it takes the place of an app

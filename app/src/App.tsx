@@ -4607,7 +4607,11 @@ export default function App() {
           // The first state after meeting says how things stand, not
           // what changed: no cue for it, or every meeting would ring
           // two or three times.
-          const heard = peerStateHeard.current;
+          // And what they are putting back on coming in is how things
+          // were, not a choice of the moment: no cue for it either -
+          // it rang "video on", "microphone on", each cutting the one
+          // before, the sound of their entering first of all.
+          const heard = peerStateHeard.current && st.restoring !== true;
           peerStateHeard.current = true;
           setPeerSeen(true);
           // Only the changes: the state arrives even when nothing has
@@ -4813,6 +4817,9 @@ export default function App() {
     enteringBySwitch.current = false;
     // The listening: as it was left, however long ago - like the
     // microphone. It used to come back on at every entry.
+    // Putting back, from here to the camera: said in the state, so
+    // that the other side does not ring for it (see setRestoring).
+    if (before) sessionRef.current?.setRestoring(true);
     const hushedBefore = before?.output === false;
     if (hushedBefore) Journal.mark('resume-output-hushed').catch(() => { /* noop */ });
     setOutputMuted(hushedBefore);
@@ -4851,7 +4858,13 @@ export default function App() {
       if (before.video && (before.live || still < RESUME_VIDEO_MS)) {
         Journal.mark(`resume-video:after ${Math.round(still / 1000)}s`)
           .catch(() => { /* noop */ });
-        setTimeout(() => { turnVideoBackOnRef.current?.(); }, 300);
+        setTimeout(() => {
+          Promise.resolve(turnVideoBackOnRef.current?.())
+            .catch(() => { /* noop */ })
+            .finally(() => sessionRef.current?.setRestoring(false));
+        }, 300);
+      } else {
+        sessionRef.current?.setRestoring(false);
       }
       // The drawer used to be emptied here, and filled again only at
       // the next touch of a button: two updates in a row with nothing
@@ -4914,7 +4927,7 @@ export default function App() {
    * It lives in a reference because whoever calls it - the entry into
    * the channel - is born before the function that turns the video on.
    */
-  const turnVideoBackOnRef = useRef<(() => void) | null>(null);
+  const turnVideoBackOnRef = useRef<(() => Promise<void>) | null>(null);
   /** Writes down how the channel stands: see noteHowItIs. */
   const noteHowItIsRef = useRef<(() => void) | null>(null);
 
@@ -5287,7 +5300,8 @@ export default function App() {
     return () => sub.remove();
   }, [screen]);
 
-  const onToggleVideo = useCallback(async () => {
+  /** `quiet`: putting the video back as it was, on coming in - no cue. */
+  const onToggleVideo = useCallback(async (quiet = false) => {
     const s = sessionRef.current;
     // Out of the channel: no camera to open, but a choice to make for
     // when one goes in - the button shows it, and the entry obeys it.
@@ -5323,7 +5337,7 @@ export default function App() {
       // changed with the video off: here we only align the icon.
       setFrontCamera(s.isFrontCamera());
       noteHowItIsRef.current?.();
-      cue('cue_video_on');
+      if (!quiet) cue('cue_video_on');
     } catch (e: any) {
       Foreground.setCameraActive(false).catch(() => {});
       Alert.alert(t('errors.cameraError'), String(e?.message ?? e));
@@ -5337,9 +5351,9 @@ export default function App() {
    * before this function and could not name it.
    */
   useEffect(() => {
-    turnVideoBackOnRef.current = () => {
+    turnVideoBackOnRef.current = async () => {
       if (sessionRef.current?.isVideoEnabled()) return;
-      onToggleVideo();
+      await onToggleVideo(true);
     };
   }, [onToggleVideo]);
 
@@ -6191,7 +6205,8 @@ export default function App() {
           Journal.mark(`audio:${on ? 'on' : 'off'}`).catch(() => {});
           cue(on ? 'cue_audio_on' : 'cue_audio_off');
         }}
-        onToggleVideo={onToggleVideo}
+        // Never with an argument: one would be taken for `quiet`.
+        onToggleVideo={() => { onToggleVideo(); }}
         onSwitchCamera={() => {
           const s = sessionRef.current;
           if (!s || !inChannelRef.current) {
