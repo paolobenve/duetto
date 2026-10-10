@@ -2710,6 +2710,42 @@ export class ChannelSession {
   }
 
   /**
+   * VP9 switched on or off from the settings, now.
+   *
+   * The session read the choice once, when it was born, and only the
+   * side that declares the video channel used it, at its first
+   * negotiation: switched later it did nothing until the session was
+   * made anew - and the switch was not even saved. Now the codec order
+   * is put on the video channel at once, on either side, and one
+   * renegotiation applies it: a moment of still picture, as when the
+   * camera turns round. Without a channel yet, the next negotiation
+   * takes it.
+   */
+  setVideoCodec(codec: DuoConfig['videoCodec']) {
+    if (this.cfg.videoCodec === codec) return;
+    this.cfg = { ...this.cfg, videoCodec: codec };
+    const pc: any = this.pc;
+    const sender = this.liveVideoSender();
+    if (!pc || !sender) return;
+    let tr: any = null;
+    try { tr = pc.getTransceivers?.().find((t: any) => t.sender === sender) ?? null; } catch { /* noop */ }
+    if (!tr || typeof tr.setCodecPreferences !== 'function') return;
+    try {
+      if (codec === 'vp9' && this.vp9Usable()) this.preferVp9(tr);
+      else tr.setCodecPreferences([]);
+    } catch (e) {
+      log('codec order not changed:', String(e));
+      return;
+    }
+    Journal.mark(`video-codec:${codec}`).catch(() => { /* noop */ });
+    if (this.polite) {
+      this.signaling.sendSignal({ kind: 'renegotiate', offer: true, why: 'video-codec' });
+    } else {
+      this.negotiate().catch(() => { /* noop */ });
+    }
+  }
+
+  /**
    * Puts VP9 at the head of the codec list, if we can and want to.
    *
    * It has to be done on the transceiver BEFORE negotiating: afterwards

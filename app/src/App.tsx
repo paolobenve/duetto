@@ -5914,6 +5914,7 @@ export default function App() {
             // microphone.
             if ('richerAudio' in patch) applyAudio(next.richerAudio, true);
             if ('shortPackets' in patch) applyShortPackets(next.shortPackets, true, true);
+            if ('videoCodec' in patch) sessionRef.current?.setVideoCodec(next.videoCodec);
             return next;
           })}
           vp9Here={localVp9}

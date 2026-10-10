@@ -979,10 +979,13 @@ export default function SettingsScreen({
         <TouchableOpacity
           disabled={!vp9Available}
           style={[styles.switchRow, !vp9Available && styles.choiceOff]}
-          onPress={() => setCfg({
-            ...cfg,
-            videoCodec: cfg.videoCodec === 'vp9' ? 'auto' : 'vp9',
-          })}>
+          onPress={() => {
+            // Saved and applied now: it used to change only this
+            // screen's copy, and went with it.
+            const videoCodec = cfg.videoCodec === 'vp9' ? 'auto' as const : 'vp9' as const;
+            setCfg({ ...cfg, videoCodec });
+            onLive?.({ videoCodec });
+          }}>
           <View style={styles.choiceText}>
             <Text style={[styles.choiceLabel, !vp9Available && styles.textOff]}>
               {t('settings.vp9Codec')}
