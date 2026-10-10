@@ -9,7 +9,7 @@
  */
 import { AppState } from 'react-native';
 import { Foreground, Journal, Alarm } from 'duetto-platform';
-import { DuoConfig, PairInfo, peerShown, alertSoundFor } from './config';
+import { DuoConfig, PairInfo, peerShown, alertSoundFor, myNameOn } from './config';
 import { Signaling } from './signaling';
 import { news } from './presence';
 import { alarmLabel } from './alarms';
@@ -36,6 +36,11 @@ const log = logger('[duetto-standby]');
  * calls refreshStandby, the same connections are kept, never two.
  */
 const standing = new Map<string, Signaling>();
+/**
+ * The name each waiting connection said on opening: the other side
+ * hears it on joining, so a new one means opening again.
+ */
+const standingName = new Map<string, string>();
 
 /** The interface's ear: a call or a sound from a connection not in use. */
 type CallHeard = (pairId: string, text: string) => void;
@@ -105,10 +110,14 @@ export async function refreshStandby(cfg: DuoConfig | null): Promise<void> {
   const available = await Foreground.isAvailable().catch(() => true);
   const want = cfg && available ? wanted(cfg) : new Map<string, PairInfo>();
   for (const [id, sig] of standing) {
-    if (want.has(id)) continue;
+    const p = want.get(id);
+    // My name changed on it: the other side learns it on joining.
+    const renamed = !!p && myNameOn(cfg!, p) !== standingName.get(id);
+    if (p && !renamed) continue;
     sig.close(false);
     standing.delete(id);
-    Journal.mark(`standby:close:${id.slice(0, 8)}`).catch(() => { /* noop */ });
+    standingName.delete(id);
+    Journal.mark(`standby:close:${id.slice(0, 8)}${renamed ? ':renamed' : ''}`).catch(() => { /* noop */ });
   }
   for (const [id, p] of want) {
     if (!standing.has(id)) open(cfg!, p);
@@ -118,6 +127,7 @@ export async function refreshStandby(cfg: DuoConfig | null): Promise<void> {
 export function stopStandby() {
   for (const sig of standing.values()) sig.close(false);
   standing.clear();
+  standingName.clear();
 }
 
 /**
@@ -140,7 +150,7 @@ function open(cfg: DuoConfig, pair: PairInfo) {
       serverUrl: (pair.serverUrl || cfg.serverUrl).trim(),
       serverKey: pair.serverKey ?? cfg.serverKey,
       room: pair.id,
-      displayName: pair.settings?.displayName || cfg.displayName || '',
+      displayName: myNameOn(cfg, pair),
       key: pair.key,
       side: pair.side,
       mode: 'listening',
@@ -149,7 +159,7 @@ function open(cfg: DuoConfig, pair: PairInfo) {
       // Another connection of ours took the seat: the interface, now
       // that this pair is the one in use. It is its seat now.
       onReplaced: () => {
-        if (standing.get(pair.id) === sig) standing.delete(pair.id);
+        if (standing.get(pair.id) === sig) { standing.delete(pair.id); standingName.delete(pair.id); }
         sig.close(false);
       },
       // The hello goes from here too: the other side of a connection
@@ -217,5 +227,6 @@ function open(cfg: DuoConfig, pair: PairInfo) {
     },
   );
   standing.set(pair.id, sig);
+  standingName.set(pair.id, myNameOn(cfg, pair));
   sig.connect();
 }

@@ -770,6 +770,30 @@ export function peerShown(p: PairInfo | null | undefined, live?: string): string
   return real(live) ? live! : real(p.peerName) ? p.peerName : '';
 }
 
+/**
+ * The name I go by on one connection: what my phone says to theirs.
+ *
+ * It belongs to the connection - one can be "Mum" with somebody and
+ * "Anna" with somebody else - so it lives in its settings. For the one
+ * in use it is the name in use, and the save puts it in the
+ * connection; for the others, in their settings straight away, born
+ * from the ones in use if they have none yet, as a new pair is.
+ */
+export function nameMyself(cfg: DuoConfig, id: string, name: string): DuoConfig {
+  const clean = name.trim().slice(0, 32);
+  if (cfg.pair?.id === id) return { ...cfg, displayName: clean };
+  const touch = (p: PairInfo) => (p.id === id
+    ? { ...p, settings: { ...(p.settings ?? settingsInUse(cfg)), displayName: clean } }
+    : p);
+  return { ...cfg, pairs: cfg.pairs.map(touch) };
+}
+
+/** The name I go by on one connection, as it is said to the other side. */
+export function myNameOn(cfg: DuoConfig, p: PairInfo): string {
+  if (cfg.pair?.id === p.id) return cfg.displayName || '';
+  return p.settings ? p.settings.displayName || '' : cfg.displayName || '';
+}
+
 /** The choice of the other person's name, for one connection. */
 export function namePeer(
   cfg: DuoConfig, id: string, use: 'none' | 'theirs' | 'mine', alias: string,

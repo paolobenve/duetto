@@ -26,7 +26,7 @@ import {
   DuoConfig, PairInfo, ServerRole, loadConfig, saveConfig,
   isServerConfigured, isPaired, displayServer, opensHere, VIDEO_PROFILES,
   addPair, switchToPair, forgetPair, markPairBroken, rememberPeerName,
-  alertSoundFor, alignPairServer, renamePair, pairFileKey, pairName, peerShown, namePeer,
+  alertSoundFor, alignPairServer, renamePair, pairFileKey, pairName, peerShown, namePeer, nameMyself,
   CUE_GAIN,
   storeSettingsInPair,
 } from './config';
@@ -5521,17 +5521,22 @@ export default function App() {
   }, [previousPair, onSwitchPair]);
 
   /**
-   * The name I give a connection myself.
+   * The names of a connection, from its pencil.
    *
-   * It travels nowhere: the other person does not see it and will never
-   * know it. It is needed here, where the connections stand in a row
-   * and without a name they all look alike.
+   * The one I give it travels nowhere: the other person does not see it
+   * and will never know it. It is needed here, where the connections
+   * stand in a row and without a name they all look alike. So does the
+   * one the other goes by here. The one I go by with them does travel:
+   * on the connection in use the change of name opens the connection
+   * again (see connKey), and the other side hears it on our joining; on
+   * a waiting one, standby.ts opens it again.
    */
   const onRenamePair = useCallback(async (
     id: string, name: string, peerUse: 'none' | 'theirs' | 'mine', alias: string,
+    myName: string,
   ) => {
     if (!cfg) return;
-    const next = namePeer(renamePair(cfg, id, name), id, peerUse, alias);
+    const next = nameMyself(namePeer(renamePair(cfg, id, name), id, peerUse, alias), id, myName);
     setCfg(saveCfg(next));
   }, [cfg]);
 

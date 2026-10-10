@@ -28,7 +28,7 @@ import QrCode from './QrCode';
 import type { LanguageChoice } from './i18n';
 import {
   isPaired, opensHere, displayServer, VIDEO_PROFILES,
-  pairName, peerShown, CUE_GAIN,
+  pairName, peerShown, CUE_GAIN, myNameOn,
 } from './config';
 import { peerAvatar } from './avatar';
 import { isRealName } from './presence';
@@ -133,9 +133,13 @@ type Props = {
   onForgetPair: (id: string) => void;
   /** brings a connection already set up into use */
   onSwitchPair: (id: string) => void;
-  /** the name I give a connection myself; empty = back to theirs */
+  /**
+   * The names of a connection: the one I give it, the one the other
+   * person goes by here, and the one I go by with them.
+   */
   onRenamePair: (
     id: string, name: string, peerUse: 'none' | 'theirs' | 'mine', peerAlias: string,
+    myName: string,
   ) => void;
   /**
    * Adds a pairing without touching the ones already there: it is for a
@@ -284,7 +288,6 @@ export default function SettingsScreen({
       richerAudio: initial.richerAudio,
     }));
   }, [initial.diagnostics, initial.videoQuality, initial.shortPackets, initial.richerAudio]);
-  const [advanced, setAdvanced] = useState(false);
   /**
    * Which tab is open. Once paired, the one touched most often: how the
    * app behaves. Before that, there is nothing to set but the server.
@@ -331,7 +334,6 @@ export default function SettingsScreen({
     pageScroll.current[k]?.scrollTo({ y, animated: false });
     if (contentHeight - viewHeight.current >= y) restoring.current[k] = null;
   };
-  const set = (k: keyof DuoConfig) => (v: string) => setCfg({ ...cfg, [k]: v });
 
   const paired = isPaired(cfg);
 
@@ -425,14 +427,21 @@ export default function SettingsScreen({
   /** which name the other goes by, and the one written for them */
   const [peerUse, setPeerUse] = useState<'none' | 'theirs' | 'mine'>('none');
   const [peerAlias, setPeerAlias] = useState('');
+  /**
+   * The name I go by on this connection. It was a field of its own,
+   * under "Other settings", with nothing that saved it once paired:
+   * typed, it went with the screen, and the other side never saw it.
+   */
+  const [myName, setMyName] = useState('');
   const openNaming = (p: PairInfo) => {
     setWrittenName(p.label || '');
     setPeerUse(p.peerNameUse ?? 'theirs');
     setPeerAlias(p.peerAlias || '');
+    setMyName(myNameOn(initial, p));
     setNaming(p);
   };
   const closeNaming = (save: boolean) => {
-    if (save && naming) onRenamePair(naming.id, writtenName, peerUse, peerAlias);
+    if (save && naming) onRenamePair(naming.id, writtenName, peerUse, peerAlias, myName);
     setNaming(null);
   };
 
@@ -1324,24 +1333,6 @@ export default function SettingsScreen({
           ))}
         </View>
 
-        <TouchableOpacity style={styles.toggle} onPress={() => setAdvanced(!advanced)}>
-          <Text style={styles.toggleText}>
-            {advanced ? '▾' : '▸'}  {t('settings.otherSettings')}
-          </Text>
-        </TouchableOpacity>
-
-        {advanced ? (
-          <View style={styles.advanced}>
-            <Text style={styles.sectionHint}>{t('settings.nothingRequired')}</Text>
-            <Field
-              label={t('settings.yourName')}
-              value={cfg.displayName}
-              onChange={set('displayName')}
-              placeholder={t('settings.yourNamePlaceholder')}
-              hint={t('settings.yourNameHint')}
-            />
-          </View>
-        ) : null}
 
 
         <Text style={styles.section}>{t('settings.stayReachable')}</Text>
@@ -1701,7 +1692,10 @@ export default function SettingsScreen({
         <Pressable style={styles.sheetBack} onPress={() => closeNaming(false)}>
           {/* A touch inside the box must not close it: one is
               writing. */}
-          <Pressable style={styles.sheet} onPress={() => { /* hold it */ }}>
+          <Pressable style={[styles.sheet, styles.sheetTall]} onPress={() => { /* hold it */ }}>
+            {/* Three names and a keyboard: on a small screen they do
+                not all fit, and the buttons must stay reachable. */}
+            <ScrollView keyboardShouldPersistTaps="handled">
             <Text style={styles.sheetTitle}>{t('settings.connectionName')}</Text>
             <TextInput
               style={styles.input}
@@ -1714,6 +1708,21 @@ export default function SettingsScreen({
               onSubmitEditing={() => closeNaming(true)}
             />
             <Text style={styles.hint}>{t('settings.connectionNameHint')}</Text>
+
+            {/* The name I go by with them: it travels to their phone,
+                which shows it if it has been told to. */}
+            <Text style={styles.sheetTitle}>{t('settings.yourName')}</Text>
+            <TextInput
+              style={styles.input}
+              value={myName}
+              onChangeText={setMyName}
+              placeholder={t('settings.yourNamePlaceholder')}
+              placeholderTextColor="#5b6472"
+              maxLength={32}
+              returnKeyType="done"
+              onSubmitEditing={() => closeNaming(true)}
+            />
+            <Text style={styles.hint}>{t('settings.yourNameHint')}</Text>
 
             {/* The other person's name: theirs is used only when it is
                 allowed here, and a name of one's own can take its place. */}
@@ -1775,6 +1784,7 @@ export default function SettingsScreen({
                 <Text style={styles.sheetOk}>{t('settings.save')}</Text>
               </TouchableOpacity>
             </View>
+            </ScrollView>
           </Pressable>
         </Pressable>
       </Modal>
@@ -2087,6 +2097,7 @@ const styles = StyleSheet.create({
     width: '100%', maxWidth: 420, backgroundColor: '#151a23', borderRadius: 16,
     padding: 20, borderWidth: 1, borderColor: '#252c38',
   },
+  sheetTall: { maxHeight: '92%' },
   // The rows of a sheet, as in the channel: a label, a note under it,
   // and the one in use in colour.
   sheetRow: {
@@ -2138,9 +2149,6 @@ const styles = StyleSheet.create({
   copyButtonText: { color: '#2f7cf6', fontSize: 15, fontWeight: '600' },
   rowButtonText: { color: '#e6ebf1', fontSize: 16, fontWeight: '600' },
   rowButtonArrow: { color: '#6b7686', fontSize: 22, lineHeight: 24 },
-  toggle: { marginTop: 20, paddingVertical: 10 },
-  toggleText: { color: '#7cc4ff', fontSize: 15, fontWeight: '600' },
-  advanced: { borderLeftWidth: 2, borderLeftColor: '#252c38', paddingLeft: 14 },
   button: {
     backgroundColor: '#2f7cf6', borderRadius: 12, paddingVertical: 16,
     alignItems: 'center', marginTop: 30,
