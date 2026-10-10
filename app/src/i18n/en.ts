@@ -187,12 +187,10 @@ export const en = {
 
   buttons: {
     mic: 'Mic',
-    micOff: 'Muted',
     output: 'Listen',
     outputOff: 'Silent',
     video: 'Video',
     audio: 'Audio',
-    muted: 'Muted',
     flip: 'Flip',
     call: 'Call',
     called: 'Called',
@@ -252,7 +250,6 @@ export const en = {
     tapToDismiss: 'tap to dismiss',
     leaving: 'Leaving, one moment…',
     peerVoice: 'Their voice',
-    muted: 'muted',
     you: 'You',
     notYou: 'Not you',
     hearsYou: 'hears you {pct}',
@@ -299,10 +296,8 @@ export const en = {
     backWhenReopened: 'They will be reachable again when they reopen the app.',
     untilBackNoCall: 'Until they are back, the call cannot reach them.',
     peerInChannel: '{who} is in the channel',
-    audioLinkedNoVideo: 'Audio connected · video off',
     onPhoneCall: 'A call on the phone: Duetto is silent until it ends.',
     peerOnCall: '{who} is in another call',
-    micMuted: 'Their microphone is muted',
     directFailed: 'The direct link failed.\nWithout a TURN server some networks prevent it.',
     // Not "the direct link": while the link is being rebuilt nobody
     // knows yet which road it will find, and it is often the relay's.

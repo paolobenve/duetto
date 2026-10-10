@@ -130,13 +130,14 @@ const OUTPUT_ICON: Record<
 
 /**
  * A level said in words: how loud it sounds against the phone's own
- * top, "muted" at zero. The same number the scale shows - ten decibels
- * more sound twice as loud - so that the pills, the audio menu and the
- * scale do not each speak their own tongue.
+ * top. The same number the scale shows - ten decibels more sound twice
+ * as loud - so that the pills, the audio menu and the scale do not each
+ * speak their own tongue. Nothing at zero: the crossed-out mark beside
+ * it says it, and "muted" next to it said it twice.
  */
 function dbText(level?: number): string {
   if (level == null) return '';
-  if (level <= 0) return t('channel.muted');
+  if (level <= 0) return '';
   return `${Math.round(loudness(20 * Math.log10(level)))}%`;
 }
 
@@ -237,7 +238,10 @@ function VolumeScale(p: {
       setDragging(null);
     }
   }, [p.level]);
-  const figure = p.muted ? t('channel.muted') : `${Math.round(loudness(shown))}`;
+  // Hushed, no figure - neither "muted" nor a grey one: the output's
+  // button is crossed out. A space keeps the line, so that the scale
+  // does not move under the finger.
+  const figure = p.muted ? '\u00a0' : `${Math.round(loudness(shown))}`;
   const phone = up(p.phone);
   const level = up(shown);
 
@@ -1678,7 +1682,9 @@ export default function ChannelScreen(props: Props) {
         <CircleButton
           covered={covered}
           name={audioOn ? 'mic' : 'mic-off'}
-          label={audioOn ? t('buttons.mic') : t('buttons.micOff')}
+          // "Mic" on and off: the crossed-out drawing says which, as
+          // the video's does - "Muted" under it said it twice.
+          label={t('buttons.mic')}
           icon={<MicrophoneIcon off={!audioOn} {...(audioOn ? ON_LIGHT : {})} />}
           active={audioOn}
           onPress={press(onToggleAudio)}
@@ -2335,15 +2341,19 @@ function PresenceCard(props: {
           but not where their sound comes out: the mark adds it without
           making the line longer. */}
       {linked ? <View style={styles.cardMark}>{peerMark}</View> : null}
-      <Text style={styles.cardSub}>
-        {linked
-          ? peerBusy
+      {/* Linked, nothing to say: "Audio linked · video not active" told
+          what the marks above and the missing picture already say, and
+          "Has the microphone muted" what the crossed-out microphone
+          does. Left: their other call, and the link not yet there. */}
+      {linked && !peerBusy ? null : (
+        <Text style={styles.cardSub}>
+          {linked
             ? t('channel.peerOnCall', { who: peerName || t('channel.theOther') })
-            : (peerAudio ? t('channel.audioLinkedNoVideo') : t('channel.micMuted'))
-          : connectionState === 'failed'
-            ? t('channel.directFailed')
-            : t('channel.establishing')}
-      </Text>
+            : connectionState === 'failed'
+              ? t('channel.directFailed')
+              : t('channel.establishing')}
+        </Text>
+      )}
       {/* Our own call: said here, where the silence is felt. */}
       {onCall ? <Text style={styles.cardOnCall}>{t('channel.onPhoneCall')}</Text> : null}
       {linked && props.ownMarks ? <View style={styles.cardOwn}>{props.ownMarks}</View> : null}
