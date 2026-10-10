@@ -234,6 +234,12 @@ export async function refreshStandby(cfg: DuoConfig | null): Promise<void> {
   }
   const available = await Foreground.isAvailable().catch(() => true);
   const want = cfg && available ? wanted(cfg) : new Map<string, PairInfo>();
+  /**
+   * Unavailable by choice: the waiting connections say goodbye, as the
+   * one in use does. Closed without a word, the other side read a drop -
+   * "not reachable" - where the phone in use said "made unavailable".
+   */
+  const leaving = !cfg || !available;
   for (const [id, sig] of standing) {
     const p = want.get(id);
     if (p) {
@@ -246,11 +252,11 @@ export async function refreshStandby(cfg: DuoConfig | null): Promise<void> {
       }
       continue;
     }
-    sig.close(false);
+    sig.close(leaving);
     standing.delete(id);
     standingName.delete(id);
     forgetWatch(id);
-    Journal.mark(`standby:close:${id.slice(0, 8)}`).catch(() => { /* noop */ });
+    Journal.mark(`standby:close:${id.slice(0, 8)}${leaving ? ':bye' : ''}`).catch(() => { /* noop */ });
   }
   for (const [id, p] of want) {
     if (!standing.has(id)) open(cfg!, p);
