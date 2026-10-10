@@ -11,6 +11,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated,
   useWindowDimensions, Modal, Pressable, PanResponder, LayoutAnimation, UIManager, Platform,
+  Linking,
 } from 'react-native';
 import type { GestureResponderEvent } from 'react-native';
 import { MediaStream } from 'react-native-webrtc';
@@ -178,6 +179,18 @@ const BOTTOM_BAND = 0.18;
 /** What the volume scale takes from the right edge, with air on both sides. */
 const SCALE_ROOM = 8 + 72 + 8;
 
+/**
+ * Android's volumes - call, media, ring, alarm - in its own panel, the
+ * one that rises from the bottom without leaving the app; where there
+ * is none (before Android 10, or a maker that dropped it), the page of
+ * sounds in its settings.
+ */
+function openVolumes() {
+  Linking.sendIntent('android.settings.panel.action.VOLUME')
+    .catch(() => Linking.sendIntent('android.settings.SOUND_SETTINGS'))
+    .catch(() => { /* noop */ });
+}
+
 function VolumeScale(p: {
   level: number; phone: number; ceiling: number; min: number; max: number;
   pct: number; muted: boolean;
@@ -189,6 +202,8 @@ function VolumeScale(p: {
   knobFloor?: number;
   route: AudioRoute;
   onPick?: (db: number, done: boolean) => void;
+  /** a long press on the figure: Android's volumes, all of them */
+  onFigureLong?: () => void;
 }) {
   const [h, setH] = useState(0);
   /**
@@ -304,12 +319,14 @@ function VolumeScale(p: {
           change size under the finger that hushes it. The "%" sits
           beside the figure, smaller: on a line of its own it read as a
           number broken in two. */}
-      <Text
-        style={[styles.scaleFigure, styles.scaleFigureLine, p.muted ? styles.scaleFigureMuted : null]}
-        numberOfLines={1}>
-        {figure}
-        {p.muted ? null : <Text style={styles.scaleUnitInline}>%</Text>}
-      </Text>
+      <Pressable onLongPress={p.onFigureLong} delayLongPress={500}>
+        <Text
+          style={[styles.scaleFigure, styles.scaleFigureLine, p.muted ? styles.scaleFigureMuted : null]}
+          numberOfLines={1}>
+          {figure}
+          {p.muted ? null : <Text style={styles.scaleUnitInline}>%</Text>}
+        </Text>
+      </Pressable>
       <View
         style={styles.scaleTrack}
         onLayout={(e) => setH(e.nativeEvent.layout.height)}
@@ -1584,6 +1601,11 @@ export default function ChannelScreen(props: Props) {
             // Covered, the glass decides nothing: it is the same rule
             // as for the buttons.
             onPick={(db, done) => { if (!blocked()) onSetLevel?.(db, done); }}
+            onFigureLong={() => {
+              if (blocked()) return;
+              Journal.mark('command:volumes-panel').catch(() => { /* noop */ });
+              openVolumes();
+            }}
           />
         </Animated.View>
       ) : null}
