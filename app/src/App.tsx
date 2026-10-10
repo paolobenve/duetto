@@ -1270,6 +1270,13 @@ export default function App() {
    */
   const [remoteVideoKey, setRemoteVideoKey] = useState(0);
   /**
+   * Our own camera's track: the view of our picture is built anew when
+   * it changes. The camera opened again after another app took it is a
+   * new track in the same stream, and the view, which takes the track
+   * once, went on showing the dead one.
+   */
+  const [localVideoKey, setLocalVideoKey] = useState('');
+  /**
    * The other's picture arriving and decoded, and not drawn.
    *
    * On 9 October the edge saw the POCO's picture frozen for minutes with
@@ -4409,6 +4416,7 @@ export default function App() {
       sessionRef.current = new ChannelSession(cfg, sig, {
         onLocalStream: (st) => {
           setLocalStream(st);
+          setLocalVideoKey(st?.getVideoTracks()[0]?.id ?? '');
           // The proportions are read again at every change of our own
           // picture, not only when the video is switched on: changing
           // profile reopens the camera inside the session, without
@@ -6042,6 +6050,7 @@ export default function App() {
         peerState={peerState}
         remoteHasVideo={remoteHasVideo && peerState.video}
         remoteVideoKey={remoteVideoKey}
+        localVideoKey={localVideoKey}
         localAspect={localAspect}
         remoteAspect={peerState.aspect}
         knockPending={knockPending}

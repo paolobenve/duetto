@@ -125,6 +125,8 @@ type Props = {
   remoteAspect?: number;
   /** changes at every restart of the remote video: rebuilds the view */
   remoteVideoKey?: number;
+  /** our own camera's track: a new one rebuilds the view */
+  localVideoKey?: string;
   /**
    * Their video is expected but missing for the moment.
    *
@@ -227,7 +229,7 @@ type Props = {
 export default function VideoStage(props: Props) {
   const {
     localStream, remoteStream, localHasVideo, remoteHasVideo,
-    localAspect, remoteAspect, remoteVideoKey, compact, placeholder, peerBadge, ownBadge,
+    localAspect, remoteAspect, remoteVideoKey, localVideoKey, compact, placeholder, peerBadge, ownBadge,
     mirror = true, onZoom, emptyLabel,
     awaitingRemote, notice,
   } = props;
@@ -966,7 +968,7 @@ export default function VideoStage(props: Props) {
             },
           ]}>
           <RTCView
-            key={bigIsSelf ? 'big-self' : `big-remote-${remoteVideoKey ?? 0}`}
+            key={bigIsSelf ? `big-self-${localVideoKey ?? ''}` : `big-remote-${remoteVideoKey ?? 0}`}
             streamURL={bigStream.toURL()}
             style={styles.bigVideo}
             objectFit="contain"
@@ -1013,7 +1015,7 @@ export default function VideoStage(props: Props) {
               right shape, so there is nothing to cut. */}
           {pipStream ? (
             <RTCView
-              key={pipIsSelf ? 'pip-self' : `pip-remote-${remoteVideoKey ?? 0}`}
+              key={pipIsSelf ? `pip-self-${localVideoKey ?? ''}` : `pip-remote-${remoteVideoKey ?? 0}`}
               streamURL={pipStream.toURL()}
               style={styles.pipVideo}
               objectFit="contain"

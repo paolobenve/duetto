@@ -15,6 +15,7 @@ import {
   RTCIceCandidate,
   mediaDevices,
   MediaStream,
+  MediaStreamTrack,
 } from 'react-native-webrtc';
 import { Journal, Heartbeat, AudioDevices } from 'duetto-platform';
 import type { DuoConfig } from './config';
@@ -199,6 +200,12 @@ const STALL_MS = 10_000;
 const STALL_CURE_MS = 8_000;
 /** how many times that is tried, the wait doubling, before giving up */
 const STALL_CURES = 2;
+/**
+ * The camera taken away, opened again: this long after Duetto is in
+ * sight, then after these waits if it is still held elsewhere - and
+ * then at the next return. See cameraEnded.
+ */
+const CAMERA_RETRY_MS = [1_000, 10_000, 30_000];
 
 /**
  * The balancing of the two pictures: see weighBalance().
@@ -432,6 +439,12 @@ export class ChannelSession {
   private stalledSince = 0;
   /** how many times the channel has been put right for a still encoder */
   private stallCures = 0;
+  /** the camera taken away by another app, and not yet opened again */
+  private cameraLost = false;
+  private cameraRetry: ReturnType<typeof setTimeout> | null = null;
+  /** attempts since Duetto came back in sight */
+  private cameraTries = 0;
+  private cameraReopening = false;
   private makingOffer = false;
   private ignoreOffer = false;
   /** When the offer that is being ignored was set aside: see onSignal. */
@@ -1881,8 +1894,16 @@ export class ChannelSession {
               log('video encoder still standing still: leaving the channel alone');
             } else {
               this.stallCures += 1;
-              log('video encoder standing still: putting the channel right');
-              this.ensureVideoSending('stalled').catch(() => { /* noop */ });
+              // First the camera, opened again: one that dies without a
+              // word leaves the encoder nothing to encode, and no
+              // negotiation gives it a picture. Then the channel.
+              if (this.stallCures === 1) {
+                log('video encoder standing still: opening the camera again');
+                this.reopenCamera('stalled').catch(() => { /* noop */ });
+              } else {
+                log('video encoder standing still: putting the channel right');
+                this.ensureVideoSending('stalled').catch(() => { /* noop */ });
+              }
             }
           }
         } else {
@@ -2365,46 +2386,8 @@ export class ChannelSession {
     // no gain.
     await this.ensureMic();
     if (this.localStream!.getVideoTracks().length > 0) return true;
-    const profile = VIDEO_PROFILES[this.cfg.videoQuality] ?? VIDEO_PROFILES.standard;
-    const cam = await mediaDevices.getUserMedia({
-      video: {
-        // The chosen camera, not always the front one: changing
-        // resolution reopens the camera, and starting from 'user' again
-        // turned the shot back on one's own face with nobody asking.
-        facingMode: this.frontCamera ? 'user' : 'environment',
-        // The resolution comes from the profile: it is the one lever no
-        // encoder can ignore. Scaling the output would be painless, but
-        // on some phones the request is recorded and then disregarded.
-        width: { ideal: profile.capture.width },
-        height: { ideal: profile.capture.height },
-        frameRate: { ideal: CAPTURE_FPS },
-        // The shape is stated explicitly: without it the sensor can
-        // pick a different format (4:3 instead of 16:9) and with it the
-        // angle of view changes, so what stays inside the frame changes
-        // too.
-        aspectRatio: { ideal: 16 / 9 },
-      },
-    } as any);
-    const track = cam.getVideoTracks()[0];
+    const track = await this.openCamera();
     if (!track) return false;
-
-    /**
-     * The requested format may not exist on the sensor.
-     *
-     * `aspectRatio` is a wish, not an obligation: ask a phone that does
-     * not have 640x360 for it, and it falls back on the nearest 4:3. We
-     * accept that: really coming down in resolution is worth more than a
-     * constant shape, and the thumbnail follows the shape of its camera.
-     * It only goes into the log, because it explains a different framing
-     * on the two phones without anybody having to guess.
-     */
-    try {
-      const st: any = (track as any).getSettings?.() ?? {};
-      if (st.width && st.height && Math.abs(st.width / st.height - 16 / 9) > 0.05) {
-        log('not a 16:9 format:', `${st.width}x${st.height}`,
-          '- the sensor does not have the one asked for');
-      }
-    } catch { /* noop */ }
 
     // Taken once: after an `await` the compiler can no longer know the
     // field is still filled, and it is right.
@@ -2447,6 +2430,134 @@ export class ChannelSession {
     this.events.onLocalStream?.(this.localStream);
     this.broadcastState();
     return true;
+  }
+
+  /** The camera opened, as chosen: the track, not yet anywhere. */
+  private async openCamera(): Promise<MediaStreamTrack | null> {
+    const profile = VIDEO_PROFILES[this.cfg.videoQuality] ?? VIDEO_PROFILES.standard;
+    const cam = await mediaDevices.getUserMedia({
+      video: {
+        // The chosen camera, not always the front one: changing
+        // resolution reopens the camera, and starting from 'user' again
+        // turned the shot back on one's own face with nobody asking.
+        facingMode: this.frontCamera ? 'user' : 'environment',
+        // The resolution comes from the profile: it is the one lever no
+        // encoder can ignore. Scaling the output would be painless, but
+        // on some phones the request is recorded and then disregarded.
+        width: { ideal: profile.capture.width },
+        height: { ideal: profile.capture.height },
+        frameRate: { ideal: CAPTURE_FPS },
+        // The shape is stated explicitly: without it the sensor can
+        // pick a different format (4:3 instead of 16:9) and with it the
+        // angle of view changes, so what stays inside the frame changes
+        // too.
+        aspectRatio: { ideal: 16 / 9 },
+      },
+    } as any);
+    const track = cam.getVideoTracks()[0];
+    if (!track) return null;
+    // Taken away by another app, the track ends: see cameraEnded.
+    (track as any).addEventListener?.('ended', () => this.cameraEnded(track));
+
+    /**
+     * The requested format may not exist on the sensor.
+     *
+     * `aspectRatio` is a wish, not an obligation: ask a phone that does
+     * not have 640x360 for it, and it falls back on the nearest 4:3. We
+     * accept that: really coming down in resolution is worth more than a
+     * constant shape, and the thumbnail follows the shape of its camera.
+     * It only goes into the log, because it explains a different framing
+     * on the two phones without anybody having to guess.
+     */
+    try {
+      const st: any = (track as any).getSettings?.() ?? {};
+      if (st.width && st.height && Math.abs(st.width / st.height - 16 / 9) > 0.05) {
+        log('not a 16:9 format:', `${st.width}x${st.height}`,
+          '- the sensor does not have the one asked for');
+      }
+    } catch { /* noop */ }
+    return track;
+  }
+
+  /**
+   * The camera taken away.
+   *
+   * Another app in front - the phone's camera, Google Lens - takes the
+   * camera, and Android takes it from Duetto: the track ends (see
+   * scripts/patch-webrtc-camera.js). Before, the picture going out
+   * stood still for good, and only switching the video off and on
+   * brought it back. Now it is opened again by itself, but only with
+   * Duetto in sight: from behind, whatever is in front holds the camera
+   * and the attempt would fail. In sight a moment later, and again
+   * after ten seconds and after thirty - the other app may still be
+   * holding it, beside us on a split screen or under the little window;
+   * after that, at the next return.
+   */
+  private cameraEnded(track: MediaStreamTrack) {
+    if (this.localStream?.getVideoTracks()[0] !== track) return;
+    Journal.mark('camera:lost').catch(() => { /* noop */ });
+    this.cameraLost = true;
+    this.scheduleCamera();
+  }
+
+  private scheduleCamera() {
+    if (this.cameraRetry) { clearTimeout(this.cameraRetry); this.cameraRetry = null; }
+    if (!this.cameraLost || !this.localWatching) return;
+    const wait = CAMERA_RETRY_MS[this.cameraTries];
+    if (wait === undefined) return;
+    this.cameraRetry = setTimeout(() => {
+      this.cameraRetry = null;
+      this.cameraTries += 1;
+      this.reopenCamera('lost').catch(() => { /* noop */ });
+    }, wait);
+  }
+
+  /**
+   * The camera opened anew in place of a track that no longer films,
+   * the way switching the video off and on does - without the other
+   * side seeing the video go off: the same sender, a new track. The old
+   * one is let go first, or the camera would still be ours, and busy.
+   */
+  private async reopenCamera(why: string): Promise<void> {
+    const local = this.localStream;
+    const old = local?.getVideoTracks()[0];
+    // Switched off in the meantime: nothing to bring back.
+    if (!local || (!old && !this.cameraLost) || this.cameraReopening) return;
+    this.cameraReopening = true;
+    Journal.mark(`camera:reopen:${why}`).catch(() => { /* noop */ });
+    try {
+      if (old) {
+        local.removeTrack(old);
+        try { old.stop(); } catch { /* noop */ }
+      }
+      // Still wanted, until a new track is there.
+      this.cameraLost = true;
+      const track = await this.openCamera();
+      if (!track) {
+        Journal.mark('camera:reopen:no-track').catch(() => { /* noop */ });
+        this.scheduleCamera();
+        return;
+      }
+      local.addTrack(track);
+      this.cameraLost = false;
+      const sender: any = this.liveVideoSender();
+      if (sender) {
+        this.videoSender = sender;
+        await sender.replaceTrack(this.peerWatching ? track : null);
+        await this.applyVideoQuality();
+      }
+      this.lastOutbound = null;
+      this.lastFramesEncoded = 0;
+      this.stalledSince = 0;
+      this.events.onLocalStream?.(local);
+      this.broadcastState();
+      log('camera opened again, track', track.id);
+    } catch (e) {
+      Journal.mark(`camera:reopen:failed:${String(e).slice(0, 60)}`).catch(() => { /* noop */ });
+      this.scheduleCamera();
+    } finally {
+      this.cameraReopening = false;
+    }
   }
 
   /**
@@ -2645,6 +2756,9 @@ export class ChannelSession {
     if (this.localWatching === watching) return;
     this.localWatching = watching;
     log(watching ? 'watching again' : 'not watching any more');
+    // Back in sight, the camera taken away is asked for again.
+    if (watching) this.cameraTries = 0;
+    this.scheduleCamera();
     this.broadcastState();
   }
 
@@ -2691,6 +2805,8 @@ export class ChannelSession {
   /** Switches the camera off: empties the channel and really releases it. */
   async disableVideo(): Promise<boolean> {
     const track = this.localStream?.getVideoTracks()[0];
+    this.cameraLost = false;
+    this.scheduleCamera();
 
     const senderOff: any = this.liveVideoSender();
     if (senderOff) {
@@ -2903,6 +3019,8 @@ export class ChannelSession {
 
   /** Leaves the channel and releases microphone and camera. */
   leaveChannel() {
+    this.cameraLost = false;
+    this.scheduleCamera();
     this.detachPeer();
     this.linkedOnce = false;
     this.balanceHoldUntil = 0;

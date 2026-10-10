@@ -603,6 +603,8 @@ type Props = {
   remoteHasVideo: boolean;
   /** changes at every restart of the remote video, to rebuild the view */
   remoteVideoKey: number;
+  /** our own camera's track: a new one rebuilds the view */
+  localVideoKey?: string;
   /** the shape of the two videos, for the shape of the little square */
   localAspect?: number;
   remoteAspect?: number;
@@ -662,7 +664,7 @@ export default function ChannelScreen(props: Props) {
     entered, onEnter, openInto, onEnterAlways, lossSheet, onLossChoice, ownGain, network,
     connectionName, peerName, peerAvatar, peerPresent, peerDetached, peerTornDown, peerTornDownBy, videoStats, peerSendDelay, peerRecvDelay, delayTotalOnly, qualityLabel, showStats, controls, onSelectControls, news, onNewsRead, peerGain, systemVolume, onChangeLevel,
     versionWarning, frontCamera, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
-    audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localAspect, remoteAspect,
+    audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes, btBattery,
     onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, leaving,
     onAlarm, onZoom, onOpenSettings, onCall, pairBroken, battery, backName, onBack,
@@ -1315,6 +1317,7 @@ export default function ChannelScreen(props: Props) {
         localHasVideo={localHasVideo}
         remoteHasVideo={remoteHasVideo}
         remoteVideoKey={remoteVideoKey}
+        localVideoKey={localVideoKey}
         awaitingRemote={interrupted}
         notice={notice}
         // The empty little square - when you are the only one with a
