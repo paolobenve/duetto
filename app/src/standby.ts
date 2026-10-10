@@ -9,7 +9,9 @@
  */
 import { AppState } from 'react-native';
 import { Foreground, Journal, Alarm } from 'duetto-platform';
-import { DuoConfig, PairInfo, peerShown, alertSoundFor, myNameOn } from './config';
+import {
+  DuoConfig, PairInfo, peerShown, alertSoundFor, myNameOn, loadConfig, saveConfig, rememberPeerName,
+} from './config';
 import { Signaling } from './signaling';
 import { news } from './presence';
 import { alarmLabel } from './alarms';
@@ -53,6 +55,32 @@ function heard(pairId: string, text: string) {
 export function onStandbyCall(cb: CallHeard): () => void {
   onCall = cb;
   return () => { if (onCall === cb) onCall = null; };
+}
+
+/**
+ * The other side's name, heard on a connection not in use.
+ *
+ * It was kept only in memory, for that moment's notifications: the name
+ * written in the pair was the one of the pairing, and it is the one the
+ * pencil offers and the list shows. On 10 October the moto took a name,
+ * the POCO waiting on that pair heard it, and went on saying the other
+ * had given themselves none. Now it is written in the pair - by the
+ * interface, which holds the configuration, or, with no interface,
+ * straight into the saved one, as the presence does.
+ */
+type NameHeard = (pairId: string, name: string) => void;
+let onName: NameHeard | null = null;
+export function onStandbyName(cb: NameHeard): () => void {
+  onName = cb;
+  return () => { if (onName === cb) onName = null; };
+}
+function nameHeard(pairId: string, name: string) {
+  Journal.mark(`standby:peer-name:${pairId.slice(0, 8)}`).catch(() => { /* noop */ });
+  if (onName) { onName(pairId, name); return; }
+  loadConfig().then((fresh) => {
+    const next = rememberPeerName(fresh, pairId, name);
+    return next ? saveConfig(next) : undefined;
+  }).catch(() => { /* noop */ });
 }
 
 /**
@@ -144,6 +172,15 @@ function soundOf(pair: PairInfo) {
 function open(cfg: DuoConfig, pair: PairInfo) {
   const channel = pair.label || '';
   let name = pair.peerName || '';
+  /** the name last written in the pair, so that it is written once */
+  let written = name;
+  const learn = (heardName?: string) => {
+    if (!heardName) return;
+    name = heardName;
+    if (heardName === written || heardName === 'Qualcuno' || heardName === 'Someone') return;
+    written = heardName;
+    nameHeard(pair.id, heardName);
+  };
   Journal.mark(`standby:open:${pair.id.slice(0, 8)}`).catch(() => { /* noop */ });
   const sig: Signaling = new Signaling(
     {
@@ -166,15 +203,15 @@ function open(cfg: DuoConfig, pair: PairInfo) {
       // not in use learnt nothing of this phone - its version, its
       // diagnostics - and offered to ask for what was there already.
       onJoined: ({ peerName, peerPresent }) => {
-        if (peerName) name = peerName;
+        learn(peerName);
         if (peerPresent) sayHello(sig, pair.id);
       },
       onPeerJoined: (peerName) => {
-        if (peerName) name = peerName;
+        learn(peerName);
         sayHello(sig, pair.id);
       },
       onNotify: (reason, peerName, at) => {
-        if (peerName) name = peerName;
+        learn(peerName);
         const who = peerShown(pair, name);
         if (reason === 'knock') {
           const text = news.called(who, channel, at);

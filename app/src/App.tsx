@@ -49,7 +49,7 @@ import { useAudioRoute, type AudioRoute } from './audioRoute';
 import { pairFromLetter } from './pairing';
 import CallAlert, { CallBand, CALL_ALERT_MS } from './CallAlert';
 import {
-  refreshStandby, onStandbyCall, onStandbyAsk, helloStandby, sendStandby,
+  refreshStandby, onStandbyCall, onStandbyAsk, onStandbyName, helloStandby, sendStandby,
 } from './standby';
 import { takeCall } from './callsUnseen';
 import { sendJournalOver, JOURNAL_PIECE } from './journalSwap';
@@ -917,6 +917,13 @@ export default function App() {
   // A call from a connection not in use, in the middle of the screen
   // too: see standby.ts.
   useEffect(() => onStandbyCall((pairId, text) => showCallAlert(text, pairId)), [showCallAlert]);
+  // The other side's name heard on a connection not in use: written in
+  // its pair, as the one in use does (see standby.ts).
+  useEffect(() => onStandbyName((pairId, name) => setCfg((prev) => {
+    if (!prev) return prev;
+    const next = rememberPeerName(prev, pairId, name);
+    return next ? saveCfg(next) : prev;
+  })), [saveCfg]);
   // A call heard while Duetto was closed, by the presence with no
   // window: shown on opening, if it is still news. See callsUnseen.ts.
   useEffect(() => {
