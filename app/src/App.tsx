@@ -764,6 +764,25 @@ export default function App() {
    */
   const [available, setAvailable] = useState(true);
   /**
+   * How a call on the connection in use sounds and buzzes.
+   *
+   * It lives in Android, in the notification channel, which has to be
+   * built again at every change, and made ready before it is needed:
+   * creating it at the first alert would mean creating it while it is
+   * being used. It was told at start-up and when the sound was changed,
+   * not on moving to another connection: the settings showed the new
+   * one's sound, and the calls rang with the old one's until Duetto
+   * started again. Now whatever changes it - the start, a choice, a
+   * move - tells it.
+   */
+  const alertVibration = cfg?.alertVibration;
+  const alertSoundNow = cfg ? alertSoundFor(cfg) : '';
+  const alertKind = cfg?.alertSound;
+  useEffect(() => {
+    if (!alertVibration || !alertKind) return;
+    Alerts.configure(alertVibration, alertKind, alertSoundNow).catch(() => {});
+  }, [alertVibration, alertKind, alertSoundNow]);
+  /**
    * The connections not in use, waiting: kept in line with the
    * configuration and with being available - see standby.ts. Asked at
    * every save; opening one already open costs nothing.
@@ -3312,11 +3331,6 @@ export default function App() {
       let c = await loadConfig();
       setCfg(c);
       readOwnDeath();
-      // The notification channel has to be made ready before it is
-      // needed: it is born with
-      // sound and vibration inside it, and creating it at the first
-      // alert would mean creating it while it is being used.
-      Alerts.configure(c.alertVibration, c.alertSound, alertSoundFor(c)).catch(() => {});
       // Opened on an invitation or on a pairing code: the welcome,
       // which has them in hand and knocks by itself.
       if (arrivedRef.current) setScreen('welcome');
@@ -5870,13 +5884,6 @@ export default function App() {
             // microphone.
             if ('richerAudio' in patch) applyAudio(next.richerAudio, true);
             if ('shortPackets' in patch) applyShortPackets(next.shortPackets, true, true);
-            // The call's sound and vibration live in the notification
-            // channel, which has to be built again at every change.
-            if ('alertVibration' in patch || 'alertSound' in patch || 'alertSoundUri' in patch
-                || 'alertDuettoSound' in patch) {
-              Alerts.configure(next.alertVibration, next.alertSound, alertSoundFor(next))
-                .catch(() => {});
-            }
             return next;
           })}
           vp9Here={localVp9}
