@@ -298,7 +298,7 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
     @ReactMethod
     fun notifyFor(
         name: String, text: String, pairId: String,
-        vibration: String, sound: String, uri: String, promise: Promise,
+        vibration: String, sound: String, uri: String, level: Double, promise: Promise,
     ) {
         try {
             val own = Alerts.stored(ctx)
@@ -306,6 +306,7 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
                 vibration.ifEmpty { own.vibration },
                 sound.ifEmpty { own.sound },
                 if (sound.isEmpty()) own.uri else uri,
+                if (level >= 0) level.toFloat() else own.level,
             )
             Notifier.show(ctx, name, text, pairId, choice)
             promise.resolve(true)

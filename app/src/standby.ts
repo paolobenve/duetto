@@ -11,6 +11,7 @@ import { AppState } from 'react-native';
 import { Foreground, Journal, Alarm } from 'duetto-platform';
 import {
   DuoConfig, PairInfo, peerShown, alertSoundFor, myNameOn, loadConfig, saveConfig, rememberPeerName,
+  ALERT_GAIN,
 } from './config';
 import { Signaling } from './signaling';
 import { news } from './presence';
@@ -166,7 +167,10 @@ export function stopStandby() {
 function soundOf(pair: PairInfo) {
   const s = pair.settings;
   if (!s) return {};
-  return { vibration: s.alertVibration, sound: s.alertSound, uri: alertSoundFor(s) };
+  return {
+    vibration: s.alertVibration, sound: s.alertSound, uri: alertSoundFor(s),
+    level: ALERT_GAIN[s.alertLevel ?? 'full'] ?? 1,
+  };
 }
 
 function open(cfg: DuoConfig, pair: PairInfo) {
@@ -257,7 +261,8 @@ function open(cfg: DuoConfig, pair: PairInfo) {
         const text = news.called(who, channel, Number(msg.at) || Date.now(),
           alarmLabel(String(msg.sound ?? '')));
         Journal.mark(`standby:alarm:${pair.id.slice(0, 8)}:${msg.sound}`).catch(() => { /* noop */ });
-        Alarm.play(String(msg.sound ?? '')).catch(() => { /* noop */ });
+        Alarm.play(String(msg.sound ?? ''), false, 0,
+          ALERT_GAIN[pair.settings?.alertLevel ?? 'full'] ?? 1).catch(() => { /* noop */ });
         Foreground.notifyFor('', text, pair.id, soundOf(pair)).catch(() => { /* noop */ });
         heard(pair.id, text);
       },

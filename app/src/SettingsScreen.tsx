@@ -28,7 +28,7 @@ import QrCode from './QrCode';
 import type { LanguageChoice } from './i18n';
 import {
   isPaired, opensHere, displayServer, VIDEO_PROFILES,
-  pairName, peerShown, CUE_GAIN, myNameOn,
+  pairName, peerShown, CUE_GAIN, myNameOn, ALERT_GAIN, alertSoundFor,
 } from './config';
 import { peerAvatar } from './avatar';
 import { isRealName } from './presence';
@@ -1300,6 +1300,28 @@ export default function SettingsScreen({
           <Text style={styles.rowButtonArrow}>{'\u203A'}</Text>
         </TouchableOpacity>
         <Text style={styles.sectionHint}>{t('settings.soundChooseNote')}</Text>
+
+        {/* How loud they arrive: the plain call and the sounds. Heard
+            at once, softer or louder, with this connection's sound. */}
+        <Text style={styles.sectionHint}>{t('settings.alertLevel')}</Text>
+        <Text style={styles.hint}>{t('settings.alertLevelNote')}</Text>
+        <View style={styles.group}>
+          {(['full', 'high', 'medium', 'low'] as const).map((v) => (
+            <TouchableOpacity
+              key={v}
+              style={[styles.option, (cfg.alertLevel ?? 'full') === v && styles.optionPicked]}
+              onPress={() => {
+                setCfg({ ...cfg, alertLevel: v });
+                onLive?.({ alertLevel: v });
+                Alerts.preview(cfg.alertSound, alertSoundFor(cfg), ALERT_GAIN[v]).catch(() => {});
+              }}>
+              <View style={[styles.radio, (cfg.alertLevel ?? 'full') === v && styles.radioPicked]} />
+              <View style={styles.choiceText}>
+                <Text style={styles.choiceLabel}>{t(`settings.alertLevel_${v}`)}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
 
         <Text style={styles.subsection}>{t('settings.controlsWhileWatching')}</Text>
         <Text style={styles.sectionHint}>{t('settings.controlsHint')}</Text>

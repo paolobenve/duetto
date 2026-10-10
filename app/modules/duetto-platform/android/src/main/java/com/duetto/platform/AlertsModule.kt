@@ -89,15 +89,22 @@ class AlertsModule(private val ctx: ReactApplicationContext) :
      * born cannot be changed any more.
      */
     @ReactMethod
-    fun configure(vibration: String, sound: String, uri: String, promise: Promise) {
+    fun configure(vibration: String, sound: String, uri: String, level: Double, promise: Promise) {
         try {
-            Alerts.save(ctx, vibration, sound, uri)
+            Alerts.save(ctx, vibration, sound, uri, if (level >= 0) level.toFloat() else 1f)
             // Here yes: this is the moment the preferences really change,
             // and the channels that no longer match have to go.
             promise.resolve(Alerts.channel(ctx, tidyUp = true))
         } catch (e: Exception) {
             promise.reject("alerts_error", e)
         }
+    }
+
+    /** The sound of a call at a level, while it is being chosen. */
+    @ReactMethod
+    fun preview(sound: String, uri: String, level: Double, promise: Promise) {
+        Alerts.preview(ctx, Alerts.Choice("never", sound, uri, level.toFloat()))
+        promise.resolve(true)
     }
 
     /**

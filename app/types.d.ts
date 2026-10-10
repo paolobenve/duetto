@@ -140,7 +140,7 @@ declare module 'duetto-platform' {
      * it; it sounds as that connection was set to (empty: the one in use's)
      */
     notifyFor(name: string, text: string, pairId: string,
-      sound?: { vibration?: string; sound?: string; uri?: string }): Promise<boolean>;
+      sound?: { vibration?: string; sound?: string; uri?: string; level?: number }): Promise<boolean>;
     /** the connection the app was opened for by a call's notification, once; null if none */
     takeOpenedPair(): Promise<string | null>;
     /** quiet news: it does not sound and does not buzz */
@@ -226,7 +226,11 @@ declare module 'duetto-platform' {
       sound: 'default' | 'none' | 'chosen' | 'duetto',
       /** the picked sound's address, or the name of one of Duetto's own */
       uri?: string,
+      /** how loud the calls received sound, 0 to 1: see AlertLevel */
+      level?: number,
     ): Promise<boolean | string>;
+    /** the sound of a call at a level, 0 to 1, to hear it while choosing */
+    preview(sound: string, uri: string, level: number): Promise<boolean>;
     pickSound(currentUri?: string): Promise<{ uri: string; name: string } | null>;
   };
 

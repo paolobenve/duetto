@@ -27,6 +27,16 @@ export const CUE_GAIN: Record<CueVolume, number> = {
   off: 0, veryLow: 0.08, low: 0.15, medium: 0.33, high: 0.6,
 };
 
+/**
+ * How loud the calls one receives sound: the plain call and the sounds
+ * (drums, fanfare...), on the volume Android gives them. Full is how
+ * they always sounded; below it, Duetto plays them itself, softer.
+ */
+export type AlertLevel = 'full' | 'high' | 'medium' | 'low';
+export const ALERT_GAIN: Record<AlertLevel, number> = {
+  full: 1, high: 0.6, medium: 0.33, low: 0.15,
+};
+
 export type PairInfo = {
   /** the code's fingerprint: the only thing the server gets to see */
   id: string;
@@ -158,6 +168,8 @@ export type PairSettings = {
   alertDuettoSound: string;
   /** which kind of sound was picked, if any: it is the third entry in the list */
   alertPicked: '' | 'chosen' | 'duetto';
+  /** how loud this connection's calls sound when they arrive */
+  alertLevel: AlertLevel;
   /** which language the app speaks: 'auto' follows the phone */
   language: LanguageChoice;
   /** where the sound comes out: 'SPEAKER_PHONE', 'EARPIECE', ... */
@@ -172,7 +184,7 @@ export type PairSettings = {
 const PAIR_FIELDS: (keyof PairSettings)[] = [
   'displayName', 'videoQuality', 'richerAudio', 'shortPackets', 'micOnEntry', 'controls',
   'videoCodec', 'alertVibration', 'alertSound', 'alertSoundUri', 'alertSoundName',
-  'alertDuettoSound', 'alertPicked',
+  'alertDuettoSound', 'alertPicked', 'alertLevel',
   'audioOutput', 'gains', 'frontCamera', 'language',
 ];
 
@@ -448,6 +460,8 @@ export type DuoConfig = {
    * picked can be taken up again without going to look for it.
    */
   alertPicked: '' | 'chosen' | 'duetto';
+  /** how loud the calls received sound: see AlertLevel */
+  alertLevel: AlertLevel;
 
   /**
    * Where the sound comes out.
@@ -571,6 +585,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   alertSoundName: '',
   alertDuettoSound: 'drumroll',
   alertPicked: '',
+  alertLevel: 'full',
   audioOutput: 'SPEAKER_PHONE',
   earOnProximity: true,
   earEvenWithVideo: false,

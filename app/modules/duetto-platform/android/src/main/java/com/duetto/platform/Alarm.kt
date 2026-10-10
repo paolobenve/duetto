@@ -143,8 +143,9 @@ object Alarm {
                 it.release()
                 if (player === it) player = null
             }
-            // A third of the volume: it is an answer, not an alarm.
-            if (echo) mp.setVolume(0.33f, 0.33f)
+            // Softer, when the calls received were asked to be (the
+            // connection's level of the calls): full otherwise, as always.
+            if (volume >= 0f && volume < 1f) mp.setVolume(volume, volume)
             player = mp
             mp.start()
             if (maxMs > 0) {

@@ -27,7 +27,7 @@ import {
   isServerConfigured, isPaired, displayServer, opensHere, VIDEO_PROFILES,
   addPair, switchToPair, forgetPair, markPairBroken, rememberPeerName,
   alertSoundFor, alignPairServer, renamePair, pairFileKey, pairName, peerShown, namePeer, nameMyself,
-  CUE_GAIN,
+  CUE_GAIN, ALERT_GAIN,
   storeSettingsInPair,
 } from './config';
 import { Signaling, PresenceStatus } from './signaling';
@@ -778,10 +778,12 @@ export default function App() {
   const alertVibration = cfg?.alertVibration;
   const alertSoundNow = cfg ? alertSoundFor(cfg) : '';
   const alertKind = cfg?.alertSound;
+  // And how loud: see AlertLevel.
+  const alertGain = ALERT_GAIN[cfg?.alertLevel ?? 'full'] ?? 1;
   useEffect(() => {
     if (!alertVibration || !alertKind) return;
-    Alerts.configure(alertVibration, alertKind, alertSoundNow).catch(() => {});
-  }, [alertVibration, alertKind, alertSoundNow]);
+    Alerts.configure(alertVibration, alertKind, alertSoundNow, alertGain).catch(() => {});
+  }, [alertVibration, alertKind, alertSoundNow, alertGain]);
   /**
    * The connections not in use, waiting: kept in line with the
    * configuration and with being available - see standby.ts. Asked at
@@ -3964,7 +3966,9 @@ export default function App() {
             // alarm volume. It can only come from the one person this
             // phone is paired with, in the channel or waiting.
             if (msg.kind === 'alarm') {
-              Alarm.play(String(msg.sound ?? '')).catch(() => {});
+              // As loud as this connection's calls were asked to sound.
+              Alarm.play(String(msg.sound ?? ''), false, 0,
+                ALERT_GAIN[cfgRef.current?.alertLevel ?? 'full'] ?? 1).catch(() => {});
               Journal.mark(`alarm:${msg.sound}`).catch(() => {});
               // Outside the channel it also says who it is: a rooster
               // going off on a phone lying on a table, with nothing on

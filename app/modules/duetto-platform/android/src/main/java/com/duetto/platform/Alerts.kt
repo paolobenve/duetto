@@ -49,17 +49,19 @@ object Alerts {
     private const val KEY_VIBRATION = "vibration"
     private const val KEY_SOUND = "sound"
     private const val KEY_URI = "uri"
+    private const val KEY_LEVEL = "level"
 
     private const val CHANNEL_PREFIX = "duetto_alerts"
 
     /** Two separate buzzes: it stands out from any other notification. */
     val RHYTHM = longArrayOf(0, 400, 200, 400)
 
-    fun save(ctx: Context, vibration: String, sound: String, uri: String) {
+    fun save(ctx: Context, vibration: String, sound: String, uri: String, level: Float = 1f) {
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString(KEY_VIBRATION, vibration)
             .putString(KEY_SOUND, sound)
             .putString(KEY_URI, uri)
+            .putFloat(KEY_LEVEL, level)
             .apply()
     }
 
@@ -68,7 +70,20 @@ object Alerts {
      * kept in the preferences - or another connection's, for a call
      * from a connection not in use, which brings its own (see standby.ts).
      */
-    data class Choice(val vibration: String, val sound: String, val uri: String)
+    data class Choice(
+        val vibration: String, val sound: String, val uri: String,
+        /** how loud, 0 to 1: 1 is the notification's own, as always */
+        val level: Float = 1f,
+    ) {
+        /**
+         * Softer than the notification's own: the notification is silent
+         * and Duetto plays the sound, at that level - a channel has no
+         * volume of its own. Only where a sound can be made softer
+         * (Android 9 on); before, it stays full.
+         */
+        val ours: Boolean
+            get() = sound != "none" && level < 0.999f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
+    }
 
     /** The connection in use's choice, as saved. */
     fun stored(ctx: Context): Choice {
@@ -77,6 +92,7 @@ object Alerts {
             prefs.getString(KEY_VIBRATION, "default") ?: "default",
             prefs.getString(KEY_SOUND, "default") ?: "default",
             prefs.getString(KEY_URI, "") ?: "",
+            try { prefs.getFloat(KEY_LEVEL, 1f) } catch (_: Exception) { 1f },
         )
     }
 
@@ -130,7 +146,7 @@ object Alerts {
      */
     fun alertNow(ctx: Context, c: Choice = stored(ctx)) {
         vibrateNow(ctx, c)
-        playIfInConversation(ctx, c)
+        if (!playIfInConversation(ctx, c)) playOurs(ctx, c)
     }
 
     private fun vibrateNow(ctx: Context, c: Choice) {
@@ -176,12 +192,44 @@ object Alerts {
     /** the call sounding in the conversation, stopped by the next one */
     @Volatile private var playing: android.media.Ringtone? = null
 
-    private fun playIfInConversation(ctx: Context, c: Choice) {
-        if (c.sound == "none") return
-        val am = ctx.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+    /** Played if in the conversation: true if it was the case. */
+    private fun playIfInConversation(ctx: Context, c: Choice): Boolean {
+        if (c.sound == "none") return true
+        val am = ctx.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return true
         // Outside the conversation the notification sees to it, and
         // sounding twice would be worse than not sounding.
-        if (am.mode != AudioManager.MODE_IN_COMMUNICATION) return
+        if (am.mode != AudioManager.MODE_IN_COMMUNICATION) return false
+        ring(ctx, c, AudioAttributes.USAGE_VOICE_COMMUNICATION_SIGNALLING, "during the conversation")
+        return true
+    }
+
+    /**
+     * Played by Duetto, softer, with the notification silent: see
+     * Choice.ours. Only when the notification itself would have sounded
+     * - the ringer on, no Do Not Disturb holding it back - and on the
+     * same volume it would have used.
+     */
+    private fun playOurs(ctx: Context, c: Choice) {
+        if (!c.ours) return
+        val am = ctx.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+        if (am.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
+        val nm = ctx.getSystemService(NotificationManager::class.java)
+        val filter = nm?.currentInterruptionFilter ?: NotificationManager.INTERRUPTION_FILTER_ALL
+        if (filter != NotificationManager.INTERRUPTION_FILTER_ALL &&
+            filter != NotificationManager.INTERRUPTION_FILTER_UNKNOWN) return
+        ring(ctx, c, AudioAttributes.USAGE_NOTIFICATION, "softer")
+    }
+
+    /**
+     * The sound of a call at a level, to hear it while choosing: on the
+     * notifications' volume, as a call arriving would be.
+     */
+    fun preview(ctx: Context, c: Choice) {
+        if (c.sound == "none") return
+        ring(ctx, c, AudioAttributes.USAGE_NOTIFICATION, "preview")
+    }
+
+    private fun ring(ctx: Context, c: Choice, usage: Int, why: String) {
         try {
             val uri = chosenSound(ctx, c) ?: return
             val ringtone = RingtoneManager.getRingtone(ctx, uri) ?: return
@@ -190,13 +238,16 @@ object Alerts {
             playing = ringtone
             ringtone.setAudioAttributes(
                 AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION_SIGNALLING)
+                    .setUsage(usage)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .build(),
             )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                ringtone.volume = c.level.coerceIn(0f, 1f)
+            }
             ringtone.play()
         } catch (e: Exception) {
-            Log.w("Duetto", "alert: cannot play during the conversation: ${e.message}")
+            Log.w("Duetto", "alert: cannot play ($why): ${e.message}")
         }
     }
 
@@ -207,9 +258,10 @@ object Alerts {
      * channel be born instead of reusing one that was set up otherwise.
      */
     private fun channelId(c: Choice): String {
-        val s = when (c.sound) {
-            "none" -> "mute"
-            "chosen", "duetto" -> "s" + Integer.toHexString(c.uri.hashCode())
+        val s = when {
+            // Softer: the channel is silent, the sound is Duetto's.
+            c.sound == "none" || c.ours -> "mute"
+            c.sound == "chosen" || c.sound == "duetto" -> "s" + Integer.toHexString(c.uri.hashCode())
             else -> "default"
         }
         return "${CHANNEL_PREFIX}_${c.vibration}_$s"
@@ -263,7 +315,7 @@ object Alerts {
                 "always", "never" -> enableVibration(false)
             }
 
-            when (c.sound) {
+            when (if (c.ours) "none" else c.sound) {
                 "none" -> setSound(null, null)
                 "chosen" -> {
                     val u = c.uri

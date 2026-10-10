@@ -12,7 +12,7 @@ import { AppState } from 'react-native';
 import { Foreground, Journal, Alarm, Heartbeat } from 'duetto-platform';
 import {
   loadConfig, saveConfig, addPair, isPaired, isServerConfigured, pairFileKey, peerShown,
-  markPairBroken,
+  markPairBroken, ALERT_GAIN,
 } from './config';
 import { pairFromLetter } from './pairing';
 import { Signaling } from './signaling';
@@ -796,7 +796,9 @@ async function listenNow(): Promise<boolean> {
          * from a phone lying on a table, explains nothing.
          */
         if (msg.kind === 'alarm') {
-          Alarm.play(String(msg.sound ?? '')).catch(() => { /* noop */ });
+          // As loud as this connection's calls were asked to sound.
+          Alarm.play(String(msg.sound ?? ''), false, 0,
+            ALERT_GAIN[cfg.alertLevel ?? 'full'] ?? 1).catch(() => { /* noop */ });
           Journal.mark(`alarm:${msg.sound}`).catch(() => { /* noop */ });
           const text = news.called(peerShown(pair, name), channel, Number(msg.at) || Date.now(),
             alarmLabel(String(msg.sound ?? '')));

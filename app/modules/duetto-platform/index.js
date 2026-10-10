@@ -123,7 +123,8 @@ export const Foreground = isAndroid && NativeForeground
       /** a call from a connection not in use: touched, it opens the app on it */
       notifyFor: (name, text, pairId, sound = {}) =>
         call(NativeForeground, 'notifyFor', String(name || ''), String(text), String(pairId),
-          String(sound.vibration ?? ''), String(sound.sound ?? ''), String(sound.uri ?? '')),
+          String(sound.vibration ?? ''), String(sound.sound ?? ''), String(sound.uri ?? ''),
+          sound.level === undefined ? -1 : Number(sound.level)),
       /** the connection the app was opened for by a call's notification, once; null if none */
       takeOpenedPair: () => call(NativeForeground, 'takeOpenedPair'),
 
@@ -362,8 +363,12 @@ export const Alerts = isAndroid && NativeAlerts
        * @param sound     'default' | 'none' | 'chosen'
        * @param uri       address of the sound, only with 'chosen'
        */
-      configure: (vibration, sound, uri = '') =>
-        call(NativeAlerts, 'configure', String(vibration), String(sound), String(uri)),
+      configure: (vibration, sound, uri = '', level = 1) =>
+        call(NativeAlerts, 'configure', String(vibration), String(sound), String(uri), Number(level)),
+
+      /** The sound of a call at a level, to hear it while choosing. */
+      preview: (sound, uri, level) =>
+        call(NativeAlerts, 'preview', String(sound), String(uri || ''), Number(level)),
 
       /**
        * Opens the system's sound picker.
@@ -372,7 +377,7 @@ export const Alerts = isAndroid && NativeAlerts
       pickSound: (currentUri = '') =>
         call(NativeAlerts, 'pickSound', String(currentUri)),
     }
-  : { configure: unavailable, pickSound: () => Promise.resolve(null) };
+  : { configure: unavailable, preview: unavailable, pickSound: () => Promise.resolve(null) };
 
 /**
  * The volume keys.
