@@ -502,16 +502,49 @@ export class ChannelSession {
    * Called by attachPeer - the other person has arrived - and by
    * enableVideo.
    */
-  private async ensureMic(): Promise<void> {
-    if (this.localStream) return;
-    const stream = await mediaDevices.getUserMedia({ audio: true, video: false });
-    // The microphone can be born muted: "Mute" can be pressed while
-    // waiting, and that choice has to hold for the track that did not
-    // exist yet.
-    const track = stream.getAudioTracks()[0];
-    if (track) track.enabled = this.audioDesired && !this.hushed;
-    this.localStream = stream;
-    this.events.onLocalStream?.(stream);
+  /**
+   * The local stream, with its microphone - once. Two asking together
+   * used to open two: the second took the place of the first, and the
+   * first's microphone stayed open with nobody holding it (10 October,
+   * the moto: the video switched back on by itself and by hand in the
+   * same second).
+   */
+  private micOpening: Promise<void> | null = null;
+  private ensureMic(): Promise<void> {
+    if (this.localStream) return Promise.resolve();
+    if (this.micOpening) return this.micOpening;
+    this.micOpening = (async () => {
+      const stream = await mediaDevices.getUserMedia({ audio: true, video: false });
+      // The microphone can be born muted: "Mute" can be pressed while
+      // waiting, and that choice has to hold for the track that did not
+      // exist yet.
+      const track = stream.getAudioTracks()[0];
+      if (track) track.enabled = this.audioDesired && !this.hushed;
+      this.localStream = stream;
+      this.events.onLocalStream?.(stream);
+    })().finally(() => { this.micOpening = null; });
+    return this.micOpening;
+  }
+
+  /**
+   * One camera operation at a time: switching on, switching off,
+   * opening again.
+   *
+   * On 10 October the moto came back into the channel after an update,
+   * switching its video back on by itself, and the button was pressed in
+   * the same second: two switch-ons ran together and opened the camera
+   * twice - Android's camera log has Duetto evicting itself. The first
+   * opening was left half done, and switching off a camera still opening
+   * makes the video library wait for good, on the one thread it does
+   * everything on: from then on no camera would open until the process
+   * was stopped. Now each waits for the one before; a second switch-on
+   * finds the camera already on.
+   */
+  private cameraQueue: Promise<unknown> = Promise.resolve();
+  private onCamera<T>(op: () => Promise<T>): Promise<T> {
+    const run = this.cameraQueue.then(op, op);
+    this.cameraQueue = run.catch(() => undefined);
+    return run;
   }
 
   /** the session id of the other side's last description: see fromNewPeerConnection */
@@ -2378,7 +2411,11 @@ export class ChannelSession {
   }
 
   /** Switches the camera on: puts the track into the open channel. */
-  async enableVideo(): Promise<boolean> {
+  enableVideo(): Promise<boolean> {
+    return this.onCamera(() => this.enableVideoNow());
+  }
+
+  private async enableVideoNow(): Promise<boolean> {
     // The local stream has to exist: the video track is added to it.
     // Switching the camera on while waiting for the other person
     // therefore opens the microphone too - the camera costs far more
@@ -2518,7 +2555,11 @@ export class ChannelSession {
    * side seeing the video go off: the same sender, a new track. The old
    * one is let go first, or the camera would still be ours, and busy.
    */
-  private async reopenCamera(why: string): Promise<void> {
+  private reopenCamera(why: string): Promise<void> {
+    return this.onCamera(() => this.reopenCameraNow(why));
+  }
+
+  private async reopenCameraNow(why: string): Promise<void> {
     const local = this.localStream;
     const old = local?.getVideoTracks()[0];
     // Switched off in the meantime: nothing to bring back.
@@ -2839,7 +2880,11 @@ export class ChannelSession {
   }
 
   /** Switches the camera off: empties the channel and really releases it. */
-  async disableVideo(): Promise<boolean> {
+  disableVideo(): Promise<boolean> {
+    return this.onCamera(() => this.disableVideoNow());
+  }
+
+  private async disableVideoNow(): Promise<boolean> {
     const track = this.localStream?.getVideoTracks()[0];
     this.cameraLost = false;
     this.scheduleCamera();
