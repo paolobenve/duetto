@@ -11,11 +11,14 @@ package com.duetto.platform
 
 import android.content.Context
 import android.hardware.Sensor
+import android.hardware.display.DisplayManager
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
+import android.view.Display
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -55,6 +58,16 @@ import com.facebook.react.modules.core.DeviceEventManagerModule
  * flat. Flat it is at nobody's ear, face up or face down; face up its
  * screen is not covered either - a pocket does not lie flat on its back -
  * while face down on the table it is, and the touches stay blocked.
+ *
+ * THE SCREEN SWITCHED ON BY HAND
+ * At the ear the screen is held off as a phone does in a call (darken),
+ * and Android lets the power key switch it on all the same: then it
+ * stops listening to the sensor until it says far, because whoever
+ * switches the screen on is looking at it. Duetto went on listening, and
+ * the sound stayed in the earpiece until the sensor let go. Now it does
+ * what Android does: off because of the sensor, on again while the
+ * sensor still says near, and near counts for nothing - neither ear nor
+ * cover - until the sensor says far.
  */
 class ProximityModule(private val ctx: ReactApplicationContext) :
     ReactContextBaseJavaModule(ctx) {
@@ -76,6 +89,37 @@ class ProximityModule(private val ctx: ReactApplicationContext) :
     @Volatile private var covered = false
     private var ear = false
     private val main = Handler(Looper.getMainLooper())
+    /** The screen held off at the ear: see darken. */
+    private var dark: PowerManager.WakeLock? = null
+    /** Whether the screen has gone off since it was asked to. */
+    private var wentDark = false
+    /** Switched on by hand while near: near does not count until far. */
+    private var overridden = false
+
+    private val displays: DisplayManager?
+        get() = ctx.getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager
+
+    /**
+     * The screen, watched only while it is held off: off because of the
+     * sensor and on again with the sensor still near, a hand did it.
+     */
+    private val screen = object : DisplayManager.DisplayListener {
+        override fun onDisplayAdded(id: Int) {}
+        override fun onDisplayRemoved(id: Int) {}
+        override fun onDisplayChanged(id: Int) {
+            if (id != Display.DEFAULT_DISPLAY) return
+            val state = displays?.getDisplay(id)?.state ?: return
+            if (state != Display.STATE_ON) {
+                wentDark = true
+                return
+            }
+            if (!wentDark || !near || overridden || dark?.isHeld != true) return
+            overridden = true
+            lightUp(false)
+            Journal.sample(ctx, "proximity:ignored:screen-on")
+            update()
+        }
+    }
 
     private val listener = object : SensorEventListener {
         override fun onSensorChanged(e: SensorEvent) {
@@ -88,6 +132,9 @@ class ProximityModule(private val ctx: ReactApplicationContext) :
             if (now == near) return
             near = now
             if (near) watchLying() else stopLying()
+            // Far: the screen switched on by hand is forgotten, and the
+            // next near is an ear again.
+            if (!near) overridden = false
             update()
         }
 
@@ -163,7 +210,7 @@ class ProximityModule(private val ctx: ReactApplicationContext) :
      * ear, for the sound: near, and not lying at all.
      */
     private fun update() {
-        val known = near && lyingKnown
+        val known = near && lyingKnown && !overridden
         val nowCovered = known && lying != 1
         val nowEar = known && lying == 0
         if (known && lying != 0 && toldLying != lying) {
@@ -216,6 +263,8 @@ class ProximityModule(private val ctx: ReactApplicationContext) :
     private fun quiet() {
         try { sensors?.unregisterListener(listener) } catch (_: Exception) { /* noop */ }
         stopLying()
+        lightUp(true)
+        overridden = false
         near = false
         covered = false
         ear = false
@@ -225,6 +274,42 @@ class ProximityModule(private val ctx: ReactApplicationContext) :
         users = 0
         main.post { quiet() }
         super.invalidate()
+    }
+
+    /**
+     * The screen off at the ear, and back: Android keeps it off while the
+     * sensor says near, as in a phone call. Here and not in the call
+     * library, so that the screen switched on by hand can be told.
+     * Let go of normally, the screen comes back once the sensor says far,
+     * as it did before.
+     */
+    @ReactMethod
+    fun darken(on: Boolean, promise: Promise) {
+        main.post { if (on) darkNow() else lightUp(true) }
+        promise.resolve(true)
+    }
+
+    private fun darkNow() {
+        if (dark?.isHeld == true) return
+        val pm = ctx.getSystemService(Context.POWER_SERVICE) as? PowerManager ?: return
+        if (!pm.isWakeLockLevelSupported(PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK)) return
+        val lock = dark ?: pm.newWakeLock(PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK, "duetto:ear")
+            .also { it.setReferenceCounted(false); dark = it }
+        // Already off - in the background, say - counts as gone off.
+        wentDark = displays?.getDisplay(Display.DEFAULT_DISPLAY)?.state != Display.STATE_ON
+        try {
+            lock.acquire()
+            displays?.registerDisplayListener(screen, main)
+        } catch (_: Exception) { /* noop */ }
+    }
+
+    private fun lightUp(waitFar: Boolean) {
+        try { displays?.unregisterDisplayListener(screen) } catch (_: Exception) { /* noop */ }
+        wentDark = false
+        val lock = dark ?: return
+        try {
+            if (lock.isHeld) lock.release(if (waitFar) PowerManager.RELEASE_FLAG_WAIT_FOR_NO_PROXIMITY else 0)
+        } catch (_: Exception) { /* noop */ }
     }
 
     /** How it is now, for whoever registers once the game is on. */

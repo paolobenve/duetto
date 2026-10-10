@@ -456,11 +456,15 @@ export const Proximity = isAndroid && NativeProximity
 
       /** Calls `cb(atEar)` at every change; the same, for the sound. */
       subscribeEar: (cb) => proximityWatch('ear', cb),
+
+      /** The screen held off at the ear, or let go; see ProximityModule. */
+      darken: (on) => call(NativeProximity, 'darken', !!on),
     }
   : {
       get: () => Promise.resolve(false),
       subscribe: () => () => {},
       subscribeEar: () => () => {},
+      darken: () => Promise.resolve(false),
     };
 
 /**

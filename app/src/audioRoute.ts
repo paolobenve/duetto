@@ -351,7 +351,9 @@ export function useAudioRoute(
    * (see ProximityModule): the call library's, listened to before, took
    * the POCO on the table for a POCO at the ear, and the sound went to
    * the earpiece by itself. Its sensor is switched off where the
-   * library is started.
+   * library is started. The screen is held off by the module too, which
+   * so knows when a hand switches it on: then it says the ear is gone,
+   * and the speaker comes back at once.
    */
   const earFrom = useRef<AudioRoute | null>(null);
   const earDark = useRef(false);
@@ -363,7 +365,7 @@ export function useAudioRoute(
         if (earFrom.current || earDark.current) return;
         if (currentRef.current === 'EARPIECE') {
           earDark.current = true;
-          try { InCallManager.turnScreenOff(); } catch { /* noop */ }
+          Proximity.darken(true).catch(() => { /* noop */ });
           return;
         }
         if (!a?.ear) return;
@@ -373,7 +375,7 @@ export function useAudioRoute(
         currentRef.current = 'EARPIECE';
         setCurrent('EARPIECE');
         applyRoute('EARPIECE');
-        try { InCallManager.turnScreenOff(); } catch { /* noop */ }
+        Proximity.darken(true).catch(() => { /* noop */ });
         Journal.mark('output:ear').catch(() => { /* noop */ });
       } else if (earFrom.current) {
         const back = earFrom.current;
@@ -381,11 +383,11 @@ export function useAudioRoute(
         currentRef.current = back;
         setCurrent(back);
         applyRoute(back);
-        try { InCallManager.turnScreenOn(); } catch { /* noop */ }
+        Proximity.darken(false).catch(() => { /* noop */ });
         Journal.mark('output:ear:back').catch(() => { /* noop */ });
       } else if (earDark.current) {
         earDark.current = false;
-        try { InCallManager.turnScreenOn(); } catch { /* noop */ }
+        Proximity.darken(false).catch(() => { /* noop */ });
       }
     });
     return () => {
@@ -393,7 +395,7 @@ export function useAudioRoute(
       if (earFrom.current || earDark.current) {
         earFrom.current = null;
         earDark.current = false;
-        try { InCallManager.turnScreenOn(); } catch { /* noop */ }
+        Proximity.darken(false).catch(() => { /* noop */ });
       }
     };
   }, [enabled, applyRoute]);

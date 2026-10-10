@@ -86,6 +86,8 @@ declare module 'duetto-platform' {
     subscribe(cb: (covered: boolean) => void): () => void;
     /** at the ear: near, and the phone not lying flat */
     subscribeEar(cb: (atEar: boolean) => void): () => void;
+    /** the screen held off at the ear, or let go */
+    darken(on: boolean): Promise<boolean>;
   };
 
   /** A beat every minute, arriving with the screen off too. */
