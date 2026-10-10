@@ -8,7 +8,7 @@
  * <https://www.gnu.org/licenses/>.
  */
 import { AppState } from 'react-native';
-import { Foreground, Journal, Alarm } from 'duetto-platform';
+import { Foreground, Journal, Alarm, Heartbeat } from 'duetto-platform';
 import {
   DuoConfig, PairInfo, peerShown, alertSoundFor, myNameOn, loadConfig, saveConfig, rememberPeerName,
   ALERT_GAIN,
@@ -46,6 +46,69 @@ const standing = new Map<string, Signaling>();
 const standingName = new Map<string, string>();
 /** Every connection as the configuration has it now: see `live` in open(). */
 const latest = new Map<string, PairInfo>();
+
+/**
+ * The waiting connections' own watch.
+ *
+ * The connection in use has a watchdog on the native heartbeat, the one
+ * clock that rings with the screen off: dead, it is remade; looking
+ * alive, it is asked a question, and an answer missing at the next beat
+ * means it carries nothing. The waiting ones had none - only the
+ * reconnection's JavaScript timers, which stand still with the screen
+ * off, and nothing at all for a socket the server had closed without
+ * the phone noticing. On 10 October the POCO's connection to the moto's
+ * pair dropped four times and stayed down for hours: the moto saw the
+ * POCO unreachable while it sat online, in the channel with the edge.
+ * Now each waiting connection gets the same two checks at every beat.
+ * The question costs a few dozen bytes a minute.
+ */
+const askedAt = new Map<string, number>();
+const answeredAt = new Map<string, number>();
+/** since when a connection has been found down, to say it once and its return */
+const downSince = new Map<string, number>();
+let stopBeat: (() => void) | null = null;
+
+function answered(id: string) {
+  answeredAt.set(id, Date.now());
+  const since = downSince.get(id);
+  if (since === undefined) return;
+  downSince.delete(id);
+  Journal.mark(`standby:back:${id.slice(0, 8)}:${Math.round((Date.now() - since) / 1000)}s`)
+    .catch(() => { /* noop */ });
+}
+
+function forgetWatch(id: string) {
+  askedAt.delete(id);
+  answeredAt.delete(id);
+  downSince.delete(id);
+}
+
+/** The beat listened to while there is a connection waiting, and only then. */
+function watchStanding() {
+  if (standing.size === 0) {
+    if (stopBeat) { stopBeat(); stopBeat = null; }
+    return;
+  }
+  if (stopBeat) return;
+  stopBeat = Heartbeat.subscribe(() => {
+    for (const [id, sig] of standing) {
+      const asked = askedAt.get(id) ?? 0;
+      const silent = asked > 0 && (answeredAt.get(id) ?? 0) < asked;
+      if (!sig.connected || silent) {
+        if (!downSince.has(id)) {
+          downSince.set(id, Date.now());
+          Journal.mark(`standby:rebuilt:${id.slice(0, 8)}:${sig.connected ? 'silent' : 'no-socket'}`)
+            .catch(() => { /* noop */ });
+        }
+        askedAt.delete(id);
+        sig.rebuild();
+        continue;
+      }
+      askedAt.set(id, Date.now());
+      sig.askPresence();
+    }
+  });
+}
 
 /** The interface's ear: a call or a sound from a connection not in use. */
 type CallHeard = (pairId: string, text: string) => void;
@@ -159,17 +222,23 @@ export async function refreshStandby(cfg: DuoConfig | null): Promise<void> {
     sig.close(false);
     standing.delete(id);
     standingName.delete(id);
+    forgetWatch(id);
     Journal.mark(`standby:close:${id.slice(0, 8)}`).catch(() => { /* noop */ });
   }
   for (const [id, p] of want) {
     if (!standing.has(id)) open(cfg!, p);
   }
+  watchStanding();
 }
 
 export function stopStandby() {
   for (const sig of standing.values()) sig.close(false);
   standing.clear();
   standingName.clear();
+  askedAt.clear();
+  answeredAt.clear();
+  downSince.clear();
+  watchStanding();
 }
 
 /**
@@ -220,13 +289,20 @@ function open(cfg: DuoConfig, pair: PairInfo) {
       // Another connection of ours took the seat: the interface, now
       // that this pair is the one in use. It is its seat now.
       onReplaced: () => {
-        if (standing.get(pair.id) === sig) { standing.delete(pair.id); standingName.delete(pair.id); }
+        if (standing.get(pair.id) === sig) {
+          standing.delete(pair.id);
+          standingName.delete(pair.id);
+          forgetWatch(pair.id);
+        }
         sig.close(false);
       },
       // The hello goes from here too: the other side of a connection
       // not in use learnt nothing of this phone - its version, its
       // diagnostics - and offered to ask for what was there already.
+      // The server answering: the socket lives (see watchStanding).
+      onPresence: () => answered(pair.id),
       onJoined: ({ peerName, peerPresent }) => {
+        answered(pair.id);
         learn(peerName);
         if (peerPresent) sayHello(sig, pair.id);
       },
