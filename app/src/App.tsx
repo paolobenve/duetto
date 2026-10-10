@@ -4017,7 +4017,12 @@ export default function App() {
                 shownNameRef.current, channelRef.current,
                 Number((msg as any).at) || Date.now(), alarmLabel(String(msg.sound ?? '')),
               );
-              if (!inChannelRef.current) Foreground.notify('', said).catch(() => { /* noop */ });
+              // Silent: the sound itself is the call, and the
+              // notification's own on top of it made two at once, on two
+              // different volumes. It still buzzes as chosen.
+              if (!inChannelRef.current) {
+                Foreground.notifyFor('', said, '', { sound: 'none' }).catch(() => { /* noop */ });
+              }
               // In the middle of the screen, in the channel too: the
               // sound may be drowned by the room.
               showCallAlert(said);

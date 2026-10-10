@@ -803,7 +803,8 @@ async function listenNow(): Promise<boolean> {
           Journal.mark(`alarm:${msg.sound}`).catch(() => { /* noop */ });
           const text = news.called(peerShown(pair, name), channel, Number(msg.at) || Date.now(),
             alarmLabel(String(msg.sound ?? '')));
-          Foreground.notify('', text).catch(() => { /* noop */ });
+          // Silent: the sound is the call; see the app's own.
+          Foreground.notifyFor('', text, '', { sound: 'none' }).catch(() => { /* noop */ });
           // For the middle of the screen, when the app opens: see callsUnseen.ts.
           keepCall(text);
         }

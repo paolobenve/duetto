@@ -398,7 +398,9 @@ function open(cfg: DuoConfig, pair: PairInfo) {
         Journal.mark(`standby:alarm:${pair.id.slice(0, 8)}:${msg.sound}`).catch(() => { /* noop */ });
         Alarm.play(String(msg.sound ?? ''), false, 0,
           ALERT_GAIN[live().settings?.alertLevel ?? 'full'] ?? 1).catch(() => { /* noop */ });
-        Foreground.notifyFor('', text, pair.id, soundOf(live())).catch(() => { /* noop */ });
+        // Silent: the sound is the call; see the app's own.
+        Foreground.notifyFor('', text, pair.id, { ...soundOf(live()), sound: 'none' })
+          .catch(() => { /* noop */ });
         heard(pair.id, text);
       },
     },
