@@ -1231,6 +1231,8 @@ export default function App() {
   const [frontCamera, setFrontCamera] = useState(true);
   const [peerState, setPeerState] = useState<{
     audio: boolean; video: boolean; aspect?: number;
+    /** which camera films there: 'front' or 'back' */
+    camera?: string;
     /** in another call on their phone: silent both ways until it ends */
     busy?: boolean;
     /** their battery, when they say */

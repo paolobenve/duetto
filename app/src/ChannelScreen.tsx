@@ -567,6 +567,8 @@ type Props = {
   /** `output`: where the sound comes out over there, if they say so */
   peerState: {
     audio: boolean; video: boolean; aspect?: number; output?: string;
+    /** which camera films there: 'front' or 'back' */
+    camera?: string;
     /** how loud they are hearing US: 1 = as we send it */
     volume?: number;
     /** in another call on their phone */
@@ -1168,6 +1170,21 @@ export default function ChannelScreen(props: Props) {
     <MicrophoneIcon size={size} color="#e6ebf1" off={!peerState.audio} background={background} />
   ), [peerState.audio]);
   /**
+   * Which camera films, theirs and ours: the front one or the back one,
+   * with the drawings of the "Turn" button. Said in the pills and on the
+   * card without video too - with no picture it is the camera that will
+   * open.
+   */
+  const peerCameraMark = React.useCallback((size: number) => {
+    if (peerState.camera !== 'front' && peerState.camera !== 'back') return null;
+    return peerState.camera === 'front'
+      ? <FrontCameraIcon size={size} color="#e6ebf1" />
+      : <BackCameraIcon size={size} color="#e6ebf1" />;
+  }, [peerState.camera]);
+  const ownCameraMark = React.useCallback((size: number) => (frontCamera
+    ? <FrontCameraIcon size={size} color="#e6ebf1" />
+    : <BackCameraIcon size={size} color="#e6ebf1" />), [frontCamera]);
+  /**
    * The level with its two halves: "25%×2.5=62%" - the phone's knob,
    * Duetto's gain, what is really heard. With diagnostics on one wants
    * to see which half moves under the volume keys, and which does not.
@@ -1188,32 +1205,40 @@ export default function ChannelScreen(props: Props) {
     return `${dbText(applied)} (${dbText(sys)} × ${g})`;
   };
 
+  // Their microphone always, on or crossed out: with their video full
+  // screen it was shown only when off, and "on" could not be read.
   const peerBadge = React.useMemo(() => (
     <>
-      {peerState.audio ? null : peerMicMark(13, '#1b1d21')}
+      {peerMicMark(13, '#1b1d21')}
       {peerMark(13, '#1b1d21')}
+      {peerCameraMark(13)}
       {showStats && peerState.volume != null ? (
         <Text style={styles.pillVolume}>{dbText(peerState.volume)}</Text>
       ) : null}
     </>
-  ), [peerMark, peerMicMark, peerState.audio, showStats, peerState.volume]);
+  ), [peerMark, peerMicMark, peerCameraMark, showStats, peerState.volume]);
 
   /** Where the sound comes out HERE, as `peerMark` does for theirs. */
   const ownOutputMark = React.useCallback((size: number, background: string) => {
     const Icon = OUTPUT_ICON[audioRoute] ?? OUTPUT_ICON.SPEAKER_PHONE;
-    return <Icon size={size} color="#e6ebf1" off={!audioOn} background={background} />;
-  }, [audioRoute, audioOn]);
+    // Crossed out when the listening is off - it followed the
+    // microphone, and went crossed out at the wrong button.
+    return <Icon size={size} color="#e6ebf1" off={outputMuted} background={background} />;
+  }, [audioRoute, outputMuted]);
 
+  // The same as theirs: microphone, output, camera.
   const ownBadge = React.useMemo(() => {
     return (
       <>
+        <MicrophoneIcon size={13} color="#e6ebf1" off={!audioOn} background="#1b1d21" />
         {ownOutputMark(13, '#1b1d21')}
+        {ownCameraMark(13)}
         {showStats ? (
           <Text style={styles.pillVolume}>{dbText(peerGain)}</Text>
         ) : null}
       </>
     );
-  }, [ownOutputMark, showStats, peerGain]);
+  }, [ownOutputMark, ownCameraMark, audioOn, showStats, peerGain]);
 
   /**
    * Something is covering the screen: a pocket, a closed cover.
@@ -1367,6 +1392,7 @@ export default function ChannelScreen(props: Props) {
               <View style={styles.cardMarkRow}>
                 {peerMicMark(17, '#0b0e14')}
                 {peerMark(17, '#0b0e14')}
+                {peerCameraMark(17)}
                 {showStats && !peerDeaf && peerState.volume != null ? (
                   <Text style={styles.cardVolume}>
                     {levelText(peerState.volume, peerState.volSys, peerState.gain)}
@@ -1399,6 +1425,7 @@ export default function ChannelScreen(props: Props) {
                     </>
                   ) : null}
                 </View>
+                {ownCameraMark(17)}
                 {showStats ? <StatusMarks battery={battery} net={network} /> : null}
               </View>
             )}
