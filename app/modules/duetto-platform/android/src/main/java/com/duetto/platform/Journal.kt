@@ -22,6 +22,7 @@ import android.os.BatteryManager
 import android.os.Build
 import android.os.PowerManager
 import android.os.Process
+import android.os.SystemClock
 import android.util.Log
 import android.view.Display
 import java.io.File
@@ -549,6 +550,61 @@ object Journal {
             Log.w(TAG, "journal: could not write: ${e.message}")
         }
     }
+
+    /**
+     * The phone switched on: when, and why, as Android tells it.
+     *
+     * On 10 October the edge went silent at 10:57 and Duetto came back by
+     * itself at 11:00, with no death of its own to tell: the phone had
+     * restarted on its own, and the journal could say neither when nor
+     * why. Once per switch-on, at the service's start: the moment from
+     * the phone's uptime, and the reason from Android's own properties
+     * where an app may read them - a panic, a watchdog, the heat, a
+     * restart asked for - "?" where it may not.
+     */
+    fun recordBoot(ctx: Context) {
+        try {
+            val up = SystemClock.elapsedRealtime()
+            val bootAt = System.currentTimeMillis() - up
+            val prefs = ctx.getSharedPreferences(BOOT_PREFS, Context.MODE_PRIVATE)
+            // The same switch-on reads a few milliseconds apart each time.
+            if (Math.abs(prefs.getLong(KEY_BOOT_AT, 0L) - bootAt) < 60_000L) return
+            prefs.edit().putLong(KEY_BOOT_AT, bootAt).apply()
+            val at = SimpleDateFormat("HH:mm:ss", Locale.ROOT).format(Date(bootAt))
+            val why = bootReason().replace(Regex("[\\t\\r\\n]+"), " ").take(80).ifEmpty { "?" }
+            sample(ctx, "phone-booted:$at:$why:up-${up / 1000}s")
+        } catch (e: Exception) {
+            Log.w(TAG, "journal: cannot tell the switch-on: ${e.message}")
+        }
+    }
+
+    private fun bootReason(): String {
+        for (key in listOf("sys.boot.reason", "ro.boot.bootreason", "persist.sys.boot.reason")) {
+            val v = property(key)
+            if (v.isNotEmpty()) return v
+        }
+        return ""
+    }
+
+    /** One of Android's properties, if an app is let read it; empty if not. */
+    private fun property(key: String): String {
+        try {
+            val c = Class.forName("android.os.SystemProperties")
+            val v = c.getMethod("get", String::class.java).invoke(null, key) as? String
+            if (!v.isNullOrBlank()) return v.trim()
+        } catch (_: Throwable) { /* not let */ }
+        return try {
+            val p = Runtime.getRuntime().exec(arrayOf("getprop", key))
+            val out = p.inputStream.bufferedReader().use { it.readText() }.trim()
+            p.waitFor()
+            out
+        } catch (_: Throwable) {
+            ""
+        }
+    }
+
+    private const val BOOT_PREFS = "duetto_boot"
+    private const val KEY_BOOT_AT = "boot_at"
 
     /**
      * Why the process died, last time.

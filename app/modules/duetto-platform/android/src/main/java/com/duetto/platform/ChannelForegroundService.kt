@@ -279,6 +279,8 @@ class ChannelForegroundService : Service() {
             // How it ended last time: if the process before died, here is
             // where we find out why.
             Journal.recordExits(applicationContext)
+            // And whether the phone itself has just switched on, and why.
+            Journal.recordBoot(applicationContext)
             // The start line reschedules the wait by itself.
             Journal.sample(applicationContext, "start")
         }
