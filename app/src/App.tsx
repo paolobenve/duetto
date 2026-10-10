@@ -33,7 +33,7 @@ import {
 import { Signaling, PresenceStatus } from './signaling';
 import type { PersonOnServer, InvitationOnServer } from './signaling';
 import { useLanguage, t } from './i18n';
-import { alarmLabel } from './alarms';
+import { alarmLabel, sentGain } from './alarms';
 import { BUILD, VERSION_FULL, VERSION_LABEL } from './version';
 import { logger, setLogging } from './log';
 import { ChannelSession } from './webrtc';
@@ -5590,7 +5590,7 @@ export default function App() {
     // at full volume it would go straight into one's own microphone and
     // come back to the other person doubled, on top of what is already
     // playing over there.
-    if (cueGain > 0) Alarm.play(sound, true, 0, cueGain).catch(() => {});
+    if (cueGain > 0) Alarm.play(sound, true, 0, sentGain(sound, cueGain)).catch(() => {});
     Journal.mark(`alarm-sent:${sound}`).catch(() => {});
   }, []);
 
@@ -6113,7 +6113,7 @@ export default function App() {
           // leaves towards a phone far away and from here nothing would
           // be heard - the button just blinks. Knowing that it left is
           // worth as much as sending it.
-          if (cueGain > 0) Alarm.play('knock', true, KNOCK_ECHO_MS, cueGain).catch(() => {});
+          if (cueGain > 0) Alarm.play('knock', true, KNOCK_ECHO_MS, sentGain('knock', cueGain)).catch(() => {});
           Journal.mark('knock').catch(() => {});
         }}
         onLeave={leaveChannel}

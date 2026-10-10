@@ -22,6 +22,24 @@ import { t } from './i18n';
  * file freezes the language it was born in, and changing language it
  * would go on speaking the old one under a screen that had changed.
  */
+/**
+ * How loud each sound is as recorded, in LUFS (ffmpeg's ebur128), and
+ * the level of the buttons' own: the knock was some 6 dB below them, the
+ * fanfare 7, and on the moto the call one sends sounded "a bit low".
+ * Heard on the side that sends, every sound is brought to the buttons'
+ * level, under the same option; at the top the knock stays a little
+ * short, because a sound cannot go past its full volume.
+ */
+const RECORDED_LUFS: Record<string, number> = {
+  knock: -16.5, drumroll: -15.7, drumkit: -13.9, fanfare: -17.2, horn: -10.5, rooster: -12.2,
+};
+const BUTTONS_LUFS = -10;
+export function sentGain(name: string, gain: number): number {
+  const l = RECORDED_LUFS[name];
+  if (l === undefined || gain <= 0) return gain;
+  return Math.min(1, gain * 10 ** ((BUTTONS_LUFS - l) / 20));
+}
+
 /** The name of a sound as the list shows it; the bare name if unknown. */
 export const alarmLabel = (name: string): string =>
   ALARMS().find((a) => a.name === name)?.label ?? name;
