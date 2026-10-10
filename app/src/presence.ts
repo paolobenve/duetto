@@ -728,6 +728,7 @@ async function listenNow(): Promise<boolean> {
         detached = why === 'bye';
         refresh();
       },
+      onPeerName: (peerName) => { name = peerName; },
       onPeerMode: (mode, peerName, at) => {
         since = at;
         present = true;

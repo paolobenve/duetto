@@ -3385,12 +3385,21 @@ export default function App() {
   const brokenHeard = useRef(new Set<string>());
   const connKey = cfg
     ? [
-        cfg.serverUrl, cfg.serverKey, cfg.invitation, cfg.displayName,
+        // Not the name: it is said without leaving the room - see the
+        // effect below. In here, a new name remade the whole connection,
+        // with the sound of entering the channel.
+        cfg.serverUrl, cfg.serverKey, cfg.invitation,
         cfg.pair?.id, cfg.pair?.side, cfg.pair?.key,
         // Broken from the other side: the connection closes, and stays so.
         cfg.pair?.brokenByPeer ? 'broken' : '',
       ].join('|')
     : '';
+
+  // My name on the connection in use, said as it changes (Signaling.setName).
+  const myName = cfg?.displayName ?? '';
+  useEffect(() => {
+    signalingRef.current?.setName(myName || 'Someone');
+  }, [myName]);
 
   /**
    * The other person's real name, remembered in the connection.
@@ -3805,6 +3814,9 @@ export default function App() {
           },
 
           onModeSince: (since) => { if (since) setMySince(since); },
+
+          // A new name of theirs, without them leaving the room.
+          onPeerName: (n) => noteName(n),
 
           onPeerMode: (mode, n, since) => {
             setPeerSince(since);
@@ -5559,10 +5571,9 @@ export default function App() {
    * The one I give it travels nowhere: the other person does not see it
    * and will never know it. It is needed here, where the connections
    * stand in a row and without a name they all look alike. So does the
-   * one the other goes by here. The one I go by with them does travel:
-   * on the connection in use the change of name opens the connection
-   * again (see connKey), and the other side hears it on our joining; on
-   * a waiting one, standby.ts opens it again.
+   * one the other goes by here. The one I go by with them does travel,
+   * without leaving the room (Signaling.setName): on the connection in
+   * use from the effect below connKey, on a waiting one from standby.ts.
    */
   const onRenamePair = useCallback(async (
     id: string, name: string, peerUse: 'none' | 'theirs' | 'mine', alias: string,

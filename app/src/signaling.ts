@@ -229,6 +229,8 @@ export type SignalingEvents = {
    */
   onPeerLeft?: (why: 'bye' | 'dropped', at: number) => void;
   onPeerMode?: (mode: Mode, name: string, since: number) => void;
+  /** the other side has taken a new name, without leaving the room */
+  onPeerName?: (name: string) => void;
   /** the moment the server took note of OUR change of state */
   onModeSince?: (since: number) => void;
   /** the answer to `askPresence`: how the other side is doing now */
@@ -742,6 +744,10 @@ export class Signaling {
         this.events.onPeerMode?.(msg.mode, msg.name || '', moment(msg.since) || Date.now());
         break;
 
+      case 'peer-name':
+        if (msg.name) this.events.onPeerName?.(String(msg.name));
+        break;
+
       case 'notify':
         this.events.onNotify?.(msg.reason, msg.name || 'Someone', moment(msg.at) || Date.now());
         break;
@@ -909,6 +915,21 @@ export class Signaling {
     if (mode === this.mode) return;
     this.mode = mode;
     this.rawSend({ type: 'mode', mode });
+  }
+
+  /**
+   * A new name, said without leaving the room: the server writes it on
+   * the seat and tells the other side. It used to travel only in the
+   * join, and changing it remade the whole connection - the sound of
+   * entering the channel, a conversation cut for a moment. Kept for the
+   * next join too; a server that does not know the word lets it be, and
+   * the name arrives then.
+   */
+  setName(name: string) {
+    const said = name || 'Someone';
+    if (said === (this.opts.displayName || 'Someone')) return;
+    this.opts = { ...this.opts, displayName: said };
+    this.rawSend({ type: 'name', name: said });
   }
 
   getMode(): Mode {

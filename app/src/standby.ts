@@ -40,10 +40,11 @@ const log = logger('[duetto-standby]');
  */
 const standing = new Map<string, Signaling>();
 /**
- * The name each waiting connection said on opening: the other side
- * hears it on joining, so a new one means opening again.
+ * The name each waiting connection last said: a new one is said again
+ * without leaving the room (Signaling.setName).
  */
 const standingName = new Map<string, string>();
+
 
 /** The interface's ear: a call or a sound from a connection not in use. */
 type CallHeard = (pairId: string, text: string) => void;
@@ -140,13 +141,20 @@ export async function refreshStandby(cfg: DuoConfig | null): Promise<void> {
   const want = cfg && available ? wanted(cfg) : new Map<string, PairInfo>();
   for (const [id, sig] of standing) {
     const p = want.get(id);
-    // My name changed on it: the other side learns it on joining.
-    const renamed = !!p && myNameOn(cfg!, p) !== standingName.get(id);
-    if (p && !renamed) continue;
+    if (p) {
+      // My name changed on it: said to the other side, staying put.
+      const mine = myNameOn(cfg!, p);
+      if (mine !== standingName.get(id)) {
+        standingName.set(id, mine);
+        sig.setName(mine);
+        Journal.mark(`standby:renamed:${id.slice(0, 8)}`).catch(() => { /* noop */ });
+      }
+      continue;
+    }
     sig.close(false);
     standing.delete(id);
     standingName.delete(id);
-    Journal.mark(`standby:close:${id.slice(0, 8)}${renamed ? ':renamed' : ''}`).catch(() => { /* noop */ });
+    Journal.mark(`standby:close:${id.slice(0, 8)}`).catch(() => { /* noop */ });
   }
   for (const [id, p] of want) {
     if (!standing.has(id)) open(cfg!, p);
@@ -210,6 +218,8 @@ function open(cfg: DuoConfig, pair: PairInfo) {
         learn(peerName);
         if (peerPresent) sayHello(sig, pair.id);
       },
+      // A new name of theirs, without them leaving the room.
+      onPeerName: (peerName) => learn(peerName),
       onPeerJoined: (peerName) => {
         learn(peerName);
         sayHello(sig, pair.id);
