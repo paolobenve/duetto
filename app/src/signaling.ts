@@ -126,13 +126,13 @@ export type SignalMessage =
    */
   | { kind: 'netChanged' }
   /** short packets, for both: `permanent` when it was written in the settings */
-  | { kind: 'shortPackets'; on: boolean; permanent?: boolean }
+  | { kind: 'shortPackets'; on: boolean; permanent?: boolean; at?: number }
   // Video quality belongs to both: changing it on one phone changes it
   // on the other. Whoever receives it does not send it back.
-  | { kind: 'quality'; value: string }
+  | { kind: 'quality'; value: string; at?: number }
   // Audio options belong to the conversation, not to one phone: a
   // richer voice makes sense when both of you turn it on.
-  | { kind: 'audio'; richer: boolean }
+  | { kind: 'audio'; richer: boolean; at?: number }
   // The journal of what the phone is doing, which each phone sends to
   // the other every so often: plug one of them into a computer and you
   // can read both. The other phone is in somebody else's hands and a

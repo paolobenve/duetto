@@ -156,6 +156,15 @@ export type PairSettings = {
    * phones, as the richer voice does.
    */
   shortPackets: boolean;
+  /**
+   * When the resolution, the short packets and the richer voice were
+   * last chosen, on either phone: they hold for both, and a choice that
+   * reaches the other later - told again at the next meeting - must not
+   * undo a newer one.
+   */
+  videoQualityAt?: number;
+  shortPacketsAt?: number;
+  richerAudioAt?: number;
   /** the microphone on entering: as it was left ('asLeft'), or always off ('off') */
   micOnEntry: 'asLeft' | 'off';
   controls: 'dim' | 'faint' | 'hidden' | 'none';
@@ -186,6 +195,7 @@ const PAIR_FIELDS: (keyof PairSettings)[] = [
   'videoCodec', 'alertVibration', 'alertSound', 'alertSoundUri', 'alertSoundName',
   'alertDuettoSound', 'alertPicked', 'alertLevel',
   'audioOutput', 'gains', 'frontCamera', 'language',
+  'videoQualityAt', 'shortPacketsAt', 'richerAudioAt',
 ];
 
 /** The settings in use, taken from the configuration. */
@@ -350,6 +360,15 @@ export type DuoConfig = {
    * phones, as the richer voice does.
    */
   shortPackets: boolean;
+  /** when the shared choices were last made: see PairSettings */
+  videoQualityAt?: number;
+  shortPacketsAt?: number;
+  richerAudioAt?: number;
+  /**
+   * Choices that hold for both phones, made while the other could not
+   * hear them, by connection: told again as soon as the two meet.
+   */
+  owedToPeer?: Record<string, SharedChoice[]>;
   /**
    * How loud the cues are - video, microphone, camera, coming in and
    * going out - and the echo of a sound one sends: a share of the
@@ -807,6 +826,64 @@ export function nameMyself(cfg: DuoConfig, id: string, name: string): DuoConfig 
 export function myNameOn(cfg: DuoConfig, p: PairInfo): string {
   if (cfg.pair?.id === p.id) return cfg.displayName || '';
   return p.settings ? p.settings.displayName || '' : cfg.displayName || '';
+}
+
+/** Some of a connection's settings changed, in use or not. */
+export function setPairSettings(cfg: DuoConfig, id: string, patch: Partial<PairSettings>): DuoConfig {
+  if (cfg.pair?.id === id) return { ...cfg, ...patch };
+  const touch = (p: PairInfo) => (p.id === id
+    ? { ...p, settings: { ...(p.settings ?? settingsInUse(cfg)), ...patch } }
+    : p);
+  return { ...cfg, pairs: cfg.pairs.map(touch) };
+}
+
+/** The choices that hold for both phones, by the name their message goes by. */
+export type SharedChoice = 'quality' | 'shortPackets' | 'audio';
+
+/**
+ * A choice that holds for both phones, heard from the other one: the
+ * resolution, the short packets chosen for good, the richer voice.
+ * Taken unless the one here is newer. Null when nothing changes.
+ */
+export function sharedChoiceHeard(
+  cfg: DuoConfig, id: string,
+  msg: { kind: string; value?: string; on?: boolean; permanent?: boolean; richer?: boolean; at?: number },
+): DuoConfig | null {
+  const p = cfg.pair?.id === id ? cfg.pair : cfg.pairs.find((x) => x.id === id);
+  if (!p) return null;
+  const s: Partial<PairSettings> = cfg.pair?.id === id ? cfg : (p.settings ?? settingsInUse(cfg));
+  const at = Number(msg.at) || Date.now();
+  if (msg.kind === 'quality') {
+    const q = msg.value as VideoQuality;
+    if (!VIDEO_PROFILES[q] || s.videoQuality === q || (s.videoQualityAt ?? 0) > at) return null;
+    return setPairSettings(cfg, id, { videoQuality: q, videoQualityAt: at });
+  }
+  if (msg.kind === 'shortPackets' && msg.permanent) {
+    const on = msg.on === true;
+    if (s.shortPackets === on || (s.shortPacketsAt ?? 0) > at) return null;
+    return setPairSettings(cfg, id, { shortPackets: on, shortPacketsAt: at });
+  }
+  if (msg.kind === 'audio') {
+    const richer = msg.richer === true;
+    if (s.richerAudio === richer || (s.richerAudioAt ?? 0) > at) return null;
+    return setPairSettings(cfg, id, { richerAudio: richer, richerAudioAt: at });
+  }
+  return null;
+}
+
+/** A shared choice made while the other could not hear it: owed to them. */
+export function oweToPeer(cfg: DuoConfig, id: string, what: SharedChoice): DuoConfig {
+  const owed = cfg.owedToPeer?.[id] ?? [];
+  if (owed.includes(what)) return cfg;
+  return { ...cfg, owedToPeer: { ...cfg.owedToPeer, [id]: [...owed, what] } };
+}
+
+/** Told at last: nothing owed to them any more. */
+export function paidToPeer(cfg: DuoConfig, id: string): DuoConfig {
+  if (!cfg.owedToPeer?.[id]) return cfg;
+  const rest = { ...cfg.owedToPeer };
+  delete rest[id];
+  return { ...cfg, owedToPeer: rest };
 }
 
 /** The choice of the other person's name, for one connection. */

@@ -11,7 +11,7 @@ import { AppState } from 'react-native';
 import { Foreground, Journal, Alarm, Heartbeat } from 'duetto-platform';
 import {
   DuoConfig, PairInfo, peerShown, alertSoundFor, myNameOn, loadConfig, saveConfig, rememberPeerName,
-  ALERT_GAIN,
+  ALERT_GAIN, sharedChoiceHeard,
 } from './config';
 import { Signaling } from './signaling';
 import { news } from './presence';
@@ -140,6 +140,33 @@ export function onStandbyName(cb: NameHeard): () => void {
   onName = cb;
   return () => { if (onName === cb) onName = null; };
 }
+/**
+ * A choice that holds for both phones - the resolution, the short
+ * packets, the richer voice - heard on a connection not in use.
+ *
+ * The other phone tells it when it is made, and the server brings it to
+ * whoever is in the room: a waiting connection heard it and let it go.
+ * So on 10 October the moto went to "saver" with the POCO waiting on
+ * that pair, and when the POCO came over the two were apart. Now it is
+ * written in the pair - unless the choice here is newer - by the
+ * interface or straight into the saved configuration.
+ */
+type ChoiceMsg = Parameters<typeof sharedChoiceHeard>[2];
+type ChoiceHeard = (pairId: string, msg: ChoiceMsg) => void;
+let onChoice: ChoiceHeard | null = null;
+export function onStandbyChoice(cb: ChoiceHeard): () => void {
+  onChoice = cb;
+  return () => { if (onChoice === cb) onChoice = null; };
+}
+function choiceHeard(pairId: string, msg: ChoiceMsg) {
+  Journal.mark(`standby:peer-${msg.kind}:${pairId.slice(0, 8)}`).catch(() => { /* noop */ });
+  if (onChoice) { onChoice(pairId, msg); return; }
+  loadConfig().then((fresh) => {
+    const next = sharedChoiceHeard(fresh, pairId, msg);
+    return next ? saveConfig(next) : undefined;
+  }).catch(() => { /* noop */ });
+}
+
 function nameHeard(pairId: string, name: string) {
   Journal.mark(`standby:peer-name:${pairId.slice(0, 8)}`).catch(() => { /* noop */ });
   if (onName) { onName(pairId, name); return; }
@@ -352,6 +379,10 @@ function open(cfg: DuoConfig, pair: PairInfo) {
             if (st === 'on') Foreground.note('', saidOfThem('diagAsk.turnedOn', who)).catch(() => { /* noop */ });
             if (st === 'no') Foreground.note('', saidOfThem('diagAsk.refused', who)).catch(() => { /* noop */ });
           }).catch(() => { /* noop */ });
+          return;
+        }
+        if (msg.kind === 'quality' || msg.kind === 'shortPackets' || msg.kind === 'audio') {
+          choiceHeard(pair.id, msg);
           return;
         }
         if (msg.kind !== 'alarm') return;

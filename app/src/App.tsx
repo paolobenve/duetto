@@ -27,6 +27,7 @@ import {
   isServerConfigured, isPaired, displayServer, opensHere, VIDEO_PROFILES,
   addPair, switchToPair, forgetPair, markPairBroken, rememberPeerName,
   alertSoundFor, alignPairServer, renamePair, pairFileKey, pairName, peerShown, namePeer, nameMyself,
+  oweToPeer, paidToPeer, sharedChoiceHeard,
   CUE_GAIN, ALERT_GAIN,
   storeSettingsInPair,
 } from './config';
@@ -49,7 +50,7 @@ import { useAudioRoute, type AudioRoute } from './audioRoute';
 import { pairFromLetter } from './pairing';
 import CallAlert, { CallBand, CALL_ALERT_MS } from './CallAlert';
 import {
-  refreshStandby, onStandbyCall, onStandbyAsk, onStandbyName, helloStandby, sendStandby,
+  refreshStandby, onStandbyCall, onStandbyAsk, onStandbyName, onStandbyChoice, helloStandby, sendStandby,
 } from './standby';
 import { takeCall } from './callsUnseen';
 import { sendJournalOver, JOURNAL_PIECE } from './journalSwap';
@@ -346,6 +347,14 @@ const OWN_CALL_GRAB_MS = 3000;
 /** how long one's own leaving cues last: the call's audio waits for them */
 const LEAVE_CUE_MS = 1300;
 const DETACH_CUE_MS = 1800;
+/**
+ * A shared choice of theirs that arrives with a moment older than ours:
+ * ours stands. Without a moment - an older Duetto - theirs is taken, as
+ * it always was.
+ */
+const theirsIsOlder = (ours: number | undefined, theirs: number) =>
+  theirs > 0 && (ours ?? 0) > theirs;
+
 const cue = (name: string) => {
   if (cueGain > 0) Alarm.play(name, true, 0, cueGain).catch(() => { /* noop */ });
 };
@@ -924,6 +933,12 @@ export default function App() {
   useEffect(() => onStandbyName((pairId, name) => setCfg((prev) => {
     if (!prev) return prev;
     const next = rememberPeerName(prev, pairId, name);
+    return next ? saveCfg(next) : prev;
+  })), [saveCfg]);
+  // And the choices that hold for both, heard there: written in its pair.
+  useEffect(() => onStandbyChoice((pairId, msg) => setCfg((prev) => {
+    if (!prev) return prev;
+    const next = sharedChoiceHeard(prev, pairId, msg);
     return next ? saveCfg(next) : prev;
   })), [saveCfg]);
   // A call heard while Duetto was closed, by the presence with no
@@ -4050,17 +4065,17 @@ export default function App() {
             // knowing which of them is on screen. It is not sent back:
             // that would bounce for ever.
             if (msg.kind === 'quality') {
-              applyQuality(msg.value as DuoConfig['videoQuality'], false);
+              applyQuality(msg.value as DuoConfig['videoQuality'], false, Number(msg.at) || 0);
               return;
             }
             // Like the resolution: it holds for both, and whoever
             // receives it does not send it back.
             if (msg.kind === 'shortPackets') {
-              applyShortPackets(msg.on, false, msg.permanent === true);
+              applyShortPackets(msg.on, false, msg.permanent === true, Number(msg.at) || 0);
               return;
             }
             if (msg.kind === 'audio') {
-              applyAudio(msg.richer, false);
+              applyAudio(msg.richer, false, Number(msg.at) || 0);
               return;
             }
             // They made their link from scratch while ours is the old
@@ -5333,15 +5348,28 @@ export default function App() {
    * what one intends; if it does not suit, the other side changes it
    * back and it is aligned again.
    */
+  /**
+   * Whether the other side can hear a choice now: connected, and in the
+   * room. If not, it is owed to them - see the meeting effect below.
+   */
+  const otherHears = () => !!signalingRef.current?.connected && peerPresentRef.current;
   const applyQuality = useCallback(
-    (q: DuoConfig['videoQuality'], tell: boolean) => {
+    (q: DuoConfig['videoQuality'], tell: boolean, at = 0) => {
+      if (!tell && theirsIsOlder(cfgRef.current?.videoQualityAt, at)) {
+        Journal.mark(`peer-quality:${q}:older`).catch(() => {});
+        return;
+      }
+      const when = tell ? Date.now() : at || Date.now();
+      const owe = tell && !otherHears();
       setCfg((prev) => {
-        if (!prev || prev.videoQuality === q) return prev;
-        return saveCfg({ ...prev, videoQuality: q });
+        if (!prev) return prev;
+        let next = prev.videoQuality === q ? prev : { ...prev, videoQuality: q, videoQualityAt: when };
+        if (owe && prev.pair) next = oweToPeer(next, prev.pair.id, 'quality');
+        return next === prev ? prev : saveCfg(next);
       });
       sessionRef.current?.setVideoQuality(q);
       Journal.mark(`${tell ? '' : 'peer-'}quality:${q}`).catch(() => {});
-      if (tell) signalingRef.current?.sendSignal({ kind: 'quality', value: q });
+      if (tell) signalingRef.current?.sendSignal({ kind: 'quality', value: q, at: when });
     },
     [saveCfg],
   );
@@ -5372,14 +5400,25 @@ export default function App() {
    * Written in the settings when `permanent`, for this session alone
    * otherwise; told to the other side when the choice was made here.
    */
-  const applyShortPackets = useCallback((on: boolean, tell: boolean, permanent: boolean) => {
+  const applyShortPackets = useCallback((on: boolean, tell: boolean, permanent: boolean, at = 0) => {
+    if (permanent && !tell && theirsIsOlder(cfgRef.current?.shortPacketsAt, at)) {
+      Journal.mark(`peer-short-packets:${on ? 'yes' : 'no'}:older`).catch(() => {});
+      return;
+    }
+    const when = tell ? Date.now() : at || Date.now();
     if (permanent) {
-      setCfg((prev) => (prev && prev.shortPackets !== on ? saveCfg({ ...prev, shortPackets: on }) : prev));
+      const owe = tell && !otherHears();
+      setCfg((prev) => {
+        if (!prev) return prev;
+        let next = prev.shortPackets === on ? prev : { ...prev, shortPackets: on, shortPacketsAt: when };
+        if (owe && prev.pair) next = oweToPeer(next, prev.pair.id, 'shortPackets');
+        return next === prev ? prev : saveCfg(next);
+      });
     }
     sessionRef.current?.setShortPackets(on, permanent).catch(() => { /* noop */ });
     Journal.mark(`${tell ? '' : 'peer-'}short-packets:${on ? 'yes' : 'no'}${permanent ? '' : ':this-time'}`)
       .catch(() => {});
-    if (tell) signalingRef.current?.sendSignal({ kind: 'shortPackets', on, permanent });
+    if (tell) signalingRef.current?.sendSignal({ kind: 'shortPackets', on, permanent, at: when });
   }, [saveCfg]);
 
   /**
@@ -5416,16 +5455,55 @@ export default function App() {
     else if (choice === 'never') setCfg((prev) => (prev ? saveCfg({ ...prev, lossAsk: false }) : prev));
   }, [applyShortPackets, saveCfg]);
 
-  const applyAudio = useCallback((richer: boolean, tell: boolean) => {
+  const applyAudio = useCallback((richer: boolean, tell: boolean, at = 0) => {
+    if (!tell && theirsIsOlder(cfgRef.current?.richerAudioAt, at)) {
+      Journal.mark(`peer-rich-voice:${richer ? 'yes' : 'no'}:older`).catch(() => {});
+      return;
+    }
+    const when = tell ? Date.now() : at || Date.now();
+    const owe = tell && !otherHears();
     setCfg((prev) => {
-      if (!prev || prev.richerAudio === richer) return prev;
-      return saveCfg({ ...prev, richerAudio: richer });
+      if (!prev) return prev;
+      let next = prev.richerAudio === richer ? prev : { ...prev, richerAudio: richer, richerAudioAt: when };
+      if (owe && prev.pair) next = oweToPeer(next, prev.pair.id, 'audio');
+      return next === prev ? prev : saveCfg(next);
     });
     sessionRef.current?.setAudioOptions(richer);
     Journal.mark(`${tell ? '' : 'peer-'}rich-voice:${richer ? 'yes' : 'no'}`)
       .catch(() => {});
-    if (tell) signalingRef.current?.sendSignal({ kind: 'audio', richer });
+    if (tell) signalingRef.current?.sendSignal({ kind: 'audio', richer, at: when });
   }, [saveCfg]);
+
+  /**
+   * The choices owed to the other side, told as soon as the two meet.
+   *
+   * The resolution, the short packets and the richer voice hold for
+   * both, and a change was told only to a phone there to hear it: made
+   * while the other was away, it stayed on this side, and at the next
+   * meeting each phone went on with its own - on 10 October the moto on
+   * "saver", the POCO on "better", and nobody the wiser. With its moment,
+   * so that the other does not take it over a newer choice of its own.
+   */
+  useEffect(() => {
+    if (!peerPresent) return;
+    const c = cfgRef.current;
+    const id = c?.pair?.id;
+    const owed = id ? c?.owedToPeer?.[id] : undefined;
+    const sig = signalingRef.current;
+    if (!c || !id || !owed?.length || !sig?.connected) return;
+    if (owed.includes('quality')) {
+      sig.sendSignal({ kind: 'quality', value: c.videoQuality, at: c.videoQualityAt });
+    }
+    if (owed.includes('shortPackets')) {
+      sig.sendSignal({ kind: 'shortPackets', on: c.shortPackets, permanent: true, at: c.shortPacketsAt });
+    }
+    if (owed.includes('audio')) {
+      sig.sendSignal({ kind: 'audio', richer: c.richerAudio, at: c.richerAudioAt });
+    }
+    Journal.mark(`owed-told:${owed.join('+')}`).catch(() => { /* noop */ });
+    setCfg((prev) => (prev ? saveCfg(paidToPeer(prev, id)) : prev));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refs and a stable saver: the meeting is the trigger
+  }, [peerPresent]);
 
 
   /**
