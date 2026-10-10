@@ -1292,6 +1292,25 @@ wss.on('connection', (ws, req) => {
     }
 
     // --- 2) Change of state ---------------------------------------------
+    /**
+     * A new name, without leaving the room.
+     *
+     * The name used to travel only in the join: changing it meant the
+     * phone left and came back - a whole connection remade, the sound of
+     * entering the channel, a conversation cut for a moment. Now it is
+     * said here, written on the seat, and told to the other side; the
+     * next join carries it anyway.
+     */
+    if (msg.type === 'name') {
+      const name = cleanName(msg.name);
+      if (name === ws.name) return;
+      ws.name = name;
+      for (const peer of peersOf(ws.roomId, ws)) {
+        send(peer, { type: 'peer-name', name: ws.name });
+      }
+      return;
+    }
+
     if (msg.type === 'mode') {
       const next = MODES.includes(msg.mode) ? msg.mode : null;
       if (!next || next === ws.mode) return;

@@ -185,6 +185,14 @@ try {
   check(bMode.mode === 'active', 'B sees that A has come in as well');
   check(await b.expectNone('notify'), 'whoever is already in the channel is not notified');
 
+  // --- a new name, without leaving the room -------------------------------
+  b.send({ type: 'name', name: 'Bruno B.' });
+  const bName = await a.expect('peer-name');
+  check(bName.name === 'Bruno B.', 'a new name reaches the other side at once');
+  check(await b.expectNone('peer-name'), 'whoever changed it is not told back');
+  b.send({ type: 'name', name: 'Bruno B.' });
+  check(await a.expectNone('peer-name'), 'the same name again is not news');
+
   // --- forwarding an encrypted envelope ----------------------------------
   const payload = 'OPAQUE_ENVELOPE_BASE64==';
   b.send({ type: 'signal', payload });
