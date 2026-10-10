@@ -440,6 +440,15 @@ export default function SettingsScreen({
     setMyName(myNameOn(initial, p));
     setNaming(p);
   };
+  /**
+   * The same connection as it is now: the other side's name can arrive
+   * while the box is open - on 10 October it was changed on the moto
+   * with the POCO's box open, and the box went on showing the old one.
+   * Only their name is read from here; what is being written stays.
+   */
+  const namingNow = naming
+    ? [initial.pair, ...initial.pairs].find((p) => p?.id === naming.id) ?? naming
+    : null;
   const closeNaming = (save: boolean) => {
     if (save && naming) onRenamePair(naming.id, writtenName, peerUse, peerAlias, myName);
     setNaming(null);
@@ -1736,14 +1745,14 @@ export default function SettingsScreen({
                 <Text style={styles.choiceNote}>{t('settings.peerNameNoneNote')}</Text>
               </View>
             </TouchableOpacity>
-            {naming && isRealName(naming.peerName) ? (
+            {namingNow && isRealName(namingNow.peerName) ? (
               <TouchableOpacity
                 style={[styles.choice, peerUse === 'theirs' && styles.choicePicked]}
                 onPress={() => setPeerUse('theirs')}>
                 <View style={[styles.radio, peerUse === 'theirs' && styles.radioPicked]} />
                 <View style={styles.choiceText}>
                   <Text style={styles.choiceLabel}>
-                    {t('settings.peerNameTheirs', { name: naming.peerName })}
+                    {t('settings.peerNameTheirs', { name: namingNow.peerName })}
                   </Text>
                 </View>
               </TouchableOpacity>
