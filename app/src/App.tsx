@@ -3396,10 +3396,10 @@ export default function App() {
     : '';
 
   // My name on the connection in use, said as it changes (Signaling.setName).
-  const myName = cfg?.displayName ?? '';
+  const ownName = cfg?.displayName ?? '';
   useEffect(() => {
-    signalingRef.current?.setName(myName || 'Someone');
-  }, [myName]);
+    signalingRef.current?.setName(ownName || 'Someone');
+  }, [ownName]);
 
   /**
    * The other person's real name, remembered in the connection.
