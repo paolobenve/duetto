@@ -3532,6 +3532,17 @@ export default function App() {
     // (after a reboot), the app takes over now: two connections from
     // the same device would push each other out.
     stopListening();
+    /**
+     * Ours from this very moment, not from when the connection is made.
+     *
+     * Said only after the permissions were asked, it left a hole: the
+     * cleanup of the connection being remade had just said "not ours",
+     * and a heartbeat falling in the wait found no connection and no
+     * interface in charge - the presence opened its own, the two pushed
+     * each other off the server, and the channel was entered once more,
+     * with its sound. On the moto, at 16:23:45 on 10 October.
+     */
+    interfaceInCharge(true);
     let cancelled = false;
 
     (async () => {
@@ -3544,6 +3555,7 @@ export default function App() {
         // does. The headless connection was closed above to make room
         // for ours; without this, refusing the permission silently cost
         // the phone its reachability as well.
+        interfaceInCharge(false);
         startListening().catch(() => {});
         return;
       }
