@@ -44,7 +44,8 @@ const standing = new Map<string, Signaling>();
  * without leaving the room (Signaling.setName).
  */
 const standingName = new Map<string, string>();
-
+/** Every connection as the configuration has it now: see `live` in open(). */
+const latest = new Map<string, PairInfo>();
 
 /** The interface's ear: a call or a sound from a connection not in use. */
 type CallHeard = (pairId: string, text: string) => void;
@@ -137,6 +138,10 @@ function wanted(cfg: DuoConfig): Map<string, PairInfo> {
  */
 export async function refreshStandby(cfg: DuoConfig | null): Promise<void> {
   if (cfg) diagnosticsOn = cfg.diagnostics === true;
+  if (cfg) {
+    latest.clear();
+    for (const p of cfg.pairs) latest.set(p.id, p);
+  }
   const available = await Foreground.isAvailable().catch(() => true);
   const want = cfg && available ? wanted(cfg) : new Map<string, PairInfo>();
   for (const [id, sig] of standing) {
@@ -182,7 +187,14 @@ function soundOf(pair: PairInfo) {
 }
 
 function open(cfg: DuoConfig, pair: PairInfo) {
-  const channel = pair.label || '';
+  /**
+   * The connection as it is now, not as it was on opening: its name and
+   * the choice of the other's name can change from its pencil while it
+   * waits, and the notifications went on with the old ones until it
+   * was opened again.
+   */
+  const live = (): PairInfo => latest.get(pair.id) ?? pair;
+  const channelNow = () => live().label || '';
   let name = pair.peerName || '';
   /** the name last written in the pair, so that it is written once */
   let written = name;
@@ -226,18 +238,18 @@ function open(cfg: DuoConfig, pair: PairInfo) {
       },
       onNotify: (reason, peerName, at) => {
         learn(peerName);
-        const who = peerShown(pair, name);
+        const who = peerShown(live(), name);
         if (reason === 'knock') {
-          const text = news.called(who, channel, at);
+          const text = news.called(who, channelNow(), at);
           log('call from a connection not in use:', text);
           Journal.mark(`standby:knock:${pair.id.slice(0, 8)}`).catch(() => { /* noop */ });
-          Foreground.notifyFor('', text, pair.id, soundOf(pair)).catch(() => { /* noop */ });
+          Foreground.notifyFor('', text, pair.id, soundOf(live())).catch(() => { /* noop */ });
           heard(pair.id, text);
           return;
         }
         // Their coming into the channel: said quietly, on the line that
         // does not ring - it is news, not a call.
-        Foreground.note('', news.inChannel(who, channel, at)).catch(() => { /* noop */ });
+        Foreground.note('', news.inChannel(who, channelNow(), at)).catch(() => { /* noop */ });
       },
       onSignal: (msg) => {
         // Asked for our diagnostics: answered here, the card shown by
@@ -253,27 +265,27 @@ function open(cfg: DuoConfig, pair: PairInfo) {
             onAsk?.(pair.id);
             // Said quietly too, unless the card is in front of somebody.
             if (!onAsk || AppState.currentState !== 'active') {
-              Foreground.note('', saidOfThem('diagAsk.note', peerShown(pair, name))).catch(() => { /* noop */ });
+              Foreground.note('', saidOfThem('diagAsk.note', peerShown(live(), name))).catch(() => { /* noop */ });
             }
           }).catch(() => { /* noop */ });
           return;
         }
         if (msg.kind === 'diagnosticsAnswer') {
           answerHeard(pair.id, msg.answer).then((st) => {
-            const who = peerShown(pair, name);
+            const who = peerShown(live(), name);
             if (st === 'on') Foreground.note('', saidOfThem('diagAsk.turnedOn', who)).catch(() => { /* noop */ });
             if (st === 'no') Foreground.note('', saidOfThem('diagAsk.refused', who)).catch(() => { /* noop */ });
           }).catch(() => { /* noop */ });
           return;
         }
         if (msg.kind !== 'alarm') return;
-        const who = peerShown(pair, name);
-        const text = news.called(who, channel, Number(msg.at) || Date.now(),
+        const who = peerShown(live(), name);
+        const text = news.called(who, channelNow(), Number(msg.at) || Date.now(),
           alarmLabel(String(msg.sound ?? '')));
         Journal.mark(`standby:alarm:${pair.id.slice(0, 8)}:${msg.sound}`).catch(() => { /* noop */ });
         Alarm.play(String(msg.sound ?? ''), false, 0,
-          ALERT_GAIN[pair.settings?.alertLevel ?? 'full'] ?? 1).catch(() => { /* noop */ });
-        Foreground.notifyFor('', text, pair.id, soundOf(pair)).catch(() => { /* noop */ });
+          ALERT_GAIN[live().settings?.alertLevel ?? 'full'] ?? 1).catch(() => { /* noop */ });
+        Foreground.notifyFor('', text, pair.id, soundOf(live())).catch(() => { /* noop */ });
         heard(pair.id, text);
       },
     },
