@@ -158,6 +158,57 @@ class VolumeModule(private val ctx: ReactApplicationContext) :
     }
 
     /**
+     * All of Android's volumes, for the sheet that shows them.
+     *
+     * HyperOS has no call volume in its panel nor in its settings, and
+     * its volume bar does not open onto the others: the call volume is
+     * reached only with the keys during a call. Here each with its
+     * value, its top and its floor - the call cannot go to zero.
+     */
+    @ReactMethod
+    fun streams(promise: Promise) {
+        val a = am
+        val out = Arguments.createArray()
+        if (a == null) { promise.resolve(out); return }
+        for ((name, stream) in STREAMS) {
+            try {
+                val m = Arguments.createMap()
+                m.putString("name", name)
+                m.putInt("volume", a.getStreamVolume(stream))
+                m.putInt("max", a.getStreamMaxVolume(stream))
+                m.putInt(
+                    "min",
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) a.getStreamMinVolume(stream) else 0,
+                )
+                out.pushMap(m)
+            } catch (_: Exception) { /* that one is left out */ }
+        }
+        promise.resolve(out)
+    }
+
+    /**
+     * One of them, at an exact value, quietly. Says how it went: "ok",
+     * "held" when Android kept another value, "refused" when it will not
+     * - with Do Not Disturb on, the ring cannot be touched without a
+     * permission Duetto does not ask for.
+     */
+    @ReactMethod
+    fun setStream(name: String, value: Int, promise: Promise) {
+        val a = am
+        val stream = STREAMS.firstOrNull { it.first == name }?.second
+        if (a == null || stream == null) { promise.resolve("unknown"); return }
+        try {
+            val v = value.coerceIn(0, a.getStreamMaxVolume(stream))
+            a.setStreamVolume(stream, v, 0)
+            promise.resolve(if (a.getStreamVolume(stream) == v) "ok" else "held")
+        } catch (_: SecurityException) {
+            promise.resolve("refused")
+        } catch (_: Exception) {
+            promise.resolve("failed")
+        }
+    }
+
+    /**
      * Warns when the call volume changes, from outside as well.
      *
      * It is there so that the number Duetto shows does not lie: if
@@ -220,5 +271,13 @@ class VolumeModule(private val ctx: ReactApplicationContext) :
         private const val VOLUME_ACTION = "android.media.VOLUME_CHANGED_ACTION"
         private const val EXTRA_TYPE = "android.media.EXTRA_VOLUME_STREAM_TYPE"
         private const val EXTRA_VALUE = "android.media.EXTRA_VOLUME_STREAM_VALUE"
+        /** Android's volumes, in the order the sheet shows them */
+        private val STREAMS = listOf(
+            "call" to AudioManager.STREAM_VOICE_CALL,
+            "media" to AudioManager.STREAM_MUSIC,
+            "ring" to AudioManager.STREAM_RING,
+            "notification" to AudioManager.STREAM_NOTIFICATION,
+            "alarm" to AudioManager.STREAM_ALARM,
+        )
     }
 }

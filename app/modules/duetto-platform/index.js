@@ -690,6 +690,13 @@ export const Volume = isAndroid && NativeVolume
       /** the call volume's steps in dB below the top, for an output; [] if unknown */
       steps: (route) => call(NativeVolume, 'steps', String(route || '')),
 
+      /** all of Android's volumes: [{ name, volume, max, min }] */
+      streams: () => call(NativeVolume, 'streams'),
+
+      /** one of them at an exact value: 'ok' | 'held' | 'refused' | 'failed' */
+      setStream: (name, value) =>
+        call(NativeVolume, 'setStream', String(name), Math.round(Number(value) || 0)),
+
       /**
        * Calls `cb(value)` when the call volume changes, by another app's
        * hand as well.
@@ -707,6 +714,8 @@ export const Volume = isAndroid && NativeVolume
       read: () => Promise.resolve({ volume: 0, max: 0 }),
       set: unavailable,
       steps: () => Promise.resolve([]),
+      streams: () => Promise.resolve([]),
+      setStream: () => Promise.resolve('unknown'),
       listenToSystem: () => () => {},
     };
 

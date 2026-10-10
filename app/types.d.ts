@@ -65,6 +65,13 @@ declare module 'duetto-platform' {
     set(value: number): Promise<boolean>;
     /** the call volume's steps, in dB below the top, for an output; [] if unknown */
     steps(route: string): Promise<number[]>;
+    /** all of Android's volumes, in the order to show them */
+    streams(): Promise<{
+      name: 'call' | 'media' | 'ring' | 'notification' | 'alarm';
+      volume: number; max: number; min: number;
+    }[]>;
+    /** one of them at an exact value, and how it went */
+    setStream(name: string, value: number): Promise<'ok' | 'held' | 'refused' | 'failed' | 'unknown'>;
     /** `cb(value)` when the call volume changes, from outside as well */
     listenToSystem(cb: (value: number) => void): () => void;
   };

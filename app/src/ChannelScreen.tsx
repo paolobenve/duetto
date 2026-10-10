@@ -11,7 +11,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated,
   useWindowDimensions, Modal, Pressable, PanResponder, LayoutAnimation, UIManager, Platform,
-  Linking,
 } from 'react-native';
 import type { GestureResponderEvent } from 'react-native';
 import { MediaStream } from 'react-native-webrtc';
@@ -23,6 +22,7 @@ import { AudioRoute, routeLabel } from './audioRoute';
 import { ALARMS } from './alarms';
 import { VERSION_LABEL } from './version';
 import ChangelogModal from './ChangelogModal';
+import VolumesSheet from './VolumesSheet';
 import type { Avatar } from './avatar';
 import { VIDEO_PROFILES } from './config';
 import type { VideoQuality } from './config';
@@ -179,18 +179,6 @@ const BOTTOM_BAND = 0.18;
 /** What the volume scale takes from the right edge, with air on both sides. */
 const SCALE_ROOM = 8 + 72 + 8;
 
-/**
- * Android's volumes - call, media, ring, alarm - in its own panel, the
- * one that rises from the bottom without leaving the app; where there
- * is none (before Android 10, or a maker that dropped it), the page of
- * sounds in its settings.
- */
-function openVolumes() {
-  Linking.sendIntent('android.settings.panel.action.VOLUME')
-    .catch(() => Linking.sendIntent('android.settings.SOUND_SETTINGS'))
-    .catch(() => { /* noop */ });
-}
-
 function VolumeScale(p: {
   level: number; phone: number; ceiling: number; min: number; max: number;
   pct: number; muted: boolean;
@@ -202,7 +190,7 @@ function VolumeScale(p: {
   knobFloor?: number;
   route: AudioRoute;
   onPick?: (db: number, done: boolean) => void;
-  /** a long press on the figure: Android's volumes, all of them */
+  /** a long press on the figure: Android's volumes, all of them (VolumesSheet) */
   onFigureLong?: () => void;
 }) {
   const [h, setH] = useState(0);
@@ -740,6 +728,8 @@ export default function ChannelScreen(props: Props) {
    */
   const [panelHeight, setPanelHeight] = useState(0);
   const [routeMenu, setRouteMenu] = useState(false);
+  /** Android's volumes, all of them: see VolumesSheet */
+  const [volumesOpen, setVolumesOpen] = useState(false);
   const [changelogOpen, setChangelogOpen] = useState(false);
   const [qualityMenu, setQualityMenu] = useState(false);
   /** the two ways out, by holding "Leave" */
@@ -1606,8 +1596,8 @@ export default function ChannelScreen(props: Props) {
             onPick={(db, done) => { if (!blocked()) onSetLevel?.(db, done); }}
             onFigureLong={() => {
               if (blocked()) return;
-              Journal.mark('command:volumes-panel').catch(() => { /* noop */ });
-              openVolumes();
+              Journal.mark('command:volumes').catch(() => { /* noop */ });
+              setVolumesOpen(true);
             }}
           />
         </Animated.View>
@@ -2040,6 +2030,8 @@ export default function ChannelScreen(props: Props) {
           ) : null}
         </Pressable>
       </Modal>
+
+      <VolumesSheet visible={volumesOpen} onClose={() => setVolumesOpen(false)} />
 
       <Modal
         visible={routeMenu}

@@ -95,6 +95,18 @@ export const it: Dictionary = {
     stateUnknown: 'La prova non è ancora stata fatta.',
   },
 
+  volumes: {
+    title: 'Volumi del telefono',
+    call: 'Chiamata',
+    media: 'Contenuti multimediali',
+    ring: 'Suoneria',
+    notification: 'Notifiche',
+    alarm: 'Sveglia',
+    callNote: 'È la parte del telefono nel volume di Duetto: la tacca grigia con la cornetta.',
+    refused: 'Con «Non disturbare» acceso, Android non lascia cambiare questo volume.',
+    settings: 'Impostazioni dei suoni di Android',
+    close: 'Chiudi',
+  },
   death: {
     theOther: 'L’altro',
     outOfMemory: 'il telefono era senza memoria',

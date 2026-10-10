@@ -99,6 +99,18 @@ export const es: Dictionary = {
     stateUnknown: 'La prueba aún no se ha hecho.',
   },
 
+  volumes: {
+    title: 'Volúmenes del teléfono',
+    call: 'Llamada',
+    media: 'Multimedia',
+    ring: 'Tono de llamada',
+    notification: 'Notificaciones',
+    alarm: 'Alarma',
+    callNote: 'Es la parte del teléfono en el volumen de Duetto: la marca gris con el auricular.',
+    refused: 'Con «No molestar» activado, Android no deja cambiar este volumen.',
+    settings: 'Ajustes de sonido de Android',
+    close: 'Cerrar',
+  },
   death: {
     theOther: 'El otro',
     outOfMemory: 'el teléfono se quedó sin memoria',

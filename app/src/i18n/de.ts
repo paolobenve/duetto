@@ -99,6 +99,18 @@ export const de: Dictionary = {
     stateUnknown: 'Der Test wurde noch nicht gemacht.',
   },
 
+  volumes: {
+    title: 'Lautstärken des Telefons',
+    call: 'Anruf',
+    media: 'Medien',
+    ring: 'Klingelton',
+    notification: 'Benachrichtigungen',
+    alarm: 'Wecker',
+    callNote: 'Der Anteil des Telefons an der Lautstärke von Duetto: die graue Marke mit dem Hörer.',
+    refused: 'Bei aktivem „Bitte nicht stören“ lässt Android diese Lautstärke nicht ändern.',
+    settings: 'Ton-Einstellungen von Android',
+    close: 'Schließen',
+  },
   death: {
     theOther: 'Die andere Person',
     outOfMemory: 'dem Telefon ging der Speicher aus',

@@ -15,14 +15,10 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- Android's volumes, from a long press on the figure above the
-         volume scale. From Android 11 on, an app sees who answers an
-         intent only if it says so here: without it, the press could
-         find nobody. -->
+    <!-- Android's sound settings, from the sheet of the volumes. From
+         Android 11 on, an app sees who answers an intent only if it says
+         so here: without it, the button could find nobody. -->
     <queries>
-        <intent>
-            <action android:name="android.settings.panel.action.VOLUME" />
-        </intent>
         <intent>
             <action android:name="android.settings.SOUND_SETTINGS" />
         </intent>

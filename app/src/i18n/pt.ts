@@ -99,6 +99,18 @@ export const pt: Dictionary = {
     stateUnknown: 'O teste ainda não foi feito.',
   },
 
+  volumes: {
+    title: 'Volumes do telefone',
+    call: 'Chamada',
+    media: 'Mídia',
+    ring: 'Toque',
+    notification: 'Notificações',
+    alarm: 'Alarme',
+    callNote: 'É a parte do telefone no volume do Duetto: a marca cinza com o fone.',
+    refused: 'Com «Não perturbe» ativado, o Android não deixa mudar este volume.',
+    settings: 'Configurações de som do Android',
+    close: 'Fechar',
+  },
   death: {
     theOther: 'O outro',
     outOfMemory: 'o telefone ficou sem memória',

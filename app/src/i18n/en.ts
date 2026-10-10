@@ -107,6 +107,18 @@ export const en = {
     stateUnknown: 'The test has not been done yet.',
   },
 
+  volumes: {
+    title: 'Phone volumes',
+    call: 'Call',
+    media: 'Media',
+    ring: 'Ringtone',
+    notification: 'Notifications',
+    alarm: 'Alarm',
+    callNote: 'The phone\'s part of Duetto\'s volume: the grey mark with the handset.',
+    refused: 'With Do Not Disturb on, Android does not let this volume change.',
+    settings: 'Android sound settings',
+    close: 'Close',
+  },
   death: {
     theOther: 'The other',
     outOfMemory: 'the phone had run out of memory',
