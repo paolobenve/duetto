@@ -135,7 +135,11 @@ export type VideoStats = {
   sendDelay?: number | null;
   recvDelay?: number | null;
   out?: { w: number; h: number; fps: number; kbps: number | null };
-  in?: { w: number; h: number; fps: number; kbps: number | null };
+  in?: {
+    w: number; h: number; fps: number; kbps: number | null;
+    /** frames ARRIVING a second, decoded or not: see weighStalledDecoder */
+    arriving?: number | null;
+  };
   /** how much audio is going out: the only way to check the ceiling */
   audioKbps?: number | null;
   /** what the incoming voice lost over the last interval, per cent */
@@ -228,6 +232,9 @@ const GRAINY_AFTER_LINK_MS = 8_000;
 const DECODER_BUSY_SHARE = 0.25;
 const DECODER_STALLED_FPS = 6;
 const DECODER_STALLED_MS = 8_000;
+/** or decoded at under this share of the frames arriving, when this many arrive */
+const DECODER_BEHIND_SHARE = 0.5;
+const DECODER_ARRIVING_FPS = 15;
 const BALANCE_RATIO = 3;
 const BALANCE_TICKS = 10;
 const BALANCE_STEP = 0.7;
@@ -315,6 +322,8 @@ export class ChannelSession {
   /** the last samples, to work out the real bitrate between two reads */
   private lastOutbound: { ts: number; bytes: number } | null = null;
   private lastInbound: { ts: number; bytes: number } | null = null;
+  /** the incoming video's frames received at the last sample */
+  private lastInboundFrames: { ts: number; frames: number } | null = null;
   /**
    * When bytes from the other side last landed here, by the clock of
    * the statistics walk. It answers one question - "is the wifi
@@ -796,6 +805,7 @@ export class ChannelSession {
     this.stalledSince = 0;
     this.stallCures = 0;
     this.lastInbound = null;
+    this.lastInboundFrames = null;
     this.lastWait = {};
     this.termsLogged = '';
     if (!this.statsTimer) this.startStats();
@@ -932,6 +942,7 @@ export class ChannelSession {
     this.stalledSince = 0;
     this.stallCures = 0;
         this.lastInbound = null;
+        this.lastInboundFrames = null;
         this.logOutboundVideo();
         setTimeout(() => this.logOutboundVideo(), 1000);
         // How the voice is taken - microphone, effects, silenced or not -
@@ -1881,11 +1892,20 @@ export class ChannelSession {
           framesEncodedSum += Number(r.framesEncoded ?? 0);
           framesEncodedSeen = true;
         } else if (r.type === 'inbound-rtp') {
+          // Frames arriving, beside frames decoded: a decoder falling
+          // behind is told by the two apart, not by a figure alone.
+          const frames = Number(r.framesReceived);
+          const was = this.lastInboundFrames;
+          const arriving = Number.isFinite(frames) && was && r.timestamp > was.ts && frames >= was.frames
+            ? Math.round(((frames - was.frames) * 1000) / (r.timestamp - was.ts))
+            : null;
+          if (Number.isFinite(frames)) this.lastInboundFrames = { ts: r.timestamp, frames };
           out.in = {
             w: r.frameWidth ?? 0,
             h: r.frameHeight ?? 0,
             fps: Math.round(r.framesPerSecond ?? 0),
             kbps: rate(this.lastInbound, r.timestamp, r.bytesReceived),
+            arriving,
           };
           this.lastInbound = { ts: r.timestamp, bytes: r.bytesReceived };
         }
@@ -2220,22 +2240,33 @@ export class ChannelSession {
    * entering - a new decoder and a new encoder - put it right at once.
    * The same cure, asked here: a quarter of the profile's ceiling
    * arriving, 6 frames a second drawn or fewer, for 8 seconds.
+   *
+   * And drawn at less than half the frames arriving, however many: on 11
+   * October the edge drew the POCO's 30 at 7 and 8 a second for two
+   * minutes, its encoder limited by the CPU down to 320x176 - the same
+   * picture - and stayed just above the 6, so nothing was done; at 14:10
+   * the same day, at 5, the cure had set it right. Where the frames
+   * arriving cannot be counted, the 6 alone, as before.
    */
   private stalledDecoderSince = 0;
   private weighStalledDecoder(
-    pic: { w: number; h: number; fps: number; kbps: number | null } | null,
+    pic: { w: number; h: number; fps: number; kbps: number | null; arriving?: number | null } | null,
     rttMs: number | null, lossPct: number | null, ceiling: number, now: number,
   ) {
+    const arriving = pic?.arriving ?? null;
+    const behind = pic !== null && (pic.fps <= DECODER_STALLED_FPS
+      || (arriving !== null && arriving >= DECODER_ARRIVING_FPS && pic.fps < arriving * DECODER_BEHIND_SHARE));
     const stuck = this.peerVideoDeclared && this.localWatching
       && now - this.linkedAt > GRAINY_AFTER_LINK_MS
       && pic !== null && pic.kbps !== null && pic.kbps * 1000 >= ceiling * DECODER_BUSY_SHARE
-      && pic.fps <= DECODER_STALLED_FPS
+      && behind
       && lossPct !== null && lossPct < 1 && rttMs !== null && rttMs < 200;
     if (!stuck) { this.stalledDecoderSince = 0; return; }
     if (!this.stalledDecoderSince) { this.stalledDecoderSince = now; return; }
     if (now - this.stalledDecoderSince < DECODER_STALLED_MS) return;
     this.stalledDecoderSince = 0;
-    this.events.onSessionRenewWanted?.(`decoder-stalled:${pic!.w}x${pic!.h}@${pic!.fps}:${pic!.kbps}k`);
+    const of = arriving !== null ? `/${arriving}` : '';
+    this.events.onSessionRenewWanted?.(`decoder-stalled:${pic!.w}x${pic!.h}@${pic!.fps}${of}:${pic!.kbps}k`);
   }
 
   /** The balancing ceiling on the outgoing video, in bit/s; null = none. */
@@ -2729,6 +2760,7 @@ export class ChannelSession {
     this.stalledSince = 0;
     this.stallCures = 0;
     this.lastInbound = null;
+    this.lastInboundFrames = null;
     this.lastWait = {};
     this.termsLogged = '';
     this.logOutboundVideo();
@@ -3088,6 +3120,7 @@ export class ChannelSession {
     this.stalledSince = 0;
     this.stallCures = 0;
     this.lastInbound = null;
+    this.lastInboundFrames = null;
     this.lastWait = {};
     this.termsLogged = '';
     // With no connection there is no video paying for the rich voice:
