@@ -586,10 +586,35 @@ export function useAudioRoute(
     remember?.(route);
   }, [current, applyRoute, remember]);
 
+  /**
+   * The Bluetooth device the sound went to is gone, by the system's own
+   * list - said by the app, which follows the devices.
+   *
+   * With the channel's call up, the telephony's own word sees to it
+   * (see the subscription above). Without one - on 11 October the
+   * helmet, switching off, had the call closed four times in a few
+   * seconds, and for the minute of the brake there was none - the old
+   * library chose, its default being the earpiece: the speaker in use
+   * before was never put back, and the one chosen by hand went again
+   * nine seconds later. Now the phone's own output used last is put back
+   * here.
+   */
+  const btGone = useCallback(() => {
+    if (!enabled || inCall.current) return;
+    if (wanted.current !== 'BLUETOOTH' && currentRef.current !== 'BLUETOOTH') return;
+    const back = builtIn.current;
+    wanted.current = back;
+    currentRef.current = back;
+    setCurrent(back);
+    applyRoute(back);
+    Journal.mark(`output:back:${back}:bt-gone`).catch(() => { /* noop */ });
+  }, [enabled, applyRoute]);
+
   return {
     route: current,
     reapply,
     resume,
+    btGone,
     /** only the ones really plugged in, in the order they are shown */
     available: ORDER.filter((r) => available.includes(r)),
     /** with a single output there is nothing to choose */

@@ -1572,6 +1572,9 @@ export default function App() {
    * only where no device can be named.
    */
   const [btHere, setBtHere] = useState<{ id: string; name: string } | null>(null);
+  /** the audio's and the call's answers to the last Bluetooth device going: see below */
+  const btGoneRef = useRef<(() => void) | null>(null);
+  const headsetGoneRef = useRef<(() => void) | null>(null);
   useEffect(() => {
     AudioDevices.list().then((l) => setBtHere(l[0] ?? null)).catch(() => {});
     return AudioDevices.subscribe((d) => {
@@ -1585,10 +1588,18 @@ export default function App() {
       // two going is not the headset going: the system is asked what is
       // still there. Clearing it at the first removal made the choice
       // made for it vanish, and the old single choice took its place.
-      AudioDevices.list().then((l) => setBtHere((was) => {
-        if (!was) return l[0] ?? null;
-        return l.find((x) => x.id === was.id) ?? l[0] ?? null;
-      })).catch(() => setBtHere((was) => (was && was.id === d.id ? null : was)));
+      AudioDevices.list().then((l) => {
+        setBtHere((was) => {
+          if (!was) return l[0] ?? null;
+          return l.find((x) => x.id === was.id) ?? l[0] ?? null;
+        });
+        // None left: the sound goes back to the phone's own output, and
+        // the call closed while the headset went away comes back now.
+        if (l.length === 0) {
+          btGoneRef.current?.();
+          headsetGoneRef.current?.();
+        }
+      }).catch(() => setBtHere((was) => (was && was.id === d.id ? null : was)));
     });
   }, []);
   /**
@@ -1630,6 +1641,7 @@ export default function App() {
       ? `${btHere.name || btHere.id}=${cfg?.btDevices?.[btHere.id]?.auto === undefined ? 'unknown' : (cfg.btDevices[btHere.id].auto ? 'always' : 'asked')}`
       : `none:global=${(cfg?.autoBluetooth ?? true) ? 'always' : 'asked'}`,
   });
+  btGoneRef.current = audio.btGone;
 
   /**
    * How far the other voice is lifted ABOVE the phone's own top.
@@ -2407,10 +2419,23 @@ export default function App() {
     const front = AppState.addEventListener('change', (st) => {
       if (st === 'active' && owed) placeAgain('front');
     });
+    /**
+     * A Bluetooth headset switching off closes the call several times
+     * while it goes - on 11 October the helmet, four times in six
+     * seconds - and the brake took it for a fight: a minute without the
+     * call, the sound left to the old library, on the earpiece. Once the
+     * headset is gone the closings were it: they stop counting, and the
+     * call owed comes back at once.
+     */
+    headsetGoneRef.current = () => {
+      replacedAt.current = [];
+      if (owed) placeAgain('headset-gone');
+    };
     return () => {
       stopCalls();
       front.remove();
       if (retry) clearTimeout(retry);
+      headsetGoneRef.current = null;
     };
   }, []);
 
