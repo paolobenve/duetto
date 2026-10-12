@@ -305,10 +305,17 @@ function open(cfg: DuoConfig, pair: PairInfo) {
   let written = name;
   /** whether the other side is in this connection's channel */
   let peerIn = false;
-  const toldOut = (at: number) => {
+  /**
+   * What this connection's line says now: a going out to waiting may be
+   * followed, a moment later, by the going away altogether - leaving
+   * and becoming unavailable - and the line must not stay at "waiting".
+   */
+  let lineSays: 'in' | 'waiting' | 'detached' | 'unreachable' | null = null;
+  const toldOut = (state: 'waiting' | 'detached' | 'unreachable', at: number) => {
     peerIn = false;
-    Journal.mark(`standby:peer-out:${pair.id.slice(0, 8)}`).catch(() => { /* noop */ });
-    Foreground.pairNote(pair.id, news.outOfChannel(peerShown(live(), name), channelNow(), at || Date.now()))
+    lineSays = state;
+    Journal.mark(`standby:peer-out:${pair.id.slice(0, 8)}:${state}`).catch(() => { /* noop */ });
+    Foreground.pairNote(pair.id, channelNow(), news.pairState(peerShown(live(), name), state, at || Date.now()))
       .catch(() => { /* noop */ });
   };
   const learn = (heardName?: string) => {
@@ -372,18 +379,20 @@ function open(cfg: DuoConfig, pair: PairInfo) {
         // Their coming into the channel: news, silent, on this
         // connection's own line (see Notifier.showPairNote).
         peerIn = true;
+        lineSays = 'in';
         Journal.mark(`standby:peer-in:${pair.id.slice(0, 8)}`).catch(() => { /* noop */ });
-        Foreground.pairNote(pair.id, news.inChannel(who, channelNow(), at)).catch(() => { /* noop */ });
+        Foreground.pairNote(pair.id, channelNow(), news.pairState(who, 'in', at)).catch(() => { /* noop */ });
       },
       // Their going out of it again: never said, and the line went on
       // saying they were in. Now on the same line, in its place.
+      // Back to waiting, or gone - by choice or dropped: said apart.
       onPeerMode: (mode, peerName, at) => {
         learn(peerName);
         if (mode === 'active') { peerIn = true; return; }
-        if (peerIn) toldOut(at);
+        if (peerIn) toldOut('waiting', at);
       },
-      onPeerLeft: (_why, at) => {
-        if (peerIn) toldOut(at);
+      onPeerLeft: (why, at) => {
+        if (peerIn || lineSays === 'waiting') toldOut(why === 'bye' ? 'detached' : 'unreachable', at);
       },
       onSignal: (msg) => {
         // Asked for our diagnostics: answered here, the card shown by

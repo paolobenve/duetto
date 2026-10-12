@@ -250,10 +250,16 @@ export const news = {
     const o = { who, channel: channelName(channel), when: momentSaid(at, 'sinceTime') };
     return named(who) ? t('alert.inChannelFrom', o) : t('alert.inChannel', o);
   },
-  /** and out of it again: "no longer in it since" */
-  outOfChannel: (who: string, channel: string, at: number) => {
-    const o = { who, channel: channelName(channel), when: momentSaid(at, 'sinceTime') };
-    return named(who) ? t('alert.outOfChannelFrom', o) : t('alert.outOfChannel', o);
+  /**
+   * Where the other side of a connection not in use stands, in the
+   * standing notification's words - in the channel, waiting, Duetto
+   * switched off, unreachable - since when. The connection's name goes
+   * in front, as Android writes it (see Notifier.showPairNote).
+   */
+  pairState: (who: string, state: 'in' | 'waiting' | 'detached' | 'unreachable', at: number) => {
+    const name = named(who) ? who : t('presence.theOther');
+    const o = { who: name.charAt(0).toUpperCase() + name.slice(1), when: momentSaid(at, 'sinceTime') };
+    return t(`alert.${{ in: 'pairIn', waiting: 'pairWaiting', detached: 'pairDetached', unreachable: 'pairUnreachable' }[state]}`, o);
   },
   /** somebody paired with us through a link of ours */
   paired: (who: string, at: number) => {

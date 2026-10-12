@@ -96,9 +96,9 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
 
     /** Where the other side of a connection not in use stands: see Notifier.showPairNote. */
     @ReactMethod
-    fun pairNote(pairId: String, text: String, promise: Promise) {
+    fun pairNote(pairId: String, name: String, text: String, promise: Promise) {
         try {
-            Notifier.showPairNote(ctx, pairId, text)
+            Notifier.showPairNote(ctx, pairId, name, text)
             promise.resolve(true)
         } catch (e: Exception) {
             promise.reject("notify_error", e)

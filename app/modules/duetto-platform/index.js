@@ -136,7 +136,8 @@ export const Foreground = isAndroid && NativeForeground
       clearNote: () => call(NativeForeground, 'clearNote'),
 
       /** where the other side of a connection not in use stands: one silent line each */
-      pairNote: (pairId, text) => call(NativeForeground, 'pairNote', String(pairId), String(text)),
+      pairNote: (pairId, name, text) =>
+        call(NativeForeground, 'pairNote', String(pairId), String(name || ''), String(text)),
       clearPairNote: (pairId) => call(NativeForeground, 'clearPairNote', String(pairId)),
 
       /**

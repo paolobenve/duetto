@@ -149,7 +149,7 @@ object Notifier {
      * the coming in rang, and the going out came as a second line beside
      * it, the first one still saying they were in.
      */
-    fun showPairNote(ctx: Context, pairId: String, text: String) {
+    fun showPairNote(ctx: Context, pairId: String, name: String, text: String) {
         val launch = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)?.apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra(EXTRA_PAIR, pairId)
@@ -162,8 +162,8 @@ object Notifier {
         )
         val notification = NotificationCompat.Builder(ctx, PRESENCE_CHANNEL_ID)
             .setContentTitle(TITLE)
-            .setContentText(text)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setContentText(withName(name, text))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(withName(name, text)))
             .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(pending)
             .setAutoCancel(true)
