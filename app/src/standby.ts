@@ -256,6 +256,9 @@ export async function refreshStandby(cfg: DuoConfig | null): Promise<void> {
     standing.delete(id);
     standingName.delete(id);
     forgetWatch(id);
+    // Its news is not news any more: in use, the standing notification
+    // says where the other is.
+    if (!leaving) Foreground.clearPairNote(id).catch(() => { /* noop */ });
     Journal.mark(`standby:close:${id.slice(0, 8)}${leaving ? ':bye' : ''}`).catch(() => { /* noop */ });
   }
   for (const [id, p] of want) {
@@ -305,7 +308,7 @@ function open(cfg: DuoConfig, pair: PairInfo) {
   const toldOut = (at: number) => {
     peerIn = false;
     Journal.mark(`standby:peer-out:${pair.id.slice(0, 8)}`).catch(() => { /* noop */ });
-    Foreground.note('', news.outOfChannel(peerShown(live(), name), channelNow(), at || Date.now()))
+    Foreground.pairNote(pair.id, news.outOfChannel(peerShown(live(), name), channelNow(), at || Date.now()))
       .catch(() => { /* noop */ });
   };
   const learn = (heardName?: string) => {
@@ -334,6 +337,7 @@ function open(cfg: DuoConfig, pair: PairInfo) {
           standing.delete(pair.id);
           standingName.delete(pair.id);
           forgetWatch(pair.id);
+          Foreground.clearPairNote(pair.id).catch(() => { /* noop */ });
         }
         sig.close(false);
       },
@@ -365,21 +369,14 @@ function open(cfg: DuoConfig, pair: PairInfo) {
           heard(pair.id, text);
           return;
         }
-        /**
-         * Their coming into the channel: said as it is for the
-         * connection in use, by a notification that sounds - this
-         * connection's sound and level - and not on the quiet line it
-         * used to go on, updated in place where nobody noticed: on 12
-         * October the moto came in twice and the POCO, in the channel
-         * with the edge, showed it without a sound.
-         */
+        // Their coming into the channel: news, silent, on this
+        // connection's own line (see Notifier.showPairNote).
         peerIn = true;
         Journal.mark(`standby:peer-in:${pair.id.slice(0, 8)}`).catch(() => { /* noop */ });
-        Foreground.notifyFor('', news.inChannel(who, channelNow(), at), pair.id, soundOf(live()))
-          .catch(() => { /* noop */ });
+        Foreground.pairNote(pair.id, news.inChannel(who, channelNow(), at)).catch(() => { /* noop */ });
       },
       // Their going out of it again: never said, and the line went on
-      // saying they were in. Now quietly, as news.
+      // saying they were in. Now on the same line, in its place.
       onPeerMode: (mode, peerName, at) => {
         learn(peerName);
         if (mode === 'active') { peerIn = true; return; }

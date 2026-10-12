@@ -147,6 +147,9 @@ declare module 'duetto-platform' {
     note(name: string, text: string): Promise<boolean>;
     /** takes the news away when it is not true any more */
     clearNote(): Promise<boolean>;
+    /** where the other side of a connection not in use stands: one silent line each */
+    pairNote(pairId: string, text: string): Promise<boolean>;
+    clearPairNote(pairId: string): Promise<boolean>;
     /** starts listening without an interface, when the app is about to go */
     resumePresence(): Promise<boolean>;
     clearNotification(): Promise<boolean>;

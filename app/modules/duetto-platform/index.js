@@ -135,6 +135,10 @@ export const Foreground = isAndroid && NativeForeground
       /** Takes the news away, when what it said does not hold any more. */
       clearNote: () => call(NativeForeground, 'clearNote'),
 
+      /** where the other side of a connection not in use stands: one silent line each */
+      pairNote: (pairId, text) => call(NativeForeground, 'pairNote', String(pairId), String(text)),
+      clearPairNote: (pairId) => call(NativeForeground, 'clearPairNote', String(pairId)),
+
       /**
        * Hands over to listening without an interface: it is called when
        * the interface is about to disappear without anybody having asked.
@@ -194,6 +198,8 @@ export const Foreground = isAndroid && NativeForeground
       takeOpenedPair: () => Promise.resolve(null),
       note: unavailable,
       clearNote: unavailable,
+      pairNote: unavailable,
+      clearPairNote: unavailable,
       resumePresence: unavailable,
       clearNotification: unavailable,
       deviceName: unavailable,

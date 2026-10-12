@@ -138,6 +138,59 @@ object Notifier {
         }
     }
 
+    /**
+     * Where the other side of a connection not in use stands - in its
+     * channel since..., no longer in it since... - one notification per
+     * connection, replaced at every change and silent: it is news, not
+     * a call. Touched, it opens the app on that connection.
+     *
+     * The coming in used to go on the one quiet line, updated in place
+     * where nobody noticed it, the going out not at all; then for a day
+     * the coming in rang, and the going out came as a second line beside
+     * it, the first one still saying they were in.
+     */
+    fun showPairNote(ctx: Context, pairId: String, text: String) {
+        val launch = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)?.apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra(EXTRA_PAIR, pairId)
+        }
+        val pending = PendingIntent.getActivity(
+            ctx,
+            PAIR_NOTE_REQUEST_BASE + (pairId.hashCode() and 0xffff),
+            launch,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val notification = NotificationCompat.Builder(ctx, PRESENCE_CHANNEL_ID)
+            .setContentTitle(TITLE)
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentIntent(pending)
+            .setAutoCancel(true)
+            .setSilent(true)
+            .setShowWhen(true)
+            .setWhen(System.currentTimeMillis())
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setGroup(GROUP)
+            .setSortKey(SORT_NOTE)
+            .build()
+        try {
+            NotificationManagerCompat.from(ctx).notify(pairTag(pairId), PAIR_NOTE_ID, notification)
+        } catch (_: SecurityException) {
+        }
+    }
+
+    /** That connection's news taken away: it has become the one in use. */
+    fun clearPairNote(ctx: Context, pairId: String) {
+        try {
+            NotificationManagerCompat.from(ctx).cancel(pairTag(pairId), PAIR_NOTE_ID)
+        } catch (_: Exception) { /* noop */ }
+    }
+
+    private fun pairTag(pairId: String) = "duetto-pair:$pairId"
+    private const val PAIR_NOTE_ID = 4714
+    private const val PAIR_NOTE_REQUEST_BASE = 0x10000
+
     /** The extra that says which connection a call came from: see OpenedFrom. */
     const val EXTRA_PAIR = "duetto.pair"
 
