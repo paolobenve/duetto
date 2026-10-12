@@ -95,6 +95,27 @@ class ProximityModule(private val ctx: ReactApplicationContext) :
     private var wentDark = false
     /** Switched on by hand while near: near does not count until far. */
     private var overridden = false
+    /**
+     * At the ear, as against in a pocket: the screen was on when the
+     * sensor said near, and near has held for a second.
+     *
+     * On 11 October the POCO went "to the ear" 112 times, 108 of them
+     * with the screen off - in a pocket, in a hand - often once a second:
+     * the sound tossed between speaker and earpiece, and a headset taken
+     * off came back to the earpiece. Bringing the phone to the ear while
+     * talking, the screen is on; in a pocket it is off. And a near that
+     * lasts less than a second is a hand passing, not an ear. Only the
+     * ear waits: the cover over the buttons is said at once.
+     */
+    private var screenOnAtNear = false
+    private var earHeld = false
+    private var toldScreenOff = false
+    private val earHold = Runnable {
+        if (near) {
+            earHeld = true
+            update()
+        }
+    }
 
     private val displays: DisplayManager?
         get() = ctx.getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager
@@ -131,6 +152,13 @@ class ProximityModule(private val ctx: ReactApplicationContext) :
             val now = value < sensor.maximumRange && value < 5f
             if (now == near) return
             near = now
+            main.removeCallbacks(earHold)
+            earHeld = false
+            if (near) {
+                screenOnAtNear = displays?.getDisplay(Display.DEFAULT_DISPLAY)?.state == Display.STATE_ON
+                toldScreenOff = false
+                main.postDelayed(earHold, EAR_HOLD_MS)
+            }
             if (near) watchLying() else stopLying()
             // Far: the screen switched on by hand is forgotten, and the
             // next near is an ear again.
@@ -212,7 +240,11 @@ class ProximityModule(private val ctx: ReactApplicationContext) :
     private fun update() {
         val known = near && lyingKnown && !overridden
         val nowCovered = known && lying != 1
-        val nowEar = known && lying == 0
+        val nowEar = known && lying == 0 && screenOnAtNear && earHeld
+        if (known && lying == 0 && earHeld && !screenOnAtNear && !toldScreenOff) {
+            toldScreenOff = true
+            Journal.sample(ctx, "proximity:ignored:screen-off")
+        }
         if (known && lying != 0 && toldLying != lying) {
             toldLying = lying
             Journal.sample(ctx, "proximity:ignored:${if (lying == 1) "flat-up" else "flat-down"}")
@@ -261,6 +293,8 @@ class ProximityModule(private val ctx: ReactApplicationContext) :
     }
 
     private fun quiet() {
+        main.removeCallbacks(earHold)
+        earHeld = false
         try { sensors?.unregisterListener(listener) } catch (_: Exception) { /* noop */ }
         stopLying()
         lightUp(true)
@@ -327,5 +361,7 @@ class ProximityModule(private val ctx: ReactApplicationContext) :
         const val FLAT_FROM = 0.866
         /** cos 40 degrees: once flat, flat until past this */
         const val FLAT_STAYS = 0.766
+        /** how long near must hold to be an ear */
+        const val EAR_HOLD_MS = 1_000L
     }
 }
