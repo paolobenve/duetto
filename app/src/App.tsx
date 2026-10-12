@@ -4531,6 +4531,16 @@ export default function App() {
     const sig = signalingRef.current;
     if (!sig || !cfg) return;
 
+    /**
+     * Coming in, the first state from the other says how things stand,
+     * not what changed: no cue for it. The rule held only when THEY came
+     * in; coming back ourselves, their first state was set against the
+     * one remembered from before - or against nothing, after a move from
+     * another channel - and every difference rang: the camera turning,
+     * the microphone, one cutting the other.
+     */
+    peerStateHeard.current = false;
+
     if (!sessionRef.current) {
       sessionRef.current = new ChannelSession(cfg, sig, {
         onLocalStream: (st) => {
@@ -5672,8 +5682,9 @@ export default function App() {
   const resetPeerMemory = useCallback(() => {
     // The memory of how the other person was, too: this is somebody
     // else, and their first messages are not "changes" with respect to
-    // the previous one.
+    // the previous one - nor heard as changes at all.
     peerStateRef.current = {};
+    peerStateHeard.current = false;
     // Our own buttons say what OUR session is doing, which may have
     // been put back already - the camera restored after an update
     // showed a lit picture under a dark button.
