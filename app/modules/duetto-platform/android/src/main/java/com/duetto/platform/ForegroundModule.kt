@@ -25,15 +25,15 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
     override fun getName() = "DuettoForeground"
 
     private fun sendToService(
-        promise: Promise,
+        promise: Promise?,
         configure: Intent.() -> Unit,
     ) {
         try {
             val intent = Intent(ctx, ChannelForegroundService::class.java).apply(configure)
             ContextCompat.startForegroundService(ctx, intent)
-            promise.resolve(true)
+            promise?.resolve(true)
         } catch (e: Exception) {
-            promise.reject("foreground_service_error", e)
+            promise?.reject("foreground_service_error", e)
         }
     }
 
@@ -62,12 +62,38 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
         text: String, name: String, actions: String,
         enterLabel: String, waitLabel: String, promise: Promise,
     ) {
+        lastText = arrayOf(text, name, actions, enterLabel, waitLabel)
+        sendText(promise)
+    }
+
+    /**
+     * The other connections, one line each under the one in use: where
+     * the other side of each stands - in the channel, waiting, Duetto
+     * switched off, unreachable - since when. Kept here and put under
+     * every text the standing notification is given, so that the two
+     * writers of that text - the app and the presence with no interface
+     * - need not know of them; a change of theirs writes the last text
+     * again. Only while there is a text: after a stop, nothing is written,
+     * or the service would be started again by it.
+     */
+    @ReactMethod
+    fun setPairLines(lines: String, promise: Promise) {
+        if (lines != pairLines) {
+            pairLines = lines
+            if (lastText != null) sendText(null)
+        }
+        promise.resolve(true)
+    }
+
+    private fun sendText(promise: Promise?) {
+        val l = lastText ?: run { promise?.resolve(true); return }
+        val full = if (pairLines.isEmpty()) l[0] else "${l[0]}\n$pairLines"
         sendToService(promise) {
-            putExtra(ChannelForegroundService.EXTRA_TEXT, text)
-            putExtra(ChannelForegroundService.EXTRA_NAME, name)
-            putExtra(ChannelForegroundService.EXTRA_ACTIONS, actions)
-            putExtra(ChannelForegroundService.EXTRA_ENTER_LABEL, enterLabel)
-            putExtra(ChannelForegroundService.EXTRA_WAIT_LABEL, waitLabel)
+            putExtra(ChannelForegroundService.EXTRA_TEXT, full)
+            putExtra(ChannelForegroundService.EXTRA_NAME, l[1])
+            putExtra(ChannelForegroundService.EXTRA_ACTIONS, l[2])
+            putExtra(ChannelForegroundService.EXTRA_ENTER_LABEL, l[3])
+            putExtra(ChannelForegroundService.EXTRA_WAIT_LABEL, l[4])
         }
     }
 
@@ -84,6 +110,9 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
     companion object {
         /** the module alive, for the service to reach JavaScript through */
         @Volatile private var live: ForegroundModule? = null
+        /** the last text given to the standing notification, and its words: see setPairLines */
+        @Volatile private var lastText: Array<String>? = null
+        @Volatile private var pairLines = ""
         fun emitAction(action: String) { live?.sayAction(action) }
     }
 
@@ -94,25 +123,10 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
         promise.resolve(true)
     }
 
-    /** Where the other side of a connection not in use stands: see Notifier.showPairNote. */
-    @ReactMethod
-    fun pairNote(pairId: String, name: String, text: String, promise: Promise) {
-        try {
-            Notifier.showPairNote(ctx, pairId, name, text)
-            promise.resolve(true)
-        } catch (e: Exception) {
-            promise.reject("notify_error", e)
-        }
-    }
-
-    @ReactMethod
-    fun clearPairNote(pairId: String, promise: Promise) {
-        Notifier.clearPairNote(ctx, pairId)
-        promise.resolve(true)
-    }
 
     @ReactMethod
     fun stop(promise: Promise) {
+        lastText = null
         try {
             ctx.stopService(Intent(ctx, ChannelForegroundService::class.java))
             promise.resolve(true)

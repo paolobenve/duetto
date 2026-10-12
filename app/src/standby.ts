@@ -14,6 +14,7 @@ import {
   ALERT_GAIN, sharedChoiceHeard,
 } from './config';
 import { Signaling } from './signaling';
+import type { PeerGone } from './signaling';
 import { news } from './presence';
 import { alarmLabel } from './alarms';
 import { logger } from './log';
@@ -46,6 +47,27 @@ const standing = new Map<string, Signaling>();
 const standingName = new Map<string, string>();
 /** Every connection as the configuration has it now: see `live` in open(). */
 const latest = new Map<string, PairInfo>();
+
+/**
+ * Where the other side of each waiting connection stands, one line each
+ * under the standing notification's own (see Foreground.setPairLines):
+ * known from the moment the connection is in the room - the server says
+ * whether the other is there, in the channel, since when - and kept as
+ * it changes. It used to be said only at a coming in or out, so until
+ * the first one nothing could be known of the other connections.
+ */
+type PairState = 'in' | 'waiting' | 'detached' | 'unreachable';
+const pairLines = new Map<string, string>();
+let linesSaid = '';
+function sayPairLines() {
+  const all = [...pairLines.values()].join('\n');
+  if (all === linesSaid) return;
+  linesSaid = all;
+  Foreground.setPairLines(all).catch(() => { /* noop */ });
+}
+function dropPairLine(id: string) {
+  if (pairLines.delete(id)) sayPairLines();
+}
 
 /**
  * The waiting connections' own watch.
@@ -256,9 +278,9 @@ export async function refreshStandby(cfg: DuoConfig | null): Promise<void> {
     standing.delete(id);
     standingName.delete(id);
     forgetWatch(id);
-    // Its news is not news any more: in use, the standing notification
-    // says where the other is.
-    if (!leaving) Foreground.clearPairNote(id).catch(() => { /* noop */ });
+    // In use, the standing notification's own line says where the other
+    // is; made unavailable, nothing of the others is known any more.
+    dropPairLine(id);
     Journal.mark(`standby:close:${id.slice(0, 8)}${leaving ? ':bye' : ''}`).catch(() => { /* noop */ });
   }
   for (const [id, p] of want) {
@@ -275,6 +297,8 @@ export function stopStandby() {
   answeredAt.clear();
   downSince.clear();
   watchStanding();
+  pairLines.clear();
+  sayPairLines();
 }
 
 /**
@@ -303,20 +327,31 @@ function open(cfg: DuoConfig, pair: PairInfo) {
   let name = pair.peerName || '';
   /** the name last written in the pair, so that it is written once */
   let written = name;
-  /** whether the other side is in this connection's channel */
-  let peerIn = false;
-  /**
-   * What this connection's line says now: a going out to waiting may be
-   * followed, a moment later, by the going away altogether - leaving
-   * and becoming unavailable - and the line must not stay at "waiting".
-   */
-  let lineSays: 'in' | 'waiting' | 'detached' | 'unreachable' | null = null;
-  const toldOut = (state: 'waiting' | 'detached' | 'unreachable', at: number) => {
-    peerIn = false;
-    lineSays = state;
-    Journal.mark(`standby:peer-out:${pair.id.slice(0, 8)}:${state}`).catch(() => { /* noop */ });
-    Foreground.pairNote(pair.id, channelNow(), news.pairState(peerShown(live(), name), state, at || Date.now()))
-      .catch(() => { /* noop */ });
+  /** where the other side stands, and since when: this connection's line */
+  let state: PairState | null = null;
+  let stateSince = 0;
+  const writeLine = () => {
+    if (!state) return;
+    const label = channelNow();
+    const said = news.pairState(peerShown(live(), name), state, stateSince);
+    pairLines.set(pair.id, label ? `${label} · ${said}` : said);
+    sayPairLines();
+  };
+  /** `since` 0 when unknown: the time already known stays, if the state is the same */
+  const stands = (now: PairState, since: number) => {
+    const changed = now !== state;
+    if (changed) {
+      Journal.mark(`standby:peer-${now}:${pair.id.slice(0, 8)}`).catch(() => { /* noop */ });
+    }
+    state = now;
+    stateSince = since > 0 ? since : changed ? 0 : stateSince;
+    writeLine();
+  };
+  /** what the server says of them, on joining and on each answer */
+  const standsAsSaid = (present: boolean, active: boolean, since: number, gone: PeerGone) => {
+    if (present) stands(active ? 'in' : 'waiting', since);
+    else if (gone) stands(gone.reason === 'bye' ? 'detached' : 'unreachable', gone.at);
+    else stands('unreachable', 0);
   };
   const learn = (heardName?: string) => {
     if (!heardName) return;
@@ -344,7 +379,7 @@ function open(cfg: DuoConfig, pair: PairInfo) {
           standing.delete(pair.id);
           standingName.delete(pair.id);
           forgetWatch(pair.id);
-          Foreground.clearPairNote(pair.id).catch(() => { /* noop */ });
+          dropPairLine(pair.id);
         }
         sig.close(false);
       },
@@ -352,17 +387,22 @@ function open(cfg: DuoConfig, pair: PairInfo) {
       // not in use learnt nothing of this phone - its version, its
       // diagnostics - and offered to ask for what was there already.
       // The server answering: the socket lives (see watchStanding).
-      onPresence: () => answered(pair.id),
-      onJoined: ({ peerName, peerPresent, peerActive }) => {
+      onPresence: ({ peerPresent, peerActive, peerName, peerSince, peerGone }) => {
         answered(pair.id);
         learn(peerName);
-        peerIn = peerPresent && peerActive;
+        standsAsSaid(peerPresent, peerActive, peerSince, peerGone);
+      },
+      onJoined: ({ peerName, peerPresent, peerActive, peerSince, peerGone }) => {
+        answered(pair.id);
+        learn(peerName);
+        standsAsSaid(peerPresent, peerActive, peerSince, peerGone);
         if (peerPresent) sayHello(sig, pair.id);
       },
       // A new name of theirs, without them leaving the room.
-      onPeerName: (peerName) => learn(peerName),
-      onPeerJoined: (peerName) => {
+      onPeerName: (peerName) => { learn(peerName); writeLine(); },
+      onPeerJoined: (peerName, mode, since) => {
         learn(peerName);
+        stands(mode === 'active' ? 'in' : 'waiting', since);
         sayHello(sig, pair.id);
       },
       onNotify: (reason, peerName, at) => {
@@ -376,23 +416,17 @@ function open(cfg: DuoConfig, pair: PairInfo) {
           heard(pair.id, text);
           return;
         }
-        // Their coming into the channel: news, silent, on this
-        // connection's own line (see Notifier.showPairNote).
-        peerIn = true;
-        lineSays = 'in';
-        Journal.mark(`standby:peer-in:${pair.id.slice(0, 8)}`).catch(() => { /* noop */ });
-        Foreground.pairNote(pair.id, channelNow(), news.pairState(who, 'in', at)).catch(() => { /* noop */ });
+        // Their coming into the channel: on this connection's line.
+        stands('in', at);
       },
-      // Their going out of it again: never said, and the line went on
-      // saying they were in. Now on the same line, in its place.
-      // Back to waiting, or gone - by choice or dropped: said apart.
-      onPeerMode: (mode, peerName, at) => {
+      // In the channel or waiting, and gone - by choice or dropped -
+      // each said as it is.
+      onPeerMode: (mode, peerName, since) => {
         learn(peerName);
-        if (mode === 'active') { peerIn = true; return; }
-        if (peerIn) toldOut('waiting', at);
+        stands(mode === 'active' ? 'in' : 'waiting', since);
       },
       onPeerLeft: (why, at) => {
-        if (peerIn || lineSays === 'waiting') toldOut(why === 'bye' ? 'detached' : 'unreachable', at);
+        stands(why === 'bye' ? 'detached' : 'unreachable', at);
       },
       onSignal: (msg) => {
         // Asked for our diagnostics: answered here, the card shown by

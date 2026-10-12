@@ -135,10 +135,8 @@ export const Foreground = isAndroid && NativeForeground
       /** Takes the news away, when what it said does not hold any more. */
       clearNote: () => call(NativeForeground, 'clearNote'),
 
-      /** where the other side of a connection not in use stands: one silent line each */
-      pairNote: (pairId, name, text) =>
-        call(NativeForeground, 'pairNote', String(pairId), String(name || ''), String(text)),
-      clearPairNote: (pairId) => call(NativeForeground, 'clearPairNote', String(pairId)),
+      /** the other connections, one line each under the standing notification's own */
+      setPairLines: (lines) => call(NativeForeground, 'setPairLines', String(lines || '')),
 
       /**
        * Hands over to listening without an interface: it is called when
@@ -199,8 +197,7 @@ export const Foreground = isAndroid && NativeForeground
       takeOpenedPair: () => Promise.resolve(null),
       note: unavailable,
       clearNote: unavailable,
-      pairNote: unavailable,
-      clearPairNote: unavailable,
+      setPairLines: () => Promise.resolve(false),
       resumePresence: unavailable,
       clearNotification: unavailable,
       deviceName: unavailable,
