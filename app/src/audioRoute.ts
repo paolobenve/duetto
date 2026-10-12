@@ -85,6 +85,8 @@ const ROUTE_WINDOW_MS = 10_000;
 const KEEP_WAIT_MS = 1_500;
 /** how long the call is given to confirm an output asked for: see confirmRoute */
 const CONFIRM_MS = 1_500;
+/** how long after the ear's own move the telephony's echo of it is taken as the ear's */
+const EAR_ECHO_MS = 2_500;
 
 export function useAudioRoute(
   enabled: boolean,
@@ -118,6 +120,16 @@ export function useAudioRoute(
   const routeTimes = useRef<number[]>([]);
   const frozenUntil = useRef(0);
   const frozen = () => frozenUntil.current > Date.now();
+  /**
+   * The ear's last move - to the earpiece or back - and when: its echo
+   * from the telephony is a moment, not a choice. Counted as a change of
+   * output it tripped the brake (seven in twenty seconds, 11 October),
+   * which took the earpiece for the output wanted and for the phone's own
+   * used last: from then on every headset taken off sent the sound to the
+   * earpiece.
+   */
+  const earMoved = useRef<{ route: AudioRoute; at: number } | null>(null);
+  const earMovedNow = (route: AudioRoute) => { earMoved.current = { route, at: Date.now() }; };
   /** the wait before deciding whether a headset left by the sound is still there */
   const keepTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /**
@@ -225,6 +237,15 @@ export function useAudioRoute(
       if (!isRoute(r)) return;
       inCall.current = true;
       callRoute.current = r;
+      // The ear's own move, coming back: shown, and nothing else - not
+      // counted for the brake, not taken for the output wanted.
+      const em = earMoved.current;
+      if ((em && em.route === r && Date.now() - em.at < EAR_ECHO_MS)
+          || (earFrom.current && r === 'EARPIECE')) {
+        currentRef.current = r;
+        setCurrent(r);
+        return;
+      }
       /**
        * The brake: more than four changes of output in ten seconds is a
        * fight, not a choice - on 4 October two directors, the telephony
@@ -374,6 +395,7 @@ export function useAudioRoute(
         earFrom.current = 'SPEAKER_PHONE';
         currentRef.current = 'EARPIECE';
         setCurrent('EARPIECE');
+        earMovedNow('EARPIECE');
         applyRoute('EARPIECE');
         Proximity.darken(true).catch(() => { /* noop */ });
         Journal.mark('output:ear').catch(() => { /* noop */ });
@@ -382,6 +404,7 @@ export function useAudioRoute(
         earFrom.current = null;
         currentRef.current = back;
         setCurrent(back);
+        earMovedNow(back);
         applyRoute(back);
         Proximity.darken(false).catch(() => { /* noop */ });
         Journal.mark('output:ear:back').catch(() => { /* noop */ });
