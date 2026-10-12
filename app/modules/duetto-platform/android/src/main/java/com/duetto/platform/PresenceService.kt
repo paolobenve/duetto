@@ -13,6 +13,8 @@ import android.content.Intent
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
+import android.util.Log
 import com.facebook.react.HeadlessJsTaskService
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.jstasks.HeadlessJsTaskConfig
@@ -75,6 +77,40 @@ class PresenceService : HeadlessJsTaskService() {
         super.onDestroy()
     }
 
+    /**
+     * The processor let sleep once the task is under way.
+     *
+     * React Native keeps the processor awake for as long as a task with no
+     * interface runs, and this one never ends, on purpose: from the moment
+     * the presence started - after a reboot, an update, an app closed by
+     * the phone - the phone never slept again. On 12 October the POCO had
+     * been on for fourteen days and its time awake was its time on, to the
+     * second, with the screen off drawing 180 to 220 mA even while merely
+     * waiting. The process lives on through the foreground service; the
+     * processor wakes for what concerns us - the network's packets, the
+     * watchdog's alarm every ten minutes (see WatchdogAlarm, written for
+     * exactly this: "a wake lock would cost battery all night") - and the
+     * channel's own wake locks stay in the channel, as they must.
+     */
+    override fun startTask(taskConfig: HeadlessJsTaskConfig) {
+        super.startTask(taskConfig)
+        // A moment for the engine to start and the connection to be made.
+        clock.postDelayed({ letProcessorSleep() }, PROCESSOR_SLEEP_AFTER_MS)
+    }
+
+    private fun letProcessorSleep() {
+        try {
+            val field = HeadlessJsTaskService::class.java.getDeclaredField("sWakeLock")
+            field.isAccessible = true
+            val lock = field.get(null) as? PowerManager.WakeLock ?: return
+            if (!lock.isHeld) return
+            lock.release()
+            Journal.sample(applicationContext, "presence:processor-let-sleep")
+        } catch (e: Throwable) {
+            Log.w("Duetto", "presence: the processor's lock cannot be let go: ${e.message}")
+        }
+    }
+
     override fun getTaskConfig(intent: Intent?): HeadlessJsTaskConfig? {
         return HeadlessJsTaskConfig(
             "duetto-presence",
@@ -89,6 +125,9 @@ class PresenceService : HeadlessJsTaskService() {
     }
 
     companion object {
+        /** how long after the task starts the processor is let sleep */
+        private const val PROCESSOR_SLEEP_AFTER_MS = 15_000L
+
         /** True if the system allows starting it right now. */
         fun canStart(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
     }
