@@ -2316,22 +2316,59 @@ export default function App() {
    */
   const audioTailUntil = useRef(0);
   const audioDownTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /**
+   * The window goes once the audio has come down: see leaveChannel.
+   *
+   * Leaving put the window away at once, while the call's audio waited
+   * for the leaving sound on a JavaScript timer - and with the app behind
+   * and no task of the presence running, React Native's timers stand
+   * still. On 12 October the moto, a minute after "Leave", still had
+   * the channel's call open for Android and the call library's wake
+   * lock held: waiting, with the processor awake and the audio in call
+   * mode, until the app was opened again.
+   */
+  const minimizeAfterAudio = useRef(false);
+  const callAudioDown = () => {
+    // The call Android sees closes with the audio: see Calls.kt.
+    try { InCallManager.stop(); } catch { /* noop */ }
+    Call.end().catch(() => { /* noop */ });
+    if (minimizeAfterAudio.current) {
+      minimizeAfterAudio.current = false;
+      AppWindow.minimize().catch(() => { /* noop */ });
+      setLeaving(false);
+    }
+  };
   const stopCallAudio = () => {
     if (audioDownTimer.current) { clearTimeout(audioDownTimer.current); audioDownTimer.current = null; }
     const wait = audioTailUntil.current - Date.now();
-    // The call Android sees closes with the audio: see Calls.kt.
-    if (wait <= 0) {
-      try { InCallManager.stop(); } catch { /* noop */ }
-      Call.end().catch(() => { /* noop */ });
+    // Not in front - the notification's button, from the shade - the
+    // timer below would stand still: down at once.
+    if (wait <= 0 || appStateRef.current !== 'active') {
+      callAudioDown();
       return;
     }
     audioDownTimer.current = setTimeout(() => {
       audioDownTimer.current = null;
-      if (inChannelRef.current) return;
-      try { InCallManager.stop(); } catch { /* noop */ }
-      Call.end().catch(() => { /* noop */ });
+      if (inChannelRef.current) { minimizeAfterAudio.current = false; return; }
+      callAudioDown();
     }, wait);
   };
+  // Gone behind before the leaving sound had finished - the Home key in
+  // that second and a half: the audio comes down now, not when the app
+  // comes back to the front.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st !== 'background' || !audioDownTimer.current) return;
+      clearTimeout(audioDownTimer.current);
+      audioDownTimer.current = null;
+      if (inChannelRef.current) return;
+      Journal.mark('call-audio:down-early').catch(() => { /* noop */ });
+      minimizeAfterAudio.current = false;
+      setLeaving(false);
+      callAudioDown();
+    });
+    return () => sub.remove();
+  }, []);
 
   /**
    * When the channel's call last went active, for Android's telephony
@@ -4751,6 +4788,7 @@ export default function App() {
 
     // Back in before the last leaving's audio came down: it stays up.
     if (audioDownTimer.current) { clearTimeout(audioDownTimer.current); audioDownTimer.current = null; }
+    if (minimizeAfterAudio.current) { minimizeAfterAudio.current = false; setLeaving(false); }
     audioTailUntil.current = 0;
     /**
      * The channel, as Android's telephony sees it: a call of our own.
@@ -5189,9 +5227,17 @@ export default function App() {
     // get the notification when the other person comes in. Opening the
     // app again brings you straight back into the channel - unless it
     // comes back within a moment, which is no opening at all.
+    // After the leaving sound, though, with the audio come down while
+    // still in front - "Leaving, one moment..." meanwhile: behind, the
+    // timer that brings it down would stand still (see minimizeAfterAudio).
     if (!quiet) {
       leftByHandAt.current = Date.now();
-      AppWindow.minimize().catch(() => {});
+      if (audioDownTimer.current) {
+        minimizeAfterAudio.current = true;
+        setLeaving(true);
+      } else {
+        AppWindow.minimize().catch(() => {});
+      }
     }
   }, [putAwayChannel, cfg?.pair?.id]);
 
