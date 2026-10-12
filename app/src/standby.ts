@@ -300,6 +300,14 @@ function open(cfg: DuoConfig, pair: PairInfo) {
   let name = pair.peerName || '';
   /** the name last written in the pair, so that it is written once */
   let written = name;
+  /** whether the other side is in this connection's channel */
+  let peerIn = false;
+  const toldOut = (at: number) => {
+    peerIn = false;
+    Journal.mark(`standby:peer-out:${pair.id.slice(0, 8)}`).catch(() => { /* noop */ });
+    Foreground.note('', news.outOfChannel(peerShown(live(), name), channelNow(), at || Date.now()))
+      .catch(() => { /* noop */ });
+  };
   const learn = (heardName?: string) => {
     if (!heardName) return;
     name = heardName;
@@ -334,9 +342,10 @@ function open(cfg: DuoConfig, pair: PairInfo) {
       // diagnostics - and offered to ask for what was there already.
       // The server answering: the socket lives (see watchStanding).
       onPresence: () => answered(pair.id),
-      onJoined: ({ peerName, peerPresent }) => {
+      onJoined: ({ peerName, peerPresent, peerActive }) => {
         answered(pair.id);
         learn(peerName);
+        peerIn = peerPresent && peerActive;
         if (peerPresent) sayHello(sig, pair.id);
       },
       // A new name of theirs, without them leaving the room.
@@ -356,9 +365,28 @@ function open(cfg: DuoConfig, pair: PairInfo) {
           heard(pair.id, text);
           return;
         }
-        // Their coming into the channel: said quietly, on the line that
-        // does not ring - it is news, not a call.
-        Foreground.note('', news.inChannel(who, channelNow(), at)).catch(() => { /* noop */ });
+        /**
+         * Their coming into the channel: said as it is for the
+         * connection in use, by a notification that sounds - this
+         * connection's sound and level - and not on the quiet line it
+         * used to go on, updated in place where nobody noticed: on 12
+         * October the moto came in twice and the POCO, in the channel
+         * with the edge, showed it without a sound.
+         */
+        peerIn = true;
+        Journal.mark(`standby:peer-in:${pair.id.slice(0, 8)}`).catch(() => { /* noop */ });
+        Foreground.notifyFor('', news.inChannel(who, channelNow(), at), pair.id, soundOf(live()))
+          .catch(() => { /* noop */ });
+      },
+      // Their going out of it again: never said, and the line went on
+      // saying they were in. Now quietly, as news.
+      onPeerMode: (mode, peerName, at) => {
+        learn(peerName);
+        if (mode === 'active') { peerIn = true; return; }
+        if (peerIn) toldOut(at);
+      },
+      onPeerLeft: (_why, at) => {
+        if (peerIn) toldOut(at);
       },
       onSignal: (msg) => {
         // Asked for our diagnostics: answered here, the card shown by

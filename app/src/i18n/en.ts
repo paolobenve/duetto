@@ -181,6 +181,8 @@ export const en = {
     alarm: 'Somebody called you{channel}{when} ({sound})',
     inChannelFrom: '{who} is in the channel{channel}{when}',
     inChannel: 'Somebody is in the channel{channel}{when}',
+    outOfChannelFrom: '{who} is no longer in the channel{channel}{when}',
+    outOfChannel: 'There is nobody in the channel{channel} any more{when}',
     pairedWith: 'New connection with {who}{when}',
     paired: 'New connection{when}',
   },

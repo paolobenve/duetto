@@ -170,6 +170,8 @@ export const de: Dictionary = {
     alarm: 'Jemand ruft dich{channel}{when} ({sound})',
     inChannelFrom: '{who} ist im Kanal{channel}{when}',
     inChannel: 'Jemand ist im Kanal{channel}{when}',
+    outOfChannelFrom: '{who} ist nicht mehr im Kanal{channel}{when}',
+    outOfChannel: 'Niemand ist mehr im Kanal{channel}{when}',
     pairedWith: 'Neue Verbindung mit {who}{when}',
     paired: 'Neue Verbindung{when}',
   },

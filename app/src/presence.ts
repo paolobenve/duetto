@@ -250,6 +250,11 @@ export const news = {
     const o = { who, channel: channelName(channel), when: momentSaid(at, 'sinceTime') };
     return named(who) ? t('alert.inChannelFrom', o) : t('alert.inChannel', o);
   },
+  /** and out of it again */
+  outOfChannel: (who: string, channel: string, at: number) => {
+    const o = { who, channel: channelName(channel), when: momentSaid(at, 'atTime') };
+    return named(who) ? t('alert.outOfChannelFrom', o) : t('alert.outOfChannel', o);
+  },
   /** somebody paired with us through a link of ours */
   paired: (who: string, at: number) => {
     const o = { who, when: momentSaid(at, 'atTime') };
