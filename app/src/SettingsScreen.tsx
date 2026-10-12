@@ -1309,7 +1309,8 @@ export default function SettingsScreen({
         <Text style={styles.sectionHint}>{t('settings.alertLevel')}</Text>
         <Text style={styles.hint}>{t('settings.alertLevelNote')}</Text>
         <View style={styles.group}>
-          {(['full', 'high', 'medium', 'low'] as const).map((v) => (
+          {/* Low to full, as the gestures' sounds go from off to high. */}
+          {(['low', 'medium', 'high', 'full'] as const).map((v) => (
             <TouchableOpacity
               key={v}
               style={[styles.option, (cfg.alertLevel ?? 'full') === v && styles.optionPicked]}
