@@ -213,9 +213,54 @@ object Calls {
     private var ringtone: Ringtone? = null
     private var callback: Any? = null
 
+    /**
+     * The call volume as it was before the phone rang, while it is held
+     * at the bottom: see hushWaitingBeeps.
+     */
+    private var volumeBeforeRing: Int? = null
+
+    /**
+     * The call-waiting beeps, made faint.
+     *
+     * Android plays them on the call volume, through the output in use -
+     * the speaker, often - and the call volume is the one Duetto keeps
+     * high for the other's voice: they came out very loud. While the
+     * phone rings the call volume goes to its bottom, and back as soon as
+     * the ringing is over - answered, refused or missed - so that the
+     * caller is heard at the volume of before. The other's voice in the
+     * channel is fainter for those seconds too: somebody is calling.
+     */
+    private fun hushWaitingBeeps(ctx: Context) {
+        if (volumeBeforeRing != null) return
+        try {
+            val am = ctx.getSystemService(AudioManager::class.java) ?: return
+            val stream = AudioManager.STREAM_VOICE_CALL
+            val floor = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) am.getStreamMinVolume(stream) else 1
+            val now = am.getStreamVolume(stream)
+            if (now <= floor) return
+            volumeBeforeRing = now
+            am.setStreamVolume(stream, floor, 0)
+            Journal.sample(ctx, "call:waiting-beeps-hushed:$now")
+        } catch (e: Exception) {
+            Log.w(TAG, "waiting beeps: ${e.message}")
+        }
+    }
+
+    private fun restoreAfterRing(ctx: Context) {
+        val before = volumeBeforeRing ?: return
+        volumeBeforeRing = null
+        try {
+            ctx.getSystemService(AudioManager::class.java)
+                ?.setStreamVolume(AudioManager.STREAM_VOICE_CALL, before, 0)
+        } catch (e: Exception) {
+            Log.w(TAG, "waiting beeps, volume back: ${e.message}")
+        }
+    }
+
     private fun onCallState(state: Int) {
         val ctx = appCtx ?: return
         if (state == TelephonyManager.CALL_STATE_RINGING && connection?.state == Connection.STATE_ACTIVE) {
+            hushWaitingBeeps(ctx)
             val am = ctx.getSystemService(AudioManager::class.java)
             if (am?.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
             if (ringtone?.isPlaying == true) return
@@ -236,6 +281,7 @@ object Calls {
             }
         } else {
             stopRinging()
+            restoreAfterRing(ctx)
         }
     }
 
