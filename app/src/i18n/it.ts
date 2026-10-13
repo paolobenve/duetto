@@ -101,6 +101,7 @@ export const it: Dictionary = {
     media: 'Contenuti multimediali',
     ring: 'Suoneria',
     notification: 'Notifiche',
+    ringAndNotifications: 'Suoneria e notifiche',
     alarm: 'Sveglia',
     callNote: 'È la parte del telefono nel volume di Duetto: la tacca grigia con la cornetta.',
     refused: 'Con «Non disturbare» acceso, Android non lascia cambiare questo volume.',

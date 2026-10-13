@@ -105,6 +105,7 @@ export const de: Dictionary = {
     media: 'Medien',
     ring: 'Klingelton',
     notification: 'Benachrichtigungen',
+    ringAndNotifications: 'Klingelton und Benachrichtigungen',
     alarm: 'Wecker',
     callNote: 'Der Anteil des Telefons an der Lautstärke von Duetto: die graue Marke mit dem Hörer.',
     refused: 'Bei aktivem „Bitte nicht stören“ lässt Android diese Lautstärke nicht ändern.',

@@ -105,6 +105,7 @@ export const es: Dictionary = {
     media: 'Multimedia',
     ring: 'Tono de llamada',
     notification: 'Notificaciones',
+    ringAndNotifications: 'Tono y notificaciones',
     alarm: 'Alarma',
     callNote: 'Es la parte del teléfono en el volumen de Duetto: la marca gris con el auricular.',
     refused: 'Con «No molestar» activado, Android no deja cambiar este volumen.',

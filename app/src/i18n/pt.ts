@@ -105,6 +105,7 @@ export const pt: Dictionary = {
     media: 'Mídia',
     ring: 'Toque',
     notification: 'Notificações',
+    ringAndNotifications: 'Toque e notificações',
     alarm: 'Alarme',
     callNote: 'É a parte do telefone no volume do Duetto: a marca cinza com o fone.',
     refused: 'Com «Não perturbe» ativado, o Android não deixa mudar este volume.',

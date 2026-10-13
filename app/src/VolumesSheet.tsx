@@ -21,6 +21,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Modal, Pressable, Linking,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Journal, Volume } from 'duetto-platform';
 import { t } from './i18n';
 
@@ -29,6 +30,33 @@ type Stream = Awaited<ReturnType<typeof Volume.streams>>[number];
 /** how often the values are read again while the sheet is open */
 const REFRESH_MS = 1_000;
 
+/**
+ * Ringtone and notifications are one volume on some phones - HyperOS,
+ * on the POCO: moving one moved the other, and two bars that move
+ * together look broken. Found out once, by moving the notifications a
+ * step and back and watching the ring, and remembered; shown then as a
+ * single row. A move by hand that drags the other along finds it out
+ * too, where the trial could not be made (the ring at zero).
+ */
+const LINKED_KEY = 'duetto.ring-notification-linked';
+
+async function tryLinked(): Promise<boolean | null> {
+  const before = await Volume.streams();
+  const ring = before.find((x) => x.name === 'ring');
+  const note = before.find((x) => x.name === 'notification');
+  if (!ring || !note || ring.volume <= 0) return null;
+  // A step that keeps clear of zero, where the ringer would go silent.
+  const step = note.volume - 1 > Math.max(0, note.min) ? note.volume - 1
+    : note.volume + 1 <= note.max ? note.volume + 1 : null;
+  if (step === null) return null;
+  if ((await Volume.setStream('notification', step)) !== 'ok') return null;
+  const after = await Volume.streams();
+  const linked = (after.find((x) => x.name === 'ring')?.volume ?? ring.volume) !== ring.volume;
+  await Volume.setStream('notification', note.volume);
+  if (linked) await Volume.setStream('ring', ring.volume);
+  return linked;
+}
+
 export default function VolumesSheet({ visible, onClose }: {
   visible: boolean;
   onClose: () => void;
@@ -36,6 +64,24 @@ export default function VolumesSheet({ visible, onClose }: {
   const [streams, setStreams] = useState<Stream[]>([]);
   /** the volumes Android refused to move: Do Not Disturb */
   const [refused, setRefused] = useState<Record<string, boolean>>({});
+  /** ringtone and notifications one volume here: see LINKED_KEY */
+  const [linked, setLinked] = useState(false);
+  const noteLinked = useCallback((now: boolean) => {
+    setLinked(now);
+    AsyncStorage.setItem(LINKED_KEY, now ? '1' : '0').catch(() => { /* noop */ });
+  }, []);
+  useEffect(() => {
+    if (!visible) return;
+    AsyncStorage.getItem(LINKED_KEY).then((v) => {
+      if (v === '1') { setLinked(true); return; }
+      if (v === '0') return;
+      tryLinked().then((found) => {
+        if (found === null) return;
+        Journal.mark(`volumes:ring-notification:${found ? 'one' : 'apart'}`).catch(() => { /* noop */ });
+        noteLinked(found);
+      }).catch(() => { /* noop */ });
+    }).catch(() => { /* noop */ });
+  }, [visible, noteLinked]);
 
   const reload = useCallback(() => {
     Volume.streams().then(setStreams).catch(() => { /* noop */ });
@@ -57,10 +103,18 @@ export default function VolumesSheet({ visible, onClose }: {
     if (v === s.volume) return;
     // At once on the screen; the truth comes back with the reading.
     setStreams((all) => all.map((x) => (x.name === s.name ? { ...x, volume: v } : x)));
-    Volume.setStream(s.name, v).then((how) => {
+    const other = s.name === 'ring' ? 'notification' : s.name === 'notification' ? 'ring' : null;
+    const otherBefore = other ? streams.find((x) => x.name === other)?.volume : undefined;
+    Volume.setStream(s.name, v).then(async (how) => {
       Journal.mark(`volumes:${s.name}:${v}:${how}`).catch(() => { /* noop */ });
       setRefused((r) => ({ ...r, [s.name]: how === 'refused' }));
-      reload();
+      const now = await Volume.streams();
+      setStreams(now);
+      // The other one dragged along: one volume, here.
+      if (other && how === 'ok' && !linked && otherBefore !== undefined
+          && now.find((x) => x.name === other)?.volume !== otherBefore) {
+        noteLinked(true);
+      }
     }).catch(() => reload());
   };
 
@@ -70,10 +124,12 @@ export default function VolumesSheet({ visible, onClose }: {
         {/* A touch inside is a choice, not a way out. */}
         <Pressable style={styles.sheet} onPress={() => { /* hold it */ }}>
           <Text style={styles.title}>{t('volumes.title')}</Text>
-          {streams.map((s) => (
+          {streams.filter((s) => !(linked && s.name === 'notification')).map((s) => (
             <View key={s.name} style={styles.row}>
               <View style={styles.head}>
-                <Text style={styles.label}>{t(`volumes.${s.name}`)}</Text>
+                <Text style={styles.label}>
+                  {linked && s.name === 'ring' ? t('volumes.ringAndNotifications') : t(`volumes.${s.name}`)}
+                </Text>
                 <Text style={styles.value}>{`${s.volume} / ${s.max}`}</Text>
               </View>
               <View style={styles.line}>

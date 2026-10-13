@@ -105,6 +105,7 @@ export const fr: Dictionary = {
     media: 'Multimédia',
     ring: 'Sonnerie',
     notification: 'Notifications',
+    ringAndNotifications: 'Sonnerie et notifications',
     alarm: 'Alarme',
     callNote: 'La part du téléphone dans le volume de Duetto : le repère gris avec le combiné.',
     refused: 'Avec « Ne pas déranger » activé, Android ne laisse pas changer ce volume.',

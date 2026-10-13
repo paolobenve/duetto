@@ -113,6 +113,7 @@ export const en = {
     media: 'Media',
     ring: 'Ringtone',
     notification: 'Notifications',
+    ringAndNotifications: 'Ringtone and notifications',
     alarm: 'Alarm',
     callNote: 'The phone\'s part of Duetto\'s volume: the grey mark with the handset.',
     refused: 'With Do Not Disturb on, Android does not let this volume change.',
