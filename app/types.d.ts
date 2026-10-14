@@ -141,6 +141,8 @@ declare module 'duetto-platform' {
      * a call from a connection not in use: touched, it opens the app on
      * it; it sounds as that connection was set to (empty: the one in use's)
      */
+    /** an alert gone by itself after `ms`: news the standing notification says too */
+    notifyBrief(name: string, text: string, ms: number): Promise<boolean>;
     notifyFor(name: string, text: string, pairId: string,
       sound?: { vibration?: string; sound?: string; uri?: string; level?: number }): Promise<boolean>;
     /** the connection the app was opened for by a call's notification, once; null if none */

@@ -159,21 +159,27 @@ object Notifier {
     private var nextAlertAt = 0L
 
     @Synchronized
+    /**
+     * @param briefMs above zero, the alert goes by itself after that long:
+     *   the other's coming in, which the standing notification says as
+     *   well - left there, it was the same news twice.
+     */
     fun show(
         ctx: Context, name: String, text: String, pairId: String? = null,
-        choice: Alerts.Choice = Alerts.stored(ctx),
+        choice: Alerts.Choice = Alerts.stored(ctx), briefMs: Long = 0,
     ) {
         val now = SystemClock.uptimeMillis()
         val at = maxOf(now, nextAlertAt)
         if (at - now > ALERT_BACKLOG_MS) return
         nextAlertAt = at + ALERT_GAP_MS
         val app = ctx.applicationContext
-        if (at <= now) showNow(app, name, text, pairId, choice)
-        else pacer.postAtTime({ showNow(app, name, text, pairId, choice) }, at)
+        if (at <= now) showNow(app, name, text, pairId, choice, briefMs)
+        else pacer.postAtTime({ showNow(app, name, text, pairId, choice, briefMs) }, at)
     }
 
     private fun showNow(
         ctx: Context, name: String, text: String, pairId: String?, choice: Alerts.Choice,
+        briefMs: Long = 0,
     ) {
         // Its sound, in the channel, is not another call: see Calls.
         Calls.ownAlertNow()
@@ -207,6 +213,7 @@ object Notifier {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setGroup(GROUP)
             .setSortKey(SORT_ALERT)
+            .apply { if (briefMs > 0) setTimeoutAfter(briefMs) }
 
         // Before Android 8 the channels do not exist and these two things
         // are said here. From Android 8 on they are ignored: the channel

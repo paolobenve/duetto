@@ -321,6 +321,17 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
         }
     }
 
+    /** The same, gone by itself after `ms`: news the standing notification says as well. */
+    @ReactMethod
+    fun notifyBrief(name: String, text: String, ms: Double, promise: Promise) {
+        try {
+            Notifier.show(ctx, name, text, briefMs = ms.toLong())
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("notify_error", e)
+        }
+    }
+
     /**
      * A call from a connection not in use: touched, it opens the app on
      * it, and it sounds and buzzes as that connection was set to - empty

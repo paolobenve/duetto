@@ -355,6 +355,13 @@ const DETACH_CUE_MS = 1800;
 const theirsIsOlder = (ours: number | undefined, theirs: number) =>
   theirs > 0 && (ours ?? 0) > theirs;
 
+/**
+ * How long the alert of the other's coming in stays: it rings so that one
+ * knows, then goes - the standing notification says the same, and left
+ * there it was the same news twice.
+ */
+const ENTRY_ALERT_MS = 15_000;
+
 const cue = (name: string) => {
   if (cueGain > 0) Alarm.play(name, true, 0, cueGain).catch(() => { /* noop */ });
 };
@@ -3977,7 +3984,8 @@ export default function App() {
             // Their arrival, on the other hand, is plain to see in the
             // foreground: notifying it would be noise.
             if (appStateRef.current !== 'active') {
-              Foreground.notify('', news.inChannel(who, channel, at)).catch(() => {});
+              // Heard, then gone: the standing notification says it too.
+              Foreground.notifyBrief('', news.inChannel(who, channel, at), ENTRY_ALERT_MS).catch(() => {});
             }
           },
 

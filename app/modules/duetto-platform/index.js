@@ -120,6 +120,9 @@ export const Foreground = isAndroid && NativeForeground
       /** An alert to show when the app is not in the foreground. */
       notify: (name, text) =>
         call(NativeForeground, 'notify', String(name || ''), String(text)),
+      /** the same, gone by itself after `ms` */
+      notifyBrief: (name, text, ms) =>
+        call(NativeForeground, 'notifyBrief', String(name || ''), String(text), Number(ms) || 0),
       /** a call from a connection not in use: touched, it opens the app on it */
       notifyFor: (name, text, pairId, sound = {}) =>
         call(NativeForeground, 'notifyFor', String(name || ''), String(text), String(pairId),
@@ -193,6 +196,7 @@ export const Foreground = isAndroid && NativeForeground
       setText: unavailable,
       stop: unavailable,
       notify: unavailable,
+      notifyBrief: unavailable,
       notifyFor: unavailable,
       takeOpenedPair: () => Promise.resolve(null),
       note: unavailable,

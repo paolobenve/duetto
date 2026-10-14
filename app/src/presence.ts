@@ -886,7 +886,9 @@ async function listenNow(): Promise<boolean> {
           ? news.called(who, channel, at)
           : news.inChannel(who, channel, at);
         log('alert:', text);
-        Foreground.notify('', text).catch(() => { /* noop */ });
+        // A coming in rings, then goes: the standing notification says it too.
+        if (reason === 'knock') Foreground.notify('', text).catch(() => { /* noop */ });
+        else Foreground.notifyBrief('', text, 15_000).catch(() => { /* noop */ });
         if (reason === 'knock') keepCall(text);
       },
     },
