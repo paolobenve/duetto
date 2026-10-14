@@ -84,6 +84,8 @@ export const Foreground = isAndroid && NativeForeground
        */
       setInChannel: (active) =>
         call(NativeForeground, 'setInChannel', !!active),
+      /** the other there to hear: the processor is kept awake only then */
+      setPeerHere: (here) => call(NativeForeground, 'setPeerHere', !!here),
 
       /**
        * "Leave and become unavailable", written where a reboot cannot
@@ -189,6 +191,7 @@ export const Foreground = isAndroid && NativeForeground
       start: unavailable,
       setCameraActive: unavailable,
       setInChannel: unavailable,
+      setPeerHere: unavailable,
       setAvailable: unavailable,
       isAvailable: () => Promise.resolve(true),
       recentsClearedAt: () => Promise.resolve(0),

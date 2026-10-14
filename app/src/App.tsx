@@ -1220,6 +1220,20 @@ export default function App() {
   /** rooms already told to the server as gone: once is enough */
   const forgottenRooms = useRef<Set<string>>(new Set());
   const [connState, setConnState] = useState('new');
+  /**
+   * The processor kept awake in the channel only with somebody to hear:
+   * the other in it too, or the link to them up (see ChannelForegroundService).
+   * Alone in the channel the phone sleeps as it does waiting, and the
+   * other's coming - a message from the server - wakes it.
+   */
+  const peerHere = inChannel && (status === 'together' || connState === 'connected'
+    || connState === 'connecting' || connState === 'checking');
+  useEffect(() => {
+    if (!inChannel) return;
+    Journal.mark(`cpu:awake:${peerHere ? 'peer-here' : 'alone'}`).catch(() => { /* noop */ });
+    Foreground.setPeerHere(peerHere).catch(() => { /* noop */ });
+  }, [inChannel, peerHere]);
+
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [audioOn, setAudioOn] = useState(true);

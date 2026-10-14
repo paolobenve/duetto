@@ -127,6 +127,8 @@ declare module 'duetto-platform' {
     setCameraActive(active: boolean): Promise<boolean>;
     /** in the channel or merely waiting: the wake lock follows this */
     setInChannel(active: boolean): Promise<boolean>;
+    /** the other there to hear: the processor is kept awake only then */
+    setPeerHere(here: boolean): Promise<boolean>;
     /** "leave and become unavailable", written where a reboot cannot erase it */
     setAvailable(v: boolean): Promise<boolean>;
     isAvailable(): Promise<boolean>;

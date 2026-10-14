@@ -159,6 +159,14 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
         }
     }
 
+    /** The other there to hear: the processor is kept awake only then. */
+    @ReactMethod
+    fun setPeerHere(here: Boolean, promise: Promise) {
+        sendToService(promise) {
+            putExtra(ChannelForegroundService.EXTRA_PEER_HERE, here)
+        }
+    }
+
     /**
      * "Leave and become unavailable", written where a reboot cannot
      * erase it: the boot receiver, the watchdog alarm and the handovers

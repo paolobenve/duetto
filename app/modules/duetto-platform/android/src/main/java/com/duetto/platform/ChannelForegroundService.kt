@@ -66,6 +66,15 @@ class ChannelForegroundService : Service() {
      * watchdog alarm's job now.
      */
     private var inChannel: Boolean = false
+    /**
+     * The other in the channel too, or the link to them up: only then is
+     * the processor kept awake. Alone in the channel there is nobody to
+     * hear, and the other's coming is a message from the server, which
+     * wakes the phone: on 13 and 14 October the moto alone in its channel
+     * drew twice what it drew waiting, 45 mA against 23. Until the app
+     * says otherwise, here: true, as it always was.
+     */
+    private var peerHere: Boolean = true
     private var currentActions: String = ""
 
     /**
@@ -117,6 +126,7 @@ class ChannelForegroundService : Service() {
         const val EXTRA_NAME = "name"
         const val EXTRA_CAMERA = "camera"
         const val EXTRA_IN_CHANNEL = "inChannel"
+        const val EXTRA_PEER_HERE = "peerHere"
         /** which buttons the notification carries: "enter", "wait" or nothing */
         const val EXTRA_ACTIONS = "actions"
         const val EXTRA_ENTER_LABEL = "enterLabel"
@@ -247,6 +257,9 @@ class ChannelForegroundService : Service() {
         if (intent.hasExtra(EXTRA_IN_CHANNEL)) {
             inChannel = intent.getBooleanExtra(EXTRA_IN_CHANNEL, false)
         }
+        if (intent.hasExtra(EXTRA_PEER_HERE)) {
+            peerHere = intent.getBooleanExtra(EXTRA_PEER_HERE, true)
+        }
         /**
          * The microphone type only in the channel.
          *
@@ -264,7 +277,7 @@ class ChannelForegroundService : Service() {
          */
         Notifier.rememberNotice(this, currentText, currentActions)
         showSoon(mayUseMicrophone = inChannel)
-        if (inChannel) acquireWakeLock() else releaseWakeLock()
+        if (inChannel && peerHere) acquireWakeLock() else releaseWakeLock()
         // The net under the waiting: see WatchdogAlarm.
         WatchdogAlarm.schedule(this)
 
