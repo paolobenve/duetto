@@ -623,7 +623,18 @@ export function useAudioRoute(
    * here.
    */
   const btGone = useCallback(() => {
-    if (!enabled || inCall.current) return;
+    if (!enabled) return;
+    /**
+     * And the brake is let go: the "fight" it saw was the headset going -
+     * Android closing the call three or four times in a few seconds,
+     * each time on another output. Left on, it was still holding when
+     * the call came back a moment later: the output wanted was not put
+     * back, and the earpiece the new call is born on was taken for it
+     * (the POCO, 13 October 15:56 and 14 October 18:13).
+     */
+    frozenUntil.current = 0;
+    routeTimes.current = [];
+    if (inCall.current) return;
     if (wanted.current !== 'BLUETOOTH' && currentRef.current !== 'BLUETOOTH') return;
     const back = builtIn.current;
     wanted.current = back;
