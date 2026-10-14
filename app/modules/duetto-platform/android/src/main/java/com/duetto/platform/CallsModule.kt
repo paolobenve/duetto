@@ -38,6 +38,13 @@ class CallsModule(private val ctx: ReactApplicationContext) :
         promise.resolve(Calls.start(ctx, name))
     }
 
+    /** The call-waiting beeps made faint while the phone rings, or not. */
+    @ReactMethod
+    fun setQuietWaitingBeeps(on: Boolean, promise: Promise) {
+        Calls.setQuietWaitingBeeps(ctx, on)
+        promise.resolve(true)
+    }
+
     /** The phone permission was just granted: the ringing is watched from now. */
     @ReactMethod
     fun watchRinging(promise: Promise) {

@@ -50,6 +50,8 @@ declare module 'duetto-platform' {
     end(): Promise<boolean>;
     resume(): Promise<boolean>;
     watchRinging(): Promise<boolean>;
+    /** the call-waiting beeps made faint while the phone rings, or not */
+    setQuietWaitingBeeps(on: boolean): Promise<boolean>;
     setRoute(route: string): Promise<boolean>;
     subscribe(cb: (state: string) => void): () => void;
   };

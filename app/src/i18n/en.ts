@@ -334,6 +334,8 @@ export const en = {
   },
 
   settings: {
+    quietWaitingBeeps: 'Phone call beeps at the lowest',
+    quietWaitingBeepsNote: 'When the phone rings during the channel, Android beeps on the call volume, the one the other\'s voice is on. On, that volume goes to its lowest while it rings, then back as it was.',
     btAskTitle: 'Headset “{name}” connected',
     btAskBody: 'When it connects during the channel, use it for Duetto at once?',
     btAskAlways: 'Yes, always',

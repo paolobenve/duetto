@@ -320,6 +320,8 @@ export const it: Dictionary = {
   },
 
   settings: {
+    quietWaitingBeeps: 'Bip delle telefonate al minimo',
+    quietWaitingBeepsNote: 'Quando squilla il telefono durante il canale, Android fa un bip-bip sul volume della chiamata, quello della voce dell’altro. Acceso, mentre squilla quel volume scende al minimo e poi torna com’era.',
     btAskTitle: 'Cuffie «{name}» collegate',
     btAskBody: 'Quando si collegano durante il canale, usarle subito per Duetto?',
     btAskAlways: 'Sì, sempre',

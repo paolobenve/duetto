@@ -1146,6 +1146,24 @@ export default function SettingsScreen({
           </View>
         </TouchableOpacity>
 
+        {/* The call-waiting beeps, made faint while the phone rings:
+            they come on the call volume, the one the other's voice is on. */}
+        <TouchableOpacity
+          style={styles.switchRow}
+          onPress={() => {
+            const on = cfg.quietWaitingBeeps === false;
+            setCfg({ ...cfg, quietWaitingBeeps: on });
+            onLive?.({ quietWaitingBeeps: on });
+          }}>
+          <View style={styles.choiceText}>
+            <Text style={styles.choiceLabel}>{t('settings.quietWaitingBeeps')}</Text>
+            <Text style={styles.choiceNote}>{t('settings.quietWaitingBeepsNote')}</Text>
+          </View>
+          <View pointerEvents="none">
+            <Switch value={cfg.quietWaitingBeeps !== false} {...SWITCH_COLOURS} />
+          </View>
+        </TouchableOpacity>
+
         {/* Whether the phone's own call volume does anything here: the
             test says, and decides which knob Duetto moves. */}
         <Text style={styles.sectionHint}>

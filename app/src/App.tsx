@@ -787,6 +787,12 @@ export default function App() {
   const alertVibration = cfg?.alertVibration;
   const alertSoundNow = cfg ? alertSoundFor(cfg) : '';
   const alertKind = cfg?.alertSound;
+  // The call-waiting beeps' option, to the native side where the ringing is heard.
+  const quietBeeps = cfg ? cfg.quietWaitingBeeps !== false : null;
+  useEffect(() => {
+    if (quietBeeps === null) return;
+    Call.setQuietWaitingBeeps(quietBeeps).catch(() => { /* noop */ });
+  }, [quietBeeps]);
   // And how loud: see AlertLevel.
   const alertGain = ALERT_GAIN[cfg?.alertLevel ?? 'full'] ?? 1;
   useEffect(() => {

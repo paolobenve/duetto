@@ -232,6 +232,8 @@ object Calls {
      */
     private fun hushWaitingBeeps(ctx: Context) {
         if (volumeBeforeRing != null) return
+        // An option, on unless switched off (see setQuietWaitingBeeps).
+        if (!ctx.getSharedPreferences(PREFS_CALLS, Context.MODE_PRIVATE).getBoolean(KEY_QUIET_BEEPS, true)) return
         try {
             val am = ctx.getSystemService(AudioManager::class.java) ?: return
             val stream = AudioManager.STREAM_VOICE_CALL
@@ -245,6 +247,14 @@ object Calls {
             Log.w(TAG, "waiting beeps: ${e.message}")
         }
     }
+
+    /** The option behind hushWaitingBeeps, kept where the ringing is heard. */
+    fun setQuietWaitingBeeps(ctx: Context, on: Boolean) {
+        ctx.getSharedPreferences(PREFS_CALLS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_QUIET_BEEPS, on).apply()
+    }
+    private const val PREFS_CALLS = "duetto_calls"
+    private const val KEY_QUIET_BEEPS = "quiet_waiting_beeps"
 
     private fun restoreAfterRing(ctx: Context) {
         val before = volumeBeforeRing ?: return

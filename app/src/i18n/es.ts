@@ -321,6 +321,8 @@ export const es: Dictionary = {
   },
 
   settings: {
+    quietWaitingBeeps: 'Pitidos de las llamadas al mínimo',
+    quietWaitingBeepsNote: 'Cuando el teléfono suena durante el canal, Android pita en el volumen de llamada, el de la voz del otro. Activado, ese volumen baja al mínimo mientras suena y luego vuelve como estaba.',
     btAskTitle: 'Auriculares «{name}» conectados',
     btAskBody: 'Cuando se conecten durante el canal, ¿usarlos enseguida para Duetto?',
     btAskAlways: 'Sí, siempre',

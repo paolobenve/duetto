@@ -321,6 +321,8 @@ export const pt: Dictionary = {
   },
 
   settings: {
+    quietWaitingBeeps: 'Bipes das chamadas no mínimo',
+    quietWaitingBeepsNote: 'Quando o telefone toca durante o canal, o Android bipa no volume da chamada, o da voz do outro. Ligado, esse volume vai ao mínimo enquanto toca e depois volta como estava.',
     btAskTitle: 'Fones «{name}» conectados',
     btAskBody: 'Quando se conectarem durante o canal, usá-los logo para o Duetto?',
     btAskAlways: 'Sim, sempre',

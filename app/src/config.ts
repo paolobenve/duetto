@@ -498,6 +498,8 @@ export type DuoConfig = {
    * the same hand and the same pocket with everybody.
    */
   earOnProximity: boolean;
+  /** the call volume to its bottom while the phone rings: see Calls.hushWaitingBeeps */
+  quietWaitingBeeps?: boolean;
   /** ...even while the video is on, which normally keeps it off */
   earEvenWithVideo: boolean;
   /**

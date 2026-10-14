@@ -321,6 +321,8 @@ export const fr: Dictionary = {
   },
 
   settings: {
+    quietWaitingBeeps: 'Bips des appels au minimum',
+    quietWaitingBeepsNote: 'Quand le téléphone sonne pendant le canal, Android bipe sur le volume d’appel, celui de la voix de l’autre. Activé, ce volume descend au minimum pendant la sonnerie, puis revient comme avant.',
     btAskTitle: 'Écouteurs « {name} » connectés',
     btAskBody: 'Quand ils se connectent pendant le canal, les utiliser tout de suite pour Duetto ?',
     btAskAlways: 'Oui, toujours',

@@ -321,6 +321,8 @@ export const de: Dictionary = {
   },
 
   settings: {
+    quietWaitingBeeps: 'Anruf-Pieptöne ganz leise',
+    quietWaitingBeepsNote: 'Klingelt das Telefon während des Kanals, piept Android auf der Anruflautstärke, der der anderen Stimme. Eingeschaltet geht diese Lautstärke beim Klingeln ganz nach unten und danach zurück.',
     btAskTitle: 'Kopfhörer „{name}“ verbunden',
     btAskBody: 'Wenn sie sich während des Kanals verbinden, sofort für Duetto nutzen?',
     btAskAlways: 'Ja, immer',
