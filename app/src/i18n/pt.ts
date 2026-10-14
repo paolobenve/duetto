@@ -170,7 +170,7 @@ export const pt: Dictionary = {
     alarmFrom: '{who} chamou você{channel}{when} ({sound})',
     alarm: 'Chamaram você{channel}{when} ({sound})',
     inChannelFrom: '{who} está no canal{channel}{when}',
-    inChannel: 'Tem alguém no canal{channel}{when}',
+    inChannel: 'O outro está no canal{channel}{when}',
     pairIn: '{who} está no canal{when}',
     pairWaiting: '{who} à espera{when}',
     pairDetached: '{who} desligou o Duetto{when}',

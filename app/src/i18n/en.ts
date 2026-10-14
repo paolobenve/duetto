@@ -181,7 +181,7 @@ export const en = {
     alarmFrom: '{who} called you{channel}{when} ({sound})',
     alarm: 'Somebody called you{channel}{when} ({sound})',
     inChannelFrom: '{who} is in the channel{channel}{when}',
-    inChannel: 'Somebody is in the channel{channel}{when}',
+    inChannel: 'The other is in the channel{channel}{when}',
     pairIn: '{who} is in the channel{when}',
     pairWaiting: '{who} waiting{when}',
     pairDetached: '{who} switched Duetto off{when}',
