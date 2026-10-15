@@ -164,6 +164,9 @@ declare module 'duetto-platform' {
     requestBatteryUnrestricted(): Promise<boolean>;
     lastAutoStart(): Promise<number>;
     uptimeMs(): Promise<number>;
+    /** the processor held up for at most `ms`, while a lost server is dialled again */
+    holdAwake(tag: string, ms: number): Promise<boolean>;
+    letSleep(tag: string): Promise<boolean>;
     hasAutoStartScreen(): Promise<boolean>;
     openAutoStartSettings(): Promise<boolean>;
     openAppSettings(): Promise<boolean>;

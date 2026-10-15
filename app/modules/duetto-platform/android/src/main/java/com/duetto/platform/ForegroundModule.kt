@@ -10,6 +10,7 @@
 package com.duetto.platform
 
 import android.content.Intent
+import android.os.PowerManager
 import androidx.core.content.ContextCompat
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -113,7 +114,51 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
         /** the last text given to the standing notification, and its words: see setPairLines */
         @Volatile private var lastText: Array<String>? = null
         @Volatile private var pairLines = ""
+        /** the processor held up while a lost server is dialled again: see holdAwake */
+        private val awake = mutableMapOf<String, PowerManager.WakeLock>()
         fun emitAction(action: String) { live?.sayAction(action) }
+    }
+
+    /**
+     * The processor held up for a moment, under a name: while a connection
+     * to the server that went down is dialled again.
+     *
+     * Alone in the channel or waiting, nothing keeps the processor awake,
+     * and the attempts to dial again are timers that stand still while it
+     * sleeps: on 15 October the moto lost the server at 09:55 and found it
+     * again only at 10:07, at the watchdog alarm's next round. `ms` caps
+     * it: the lock lets go by itself, whatever happens to the one who
+     * asked; held again, it starts counting again.
+     */
+    @ReactMethod
+    fun holdAwake(tag: String, ms: Double, promise: Promise) {
+        try {
+            synchronized(awake) {
+                val lock = awake.getOrPut(tag) {
+                    val pm = ctx.getSystemService(android.content.Context.POWER_SERVICE) as PowerManager
+                    pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Duetto::redial:$tag").apply {
+                        setReferenceCounted(false)
+                    }
+                }
+                lock.acquire(ms.toLong().coerceIn(1_000L, 120_000L))
+            }
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("awake_error", e)
+        }
+    }
+
+    /** The server found again, or given up: the processor may sleep. */
+    @ReactMethod
+    fun letSleep(tag: String, promise: Promise) {
+        synchronized(awake) {
+            try {
+                awake.remove(tag)?.let { if (it.isHeld) it.release() }
+            } catch (_: Exception) {
+                // already let go by its timeout: nothing to do
+            }
+        }
+        promise.resolve(true)
     }
 
     /** Takes the quiet note away when it is not true any more. */

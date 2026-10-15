@@ -7,7 +7,7 @@
  * the LICENSE file at the root of the project, and at
  * <https://www.gnu.org/licenses/>.
  */
-import { Journal } from 'duetto-platform';
+import { Foreground, Journal } from 'duetto-platform';
 import { SignalCrypto } from './crypto';
 import { logger } from './log';
 import { deviceKey, deviceModel, deviceName, signNonce } from './device';
@@ -341,6 +341,20 @@ const RECONNECT_MIN_MS = 500;
 /** How long to stand still when the server says we knock too often. */
 const TOO_MANY_WAIT_MS = 60_000;
 const RECONNECT_MAX_MS = 4000;
+/**
+ * How long the processor is held up, at most, while a lost server is
+ * dialled again.
+ *
+ * The attempts are timers, and timers stand still while the processor
+ * sleeps - which it does alone in the channel and waiting: on 15 October
+ * the moto lost the server at 09:55 and found it again only at 10:07, at
+ * the watchdog alarm's round. A minute is a dozen attempts; a server
+ * still away after that is left to the alarm, so that a phone with no
+ * network for hours is not kept awake for hours.
+ */
+const REDIAL_AWAKE_MS = 60_000;
+/** each connection's own name for its hold on the processor */
+let redialTags = 0;
 
 /** Somebody the server lets in, as the app shows them. */
 export type PersonOnServer = {
@@ -410,10 +424,20 @@ export class Signaling {
    */
   private pausedUntil = 0;
   private mode: Mode;
+  /**
+   * In the room, until the socket goes: losing it is what holds the
+   * processor up for the dialling again. Only once per loss - a server
+   * that cannot be reached is not held up for again at each of the
+   * alarm's rounds.
+   */
+  private linkUp = false;
+  private holdingAwake = false;
+  private readonly awakeTag: string;
 
   constructor(private opts: SignalingOptions, private events: SignalingEvents) {
     this.crypto = opts.key ? new SignalCrypto(opts.key) : null;
     this.mode = opts.mode ?? 'listening';
+    this.awakeTag = `${opts.room.slice(0, 6)}-${++redialTags}`;
   }
 
   /**
@@ -527,6 +551,8 @@ export class Signaling {
       log('down after', Math.round((Date.now() - openedAt) / 1000), 's',
         '- code', e?.code ?? '?', e?.reason ? `(${e.reason})` : '');
       this.events.onStatus?.('offline', `${e?.code ?? '?'}${e?.reason ? `/${e.reason}` : ''}`);
+      const lost = this.linkUp;
+      this.linkUp = false;
       // 4006 is the server's "no" to this phone - not allowed, or
       // removed - and knocking again changes nothing until somebody
       // does something: an invitation, a key, another code. Trying
@@ -535,15 +561,20 @@ export class Signaling {
       // shares it at home.
       if (e?.code === 4006) {
         log('refused for good: not trying again by myself');
+        this.letSleep();
         return;
       }
       if (e?.code === 4005) {
         log('replaced by another connection of this phone: not trying again by myself');
         Journal.mark('server:replaced').catch(() => { /* noop */ });
+        this.letSleep();
         this.events.onReplaced?.();
         return;
       }
-      if (!this.closedByUser) this.scheduleReconnect();
+      if (!this.closedByUser) {
+        if (lost) this.holdAwake();
+        this.scheduleReconnect();
+      }
     };
   }
 
@@ -668,6 +699,8 @@ export class Signaling {
 
       case 'joined':
         this.peerThere = !!msg.peerPresent;
+        this.linkUp = true;
+        this.letSleep();
         // The held facts go first, so they land in the order they were
         // born, before anything the handlers below decide to say.
         if (this.peerThere) this.flushOutbox();
@@ -983,6 +1016,10 @@ export class Signaling {
   rebuild() {
     if (this.closedByUser) return;
     log('connection rebuilt from scratch');
+    if (this.linkUp) {
+      this.linkUp = false;
+      this.holdAwake();
+    }
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
@@ -1014,6 +1051,19 @@ export class Signaling {
     // arrived.
     const kind = (obj as any)?.type ?? '?';
     log('dropped (server out of reach):', kind);
+  }
+
+  /** The processor up while the server is dialled again: see REDIAL_AWAKE_MS. */
+  private holdAwake() {
+    this.holdingAwake = true;
+    Foreground.holdAwake(this.awakeTag, REDIAL_AWAKE_MS).catch(() => { /* noop */ });
+    Journal.mark(`server:redial-awake:${this.opts.room.slice(0, 8)}`).catch(() => { /* noop */ });
+  }
+
+  private letSleep() {
+    if (!this.holdingAwake) return;
+    this.holdingAwake = false;
+    Foreground.letSleep(this.awakeTag).catch(() => { /* noop */ });
   }
 
   private scheduleReconnect() {
@@ -1052,6 +1102,8 @@ export class Signaling {
    */
   close(goodbye = false) {
     this.closedByUser = true;
+    this.linkUp = false;
+    this.letSleep();
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;

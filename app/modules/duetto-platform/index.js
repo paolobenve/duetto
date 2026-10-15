@@ -178,6 +178,13 @@ export const Foreground = isAndroid && NativeForeground
       /** How long the phone has been on, to date the last reboot. */
       uptimeMs: () => call(NativeForeground, 'uptimeMs'),
 
+      /**
+       * The processor held up for at most `ms`, under a name, while a lost
+       * server is dialled again; `letSleep` lets it go before.
+       */
+      holdAwake: (tag, ms) => call(NativeForeground, 'holdAwake', String(tag), Number(ms) || 0),
+      letSleep: (tag) => call(NativeForeground, 'letSleep', String(tag)),
+
       /** True if this phone has an auto-start screen. */
       hasAutoStartScreen: () => call(NativeForeground, 'hasAutoStartScreen'),
 
@@ -213,6 +220,8 @@ export const Foreground = isAndroid && NativeForeground
       requestBatteryUnrestricted: unavailable,
       lastAutoStart: unavailable,
       uptimeMs: unavailable,
+      holdAwake: () => Promise.resolve(false),
+      letSleep: () => Promise.resolve(false),
       hasAutoStartScreen: unavailable,
       openAutoStartSettings: unavailable,
       openAppSettings: unavailable,
