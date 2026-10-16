@@ -635,6 +635,7 @@ object Journal {
             if (exits.isEmpty()) return
 
             val prefs = ctx.getSharedPreferences(BootReceiver.PREFS, Context.MODE_PRIVATE)
+            recordCrashTraces(ctx, exits)
             val already = prefs.getLong(LAST_DEATH, 0L)
             // From the oldest to the most recent, so that in the journal
             // they stay in order of time like everything else.
@@ -660,6 +661,39 @@ object Journal {
         } catch (e: Exception) {
             Log.w(TAG, "journal: could not read the exits: ${e.message}")
         }
+    }
+
+    /** The last native crash whose report is already in the journal. */
+    private const val LAST_TRACE = "last_recorded_crash_trace"
+
+    /**
+     * Where each native crash happened, from Android's report: see
+     * CrashTrace. Its own mark, apart from the deaths': the crashes from
+     * before this was written, still in Android's list, are told once
+     * too. On today's row, now, with the time of the death in front: the
+     * journal goes to the other phone a row at a time from the last one
+     * sent, and a row slipped into an older day would never leave.
+     */
+    private fun recordCrashTraces(ctx: Context, exits: List<ApplicationExitInfo>) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+        val prefs = ctx.getSharedPreferences(BootReceiver.PREFS, Context.MODE_PRIVATE)
+        val already = prefs.getLong(LAST_TRACE, 0L)
+        val crashes = exits
+            .filter { it.reason == ApplicationExitInfo.REASON_CRASH_NATIVE && it.timestamp > already }
+            .sortedBy { it.timestamp }
+        if (crashes.isEmpty()) return
+        val file = myFile(ctx) ?: return
+        for (u in crashes) {
+            val trace = CrashTrace.describe(u) ?: "no report"
+            val values = HashMap<String, Any?>()
+            values["time"] = format.format(Date())
+            values["pair"] = pair
+            values["why"] = "crash-trace:" + format.format(Date(u.timestamp))
+            values["cause"] = cause(u.reason)
+            values["description"] = trace.take(1500)
+            appendRow(file, row(values))
+        }
+        prefs.edit().putLong(LAST_TRACE, crashes.last().timestamp).apply()
     }
 
     /**
