@@ -92,9 +92,9 @@ android {
         versionCode 492
         versionName "0.9.20-pre"
         ndk {
-            // Solo architetture reali: gli emulatori x86 raddoppiavano
-            // l'APK e i tempi di installazione. Vedi patch-android-gradle.js
-            abiFilters 'arm64-v8a'
+            // Only real phones: the x86 emulators doubled the APK.
+            // See patch-android-gradle.js
+            abiFilters 'arm64-v8a', 'armeabi-v7a'
         }
 
     }
