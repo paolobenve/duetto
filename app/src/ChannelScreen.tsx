@@ -2239,7 +2239,7 @@ function PresenceCard(props: {
   connectionName?: string;
 }) {
   const {
-    status, linked, connectionState, peerName, peerAvatar, peerAudio, peerBusy, onCall, pairBroken, peerPresent,
+    status, linked, connectionState, peerName, peerAvatar, peerBusy, onCall, pairBroken, peerPresent,
     peerDetached, peerTornDown, peerTornDownBy, peerMark, connectionName,
   } = props;
 
