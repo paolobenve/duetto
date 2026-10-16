@@ -120,6 +120,8 @@ const PEER_BACK_WAIT_MS = 4_000;
 const VIDEO_SETTLE_MAX_MS = 15_000;
 /** A session renewed in place at most this often: see renewSession. */
 const RENEW_GAP_MS = 120_000;
+/** The call closed with a Bluetooth headset there, placed again only after this: see placeAgain. */
+const HEADSET_HANGUP_WAIT_MS = 8_000;
 /**
  * The last stretch of being unavailable by choice: `from` when it was
  * chosen, `to` when the app was opened again (0 while it lasts).
@@ -2463,6 +2465,16 @@ export default function App() {
    * call to end. Three times a minute at most; past that it is not
    * given up for good, but tried again a minute later, or as soon as
    * the app comes to the front or another call ends.
+   *
+   * With a Bluetooth headset there, not at once but after eight
+   * seconds. The Y10 switches off with its button held down - the same
+   * button that, during a call, hangs it up: on 16 October Paolo held it
+   * four times between 17:58:55 and 17:59:06, and each press closed the
+   * channel's call, which came back half a second later and put the
+   * helmet in a call again, so that the next press hung up instead of
+   * switching off. Now the press that hangs up leaves the helmet free
+   * for the next, which switches it off; and the headset going brings
+   * the call back at once, on the phone's own output.
    */
   const replacedAt = useRef<number[]>([]);
   useEffect(() => {
@@ -2487,9 +2499,14 @@ export default function App() {
         retry = setTimeout(() => placeAgain('a-minute-later'), 60_000);
         return;
       }
-      owed = false;
       replacedAt.current.push(now);
-      setTimeout(() => {
+      const headsetWait = why === 'closed-outside' && btHereIdRef.current !== null;
+      // Owed while the headset is waited for: its going places it at once.
+      owed = headsetWait;
+      if (headsetWait) Journal.mark('call:placed-later:headset-hangup').catch(() => { /* noop */ });
+      retry = setTimeout(() => {
+        retry = null;
+        owed = false;
         if (!inChannelRef.current || otherCall) { owed = inChannelRef.current; return; }
         Journal.mark(`call:placed-again:${why}`).catch(() => { /* noop */ });
         callActiveAt.current = Date.now();
@@ -2502,7 +2519,7 @@ export default function App() {
           }
           if (r !== 'placed' && r !== 'already') Journal.mark(`call:not:${r}`).catch(() => {});
         }).catch(() => { /* noop */ });
-      }, 500);
+      }, headsetWait ? HEADSET_HANGUP_WAIT_MS : 500);
     };
     const stopCalls = Call.subscribe((st) => {
       if (st === 'active' || st === 'resumed' || st === 'phone-free') callActiveAt.current = Date.now();
