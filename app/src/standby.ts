@@ -20,6 +20,7 @@ import { alarmLabel } from './alarms';
 import { logger } from './log';
 import { keepCall } from './callsUnseen';
 import { callerFor } from './notificationCall';
+import { onNewDay } from './dayTurn';
 import { VERSION_LABEL, BUILD } from './version';
 import { deliverAsk, answerHeard, noteAskedOfUs, said as saidOfThem } from './diagnosticsAsk';
 
@@ -60,6 +61,9 @@ const latest = new Map<string, PairInfo>();
 type PairState = 'in' | 'waiting' | 'detached' | 'unreachable';
 /** "id, state, words", tab apart: the id and the state give the line its buttons */
 const pairLines = new Map<string, string>();
+/** each connection's way of writing its line: called again when the day turns */
+const lineWriters = new Map<string, () => void>();
+onNewDay(() => { for (const w of lineWriters.values()) w(); });
 let linesSaid = '';
 function sayPairLines() {
   const all = [...pairLines.values()].join('\n');
@@ -70,6 +74,7 @@ function sayPairLines() {
 function dropPairLine(id: string) {
   // The line goes, and its "Call" with it.
   callerFor(id, null);
+  lineWriters.delete(id);
   if (pairLines.delete(id)) sayPairLines();
 }
 
@@ -302,6 +307,7 @@ export function stopStandby() {
   downSince.clear();
   watchStanding();
   for (const id of pairLines.keys()) callerFor(id, null);
+  lineWriters.clear();
   pairLines.clear();
   sayPairLines();
 }
@@ -482,6 +488,7 @@ function open(cfg: DuoConfig, pair: PairInfo) {
   standingName.set(pair.id, myNameOn(cfg, pair));
   // The standing notification's "Call" on this connection's line: only
   // where the other is there to hear it, in the channel or waiting.
+  lineWriters.set(pair.id, () => { if (standing.get(pair.id) === sig) writeLine(); });
   callerFor(pair.id, () => {
     if (standing.get(pair.id) !== sig) return null;
     const hears = sig.connected && (state === 'in' || state === 'waiting');

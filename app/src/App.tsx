@@ -55,6 +55,7 @@ import {
 import { takeCall } from './callsUnseen';
 import { sendJournalOver, JOURNAL_PIECE } from './journalSwap';
 import { callerInUse } from './notificationCall';
+import { onNewDay } from './dayTurn';
 import DiagnosticsAskCard from './DiagnosticsAskCard';
 import {
   type AskState, ourAsk, setOurAsk, deliverAsk, answerHeard, noteAskedOfUs,
@@ -2628,6 +2629,9 @@ export default function App() {
   }), [inChannel, status, shownStatus, peerPresent, peerDetached, peerTornDown]);
   const noticeCodeRef = useRef(noticeCode);
   useEffect(() => { noticeCodeRef.current = noticeCode; }, [noticeCode]);
+  /** the day turned: the line's times are written again, with their day (see dayTurn.ts) */
+  const [dayTick, setDayTick] = useState(0);
+  useEffect(() => onNewDay(() => setDayTick((d) => d + 1)), []);
   const noticeText = React.useMemo(() => presenceLine({
     inChannel,
     peerActive: status === 'together',
@@ -2651,7 +2655,9 @@ export default function App() {
   }), [inChannel, status, shownStatus, peerPresent, peerDetached, peerTornDown, shownName, peerSince,
     mySince, connectionName, peerTornDownBy, myAvailable, peerAvailable,
     // The words change with the language: the line is written again.
-    cfg?.language]);
+    cfg?.language,
+    // And with the day: "since 09:33" becomes "since 09:33 on Friday 16".
+    dayTick]);
 
   /**
    * Since when we have been without a server, or 0 when we have one.

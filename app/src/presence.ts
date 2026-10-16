@@ -25,6 +25,7 @@ import { refreshStandby, stopStandby } from './standby';
 import { keepCall } from './callsUnseen';
 import { sendJournalOver } from './journalSwap';
 import { callerInUse, CallOutcome } from './notificationCall';
+import { onNewDay } from './dayTurn';
 import {
   deliverAsk, answerHeard, noteAskedOfUs, noteTheirJournal, said as saidOfThem,
 } from './diagnosticsAsk';
@@ -901,6 +902,8 @@ async function listenNow(): Promise<boolean> {
     },
   );
   signaling = sig;
+  // The day turned: the line's times are written again, with their day.
+  dayRefresh = () => { if (!uiInCharge && signaling === sig) refresh(); };
   // The standing notification's "Call", while this connection is ours.
   callNow = () => {
     if (uiInCharge || signaling !== sig) return null;
@@ -924,6 +927,9 @@ async function listenNow(): Promise<boolean> {
 /** The presence's answer to the notification's "Call": see notificationCall.ts. */
 let callNow: (() => CallOutcome | null) | null = null;
 callerInUse(() => callNow?.() ?? null);
+/** The presence's line written again at the turn of the day: see dayTurn.ts. */
+let dayRefresh: (() => void) | null = null;
+onNewDay(() => dayRefresh?.());
 
 /** Steps aside: the interface will take the connection over. */
 export function stopListening() {
