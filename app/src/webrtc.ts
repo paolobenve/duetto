@@ -2212,8 +2212,14 @@ export class ChannelSession {
       // The picture for the journal: after a change of network the
       // Edge went on sending a stamp until the channel was entered
       // again, and only the debugging log knew why.
-      const pic = (v?: { w: number; h: number; fps: number; kbps: number | null }) =>
-        v && v.w > 0 ? `${v.w}x${v.h}@${v.fps} ${v.kbps ?? '?'}k` : '';
+      // The picture coming in says the frames arriving too, after the
+      // ones drawn: "@8/30" is a decoder behind, "@8/8" a picture that
+      // comes slow. On 16 October the edge drew the POCO's 720p at 8 a
+      // second for two minutes, and the journal could not tell which.
+      const pic = (v?: { w: number; h: number; fps: number; kbps: number | null; arriving?: number | null }) =>
+        v && v.w > 0
+          ? `${v.w}x${v.h}@${v.fps}${v.arriving != null ? `/${v.arriving}` : ''} ${v.kbps ?? '?'}k`
+          : '';
       const avail = Number(pairStat?.availableOutgoingBitrate);
       Journal.video(pic(out.out), pic(out.in),
         avail > 0 ? String(Math.round(avail / 1000)) : '',
