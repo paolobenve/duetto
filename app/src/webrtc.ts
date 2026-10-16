@@ -2321,12 +2321,57 @@ export class ChannelSession {
       && pic !== null && pic.kbps !== null && pic.kbps * 1000 >= ceiling * DECODER_BUSY_SHARE
       && behind
       && lossPct !== null && lossPct < 1 && rttMs !== null && rttMs < 200;
+    this.weighUncured(pic, behind, stuck, rttMs, lossPct, ceiling, now);
     if (!stuck) { this.stalledDecoderSince = 0; return; }
     if (!this.stalledDecoderSince) { this.stalledDecoderSince = now; return; }
     if (now - this.stalledDecoderSince < DECODER_STALLED_MS) return;
     this.stalledDecoderSince = 0;
     const of = arriving !== null ? `/${arriving}` : '';
     this.events.onSessionRenewWanted?.(`decoder-stalled:${pic!.w}x${pic!.h}@${pic!.fps}${of}:${pic!.kbps}k`);
+  }
+
+  /**
+   * A picture drawn slow and the cure above not coming: why, once.
+   *
+   * On 16 October the edge drew the POCO's 720p at 8 to 10 frames a
+   * second for two and a half minutes - 2.5 Mbit/s arriving, no loss, 17
+   * ms of round trip - and the cure, which should have come in 8
+   * seconds, never did; the journal could not say which of its
+   * conditions had held it back. What is watched here is what the eye
+   * sees: a full picture arriving, fewer than 15 frames a second drawn.
+   * Held for as long as the cure would wait without the cure, the
+   * journal is told the conditions missing, once for each episode.
+   */
+  private slowDrawnSince = 0;
+  private slowDrawnTold = false;
+  private weighUncured(
+    pic: { w: number; h: number; fps: number; kbps: number | null; arriving?: number | null } | null,
+    behind: boolean, stuck: boolean,
+    rttMs: number | null, lossPct: number | null, ceiling: number, now: number,
+  ) {
+    const slow = pic !== null && pic.kbps !== null
+      && pic.kbps * 1000 >= ceiling * DECODER_BUSY_SHARE && pic.fps < DECODER_ARRIVING_FPS;
+    if (!slow || stuck) {
+      this.slowDrawnSince = 0;
+      this.slowDrawnTold = false;
+      return;
+    }
+    if (!this.slowDrawnSince) { this.slowDrawnSince = now; return; }
+    if (this.slowDrawnTold || now - this.slowDrawnSince < DECODER_STALLED_MS) return;
+    this.slowDrawnTold = true;
+    const arriving = pic!.arriving ?? null;
+    const missing: string[] = [];
+    if (!behind) missing.push(arriving === null ? 'arriving-unknown' : 'not-behind');
+    if (!this.peerVideoDeclared) missing.push('peer-video-undeclared');
+    if (!this.localWatching) missing.push('not-watching');
+    if (now - this.linkedAt <= GRAINY_AFTER_LINK_MS) missing.push('just-linked');
+    if (lossPct === null) missing.push('loss-unknown');
+    else if (lossPct >= 1) missing.push(`loss=${lossPct}`);
+    if (rttMs === null) missing.push('rtt-unknown');
+    else if (rttMs >= 200) missing.push(`rtt=${rttMs}`);
+    Journal.mark(`decoder:behind-no-cure:${missing.join('+') || 'none'}`
+      + `:${pic!.w}x${pic!.h}@${pic!.fps}/${arriving ?? '?'}:${pic!.kbps}k`)
+      .catch(() => { /* noop */ });
   }
 
   /** The balancing ceiling on the outgoing video, in bit/s; null = none. */
