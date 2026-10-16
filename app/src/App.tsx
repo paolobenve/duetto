@@ -115,6 +115,8 @@ const DEATH_TOLD_KEY = 'duetto.death.told';
 const FLOWING_REBUILD_GAP_MS = 10_000;
 /** A return of the other side to the server, given this long before the link is rebuilt. */
 const PEER_BACK_WAIT_MS = 4_000;
+/** the video button waits at most this long, on coming in: see videoSettling */
+const VIDEO_SETTLE_MAX_MS = 15_000;
 /** A session renewed in place at most this often: see renewSession. */
 const RENEW_GAP_MS = 120_000;
 /**
@@ -1257,6 +1259,25 @@ export default function App() {
   const [videoOn, setVideoOn] = useState(false);
   /** a camera operation under way: the video button waits, faded (see onCamera in webrtc) */
   const [cameraBusy, setCameraBusy] = useState(false);
+  /**
+   * Just come in: not yet known whether the camera comes back on by
+   * itself, or it is coming back on. The video button waits, faded: a
+   * press then crossed the switching on - or switched off a camera
+   * about to open. A net under it, should the entry stop half-way.
+   */
+  const [videoSettling, setVideoSettling] = useState(false);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const settleVideo = useCallback((on: boolean) => {
+    if (settleTimer.current) { clearTimeout(settleTimer.current); settleTimer.current = null; }
+    setVideoSettling(on);
+    if (on) {
+      settleTimer.current = setTimeout(() => {
+        settleTimer.current = null;
+        Journal.mark('video:settling-timeout').catch(() => { /* noop */ });
+        setVideoSettling(false);
+      }, VIDEO_SETTLE_MAX_MS);
+    }
+  }, []);
   /**
    * The same two, readable from where the state is not: out of the
    * channel the buttons set what one WANTS on entering - the camera,
@@ -4593,6 +4614,10 @@ export default function App() {
   }) => {
     const sig = signalingRef.current;
     if (!sig || !cfg) return;
+    // The video button waits until it is known whether the camera comes
+    // back on by itself - and if it does, until it is on (see
+    // videoSettling).
+    if (!renew) settleVideo(true);
 
     /**
      * Coming in, the first state from the other says how things stand,
@@ -5007,10 +5032,14 @@ export default function App() {
         setTimeout(() => {
           Promise.resolve(turnVideoBackOnRef.current?.())
             .catch(() => { /* noop */ })
-            .finally(() => sessionRef.current?.setRestoring(false));
+            .finally(() => {
+              sessionRef.current?.setRestoring(false);
+              settleVideo(false);
+            });
         }, 300);
       } else {
         sessionRef.current?.setRestoring(false);
+        settleVideo(false);
       }
       // The drawer used to be emptied here, and filled again only at
       // the next touch of a button: two updates in a row with nothing
@@ -5018,8 +5047,10 @@ export default function App() {
       // mute survived the first and died at the second. Written again
       // now, with how things stand after the restoring.
       noteHowItIsRef.current?.();
+    } else {
+      settleVideo(false);
     }
-  }, [cfg, attachPeer, stopWaiting]);
+  }, [cfg, attachPeer, stopWaiting, settleVideo]);
 
   useEffect(() => { enterChannelRef.current = enterChannel; }, [enterChannel]);
 
@@ -6334,7 +6365,7 @@ export default function App() {
         connectionState={connState}
         audioOn={audioOn}
         videoOn={videoOn}
-        cameraBusy={cameraBusy}
+        cameraBusy={cameraBusy || videoSettling}
         peerState={peerState}
         remoteHasVideo={remoteHasVideo && peerState.video}
         remoteVideoKey={remoteVideoKey}
