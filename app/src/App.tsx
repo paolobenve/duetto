@@ -3875,7 +3875,17 @@ export default function App() {
             peerActiveRef.current = mode === 'active';
             forgetLeaveCue();
             if (mode === 'active' && inChannelRef.current) {
-              cue('cue_enter');
+              /**
+               * The cue only for a return from scratch.
+               *
+               * Back on the server already in the channel is either a
+               * change of network - the link carries on - or an app
+               * started afresh. On 16 October the edge left home, from
+               * wifi to mobile data, and the entry cue rang here for a
+               * conversation that had never stopped. With no link it
+               * rings at once; with one, after the wait below, and only
+               * if the link has to be made again.
+               */
               /**
                * Back on the server is not back from scratch.
                *
@@ -3891,7 +3901,11 @@ export default function App() {
                * again. Two returns close together are one.
                */
               if (peerBackTimer.current) clearTimeout(peerBackTimer.current);
-              if (!sessionRef.current?.hasPeer()) { attachPeer(true, 'peer-back-no-link'); return; }
+              if (!sessionRef.current?.hasPeer()) {
+                cue('cue_enter');
+                attachPeer(true, 'peer-back-no-link');
+                return;
+              }
               peerBackTimer.current = setTimeout(async () => {
                 peerBackTimer.current = null;
                 if (!inChannelRef.current || !peerActiveRef.current) return;
@@ -3906,6 +3920,7 @@ export default function App() {
                 }
                 if (!inChannelRef.current || !peerActiveRef.current) return;
                 if (sessionRef.current !== sess) return;
+                cue('cue_enter');
                 attachPeer(true, 'peer-back');
               }, PEER_BACK_WAIT_MS);
             }
