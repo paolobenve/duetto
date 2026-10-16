@@ -270,11 +270,14 @@ object Notifier {
      */
     private const val KEY_ENTER = "label_enter"
     private const val KEY_WAIT = "label_wait"
-    fun rememberLabels(ctx: Context, enter: String, wait: String) {
+    private const val KEY_ALERT = "label_alert"
+    fun rememberLabels(ctx: Context, enter: String, wait: String, alert: String = "") {
         if (enter.isEmpty() && wait.isEmpty()) return
         try {
             ctx.getSharedPreferences(BootReceiver.PREFS, Context.MODE_PRIVATE)
-                .edit().putString(KEY_ENTER, enter).putString(KEY_WAIT, wait).apply()
+                .edit().putString(KEY_ENTER, enter).putString(KEY_WAIT, wait).apply {
+                    if (alert.isNotEmpty()) putString(KEY_ALERT, alert)
+                }.apply()
         } catch (_: Exception) { /* noop */ }
     }
     private fun label(ctx: Context, key: String, fallback: String): String = try {
@@ -283,6 +286,7 @@ object Notifier {
     } catch (_: Exception) { fallback }
     fun enterLabel(ctx: Context) = label(ctx, KEY_ENTER, Strings.enter)
     fun waitLabel(ctx: Context) = label(ctx, KEY_WAIT, Strings.goWaiting)
+    fun alertLabel(ctx: Context) = label(ctx, KEY_ALERT, Strings.call)
 
     /**
      * The last line and buttons the app put on the notification, kept
@@ -303,9 +307,10 @@ object Notifier {
     private fun noticeActions(ctx: Context) = label(ctx, KEY_ACTIONS, "enter")
     /** The button the remembered line asks for: "Enter", "Go to waiting", or none. */
     fun addNoticeAction(ctx: Context, b: NotificationCompat.Builder) {
-        when (noticeActions(ctx)) {
-            "enter" -> b.addAction(0, enterLabel(ctx), enterPending(ctx))
-            "wait" -> b.addAction(
+        val actions = noticeActions(ctx).split(',')
+        when {
+            "enter" in actions -> b.addAction(0, enterLabel(ctx), enterPending(ctx))
+            "wait" in actions -> b.addAction(
                 0, waitLabel(ctx),
                 PendingIntent.getService(
                     ctx, 4,
@@ -337,6 +342,26 @@ object Notifier {
      * into the channel on purpose - not by the rule for a window that
      * merely came back.
      */
+    /** Asks the app to go into the channel it is opened on: see OpenedFrom. */
+    const val EXTRA_ENTER = "duetto.enter"
+
+    /**
+     * "Enter" on another connection's line: the app is opened on that
+     * connection, and goes into its channel - out of the one it is in,
+     * if any. `slot` keeps each line's button its own.
+     */
+    fun enterPairPending(ctx: Context, pairId: String, slot: Int): PendingIntent? {
+        val launch = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName) ?: return null
+        launch.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        launch.putExtra(EXTRA_PAIR, pairId)
+        launch.putExtra(EXTRA_ENTER, true)
+        return PendingIntent.getActivity(
+            ctx, ENTER_REQUESTS + slot, launch,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+    }
+    private const val ENTER_REQUESTS = 2000
+
     fun enterPending(ctx: Context): PendingIntent {
         val open = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("duetto://channel/enter")).apply {
             setPackage(ctx.packageName)

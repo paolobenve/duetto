@@ -19,6 +19,7 @@ import { news } from './presence';
 import { alarmLabel } from './alarms';
 import { logger } from './log';
 import { keepCall } from './callsUnseen';
+import { callerFor } from './notificationCall';
 import { VERSION_LABEL, BUILD } from './version';
 import { deliverAsk, answerHeard, noteAskedOfUs, said as saidOfThem } from './diagnosticsAsk';
 
@@ -57,6 +58,7 @@ const latest = new Map<string, PairInfo>();
  * the first one nothing could be known of the other connections.
  */
 type PairState = 'in' | 'waiting' | 'detached' | 'unreachable';
+/** "id, state, words", tab apart: the id and the state give the line its buttons */
 const pairLines = new Map<string, string>();
 let linesSaid = '';
 function sayPairLines() {
@@ -66,6 +68,8 @@ function sayPairLines() {
   Foreground.setPairLines(all).catch(() => { /* noop */ });
 }
 function dropPairLine(id: string) {
+  // The line goes, and its "Call" with it.
+  callerFor(id, null);
   if (pairLines.delete(id)) sayPairLines();
 }
 
@@ -297,6 +301,7 @@ export function stopStandby() {
   answeredAt.clear();
   downSince.clear();
   watchStanding();
+  for (const id of pairLines.keys()) callerFor(id, null);
   pairLines.clear();
   sayPairLines();
 }
@@ -334,7 +339,7 @@ function open(cfg: DuoConfig, pair: PairInfo) {
     if (!state) return;
     const label = channelNow();
     const said = news.pairState(peerShown(live(), name), state, stateSince);
-    pairLines.set(pair.id, label ? `${label} · ${said}` : said);
+    pairLines.set(pair.id, `${pair.id}\t${state}\t${label ? `${label} · ${said}` : said}`);
     sayPairLines();
   };
   /** `since` 0 when unknown: the time already known stays, if the state is the same */
@@ -475,5 +480,13 @@ function open(cfg: DuoConfig, pair: PairInfo) {
   );
   standing.set(pair.id, sig);
   standingName.set(pair.id, myNameOn(cfg, pair));
+  // The standing notification's "Call" on this connection's line: only
+  // where the other is there to hear it, in the channel or waiting.
+  callerFor(pair.id, () => {
+    if (standing.get(pair.id) !== sig) return null;
+    const hears = sig.connected && (state === 'in' || state === 'waiting');
+    if (hears) sig.knock();
+    return { sent: hears, who: peerShown(live(), name), channel: channelNow() };
+  });
   sig.connect();
 }

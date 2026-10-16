@@ -61,9 +61,9 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
     @ReactMethod
     fun setText(
         text: String, name: String, actions: String,
-        enterLabel: String, waitLabel: String, promise: Promise,
+        enterLabel: String, waitLabel: String, alertLabel: String, promise: Promise,
     ) {
-        lastText = arrayOf(text, name, actions, enterLabel, waitLabel)
+        lastText = arrayOf(text, name, actions, enterLabel, waitLabel, alertLabel)
         sendText(promise)
     }
 
@@ -76,6 +76,10 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
      * - need not know of them; a change of theirs writes the last text
      * again. Only while there is a text: after a stop, nothing is written,
      * or the service would be started again by it.
+     *
+     * One line per connection, three fields tab apart: the pair's id,
+     * where the other stands (in, waiting, detached, unreachable), the
+     * words. The id and the state give each line its buttons.
      */
     @ReactMethod
     fun setPairLines(lines: String, promise: Promise) {
@@ -88,13 +92,14 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
 
     private fun sendText(promise: Promise?) {
         val l = lastText ?: run { promise?.resolve(true); return }
-        val full = if (pairLines.isEmpty()) l[0] else "${l[0]}\n$pairLines"
         sendToService(promise) {
-            putExtra(ChannelForegroundService.EXTRA_TEXT, full)
+            putExtra(ChannelForegroundService.EXTRA_TEXT, l[0])
+            putExtra(ChannelForegroundService.EXTRA_PAIR_LINES, pairLines)
             putExtra(ChannelForegroundService.EXTRA_NAME, l[1])
             putExtra(ChannelForegroundService.EXTRA_ACTIONS, l[2])
             putExtra(ChannelForegroundService.EXTRA_ENTER_LABEL, l[3])
             putExtra(ChannelForegroundService.EXTRA_WAIT_LABEL, l[4])
+            putExtra(ChannelForegroundService.EXTRA_ALERT_LABEL, l[5])
         }
     }
 
@@ -414,8 +419,21 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
     @ReactMethod
     fun takeOpenedPair(promise: Promise) {
         val id = OpenedFrom.pair
+        val enter = OpenedFrom.enter
         OpenedFrom.pair = null
-        promise.resolve(id)
+        OpenedFrom.enter = false
+        promise.resolve(if (id != null && enter) "enter:$id" else id)
+    }
+
+    /** A word over everything, gone by itself: what a notification's button did. */
+    @ReactMethod
+    fun toast(text: String, promise: Promise) {
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            try {
+                android.widget.Toast.makeText(ctx, text, android.widget.Toast.LENGTH_SHORT).show()
+            } catch (_: Exception) { /* noop */ }
+        }
+        promise.resolve(true)
     }
 
     /** Takes the alert away, when the user has come back into the app. */

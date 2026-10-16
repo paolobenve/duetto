@@ -19,9 +19,14 @@ import android.content.Intent
  */
 object OpenedFrom {
     @Volatile var pair: String? = null
+    /** and into its channel: the "Enter" of its line in the standing notification */
+    @Volatile var enter: Boolean = false
 
     fun read(intent: Intent?) {
         val id = intent?.getStringExtra(Notifier.EXTRA_PAIR)
-        if (!id.isNullOrEmpty()) pair = id
+        if (!id.isNullOrEmpty()) {
+            pair = id
+            enter = intent.getBooleanExtra(Notifier.EXTRA_ENTER, false)
+        }
     }
 }

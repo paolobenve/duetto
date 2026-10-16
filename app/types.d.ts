@@ -135,8 +135,15 @@ declare module 'duetto-platform' {
     recentsClearedAt(): Promise<number>;
     /** whether the watchdog alarm has anything to watch over */
     watchdogWanted(v: boolean): Promise<boolean>;
-    /** text of the standing notification, and the connection name to put in front */
-    setText(text: string, name?: string, actions?: 'enter' | 'wait' | '', labels?: { enter: string; wait: string }): Promise<boolean>;
+    /**
+     * text of the standing notification, and the connection name to put in
+     * front; `actions` the buttons of the connection in use, comma apart:
+     * 'enter' or 'wait', and 'alert' when the other can be called
+     */
+    setText(text: string, name?: string, actions?: string,
+      labels?: { enter: string; wait: string; alert?: string }): Promise<boolean>;
+    /** a word over everything, gone by itself */
+    toast(text: string): Promise<boolean>;
     stop(): Promise<boolean>;
     notify(name: string, text: string): Promise<boolean>;
     /**
@@ -147,13 +154,16 @@ declare module 'duetto-platform' {
     notifyBrief(name: string, text: string, ms: number): Promise<boolean>;
     notifyFor(name: string, text: string, pairId: string,
       sound?: { vibration?: string; sound?: string; uri?: string; level?: number }): Promise<boolean>;
-    /** the connection the app was opened for by a call's notification, once; null if none */
+    /**
+     * the connection the app was opened for by a notification, once; null
+     * if none; "enter:" in front when it is to go into its channel too
+     */
     takeOpenedPair(): Promise<string | null>;
     /** quiet news: it does not sound and does not buzz */
     note(name: string, text: string): Promise<boolean>;
     /** takes the news away when it is not true any more */
     clearNote(): Promise<boolean>;
-    /** the other connections, one line each under the standing notification's own */
+    /** the other connections under the standing notification's own: "id\tstate\twords" a line */
     setPairLines(lines: string): Promise<boolean>;
     /** starts listening without an interface, when the app is about to go */
     resumePresence(): Promise<boolean>;

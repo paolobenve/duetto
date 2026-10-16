@@ -54,6 +54,7 @@ import {
 } from './standby';
 import { takeCall } from './callsUnseen';
 import { sendJournalOver, JOURNAL_PIECE } from './journalSwap';
+import { callerInUse } from './notificationCall';
 import DiagnosticsAskCard from './DiagnosticsAskCard';
 import {
   type AskState, ourAsk, setOurAsk, deliverAsk, answerHeard, noteAskedOfUs,
@@ -1021,11 +1022,27 @@ export default function App() {
    * which stays one's own choice. Asked at the start and at every
    * return to the front.
    */
+  const cfgLoaded = !!cfg;
   useEffect(() => {
     const take = () => {
-      Foreground.takeOpenedPair().then((id) => {
+      // Not before the configuration is read: taken, the word is gone,
+      // and with no connections to look it up in it would be lost.
+      if (!cfgRef.current) return;
+      Foreground.takeOpenedPair().then((got) => {
         const c = cfgRef.current;
-        if (!id || !c || c.pair?.id === id || !c.pairs.some((p) => p.id === id)) return;
+        // "Enter" on a connection's line of the standing notification:
+        // onto it, and in.
+        const enter = !!got && got.startsWith('enter:');
+        const id = enter ? got!.slice('enter:'.length) : got;
+        if (!id || !c || !c.pairs.some((p) => p.id === id)) return;
+        if (enter) {
+          Journal.mark(`command:notification:enter:${id.slice(0, 8)}`).catch(() => { /* noop */ });
+          // Asked for by name: the leaving of a moment ago does not hold it back.
+          leftByHandAt.current = 0;
+          switchToCaller(id);
+          return;
+        }
+        if (c.pair?.id === id) return;
         Journal.mark(`standby:opened-for:${id.slice(0, 8)}`).catch(() => { /* noop */ });
         onSwitchPairRef.current?.(id);
       }).catch(() => { /* noop */ });
@@ -1033,7 +1050,7 @@ export default function App() {
     take();
     const sub = AppState.addEventListener('change', (st) => { if (st === 'active') take(); });
     return () => sub.remove();
-  }, []);
+  }, [cfgLoaded, switchToCaller]);
   /** counts the changes of network: the network mark is read again at each */
   const [netTick, setNetTick] = useState(0);
   /** the last time the other's view was rebuilt on frames coming back */
@@ -2684,8 +2701,10 @@ export default function App() {
     // The button beside the line: "Enter" while waiting, "Go to
     // waiting" while in.
     // No name in front: the channel's name is inside the line itself.
-    Foreground.setText(text, '', inChannelRef.current ? 'wait' : 'enter',
-      { enter: t('presence.enter'), wait: t('presence.wait') }).then(() => {
+    // And "Call", while the other is there to hear it.
+    Foreground.setText(text, '',
+      `${inChannelRef.current ? 'wait' : 'enter'}${peerPresentRef.current ? ',alert' : ''}`,
+      { enter: t('presence.enter'), wait: t('presence.wait'), alert: t('buttons.call') }).then(() => {
       writtenNotice.current = text;
     }).catch(() => {
       if (left <= 0) return;
@@ -3583,6 +3602,20 @@ export default function App() {
   }, [pairIdNow]);
   const peerPresentRef = useRef(peerPresent);
   peerPresentRef.current = peerPresent;
+  /**
+   * The standing notification's "Call" on the connection in use, while
+   * the app holds it: see notificationCall.ts.
+   */
+  useEffect(() => callerInUse(() => {
+    const sig = signalingRef.current;
+    if (!sig) return null;
+    const hears = sig.connected && peerPresentRef.current;
+    if (hears) {
+      sig.knock();
+      Journal.mark('knock:from-notification').catch(() => {});
+    }
+    return { sent: hears, who: shownNameRef.current, channel: cfgRef.current?.pair?.label || '' };
+  }), []);
   const askDiagnostics = useCallback(() => {
     const id = cfgRef.current?.pair?.id;
     if (!id) return;

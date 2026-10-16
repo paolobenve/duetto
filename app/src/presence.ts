@@ -24,6 +24,7 @@ import { VERSION_LABEL, BUILD } from './version';
 import { refreshStandby, stopStandby } from './standby';
 import { keepCall } from './callsUnseen';
 import { sendJournalOver } from './journalSwap';
+import { callerInUse, CallOutcome } from './notificationCall';
 import {
   deliverAsk, answerHeard, noteAskedOfUs, noteTheirJournal, said as saidOfThem,
 } from './diagnosticsAsk';
@@ -244,6 +245,12 @@ export const news = {
     const o = { who, channel: inTheChannel(channel), when: momentSaid(at, 'atTime'), sound: sound ?? '' };
     if (sound) return named(who) ? t('alert.alarmFrom', o) : t('alert.alarm', o);
     return named(who) ? t('alert.calledYouFrom', o) : t('alert.calledYou', o);
+  },
+  /** the simple alert from the standing notification's button: sent, or nobody to hear it */
+  callFromNotification: (who: string, channel: string, sent: boolean) => {
+    const o = { who, channel: inTheChannel(channel) };
+    if (sent) return named(who) ? t('alert.alertSentTo', o) : t('alert.alertSent', o);
+    return named(who) ? t('alert.alertNotSentTo', o) : t('alert.alertNotSent', o);
   },
   /** they came into the channel while we were not there */
   inChannel: (who: string, channel: string, at: number) => {
@@ -596,8 +603,8 @@ async function listenNow(): Promise<boolean> {
       inChannel: false, peerActive: active, peerPresent: present, name: peerShown(pair, name),
       detached, since,
       mySince, channel: pair.label || '', myAvailable, peerAvailable,
-    }), '', detached ? '' : 'enter',
-    { enter: t('presence.enter'), wait: t('presence.wait') }).catch(() => { /* noop */ });
+    }), '', [detached ? '' : 'enter', present ? 'alert' : ''].filter(Boolean).join(','),
+    { enter: t('presence.enter'), wait: t('presence.wait'), alert: t('buttons.call') }).catch(() => { /* noop */ });
     // A stale alert is worse than no alert: "waiting for you in the
     // channel" is only true while they are actually in there.
     if (!active) Foreground.clearNotification().catch(() => { /* noop */ });
@@ -894,6 +901,13 @@ async function listenNow(): Promise<boolean> {
     },
   );
   signaling = sig;
+  // The standing notification's "Call", while this connection is ours.
+  callNow = () => {
+    if (uiInCharge || signaling !== sig) return null;
+    const hears = sig.connected && present;
+    if (hears) sig.knock();
+    return { sent: hears, who: peerShown(pair, name), channel };
+  };
   sig.connect();
   // And the other connections, waiting too: see standby.ts.
   refreshStandby(cfg).catch(() => { /* noop */ });
@@ -906,6 +920,10 @@ async function listenNow(): Promise<boolean> {
   watchdog = attachWatchdog(() => signaling, { driveFast: true });
   return true;
 }
+
+/** The presence's answer to the notification's "Call": see notificationCall.ts. */
+let callNow: (() => CallOutcome | null) | null = null;
+callerInUse(() => callNow?.() ?? null);
 
 /** Steps aside: the interface will take the connection over. */
 export function stopListening() {

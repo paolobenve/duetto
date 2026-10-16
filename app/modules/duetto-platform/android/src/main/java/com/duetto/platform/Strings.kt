@@ -102,6 +102,9 @@ object Strings {
     val enter
         get() = pick("Enter", "Entra", "Entrar", "Entrar", "Entrer", "Eintreten")
 
+    val call
+        get() = pick("Call", "Avvisa", "Avisar", "Avisar", "Prévenir", "Rufen")
+
     val goWaiting
         get() = pick(
             "Go to waiting", "Vai in attesa", "Ir a la espera", "Ir para a espera",

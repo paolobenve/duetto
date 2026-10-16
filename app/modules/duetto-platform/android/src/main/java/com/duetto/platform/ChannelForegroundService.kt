@@ -24,6 +24,8 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
+import android.view.View
+import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 
 /**
@@ -76,6 +78,12 @@ class ChannelForegroundService : Service() {
      */
     private var peerHere: Boolean = true
     private var currentActions: String = ""
+    /**
+     * The other connections, one per line: id, where the other stands
+     * (in, waiting, detached, unreachable), the words - tab apart. See
+     * ForegroundModule.setPairLines.
+     */
+    private var pairRows: String = ""
 
     /**
      * The consumption journal is written from here.
@@ -127,8 +135,17 @@ class ChannelForegroundService : Service() {
         const val EXTRA_CAMERA = "camera"
         const val EXTRA_IN_CHANNEL = "inChannel"
         const val EXTRA_PEER_HERE = "peerHere"
-        /** which buttons the notification carries: "enter", "wait" or nothing */
+        /**
+         * which buttons the connection in use carries: "enter" or "wait",
+         * and "alert" when the other can be called - comma apart
+         */
         const val EXTRA_ACTIONS = "actions"
+        const val EXTRA_ALERT_LABEL = "alertLabel"
+        /** the other connections' lines: see pairRows */
+        const val EXTRA_PAIR_LINES = "pairLines"
+        /** a "Call" button was touched: EXTRA_PAIR_ID says whose, empty for the one in use */
+        const val ACTION_ALERT = "com.duetto.platform.ALERT"
+        const val EXTRA_PAIR_ID = "pairId"
         const val EXTRA_ENTER_LABEL = "enterLabel"
         const val EXTRA_WAIT_LABEL = "waitLabel"
         /** the "Go to waiting" button was touched */
@@ -137,6 +154,8 @@ class ChannelForegroundService : Service() {
         // A safety net: if something goes wrong and we do not stop the
         // service, the wake lock does not hang around for ever.
         private const val WAKELOCK_TIMEOUT_MS = 8L * 60L * 60L * 1000L
+        /** the request codes of the Call buttons: one per line, from here */
+        private const val ALERT_REQUESTS = 3000
 
         /**
          * How often a journal line is written.
@@ -238,11 +257,17 @@ class ChannelForegroundService : Service() {
             ForegroundModule.emitAction("wait")
             return START_STICKY
         }
+        if (intent.action == ACTION_ALERT) {
+            ForegroundModule.emitAction("alert:" + (intent.getStringExtra(EXTRA_PAIR_ID) ?: ""))
+            return START_STICKY
+        }
         intent.getStringExtra(EXTRA_ACTIONS)?.let { currentActions = it }
+        intent.getStringExtra(EXTRA_PAIR_LINES)?.let { pairRows = it }
         Notifier.rememberLabels(
             this,
             intent.getStringExtra(EXTRA_ENTER_LABEL) ?: "",
             intent.getStringExtra(EXTRA_WAIT_LABEL) ?: "",
+            intent.getStringExtra(EXTRA_ALERT_LABEL) ?: "",
         )
         intent.getStringExtra(EXTRA_TEXT)?.let { currentText = it }
         intent.getStringExtra(EXTRA_NAME)?.let {
@@ -398,28 +423,13 @@ class ChannelForegroundService : Service() {
         val name = currentName ?: Notifier.name(this)
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Duetto")
-            // Closed, the first line; opened, all of them - the second
-            // says since when the two are available (see presenceLine).
+            // Closed, the first line; opened, every connection with its
+            // buttons (see opened).
             .setContentText(Notifier.withName(name, currentText.substringBefore('\n')))
             .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(pending)
-        if ('\n' in currentText) {
-            builder.setStyle(NotificationCompat.BigTextStyle().bigText(Notifier.withName(name, currentText)))
-        }
-        // The buttons: "Enter" while waiting, "Go to waiting" while in
-        // the channel. Leaving for good stays in the app, behind its
-        // question: one touch in the shade is too little for that.
-        when (currentActions) {
-            "enter" -> builder.addAction(0, Notifier.enterLabel(this), Notifier.enterPending(this))
-            "wait" -> builder.addAction(
-                0, Notifier.waitLabel(this),
-                PendingIntent.getService(
-                    this, 4,
-                    Intent(this, ChannelForegroundService::class.java).setAction(ACTION_WAIT),
-                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-                ),
-            )
-        }
+            .setStyle(NotificationCompat.DecoratedCustomViewStyle())
+            .setCustomBigContentView(opened(name))
         return builder
             // No `setOngoing`: it is that declaration that makes the
             // notification impossible to dismiss, and on Android 13 and
@@ -439,6 +449,94 @@ class ChannelForegroundService : Service() {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build()
     }
+
+    /**
+     * The notification opened: the connection in use - how it stands, its
+     * buttons - then the line of who is available, then each other
+     * connection with its own; half a line between one and the next.
+     *
+     * The buttons: "Call", the simple alert, and last "Enter" - or "Go to
+     * waiting", for the connection one is in. Call only where the other
+     * can hear it. Leaving for good stays in the app, behind its question:
+     * one touch in the shade is too little for that.
+     */
+    private fun opened(name: String): RemoteViews {
+        val all = RemoteViews(packageName, R.layout.duetto_notice)
+        var first = true
+        fun gap() {
+            if (!first) all.addView(R.id.duetto_notice, RemoteViews(packageName, R.layout.duetto_notice_gap))
+            first = false
+        }
+        fun row(text: CharSequence, alert: PendingIntent?, enterLabel: String?, enter: PendingIntent?) {
+            gap()
+            val r = RemoteViews(packageName, R.layout.duetto_notice_row)
+            r.setTextViewText(R.id.duetto_row_text, text)
+            if (alert != null) {
+                r.setTextViewText(R.id.duetto_row_alert, Notifier.alertLabel(this))
+                r.setOnClickPendingIntent(R.id.duetto_row_alert, alert)
+            } else {
+                r.setViewVisibility(R.id.duetto_row_alert, View.GONE)
+            }
+            if (enterLabel != null && enter != null) {
+                r.setTextViewText(R.id.duetto_row_enter, enterLabel)
+                r.setOnClickPendingIntent(R.id.duetto_row_enter, enter)
+            } else {
+                r.setViewVisibility(R.id.duetto_row_enter, View.GONE)
+            }
+            all.addView(R.id.duetto_notice, r)
+        }
+        fun line(text: CharSequence) {
+            gap()
+            val l = RemoteViews(packageName, R.layout.duetto_notice_line)
+            l.setTextViewText(R.id.duetto_line_text, text)
+            all.addView(R.id.duetto_notice, l)
+        }
+
+        val own = currentText.split('\n')
+        val actions = currentActions.split(',')
+        row(
+            Notifier.withName(name, own.first()),
+            if ("alert" in actions) alertPending("", 0) else null,
+            when {
+                "enter" in actions -> Notifier.enterLabel(this)
+                "wait" in actions -> Notifier.waitLabel(this)
+                else -> null
+            },
+            when {
+                "enter" in actions -> Notifier.enterPending(this)
+                "wait" in actions -> PendingIntent.getService(
+                    this, 4,
+                    Intent(this, ChannelForegroundService::class.java).setAction(ACTION_WAIT),
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                )
+                else -> null
+            },
+        )
+        own.drop(1).filter { it.isNotBlank() }.forEach { line(it) }
+
+        pairRows.split('\n').filter { it.isNotBlank() }.forEachIndexed { i, entry ->
+            val parts = entry.split('\t')
+            if (parts.size < 3) return@forEachIndexed
+            val (id, state, text) = parts
+            val hears = state == "in" || state == "waiting"
+            row(
+                text,
+                if (hears) alertPending(id, i + 1) else null,
+                Notifier.enterLabel(this),
+                Notifier.enterPairPending(this, id, i + 1),
+            )
+        }
+        return all
+    }
+
+    /** "Call" on a connection's line; `id` empty for the one in use. */
+    private fun alertPending(id: String, slot: Int): PendingIntent = PendingIntent.getService(
+        this, ALERT_REQUESTS + slot,
+        Intent(this, ChannelForegroundService::class.java)
+            .setAction(ACTION_ALERT)
+            .putExtra(EXTRA_PAIR_ID, id),
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+    )
 
     /**
      * @param mayUseMicrophone false when we are not the ones starting up

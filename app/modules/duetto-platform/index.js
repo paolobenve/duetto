@@ -114,7 +114,10 @@ export const Foreground = isAndroid && NativeForeground
        */
       setText: (text, name, actions, labels) =>
         call(NativeForeground, 'setText', String(text), String(name || ''), String(actions || ''),
-          String(labels?.enter || ''), String(labels?.wait || '')),
+          String(labels?.enter || ''), String(labels?.wait || ''), String(labels?.alert || '')),
+
+      /** a word over everything, gone by itself: what a notification's button did */
+      toast: (text) => call(NativeForeground, 'toast', String(text)),
 
       /** Stops the service and releases the wake lock. */
       stop: () => call(NativeForeground, 'stop'),
@@ -204,6 +207,7 @@ export const Foreground = isAndroid && NativeForeground
       recentsClearedAt: () => Promise.resolve(0),
       watchdogWanted: unavailable,
       setText: unavailable,
+      toast: unavailable,
       stop: unavailable,
       notify: unavailable,
       notifyBrief: unavailable,
