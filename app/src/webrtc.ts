@@ -212,6 +212,8 @@ const STALL_CURES = 2;
  * then at the next return. See cameraEnded.
  */
 const CAMERA_RETRY_MS = [1_000, 10_000, 30_000];
+/** a camera operation still running after this is written down: see onCamera */
+const CAMERA_STUCK_MS = 5_000;
 
 /**
  * The balancing of the two pictures: see weighBalance().
@@ -552,8 +554,37 @@ export class ChannelSession {
    * finds the camera already on.
    */
   private cameraQueue: Promise<unknown> = Promise.resolve();
-  private onCamera<T>(op: () => Promise<T>): Promise<T> {
-    const run = this.cameraQueue.then(op, op);
+  /** camera operations queued or running */
+  private cameraBusy = 0;
+  /**
+   * @param what for the journal: on, off, reopen
+   *
+   * Each operation that waits behind another, and each that takes longer
+   * than CAMERA_STUCK_MS, is written down: on 15 October, on the edge, a
+   * switch-on a second after a switch-off never finished, the presses
+   * after it queued behind it with nothing to show, and the journal had
+   * not a word about any of it.
+   */
+  private onCamera<T>(what: string, op: () => Promise<T>): Promise<T> {
+    const ahead = this.cameraBusy++;
+    if (ahead > 0) Journal.mark(`camera:queued:${what}:behind-${ahead}`).catch(() => { /* noop */ });
+    const timed = async () => {
+      const started = Date.now();
+      const watch = setTimeout(() => {
+        Journal.mark(`camera:stuck:${what}`).catch(() => { /* noop */ });
+      }, CAMERA_STUCK_MS);
+      try {
+        return await op();
+      } finally {
+        clearTimeout(watch);
+        const took = Date.now() - started;
+        if (took >= CAMERA_STUCK_MS) {
+          Journal.mark(`camera:unstuck:${what}:${Math.round(took / 1000)}s`).catch(() => { /* noop */ });
+        }
+        this.cameraBusy--;
+      }
+    };
+    const run = this.cameraQueue.then(timed, timed);
     this.cameraQueue = run.catch(() => undefined);
     return run;
   }
@@ -2446,7 +2477,7 @@ export class ChannelSession {
 
   /** Switches the camera on: puts the track into the open channel. */
   enableVideo(): Promise<boolean> {
-    return this.onCamera(() => this.enableVideoNow());
+    return this.onCamera('on', () => this.enableVideoNow());
   }
 
   private async enableVideoNow(): Promise<boolean> {
@@ -2590,7 +2621,7 @@ export class ChannelSession {
    * one is let go first, or the camera would still be ours, and busy.
    */
   private reopenCamera(why: string): Promise<void> {
-    return this.onCamera(() => this.reopenCameraNow(why));
+    return this.onCamera('reopen', () => this.reopenCameraNow(why));
   }
 
   private async reopenCameraNow(why: string): Promise<void> {
@@ -2916,7 +2947,7 @@ export class ChannelSession {
 
   /** Switches the camera off: empties the channel and really releases it. */
   disableVideo(): Promise<boolean> {
-    return this.onCamera(() => this.disableVideoNow());
+    return this.onCamera('off', () => this.disableVideoNow());
   }
 
   private async disableVideoNow(): Promise<boolean> {
