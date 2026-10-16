@@ -45,6 +45,8 @@ import { logger } from './log';
 
 export type ChannelEvents = {
   onLocalStream?: (s: MediaStream | null) => void;
+  /** a camera operation queued or running, or the camera still closing: see onCamera */
+  onCameraBusy?: (busy: boolean) => void;
   onRemoteStream?: (s: MediaStream | null) => void;
   onConnectionState?: (state: string) => void;
   /** the other person's mic and camera, with the shape of their video */
@@ -214,6 +216,16 @@ const STALL_CURES = 2;
 const CAMERA_RETRY_MS = [1_000, 10_000, 30_000];
 /** a camera operation still running after this is written down: see onCamera */
 const CAMERA_STUCK_MS = 5_000;
+/**
+ * After the camera is switched off, this long before the next operation.
+ *
+ * Switching off finishes for the app when it has asked the camera to
+ * close; the library goes on closing it a while longer. On 15 October,
+ * on the edge, a switch-on came a second after a switch-off and never
+ * finished; a minute later the video library crashed. The video button
+ * stays faded meanwhile: see onCameraBusy.
+ */
+const CAMERA_SETTLE_MS = 1_000;
 
 /**
  * The balancing of the two pictures: see weighBalance().
@@ -564,9 +576,14 @@ export class ChannelSession {
    * switch-on a second after a switch-off never finished, the presses
    * after it queued behind it with nothing to show, and the journal had
    * not a word about any of it.
+   *
+   * Busy from the moment one is asked for until the queue is empty
+   * again, the pause after a switch-off included: the video button
+   * listens to that (onCameraBusy), and stays faded meanwhile.
    */
   private onCamera<T>(what: string, op: () => Promise<T>): Promise<T> {
     const ahead = this.cameraBusy++;
+    if (ahead === 0) this.events.onCameraBusy?.(true);
     if (ahead > 0) Journal.mark(`camera:queued:${what}:behind-${ahead}`).catch(() => { /* noop */ });
     const timed = async () => {
       const started = Date.now();
@@ -581,11 +598,17 @@ export class ChannelSession {
         if (took >= CAMERA_STUCK_MS) {
           Journal.mark(`camera:unstuck:${what}:${Math.round(took / 1000)}s`).catch(() => { /* noop */ });
         }
-        this.cameraBusy--;
       }
     };
     const run = this.cameraQueue.then(timed, timed);
-    this.cameraQueue = run.catch(() => undefined);
+    this.cameraQueue = run.catch(() => undefined)
+      .then(() => (what === 'off'
+        ? new Promise<void>((done) => { setTimeout(done, CAMERA_SETTLE_MS); })
+        : undefined))
+      .then(() => {
+        this.cameraBusy -= 1;
+        if (this.cameraBusy === 0) this.events.onCameraBusy?.(false);
+      });
     return run;
   }
 

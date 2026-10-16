@@ -1238,6 +1238,8 @@ export default function App() {
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [audioOn, setAudioOn] = useState(true);
   const [videoOn, setVideoOn] = useState(false);
+  /** a camera operation under way: the video button waits, faded (see onCamera in webrtc) */
+  const [cameraBusy, setCameraBusy] = useState(false);
   /**
    * The same two, readable from where the state is not: out of the
    * channel the buttons set what one WANTS on entering - the camera,
@@ -4570,7 +4572,14 @@ export default function App() {
     peerStateHeard.current = false;
 
     if (!sessionRef.current) {
-      sessionRef.current = new ChannelSession(cfg, sig, {
+      // A camera left hanging by the session before is not this one's:
+      // its word, late, is not listened to.
+      setCameraBusy(false);
+      let session: ChannelSession | null = null;
+      session = new ChannelSession(cfg, sig, {
+        onCameraBusy: (busy) => {
+          if (session && sessionRef.current === session) setCameraBusy(busy);
+        },
         onLocalStream: (st) => {
           setLocalStream(st);
           setLocalVideoKey(st?.getVideoTracks()[0]?.id ?? '');
@@ -4792,6 +4801,7 @@ export default function App() {
           hadRemoteVideo.current = present;
         },
       });
+      sessionRef.current = session;
     }
     sessionRef.current.setServerIceServers(serverTurnRef.current);
     if (renew) {
@@ -6291,6 +6301,7 @@ export default function App() {
         connectionState={connState}
         audioOn={audioOn}
         videoOn={videoOn}
+        cameraBusy={cameraBusy}
         peerState={peerState}
         remoteHasVideo={remoteHasVideo && peerState.video}
         remoteVideoKey={remoteVideoKey}

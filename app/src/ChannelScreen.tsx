@@ -610,6 +610,8 @@ type Props = {
   audioRoutes: AudioRoute[];
   onToggleAudio: () => void;
   onToggleVideo: () => void;
+  /** a camera operation under way: the video button waits, faded */
+  cameraBusy?: boolean;
   onSwitchCamera: () => void;
   onSelectRoute: (r: AudioRoute) => void;
   onKnock: () => void;
@@ -1666,6 +1668,10 @@ export default function ChannelScreen(props: Props) {
           // most, not what is off.
           icon={<VideoIcon off={!videoOn} {...(videoOn ? ON_LIGHT : {})} />}
           active={videoOn}
+          // Faded while the camera is opening or closing: a press then
+          // would only queue up behind it - or, a second after a
+          // switch-off, catch the camera still closing.
+          busy={props.cameraBusy}
           onPress={press(onToggleVideo)}
           // As with the audio: a touch switches on and off, a long
           // press opens the choices. Quality is judged by looking, and
@@ -2769,6 +2775,8 @@ function CircleButton(props: {
   highlight?: boolean;
   danger?: boolean;
   disabled?: boolean;
+  /** faded, and a press is written down and goes nowhere; the long press still works */
+  busy?: boolean;
 }) {
   const down = useRef<{ t: number; x: number; y: number } | null>(null);
   const sign = (what: string) => {
@@ -2799,6 +2807,10 @@ function CircleButton(props: {
           sign(`ignored:too-short:${props.name}`);
           return;
         }
+        if (props.busy) {
+          sign(`ignored:busy:${props.name}`);
+          return;
+        }
         sign(props.name);
         props.onPress();
       }}
@@ -2825,7 +2837,7 @@ function CircleButton(props: {
                 : props.active === true
                   ? styles.circleOn
                   : null,
-            props.disabled && styles.circleDisabled,
+            (props.disabled || props.busy) && styles.circleDisabled,
           ]}>
           {props.icon}
         </View>
