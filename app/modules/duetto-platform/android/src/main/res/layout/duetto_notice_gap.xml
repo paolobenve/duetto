@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Half a line between one group and the next. -->
-<View xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Half a line between one group and the next. A FrameLayout and not a
+     plain View: a notification draws only the views Android allows in
+     RemoteViews, and a View is not one of them - the service crashed on
+     it, and Duetto with it (build 490). -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="9dp" />
