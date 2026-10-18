@@ -240,6 +240,16 @@ const CAMERA_SETTLE_MS = 1_000;
  */
 /** Their picture grainy: under this share of the profile's ceiling, this long, on a clean road. */
 const GRAINY_BELOW_SHARE = 0.1;
+/**
+ * And never above this, whatever the profile.
+ *
+ * The stuck pictures ever seen were at 30 to 169 kbit/s: WebRTC's floor,
+ * which knows nothing of the profile chosen. A tenth of the ceiling made
+ * the "highest" profile's threshold 400 kbit/s, and on 18 October three
+ * of the edge's eleven cures came above 250, for a picture low because
+ * the road was narrow.
+ */
+const GRAINY_BELOW_BPS = 250_000;
 const GRAINY_MS = 6_000;
 const GRAINY_AFTER_LINK_MS = 8_000;
 /** Their picture decoded at a trickle while arriving in full: see weighStalledDecoder. */
@@ -2282,7 +2292,7 @@ export class ChannelSession {
     const grainy = this.peerVideoDeclared && this.localWatching
       && now - this.linkedAt > GRAINY_AFTER_LINK_MS
       && pic !== null && pic.kbps !== null && pic.h > 0
-      && pic.kbps * 1000 < profile.maxBitrate * GRAINY_BELOW_SHARE
+      && pic.kbps * 1000 < Math.min(profile.maxBitrate * GRAINY_BELOW_SHARE, GRAINY_BELOW_BPS)
       && pic.h < profile.capture.height
       && lossPct !== null && lossPct < 1 && rttMs !== null && rttMs < 200
       // Their mobile data is a narrow road, not a stuck estimate: on 18
