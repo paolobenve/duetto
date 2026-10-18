@@ -384,6 +384,8 @@ export class ChannelSession {
   private diagnostics = false;
   /** the other side says its camera is on: the `state` message tells us */
   private peerVideoDeclared = false;
+  /** the network carrying the other side, as their state says: see weighGrainyIncoming */
+  private peerNet: string | null = null;
 
   /**
    * Which camera films.
@@ -1306,6 +1308,7 @@ export class ChannelSession {
   async onSignal(msg: SignalMessage) {
     if (msg.kind === 'state') {
       this.peerVideoDeclared = msg.video === true;
+      this.peerNet = typeof msg.net === 'string' ? msg.net : null;
       this.peerVp9 = msg.hwVp9 === true;
       this.events.onPeerState?.({
         audio: msg.audio,
@@ -2281,7 +2284,12 @@ export class ChannelSession {
       && pic !== null && pic.kbps !== null && pic.h > 0
       && pic.kbps * 1000 < profile.maxBitrate * GRAINY_BELOW_SHARE
       && pic.h < profile.capture.height
-      && lossPct !== null && lossPct < 1 && rttMs !== null && rttMs < 200;
+      && lossPct !== null && lossPct < 1 && rttMs !== null && rttMs < 200
+      // Their mobile data is a narrow road, not a stuck estimate: on 18
+      // October the POCO, on mobile data with 200 to 400 kbit/s going
+      // out, was taken for stuck by the edge ten times in 27 minutes,
+      // and every cure blacked the picture out to come back as low.
+      && this.peerNet !== 'mobile';
     this.weighStalledDecoder(pic, rttMs, lossPct, profile.maxBitrate, now);
     if (!grainy) { this.grainySince = 0; return; }
     if (!this.grainySince) { this.grainySince = now; return; }
