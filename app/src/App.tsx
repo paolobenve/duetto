@@ -120,6 +120,8 @@ const PEER_BACK_WAIT_MS = 4_000;
 const VIDEO_SETTLE_MAX_MS = 15_000;
 /** A session renewed in place at most this often: see renewSession. */
 const RENEW_GAP_MS = 120_000;
+/** A grainy picture's cure this soon after another one found it low again: see renewSession. */
+const GRAINY_RELAPSE_MS = 180_000;
 /** The call closed with a Bluetooth headset there, placed again only after this: see placeAgain. */
 const HEADSET_HANGUP_WAIT_MS = 8_000;
 /**
@@ -1066,6 +1068,25 @@ export default function App() {
   const renewedAt = useRef(0);
   /** the last microphone renewed alone, the trial before the whole session */
   const micRenewedAt = useRef(0);
+  /** the grainy picture's cures, close together: see renewSession */
+  const grainyCures = useRef<number[]>([]);
+  /** the grainy picture's cure given up, until the road changes: see renewSession */
+  const grainyBraked = useRef(false);
+  /** the other's network as last told: a change of it lets the brake go */
+  const peerNetSeen = useRef<string | null>(null);
+  /** A new road, ours or theirs: the grainy picture's cure may try again. */
+  const releaseGrainyBrake = (why: string) => {
+    if (grainyBraked.current) Journal.mark(`session:renew:unbraked:${why}`).catch(() => { /* noop */ });
+    grainyBraked.current = false;
+    grainyCures.current = [];
+  };
+  // And a channel left starts the next with a clean slate.
+  useEffect(() => {
+    if (inChannel) return;
+    grainyBraked.current = false;
+    grainyCures.current = [];
+    peerNetSeen.current = null;
+  }, [inChannel]);
   // With the diagnostics on, WebRTC's own warnings go to Android's log
   // from the next start: see VoiceEffects.webrtcLogWanted.
   useEffect(() => {
@@ -2971,6 +2992,7 @@ export default function App() {
          * acts within seconds - and only when the picture needs it.
          */
         if (what === 'arrived') {
+          releaseGrainyBrake('own-network');
           Journal.mark('network:ice-restart').catch(() => { /* noop */ });
           if (politeRef.current) sig.sendSignal({ kind: 'renegotiate', road: true });
           else sessionRef.current?.restartIce();
@@ -4820,6 +4842,13 @@ export default function App() {
           // before, the sound of their entering first of all.
           const heard = peerStateHeard.current && st.restoring !== true;
           peerStateHeard.current = true;
+          // Their network changing is a new road: the grainy picture's
+          // cure may try again.
+          const net = st.net ?? null;
+          if (net !== null && net !== peerNetSeen.current) {
+            if (peerNetSeen.current !== null) releaseGrainyBrake('peer-network');
+            peerNetSeen.current = net;
+          }
           setPeerSeen(true);
           // Only the changes: the state arrives even when nothing has
           // changed, and a line for every message would be a journal
@@ -5105,6 +5134,31 @@ export default function App() {
   const renewSession = useCallback(async (why: string) => {
     const old = sessionRef.current;
     if (!old || !inChannelRef.current || !peerActiveRef.current) return;
+    /**
+     * Two cures of the grainy picture and no more, while the road stays
+     * the same.
+     *
+     * On 18 October, with the POCO on mobile data, the edge cured a
+     * picture that was low because the road was narrow ten times in 27
+     * minutes: each cure blacked the picture out, brought it up for a
+     * minute and down again, and two minutes later the next one came. A
+     * cure that comes less than three minutes after the one before has
+     * found the picture low again: past two like that, no more, until
+     * either network changes - ours or theirs. The stalled decoder is
+     * another illness, with its own cure: it is not braked here.
+     */
+    if (!why.startsWith('decoder-stalled')) {
+      if (grainyBraked.current) return;
+      const now = Date.now();
+      grainyCures.current = grainyCures.current.filter((at) => now - at < GRAINY_RELAPSE_MS);
+      if (grainyCures.current.length >= 2) {
+        grainyBraked.current = true;
+        grainyCures.current = [];
+        Journal.mark(`session:renew:braked:${why}`).catch(() => { /* noop */ });
+        return;
+      }
+      grainyCures.current.push(now);
+    }
     /**
      * First the trial: the microphone's track alone, and the link made
      * again. If the picture comes right, that was the brake, and the
