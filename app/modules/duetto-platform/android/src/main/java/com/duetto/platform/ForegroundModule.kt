@@ -396,6 +396,40 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
         }
     }
 
+    /** A connection's sound choice, empty words keeping the one in use's: see notifyFor. */
+    private fun choiceOf(vibration: String, sound: String, uri: String, level: Double): Alerts.Choice {
+        val own = Alerts.stored(ctx)
+        return Alerts.Choice(
+            vibration.ifEmpty { own.vibration },
+            sound.ifEmpty { own.sound },
+            if (sound.isEmpty()) own.uri else uri,
+            if (level >= 0) level.toFloat() else own.level,
+        )
+    }
+
+    /** A call's sound and buzz with no notification: the app in front, see Alerts.ringOnly. */
+    @ReactMethod
+    fun ringFor(vibration: String, sound: String, uri: String, level: Double, promise: Promise) {
+        try {
+            Calls.ownAlertNow()
+            Alerts.ringOnly(ctx, choiceOf(vibration, sound, uri, level))
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("notify_error", e)
+        }
+    }
+
+    /** A call that rang with the app in front and was not seen: its trace, silent. */
+    @ReactMethod
+    fun notifySilent(name: String, text: String, pairId: String, promise: Promise) {
+        try {
+            Notifier.show(ctx, name, text, pairId.ifEmpty { null }, silent = true)
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("notify_error", e)
+        }
+    }
+
     /**
      * A call from a connection not in use: touched, it opens the app on
      * it, and it sounds and buzzes as that connection was set to - empty
@@ -407,14 +441,7 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
         vibration: String, sound: String, uri: String, level: Double, promise: Promise,
     ) {
         try {
-            val own = Alerts.stored(ctx)
-            val choice = Alerts.Choice(
-                vibration.ifEmpty { own.vibration },
-                sound.ifEmpty { own.sound },
-                if (sound.isEmpty()) own.uri else uri,
-                if (level >= 0) level.toFloat() else own.level,
-            )
-            Notifier.show(ctx, name, text, pairId, choice)
+            Notifier.show(ctx, name, text, pairId, choiceOf(vibration, sound, uri, level))
             promise.resolve(true)
         } catch (e: Exception) {
             promise.reject("notify_error", e)

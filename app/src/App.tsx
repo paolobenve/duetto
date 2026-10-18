@@ -920,13 +920,37 @@ export default function App() {
   /** in the little window: see inPip, below */
   const inPipRef = useRef(false);
   const inFront = (st: string) => st === 'active' && !inPipRef.current;
-  const showCallAlert = useCallback((text: string, pairId?: string) => {
+  /**
+   * The notification of a call that rang with the app in front: held
+   * back, and posted - silent - only if the call goes unseen.
+   *
+   * With Duetto in front and the screen on, a call came three times:
+   * in the middle of the screen, as a notification, and as a sound.
+   * The notification only said it again; but on a phone lying lit on a
+   * table with nobody there, it was the one trace left once the half
+   * minute was over. So it waits: a touch on the card and it is never
+   * posted; the card going by itself, or the app going behind while it
+   * shows, and it is posted, saying nothing (see Notifier.show).
+   */
+  const heldNote = useRef<{ words: () => string; pairId: string } | null>(null);
+  const postHeldNote = (why: string) => {
+    const n = heldNote.current;
+    heldNote.current = null;
+    if (!n) return;
+    Journal.mark(`call-alert:note-after:${why}`).catch(() => { /* noop */ });
+    Foreground.notifySilent('', n.words(), n.pairId).catch(() => { /* noop */ });
+    alertSaid(n.words);
+  };
+  const showCallAlert = useCallback((text: string, pairId?: string,
+    held?: { words: () => string; pairId: string }) => {
+    heldNote.current = held ?? null;
     setCallAlert({
       text, pairId, at: Date.now(),
       until: inFront(AppState.currentState) ? Date.now() + CALL_ALERT_MS : null,
     });
   }, []);
   const frontChanged = useCallback((st: string) => {
+    if (!inFront(st)) postHeldNote('behind');
     setCallAlert((was) => (was ? {
       ...was, until: inFront(st) ? Date.now() + CALL_ALERT_MS : null,
     } : was));
@@ -935,9 +959,14 @@ export default function App() {
     if (!callAlert) return;
     const sub = AppState.addEventListener('change', frontChanged);
     if (callAlert.until === null) return () => sub.remove();
-    const timer = setTimeout(() => setCallAlert(null), Math.max(0, callAlert.until - Date.now()));
+    const timer = setTimeout(() => {
+      postHeldNote('unseen');
+      setCallAlert(null);
+    }, Math.max(0, callAlert.until - Date.now()));
     return () => { clearTimeout(timer); sub.remove(); };
   }, [callAlert, frontChanged]);
+  // Gone by a touch: seen, and its notification is never posted.
+  useEffect(() => { if (!callAlert) heldNote.current = null; }, [callAlert]);
   /** the yellow in the little window, for the half minute after the call */
   const [callBand, setCallBand] = useState(false);
   useEffect(() => {
@@ -949,7 +978,13 @@ export default function App() {
   }, [callAlert]);
   // A call from a connection not in use, in the middle of the screen
   // too: see standby.ts.
-  useEffect(() => onStandbyCall((pairId, text) => showCallAlert(text, pairId)), [showCallAlert]);
+  // With the app in front it rings here, and its notification is held
+  // back (see heldNote).
+  useEffect(() => onStandbyCall((pairId, text, words) => {
+    const front = inFront(AppState.currentState);
+    showCallAlert(text, pairId, front ? { words, pairId } : undefined);
+    return front;
+  }), [showCallAlert]);
   // The other side's name heard on a connection not in use: written in
   // its pair, as the one in use does (see standby.ts).
   useEffect(() => onStandbyName((pairId, name) => setCfg((prev) => {
@@ -4104,11 +4139,21 @@ export default function App() {
               // open: whoever knocks does it precisely because the
               // other one is not answering, and the phone may be lying
               // lit on a table with nobody in front of it.
-              Foreground.notify('', news.called(who, channel, at)).catch(() => {});
-              alertSaid(() => news.called(who, channel, at));
+              const words = () => news.called(who, channel, at);
+              // In front with the screen on, the middle of the screen
+              // says it: the sound and buzz alone, the notification held
+              // back for a call nobody saw (see heldNote).
+              if (inFront(AppState.currentState)) {
+                Journal.mark('call-alert:front').catch(() => { /* noop */ });
+                Foreground.ringFor().catch(() => { /* noop */ });
+                showCallAlert(words(), undefined, { words, pairId: '' });
+                return;
+              }
+              Foreground.notify('', words()).catch(() => {});
+              alertSaid(words);
               // And in the middle of the screen, for half a minute: in a
               // noisy room the sound and the shade go unnoticed.
-              showCallAlert(news.called(who, channel, at));
+              showCallAlert(words());
               // The vibration is no longer done here: it lives in the
               // notification channel, together with the sound, because
               // that is where they can be adjusted - and because
@@ -4236,13 +4281,17 @@ export default function App() {
               // Silent: the sound itself is the call, and the
               // notification's own on top of it made two at once, on two
               // different volumes. It still buzzes as chosen.
-              if (!inChannelRef.current) {
+              const words = () => news.called(callerName, callChannel, calledAt, sound);
+              const front = inFront(AppState.currentState);
+              if (!inChannelRef.current && !front) {
                 Foreground.notifyFor('', said, '', { sound: 'none' }).catch(() => { /* noop */ });
-                alertSaid(() => news.called(callerName, callChannel, calledAt, sound));
+                alertSaid(words);
               }
               // In the middle of the screen, in the channel too: the
-              // sound may be drowned by the room.
-              showCallAlert(said);
+              // sound may be drowned by the room. In front, the
+              // notification waits for it to go unseen (see heldNote).
+              showCallAlert(said, undefined,
+                !inChannelRef.current && front ? { words, pairId: '' } : undefined);
               return;
             }
 

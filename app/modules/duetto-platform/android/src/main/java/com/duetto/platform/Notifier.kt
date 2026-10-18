@@ -166,23 +166,27 @@ object Notifier {
      */
     fun show(
         ctx: Context, name: String, text: String, pairId: String? = null,
-        choice: Alerts.Choice = Alerts.stored(ctx), briefMs: Long = 0,
+        choice: Alerts.Choice = Alerts.stored(ctx), briefMs: Long = 0, silent: Boolean = false,
     ) {
         val now = SystemClock.uptimeMillis()
         val at = maxOf(now, nextAlertAt)
         if (at - now > ALERT_BACKLOG_MS) return
         nextAlertAt = at + ALERT_GAP_MS
         val app = ctx.applicationContext
-        if (at <= now) showNow(app, name, text, pairId, choice, briefMs)
-        else pacer.postAtTime({ showNow(app, name, text, pairId, choice, briefMs) }, at)
+        if (at <= now) showNow(app, name, text, pairId, choice, briefMs, silent)
+        else pacer.postAtTime({ showNow(app, name, text, pairId, choice, briefMs, silent) }, at)
     }
 
+    /**
+     * @param silent the call already rang, with the app in front, and was
+     *   not seen: the notification is only its trace, and says nothing.
+     */
     private fun showNow(
         ctx: Context, name: String, text: String, pairId: String?, choice: Alerts.Choice,
-        briefMs: Long = 0,
+        briefMs: Long = 0, silent: Boolean = false,
     ) {
         // Its sound, in the channel, is not another call: see Calls.
-        Calls.ownAlertNow()
+        if (!silent) Calls.ownAlertNow()
         // The channel depends on the preferences: see Alerts. The sound in
         // the ordinary case comes from there; vibration and sound during
         // the conversation are done by Alerts.alertNow below, because the
@@ -214,6 +218,7 @@ object Notifier {
             .setGroup(GROUP)
             .setSortKey(SORT_ALERT)
             .apply { if (briefMs > 0) setTimeoutAfter(briefMs) }
+            .apply { if (silent) setSilent(true) }
 
         // Before Android 8 the channels do not exist and these two things
         // are said here. From Android 8 on they are ignored: the channel
@@ -241,7 +246,7 @@ object Notifier {
         // guarantee: see Alerts.alertNow. It goes after, not before: if
         // the notification cannot be shown, an alert that merely sounds is
         // still better than nothing, but the natural order stays this one.
-        Alerts.alertNow(ctx, choice)
+        if (!silent) Alerts.alertNow(ctx, choice)
     }
 
     /**

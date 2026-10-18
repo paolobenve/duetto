@@ -143,12 +143,14 @@ function watchStanding() {
 }
 
 /** The interface's ear: a call or a sound from a connection not in use. */
-type CallHeard = (pairId: string, text: string) => void;
+/** true: the app is in front and showed it, and holds its notification back */
+type CallHeard = (pairId: string, text: string, words: () => string) => boolean;
 let onCall: CallHeard | null = null;
 /** To the interface, or kept for it when there is none: see callsUnseen.ts. */
-function heard(pairId: string, text: string) {
-  if (onCall) onCall(pairId, text);
-  else keepCall(text, pairId);
+function heard(pairId: string, text: string, words: () => string): boolean {
+  if (onCall) return onCall(pairId, text, words);
+  keepCall(text, pairId);
+  return false;
 }
 export function onStandbyCall(cb: CallHeard): () => void {
   onCall = cb;
@@ -426,9 +428,13 @@ function open(cfg: DuoConfig, pair: PairInfo) {
           const text = words();
           log('call from a connection not in use:', text);
           Journal.mark(`standby:knock:${pair.id.slice(0, 8)}`).catch(() => { /* noop */ });
+          // The app in front shows it, and only the sound is wanted here.
+          if (heard(pair.id, text, words)) {
+            Foreground.ringFor(soundOf(live())).catch(() => { /* noop */ });
+            return;
+          }
           Foreground.notifyFor('', text, pair.id, soundOf(live())).catch(() => { /* noop */ });
           alertSaid(words);
-          heard(pair.id, text);
           return;
         }
         // Their coming into the channel: on this connection's line.
@@ -484,10 +490,10 @@ function open(cfg: DuoConfig, pair: PairInfo) {
         Alarm.play(String(msg.sound ?? ''), false, 0,
           ALERT_GAIN[live().settings?.alertLevel ?? 'full'] ?? 1).catch(() => { /* noop */ });
         // Silent: the sound is the call; see the app's own.
+        if (heard(pair.id, text, words)) return;
         Foreground.notifyFor('', text, pair.id, { ...soundOf(live()), sound: 'none' })
           .catch(() => { /* noop */ });
         alertSaid(words);
-        heard(pair.id, text);
       },
     },
   );

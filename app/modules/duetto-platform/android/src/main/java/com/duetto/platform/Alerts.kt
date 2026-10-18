@@ -149,10 +149,37 @@ object Alerts {
         if (!playIfInConversation(ctx, c)) playOurs(ctx, c)
     }
 
-    private fun vibrateNow(ctx: Context, c: Choice) {
+    /**
+     * The call's sound and buzz, with no notification: the app in front
+     * with the screen on, where the call shows in the middle of the
+     * screen and the notification only said it a second time.
+     *
+     * Without a notification nothing sounds by itself: the channel's
+     * sound and buzz are done here, as the channel would - the chosen
+     * sound at its level, only with the ringer on and no Do Not Disturb
+     * holding it back; the buzz "always" always, "default" unless the
+     * phone is silent, "never" never. In the conversation, on its own
+     * stream, as alertNow does.
+     */
+    fun ringOnly(ctx: Context, c: Choice = stored(ctx)) {
+        val am = ctx.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+        val ringer = am?.ringerMode ?: AudioManager.RINGER_MODE_NORMAL
+        vibrateNow(ctx, c, evenDefault = ringer != AudioManager.RINGER_MODE_SILENT)
+        if (playIfInConversation(ctx, c)) return
+        if (ringer != AudioManager.RINGER_MODE_NORMAL) return
+        val nm = ctx.getSystemService(NotificationManager::class.java)
+        val filter = nm?.currentInterruptionFilter ?: NotificationManager.INTERRUPTION_FILTER_ALL
+        if (filter != NotificationManager.INTERRUPTION_FILTER_ALL &&
+            filter != NotificationManager.INTERRUPTION_FILTER_UNKNOWN) return
+        ring(ctx, c, AudioAttributes.USAGE_NOTIFICATION, "in front")
+    }
+
+    private fun vibrateNow(ctx: Context, c: Choice, evenDefault: Boolean = false) {
         // "default" means letting the system decide, and there the channel
-        // already does its part; "never" means never.
-        if (c.vibration != "always") return
+        // already does its part - unless there is no notification, and
+        // then `evenDefault` says; "never" means never.
+        if (c.vibration == "never") return
+        if (c.vibration != "always" && !evenDefault) return
         try {
             val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 (ctx.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)

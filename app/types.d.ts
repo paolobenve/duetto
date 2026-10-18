@@ -153,6 +153,8 @@ declare module 'duetto-platform' {
     /** an alert gone by itself after `ms`: news the standing notification says too */
     notifyBrief(name: string, text: string, ms: number): Promise<boolean>;
     renewAlert(text: string): Promise<boolean>;
+    ringFor(sound?: { vibration?: string; sound?: string; uri?: string; level?: number }): Promise<boolean>;
+    notifySilent(name: string, text: string, pairId?: string): Promise<boolean>;
     notifyFor(name: string, text: string, pairId: string,
       sound?: { vibration?: string; sound?: string; uri?: string; level?: number }): Promise<boolean>;
     /**

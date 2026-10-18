@@ -128,6 +128,13 @@ export const Foreground = isAndroid && NativeForeground
       /** the same, gone by itself after `ms` */
       notifyBrief: (name, text, ms) =>
         call(NativeForeground, 'notifyBrief', String(name || ''), String(text), Number(ms) || 0),
+      /** a call's sound and buzz with no notification: the app in front */
+      ringFor: (sound = {}) =>
+        call(NativeForeground, 'ringFor', String(sound.vibration ?? ''), String(sound.sound ?? ''),
+          String(sound.uri ?? ''), sound.level === undefined ? -1 : Number(sound.level)),
+      /** a call that rang with the app in front and was not seen: its trace, silent */
+      notifySilent: (name, text, pairId) =>
+        call(NativeForeground, 'notifySilent', String(name || ''), String(text), String(pairId || '')),
       /** the alert still on show, its words made again, silent; false: none */
       renewAlert: (text) => call(NativeForeground, 'renewAlert', String(text)),
       /** a call from a connection not in use: touched, it opens the app on it */
@@ -214,6 +221,8 @@ export const Foreground = isAndroid && NativeForeground
       notify: unavailable,
       notifyBrief: unavailable,
       renewAlert: () => Promise.resolve(false),
+      ringFor: unavailable,
+      notifySilent: unavailable,
       notifyFor: unavailable,
       takeOpenedPair: () => Promise.resolve(null),
       note: unavailable,
