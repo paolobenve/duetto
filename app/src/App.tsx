@@ -1409,6 +1409,10 @@ export default function App() {
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener('duetto-render-stalled', (e: { streamURL?: string; arrived?: number }) => {
       const theirs = !!e?.streamURL && e.streamURL === remoteStreamRef.current?.toURL();
+      // One's own little square with the app behind has nowhere to be
+      // drawn, and that is no fault: on 18 October it was written every
+      // four seconds for a minute and a half.
+      if (!theirs && AppState.currentState !== 'active') return;
       Journal.mark(`video:render-stalled:${theirs ? 'peer' : 'own'}:${e?.arrived ?? '?'}`).catch(() => { /* noop */ });
       if (!theirs) return;
       const now = Date.now();
