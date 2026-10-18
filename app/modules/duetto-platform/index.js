@@ -128,6 +128,8 @@ export const Foreground = isAndroid && NativeForeground
       /** the same, gone by itself after `ms` */
       notifyBrief: (name, text, ms) =>
         call(NativeForeground, 'notifyBrief', String(name || ''), String(text), Number(ms) || 0),
+      /** the alert still on show, its words made again, silent; false: none */
+      renewAlert: (text) => call(NativeForeground, 'renewAlert', String(text)),
       /** a call from a connection not in use: touched, it opens the app on it */
       notifyFor: (name, text, pairId, sound = {}) =>
         call(NativeForeground, 'notifyFor', String(name || ''), String(text), String(pairId),
@@ -211,6 +213,7 @@ export const Foreground = isAndroid && NativeForeground
       stop: unavailable,
       notify: unavailable,
       notifyBrief: unavailable,
+      renewAlert: () => Promise.resolve(false),
       notifyFor: unavailable,
       takeOpenedPair: () => Promise.resolve(null),
       note: unavailable,

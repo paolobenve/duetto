@@ -21,6 +21,7 @@ import { logger } from './log';
 import { keepCall } from './callsUnseen';
 import { callerFor } from './notificationCall';
 import { onNewDay } from './dayTurn';
+import { alertSaid } from './alertWords';
 import { VERSION_LABEL, BUILD } from './version';
 import { deliverAsk, answerHeard, noteAskedOfUs, said as saidOfThem } from './diagnosticsAsk';
 
@@ -420,10 +421,13 @@ function open(cfg: DuoConfig, pair: PairInfo) {
         learn(peerName);
         const who = peerShown(live(), name);
         if (reason === 'knock') {
-          const text = news.called(who, channelNow(), at);
+          const channel = channelNow();
+          const words = () => news.called(who, channel, at);
+          const text = words();
           log('call from a connection not in use:', text);
           Journal.mark(`standby:knock:${pair.id.slice(0, 8)}`).catch(() => { /* noop */ });
           Foreground.notifyFor('', text, pair.id, soundOf(live())).catch(() => { /* noop */ });
+          alertSaid(words);
           heard(pair.id, text);
           return;
         }
@@ -472,14 +476,17 @@ function open(cfg: DuoConfig, pair: PairInfo) {
         }
         if (msg.kind !== 'alarm') return;
         const who = peerShown(live(), name);
-        const text = news.called(who, channelNow(), Number(msg.at) || Date.now(),
-          alarmLabel(String(msg.sound ?? '')));
+        const channel = channelNow();
+        const at = Number(msg.at) || Date.now();
+        const words = () => news.called(who, channel, at, alarmLabel(String(msg.sound ?? '')));
+        const text = words();
         Journal.mark(`standby:alarm:${pair.id.slice(0, 8)}:${msg.sound}`).catch(() => { /* noop */ });
         Alarm.play(String(msg.sound ?? ''), false, 0,
           ALERT_GAIN[live().settings?.alertLevel ?? 'full'] ?? 1).catch(() => { /* noop */ });
         // Silent: the sound is the call; see the app's own.
         Foreground.notifyFor('', text, pair.id, { ...soundOf(live()), sound: 'none' })
           .catch(() => { /* noop */ });
+        alertSaid(words);
         heard(pair.id, text);
       },
     },

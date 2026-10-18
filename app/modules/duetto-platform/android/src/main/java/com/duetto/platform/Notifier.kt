@@ -244,6 +244,35 @@ object Notifier {
         Alerts.alertNow(ctx, choice)
     }
 
+    /**
+     * The alert still on show, its words made again: silent.
+     *
+     * A call of 23:40 left unseen said "called you at 23:40:12" all
+     * through the next day, about yesterday - the words carry the day
+     * only when they are written, and at midnight nobody writes them.
+     * At the turn of the day the app writes them again, and the alert,
+     * if it is still there - not touched, not swept away - is posted
+     * again with them, everything else as it was: the same connection to
+     * open, the same moment, and no sound, no buzz. False: there is none.
+     */
+    fun renewAlert(ctx: Context, text: String): Boolean {
+        val nm = ctx.getSystemService(NotificationManager::class.java) ?: return false
+        val shown = try {
+            nm.activeNotifications.firstOrNull { it.id == ALERT_NOTIFICATION_ID }
+        } catch (_: Exception) { null } ?: return false
+        return try {
+            val again = android.app.Notification.Builder
+                .recoverBuilder(ctx, shown.notification)
+                .setContentText(text)
+                .setOnlyAlertOnce(true)
+                .build()
+            nm.notify(ALERT_NOTIFICATION_ID, again)
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     /** Where we keep the last title, to find it again after a reboot. */
     const val KEY_TITLE = "notification-title"
 

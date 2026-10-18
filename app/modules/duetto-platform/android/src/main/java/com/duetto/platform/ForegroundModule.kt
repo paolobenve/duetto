@@ -379,6 +379,12 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
         }
     }
 
+    /** The alert still on show, with its words made again, silent: false if there is none. */
+    @ReactMethod
+    fun renewAlert(text: String, promise: Promise) {
+        promise.resolve(Notifier.renewAlert(ctx, text))
+    }
+
     /** The same, gone by itself after `ms`: news the standing notification says as well. */
     @ReactMethod
     fun notifyBrief(name: String, text: String, ms: Double, promise: Promise) {

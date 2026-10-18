@@ -26,6 +26,7 @@ import { keepCall } from './callsUnseen';
 import { sendJournalOver } from './journalSwap';
 import { callerInUse, CallOutcome } from './notificationCall';
 import { onNewDay } from './dayTurn';
+import { alertSaid } from './alertWords';
 import {
   deliverAsk, answerHeard, noteAskedOfUs, noteTheirJournal, said as saidOfThem,
 } from './diagnosticsAsk';
@@ -820,10 +821,13 @@ async function listenNow(): Promise<boolean> {
           Alarm.play(String(msg.sound ?? ''), false, 0,
             ALERT_GAIN[cfg.alertLevel ?? 'full'] ?? 1).catch(() => { /* noop */ });
           Journal.mark(`alarm:${msg.sound}`).catch(() => { /* noop */ });
-          const text = news.called(peerShown(pair, name), channel, Number(msg.at) || Date.now(),
+          const at = Number(msg.at) || Date.now();
+          const words = () => news.called(peerShown(pair, name), channel, at,
             alarmLabel(String(msg.sound ?? '')));
+          const text = words();
           // Silent: the sound is the call; see the app's own.
           Foreground.notifyFor('', text, '', { sound: 'none' }).catch(() => { /* noop */ });
+          alertSaid(words);
           // For the middle of the screen, when the app opens: see callsUnseen.ts.
           keepCall(text);
         }
@@ -879,8 +883,10 @@ async function listenNow(): Promise<boolean> {
             made += 1;
             Journal.mark('paired:by-letter:headless').catch(() => { /* noop */ });
             const who = item.payload.name;
-            Foreground.notify('', news.paired(who, Date.now()))
+            const at = Date.now();
+            Foreground.notify('', news.paired(who, at))
               .catch(() => { /* noop */ });
+            alertSaid(() => news.paired(who, at));
           }
           if (made > 0) await saveConfig(next);
         }).catch(() => { /* noop */ });
@@ -890,13 +896,15 @@ async function listenNow(): Promise<boolean> {
         // The same words as the app's: a call is a call, whether the
         // window is open or not.
         const who = peerShown(pair, peerName);
-        const text = reason === 'knock'
+        const words = () => (reason === 'knock'
           ? news.called(who, channel, at)
-          : news.inChannel(who, channel, at);
+          : news.inChannel(who, channel, at));
+        const text = words();
         log('alert:', text);
         // A coming in rings, then goes: the standing notification says it too.
         if (reason === 'knock') Foreground.notify('', text).catch(() => { /* noop */ });
         else Foreground.notifyBrief('', text, 15_000).catch(() => { /* noop */ });
+        alertSaid(words);
         if (reason === 'knock') keepCall(text);
       },
     },

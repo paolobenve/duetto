@@ -56,6 +56,7 @@ import { takeCall } from './callsUnseen';
 import { sendJournalOver, JOURNAL_PIECE } from './journalSwap';
 import { callerInUse } from './notificationCall';
 import { onNewDay } from './dayTurn';
+import { alertSaid } from './alertWords';
 import DiagnosticsAskCard from './DiagnosticsAskCard';
 import {
   type AskState, ourAsk, setOurAsk, deliverAsk, answerHeard, noteAskedOfUs,
@@ -4104,6 +4105,7 @@ export default function App() {
               // other one is not answering, and the phone may be lying
               // lit on a table with nobody in front of it.
               Foreground.notify('', news.called(who, channel, at)).catch(() => {});
+              alertSaid(() => news.called(who, channel, at));
               // And in the middle of the screen, for half a minute: in a
               // noisy room the sound and the shade go unnoticed.
               showCallAlert(news.called(who, channel, at));
@@ -4120,6 +4122,7 @@ export default function App() {
             if (appStateRef.current !== 'active') {
               // Heard, then gone: the standing notification says it too.
               Foreground.notifyBrief('', news.inChannel(who, channel, at), ENTRY_ALERT_MS).catch(() => {});
+              alertSaid(() => news.inChannel(who, channel, at));
             }
           },
 
@@ -4225,15 +4228,17 @@ export default function App() {
               // going off on a phone lying on a table, with nothing on
               // the screen, is a riddle. It is the same case as a call
               // - somebody wants you - and it gets the same words.
-              const said = news.called(
-                shownNameRef.current, channelRef.current,
-                Number((msg as any).at) || Date.now(), alarmLabel(String(msg.sound ?? '')),
-              );
+              const callerName = shownNameRef.current;
+              const callChannel = channelRef.current;
+              const calledAt = Number((msg as any).at) || Date.now();
+              const sound = alarmLabel(String(msg.sound ?? ''));
+              const said = news.called(callerName, callChannel, calledAt, sound);
               // Silent: the sound itself is the call, and the
               // notification's own on top of it made two at once, on two
               // different volumes. It still buzzes as chosen.
               if (!inChannelRef.current) {
                 Foreground.notifyFor('', said, '', { sound: 'none' }).catch(() => { /* noop */ });
+                alertSaid(() => news.called(callerName, callChannel, calledAt, sound));
               }
               // In the middle of the screen, in the channel too: the
               // sound may be drowned by the room.
