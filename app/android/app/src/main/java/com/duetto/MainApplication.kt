@@ -48,5 +48,9 @@ class MainApplication : Application(), ReactApplication {
     if (VoiceEffects.webrtcLogWanted(this)) {
       WebRTCModuleOptions.getInstance().loggingSeverity = Logging.Severity.LS_WARNING
     }
+    // The phone's video encoder throwing no longer takes the app down
+    // with it: see GuardedCodecs.kt.
+    WebRTCModuleOptions.getInstance().videoEncoderFactory = GuardedEncoderFactory(this)
+    WebRTCModuleOptions.getInstance().videoDecoderFactory = LazyDecoderFactory()
   }
 }
