@@ -36,6 +36,59 @@ export type Release = {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.9.20',
+    notes: {
+      en: [
+        'The standing notification shows each connection on its own, with where the other stands and the Call and Enter buttons.',
+        'Each phone can ask the other to turn its diagnostics on.',
+        'When the server restarts, Duetto says so and comes back by itself within seconds; a conversation under way goes on.',
+        'The 32-bit version is back, for older phones.',
+        'A long press on the volume figure opens Android\'s volumes.',
+        'And various other minor improvements.',
+      ],
+      it: [
+        'La notifica fissa mostra ogni connessione per conto suo, con lo stato dell\'altro e i pulsanti Avvisa ed Entra.',
+        'Ogni telefono può chiedere all\'altro di accendere la diagnostica.',
+        'Quando il server si riavvia, Duetto lo dice e si ricollega da solo in pochi secondi; la voce in corso non si interrompe.',
+        'Torna la versione a 32 bit, per i telefoni più vecchi.',
+        'Una pressione lunga sulla cifra del volume apre i volumi di Android.',
+        'E vari altri miglioramenti minori.',
+      ],
+      es: [
+        'La notificación fija muestra cada conexión por separado, con el estado del otro y los botones Avisar y Entrar.',
+        'Cada teléfono puede pedir al otro que encienda el diagnóstico.',
+        'Cuando el servidor se reinicia, Duetto lo dice y vuelve solo en pocos segundos; la conversación en curso sigue.',
+        'Vuelve la versión de 32 bits, para los teléfonos más antiguos.',
+        'Una pulsación larga en la cifra del volumen abre los volúmenes de Android.',
+        'Y varias otras mejoras menores.',
+      ],
+      fr: [
+        'La notification permanente montre chaque connexion à part, avec l\'état de l\'autre et les boutons Prévenir et Entrer.',
+        'Chaque téléphone peut demander à l\'autre d\'allumer son diagnostic.',
+        'Quand le serveur redémarre, Duetto le dit et revient tout seul en quelques secondes ; la conversation en cours continue.',
+        'La version 32 bits revient, pour les téléphones plus anciens.',
+        'Un appui long sur le chiffre du volume ouvre les volumes d\'Android.',
+        'Et diverses autres petites améliorations.',
+      ],
+      de: [
+        'Die ständige Benachrichtigung zeigt jede Verbindung für sich, mit dem Stand der anderen Person und den Knöpfen Rufen und Eintreten.',
+        'Jedes Telefon kann das andere bitten, die Diagnose einzuschalten.',
+        'Startet der Server neu, sagt Duetto es und verbindet sich in Sekunden von selbst wieder; ein laufendes Gespräch geht weiter.',
+        'Die 32-Bit-Version ist zurück, für ältere Telefone.',
+        'Langes Drücken auf die Lautstärkezahl öffnet die Lautstärken von Android.',
+        'Und weitere kleine Verbesserungen.',
+      ],
+      pt: [
+        'A notificação fixa mostra cada conexão separada, com o estado do outro e os botões Avisar e Entrar.',
+        'Cada telefone pode pedir ao outro que ligue o diagnóstico.',
+        'Quando o servidor reinicia, o Duetto avisa e volta sozinho em poucos segundos; a conversa em andamento continua.',
+        'Volta a versão de 32 bits, para telefones mais antigos.',
+        'Um toque longo no número do volume abre os volumes do Android.',
+        'E várias outras melhorias menores.',
+      ],
+    },
+  },
+  {
     version: '0.9.19',
     notes: {
       en: [
