@@ -2695,15 +2695,25 @@ export default function App() {
    */
   const [shownStatus, setShownStatus] = useState<PresenceStatus>(status);
   const shownLostAt = useRef(0);
+  /**
+   * The server was really lost, not only being reached: from then on a
+   * try under way is still "no server". Shown as it comes, the card
+   * went from "server unreachable" to "connecting" and back at every
+   * try; at the start, with no server lost yet, "connecting" stays.
+   */
+  const shownWasOffline = useRef(false);
   useEffect(() => {
     if (status !== 'offline' && status !== 'connecting') {
       shownLostAt.current = 0;
+      shownWasOffline.current = false;
       setShownStatus(status);
       return;
     }
+    if (status === 'offline') shownWasOffline.current = true;
+    const shown: PresenceStatus = shownWasOffline.current ? 'offline' : status;
     const since = shownLostAt.current || (shownLostAt.current = Date.now());
     const left = Math.max(0, SERVER_GRACE_MS - (Date.now() - since));
-    const t = setTimeout(() => setShownStatus(status), left);
+    const t = setTimeout(() => setShownStatus(shown), left);
     return () => clearTimeout(t);
   }, [status]);
 
