@@ -14,6 +14,61 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
+## 0.9.20 build 497
+
+**Version 0.9.20: the notification, the server's restart, and the older phones.** The
+standing notification gives each connection a line of its own, saying where the other
+stands - in the channel, waiting, switched off or unreachable - and since when, with a Call
+and an Enter button for each; its lines are shown whole, and their times take their day
+when the day turns. A call that comes with Duetto in front and the screen on rings without
+a notification; one left unseen past midnight takes its day, in silence.
+
+The connections not in use say more: the other's coming in rings, then goes, and the
+going out is said; coming into a channel, the other's first state rings nothing. They
+speak with their names as they are now, say goodbye when the phone is made unavailable,
+and are watched and made again when they drop; choices that hold for both reach the other
+phone, waiting or away. A new name is told without leaving the room, and one's own is set
+in the connection's pencil. The calls received have a level per connection, from low to
+full, and ring with their connection's sound; those sent sound as loud as the buttons;
+calls in quick succession ring one a second, each cutting the last.
+
+A restart of the server is no longer a fall. The server says goodbye to every phone
+before going, and stops before its reverse proxy so that the goodbye gets through. The app
+says that the server is restarting and that it comes back by itself; with the link between
+the phones still up, the two are shown together and the voice goes on, and whoever can be
+heard is shown there whatever the server says until it knows. An attempt to reach the
+server that neither opens nor fails is given up, and with the app behind a lost server is
+dialled again every two seconds by a native beat, the processor kept awake for a minute
+at most: in a test the phones were back in two or three seconds, where before they took
+fifteen.
+
+Each phone can ask the other to turn its diagnostics on, and the connections not in use
+answer too; the switch comes first in its tab, and the settings follow it when it is
+turned on from elsewhere. The journal says when the phone was switched on and why, where
+a native crash happened, and a camera operation that waits or hangs; Duetto says at once
+why Android closed it, updates included.
+
+A long press on the volume figure opens Android's volumes, and ringtone and notifications
+are one row where they are one volume. The faint call-waiting beeps of a ringing phone
+become an option. A Bluetooth headset switching off leaves the sound where it was before;
+only the outputs picked by hand are remembered for the next entry, and Bluetooth devices
+are asked about when met, until answered. A phone lying flat is at nobody's ear, and the
+ear counts only with the screen on and after a second of near. A headset's hang-up brings
+the call back after eight seconds, not at once; the channel's call waits for another
+app's call to end before coming back, and is placed again when closed from outside.
+
+One camera operation at a time: the video button waits while the camera opens or closes,
+and a camera taken by another app is opened again by itself. The phone's video encoder
+throwing no longer takes the app down - it crashed the Edge as its camera came on - and
+the channel goes on with VP8 in software. The cures of a grainy picture are two at most
+while the road stays the same, none while the other side is on mobile data, and the
+threshold is 250 kbit/s at most; the video view that stops drawing is built anew.
+
+The settings' tabs are pages, moved by a drag sideways. A waiting code opens its QR code
+and its link again; the news is shown once and fades in ten seconds; the screen against
+being closed points to dontkillmyapp.com. The 32-bit arm (armeabi-v7a) is back in the same
+single APK, for the older phones.
+
 ## 0.9.19 build 443
 
 **Version 0.9.19: a call, and the connections that wait.** The channel is now a call of

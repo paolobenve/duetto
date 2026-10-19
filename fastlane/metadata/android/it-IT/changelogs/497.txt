@@ -1,0 +1,6 @@
+- La notifica fissa mostra ogni connessione per conto suo, con lo stato dell'altro e i pulsanti Avvisa ed Entra.
+- Ogni telefono può chiedere all'altro di accendere la diagnostica.
+- Quando il server si riavvia, Duetto lo dice e si ricollega da solo in pochi secondi; la voce in corso non si interrompe.
+- Torna la versione a 32 bit, per i telefoni più vecchi.
+- Una pressione lunga sulla cifra del volume apre i volumi di Android.
+- E vari altri miglioramenti minori.

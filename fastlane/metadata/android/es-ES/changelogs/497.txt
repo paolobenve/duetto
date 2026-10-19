@@ -1,0 +1,6 @@
+- La notificación fija muestra cada conexión por separado, con el estado del otro y los botones Avisar y Entrar.
+- Cada teléfono puede pedir al otro que encienda el diagnóstico.
+- Cuando el servidor se reinicia, Duetto lo dice y vuelve solo en pocos segundos; la conversación en curso sigue.
+- Vuelve la versión de 32 bits, para los teléfonos más antiguos.
+- Una pulsación larga en la cifra del volumen abre los volúmenes de Android.
+- Y varias otras mejoras menores.

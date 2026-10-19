@@ -1,0 +1,6 @@
+- La notification permanente montre chaque connexion à part, avec l'état de l'autre et les boutons Prévenir et Entrer.
+- Chaque téléphone peut demander à l'autre d'allumer son diagnostic.
+- Quand le serveur redémarre, Duetto le dit et revient tout seul en quelques secondes ; la conversation en cours continue.
+- La version 32 bits revient, pour les téléphones plus anciens.
+- Un appui long sur le chiffre du volume ouvre les volumes d'Android.
+- Et diverses autres petites améliorations.

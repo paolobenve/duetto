@@ -1,0 +1,6 @@
+- Die ständige Benachrichtigung zeigt jede Verbindung für sich, mit dem Stand der anderen Person und den Knöpfen Rufen und Eintreten.
+- Jedes Telefon kann das andere bitten, die Diagnose einzuschalten.
+- Startet der Server neu, sagt Duetto es und verbindet sich in Sekunden von selbst wieder; ein laufendes Gespräch geht weiter.
+- Die 32-Bit-Version ist zurück, für ältere Telefone.
+- Langes Drücken auf die Lautstärkezahl öffnet die Lautstärken von Android.
+- Und weitere kleine Verbesserungen.

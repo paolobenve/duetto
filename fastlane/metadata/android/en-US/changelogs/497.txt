@@ -1,0 +1,6 @@
+- The standing notification shows each connection on its own, with where the other stands and the Call and Enter buttons.
+- Each phone can ask the other to turn its diagnostics on.
+- When the server restarts, Duetto says so and comes back by itself within seconds; a conversation under way goes on.
+- The 32-bit version is back, for older phones.
+- A long press on the volume figure opens Android's volumes.
+- And various other minor improvements.
