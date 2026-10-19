@@ -181,6 +181,20 @@ sudo systemctl enable --now duetto-signaling
 curl -s http://127.0.0.1:8787/healthz      # {"ok":true,"rooms":0}
 ```
 
+The unit starts after the reverse proxy, so that at a reboot it stops
+before it: the goodbye the server sends every phone on its way out
+("server-shutdown") has to pass through the proxy, and with the two
+stopped side by side the proxy went first and the phones saw a plain
+drop. An installation set up before this line, with a unit of its own
+not to be overwritten, gets it as a drop-in (name your proxy):
+
+```bash
+sudo mkdir -p /etc/systemd/system/duetto-signaling.service.d
+printf '[Unit]\nAfter=haproxy.service\n' \
+  | sudo tee /etc/systemd/system/duetto-signaling.service.d/order.conf
+sudo systemctl daemon-reload    # no restart needed: it counts at the next stop
+```
+
 ### With Docker, instead of systemd
 
 ```bash

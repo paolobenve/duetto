@@ -14,6 +14,13 @@
 [Unit]
 Description=Duetto signaling server (WebSocket)
 After=network.target
+# Up after the reverse proxy, and so down BEFORE it: on the way out the
+# server says goodbye to every phone ("server-shutdown"), and that word
+# has to pass through the proxy. Stopped side by side, as at a reboot,
+# the proxy went first and the phones saw a plain drop. Units that do
+# not exist are ignored. On an installation whose unit is tuned, the
+# same line goes in a drop-in instead - see DEPLOY.md.
+After=haproxy.service apache2.service nginx.service
 # Never give up: a crash-loop is slowed down by the backoff below, not
 # stopped - a server that stays down until a human notices is worse.
 # (In [Unit] and not [Service]: older systemd only knows it here.)
