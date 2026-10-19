@@ -2707,6 +2707,21 @@ export default function App() {
     return () => clearTimeout(t);
   }, [status]);
 
+  /**
+   * No server, and still together.
+   *
+   * The voice and the picture go from phone to phone: the server only
+   * introduces them. Losing it - a reboot, a fault - takes nothing from
+   * a conversation under way, and while the link holds the screen and
+   * the notification say "with them", with a word about the server,
+   * instead of "connection lost". At the reboot of 19 October they said
+   * the alarm over a voice still arriving, and leaving and coming back
+   * in to mend it was the one thing that broke the link.
+   */
+  const throughLink = inChannel && connState === 'connected'
+    && (shownStatus === 'offline' || shownStatus === 'connecting');
+  const screenStatus: PresenceStatus = throughLink ? 'together' : shownStatus;
+
   const noticeCode = React.useMemo(() => presenceCode({
     inChannel,
     peerActive: status === 'together',
@@ -2715,7 +2730,8 @@ export default function App() {
     tornDown: peerTornDown,
     server: shownStatus === 'offline' ? 'down'
       : shownStatus === 'connecting' ? 'connecting' : 'ok',
-  }), [inChannel, status, shownStatus, peerPresent, peerDetached, peerTornDown]);
+    throughLink,
+  }), [inChannel, status, shownStatus, peerPresent, peerDetached, peerTornDown, throughLink]);
   const noticeCodeRef = useRef(noticeCode);
   useEffect(() => { noticeCodeRef.current = noticeCode; }, [noticeCode]);
   /** the day turned: the line's times are written again, with their day (see dayTurn.ts) */
@@ -2736,12 +2752,13 @@ export default function App() {
     name: shownName,
     server: shownStatus === 'offline' ? 'down'
       : shownStatus === 'connecting' ? 'connecting' : 'ok',
+    throughLink,
     // `status` is READ here, so it belongs in this list: without it a
     // change of status alone left the line on its old words until
     // something else happened to move. It was masked - `shownStatus`
     // follows `status` a breath later and dragged the line along - but
     // masked is not cured.
-  }), [inChannel, status, shownStatus, peerPresent, peerDetached, peerTornDown, shownName, peerSince,
+  }), [inChannel, status, shownStatus, throughLink, peerPresent, peerDetached, peerTornDown, shownName, peerSince,
     mySince, connectionName, peerTornDownBy, myAvailable, peerAvailable,
     // The words change with the language: the line is written again.
     cfg?.language,
@@ -6521,8 +6538,10 @@ export default function App() {
         onSelectQuality={(q) => applyQuality(q, true)}
         localStream={localStream}
         remoteStream={remoteStream}
-        // The one to show, not the true one: see shownStatus.
-        status={shownStatus}
+        // The one to show, not the true one: see shownStatus, and
+        // throughLink for a server lost under a conversation.
+        status={screenStatus}
+        serverNote={throughLink ? t('channel.noServerLinkHolds') : undefined}
         connectionState={connState}
         audioOn={audioOn}
         videoOn={videoOn}

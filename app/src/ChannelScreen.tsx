@@ -556,6 +556,11 @@ type Props = {
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
   status: PresenceStatus;
+  /**
+   * A word about the server lost under a conversation still going on:
+   * said as news, not as an alarm (see throughLink in the app).
+   */
+  serverNote?: string;
   /** false when the screen is up but the phone is not in the channel: it shows the way in */
   entered?: boolean;
   onEnter?: () => void;
@@ -663,7 +668,7 @@ export default function ChannelScreen(props: Props) {
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes, btBattery,
     onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, leaving,
-    onAlarm, onZoom, onOpenSettings, onCall, pairBroken, battery, backName, onBack,
+    onAlarm, onZoom, onOpenSettings, onCall, pairBroken, battery, backName, onBack, serverNote,
   } = props;
   const { levelDb, onToggleOutputMute, onSetLevel, wakeAt } = props;
   const outputMuted = !!levelDb?.muted;
@@ -864,8 +869,11 @@ export default function ChannelScreen(props: Props) {
   // Without this, losing the server left a mute black screen: their
   // video is still there but no frame arrives any more, and nothing
   // explained it.
+  // The server lost under a conversation still going on is not an
+  // interruption: said over their picture when there is one, and
+  // otherwise in the card, which the notice would cover.
   const notice = !showNotice
-    ? undefined
+    ? (remoteHasVideo ? serverNote : undefined)
     : serverLost
       ? t('channel.connectionLost')
       : (connectionState === 'failed'
@@ -1445,6 +1453,7 @@ export default function ChannelScreen(props: Props) {
             // still gets through, and the card used to deny a
             // conversation that was going on.
             linked={speaking}
+            serverNote={serverNote}
             connectionState={connectionState}
             peerName={peerName}
             peerAvatar={peerAvatar}
@@ -2215,6 +2224,8 @@ function PresenceCard(props: {
   onEnterAlways?: () => void;
   /** the link is carrying: connected, or still delivering packets */
   linked: boolean;
+  /** the server lost while the two are still linked */
+  serverNote?: string;
   connectionState: string;
   peerName: string;
   peerAvatar: Avatar;
@@ -2360,6 +2371,7 @@ function PresenceCard(props: {
               : t('channel.establishing')}
         </Text>
       )}
+      {props.serverNote ? <Text style={styles.cardSub}>{props.serverNote}</Text> : null}
       {/* Our own call: said here, where the silence is felt. */}
       {onCall ? <Text style={styles.cardOnCall}>{t('channel.onPhoneCall')}</Text> : null}
       {linked && props.ownMarks ? <View style={styles.cardOwn}>{props.ownMarks}</View> : null}

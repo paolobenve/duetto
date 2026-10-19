@@ -313,7 +313,9 @@ export function presenceCode(o: {
   detached?: boolean;
   tornDown?: boolean;
   server?: 'ok' | 'down' | 'connecting';
+  throughLink?: boolean;
 }): string {
+  if (o.server !== 'ok' && o.server !== undefined && o.throughLink) return 'with-peer-no-server';
   if (o.server === 'down') return 'no-server';
   if (o.server === 'connecting') return 'connecting';
   if (o.peerActive) return o.inChannel ? 'with-peer' : 'peer-in-channel';
@@ -350,6 +352,16 @@ function presenceFirstLine(o: {
   /** how OUR own link to the server is doing */
   server?: 'ok' | 'down' | 'connecting';
   /**
+   * Without a server, the two still linked to each other.
+   *
+   * The voice goes from phone to phone, not through the server: losing
+   * it - a reboot, say - leaves a conversation under way going on. At
+   * the reboot of 19 October the line said "waiting" and then "no
+   * server" over a voice still arriving, and leaving and coming back in
+   * to mend it was what broke the link that was holding.
+   */
+  throughLink?: boolean;
+  /**
    * Since when the other person is in the state the line tells, as the
    * server saw it; 0 when nobody knows, and then no time is said.
    */
@@ -377,6 +389,9 @@ function presenceFirstLine(o: {
     : t('presence.waiting', { channel: inChannelNamed, when: mine });
   const who = named(o.name) ? o.name : t('presence.theOther');
   const theirs = at(o.since);
+  if (o.server !== 'ok' && o.server !== undefined && o.throughLink) {
+    return t('presence.withPeerNoServer', { channel, who });
+  }
   if (o.server === 'down') return t('presence.noServer', { ours });
   if (o.server === 'connecting') return ours;
   if (o.peerActive) {
