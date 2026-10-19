@@ -344,8 +344,9 @@ const KNOCK_ECHO_MS = 2_000;
  * stream, quiet, as the knock's echo is: a cue, not an alarm.
  */
 /**
- * How loud, as the settings say: a share of the stream they come out
- * of. Kept here, beside the one function that plays them, and set by
+ * How loud, as the settings say: a share of the top of the stream they
+ * come out of, whatever the voice's volume stands at (Alarm.apartFromKnob
+ * takes the knob back out). Kept here, beside the one function that plays them, and set by
  * the effect that follows the configuration.
  */
 let cueGain = CUE_GAIN.veryLow;

@@ -11,8 +11,10 @@ package com.duetto.platform
 
 import android.content.Context
 import android.media.AudioAttributes
+import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.media.MediaPlayer
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -117,7 +119,8 @@ object Alarm {
 
     /**
      * @param volume for the echoes and the cues, the share of their
-     *   stream's volume, 0 to 1; below 0, the old third
+     *   stream's top, 0 to 1, whatever the voice's volume (see
+     *   apartFromKnob); below 0, the old third
      */
     fun play(ctx: Context, name: String, echo: Boolean = false, maxMs: Int = 0, volume: Float = -1f) {
         val res = resourceFor(name) ?: return
@@ -170,7 +173,8 @@ object Alarm {
                 it.release()
                 if (cuePlayer === it) cuePlayer = null
             }
-            mp.setVolume(volume, volume)
+            val v = apartFromKnob(ctx, volume)
+            mp.setVolume(v, v)
             cuePlayer = mp
             mp.start()
             if (maxMs > 0) {
@@ -179,6 +183,72 @@ object Alarm {
         } catch (e: Exception) {
             Log.w(TAG, "cue: $name does not play: ${e.message}")
         }
+    }
+
+    /**
+     * A sound on the signalling stream at `share` of that stream's top,
+     * whatever the call volume stands at: the value for its player.
+     *
+     * In the conversation the signalling stream follows the call volume -
+     * the knob Duetto moves with its scale - and a share of it made the
+     * buttons' sounds and the calls follow the other's voice: lowered,
+     * they went down with it. The levels in the settings are meant as
+     * levels of their own, so the knob is taken back out: with the voice
+     * at -12 dB the sound starts 12 dB higher. Not past the stream's top
+     * - a player cannot go above 1 - so with the knob below the level
+     * chosen the sound stays at the top, lower than asked.
+     *
+     * Outside the conversation the stream follows another knob, and
+     * there is no voice to keep apart from: the share is left as it is.
+     */
+    fun apartFromKnob(ctx: Context, share: Float): Float {
+        if (share <= 0f) return 0f
+        val am = ctx.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return share
+        if (am.mode != AudioManager.MODE_IN_COMMUNICATION) return share
+        val knob = knobShare(am)
+        return if (knob > 0f) (share / knob).coerceIn(0f, 1f) else share
+    }
+
+    /**
+     * Where the call volume stands, as a share of its top: from Android's
+     * decibels where it says them (9 on), from the step otherwise - a
+     * step is not a share, and the steps alone take back less than the
+     * knob took off, never more.
+     */
+    private fun knobShare(am: AudioManager): Float {
+        val stream = AudioManager.STREAM_VOICE_CALL
+        val max = am.getStreamMaxVolume(stream)
+        val now = am.getStreamVolume(stream)
+        if (max <= 0 || now >= max) return 1f
+        val bySteps = (now.toFloat() / max).coerceIn(0.01f, 1f)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return bySteps
+        // The device the call is on, as VolumeModule.steps asks for it.
+        val devices = mutableListOf<Int>()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            am.communicationDevice?.type?.let { devices.add(it) }
+        }
+        @Suppress("DEPRECATION")
+        devices.add(
+            when {
+                am.isBluetoothScoOn -> AudioDeviceInfo.TYPE_BLUETOOTH_SCO
+                am.isSpeakerphoneOn -> AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
+                am.isWiredHeadsetOn -> AudioDeviceInfo.TYPE_WIRED_HEADSET
+                else -> AudioDeviceInfo.TYPE_BUILTIN_EARPIECE
+            },
+        )
+        for (device in devices.distinct()) {
+            try {
+                val below = am.getStreamVolumeDb(stream, max, device) -
+                    am.getStreamVolumeDb(stream, now.coerceAtLeast(am.getStreamMinVolume(stream)), device)
+                // A table that is flat says nothing: the next device, or the steps.
+                if (below.isFinite() && below > 0f) {
+                    return Math.pow(10.0, -below / 20.0).toFloat().coerceIn(0.001f, 1f)
+                }
+            } catch (_: Exception) {
+                // a device this phone has no table for: the next one
+            }
+        }
+        return bySteps
     }
 
     /**

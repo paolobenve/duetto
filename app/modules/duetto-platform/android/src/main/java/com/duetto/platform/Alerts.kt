@@ -270,7 +270,12 @@ object Alerts {
                     .build(),
             )
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                ringtone.volume = c.level.coerceIn(0f, 1f)
+                val level = c.level.coerceIn(0f, 1f)
+                // In the conversation, at its level whatever the voice's
+                // volume: see Alarm.apartFromKnob.
+                ringtone.volume =
+                    if (usage == AudioAttributes.USAGE_VOICE_COMMUNICATION_SIGNALLING) Alarm.apartFromKnob(ctx, level)
+                    else level
             }
             ringtone.play()
         } catch (e: Exception) {
