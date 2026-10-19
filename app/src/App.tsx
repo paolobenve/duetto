@@ -2749,13 +2749,26 @@ export default function App() {
    * the alarm over a voice still arriving, and leaving and coming back
    * in to mend it was the one thing that broke the link.
    */
-  const throughLink = inChannel && connState === 'connected'
-    && (shownStatus === 'offline' || shownStatus === 'connecting');
-  const screenStatus: PresenceStatus = throughLink ? 'together' : shownStatus;
+  const linkHolds = inChannel && connState === 'connected';
+  const throughLink = linkHolds && (shownStatus === 'offline' || shownStatus === 'connecting');
+  /**
+   * The server says they are not in; the link says they are.
+   *
+   * The mirror of the above: the server is ours again, not yet theirs.
+   * At the server's restart of 19 October the POCO was back in a second
+   * and the Edge in sixteen, and for those fifteen the POCO said "the
+   * Edge is unreachable" over the Edge's voice. Whoever can be heard is
+   * there: shown together, whatever the server says until it knows.
+   */
+  const peerByLink = linkHolds && shownStatus === 'alone';
+  useEffect(() => {
+    if (peerByLink) Journal.mark('peer:by-link').catch(() => { /* noop */ });
+  }, [peerByLink]);
+  const screenStatus: PresenceStatus = throughLink || peerByLink ? 'together' : shownStatus;
 
   const noticeCode = React.useMemo(() => presenceCode({
     inChannel,
-    peerActive: status === 'together',
+    peerActive: status === 'together' || peerByLink,
     peerPresent,
     detached: peerDetached,
     tornDown: peerTornDown,
@@ -2764,7 +2777,7 @@ export default function App() {
     throughLink,
     restarting: serverRestarting,
   }), [inChannel, status, shownStatus, peerPresent, peerDetached, peerTornDown, throughLink,
-    serverRestarting]);
+    serverRestarting, peerByLink]);
   const noticeCodeRef = useRef(noticeCode);
   useEffect(() => { noticeCodeRef.current = noticeCode; }, [noticeCode]);
   /** the day turned: the line's times are written again, with their day (see dayTurn.ts) */
@@ -2772,11 +2785,12 @@ export default function App() {
   useEffect(() => onNewDay(() => setDayTick((d) => d + 1)), []);
   const noticeText = React.useMemo(() => presenceLine({
     inChannel,
-    peerActive: status === 'together',
+    peerActive: status === 'together' || peerByLink,
     peerPresent,
     detached: peerDetached,
     tornDown: peerTornDown,
-    since: peerSince,
+    // their moment is the server's, and the server does not have them yet
+    since: peerByLink ? 0 : peerSince,
     tornDownBy: peerTornDownBy,
     mySince,
     myAvailable,
@@ -2792,7 +2806,7 @@ export default function App() {
     // something else happened to move. It was masked - `shownStatus`
     // follows `status` a breath later and dragged the line along - but
     // masked is not cured.
-  }), [inChannel, status, shownStatus, throughLink, serverRestarting, peerPresent, peerDetached, peerTornDown, shownName, peerSince,
+  }), [inChannel, status, shownStatus, throughLink, serverRestarting, peerByLink, peerPresent, peerDetached, peerTornDown, shownName, peerSince,
     mySince, connectionName, peerTornDownBy, myAvailable, peerAvailable,
     // The words change with the language: the line is written again.
     cfg?.language,
