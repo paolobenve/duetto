@@ -180,6 +180,9 @@ export function attachWatchdog(
       Journal.mark('network:by-beat').catch(() => { /* noop */ });
     }).catch(() => { /* noop */ });
     if (hooks.driveFast) Heartbeat.fast(!sig.connected).catch(() => { /* noop */ });
+    // An attempt under way that still has its time is left to finish:
+    // thrown away at every beat, a slow handshake never made it.
+    if (!sig.connected && sig.attemptYoung) return;
     if (!sig.connected) { rebuild('no-socket'); return; }
     // The previous question went unanswered: the socket looks alive
     // but carries nothing any more.
@@ -191,6 +194,16 @@ export function attachWatchdog(
     probeSent = Date.now();
     sig.askPresence();
     hooks.onBeat?.();
+  });
+
+  /**
+   * The quick beat of a server just lost: the tries the stopped timers
+   * owe, made on time (see Signaling.nudge). Nothing else rides on it -
+   * no question to the server, no extra work: it is only there for the
+   * socket that is not up.
+   */
+  const stopRedial = Heartbeat.subscribeRedial(() => {
+    get()?.nudge();
   });
 
   /** When the last arrival went through: the weaker words that trail it are its own. */
@@ -272,6 +285,7 @@ export function attachWatchdog(
       if (settle) { clearTimeout(settle); settle = null; }
       stopProbe();
       stopBeat();
+      stopRedial();
       stopNet();
       if (hooks.driveFast) Heartbeat.fast(false).catch(() => { /* noop */ });
     },

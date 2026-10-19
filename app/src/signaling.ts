@@ -7,7 +7,7 @@
  * the LICENSE file at the root of the project, and at
  * <https://www.gnu.org/licenses/>.
  */
-import { Foreground, Journal } from 'duetto-platform';
+import { Foreground, Heartbeat, Journal } from 'duetto-platform';
 import { SignalCrypto } from './crypto';
 import { logger } from './log';
 import { deviceKey, deviceModel, deviceName, signNonce } from './device';
@@ -429,6 +429,10 @@ export class Signaling {
   private openWait = OPEN_WAIT_MIN_MS;
   /** an attempt given up since the last open: written down once per loss */
   private openStuckTold = false;
+  /** when the socket now opening was made */
+  private openingSince = 0;
+  /** when the scheduled try is due: what a beat looks at, its timer standing still */
+  private nextTryAt = 0;
   /**
    * A long wait, when the server says we are knocking too often.
    *
@@ -531,18 +535,13 @@ export class Signaling {
     const inUse = () => this.ws === ws;
 
     // An attempt neither opened nor failed is given up, and a fresh one
-    // made (see OPEN_WAIT_MIN_MS).
-    const waited = this.openWait;
+    // made (see OPEN_WAIT_MIN_MS). With the app behind this timer stands
+    // still, and the quick beat does the same through nudge().
+    this.openingSince = Date.now();
     const openTimer = setTimeout(() => {
       if (!inUse() || ws.readyState !== WebSocket.CONNECTING) return;
-      log('still opening after', waited, 'ms: given up, trying again');
-      if (!this.openStuckTold) {
-        this.openStuckTold = true;
-        Journal.mark(`server:open-stuck:${Math.round(waited / 1000)}s`).catch(() => { /* noop */ });
-      }
-      this.openWait = Math.min(this.openWait * 2, OPEN_WAIT_MAX_MS);
-      this.rebuild();
-    }, waited);
+      this.giveUpOpening();
+    }, this.openWait);
 
     const openedAt = Date.now();
     ws.onopen = () => {
@@ -1092,6 +1091,9 @@ export class Signaling {
   private holdAwake() {
     this.holdingAwake = true;
     Foreground.holdAwake(this.awakeTag, REDIAL_AWAKE_MS).catch(() => { /* noop */ });
+    // and the quick beat for as long, to do what the timers will not
+    // with the app behind (see nudge)
+    Heartbeat.redial(this.awakeTag, REDIAL_AWAKE_MS).catch(() => { /* noop */ });
     Journal.mark(`server:redial-awake:${this.opts.room.slice(0, 8)}`).catch(() => { /* noop */ });
   }
 
@@ -1099,6 +1101,59 @@ export class Signaling {
     if (!this.holdingAwake) return;
     this.holdingAwake = false;
     Foreground.letSleep(this.awakeTag).catch(() => { /* noop */ });
+    Heartbeat.redial(this.awakeTag, 0).catch(() => { /* noop */ });
+  }
+
+  /** The attempt now opening has had its time: a fresh one. */
+  private giveUpOpening() {
+    const waited = this.openWait;
+    log('still opening after', waited, 'ms: given up, trying again');
+    if (!this.openStuckTold) {
+      this.openStuckTold = true;
+      Journal.mark(`server:open-stuck:${Math.round(waited / 1000)}s`).catch(() => { /* noop */ });
+    }
+    this.openWait = Math.min(this.openWait * 2, OPEN_WAIT_MAX_MS);
+    this.rebuild();
+  }
+
+  /**
+   * An attempt under way that still has its time: a beat must leave it
+   * be. Throwing it away and opening another, as the beat used to, cut
+   * short every handshake slower than the beat itself.
+   */
+  get attemptYoung(): boolean {
+    return !!this.ws && this.ws.readyState === WebSocket.CONNECTING
+      && Date.now() - this.openingSince < this.openWait;
+  }
+
+  /**
+   * What the timers would have done by now, done at a beat.
+   *
+   * With the app behind, JavaScript's timers stand still (see
+   * HeartbeatModule.redial): the try scheduled half a second after a
+   * loss, and the limit on an attempt that hangs, wait for the screen.
+   * A beat comes from the native side and is heard all the same, so at
+   * each one this looks at the clock instead: the try that was due is
+   * made, the attempt past its time is given up, the one still within
+   * it is left to finish.
+   */
+  nudge() {
+    if (this.closedByUser || this.connected) return;
+    const now = Date.now();
+    if (this.reconnectTimer) {
+      if (now < this.nextTryAt) return;
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+      this.open();
+      return;
+    }
+    const ws = this.ws;
+    if (ws && ws.readyState === WebSocket.CONNECTING) {
+      if (now - this.openingSince >= this.openWait) this.giveUpOpening();
+      return;
+    }
+    // Neither a try scheduled nor one under way: one now.
+    this.open();
   }
 
   private scheduleReconnect() {
@@ -1111,6 +1166,7 @@ export class Signaling {
     const delay = held > 0 ? held : this.backoff + jitter;
     if (held <= 0) this.backoff = Math.min(this.backoff * 2, RECONNECT_MAX_MS);
     log('trying again in', delay, 'ms');
+    this.nextTryAt = Date.now() + delay;
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       this.open();

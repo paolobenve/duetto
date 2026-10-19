@@ -99,6 +99,8 @@ const answeredAt = new Map<string, number>();
 /** since when a connection has been found down, to say it once and its return */
 const downSince = new Map<string, number>();
 let stopBeat: (() => void) | null = null;
+/** the quick beat of a server just lost: see Signaling.nudge */
+let stopRedial: (() => void) | null = null;
 
 function answered(id: string) {
   answeredAt.set(id, Date.now());
@@ -119,11 +121,17 @@ function forgetWatch(id: string) {
 function watchStanding() {
   if (standing.size === 0) {
     if (stopBeat) { stopBeat(); stopBeat = null; }
+    if (stopRedial) { stopRedial(); stopRedial = null; }
     return;
   }
   if (stopBeat) return;
+  stopRedial = Heartbeat.subscribeRedial(() => {
+    for (const sig of standing.values()) sig.nudge();
+  });
   stopBeat = Heartbeat.subscribe(() => {
     for (const [id, sig] of standing) {
+      // an attempt still within its time is left to finish
+      if (!sig.connected && sig.attemptYoung) continue;
       const asked = askedAt.get(id) ?? 0;
       const silent = asked > 0 && (answeredAt.get(id) ?? 0) < asked;
       if (!sig.connected || silent) {

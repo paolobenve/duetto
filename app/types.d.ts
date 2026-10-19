@@ -104,6 +104,9 @@ declare module 'duetto-platform' {
     subscribe(cb: () => void): () => void;
     /** close together while without a server, far apart when connected */
     fast(quick: boolean): Promise<boolean>;
+    /** a beat every two seconds for `ms`, under `tag`, while a lost server is dialled again; 0 lets go */
+    redial(tag: string, ms: number): Promise<boolean>;
+    subscribeRedial(cb: () => void): () => void;
   };
 
   /** The phone's changes of network: cell, wifi, new address. */

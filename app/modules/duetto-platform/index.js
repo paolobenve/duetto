@@ -581,6 +581,20 @@ export const Heartbeat = isAndroid && NativeHeartbeat
       fast: (quick) => call(NativeHeartbeat, 'fast', !!quick),
 
       /**
+       * The quick beat of a server just lost, held for `ms` under `tag`
+       * (0 lets go): one every two seconds, heard through
+       * subscribeRedial. See HeartbeatModule.redial.
+       */
+      redial: (tag, ms) => call(NativeHeartbeat, 'redial', String(tag), Number(ms) || 0),
+
+      /** Calls `cb()` at every quick beat. Gives back the function to stop. */
+      subscribeRedial(cb) {
+        const emitter = new NativeEventEmitter(NativeHeartbeat);
+        const sub = emitter.addListener('duetto-heartbeat-redial', () => cb());
+        return () => sub.remove();
+      },
+
+      /**
        * Calls `cb()` at every beat. Gives back the function to stop.
        *
        * The beat is started by the first listener and stopped by the
@@ -603,7 +617,7 @@ export const Heartbeat = isAndroid && NativeHeartbeat
         };
       },
     }
-  : { subscribe: () => () => {}, fast: unavailable };
+  : { subscribe: () => () => {}, fast: unavailable, redial: unavailable, subscribeRedial: () => () => {} };
 
 /**
  * The phone's changes of network: cell, wifi, new address.
