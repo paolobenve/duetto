@@ -342,6 +342,19 @@ const RECONNECT_MIN_MS = 500;
 const TOO_MANY_WAIT_MS = 60_000;
 const RECONNECT_MAX_MS = 4000;
 /**
+ * How long an attempt may stay "opening" before it is given up.
+ *
+ * An attempt can neither open nor fail: on 19 October the Edge's first
+ * knock after the server's restart hung for fifteen seconds, until the
+ * heartbeat threw it away, and the night before the POCO's hung for
+ * forty-seven - while the server was there, taking the other phone's.
+ * Five seconds, then a fresh one. Doubled at every attempt given up, to
+ * twenty: on a slow mobile road the handshake can take longer than
+ * five, and an attempt that would have made it must not be cut forever.
+ */
+const OPEN_WAIT_MIN_MS = 5000;
+const OPEN_WAIT_MAX_MS = 20_000;
+/**
  * How long the processor is held up, at most, while a lost server is
  * dialled again.
  *
@@ -412,6 +425,10 @@ export class Signaling {
   private closedByUser = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private backoff = RECONNECT_MIN_MS;
+  /** how long the next attempt may stay opening: see OPEN_WAIT_MIN_MS */
+  private openWait = OPEN_WAIT_MIN_MS;
+  /** an attempt given up since the last open: written down once per loss */
+  private openStuckTold = false;
   /**
    * A long wait, when the server says we are knocking too often.
    *
@@ -513,11 +530,28 @@ export class Signaling {
      */
     const inUse = () => this.ws === ws;
 
+    // An attempt neither opened nor failed is given up, and a fresh one
+    // made (see OPEN_WAIT_MIN_MS).
+    const waited = this.openWait;
+    const openTimer = setTimeout(() => {
+      if (!inUse() || ws.readyState !== WebSocket.CONNECTING) return;
+      log('still opening after', waited, 'ms: given up, trying again');
+      if (!this.openStuckTold) {
+        this.openStuckTold = true;
+        Journal.mark(`server:open-stuck:${Math.round(waited / 1000)}s`).catch(() => { /* noop */ });
+      }
+      this.openWait = Math.min(this.openWait * 2, OPEN_WAIT_MAX_MS);
+      this.rebuild();
+    }, waited);
+
     const openedAt = Date.now();
     ws.onopen = () => {
+      clearTimeout(openTimer);
       if (!inUse()) { try { ws.close(); } catch { /* noop */ } return; }
       log('connected to the server');
       this.backoff = RECONNECT_MIN_MS;
+      this.openWait = OPEN_WAIT_MIN_MS;
+      this.openStuckTold = false;
       /**
        * A breath for the server to say its number, and then in we go.
        *
@@ -542,6 +576,7 @@ export class Signaling {
       log('network error:', e?.message ?? '(no details)');
     };
     ws.onclose = (e: any) => {
+      clearTimeout(openTimer);
       if (!inUse()) {
         log('a socket we had already abandoned went down: not our concern');
         return;
