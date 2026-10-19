@@ -314,8 +314,12 @@ export function presenceCode(o: {
   tornDown?: boolean;
   server?: 'ok' | 'down' | 'connecting';
   throughLink?: boolean;
+  restarting?: boolean;
 }): string {
-  if (o.server !== 'ok' && o.server !== undefined && o.throughLink) return 'with-peer-no-server';
+  if (o.server !== 'ok' && o.server !== undefined && o.throughLink) {
+    return o.restarting ? 'with-peer-server-restarting' : 'with-peer-no-server';
+  }
+  if (o.server !== 'ok' && o.server !== undefined && o.restarting) return 'server-restarting';
   if (o.server === 'down') return 'no-server';
   if (o.server === 'connecting') return 'connecting';
   if (o.peerActive) return o.inChannel ? 'with-peer' : 'peer-in-channel';
@@ -362,6 +366,11 @@ function presenceFirstLine(o: {
    */
   throughLink?: boolean;
   /**
+   * The server said it was going for a restart: it comes back by
+   * itself, and there is nothing to do but wait.
+   */
+  restarting?: boolean;
+  /**
    * Since when the other person is in the state the line tells, as the
    * server saw it; 0 when nobody knows, and then no time is said.
    */
@@ -390,7 +399,12 @@ function presenceFirstLine(o: {
   const who = named(o.name) ? o.name : t('presence.theOther');
   const theirs = at(o.since);
   if (o.server !== 'ok' && o.server !== undefined && o.throughLink) {
-    return t('presence.withPeerNoServer', { channel, who });
+    return o.restarting
+      ? t('presence.withPeerServerRestarting', { channel, who })
+      : t('presence.withPeerNoServer', { channel, who });
+  }
+  if (o.server !== 'ok' && o.server !== undefined && o.restarting) {
+    return t('presence.serverRestarting', { ours });
   }
   if (o.server === 'down') return t('presence.noServer', { ours });
   if (o.server === 'connecting') return ours;

@@ -561,6 +561,8 @@ type Props = {
    * said as news, not as an alarm (see throughLink in the app).
    */
   serverNote?: string;
+  /** the server said it was going for a restart: it comes back by itself */
+  serverRestarting?: boolean;
   /** false when the screen is up but the phone is not in the channel: it shows the way in */
   entered?: boolean;
   onEnter?: () => void;
@@ -669,6 +671,7 @@ export default function ChannelScreen(props: Props) {
     knockPending, audioRoute, audioRoutes, btBattery,
     onToggleAudio, onToggleVideo, onSwitchCamera, onSelectRoute, onKnock, onLeave, leaving,
     onAlarm, onZoom, onOpenSettings, onCall, pairBroken, battery, backName, onBack, serverNote,
+    serverRestarting,
   } = props;
   const { levelDb, onToggleOutputMute, onSetLevel, wakeAt } = props;
   const outputMuted = !!levelDb?.muted;
@@ -875,7 +878,7 @@ export default function ChannelScreen(props: Props) {
   const notice = !showNotice
     ? (remoteHasVideo ? serverNote : undefined)
     : serverLost
-      ? t('channel.connectionLost')
+      ? t(serverRestarting ? 'channel.serverRestartingNotice' : 'channel.connectionLost')
       : (connectionState === 'failed'
           ? t('channel.linkLost')
           : t('channel.linkInterrupted'));
@@ -1454,6 +1457,7 @@ export default function ChannelScreen(props: Props) {
             // conversation that was going on.
             linked={speaking}
             serverNote={serverNote}
+            serverRestarting={serverRestarting}
             connectionState={connectionState}
             peerName={peerName}
             peerAvatar={peerAvatar}
@@ -2226,6 +2230,8 @@ function PresenceCard(props: {
   linked: boolean;
   /** the server lost while the two are still linked */
   serverNote?: string;
+  /** the server said it was going for a restart */
+  serverRestarting?: boolean;
   connectionState: string;
   peerName: string;
   peerAvatar: Avatar;
@@ -2297,8 +2303,12 @@ function PresenceCard(props: {
     return (
       <View style={[styles.card, props.clearOfScale && styles.cardClear]}>
         <Text style={styles.avatarGhost}>{'\u{1F4F6}'}</Text>
-        <Text style={styles.cardTitle}>{t('channel.serverUnreachable')}</Text>
-        <Text style={styles.cardSub}>{t('channel.retryingAutomatically')}</Text>
+        <Text style={styles.cardTitle}>
+          {t(props.serverRestarting ? 'channel.serverRestarting' : 'channel.serverUnreachable')}
+        </Text>
+        <Text style={styles.cardSub}>
+          {t(props.serverRestarting ? 'channel.backByItself' : 'channel.retryingAutomatically')}
+        </Text>
       </View>
     );
   }

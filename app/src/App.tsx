@@ -286,6 +286,8 @@ const NOTICE_SETTLE_MS = 600;
  * seen anyway.
  */
 const SERVER_GRACE_MS = 5_000;
+/** how long "the server is restarting" is believed (see serverRestarting) */
+const SERVER_RESTART_WORD_MS = 10 * 60_000;
 
 /**
  * Coming back, what was chosen is what one finds - with one exception.
@@ -2694,6 +2696,23 @@ export default function App() {
    * four minutes - "together" had gone at once, "no server" never came.
    */
   const [shownStatus, setShownStatus] = useState<PresenceStatus>(status);
+  /**
+   * The server said, on its way out, that it was going for a restart.
+   *
+   * It closes every link with "server-shutdown" before stopping, and
+   * comes back by itself: a reboot of the machine for its updates, a
+   * new version. Knowing it, the screen says so - "restarting, back by
+   * itself" - at once, instead of the alarm of a lost connection, which
+   * at the reboot of 19 October was what sent somebody leaving and
+   * coming back in. Gone when the server is back, or after ten minutes:
+   * a restart that long is no longer one.
+   */
+  const [serverRestarting, setServerRestarting] = useState(false);
+  useEffect(() => {
+    if (!serverRestarting) return;
+    const timer = setTimeout(() => setServerRestarting(false), SERVER_RESTART_WORD_MS);
+    return () => clearTimeout(timer);
+  }, [serverRestarting]);
   const shownLostAt = useRef(0);
   /**
    * The server was really lost, not only being reached: from then on a
@@ -2712,10 +2731,12 @@ export default function App() {
     if (status === 'offline') shownWasOffline.current = true;
     const shown: PresenceStatus = shownWasOffline.current ? 'offline' : status;
     const since = shownLostAt.current || (shownLostAt.current = Date.now());
-    const left = Math.max(0, SERVER_GRACE_MS - (Date.now() - since));
+    // Said by the server itself: no breath to take, it is not a cell
+    // being changed.
+    const left = serverRestarting ? 0 : Math.max(0, SERVER_GRACE_MS - (Date.now() - since));
     const t = setTimeout(() => setShownStatus(shown), left);
     return () => clearTimeout(t);
-  }, [status]);
+  }, [status, serverRestarting]);
 
   /**
    * No server, and still together.
@@ -2741,7 +2762,9 @@ export default function App() {
     server: shownStatus === 'offline' ? 'down'
       : shownStatus === 'connecting' ? 'connecting' : 'ok',
     throughLink,
-  }), [inChannel, status, shownStatus, peerPresent, peerDetached, peerTornDown, throughLink]);
+    restarting: serverRestarting,
+  }), [inChannel, status, shownStatus, peerPresent, peerDetached, peerTornDown, throughLink,
+    serverRestarting]);
   const noticeCodeRef = useRef(noticeCode);
   useEffect(() => { noticeCodeRef.current = noticeCode; }, [noticeCode]);
   /** the day turned: the line's times are written again, with their day (see dayTurn.ts) */
@@ -2763,12 +2786,13 @@ export default function App() {
     server: shownStatus === 'offline' ? 'down'
       : shownStatus === 'connecting' ? 'connecting' : 'ok',
     throughLink,
+    restarting: serverRestarting,
     // `status` is READ here, so it belongs in this list: without it a
     // change of status alone left the line on its old words until
     // something else happened to move. It was masked - `shownStatus`
     // follows `status` a breath later and dragged the line along - but
     // masked is not cured.
-  }), [inChannel, status, shownStatus, throughLink, peerPresent, peerDetached, peerTornDown, shownName, peerSince,
+  }), [inChannel, status, shownStatus, throughLink, serverRestarting, peerPresent, peerDetached, peerTornDown, shownName, peerSince,
     mySince, connectionName, peerTornDownBy, myAvailable, peerAvailable,
     // The words change with the language: the line is written again.
     cfg?.language,
@@ -3880,6 +3904,9 @@ export default function App() {
           },
           onStatus: (st, detail) => {
             setStatus(st);
+            // The server's own word on its way out (see serverRestarting).
+            if (st === 'offline' && detail === '1001/server-shutdown') setServerRestarting(true);
+            else if (st === 'together' || st === 'alone') setServerRestarting(false);
             if (st === 'offline') signalingWasDown.current = true;
             /**
              * The drops of the link to the server, in the journal.
@@ -6551,7 +6578,10 @@ export default function App() {
         // The one to show, not the true one: see shownStatus, and
         // throughLink for a server lost under a conversation.
         status={screenStatus}
-        serverNote={throughLink ? t('channel.noServerLinkHolds') : undefined}
+        serverNote={!throughLink ? undefined
+          : serverRestarting ? t('channel.serverRestartingLinkHolds')
+            : t('channel.noServerLinkHolds')}
+        serverRestarting={serverRestarting}
         connectionState={connState}
         audioOn={audioOn}
         videoOn={videoOn}
