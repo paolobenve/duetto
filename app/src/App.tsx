@@ -2685,14 +2685,25 @@ export default function App() {
    * notification - not to what is done: whoever decides to rebuild the
    * connection looks at the true status, which is the only one that
    * knows how things really stand.
+   *
+   * The breath is counted from the moment the server was lost, not
+   * from the last change: without a server the status goes "offline",
+   * "connecting", "offline" at every try, every half second to four,
+   * and a wait started again at each step never ended. At the reboot of
+   * 19 October the screens went on saying the other was "waiting" for
+   * four minutes - "together" had gone at once, "no server" never came.
    */
   const [shownStatus, setShownStatus] = useState<PresenceStatus>(status);
+  const shownLostAt = useRef(0);
   useEffect(() => {
     if (status !== 'offline' && status !== 'connecting') {
+      shownLostAt.current = 0;
       setShownStatus(status);
       return;
     }
-    const t = setTimeout(() => setShownStatus(status), SERVER_GRACE_MS);
+    const since = shownLostAt.current || (shownLostAt.current = Date.now());
+    const left = Math.max(0, SERVER_GRACE_MS - (Date.now() - since));
+    const t = setTimeout(() => setShownStatus(status), left);
     return () => clearTimeout(t);
   }, [status]);
 
