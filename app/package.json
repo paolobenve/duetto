@@ -12,7 +12,7 @@
     "lint": "eslint .",
     "test": "jest",
     "tsc": "tsc --noEmit",
-    "postinstall": "node scripts/sync-local-modules.js && node scripts/jdk21.js",
+    "postinstall": "node scripts/sync-local-modules.js && node scripts/jdk21.js && node scripts/patch-webrtc-view.js && node scripts/patch-webrtc-camera.js && node scripts/patch-incall-manager.js",
     "bump": "node scripts/bump-build.js"
   },
   "dependencies": {
