@@ -2020,8 +2020,17 @@ export default function App() {
   }, [peerState.version, peerState.build]);
 
   const versionWarning = React.useMemo(() => {
-    if (!peerSeen) return null;
     const theirs = peerState.version;
+    /**
+     * Said from the hello, while merely waiting too: the version
+     * arrives as soon as the two find each other, and before going in
+     * is when it is worth knowing. A missing version - an older Duetto,
+     * which does not say it - is told only of somebody seen in the
+     * channel: before, their state is empty for everybody. Asking to
+     * have been seen in any case hid the line whenever the other was
+     * not in there (20 October, the Edge waiting).
+     */
+    if (!theirs && !peerSeen) return null;
     /**
      * The build goes with the version, on both sides.
      *
@@ -4738,7 +4747,11 @@ export default function App() {
   const forgetPeer = useCallback((now: boolean) => {
     stopWaiting();
     const clear = () => {
-      setPeerState({ audio: true, video: false });
+      // Which Duetto they have stays: leaving the channel does not
+      // change it, an update says a new hello, and only another
+      // connection forgets it (resetPeerMemory). Wiped here, the line
+      // about different versions went out while they waited.
+      setPeerState((prev) => ({ audio: true, video: false, version: prev.version, build: prev.build }));
       // "I have seen them" as well: without it, it stayed true while
       // their state was empty, and since an old Duetto is recognised
       // precisely by not declaring its version, once out of the channel
