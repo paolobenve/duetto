@@ -12,7 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, Animated,
   KeyboardAvoidingView, Platform, Alert, Modal, Pressable, Clipboard, Linking, Share, Switch,
-  PermissionsAndroid,
+  PermissionsAndroid, AppState,
 } from 'react-native';
 
 /** The switches' colours: grey off, the app's blue on. */
@@ -33,7 +33,7 @@ import {
 import { peerAvatar } from './avatar';
 import { isRealName } from './presence';
 import { VERSION_FULL } from './version';
-import { Alarm, Alerts, Journal, Call } from 'duetto-platform';
+import { Alarm, Alerts, Journal, Call, OtherSounds } from 'duetto-platform';
 import { ALARMS } from './alarms';
 import { said, type AskState } from './diagnosticsAsk';
 import { TOKEN_PAGE } from './gitlab';
@@ -420,6 +420,18 @@ export default function SettingsScreen({
       }
     }).catch(() => {});
   };
+
+  /**
+   * The notification access, for the other apps' sounds in the channel:
+   * read again on coming back from Android's screen, where it is given.
+   */
+  const [otherAccess, setOtherAccess] = useState(false);
+  useEffect(() => {
+    const check = () => { OtherSounds.allowed().then(setOtherAccess).catch(() => {}); };
+    check();
+    const sub = AppState.addEventListener('change', (st) => { if (st === 'active') check(); });
+    return () => sub.remove();
+  }, []);
 
   /** the connection being named, and the name in progress */
   const [naming, setNaming] = useState<PairInfo | null>(null);
@@ -1163,6 +1175,41 @@ export default function SettingsScreen({
             <Switch value={cfg.quietWaitingBeeps !== false} {...SWITCH_COLOURS} />
           </View>
         </TouchableOpacity>
+
+        {/* The other apps' notification sounds, which Android keeps
+            quiet in the channel as in a call: Duetto plays them, if
+            asked. Choosing a level with no access goes to Android's
+            screen for it; the line below says whether it is there. */}
+        <Text style={styles.sectionHint}>{t('settings.otherApps')}</Text>
+        <Text style={styles.hint}>{t('settings.otherAppsNote')}</Text>
+        <View style={styles.group}>
+          {(['off', 'low', 'medium', 'high'] as const).map((v) => (
+            <TouchableOpacity
+              key={v}
+              style={[styles.option, (cfg.otherAppsSound ?? 'off') === v && styles.optionPicked]}
+              onPress={() => {
+                setCfg({ ...cfg, otherAppsSound: v });
+                onLive?.({ otherAppsSound: v });
+                Journal.mark(`other-apps-sound:${v}:${otherAccess ? 'access' : 'no-access'}`).catch(() => {});
+                if (v !== 'off' && !otherAccess) OtherSounds.openAccess().catch(() => {});
+              }}>
+              <View style={[styles.radio, (cfg.otherAppsSound ?? 'off') === v && styles.radioPicked]} />
+              <View style={styles.choiceText}>
+                <Text style={styles.choiceLabel}>
+                  {t(`settings.otherApps${v[0].toUpperCase()}${v.slice(1)}`)}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+        {(cfg.otherAppsSound ?? 'off') !== 'off' && (
+          <TouchableOpacity style={styles.rowButton} onPress={() => { OtherSounds.openAccess().catch(() => {}); }}>
+            <Text style={styles.rowButtonText}>
+              {t(otherAccess ? 'settings.otherAppsAccessOn' : 'settings.otherAppsAccessOff')}
+            </Text>
+            <Text style={styles.rowButtonArrow}>{'\u203A'}</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Whether the phone's own call volume does anything here: the
             test says, and decides which knob Duetto moves. */}

@@ -19,7 +19,7 @@ import InCallManager from 'react-native-incall-manager';
 import {
   Foreground, Pip, AppWindow, Visibility, Codecs, Audio, Alerts, Journal, Volume, Call, AudioDevices,
   Heartbeat, Network,
-  Alarm,
+  Alarm, OtherSounds,
 } from 'duetto-platform';
 import { attachWatchdog, Watchdog } from './watchdog';
 import {
@@ -28,7 +28,7 @@ import {
   addPair, switchToPair, forgetPair, markPairBroken, rememberPeerName,
   alertSoundFor, alignPairServer, renamePair, pairFileKey, pairName, peerShown, namePeer, nameMyself,
   oweToPeer, paidToPeer, sharedChoiceHeard,
-  CUE_GAIN, ALERT_GAIN,
+  CUE_GAIN, ALERT_GAIN, OTHER_APPS_GAIN,
   storeSettingsInPair,
 } from './config';
 import { Signaling, PresenceStatus } from './signaling';
@@ -812,6 +812,12 @@ export default function App() {
     if (quietBeeps === null) return;
     Call.setQuietWaitingBeeps(quietBeeps).catch(() => { /* noop */ });
   }, [quietBeeps]);
+  // The other apps' sounds in the channel, to the native side where the notifications arrive.
+  const otherApps = cfg ? OTHER_APPS_GAIN[cfg.otherAppsSound ?? 'off'] ?? 0 : null;
+  useEffect(() => {
+    if (otherApps === null) return;
+    OtherSounds.setShare(otherApps).catch(() => { /* noop */ });
+  }, [otherApps]);
   // And how loud: see AlertLevel.
   const alertGain = ALERT_GAIN[cfg?.alertLevel ?? 'full'] ?? 1;
   useEffect(() => {

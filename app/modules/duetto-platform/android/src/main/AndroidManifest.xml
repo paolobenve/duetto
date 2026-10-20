@@ -133,5 +133,19 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Stay reachable for the other person's call" />
         </service>
+
+        <!-- The other apps' notifications, seen to sound them in the
+             channel, where Android keeps them quiet as in a call (see
+             OtherSounds). Bound by Android only once the person grants
+             the notification access in its settings; not exported to
+             anybody else - the permission says only the system binds. -->
+        <service
+            android:name=".OtherSoundsListener"
+            android:exported="true"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
     </application>
 </manifest>

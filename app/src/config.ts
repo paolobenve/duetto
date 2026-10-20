@@ -28,6 +28,16 @@ export const CUE_GAIN: Record<CueVolume, number> = {
 };
 
 /**
+ * The other apps' notification sounds in the channel, which Android
+ * keeps quiet as in a call: off, or played by Duetto at a share of the
+ * cues' stream. See OtherSounds.kt.
+ */
+export type OtherAppsSound = 'off' | 'low' | 'medium' | 'high';
+export const OTHER_APPS_GAIN: Record<OtherAppsSound, number> = {
+  off: 0, low: 0.15, medium: 0.33, high: 0.6,
+};
+
+/**
  * How loud the calls one receives sound: the plain call and the sounds
  * (drums, fanfare...), on the volume Android gives them. Full is how
  * they always sounded; below it, Duetto plays them itself, softer.
@@ -377,6 +387,11 @@ export type DuoConfig = {
    */
   cueVolume: CueVolume;
   /**
+   * The other apps' notification sounds in the channel: a thing of the
+   * phone, not of the pair, like the cues.
+   */
+  otherAppsSound: OtherAppsSound;
+  /**
    * Whether the phone permission - to play the ringtone during the
    * channel's call, instead of Android's call-waiting beeps - has been
    * asked for already: it is asked once.
@@ -593,6 +608,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   richerAudio: false,
   shortPackets: false,
   cueVolume: 'veryLow',
+  otherAppsSound: 'off',
   ringPermissionAsked: false,
   knobWorks: 'unknown',
   micOnEntry: 'asLeft',

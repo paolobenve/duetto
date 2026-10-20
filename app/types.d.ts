@@ -279,4 +279,14 @@ declare module 'duetto-platform' {
     /** Gives back the function to stop listening. */
     subscribe(cb: (visible: boolean) => void): () => void;
   };
+
+  /** The other apps' notification sounds in the channel: see OtherSounds.kt. */
+  export const OtherSounds: {
+    /** the level, a share of the cues' stream top; 0 = off */
+    setShare(share: number): Promise<boolean>;
+    /** whether the notification access is granted */
+    allowed(): Promise<boolean>;
+    /** Android's screen where the access is granted or taken back */
+    openAccess(): Promise<boolean>;
+  };
 }

@@ -27,6 +27,7 @@ const NativeVolume = NativeModules.DuettoVolume;
 const NativeAlarm = NativeModules.DuettoAlarm;
 const NativeCalls = NativeModules.DuettoCalls;
 const NativeAudioDevices = NativeModules.DuettoAudioDevices;
+const NativeOtherSounds = NativeModules.DuettoOtherSounds;
 
 /**
  * Calls a native method only if it really exists.
@@ -798,3 +799,18 @@ export const Alarm = isAndroid && NativeAlarm
       list: () => call(NativeAlarm, 'list'),
     }
   : { play: unavailable, stop: unavailable, test: unavailable, list: () => Promise.resolve([]) };
+
+/**
+ * The other apps' notification sounds in the channel, where Android
+ * keeps them quiet as in a call. See OtherSounds.kt.
+ */
+export const OtherSounds = isAndroid && NativeOtherSounds
+  ? {
+      /** the level, a share of the cues' stream top; 0 = off */
+      setShare: (share) => call(NativeOtherSounds, 'setShare', Number(share) || 0),
+      /** whether the notification access is granted */
+      allowed: () => call(NativeOtherSounds, 'allowed'),
+      /** Android's screen where the access is granted or taken back */
+      openAccess: () => call(NativeOtherSounds, 'openAccess'),
+    }
+  : { setShare: () => Promise.resolve(false), allowed: () => Promise.resolve(false), openAccess: () => Promise.resolve(false) };
