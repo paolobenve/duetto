@@ -172,25 +172,45 @@ export function useAudioRoute(
    * the ear. What the call reports is waited for: not there within a
    * second and a half, the output is asked once more; still not, it is
    * written down as refused.
+   *
+   * But the call does not always say. Entering, the speaker reached it
+   * a moment before it was made active: it said speaker, then its own
+   * earpiece, then put the speaker on in silence (20 October, and 14).
+   * The button stayed on the earpiece with the sound on the speaker,
+   * and the speaker asked again was written down as refused. So before
+   * asking again Android's audio is asked where the sound is: there
+   * already, the button follows it and nothing is asked.
    */
   const confirmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const confirmRoute = (route: AudioRoute, attempt: number) => {
     if (confirmTimer.current) clearTimeout(confirmTimer.current);
+    const stands = () => inCall.current && !frozen() && callRoute.current !== route
+      // Something newer was chosen meanwhile: that one stands.
+      && !(wanted.current && wanted.current !== route);
     confirmTimer.current = setTimeout(() => {
       confirmTimer.current = null;
-      if (!inCall.current || frozen()) return;
-      if (callRoute.current === route) return;
-      // Something newer was chosen meanwhile: that one stands.
-      if (wanted.current && wanted.current !== route) return;
-      if (attempt === 0) {
-        Journal.mark(`output:retry:${route}:${callRoute.current ?? '?'}`).catch(() => { /* noop */ });
-        Call.setRoute(route).then((through) => {
-          if (!through) applyByLibrary(route);
-        }).catch(() => applyByLibrary(route));
-        confirmRoute(route, 1);
-        return;
-      }
-      Journal.mark(`output:refused:${route}:${callRoute.current ?? '?'}`).catch(() => { /* noop */ });
+      if (!stands()) return;
+      Call.whereNow().catch(() => null).then((real) => {
+        if (!stands() || confirmTimer.current) return;
+        const said = callRoute.current ?? '?';
+        if (real === route) {
+          callRoute.current = route;
+          currentRef.current = route;
+          setCurrent(route);
+          if (route === wanted.current) noteBuiltIn(route);
+          Journal.mark(`output:by-device:${route}:${said}`).catch(() => { /* noop */ });
+          return;
+        }
+        if (attempt === 0) {
+          Journal.mark(`output:retry:${route}:${said}:${real ?? '?'}`).catch(() => { /* noop */ });
+          Call.setRoute(route).then((through) => {
+            if (!through) applyByLibrary(route);
+          }).catch(() => applyByLibrary(route));
+          confirmRoute(route, 1);
+          return;
+        }
+        Journal.mark(`output:refused:${route}:${said}:${real ?? '?'}`).catch(() => { /* noop */ });
+      });
     }, CONFIRM_MS);
   };
 

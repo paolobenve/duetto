@@ -534,6 +534,8 @@ export const Call = isAndroid && NativeCalls
       setQuietWaitingBeeps: (on) => call(NativeCalls, 'setQuietWaitingBeeps', !!on),
       /** the output through our call; false with no call */
       setRoute: (route) => call(NativeCalls, 'setRoute', String(route)),
+      /** where the sound really is, as Android's audio has it; null when unknown */
+      whereNow: () => call(NativeCalls, 'whereNow'),
       /** `cb(state)`: active, held, failed, ended, ended-by-system */
       subscribe(cb) {
         const emitter = new NativeEventEmitter(NativeCalls);
@@ -541,7 +543,7 @@ export const Call = isAndroid && NativeCalls
         return () => sub.remove();
       },
     }
-  : { start: () => Promise.resolve('unavailable'), end: unavailable, resume: unavailable, watchRinging: unavailable, setQuietWaitingBeeps: unavailable, setRoute: () => Promise.resolve(false), subscribe: () => () => {} };
+  : { start: () => Promise.resolve('unavailable'), end: unavailable, resume: unavailable, watchRinging: unavailable, setQuietWaitingBeeps: unavailable, setRoute: () => Promise.resolve(false), whereNow: () => Promise.resolve(null), subscribe: () => () => {} };
 
 /**
  * The Bluetooth audio devices, each by name: which are connected, and

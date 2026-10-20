@@ -65,6 +65,12 @@ class CallsModule(private val ctx: ReactApplicationContext) :
         promise.resolve(Calls.setRoute(route))
     }
 
+    /** Where the sound really is: see Calls.whereNow. Null when unknown. */
+    @ReactMethod
+    fun whereNow(promise: Promise) {
+        promise.resolve(Calls.whereNow())
+    }
+
     /** Closes it on leaving. */
     @ReactMethod
     fun end(promise: Promise) {

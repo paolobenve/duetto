@@ -16,6 +16,7 @@ import android.net.Uri
 import android.Manifest
 import android.content.pm.PackageManager
 import android.media.AudioAttributes
+import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.media.Ringtone
 import android.media.RingtoneManager
@@ -470,6 +471,39 @@ object Calls {
         CallAudioState.ROUTE_WIRED_HEADSET -> "WIRED_HEADSET"
         CallAudioState.ROUTE_SPEAKER -> "SPEAKER_PHONE"
         else -> "OTHER"
+    }
+
+    /**
+     * Where the conversation's sound really is, as Android's audio has
+     * it - not as the telephony last said.
+     *
+     * Entering, the speaker asked for reached Telecom a moment before it
+     * made the call active: it said speaker, then the earpiece of its
+     * own, and then put the speaker on without saying so (20 October,
+     * and 14). The button stayed on the earpiece, and the speaker asked
+     * again was written down as refused. Null when it cannot be told.
+     */
+    fun whereNow(): String? {
+        val am = appCtx?.getSystemService(AudioManager::class.java) ?: return null
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            return when (am.communicationDevice?.type) {
+                AudioDeviceInfo.TYPE_BUILTIN_SPEAKER -> "SPEAKER_PHONE"
+                AudioDeviceInfo.TYPE_BUILTIN_EARPIECE -> "EARPIECE"
+                AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
+                AudioDeviceInfo.TYPE_BLE_HEADSET -> "BLUETOOTH"
+                AudioDeviceInfo.TYPE_WIRED_HEADSET,
+                AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
+                AudioDeviceInfo.TYPE_USB_HEADSET -> "WIRED_HEADSET"
+                else -> null
+            }
+        }
+        @Suppress("DEPRECATION")
+        return when {
+            am.isBluetoothScoOn -> "BLUETOOTH"
+            am.isSpeakerphoneOn -> "SPEAKER_PHONE"
+            am.isWiredHeadsetOn -> "WIRED_HEADSET"
+            else -> "EARPIECE"
+        }
     }
 
     /** Closes the call, if there is one. */

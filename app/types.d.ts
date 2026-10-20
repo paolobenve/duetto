@@ -53,6 +53,8 @@ declare module 'duetto-platform' {
     /** the call-waiting beeps made faint while the phone rings, or not */
     setQuietWaitingBeeps(on: boolean): Promise<boolean>;
     setRoute(route: string): Promise<boolean>;
+    /** where the sound really is, as Android's audio has it; null when unknown */
+    whereNow(): Promise<string | null>;
     subscribe(cb: (state: string) => void): () => void;
   };
 
