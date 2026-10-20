@@ -1210,6 +1210,18 @@ export default function SettingsScreen({
             <Text style={styles.rowButtonArrow}>{'\u203A'}</Text>
           </TouchableOpacity>
         )}
+        {/* From Android 13 an app installed from a file gets the access
+            only once its "restricted settings" are allowed, from the
+            ⋮ menu of its page among Android's apps: opened from here. */}
+        {(cfg.otherAppsSound ?? 'off') !== 'off' && !otherAccess && Number(Platform.Version) >= 33 && (
+          <>
+            <TouchableOpacity style={styles.rowButton} onPress={() => { Linking.openSettings().catch(() => {}); }}>
+              <Text style={styles.rowButtonText}>{t('settings.otherAppsRestricted')}</Text>
+              <Text style={styles.rowButtonArrow}>{'\u203A'}</Text>
+            </TouchableOpacity>
+            <Text style={styles.hint}>{t('settings.otherAppsRestrictedNote')}</Text>
+          </>
+        )}
 
         {/* Whether the phone's own call volume does anything here: the
             test says, and decides which knob Duetto moves. */}

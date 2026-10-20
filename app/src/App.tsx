@@ -2676,7 +2676,11 @@ export default function App() {
     setCfg((prev) => (prev ? saveCfg({ ...prev, otherAppsAsked: true }) : prev));
     OtherSounds.allowed().then((yes) => {
       if (yes) return;
-      Alert.alert(t('channel.otherAppsPermTitle'), t('channel.otherAppsPermBody'), [
+      // From Android 13 an app installed from a file gets this access
+      // only after "allow restricted settings": the way is said here.
+      const body = t('channel.otherAppsPermBody')
+        + (Number(Platform.Version) >= 33 ? `\n\n${t('channel.otherAppsPermRestricted')}` : '');
+      Alert.alert(t('channel.otherAppsPermTitle'), body, [
         { text: t('channel.ringPermNo'), style: 'cancel', onPress: () => Journal.mark('other-apps-permission:not-now').catch(() => {}) },
         {
           text: t('channel.ringPermOk'),
