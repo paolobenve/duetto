@@ -34,8 +34,9 @@ import androidx.core.app.NotificationManagerCompat
  * have switched off. On the POCO a WhatsApp message in the channel was
  * marked as sounded and nothing was heard (20 October). Duetto plays
  * what Android would have played, as it plays the ringtone of a phone
- * call (see Calls): the sound of the notification's own channel, on
- * the road of Duetto's own sounds and at a level chosen in the settings.
+ * call (see Calls): the sound of the notification's own channel, as a
+ * notification at Android's notification volume, or on the road of
+ * Duetto's own sounds at a level of its own, above the other's voice.
  *
  * Seeing the notifications takes the notification access, which shows
  * all of them. Only the app, its channel and its flags are looked at,
@@ -54,11 +55,14 @@ object OtherSounds {
     private var lastAt = 0L
     private var ringtone: Ringtone? = null
 
-    /** The level, a share of the cues' stream top; 0 = off. */
+    /** The level, a share of the cues' stream top; 0 = off, below 0 = Android's notification volume. */
     fun setShare(ctx: Context, share: Float) {
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-            .putFloat(KEY_SHARE, share.coerceIn(0f, 1f)).apply()
+            .putFloat(KEY_SHARE, if (share < 0f) AS_ANDROID else share.coerceIn(0f, 1f)).apply()
     }
+
+    /** The level that says: as a notification, at Android's notification volume. */
+    private const val AS_ANDROID = -1f
 
     private fun share(ctx: Context): Float =
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getFloat(KEY_SHARE, 0f)
@@ -83,7 +87,7 @@ object OtherSounds {
     ) {
         if (sbn.packageName == ctx.packageName) return
         val level = share(ctx)
-        if (level <= 0f) return
+        if (level == 0f) return
         if (Calls.connection?.state != Connection.STATE_ACTIVE) return
         val n = sbn.notification
         if (sbn.isOngoing || n.flags and Notification.FLAG_FOREGROUND_SERVICE != 0) return
@@ -127,16 +131,26 @@ object OtherSounds {
      * Through Ringtone, not a player of our own: a sound picked among
      * the phone's music is not Duetto's to read, and Ringtone has it
      * played by the system when it cannot open it here.
+     *
+     * As Android's: a notification, at the notification volume - what
+     * it sounds like outside the channel. Otherwise the cues' road, at
+     * a share apart from the call volume.
      */
     private fun play(ctx: Context, sound: Uri, share: Float) {
         stop()
         try {
             val rt = RingtoneManager.getRingtone(ctx, sound) ?: return
+            val asAndroid = share < 0f
             rt.audioAttributes = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION_SIGNALLING)
+                .setUsage(
+                    if (asAndroid) AudioAttributes.USAGE_NOTIFICATION
+                    else AudioAttributes.USAGE_VOICE_COMMUNICATION_SIGNALLING,
+                )
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                 .build()
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) rt.volume = Alarm.apartFromKnob(ctx, share)
+            if (!asAndroid && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                rt.volume = Alarm.apartFromKnob(ctx, share)
+            }
             ringtone = rt
             rt.play()
         } catch (e: Exception) {

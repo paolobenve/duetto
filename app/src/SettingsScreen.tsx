@@ -1183,7 +1183,7 @@ export default function SettingsScreen({
         <Text style={styles.sectionHint}>{t('settings.otherApps')}</Text>
         <Text style={styles.hint}>{t('settings.otherAppsNote')}</Text>
         <View style={styles.group}>
-          {(['off', 'low', 'medium', 'high'] as const).map((v) => (
+          {(['off', 'android', 'low', 'medium', 'high'] as const).map((v) => (
             <TouchableOpacity
               key={v}
               style={[styles.option, (cfg.otherAppsSound ?? 'off') === v && styles.optionPicked]}

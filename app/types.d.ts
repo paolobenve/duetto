@@ -282,7 +282,7 @@ declare module 'duetto-platform' {
 
   /** The other apps' notification sounds in the channel: see OtherSounds.kt. */
   export const OtherSounds: {
-    /** the level, a share of the cues' stream top; 0 = off */
+    /** the level, a share of the cues' stream top; 0 = off, -1 = Android's notification volume */
     setShare(share: number): Promise<boolean>;
     /** whether the notification access is granted */
     allowed(): Promise<boolean>;

@@ -806,7 +806,7 @@ export const Alarm = isAndroid && NativeAlarm
  */
 export const OtherSounds = isAndroid && NativeOtherSounds
   ? {
-      /** the level, a share of the cues' stream top; 0 = off */
+      /** the level, a share of the cues' stream top; 0 = off, -1 = Android's notification volume */
       setShare: (share) => call(NativeOtherSounds, 'setShare', Number(share) || 0),
       /** whether the notification access is granted */
       allowed: () => call(NativeOtherSounds, 'allowed'),
