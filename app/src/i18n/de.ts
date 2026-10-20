@@ -208,6 +208,8 @@ export const de: Dictionary = {
     ringPermSwitchNote: 'Mit der Berechtigung „Telefon“ spielt Duetto während des Kanals deinen Klingelton, wenn ein Anruf kommt; ohne sie nur leise Anklopftöne. Zum Entziehen öffnet Duetto seine Android-Einstellungen: Berechtigungen → Telefon → Nicht zulassen. Android startet Duetto dann neu, wie jede App, der man eine Berechtigung entzieht.',
     ringPermOk: 'Weiter',
     ringPermNo: 'Nicht jetzt',
+    otherAppsPermTitle: 'Benachrichtigungen anderer Apps im Kanal',
+    otherAppsPermBody: 'Solange du im Kanal bist, bist du für Android in einem Anruf, und die Benachrichtigungen anderer Apps (etwa WhatsApp-Nachrichten) kommen ohne Ton. Duetto kann sie stattdessen abspielen, braucht dafür aber den „Benachrichtigungszugriff“.\n\nAndroid zeigt dazu eine ernste Warnung, und das zu Recht: Dieser Zugriff erlaubt, alle Benachrichtigungen zu lesen. Duetto sieht nur welche App und welchen Ton, nie den Text, und schickt nichts aus dem Telefon.\n\nGibst du ihn nicht, bleiben die Benachrichtigungen anderer Apps im Kanal stumm: Du siehst sie, hörst sie aber nicht. Du kannst es dir jederzeit in den Einstellungen anders überlegen, unter „Benachrichtigungen anderer Apps im Kanal“.',
     onWifi: 'im WLAN',
     onMobile: 'im Mobilfunknetz',
     notEntered: 'Du bist außerhalb des Kanals',

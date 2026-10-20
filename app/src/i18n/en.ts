@@ -219,6 +219,8 @@ export const en = {
     ringPermSwitchNote: 'With the "Phone" permission, during the channel Duetto plays your ringtone when a phone call arrives; without it, only faint beeps. To take it back, Duetto opens its Android settings: Permissions → Phone → Don\'t allow. Android then restarts Duetto, as it does with any app a permission is taken from.',
     ringPermOk: 'Continue',
     ringPermNo: 'Not now',
+    otherAppsPermTitle: 'Other apps\' notifications in the channel',
+    otherAppsPermBody: 'While you are in the channel, to Android you are in a call, and the other apps\' notifications (WhatsApp messages, for instance) arrive without sound. Duetto can sound them instead, but to see them it needs the "notification access".\n\nAndroid presents it with a stern warning, and rightly so: that access allows reading all notifications. Duetto only looks at which app and which sound, never the text, and sends nothing out of the phone.\n\nIf you do not grant it, in the channel the other apps\' notifications stay mute: you see them but do not hear them. You can change your mind at any time in the Settings, under "Other apps\' notifications in the channel".',
     onWifi: 'on wifi',
     onMobile: 'on mobile data',
     notEntered: 'You are out of the channel',

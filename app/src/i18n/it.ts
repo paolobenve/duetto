@@ -207,6 +207,8 @@ export const it: Dictionary = {
     ringPermSwitchNote: 'Con il permesso «Telefono», durante il canale Duetto suona la tua suoneria quando arriva una telefonata; senza, arriva solo un bip-bip tenue. Per toglierlo, Duetto apre le sue impostazioni di Android: Autorizzazioni → Telefono → Non consentire. Android poi riavvia Duetto, come fa con ogni app a cui si toglie un permesso.',
     ringPermOk: 'Continua',
     ringPermNo: 'Non ora',
+    otherAppsPermTitle: 'Notifiche delle altre app nel canale',
+    otherAppsPermBody: 'Mentre sei nel canale, per Android sei in una chiamata, e le notifiche delle altre app (i messaggi di WhatsApp, per esempio) arrivano senza suono. Duetto può suonarle al loro posto, ma per vederle gli serve l’«accesso alle notifiche».\n\nAndroid lo presenta con un avviso serio, e con ragione: quell’accesso permette di leggere tutte le notifiche. Duetto guarda solo quale app e quale suono, mai il testo, e non manda niente fuori dal telefono.\n\nSe non lo concedi, nel canale le notifiche delle altre app restano mute: le vedi, ma non le senti. Puoi cambiare idea quando vuoi nelle Impostazioni, alla voce «Notifiche delle altre app nel canale».',
     onWifi: 'su wifi',
     onMobile: 'su rete mobile',
     notEntered: 'Sei fuori dal canale',

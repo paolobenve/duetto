@@ -208,6 +208,8 @@ export const es: Dictionary = {
     ringPermSwitchNote: 'Con el permiso «Teléfono», durante el canal Duetto reproduce tu tono cuando llega una llamada; sin él, solo unos pitidos débiles. Para quitarlo, Duetto abre sus ajustes de Android: Permisos → Teléfono → No permitir. Después Android reinicia Duetto, como con cualquier app a la que se quita un permiso.',
     ringPermOk: 'Continuar',
     ringPermNo: 'Ahora no',
+    otherAppsPermTitle: 'Notificaciones de las otras apps en el canal',
+    otherAppsPermBody: 'Mientras estás en el canal, para Android estás en una llamada, y las notificaciones de las otras apps (los mensajes de WhatsApp, por ejemplo) llegan sin sonido. Duetto puede sonarlas en su lugar, pero para verlas necesita el «acceso a las notificaciones».\n\nAndroid lo presenta con un aviso serio, y con razón: ese acceso permite leer todas las notificaciones. Duetto solo mira qué app y qué sonido, nunca el texto, y no envía nada fuera del teléfono.\n\nSi no lo concedes, en el canal las notificaciones de las otras apps quedan mudas: las ves, pero no las oyes. Puedes cambiar de idea cuando quieras en los Ajustes, en «Notificaciones de las otras apps en el canal».',
     onWifi: 'por wifi',
     onMobile: 'por datos móviles',
     notEntered: 'Estás fuera del canal',

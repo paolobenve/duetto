@@ -392,6 +392,8 @@ export type DuoConfig = {
    * phone, not of the pair, like the cues.
    */
   otherAppsSound: OtherAppsSound;
+  /** the notification access for it was asked about already, on entering: it is asked once */
+  otherAppsAsked: boolean;
   /**
    * Whether the phone permission - to play the ringtone during the
    * channel's call, instead of Android's call-waiting beeps - has been
@@ -610,6 +612,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   shortPackets: false,
   cueVolume: 'veryLow',
   otherAppsSound: 'off',
+  otherAppsAsked: false,
   ringPermissionAsked: false,
   knobWorks: 'unknown',
   micOnEntry: 'asLeft',

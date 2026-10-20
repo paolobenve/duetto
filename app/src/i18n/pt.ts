@@ -208,6 +208,8 @@ export const pt: Dictionary = {
     ringPermSwitchNote: 'Com a permissão «Telefone», durante o canal o Duetto toca o seu toque quando chega uma ligação; sem ela, só bipes fracos. Para tirá-la, o Duetto abre as configurações dele no Android: Permissões → Telefone → Não permitir. Depois o Android reinicia o Duetto, como faz com qualquer app de que se tira uma permissão.',
     ringPermOk: 'Continuar',
     ringPermNo: 'Agora não',
+    otherAppsPermTitle: 'Notificações dos outros apps no canal',
+    otherAppsPermBody: 'Enquanto você está no canal, para o Android você está numa chamada, e as notificações dos outros apps (as mensagens do WhatsApp, por exemplo) chegam sem som. O Duetto pode tocá-las no lugar deles, mas para vê-las precisa do «acesso às notificações».\n\nO Android o apresenta com um aviso sério, e com razão: esse acesso permite ler todas as notificações. O Duetto só olha qual app e qual som, nunca o texto, e não envia nada para fora do telefone.\n\nSe não o conceder, no canal as notificações dos outros apps ficam mudas: você as vê, mas não as ouve. Pode mudar de ideia quando quiser nas Configurações, em «Notificações dos outros apps no canal».',
     onWifi: 'no wifi',
     onMobile: 'nos dados móveis',
     notEntered: 'Você está fora do canal',

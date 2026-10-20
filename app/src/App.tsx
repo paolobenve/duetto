@@ -2638,20 +2638,57 @@ export default function App() {
    */
   const askRingPermission = () => {
     const c = cfgRef.current;
-    if (!c || c.ringPermissionAsked || Platform.OS !== 'android') return;
+    if (!c || Platform.OS !== 'android') return;
+    if (c.ringPermissionAsked) { askOtherAppsAccess(); return; }
     setCfg((prev) => (prev ? saveCfg({ ...prev, ringPermissionAsked: true }) : prev));
     Alert.alert(t('channel.ringPermTitle'), t('channel.ringPermBody'), [
-      { text: t('channel.ringPermNo'), style: 'cancel', onPress: () => Journal.mark('ring-permission:not-now').catch(() => {}) },
+      {
+        text: t('channel.ringPermNo'),
+        style: 'cancel',
+        onPress: () => {
+          Journal.mark('ring-permission:not-now').catch(() => {});
+          askOtherAppsAccess();
+        },
+      },
       {
         text: t('channel.ringPermOk'),
         onPress: () => {
           PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE).then((r) => {
             Journal.mark(`ring-permission:${r}`).catch(() => {});
             if (r === PermissionsAndroid.RESULTS.GRANTED) Call.watchRinging().catch(() => {});
-          }).catch(() => {});
+          }).catch(() => {}).finally(askOtherAppsAccess);
         },
       },
     ]);
+  };
+
+  /**
+   * The notification access, asked once on entering, after the phone
+   * permission and never on top of it: with it Duetto sounds the other
+   * apps' notifications, which Android keeps quiet in the channel as in
+   * a call (see OtherSounds.kt). The warning is said before Android's
+   * own, which is a stern one; refused, they stay silent, and the
+   * settings can change it. Accepted, the sound starts as Android's.
+   */
+  const askOtherAppsAccess = () => {
+    const c = cfgRef.current;
+    if (!c || c.otherAppsAsked || Platform.OS !== 'android') return;
+    setCfg((prev) => (prev ? saveCfg({ ...prev, otherAppsAsked: true }) : prev));
+    OtherSounds.allowed().then((yes) => {
+      if (yes) return;
+      Alert.alert(t('channel.otherAppsPermTitle'), t('channel.otherAppsPermBody'), [
+        { text: t('channel.ringPermNo'), style: 'cancel', onPress: () => Journal.mark('other-apps-permission:not-now').catch(() => {}) },
+        {
+          text: t('channel.ringPermOk'),
+          onPress: () => {
+            Journal.mark('other-apps-permission:continue').catch(() => {});
+            setCfg((prev) => (prev && (prev.otherAppsSound ?? 'off') === 'off'
+              ? saveCfg({ ...prev, otherAppsSound: 'android' }) : prev));
+            OtherSounds.openAccess().catch(() => {});
+          },
+        },
+      ]);
+    }).catch(() => {});
   };
 
   /** the other's leaving, waiting to be heard: see onPeerMode */
