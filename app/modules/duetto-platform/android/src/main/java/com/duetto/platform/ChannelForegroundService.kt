@@ -319,6 +319,8 @@ class ChannelForegroundService : Service() {
             Journal.recordExits(applicationContext)
             // And whether the phone itself has just switched on, and why.
             Journal.recordBoot(applicationContext)
+            // And whether a permission was taken or given meanwhile.
+            Journal.recordPermissions(applicationContext)
             // The start line reschedules the wait by itself.
             Journal.sample(applicationContext, "start")
         }

@@ -52,6 +52,8 @@ class PresenceService : HeadlessJsTaskService() {
         // down somewhere: take it now, before the older deaths drop off
         // the list Android keeps.
         Journal.recordExits(applicationContext)
+        // And, if a permission was taken, which: see recordPermissions.
+        Journal.recordPermissions(applicationContext)
         // The net under the waiting: if this service dies unnoticed, the
         // alarm starts it again within minutes. See WatchdogAlarm.
         WatchdogAlarm.schedule(this)

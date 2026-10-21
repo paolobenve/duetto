@@ -14,6 +14,8 @@ import android.app.ApplicationExitInfo
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageInfo
+import android.content.pm.PackageManager
 import android.hardware.display.DisplayManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -25,6 +27,7 @@ import android.os.Process
 import android.os.SystemClock
 import android.util.Log
 import android.view.Display
+import androidx.core.app.NotificationManagerCompat
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -605,6 +608,79 @@ object Journal {
 
     private const val BOOT_PREFS = "duetto_boot"
     private const val KEY_BOOT_AT = "boot_at"
+
+    /**
+     * What Android grants Duetto, against the last time: a row for each
+     * change.
+     *
+     * Android closes an app it takes a permission from, and the journal
+     * said only "permissions-changed": on 21 October the edge was put out
+     * of the channel that way, and nobody could tell which permission,
+     * nor whether a person or the phone itself had taken it. A
+     * revocation kills the process, so the next start of a service is
+     * where it shows. The first time the list is only kept; a
+     * permission the app no longer asks for is let go in silence.
+     */
+    fun recordPermissions(ctx: Context) {
+        try {
+            val now = permissions(ctx)
+            val joined = now.entries.joinToString(",") { "${it.key}=${if (it.value) 1 else 0}" }
+            val prefs = ctx.getSharedPreferences(PERM_PREFS, Context.MODE_PRIVATE)
+            val before = prefs.getString(KEY_PERMS, null)
+            if (before == joined) return
+            prefs.edit().putString(KEY_PERMS, joined).apply()
+            if (before == null) return
+            val was = before.split(',').mapNotNull { p ->
+                val kv = p.split('=')
+                if (kv.size == 2) kv[0] to (kv[1] == "1") else null
+            }.toMap()
+            for ((name, on) in now) {
+                val old = was[name]
+                if (old == on) continue
+                val from = when (old) { null -> "new"; true -> "granted"; false -> "denied" }
+                sample(ctx, "perm-changed:$name:$from>${if (on) "granted" else "denied"}")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "journal: cannot compare the permissions: ${e.message}")
+        }
+    }
+
+    /**
+     * The permissions the app asks for, without "android.permission.",
+     * and beside them the grants that are switches in the settings rather
+     * than permissions: the battery, the notifications, the notification
+     * access, the removal of permissions from apps left unused, the
+     * background.
+     */
+    private fun permissions(ctx: Context): Map<String, Boolean> {
+        val out = sortedMapOf<String, Boolean>()
+        val pm = ctx.packageManager
+        @Suppress("DEPRECATION")
+        val info = pm.getPackageInfo(ctx.packageName, PackageManager.GET_PERMISSIONS)
+        val names = info.requestedPermissions ?: emptyArray()
+        val flags = info.requestedPermissionsFlags ?: IntArray(0)
+        for (i in names.indices) {
+            val granted = (flags.getOrElse(i) { 0 } and PackageInfo.REQUESTED_PERMISSION_GRANTED) != 0
+            out[names[i].removePrefix("android.permission.")] = granted
+        }
+        ctx.getSystemService(PowerManager::class.java)?.let {
+            out["battery-unrestricted"] = it.isIgnoringBatteryOptimizations(ctx.packageName)
+        }
+        out["notifications"] = NotificationManagerCompat.from(ctx).areNotificationsEnabled()
+        out["notification-access"] = OtherSounds.allowed(ctx)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            out["kept-if-unused"] = pm.isAutoRevokeWhitelisted
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            ctx.getSystemService(ActivityManager::class.java)?.let {
+                out["background-unrestricted"] = !it.isBackgroundRestricted
+            }
+        }
+        return out
+    }
+
+    private const val PERM_PREFS = "duetto_permissions"
+    private const val KEY_PERMS = "granted"
 
     /**
      * Why the process died, last time.
