@@ -2682,8 +2682,11 @@ export default function App() {
   const askOtherAppsAccess = () => {
     const c = cfgRef.current;
     if (!c || c.otherAppsAsked || Platform.OS !== 'android') return;
-    setCfg((prev) => (prev ? saveCfg({ ...prev, otherAppsAsked: true }) : prev));
-    OtherSounds.allowed().then((yes) => {
+    // A build without the listener has nothing to ask for, and the
+    // question stays for the build that has it.
+    OtherSounds.declared().then((has) => (has ? OtherSounds.allowed() : null)).then((yes) => {
+      if (yes === null) return;
+      setCfg((prev) => (prev ? saveCfg({ ...prev, otherAppsAsked: true }) : prev));
       if (yes) return;
       // From Android 13 an app installed from a file gets this access
       // only after "allow restricted settings": the way is said here.

@@ -74,6 +74,22 @@ object OtherSounds {
     fun component(ctx: Context) = ComponentName(ctx, OtherSoundsListener::class.java)
 
     /**
+     * Whether this build has the listener at all.
+     *
+     * An app that declares one is blocked by Play Protect when installed
+     * from a file - "blocked to protect your device", with no way past
+     * it - and on 20 October the Edge could not take the update. The
+     * declaration was taken out of the manifest, the rest kept for when
+     * a way is found; without it nothing is offered.
+     */
+    fun declared(ctx: Context): Boolean = try {
+        ctx.packageManager.getServiceInfo(component(ctx), 0)
+        true
+    } catch (_: Exception) {
+        false
+    }
+
+    /**
      * A notification just posted: played, if the channel is on and
      * Android, outside a call, would have sounded it.
      *

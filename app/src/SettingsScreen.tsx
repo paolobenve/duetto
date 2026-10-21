@@ -426,6 +426,9 @@ export default function SettingsScreen({
    * read again on coming back from Android's screen, where it is given.
    */
   const [otherAccess, setOtherAccess] = useState(false);
+  /** whether this build can sound them at all: see OtherSounds.declared */
+  const [otherDeclared, setOtherDeclared] = useState(false);
+  useEffect(() => { OtherSounds.declared().then(setOtherDeclared).catch(() => {}); }, []);
   useEffect(() => {
     const check = () => { OtherSounds.allowed().then(setOtherAccess).catch(() => {}); };
     check();
@@ -1180,6 +1183,7 @@ export default function SettingsScreen({
             quiet in the channel as in a call: Duetto plays them, if
             asked. Choosing a level with no access goes to Android's
             screen for it; the line below says whether it is there. */}
+        {otherDeclared && (<>
         <Text style={styles.sectionHint}>{t('settings.otherApps')}</Text>
         <Text style={styles.hint}>{t('settings.otherAppsNote')}</Text>
         <View style={styles.group}>
@@ -1222,6 +1226,7 @@ export default function SettingsScreen({
             <Text style={styles.hint}>{t('settings.otherAppsRestrictedNote')}</Text>
           </>
         )}
+        </>)}
 
         {/* Whether the phone's own call volume does anything here: the
             test says, and decides which knob Duetto moves. */}

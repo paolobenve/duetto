@@ -808,9 +808,11 @@ export const OtherSounds = isAndroid && NativeOtherSounds
   ? {
       /** the level, a share of the cues' stream top; 0 = off, -1 = Android's notification volume */
       setShare: (share) => call(NativeOtherSounds, 'setShare', Number(share) || 0),
+      /** whether this build has the listener at all */
+      declared: () => call(NativeOtherSounds, 'declared'),
       /** whether the notification access is granted */
       allowed: () => call(NativeOtherSounds, 'allowed'),
       /** Android's screen where the access is granted or taken back */
       openAccess: () => call(NativeOtherSounds, 'openAccess'),
     }
-  : { setShare: () => Promise.resolve(false), allowed: () => Promise.resolve(false), openAccess: () => Promise.resolve(false) };
+  : { setShare: () => Promise.resolve(false), declared: () => Promise.resolve(false), allowed: () => Promise.resolve(false), openAccess: () => Promise.resolve(false) };

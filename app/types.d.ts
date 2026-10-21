@@ -284,6 +284,8 @@ declare module 'duetto-platform' {
   export const OtherSounds: {
     /** the level, a share of the cues' stream top; 0 = off, -1 = Android's notification volume */
     setShare(share: number): Promise<boolean>;
+    /** whether this build has the listener at all */
+    declared(): Promise<boolean>;
     /** whether the notification access is granted */
     allowed(): Promise<boolean>;
     /** Android's screen where the access is granted or taken back */

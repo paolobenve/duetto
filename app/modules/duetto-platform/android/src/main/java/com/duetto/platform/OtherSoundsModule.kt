@@ -30,6 +30,12 @@ class OtherSoundsModule(private val ctx: ReactApplicationContext) :
         promise.resolve(true)
     }
 
+    /** Whether this build has the listener: see OtherSounds.declared. */
+    @ReactMethod
+    fun declared(promise: Promise) {
+        promise.resolve(OtherSounds.declared(ctx))
+    }
+
     /** Whether the notification access is granted. */
     @ReactMethod
     fun allowed(promise: Promise) {
