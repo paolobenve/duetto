@@ -136,9 +136,14 @@
 
         <!-- The other apps' notifications, seen to sound them in the
              channel, where Android keeps them quiet as in a call (see
-             OtherSounds). Bound by Android only once the person grants
-             the notification access in its settings; not exported to
-             anybody else - the permission says only the system binds. -->
+             OtherSounds), would be heard through a listener declared
+             here. It is left out: an app that declares one, installed
+             from a file, is blocked by Play Protect - "blocked to
+             protect your device", and no way past it - and on 20 October
+             the Edge could not take the update. The code stays, and
+             offers nothing while the listener is missing; put back,
+             it read:
+
         <service
             android:name=".OtherSoundsListener"
             android:exported="true"
@@ -147,5 +152,6 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
+        -->
     </application>
 </manifest>
