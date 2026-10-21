@@ -5791,7 +5791,11 @@ export default function App() {
       Journal.mark(`video:wanted:${want ? 'on' : 'off'}`).catch(() => { /* noop */ });
       return;
     }
+    // Every way out of a press is written down: on 20 October, on the
+    // Edge, four presses after a switch-off did nothing and the journal
+    // had not a word to say which way they had gone.
     if (s.isVideoEnabled()) {
+      Journal.mark('video:asked:off').catch(() => { /* noop */ });
       setVideoOn(await s.disableVideo());
       setLocalAspect(undefined);
       Foreground.setCameraActive(false).catch(() => {});
@@ -5803,13 +5807,19 @@ export default function App() {
       const res = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA);
       cameraGranted.current = res === 'granted';
       if (!cameraGranted.current) {
+        Journal.mark('video:enable:no-permission').catch(() => { /* noop */ });
         Alert.alert(t('errors.permissionDenied'), t('errors.noCamera'));
         return;
       }
     }
+    const askedAt = Date.now();
+    Journal.mark('video:asked:on').catch(() => { /* noop */ });
     await Foreground.setCameraActive(true).catch(() => {});
     try {
-      setVideoOn(await s.enableVideo());
+      const on = await s.enableVideo();
+      Journal.mark(`video:enable:${on ? 'ok' : 'failed'}:${Date.now() - askedAt}ms`)
+        .catch(() => { /* noop */ });
+      setVideoOn(on);
       setLocalAspect(s.getLocalVideoAspect());
       // The camera opens on the chosen one, which may have been
       // changed with the video off: here we only align the icon.
@@ -5817,6 +5827,8 @@ export default function App() {
       noteHowItIsRef.current?.();
       if (!quiet) cue('cue_video_on');
     } catch (e: any) {
+      Journal.mark(`video:enable:error:${String(e?.message ?? e).replace(/\s+/g, ' ').slice(0, 120)}`)
+        .catch(() => { /* noop */ });
       Foreground.setCameraActive(false).catch(() => {});
       Alert.alert(t('errors.cameraError'), String(e?.message ?? e));
     }

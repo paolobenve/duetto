@@ -2579,9 +2579,15 @@ export class ChannelSession {
     // anyway, and keeping the two apart would complicate the rest for
     // no gain.
     await this.ensureMic();
-    if (this.localStream!.getVideoTracks().length > 0) return true;
+    if (this.localStream!.getVideoTracks().length > 0) {
+      Journal.mark('video:enable:already-on').catch(() => { /* noop */ });
+      return true;
+    }
     const track = await this.openCamera();
-    if (!track) return false;
+    if (!track) {
+      Journal.mark('video:enable:no-track').catch(() => { /* noop */ });
+      return false;
+    }
 
     // Taken once: after an `await` the compiler can no longer know the
     // field is still filled, and it is right.
@@ -2689,7 +2695,10 @@ export class ChannelSession {
    */
   private cameraEnded(track: MediaStreamTrack) {
     if (this.localStream?.getVideoTracks()[0] !== track) return;
-    Journal.mark('camera:lost').catch(() => { /* noop */ });
+    // In sight or behind: taken by an app put in front, or by something
+    // of the phone's own while Duetto was being looked at.
+    Journal.mark(`camera:lost:${this.localWatching ? 'in-sight' : 'behind'}`)
+      .catch(() => { /* noop */ });
     this.cameraLost = true;
     this.scheduleCamera();
   }
