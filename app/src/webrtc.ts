@@ -2278,10 +2278,20 @@ export class ChannelSession {
    * losses under 1% and the round trip under 200 ms, for 6 seconds, and
    * not in the first 8 of a link. The app decides what and how often
    * (see renewSession).
+   *
+   * A picture that came back up after the last asking and has fallen
+   * again is said so - ":relapse" - for the cure worked and the road
+   * narrowed once more: on 22 October the POCO's estimate, on wifi,
+   * rose to 6 Mbit/s after each rebuild and was down at 0.3 within half
+   * a minute, and the second cure only blacked the picture out.
    */
   /** a link has been built in this session: the next gets a fresh microphone track */
   private builtOnce = false;
   private grainySince = 0;
+  /** a cure asked for in this session: see weighGrainyIncoming */
+  private cureAsked = false;
+  /** their picture came up since the last cure was asked for */
+  private upSinceCure = false;
   private linkedAt = 0;
   private weighGrainyIncoming(
     pic: { w: number; h: number; fps: number; kbps: number | null } | null,
@@ -2289,11 +2299,13 @@ export class ChannelSession {
   ) {
     const profile = VIDEO_PROFILES[this.cfg.videoQuality] ?? VIDEO_PROFILES.better;
     const now = Date.now();
+    const low = pic !== null && pic.kbps !== null && pic.h > 0
+      && pic.kbps * 1000 < Math.min(profile.maxBitrate * GRAINY_BELOW_SHARE, GRAINY_BELOW_BPS)
+      && pic.h < profile.capture.height;
+    if (this.cureAsked && pic !== null && pic.kbps !== null && pic.h > 0 && !low) this.upSinceCure = true;
     const grainy = this.peerVideoDeclared && this.localWatching
       && now - this.linkedAt > GRAINY_AFTER_LINK_MS
-      && pic !== null && pic.kbps !== null && pic.h > 0
-      && pic.kbps * 1000 < Math.min(profile.maxBitrate * GRAINY_BELOW_SHARE, GRAINY_BELOW_BPS)
-      && pic.h < profile.capture.height
+      && low
       && lossPct !== null && lossPct < 1 && rttMs !== null && rttMs < 200
       // Their mobile data is a narrow road, not a stuck estimate: on 18
       // October the POCO, on mobile data with 200 to 400 kbit/s going
@@ -2305,7 +2317,12 @@ export class ChannelSession {
     if (!this.grainySince) { this.grainySince = now; return; }
     if (now - this.grainySince < GRAINY_MS) return;
     this.grainySince = 0;
-    this.events.onSessionRenewWanted?.(`${pic!.w}x${pic!.h}:${pic!.kbps}k:rtt=${rttMs}`);
+    const relapse = this.cureAsked && this.upSinceCure;
+    this.cureAsked = true;
+    this.upSinceCure = false;
+    this.events.onSessionRenewWanted?.(
+      `${pic!.w}x${pic!.h}:${pic!.kbps}k:rtt=${rttMs}${relapse ? ':relapse' : ''}`,
+    );
   }
 
   /**

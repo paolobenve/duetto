@@ -5352,6 +5352,16 @@ export default function App() {
       if (grainyBraked.current) return;
       const now = Date.now();
       grainyCures.current = grainyCures.current.filter((at) => now - at < GRAINY_RELAPSE_MS);
+      // Up after the cure and down again soon: the cure did its work
+      // and the road narrowed again, and the next one - the whole
+      // session - would only black the picture out. A picture that
+      // never came up still goes on to the whole session.
+      if (why.endsWith(':relapse') && grainyCures.current.length >= 1) {
+        grainyBraked.current = true;
+        grainyCures.current = [];
+        Journal.mark(`session:renew:braked:relapse:${why}`).catch(() => { /* noop */ });
+        return;
+      }
       if (grainyCures.current.length >= 2) {
         grainyBraked.current = true;
         grainyCures.current = [];
