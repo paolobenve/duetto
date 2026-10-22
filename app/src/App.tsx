@@ -4179,6 +4179,7 @@ export default function App() {
             // change of network takes.
             forgetPeer(why === 'bye');
             setConnState('new');
+            connStateRef.current = 'new';
           },
 
           /**
@@ -4257,6 +4258,7 @@ export default function App() {
               // A deliberate exit: they pressed Leave and went back to waiting.
               forgetPeer(true);
               setConnState('new');
+              connStateRef.current = 'new';
             }
           },
 
@@ -4791,6 +4793,17 @@ export default function App() {
     if (force) {
       Journal.mark(`link:rebuild:${why ?? '?'}`).catch(() => { /* noop */ });
       s.detachPeer();
+      /*
+       * The link thrown away: its state goes with it. Only the link in
+       * use tells its states, and the one thrown away says nothing on
+       * its way out: the state stayed the old one's. On 22 October the
+       * edge rebuilt a connected link, its offer was lost when its
+       * server dropped a second later, and the six seconds' net after
+       * the server's return found "connected" and stood down: twenty
+       * seconds with no link, until the stalled one was noticed.
+       */
+      setConnState('new');
+      connStateRef.current = 'new';
     } else if (!s.isPeerHealthy()) {
       const st = s.linkState();
       // Disconnected is a road being changed, not a death: a word from
@@ -4800,6 +4813,8 @@ export default function App() {
       if (st === 'disconnected') return;
       if (st) Journal.mark(`link:rebuild:unhealthy:${st}`).catch(() => { /* noop */ });
       s.detachPeer();
+      setConnState('new');
+      connStateRef.current = 'new';
     }
 
     // The answering side rebuilds nothing on its own initiative: it
@@ -5616,6 +5631,7 @@ export default function App() {
     // and what the next entry restores, and out here it can be changed.
     setLocalAspect(undefined);
     setConnState('new');
+    connStateRef.current = 'new';
     setInChannel(false);
     inChannelRef.current = false;
     sig?.setMode('listening');
@@ -6115,6 +6131,7 @@ export default function App() {
     setPeerSeen(false);
     setPeerVp9(false);
     setConnState('new');
+    connStateRef.current = 'new';
   }, []);
 
   /**
