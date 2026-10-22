@@ -4128,6 +4128,17 @@ export default function App() {
               if (!sessionRef.current?.hasPeer()) {
                 cue('cue_enter');
                 attachPeer(true, 'peer-back-no-link');
+                /*
+                 * The side that cannot offer asks for it, as at its own
+                 * start ("fresh"): the other may believe it offered
+                 * already. On 22 October the edge's offer left a second
+                 * before its server dropped, and was lost; back two
+                 * seconds later, it waited for an answer, the POCO for
+                 * an offer, and twenty seconds went by.
+                 */
+                if (politeRef.current) {
+                  signalingRef.current?.sendSignal({ kind: 'renegotiate', why: 'peer-back-no-link' });
+                }
                 return;
               }
               peerBackTimer.current = setTimeout(async () => {
