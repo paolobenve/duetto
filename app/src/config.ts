@@ -21,10 +21,24 @@ import { fromItalianStorage } from './legacy';
  *    settled it stays for good: the code is of no further use.
  */
 
-/** The steps of the cues' volume, and what each is worth. */
+/**
+ * A level in decibels, as the factor a player takes: the players scale
+ * the amplitude, and the ear hears in decibels.
+ *
+ * The levels used to be written as factors, roughly halving at each
+ * step: 0.6, 0.33, 0.15, 0.08 - steps of 5 to 7 dB, and the quietest
+ * only 22 dB under the top, which on 22 October was still too loud.
+ * Written in decibels now, a step the same at every step.
+ */
+const dB = (db: number) => 10 ** (db / 20);
+
+/**
+ * The steps of the cues' volume, and what each is worth: 10 dB apart,
+ * each heard about half as loud as the one above.
+ */
 export type CueVolume = 'off' | 'veryLow' | 'low' | 'medium' | 'high';
 export const CUE_GAIN: Record<CueVolume, number> = {
-  off: 0, veryLow: 0.08, low: 0.15, medium: 0.33, high: 0.6,
+  off: 0, veryLow: dB(-36), low: dB(-26), medium: dB(-16), high: dB(-6),
 };
 
 /**
@@ -35,17 +49,18 @@ export const CUE_GAIN: Record<CueVolume, number> = {
  */
 export type OtherAppsSound = 'off' | 'android' | 'low' | 'medium' | 'high';
 export const OTHER_APPS_GAIN: Record<OtherAppsSound, number> = {
-  off: 0, android: -1, low: 0.15, medium: 0.33, high: 0.6,
+  off: 0, android: -1, low: CUE_GAIN.low, medium: CUE_GAIN.medium, high: CUE_GAIN.high,
 };
 
 /**
  * How loud the calls one receives sound: the plain call and the sounds
  * (drums, fanfare...), on the volume Android gives them. Full is how
- * they always sounded; below it, Duetto plays them itself, softer.
+ * they always sounded; below it, Duetto plays them itself, softer: 8 dB
+ * a step, closer than the cues', for a call has still to be heard.
  */
 export type AlertLevel = 'full' | 'high' | 'medium' | 'low';
 export const ALERT_GAIN: Record<AlertLevel, number> = {
-  full: 1, high: 0.6, medium: 0.33, low: 0.15,
+  full: 1, high: dB(-8), medium: dB(-16), low: dB(-24),
 };
 
 export type PairInfo = {
