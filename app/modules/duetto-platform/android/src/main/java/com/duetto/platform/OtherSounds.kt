@@ -78,9 +78,10 @@ object OtherSounds {
      *
      * An app that declares one is blocked by Play Protect when installed
      * from a file - "blocked to protect your device", with no way past
-     * it - and on 20 October the Edge could not take the update. The
-     * declaration was taken out of the manifest, the rest kept for when
-     * a way is found; without it nothing is offered.
+     * it - and on 20 October the Edge could not take the update. With
+     * adb or from a store it is not blocked: the light APK, the one to
+     * download and open, has the declaration taken out (see
+     * patch-android-gradle.js), and there nothing is offered.
      */
     fun declared(ctx: Context): Boolean = try {
         ctx.packageManager.getServiceInfo(component(ctx), 0)

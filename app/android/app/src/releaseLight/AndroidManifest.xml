@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The light APK: the release without the notification listener.
+     Written by scripts/patch-android-gradle.js - see there. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application>
+        <service
+            android:name="com.duetto.platform.OtherSoundsListener"
+            tools:node="remove" />
+    </application>
+</manifest>

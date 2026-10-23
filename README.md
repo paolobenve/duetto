@@ -139,6 +139,12 @@ npm run build:apk       # a release APK, with the build number raised
 adb install -r android/app/build/outputs/apk/release/app-release.apk
 ```
 
+The build makes two APKs, the same app for Android. `release/app-release.apk` has
+everything, and is the one for adb and for F-Droid. `releaseLight/app-releaseLight.apk`
+lacks the other apps' sounds in the channel, which take reading the notifications: an
+app that asks for it, installed from a file, is blocked by Play Protect ("blocked to
+protect your device"), and the light one is the APK to download and open on the phone.
+
 The version appears **at the top right in the app**; the build number, which changes at
 every compilation, is at the bottom of the settings. With frequent installations it is
 easy to spend a long time trying an old APK believing it is the new one: if you report a

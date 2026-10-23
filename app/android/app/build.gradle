@@ -136,6 +136,12 @@ android {
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
+        releaseLight {
+            // The release without the notification listener, to be
+            // installed from a file: see patch-android-gradle.js.
+            initWith release
+            matchingFallbacks = ['release']
+        }
     }
 }
 

@@ -135,15 +135,14 @@
         </service>
 
         <!-- The other apps' notifications, seen to sound them in the
-             channel, where Android keeps them quiet as in a call (see
-             OtherSounds), would be heard through a listener declared
-             here. It is left out: an app that declares one, installed
-             from a file, is blocked by Play Protect - "blocked to
-             protect your device", and no way past it - and on 20 October
-             the Edge could not take the update. The code stays, and
-             offers nothing while the listener is missing; put back,
-             it read:
-
+             channel, where Android keeps them quiet as in a call: see
+             OtherSounds. An app that declares a listener, installed from
+             a file, is blocked by Play Protect - "blocked to protect your
+             device", and no way past it: on 20 October the Edge could not
+             take the update. Installed with adb or from a store it is
+             not, so the listener is here, and the "light" APK - the one
+             to download and open - takes it out again: see
+             patch-android-gradle.js. Without it nothing is offered. -->
         <service
             android:name=".OtherSoundsListener"
             android:exported="true"
@@ -152,6 +151,5 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
-        -->
     </application>
 </manifest>

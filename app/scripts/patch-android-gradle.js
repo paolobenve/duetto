@@ -133,6 +133,63 @@ function signRelease() {
   fs.writeFileSync(file, g);
   console.log('release signing: our own key when ~/.gradle/gradle.properties names one');
 }
+/**
+ * A second APK, "light": the release without the notification listener.
+ *
+ * Play Protect blocks, when installed from a file - a browser, a file
+ * manager, a chat - an app that declares a notification listener:
+ * "blocked to protect your device", with no way past it (the Edge, 20
+ * October). Installed with adb or from a store, F-Droid among them, it
+ * does not. So two APKs out of the same build, the same app for
+ * Android - same id, same key, one updates the other:
+ *
+ *  - release, with the listener: for F-Droid, which builds
+ *    assembleRelease, and for adb;
+ *  - releaseLight, without: the one to download and open.
+ *
+ * A build type of its own and not a flavor: the release keeps its name,
+ * its task and its path, which F-Droid's recipe and the README name.
+ * Its manifest only takes the listener out; the libraries, which have
+ * no such build type, are taken as for the release. The manifest is
+ * written from here, as the rest, because android/ is generated.
+ */
+function lightBuild() {
+  const manifest = path.join(__dirname, '..', 'android', 'app', 'src', 'releaseLight', 'AndroidManifest.xml');
+  const text = `<?xml version="1.0" encoding="utf-8"?>
+<!-- The light APK: the release without the notification listener.
+     Written by scripts/patch-android-gradle.js - see there. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application>
+        <service
+            android:name="com.duetto.platform.OtherSoundsListener"
+            tools:node="remove" />
+    </application>
+</manifest>
+`;
+  if (!fs.existsSync(manifest) || fs.readFileSync(manifest, 'utf8') !== text) {
+    fs.mkdirSync(path.dirname(manifest), { recursive: true });
+    fs.writeFileSync(manifest, text);
+    console.log('light APK: manifest written');
+  }
+  let g = fs.readFileSync(file, 'utf8');
+  if (g.includes('releaseLight')) return;
+  const marker = /(    buildTypes \{[\s\S]*?\n        release \{[\s\S]*?\n        \}\n)(    \})/;
+  if (!marker.test(g)) {
+    console.error('release build type not found in build.gradle: no light APK');
+    return;
+  }
+  g = g.replace(marker, `$1        releaseLight {
+            // The release without the notification listener, to be
+            // installed from a file: see patch-android-gradle.js.
+            initWith release
+            matchingFallbacks = ['release']
+        }
+$2`);
+  fs.writeFileSync(file, g);
+  console.log('light APK: build type added');
+}
+
 if (!fs.existsSync(file)) {
   console.log('build.gradle not generated yet: nothing to do');
   process.exit(0);
@@ -141,6 +198,7 @@ if (!fs.existsSync(file)) {
 narrowProperties();
 signRelease();
 noDependencyMetadata();
+lightBuild();
 
 let gradle = fs.readFileSync(file, 'utf8');
 
