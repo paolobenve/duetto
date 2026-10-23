@@ -13,10 +13,14 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.media.AudioAttributes
+import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -72,17 +76,18 @@ object Alerts {
      */
     data class Choice(
         val vibration: String, val sound: String, val uri: String,
-        /** how loud, 0 to 1: 1 is the notification's own, as always */
+        /** how loud, 0 to 1: 1 is the phone's top, see raise */
         val level: Float = 1f,
     ) {
         /**
-         * Softer than the notification's own: the notification is silent
-         * and Duetto plays the sound, at that level - a channel has no
-         * volume of its own. Only where a sound can be made softer
-         * (Android 9 on); before, it stays full.
+         * Played by Duetto, not by the notification, which is silent: a
+         * channel has no volume of its own, and the level is to be the
+         * one chosen here whatever the notification volume - see raise.
+         * Only where a sound can be made softer (Android 9 on); before,
+         * the notification sounds it at the notification volume.
          */
         val ours: Boolean
-            get() = sound != "none" && level < 0.999f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
+            get() = sound != "none" && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
     }
 
     /** The connection in use's choice, as saved. */
@@ -231,8 +236,7 @@ object Alerts {
     }
 
     /**
-     * Played by Duetto, softer, with the notification silent: see
-     * Choice.ours. Only when the notification itself would have sounded
+     * Played by Duetto, with the notification silent: see Choice.ours. Only when the notification itself would have sounded
      * - the ringer on, no Do Not Disturb holding it back - and on the
      * same volume it would have used.
      */
@@ -249,7 +253,7 @@ object Alerts {
 
     /**
      * The sound of a call at a level, to hear it while choosing: on the
-     * notifications' volume, as a call arriving would be.
+     * notifications' volume, raised, as a call arriving would be.
      */
     fun preview(ctx: Context, c: Choice) {
         if (c.sound == "none") return
@@ -277,10 +281,135 @@ object Alerts {
                     if (usage == AudioAttributes.USAGE_VOICE_COMMUNICATION_SIGNALLING) Alarm.apartFromKnob(ctx, level)
                     else level
             }
+            if (usage == AudioAttributes.USAGE_NOTIFICATION) raise(ctx)
             ringtone.play()
+            if (usage == AudioAttributes.USAGE_NOTIFICATION) watch(ctx)
         } catch (e: Exception) {
             Log.w("Duetto", "alert: cannot play ($why): ${e.message}")
         }
+    }
+
+    /*
+     * THE NOTIFICATION VOLUME, RAISED FOR A CALL
+     *
+     * Outside the conversation a call sounds on the notifications'
+     * stream, and its level was a share of where that knob stood: on the
+     * POCO, kept at 3 steps out of 15, "full" was faint (23 October). The
+     * levels are meant as Duetto's own, so for the call's few seconds
+     * the knob is taken to the top, and given back when the sound ends:
+     * "full" is the phone's top, the others 6 dB apart below it.
+     *
+     * Only where the call would sound anyway - the ringer on, no Do Not
+     * Disturb: raising a silent ringer would switch it on, which is the
+     * person's to do. Not with headphones on, where the top is in the
+     * ears. A knob moved by hand meanwhile is left where the hand put
+     * it. What to give back is kept in the preferences: if the process
+     * died with the sound, the next start gives it back.
+     */
+
+    private const val RAISED = "duetto_alerts_raised"
+    private const val KEY_BEFORE = "before"
+    private const val KEY_TO = "to"
+
+    /** The longest a call's sound keeps the knob up: a whole song is cut there. */
+    private const val RAISED_MAX_MS = 20_000L
+
+    private val main = Handler(Looper.getMainLooper())
+    @Volatile private var ringingSince = 0L
+    private var watching = false
+
+    private fun raise(ctx: Context) {
+        val am = ctx.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+        if (am.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
+        val nm = ctx.getSystemService(NotificationManager::class.java)
+        val filter = nm?.currentInterruptionFilter ?: NotificationManager.INTERRUPTION_FILTER_ALL
+        if (filter != NotificationManager.INTERRUPTION_FILTER_ALL &&
+            filter != NotificationManager.INTERRUPTION_FILTER_UNKNOWN) return
+        if (am.isVolumeFixed || headphonesOn(am)) return
+        val stream = AudioManager.STREAM_NOTIFICATION
+        val now = am.getStreamVolume(stream)
+        val max = am.getStreamMaxVolume(stream)
+        val prefs = ctx.getSharedPreferences(RAISED, Context.MODE_PRIVATE)
+        // Raised by the call before, still up: what to give back stays its.
+        if (prefs.getInt(KEY_BEFORE, -1) >= 0 && now == prefs.getInt(KEY_TO, -1)) return
+        // At 0 the notifications are off, and the call too.
+        if (now <= 0 || now >= max) return
+        try {
+            am.setStreamVolume(stream, max, 0)
+        } catch (e: Exception) {
+            Log.w("Duetto", "alert: cannot raise the volume: ${e.message}")
+            return
+        }
+        val to = am.getStreamVolume(stream)
+        if (to == now) return
+        prefs.edit().putInt(KEY_BEFORE, now).putInt(KEY_TO, to).commit()
+        Journal.sample(ctx, "alert:raised:$now>$to")
+    }
+
+    private fun headphonesOn(am: AudioManager): Boolean {
+        val ears = mutableSetOf(
+            AudioDeviceInfo.TYPE_WIRED_HEADSET, AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
+            AudioDeviceInfo.TYPE_BLUETOOTH_A2DP, AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
+            AudioDeviceInfo.TYPE_USB_HEADSET,
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) ears.add(AudioDeviceInfo.TYPE_HEARING_AID)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            ears.add(AudioDeviceInfo.TYPE_BLE_HEADSET)
+            ears.add(AudioDeviceInfo.TYPE_BLE_SPEAKER)
+        }
+        return am.getDevices(AudioManager.GET_DEVICES_OUTPUTS).any { it.type in ears }
+    }
+
+    /** Gives the knob back when the sound ends - this one's or the next's. */
+    private fun watch(ctx: Context) {
+        ringingSince = SystemClock.elapsedRealtime()
+        val app = ctx.applicationContext
+        main.post {
+            if (watching) return@post
+            watching = true
+            main.postDelayed(object : Runnable {
+                override fun run() {
+                    val rt = playing
+                    val long = SystemClock.elapsedRealtime() - ringingSince > RAISED_MAX_MS
+                    val on = try { rt?.isPlaying == true } catch (_: Exception) { false }
+                    if (on && !long) {
+                        main.postDelayed(this, 300)
+                        return
+                    }
+                    if (on) try { rt?.stop() } catch (_: Exception) { /* noop */ }
+                    watching = false
+                    giveBack(app)
+                }
+            }, 500)
+        }
+    }
+
+    private fun giveBack(ctx: Context) {
+        val prefs = ctx.getSharedPreferences(RAISED, Context.MODE_PRIVATE)
+        val before = prefs.getInt(KEY_BEFORE, -1)
+        val to = prefs.getInt(KEY_TO, -1)
+        if (before < 0) return
+        prefs.edit().clear().commit()
+        val am = ctx.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+        val stream = AudioManager.STREAM_NOTIFICATION
+        val now = am.getStreamVolume(stream)
+        // Moved by hand meanwhile: the hand wins.
+        if (now != to) {
+            Journal.sample(ctx, "alert:raised:left:$now")
+            return
+        }
+        try {
+            am.setStreamVolume(stream, before, 0)
+        } catch (e: Exception) {
+            Log.w("Duetto", "alert: cannot give the volume back: ${e.message}")
+        }
+    }
+
+    /** At the start: a knob left up by a process that died with the sound. */
+    fun giveBackLeft(ctx: Context) {
+        if (watching) return
+        if (try { playing?.isPlaying == true } catch (_: Exception) { false }) return
+        giveBack(ctx)
     }
 
     /**

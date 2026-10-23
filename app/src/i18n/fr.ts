@@ -473,7 +473,7 @@ export const fr: Dictionary = {
     soundChooseAnother: 'Choisir un autre son du téléphone…',
     soundChooseNote: 'Un son différent des autres dit qui c’est sans regarder.',
     alertLevel: 'Volume des appels reçus',
-    alertLevelNote: 'L’appel simple et les sons (tambours, fanfare…), sur le volume des notifications et de l’alarme d’Android. Touche pour l’entendre.',
+    alertLevelNote: 'L’appel simple depuis le maximum du téléphone, quel que soit le volume des notifications, pourvu que la sonnerie soit active ; les sons (tambours, fanfare…) sur le volume de l’alarme d’Android. Touche pour l’entendre.',
     alertLevel_full: 'Plein',
     alertLevel_high: 'Fort',
     alertLevel_medium: 'Moyen',

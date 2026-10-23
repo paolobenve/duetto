@@ -472,7 +472,7 @@ export const it: Dictionary = {
     soundChooseAnother: 'Scegli un altro suono dal telefono…',
     soundChooseNote: 'Un suono diverso dagli altri fa capire chi è senza guardare.',
     alertLevel: 'Volume degli avvisi ricevuti',
-    alertLevelNote: 'L’avviso semplice e i suoni (tamburi, fanfara…), sul volume delle notifiche e della sveglia di Android. Tocca per sentirlo.',
+    alertLevelNote: 'L’avviso semplice dal massimo del telefono, qualunque sia il volume delle notifiche, purché la suoneria sia attiva; i suoni (tamburi, fanfara…) sul volume della sveglia di Android. Tocca per sentirlo.',
     alertLevel_full: 'Pieno',
     alertLevel_high: 'Alto',
     alertLevel_medium: 'Medio',

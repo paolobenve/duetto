@@ -54,9 +54,9 @@ export const OTHER_APPS_GAIN: Record<OtherAppsSound, number> = {
 
 /**
  * How loud the calls one receives sound: the plain call and the sounds
- * (drums, fanfare...), on the volume Android gives them. Full is how
- * they always sounded; below it, Duetto plays them itself, softer: 6 dB
- * a step, closer than the cues', for a call has still to be heard - at
+ * (drums, fanfare...). The plain call from the phone's top, whatever
+ * the notification volume (see Alerts.raise), the sounds on the alarm
+ * volume; Duetto plays them itself, 6 dB a step, closer than the cues', for a call has still to be heard - at
  * 8, the lowest was too low.
  */
 export type AlertLevel = 'full' | 'high' | 'medium' | 'low';

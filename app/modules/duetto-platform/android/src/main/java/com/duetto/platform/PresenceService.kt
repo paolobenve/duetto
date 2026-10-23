@@ -54,6 +54,8 @@ class PresenceService : HeadlessJsTaskService() {
         Journal.recordExits(applicationContext)
         // And, if a permission was taken, which: see recordPermissions.
         Journal.recordPermissions(applicationContext)
+        // A notification volume left raised by a call's sound: see Alerts.raise.
+        Alerts.giveBackLeft(applicationContext)
         // The net under the waiting: if this service dies unnoticed, the
         // alarm starts it again within minutes. See WatchdogAlarm.
         WatchdogAlarm.schedule(this)

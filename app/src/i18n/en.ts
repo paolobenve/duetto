@@ -486,7 +486,7 @@ export const en = {
     soundChooseAnother: 'Choose another sound from the phone…',
     soundChooseNote: 'A sound unlike the others tells you who it is without looking.',
     alertLevel: 'Volume of the calls you receive',
-    alertLevelNote: 'The plain call and the sounds (drums, fanfare…), on Android\'s notification and alarm volume. Touch to hear it.',
+    alertLevelNote: 'The plain call from the phone\'s top, whatever the notification volume, as long as the ringer is on; the sounds (drums, fanfare…) on Android\'s alarm volume. Touch to hear it.',
     alertLevel_full: 'Full',
     alertLevel_high: 'High',
     alertLevel_medium: 'Medium',

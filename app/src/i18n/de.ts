@@ -473,7 +473,7 @@ export const de: Dictionary = {
     soundChooseAnother: 'Einen anderen Ton vom Telefon wählen…',
     soundChooseNote: 'Ein Ton, der anders ist als die übrigen, sagt dir ohne Hinsehen, wer es ist.',
     alertLevel: 'Lautstärke empfangener Rufe',
-    alertLevelNote: 'Der einfache Ruf und die Klänge (Trommeln, Fanfare…), mit der Benachrichtigungs- und Weckerlautstärke von Android. Tippe, um es zu hören.',
+    alertLevelNote: 'Der einfache Ruf ab der Höchstlautstärke des Telefons, egal wie laut die Benachrichtigungen sind, solange der Klingelton an ist; die Klänge (Trommeln, Fanfare…) mit der Weckerlautstärke von Android. Tippe, um es zu hören.',
     alertLevel_full: 'Voll',
     alertLevel_high: 'Hoch',
     alertLevel_medium: 'Mittel',

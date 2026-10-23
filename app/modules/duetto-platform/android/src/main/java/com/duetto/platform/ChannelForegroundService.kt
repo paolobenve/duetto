@@ -321,6 +321,8 @@ class ChannelForegroundService : Service() {
             Journal.recordBoot(applicationContext)
             // And whether a permission was taken or given meanwhile.
             Journal.recordPermissions(applicationContext)
+            // A notification volume left raised by a call's sound: see Alerts.raise.
+            Alerts.giveBackLeft(applicationContext)
             // The start line reschedules the wait by itself.
             Journal.sample(applicationContext, "start")
         }
