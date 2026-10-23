@@ -254,7 +254,8 @@ const GRAINY_MS = 6_000;
 const GRAINY_AFTER_LINK_MS = 8_000;
 /** Their picture decoded at a trickle while arriving in full: see weighStalledDecoder. */
 const DECODER_BUSY_SHARE = 0.25;
-const DECODER_STALLED_FPS = 6;
+/** drawn at fewer than this, a full picture arriving: no camera goes below it */
+const DECODER_SLOW_FPS = 15;
 const DECODER_STALLED_MS = 8_000;
 /** or decoded at under this share of the frames arriving, when this many arrive */
 const DECODER_BEHIND_SHARE = 0.5;
@@ -2342,6 +2343,15 @@ export class ChannelSession {
    * picture - and stayed just above the 6, so nothing was done; at 14:10
    * the same day, at 5, the cure had set it right. Where the frames
    * arriving cannot be counted, the 6 alone, as before.
+   *
+   * And under 15 drawn, whatever is counted arriving: on 23 October the
+   * edge drew the POCO's 25 at 8 a second, 3.3 Mbit/s coming in, and the
+   * frames counted arriving were 8 too - the count stuck with the
+   * decoder - so it was not "behind", and the cure waited for the 4, a
+   * minute later; at 14:40 the same day, two minutes at 8 and no cure.
+   * A full picture arriving and fewer than 15 frames a second drawn is a
+   * picture that is not right: a camera, even in the dark, does not go
+   * below 15.
    */
   private stalledDecoderSince = 0;
   private weighStalledDecoder(
@@ -2349,7 +2359,7 @@ export class ChannelSession {
     rttMs: number | null, lossPct: number | null, ceiling: number, now: number,
   ) {
     const arriving = pic?.arriving ?? null;
-    const behind = pic !== null && (pic.fps <= DECODER_STALLED_FPS
+    const behind = pic !== null && (pic.fps < DECODER_SLOW_FPS
       || (arriving !== null && arriving >= DECODER_ARRIVING_FPS && pic.fps < arriving * DECODER_BEHIND_SHARE));
     const stuck = this.peerVideoDeclared && this.localWatching
       && now - this.linkedAt > GRAINY_AFTER_LINK_MS
