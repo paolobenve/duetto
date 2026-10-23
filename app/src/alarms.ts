@@ -24,14 +24,15 @@ import { t } from './i18n';
  */
 /**
  * How loud each sound is as recorded, in LUFS (ffmpeg's ebur128), and
- * the level of the buttons' own: the knock was some 6 dB below them, the
+ * the level of the buttons' own: the old knock was some 6 dB below them, the
  * fanfare 7, and on the moto the call one sends sounded "a bit low".
  * Heard on the side that sends, every sound is brought to the buttons'
- * level, under the same option; at the top the knock stays a little
- * short, because a sound cannot go past its full volume.
+ * level, under the same option; at the top the knock stays short -
+ * the bell's ding is all in its strike, 15 dB quieter than the buttons
+ * at full volume - because a sound cannot go past its full volume.
  */
 const RECORDED_LUFS: Record<string, number> = {
-  knock: -16.5, drumroll: -15.7, drumkit: -13.9, fanfare: -17.2, horn: -10.5, rooster: -12.2,
+  knock: -24.8, drumroll: -15.7, drumkit: -13.9, fanfare: -17.2, horn: -10.5, rooster: -12.2,
 };
 const BUTTONS_LUFS = -10;
 export function sentGain(name: string, gain: number): number {

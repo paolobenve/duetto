@@ -14,7 +14,7 @@ on the other side of the room: they have to cut through, not to be
 pretty. A handful only, clearly different from one another, so that one
 picks with confidence without having to listen again.
 
-Two are home-made, the horn and the knock, and so are the seven cues -
+One is home-made, the horn, and so are the seven cues -
 the camera and the microphone going on and off, the camera turning
 round, coming into the channel, going out, and going out for good: a car horn is literally
 two notes with the odd harmonics, a cue is one tone sliding, and
@@ -28,6 +28,8 @@ The sources live in assets/, and here is where they come from:
   drumkit.wav    freesound.org #695331, "hewnmarrow"     CC0
   fanfare.flac   freesound.org #397355, "plasterbrain"   CC0
   rooster.flac   freesound.org #454174, "kyles"          CC0
+  bell.flac      freesound.org #453980, "kyles"          CC0  (the knock;
+                 the first two seconds of forty)
 
 CC0 means no rights reserved: not one of them asks for anything, and
 they are named out of fairness, not out of duty. It is worth keeping it
@@ -170,50 +172,15 @@ def rooster():
 # --- Knock -----------------------------------------------------------------
 # It is not a sound for waking anybody: it is the answer heard by WHOEVER
 # knocks, on their own phone, to know the alert has left. It used to be
-# the drum roll, which is an announcement though, and for two raps on a
-# door two raps on a door are enough.
-#
-# Home-made, like the horn, and for the same reason: a rap on a door is an
-# impulse on a piece of wood, that is a dry noise plus a few modes falling
-# away quickly. Synthesis cannot be heard here because there is no timbre
-# to imitate - there is a thud.
-def rap(f0, seed, dur=0.24):
-    n = int(SR * dur)
-    time = t(dur)
-    x = np.zeros(n)
-    # The wood: few modes, not harmonic with one another. Low and long: a
-    # heavy door sounds underneath, and the high modes - which are there
-    # in a rap on a small table - would turn it into a knuckle on thin
-    # wood.
-    for f, tau, weight in (
-        (f0, 0.085, 1.0), (f0 * 2.31, 0.045, 0.48),
-        (f0 * 4.10, 0.024, 0.22), (f0 * 7.60, 0.012, 0.10),
-    ):
-        x += np.sin(2 * np.pi * f * time) * decay(n, tau) * weight
-    # The rap itself: noise lasting the blink of an eye. This is what
-    # makes it go "tock" and not "boo", but it has to be kept dark - raw
-    # white noise cracks like a whip - so it goes through a filter that
-    # takes the top off it.
-    chance = np.random.default_rng(seed)
-    noise = chance.standard_normal(n) * decay(n, 0.005)
-    tail = np.exp(-np.arange(48) / 12.0)
-    noise = np.convolve(noise, tail / tail.sum())[:n]
-    x += noise * 1.4
-    up = max(1, int(SR * 0.0008))
-    x[:up] *= np.linspace(0, 1, up)
-    return x
+# the drum roll, which is an announcement though; then two raps on a
+# door, home-made; since October one ding of an elevator bell, recorded
+# close up - a small sound that says "it went", and with the first two
+# seconds the whole of it: the ding and its ring dying away. The source
+# in assets/ is already cut there; here it only gets a gentle end.
+BELL = os.path.join(HERE, 'bell.flac')
 
 def knock():
-    # Little more than the two raps: after the second there is only its
-    # tail, and half a second of silence at the end takes up room and is
-    # not heard.
-    x = np.zeros(int(SR * 0.56))
-    # Two raps, not identical: a hand never repeats the same rap, and two
-    # exact copies sound fake. The second a shade louder than the first,
-    # as comes naturally when knocking.
-    put(x, 0.00, rap(142.0, 1), 0.88)
-    put(x, 0.26, rap(132.0, 2), 1.00)
-    return normalise(fade(x, 0.05))
+    return normalise(soft_tail(sample(BELL), 0.3))
 
 # --- Cues ------------------------------------------------------------------
 # Four short glissandi for the camera and the microphone going on and

@@ -330,11 +330,12 @@ const SERVER_CHECK_MS = 3_000;
 /**
  * The cap on how long the knocker's own sound may last.
  *
- * The two knocks last half a second and end by themselves: the cap
- * stays as a net, because a confirming sound that carries on while you
- * are already doing something else is the thing we set out to remove.
+ * The bell's ding lasts two seconds and ends by itself: the cap stays
+ * as a net, a little past it, because a confirming sound that carries
+ * on while you are already doing something else is the thing we set
+ * out to remove.
  */
-const KNOCK_ECHO_MS = 2_000;
+const KNOCK_ECHO_MS = 2_500;
 
 /**
  * A short sound for a thing that just happened in the channel - the
@@ -6766,7 +6767,7 @@ export default function App() {
         onSelectRoute={audio.select}
         onKnock={() => {
           signalingRef.current?.knock();
-          // Two knocks on a door, quietly, on this side too: the call
+          // A bell's ding, quietly, on this side too: the call
           // leaves towards a phone far away and from here nothing would
           // be heard - the button just blinks. Knowing that it left is
           // worth as much as sending it.

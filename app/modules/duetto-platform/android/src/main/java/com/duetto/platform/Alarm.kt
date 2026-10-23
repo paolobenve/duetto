@@ -87,7 +87,7 @@ object Alarm {
         "horn" -> R.raw.alarm_horn
         "rooster" -> R.raw.alarm_rooster
         // Not an alarm, and not in the list: it is the answer heard by
-        // whoever knocks, two raps on a door.
+        // whoever knocks, one ding of a bell.
         "knock" -> R.raw.knock
         // The cues, on both phones: the camera, the microphone and the
         // listening going on and off, the camera turning round, coming in, going out,
