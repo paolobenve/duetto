@@ -252,11 +252,13 @@ object Alerts {
     }
 
     /**
-     * The sound of a call at a level, to hear it while choosing: on the
-     * notifications' volume, raised, as a call arriving would be.
+     * The sound of a call at a level, to hear it while choosing: the way
+     * a call arriving now would sound - in the conversation on its
+     * stream, outside it on the notifications', raised.
      */
     fun preview(ctx: Context, c: Choice) {
         if (c.sound == "none") return
+        if (playIfInConversation(ctx, c)) return
         ring(ctx, c, AudioAttributes.USAGE_NOTIFICATION, "preview")
     }
 
