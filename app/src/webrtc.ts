@@ -264,6 +264,10 @@ const DECODER_BEHIND_SHARE = 0.5;
 const DECODER_ARRIVING_FPS = 15;
 /** our frames a second are said again in the state when they move by this many */
 const SENT_FPS_STEP = 5;
+/** the incoming video turned off or on: the answer waited for so long at most */
+const RENEW_VIDEO_WAIT_MS = 5_000;
+/** and the decoded frames read again after so long */
+const RENEW_VIDEO_CHECK_MS = 4_000;
 const BALANCE_RATIO = 3;
 const BALANCE_TICKS = 10;
 const BALANCE_STEP = 0.7;
@@ -353,6 +357,9 @@ export class ChannelSession {
   private lastInbound: { ts: number; bytes: number } | null = null;
   /** the incoming video's frames received at the last sample */
   private lastInboundFrames: { ts: number; frames: number } | null = null;
+  /** the frames decoded of their picture, as the last reading counted them: see renewIncomingVideo */
+  private framesDecodedIn: number | null = null;
+  private renewingVideo = false;
   /**
    * When bytes from the other side last landed here, by the clock of
    * the statistics walk. It answers one question - "is the wifi
@@ -1283,6 +1290,71 @@ export class ChannelSession {
     return true;
   }
 
+  /**
+   * Their picture's decoder made anew, the link left standing.
+   *
+   * A stuck decoder was cured by a new link - the microphone's track,
+   * then the whole session - and a new link stops everything: the
+   * voice both ways, and the picture the other side was watching, black
+   * for six seconds on the POCO for a decoder stuck on the edge (24
+   * October). What is stuck is only the picture coming in, and WebRTC
+   * stops its decoder when there is nothing more to receive and makes a
+   * new one when there is again. So the video channel is turned, on the
+   * same link, to sending alone and back, two renegotiations as for a
+   * codec changed: the voice goes on, our picture goes on reaching
+   * them, and theirs stands still here for a second.
+   *
+   * False if it could not be done - no link, no video channel, an
+   * answer that never came - and the caller goes on to the next cure.
+   */
+  async renewIncomingVideo(why: string): Promise<boolean> {
+    const pc: any = this.pc;
+    if (!pc || pc.connectionState !== 'connected' || this.renewingVideo) return false;
+    let tr: any = null;
+    try {
+      tr = (pc.getTransceivers?.() ?? [])
+        .find((t: any) => !t?.stopped && t?.receiver?.track?.kind === 'video') ?? null;
+    } catch { /* noop */ }
+    const was = tr?.direction;
+    if (was !== 'sendrecv' && was !== 'recvonly') return false;
+    this.renewingVideo = true;
+    Journal.mark(`session:renew-video:${why}:decoded=${this.framesDecodedIn ?? '?'}`).catch(() => { /* noop */ });
+    try {
+      const off = await this.turnReceiving(tr, was === 'sendrecv' ? 'sendonly' : 'inactive', false);
+      const back = await this.turnReceiving(tr, was, true);
+      Journal.mark(`session:renew-video:${off && back ? 'done' : `failed:${off ? 'back' : 'off'}`}`)
+        .catch(() => { /* noop */ });
+      // Read again a little later: a counter started afresh is a new
+      // decoder; one going on from where it was is the old one.
+      setTimeout(() => {
+        Journal.mark(`session:renew-video:after:decoded=${this.framesDecodedIn ?? '?'}`).catch(() => { /* noop */ });
+      }, RENEW_VIDEO_CHECK_MS);
+      return off && back;
+    } catch (e) {
+      log('incoming video not renewed:', String(e));
+      try { tr.direction = was; } catch { /* noop */ }
+      return false;
+    } finally {
+      this.renewingVideo = false;
+    }
+  }
+
+  /** The video channel turned to a direction, negotiated, and waited for. */
+  private async turnReceiving(tr: any, direction: string, receiving: boolean): Promise<boolean> {
+    tr.direction = direction;
+    // The setter reaches the native side by itself, a moment later.
+    await new Promise((r) => setTimeout(r, 200));
+    if (this.polite) this.signaling.sendSignal({ kind: 'renegotiate', offer: true, why: 'renew-video' });
+    else await this.negotiate();
+    const until = Date.now() + RENEW_VIDEO_WAIT_MS;
+    while (Date.now() < until) {
+      const now: string | null = tr.currentDirection ?? null;
+      if (now && (now === 'sendrecv' || now === 'recvonly') === receiving) return true;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    return false;
+  }
+
   /** How long ago the link in use was built, in ms; Infinity with none. */
   linkAge(): number {
     return this.pc && this.peerBornAt ? Date.now() - this.peerBornAt : Infinity;
@@ -1980,6 +2052,8 @@ export class ChannelSession {
             ? Math.round(((frames - was.frames) * 1000) / (r.timestamp - was.ts))
             : null;
           if (Number.isFinite(frames)) this.lastInboundFrames = { ts: r.timestamp, frames };
+          const decoded = Number(r.framesDecoded);
+          if (Number.isFinite(decoded)) this.framesDecodedIn = decoded;
           out.in = {
             w: r.frameWidth ?? 0,
             h: r.frameHeight ?? 0,

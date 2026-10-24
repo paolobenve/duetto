@@ -744,6 +744,19 @@ export default function App() {
   useEffect(() => {
     const onLink = (url: string | null) => {
       if (!url) return;
+      /**
+       * The stuck decoder's first cure, asked by hand - from a computer:
+       * adb shell am start -a android.intent.action.VIEW -d duetto://channel/renew-video
+       * A decoder does not get stuck when wanted, the cure can be tried
+       * at will. With the diagnostics on and in the channel; nothing
+       * else.
+       */
+      if (url.startsWith('duetto://channel/renew-video')) {
+        if (cfgRef.current?.diagnostics && inChannelRef.current) {
+          sessionRef.current?.renewIncomingVideo('asked').catch(() => { /* noop */ });
+        }
+        return;
+      }
       if (url.startsWith('duetto://channel')) {
         Journal.mark('command:notification:enter').catch(() => {});
         // Asked for by name: the leaving of a moment ago does not hold it back.
@@ -1114,6 +1127,8 @@ export default function App() {
   const renewedAt = useRef(0);
   /** the last microphone renewed alone, the trial before the whole session */
   const micRenewedAt = useRef(0);
+  /** the last incoming picture renewed alone, the stuck decoder's first cure */
+  const videoRenewedAt = useRef(0);
   /** the grainy picture's cures, close together: see renewSession */
   const grainyCures = useRef<number[]>([]);
   /** the grainy picture's cure given up, until the road changes: see renewSession */
@@ -5426,6 +5441,16 @@ export default function App() {
         return;
       }
       grainyCures.current.push(now);
+    }
+    /**
+     * A stuck decoder: first its picture alone, made again on the link
+     * as it stands - nothing stops but their picture here, for a
+     * second (see renewIncomingVideo). Still stuck 8 seconds later, the
+     * watch asks again, and the cures below come in turn.
+     */
+    if (why.startsWith('decoder-stalled') && Date.now() - videoRenewedAt.current >= RENEW_GAP_MS) {
+      videoRenewedAt.current = Date.now();
+      if (await old.renewIncomingVideo(why)) return;
     }
     /**
      * First the trial: the microphone's track alone, and the link made
