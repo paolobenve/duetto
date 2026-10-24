@@ -20,7 +20,7 @@ import {
 import { Journal, Heartbeat, AudioDevices } from 'duetto-platform';
 import type { DuoConfig } from './config';
 import { iceServers, VIDEO_PROFILES, CAPTURE_FPS } from './config';
-import type { Signaling, SignalMessage } from './signaling';
+import type { Hand, Signaling, SignalMessage } from './signaling';
 import { VERSION_LABEL, BUILD } from './version';
 import { logger } from './log';
 
@@ -77,6 +77,8 @@ export type ChannelEvents = {
     net?: string | null;
     /** putting back how things were on coming in: no cues for it */
     restoring?: boolean;
+    /** when a finger last moved each thing, if they say: see Hand */
+    hand?: Hand;
   }) => void;
   /**
    * Whether we are receiving a video track.
@@ -1349,6 +1351,7 @@ export class ChannelSession {
           : null,
         net: typeof msg.net === 'string' ? msg.net : null,
         restoring: msg.restoring === true,
+        hand: msg.hand && typeof msg.hand === 'object' ? msg.hand : undefined,
       });
       this.setPeerWatching(msg.watching !== false);
       // Not heard: listening off or at zero, or in another call.
@@ -3188,6 +3191,17 @@ export class ChannelSession {
     return portrait ? shortSide / longSide : longSide / shortSide;
   }
 
+  /**
+   * When a finger last moved each thing: see Hand. Static, so that a
+   * session made again carries the stamps on and the other side does
+   * not take a new session's zeros for a touch.
+   */
+  private static hand: Hand = {};
+  /** A button was pressed: the change it brings is a choice, and rings over there. */
+  markHand(kind: keyof Hand) {
+    ChannelSession.hand[kind] = Math.max(Date.now(), (ChannelSession.hand[kind] ?? 0) + 1);
+  }
+
   /** Tells the other side about mic, camera and shape (encrypted). */
   broadcastState() {
     this.signaling.sendSignal({
@@ -3214,6 +3228,7 @@ export class ChannelSession {
       charging: this.battery?.charging,
       net: this.network ?? undefined,
       sentFps: this.isVideoEnabled() && this.sentFps !== null ? this.sentFps : undefined,
+      hand: { ...ChannelSession.hand },
       restoring: this.restoring || undefined,
     });
     this.sentFpsSaid = this.sentFps;

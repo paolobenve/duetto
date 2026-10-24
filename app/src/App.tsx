@@ -32,7 +32,7 @@ import {
   storeSettingsInPair,
 } from './config';
 import { Signaling, PresenceStatus } from './signaling';
-import type { PersonOnServer, InvitationOnServer } from './signaling';
+import type { Hand, PersonOnServer, InvitationOnServer } from './signaling';
 import { useLanguage, t } from './i18n';
 import { alarmLabel, sentGain } from './alarms';
 import { BUILD, VERSION_FULL, VERSION_LABEL } from './version';
@@ -1403,6 +1403,8 @@ export default function App() {
   const [peerSeen, setPeerSeen] = useState(false);
   /** a state of theirs has been heard since we met: the next ones are changes */
   const peerStateHeard = useRef(false);
+  /** their finger's stamps, as last rung for: see Hand */
+  const peerHandSeen = useRef<Hand>({});
   /** VP9 in hardware: ours and theirs. The option shows only with both. */
   const [localVp9, setLocalVp9] = useState(false);
   const [peerVp9, setPeerVp9] = useState(false);
@@ -5070,6 +5072,24 @@ export default function App() {
           // before, the sound of their entering first of all.
           const heard = peerStateHeard.current && st.restoring !== true;
           peerStateHeard.current = true;
+          /**
+           * And only what a finger did. The cues are the other's
+           * buttons heard here; but a change came also from the app by
+           * itself - a session made again, the camera put back - and
+           * each was silenced one by one, after it had rung for nothing
+           * (24 October). The sender stamps what a finger moved, and a
+           * change rings when its stamp moved with it. An older Duetto
+           * stamps nothing: every change, as before.
+           */
+          const hand = st.hand;
+          if (!heard && hand) peerHandSeen.current = { ...hand };
+          const touched = (k: keyof Hand) => {
+            if (!hand) return true;
+            const at = hand[k] ?? 0;
+            if (at === (peerHandSeen.current[k] ?? 0)) return false;
+            peerHandSeen.current[k] = at;
+            return true;
+          };
           // Their network changing is a new road: the grainy picture's
           // cure may try again.
           const net = st.net ?? null;
@@ -5084,7 +5104,7 @@ export default function App() {
           const before = peerStateRef.current;
           if (before.audio !== st.audio) {
             Journal.mark(`peer-audio:${st.audio ? 'on' : 'off'}`).catch(() => {});
-            if (heard && inChannelRef.current) cue(st.audio ? 'cue_audio_on' : 'cue_audio_off');
+            if (heard && inChannelRef.current && touched('audio')) cue(st.audio ? 'cue_audio_on' : 'cue_audio_off');
           }
           // Their listening hushed or back: the volume they hear us at
           // goes to zero and comes back. Not a call of theirs, which has
@@ -5097,11 +5117,11 @@ export default function App() {
           }
           if (before.video !== st.video) {
             Journal.mark(`peer-video:${st.video ? 'on' : 'off'}`).catch(() => {});
-            if (heard && inChannelRef.current) cue(st.video ? 'cue_video_on' : 'cue_video_off');
+            if (heard && inChannelRef.current && touched('video')) cue(st.video ? 'cue_video_on' : 'cue_video_off');
           }
           if (st.camera && before.camera !== st.camera) {
             Journal.mark(`peer-camera:${st.camera}`).catch(() => {});
-            if (heard && inChannelRef.current) cue('cue_camera');
+            if (heard && inChannelRef.current && touched('camera')) cue('cue_camera');
           }
           if (st.output && before.output !== st.output) {
             Journal.mark(`peer-audio-output:${st.output}`).catch(() => {});
@@ -6745,6 +6765,7 @@ export default function App() {
             Journal.mark(`audio:wanted:${want ? 'on' : 'off'}`).catch(() => {});
             return;
           }
+          sessionRef.current.markHand('audio');
           const on = sessionRef.current.toggleAudio();
           setAudioOn(on);
           noteHowItIs(cfg?.pair?.id);
@@ -6752,7 +6773,7 @@ export default function App() {
           cue(on ? 'cue_audio_on' : 'cue_audio_off');
         }}
         // Never with an argument: one would be taken for `quiet`.
-        onToggleVideo={() => { onToggleVideo(); }}
+        onToggleVideo={() => { sessionRef.current?.markHand('video'); onToggleVideo(); }}
         onSwitchCamera={() => {
           const s = sessionRef.current;
           if (!s || !inChannelRef.current) {
@@ -6765,6 +6786,7 @@ export default function App() {
           }
           // The truth lives in the session, with the video off too: it
           // is the session that remembers which camera will open.
+          s.markHand('camera');
           const front = s.switchCamera();
           setFrontCamera(front);
           cue('cue_camera');

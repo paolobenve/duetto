@@ -44,6 +44,14 @@ function gone(v: any): PeerGone {
   return at ? { at, reason: v.reason === 'bye' ? 'bye' : 'dropped' } : null;
 }
 
+/**
+ * When a finger last moved the microphone, the camera, the video - a
+ * stamp each, kept across a session made again. The other side rings
+ * for a change only when the stamp of its kind moved with it: see
+ * onPeerState in App.tsx.
+ */
+export type Hand = { audio?: number; video?: number; camera?: number };
+
 export type SignalMessage =
   | { kind: 'desc'; type: 'offer' | 'answer'; sdp: string }
   | { kind: 'ice'; candidate: any }
@@ -83,6 +91,8 @@ export type SignalMessage =
       net?: string;
       /** the frames a second our video goes out at: a dark camera sends few */
       sentFps?: number;
+      /** when a finger last moved each of these: the other side rings only for those */
+      hand?: Hand;
       /** putting back how things were on coming in: not choices of the moment */
       restoring?: boolean }
   // "I did not leave: the phone closed the window on me."
