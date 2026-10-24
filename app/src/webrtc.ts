@@ -254,12 +254,14 @@ const GRAINY_MS = 6_000;
 const GRAINY_AFTER_LINK_MS = 8_000;
 /** Their picture decoded at a trickle while arriving in full: see weighStalledDecoder. */
 const DECODER_BUSY_SHARE = 0.25;
-/** drawn at fewer than this, a full picture arriving: no camera goes below it */
-const DECODER_SLOW_FPS = 15;
+/** drawn at fewer than this, a full picture arriving, when the other side does not say what it sends */
+const DECODER_STALLED_FPS = 6;
 const DECODER_STALLED_MS = 8_000;
-/** or decoded at under this share of the frames arriving, when this many arrive */
+/** or decoded at under this share of the frames arriving, when this many arrive - or of those sent */
 const DECODER_BEHIND_SHARE = 0.5;
 const DECODER_ARRIVING_FPS = 15;
+/** our frames a second are said again in the state when they move by this many */
+const SENT_FPS_STEP = 5;
 const BALANCE_RATIO = 3;
 const BALANCE_TICKS = 10;
 const BALANCE_STEP = 0.7;
@@ -397,6 +399,11 @@ export class ChannelSession {
   private peerVideoDeclared = false;
   /** the network carrying the other side, as their state says: see weighGrainyIncoming */
   private peerNet: string | null = null;
+  /** the frames a second the other side says it sends: see weighStalledDecoder */
+  private peerSentFps: number | null = null;
+  /** ours, the last said in the state: said again when it moves by SENT_FPS_STEP */
+  private sentFps: number | null = null;
+  private sentFpsSaid: number | null = null;
 
   /**
    * Which camera films.
@@ -1320,6 +1327,7 @@ export class ChannelSession {
     if (msg.kind === 'state') {
       this.peerVideoDeclared = msg.video === true;
       this.peerNet = typeof msg.net === 'string' ? msg.net : null;
+      this.peerSentFps = typeof msg.sentFps === 'number' ? msg.sentFps : null;
       this.peerVp9 = msg.hwVp9 === true;
       this.events.onPeerState?.({
         audio: msg.audio,
@@ -1955,6 +1963,7 @@ export class ChannelSession {
           };
           this.lastOutbound = { ts: r.timestamp, bytes: r.bytesSent };
           limit = r.qualityLimitationReason ?? '?';
+          this.weighSentFps(out.out.fps);
           // Counted for the stall watch below, every video report of
           // the tick together: see there.
           framesEncodedSum += Number(r.framesEncoded ?? 0);
@@ -2344,23 +2353,39 @@ export class ChannelSession {
    * the same day, at 5, the cure had set it right. Where the frames
    * arriving cannot be counted, the 6 alone, as before.
    *
-   * And under 15 drawn, whatever is counted arriving: on 23 October the
-   * edge drew the POCO's 25 at 8 a second, 3.3 Mbit/s coming in, and the
-   * frames counted arriving were 8 too - the count stuck with the
-   * decoder - so it was not "behind", and the cure waited for the 4, a
-   * minute later; at 14:40 the same day, two minutes at 8 and no cure.
-   * A full picture arriving and fewer than 15 frames a second drawn is a
-   * picture that is not right: a camera, even in the dark, does not go
-   * below 15.
+   * And at under half the frames the other side says it sends: on 23
+   * October the edge drew the POCO's 25 at 8 a second, 3.3 Mbit/s coming
+   * in, and the frames counted arriving were 8 too - the count stuck
+   * with the decoder - so it was not "behind", and the cure waited for
+   * the 4, a minute later. Taken for a figure alone - under 15 drawn,
+   * whatever arrives - it was wrong the next evening: the POCO's camera,
+   * in a dim room, sends 10 a second, a longer exposure for a brighter
+   * picture, and the edge drawing all 10 rebuilt the link every few
+   * minutes for nothing. 8 of 25 and 10 of 10 look the same from here;
+   * only the sender knows which it is, and it says so in the state.
+   * Where it does not - an older Duetto - the 6 alone, as before.
    */
   private stalledDecoderSince = 0;
+
+  /** Our frames a second, told the other side when they move: see weighStalledDecoder. */
+  private weighSentFps(fps: number) {
+    this.sentFps = fps;
+    if (!this.isVideoEnabled()) return;
+    const said = this.sentFpsSaid;
+    if (said === null || Math.abs(fps - said) >= SENT_FPS_STEP) this.broadcastState();
+  }
+
   private weighStalledDecoder(
     pic: { w: number; h: number; fps: number; kbps: number | null; arriving?: number | null } | null,
     rttMs: number | null, lossPct: number | null, ceiling: number, now: number,
   ) {
     const arriving = pic?.arriving ?? null;
-    const behind = pic !== null && (pic.fps < DECODER_SLOW_FPS
-      || (arriving !== null && arriving >= DECODER_ARRIVING_FPS && pic.fps < arriving * DECODER_BEHIND_SHARE));
+    const sent = this.peerSentFps;
+    const behind = pic !== null && (sent !== null
+      ? pic.fps < sent * DECODER_BEHIND_SHARE
+      : pic.fps <= DECODER_STALLED_FPS)
+      || (pic !== null && arriving !== null && arriving >= DECODER_ARRIVING_FPS
+        && pic.fps < arriving * DECODER_BEHIND_SHARE);
     const stuck = this.peerVideoDeclared && this.localWatching
       && now - this.linkedAt > GRAINY_AFTER_LINK_MS
       && pic !== null && pic.kbps !== null && pic.kbps * 1000 >= ceiling * DECODER_BUSY_SHARE
@@ -2371,7 +2396,7 @@ export class ChannelSession {
     if (!this.stalledDecoderSince) { this.stalledDecoderSince = now; return; }
     if (now - this.stalledDecoderSince < DECODER_STALLED_MS) return;
     this.stalledDecoderSince = 0;
-    const of = arriving !== null ? `/${arriving}` : '';
+    const of = (arriving !== null ? `/${arriving}` : '') + (sent !== null ? `/${sent}` : '');
     this.events.onSessionRenewWanted?.(`decoder-stalled:${pic!.w}x${pic!.h}@${pic!.fps}${of}:${pic!.kbps}k`);
   }
 
@@ -2394,8 +2419,11 @@ export class ChannelSession {
     behind: boolean, stuck: boolean,
     rttMs: number | null, lossPct: number | null, ceiling: number, now: number,
   ) {
+    const sent = this.peerSentFps;
     const slow = pic !== null && pic.kbps !== null
-      && pic.kbps * 1000 >= ceiling * DECODER_BUSY_SHARE && pic.fps < DECODER_ARRIVING_FPS;
+      && pic.kbps * 1000 >= ceiling * DECODER_BUSY_SHARE && pic.fps < DECODER_ARRIVING_FPS
+      // as many as are sent: a camera in the dark, not a decoder
+      && !(sent !== null && pic.fps >= sent * DECODER_BEHIND_SHARE);
     if (!slow || stuck) {
       this.slowDrawnSince = 0;
       this.slowDrawnTold = false;
@@ -2415,7 +2443,7 @@ export class ChannelSession {
     if (rttMs === null) missing.push('rtt-unknown');
     else if (rttMs >= 200) missing.push(`rtt=${rttMs}`);
     Journal.mark(`decoder:behind-no-cure:${missing.join('+') || 'none'}`
-      + `:${pic!.w}x${pic!.h}@${pic!.fps}/${arriving ?? '?'}:${pic!.kbps}k`)
+      + `:${pic!.w}x${pic!.h}@${pic!.fps}/${arriving ?? '?'}/${sent ?? '?'}:${pic!.kbps}k`)
       .catch(() => { /* noop */ });
   }
 
@@ -3185,8 +3213,10 @@ export class ChannelSession {
       batteryPct: this.battery?.percent,
       charging: this.battery?.charging,
       net: this.network ?? undefined,
+      sentFps: this.isVideoEnabled() && this.sentFps !== null ? this.sentFps : undefined,
       restoring: this.restoring || undefined,
     });
+    this.sentFpsSaid = this.sentFps;
   }
 
   /**

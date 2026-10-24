@@ -81,6 +81,8 @@ export type SignalMessage =
       /** the battery, for the other side's diagnostics */
       batteryPct?: number; charging?: boolean; volSys?: number | null; gain?: number;
       net?: string;
+      /** the frames a second our video goes out at: a dark camera sends few */
+      sentFps?: number;
       /** putting back how things were on coming in: not choices of the moment */
       restoring?: boolean }
   // "I did not leave: the phone closed the window on me."
