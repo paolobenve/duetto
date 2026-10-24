@@ -13,6 +13,7 @@
  *  - permissions (network, microphone, camera, audio)
  *  - an intent filter for the "duetto://channel" deep link, so that
  *    touching the notification opens Duetto straight away
+ *  - the main window kept upright
  *
  * Idempotent: it can be run again without duplicating anything.
  */
@@ -100,6 +101,32 @@ if (!activityMatch) {
     tag = tag.replace(
       /android:name="\.MainActivity"/,
       'android:name=".MainActivity"\n        android:supportsPictureInPicture="true"',
+    );
+    changes++;
+  }
+
+  /**
+   * Upright, always.
+   *
+   * Nothing on the channel's screen is laid out for a landscape one: on
+   * 24 October, the POCO turned, the panel of buttons covered the
+   * other's name and states, the volume knob sat on "Back to the
+   * channel", and the other's picture - filmed upright - was a strip in
+   * the middle. And on the moto a turn stopped the picture going out
+   * for seven seconds. Until there is a landscape layout worth having,
+   * Duetto does not turn: the phone's own auto-rotate stays as it is
+   * for every other app. Large screens - tablets, foldables - are let
+   * turn by recent Android whatever is said here.
+   */
+  if (/android:screenOrientation="[^"]*"/.test(tag)) {
+    if (!/android:screenOrientation="portrait"/.test(tag)) {
+      tag = tag.replace(/android:screenOrientation="[^"]*"/, 'android:screenOrientation="portrait"');
+      changes++;
+    }
+  } else {
+    tag = tag.replace(
+      /android:name="\.MainActivity"/,
+      'android:name=".MainActivity"\n        android:screenOrientation="portrait"',
     );
     changes++;
   }
