@@ -5155,6 +5155,15 @@ export default function App() {
         },
       });
       sessionRef.current = session;
+      /**
+       * Made again, not entered: from its first word to the camera back
+       * on, the new session is putting back how things were, and says
+       * so (see setRestoring). Its first state went out with the camera
+       * still off, and the other phone rang "video off, video on" and
+       * went black for a picture nobody had touched - nine times on the
+       * evening of 23 October.
+       */
+      if (renew) session.setRestoring(true);
     }
     sessionRef.current.setServerIceServers(serverTurnRef.current);
     if (renew) {
@@ -5176,6 +5185,7 @@ export default function App() {
           Foreground.setCameraActive(false).catch(() => {});
         }
       }
+      s.setRestoring(false);
       // The link from scratch: the offering side makes it, the other
       // asks for it.
       if (politeRef.current) sig.sendSignal({ kind: 'renegotiate', why: 'session-renew' });
