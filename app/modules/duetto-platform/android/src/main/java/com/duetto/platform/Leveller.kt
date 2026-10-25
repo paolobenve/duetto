@@ -65,7 +65,7 @@ object Leveller {
     private var channels = 1
     private var dp: DynamicsProcessing? = null
 
-    /** "on", "off", "waiting" (no voice playing yet), or "failed:why" */
+    /** "on:time" or "on:frequency" (the engine), "off", "waiting" (no voice playing yet), "failed:why" */
     @Volatile var state = "off"
         private set
 
@@ -118,33 +118,48 @@ object Leveller {
         if (!wanted) { release(); say("off"); return }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) { say("failed:android-too-old"); return }
         if (session == 0) { say("waiting"); return }
-        if (dp != null) { say("on"); return }
+        if (dp != null) return
         // Born neutral: until JavaScript hears "on" the track still
         // carries the level, and the two would multiply.
         gain = 1f
         create()
     }
 
+    /**
+     * The engine that follows the voice closest in time where the phone
+     * has it, the one working by frequencies where it does not: the moto
+     * on Android 13 refused the first ("bad parameter value", 25
+     * October), the POCO on Android 16 took it. The second works on
+     * blocks of about ten milliseconds, a little later and a little
+     * coarser on the attacks.
+     */
     @RequiresApi(Build.VERSION_CODES.P)
     private fun create() {
-        try {
-            val cfg = DynamicsProcessing.Config.Builder(
-                DynamicsProcessing.VARIANT_FAVOR_TIME_RESOLUTION, channels,
-                false, 0, true, 1, false, 0, true,
-            ).build()
-            cfg.setMbcBandAllChannelsTo(0, band())
-            cfg.setLimiterAllChannelsTo(
-                DynamicsProcessing.Limiter(true, true, 0, 1f, 60f, 10f, LIMIT_DB, 0f),
-            )
-            val d = DynamicsProcessing(0, session, cfg)
-            d.enabled = true
-            dp = d
-            say("on")
-        } catch (e: Exception) {
-            Log.w(TAG, "leveller: ${e.message}")
-            release()
-            say("failed:${e.javaClass.simpleName}")
+        var why = ""
+        for ((variant, name) in listOf(
+            DynamicsProcessing.VARIANT_FAVOR_TIME_RESOLUTION to "time",
+            DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION to "frequency",
+        )) {
+            try {
+                val cfg = DynamicsProcessing.Config.Builder(
+                    variant, channels, false, 0, true, 1, false, 0, true,
+                ).build()
+                cfg.setMbcBandAllChannelsTo(0, band())
+                cfg.setLimiterAllChannelsTo(
+                    DynamicsProcessing.Limiter(true, true, 0, 1f, 60f, 10f, LIMIT_DB, 0f),
+                )
+                val d = DynamicsProcessing(0, session, cfg)
+                d.enabled = true
+                dp = d
+                say("on:$name")
+                return
+            } catch (e: Exception) {
+                Log.w(TAG, "leveller ($name): ${e.message}")
+                release()
+                why += "$name=${e.javaClass.simpleName}(${e.message.orEmpty().take(60)});"
+            }
         }
+        say("failed:$why")
     }
 
     /** The one band, all frequencies, with the chosen level after it. */

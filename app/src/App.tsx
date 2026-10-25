@@ -2184,7 +2184,7 @@ export default function App() {
    */
   const levelWanted = cfg?.levelVoice === true;
   const [levellerState, setLevellerState] = useState('off');
-  const levellerOn = levellerState === 'on';
+  const levellerOn = levellerState.startsWith('on');
   useEffect(() => {
     const stop = Leveller.subscribe((s) => {
       setLevellerState(s);

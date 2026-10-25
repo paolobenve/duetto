@@ -613,7 +613,7 @@ type Props = {
   heardThrough?: boolean;
   /** the voice levelled, as the connection's settings say: see Leveller.kt */
   levelVoice?: boolean;
-  /** what the leveller is really doing: "on", "off", "waiting", "failed:why" */
+  /** what the leveller is really doing: "on:engine", "off", "waiting", "failed:why" */
   levellerState?: string;
   onToggleLevelVoice?: () => void;
   /** in another call on THIS phone: Duetto is silent until it ends */
@@ -2207,7 +2207,7 @@ export default function ChannelScreen(props: Props) {
                   <Text style={styles.sheetLabel}>{t('settings.levelVoice')}</Text>
                   {props.levelVoice ? (
                     <Text style={styles.sheetNote}>
-                      {t(props.levellerState === 'on' ? 'channel.levellerOn'
+                      {t(props.levellerState?.startsWith('on') ? 'channel.levellerOn'
                         : props.levellerState?.startsWith('failed') ? 'channel.levellerFailed'
                           : 'channel.levellerWaiting')}
                     </Text>
