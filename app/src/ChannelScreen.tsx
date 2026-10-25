@@ -159,6 +159,15 @@ const SCALE_STEP_DB = 2;
  * its top; fifty really is half as loud, not half the signal.
  */
 const loudness = (db: number) => 100 * 2 ** (db / 10);
+
+/**
+ * Below this they hear us so faintly it sounds like nothing: a quarter
+ * of their phone's top. The level never goes to zero - the scale stops
+ * well above - but at its bottom a voice is lost in any room, and the
+ * one talking did not know: only the diagnostics showed the figure.
+ * Down here it is shown to everybody, in yellow.
+ */
+const PEER_QUIET_DB = -20;
 /** The rungs, at round loudness, every quarter of the phone's own top. */
 const LOUD_RUNGS = [25, 50, 75, 100, 125, 150, 175, 200, 225];
 
@@ -1186,6 +1195,9 @@ export default function ChannelScreen(props: Props) {
    * hush ours; their microphone has a mark of its own beside it.
    */
   const peerDeaf = peerState.busy === true || (peerState.volume != null && peerState.volume <= 0);
+  /** they hear us, but so faintly it is as if they did not: see PEER_QUIET_DB */
+  const peerQuiet = !peerDeaf && peerState.volume != null && peerState.volume > 0
+    && 20 * Math.log10(peerState.volume) < PEER_QUIET_DB - 0.05;
   /** their listening off by choice - not a call of theirs - and they let us through it */
   const talkThroughOpen = !!props.onTalkThrough && speaking && peerDeaf && peerState.busy !== true
     && peerState.talkThrough === true && !props.onCall;
@@ -1242,11 +1254,11 @@ export default function ChannelScreen(props: Props) {
       {peerMicMark(13, '#1b1d21')}
       {peerMark(13, '#1b1d21')}
       {peerCameraMark(13)}
-      {showStats && peerState.volume != null ? (
-        <Text style={styles.pillVolume}>{dbText(peerState.volume)}</Text>
+      {(showStats || peerQuiet) && peerState.volume != null ? (
+        <Text style={[styles.pillVolume, peerQuiet && styles.volumeQuiet]}>{dbText(peerState.volume)}</Text>
       ) : null}
     </>
-  ), [peerMark, peerMicMark, peerCameraMark, showStats, peerState.volume]);
+  ), [peerMark, peerMicMark, peerCameraMark, showStats, peerState.volume, peerQuiet]);
 
   /** Where the sound comes out HERE, as `peerMark` does for theirs. */
   const ownOutputMark = React.useCallback((size: number, background: string) => {
@@ -1423,8 +1435,8 @@ export default function ChannelScreen(props: Props) {
                 {peerMicMark(17, '#0b0e14')}
                 {peerMark(17, '#0b0e14')}
                 {peerCameraMark(17)}
-                {showStats && !peerDeaf && peerState.volume != null ? (
-                  <Text style={styles.cardVolume}>
+                {((showStats && !peerDeaf) || peerQuiet) && peerState.volume != null ? (
+                  <Text style={[styles.cardVolume, peerQuiet && styles.volumeQuiet]}>
                     {levelText(peerState.volume, peerState.volSys, peerState.gain)}
                   </Text>
                 ) : null}
@@ -3166,6 +3178,8 @@ const styles = StyleSheet.create({
   /** the percentage beside the output's mark, when the technical lines
    *  are on */
   pillVolume: { color: '#9fb4c8', fontSize: 11, fontWeight: '700' },
+  /** they hear us too faintly: the yellow of the warnings */
+  volumeQuiet: { color: '#e0b341', fontWeight: '700' },
   badge: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 18,
