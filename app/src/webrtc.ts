@@ -79,6 +79,8 @@ export type ChannelEvents = {
     restoring?: boolean;
     /** when a finger last moved each thing, if they say: see Hand */
     hand?: Hand;
+    /** they let us talk through their silence: missing from an older app */
+    talkThrough?: boolean;
   }) => void;
   /**
    * Whether we are receiving a video track.
@@ -99,6 +101,8 @@ export type ChannelEvents = {
   onRemoteVideoFlowing?: () => void;
   /** the whole session should be renewed: see weighGrainyIncoming */
   onSessionRenewWanted?: (why: string) => void;
+  /** their voice heard through our silence, or no longer: see talkThrough */
+  onHeardThrough?: (on: boolean) => void;
 };
 
 export type VideoStats = {
@@ -268,6 +272,10 @@ const SENT_FPS_STEP = 5;
 const RENEW_VIDEO_WAIT_MS = 5_000;
 /** and the decoded frames read again after so long */
 const RENEW_VIDEO_CHECK_MS = 4_000;
+/** talking through their silence: said again so often while the finger is down */
+const TALK_THROUGH_EVERY_MS = 2_000;
+/** and heard through ours until so long after the last word of it */
+const TALK_THROUGH_LAPSE_MS = 5_000;
 const BALANCE_RATIO = 3;
 const BALANCE_TICKS = 10;
 const BALANCE_STEP = 0.7;
@@ -446,6 +454,20 @@ export class ChannelSession {
   /** the voice's energy counters at the last reading, out and in */
   private voicePrev: { mic?: [number, number]; rx?: [number, number] } = {};
   private ducked = false;
+  /**
+   * Talking through their silence: a finger held down here, our voice
+   * heard over there although they turned the listening off. See
+   * talkThrough.
+   */
+  private talkingThrough = false;
+  private talkThroughBeat: ReturnType<typeof setInterval> | null = null;
+  /** theirs, through our silence: on while their word of it keeps coming */
+  private heardThrough = false;
+  private heardThroughLapse: ReturnType<typeof setTimeout> | null = null;
+  /** the gain their voice would have with the listening on: the one heard through it */
+  private throughGain = 1;
+  /** whether we let them: said in the state, and an older app never asks */
+  private throughAllowed = true;
   /** the battery, told to the other side for their diagnostics */
   private battery: { percent: number; charging: boolean } | null = null;
   /** the network carrying us, told with the battery: with diagnostics on */
@@ -573,7 +595,7 @@ export class ChannelSession {
       // waiting, and that choice has to hold for the track that did not
       // exist yet.
       const track = stream.getAudioTracks()[0];
-      if (track) track.enabled = this.audioDesired && !this.hushed;
+      if (track) track.enabled = this.micLive();
       this.localStream = stream;
       this.events.onLocalStream?.(stream);
     })().finally(() => { this.micOpening = null; });
@@ -682,7 +704,7 @@ export class ChannelSession {
     const fresh = await mediaDevices.getUserMedia({ audio: true, video: false });
     const track = fresh.getAudioTracks()[0];
     if (!track) return false;
-    track.enabled = this.audioDesired && !this.hushed;
+    track.enabled = this.micLive();
     this.localStream.removeTrack(old);
     old.stop();
     this.localStream.addTrack(track);
@@ -798,7 +820,12 @@ export class ChannelSession {
    * emptied: no renegotiation, and it starts again at once.
    */
   private voiceWanted(): boolean {
-    return this.audioDesired && !this.hushed && this.peerHears;
+    return this.micLive() && (this.peerHears || this.talkingThrough);
+  }
+
+  /** The microphone's track open: wanted, or held down to talk through. */
+  private micLive(): boolean {
+    return (this.audioDesired || this.talkingThrough) && !this.hushed;
   }
 
   private voiceHeldWhy(): string {
@@ -1424,6 +1451,7 @@ export class ChannelSession {
         net: typeof msg.net === 'string' ? msg.net : null,
         restoring: msg.restoring === true,
         hand: msg.hand && typeof msg.hand === 'object' ? msg.hand : undefined,
+        talkThrough: msg.talkThrough === true,
       });
       this.setPeerWatching(msg.watching !== false);
       // Not heard: listening off or at zero, or in another call.
@@ -1435,6 +1463,11 @@ export class ChannelSession {
       // What the other side declares goes into the judgement on
       // "is their video there": when it changes, that has to be redone.
       this.reportRemoteVideo();
+      return;
+    }
+
+    if (msg.kind === 'talkThrough') {
+      this.hearThrough(msg.on === true);
       return;
     }
 
@@ -2671,7 +2704,7 @@ export class ChannelSession {
     // work anyway and the choice has to hold for when it is.
     this.audioDesired = !this.audioDesired;
     const track = this.localStream?.getAudioTracks()[0];
-    if (track) track.enabled = this.audioDesired && !this.hushed;
+    if (track) track.enabled = this.micLive();
     this.applyAudioQuality();
     this.broadcastState();
     return this.audioDesired;
@@ -2682,7 +2715,7 @@ export class ChannelSession {
     if (on === this.hushed) return;
     this.hushed = on;
     const track = this.localStream?.getAudioTracks()[0];
-    if (track) track.enabled = this.audioDesired && !this.hushed;
+    if (track) track.enabled = this.micLive();
     this.applyAudioQuality();
     this.applyGain();
     this.broadcastState();
@@ -3304,6 +3337,7 @@ export class ChannelSession {
       sentFps: this.isVideoEnabled() && this.sentFps !== null ? this.sentFps : undefined,
       hand: { ...ChannelSession.hand },
       restoring: this.restoring || undefined,
+      talkThrough: this.throughAllowed,
     });
     this.sentFpsSaid = this.sentFps;
   }
@@ -3336,7 +3370,11 @@ export class ChannelSession {
    * a new one, which is born at full volume and without this would come
    * back deafening by itself.
    */
-  setRemoteGain(g: number) {
+  setRemoteGain(g: number, through = g) {
+    if (through !== this.throughGain) {
+      this.throughGain = through;
+      if (this.heardThrough) this.applyGain();
+    }
     if (g === this.peerGain) return;
     this.peerGain = g;
     this.applyGain();
@@ -3360,12 +3398,63 @@ export class ChannelSession {
 
   private applyGain() {
     const tracks = this.remoteStream?.getAudioTracks?.() ?? [];
-    const gain = this.hushed ? 0 : this.ducked ? this.peerGain * 0.25 : this.peerGain;
+    // Their voice through our silence: at the level the listening on
+    // would give it, no louder.
+    const base = this.peerGain === 0 && this.heardThrough ? this.throughGain : this.peerGain;
+    const gain = this.hushed ? 0 : this.ducked ? base * 0.25 : base;
     for (const t of tracks) {
       try {
         (t as any)._setVolume?.(gain);
       } catch { /* an unadjusted voice is not worth an error */ }
     }
+  }
+
+  /**
+   * Talking through their silence, for as long as a finger is held down.
+   *
+   * They turned the listening off - a film watched together, the same
+   * dialogue from the television and, a moment late, from the phone -
+   * and something has to be said: the call's sounds got them to turn it
+   * back on, by gestures, and then off again (a tester's girlfriend,
+   * 24 October). Held down, our voice goes out although they do not
+   * hear us - the microphone too, if it was off - and over there it is
+   * heard although they hushed it. Said again every two seconds: a
+   * word lost on the way, or a finger that never came up because the
+   * app went, closes it by itself over there.
+   *
+   * Their listening is not touched: it stays off, and says so.
+   */
+  talkThrough(on: boolean) {
+    if (on === this.talkingThrough) return;
+    this.talkingThrough = on;
+    const track = this.localStream?.getAudioTracks()[0];
+    if (track) track.enabled = this.micLive();
+    this.applyAudioQuality();
+    if (this.talkThroughBeat) { clearInterval(this.talkThroughBeat); this.talkThroughBeat = null; }
+    const say = () => this.signaling.sendSignal({ kind: 'talkThrough', on });
+    say();
+    if (on) this.talkThroughBeat = setInterval(say, TALK_THROUGH_EVERY_MS);
+    Journal.mark(`talk-through:${on ? 'on' : 'off'}`).catch(() => { /* noop */ });
+  }
+
+  /** Whether they may talk through our silence: see talkThrough. */
+  setTalkThroughAllowed(on: boolean) {
+    if (on === this.throughAllowed) return;
+    this.throughAllowed = on;
+    if (!on) this.hearThrough(false);
+    this.broadcastState();
+  }
+
+  /** Their voice through our silence, while their word of it keeps coming. */
+  private hearThrough(on: boolean) {
+    if (this.heardThroughLapse) { clearTimeout(this.heardThroughLapse); this.heardThroughLapse = null; }
+    const now = on && this.throughAllowed;
+    if (now) this.heardThroughLapse = setTimeout(() => this.hearThrough(false), TALK_THROUGH_LAPSE_MS);
+    if (now === this.heardThrough) return;
+    this.heardThrough = now;
+    this.applyGain();
+    this.events.onHeardThrough?.(now);
+    Journal.mark(`heard-through:${now ? 'on' : 'off'}`).catch(() => { /* noop */ });
   }
 
   /** Whether the microphone has been opened. False while waiting. */
@@ -3429,6 +3518,8 @@ export class ChannelSession {
 
   /** Leaves the channel and releases microphone and camera. */
   leaveChannel() {
+    this.talkThrough(false);
+    this.hearThrough(false);
     this.cameraLost = false;
     this.scheduleCamera();
     this.detachPeer();

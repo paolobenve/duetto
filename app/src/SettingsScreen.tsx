@@ -1409,6 +1409,24 @@ export default function SettingsScreen({
           ))}
         </View>
 
+        {/* Their voice through our silence, held down over there: let
+            through like their calls, unless said otherwise here. */}
+        <TouchableOpacity
+          style={styles.switchRow}
+          onPress={() => {
+            const on = cfg.talkThrough === false;
+            setCfg({ ...cfg, talkThrough: on });
+            onLive?.({ talkThrough: on });
+          }}>
+          <View style={styles.choiceText}>
+            <Text style={styles.choiceLabel}>{t('settings.talkThrough')}</Text>
+            <Text style={styles.choiceNote}>{t('settings.talkThroughNote')}</Text>
+          </View>
+          <View pointerEvents="none">
+            <Switch value={cfg.talkThrough !== false} {...SWITCH_COLOURS} />
+          </View>
+        </TouchableOpacity>
+
         <Text style={styles.subsection}>{t('settings.controlsWhileWatching')}</Text>
         <Text style={styles.sectionHint}>{t('settings.controlsHint')}</Text>
         <View style={styles.group}>

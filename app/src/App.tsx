@@ -1407,7 +1407,11 @@ export default function App() {
     recvDelay?: number;
     /** how loudly they are hearing us: 1 = as we send it */
     volume?: number;
+    /** they let us talk through their listening turned off; missing from an older app */
+    talkThrough?: boolean;
   }>({ audio: true, video: false });
+  /** their voice heard here through our listening turned off: see talkThrough in webrtc.ts */
+  const [heardThrough, setHeardThrough] = useState(false);
   /**
    * Whether they have told us how they are yet.
    *
@@ -2169,8 +2173,15 @@ export default function App() {
    * was already there.
    */
   useEffect(() => {
-    sessionRef.current?.setRemoteGain(outputMuted ? 0 : appliedGain);
+    // The second: what their voice gets when they talk through our
+    // silence - the level the listening on would give it.
+    sessionRef.current?.setRemoteGain(outputMuted ? 0 : appliedGain, appliedGain);
   }, [appliedGain, outputMuted, inChannel, sessionGen]);
+  // Whether they may: said to the session, which says it to them.
+  const talkThroughAllowed = cfg?.talkThrough !== false;
+  useEffect(() => {
+    sessionRef.current?.setTalkThroughAllowed(talkThroughAllowed);
+  }, [talkThroughAllowed, inChannel, sessionGen]);
 
   /**
    * What is declared to the other side is the LEVEL, not the gain.
@@ -5077,6 +5088,7 @@ export default function App() {
         // Made again from scratch, as leaving and entering does: the
         // offering side rebuilds, the other asks it to.
         onSessionRenewWanted: (why) => { renewSessionRef.current?.(why); },
+        onHeardThrough: (on) => setHeardThrough(on),
         onPeerState: (st) => {
           // The first state after meeting says how things stand, not
           // what changed: no cue for it, or every meeting would ring
@@ -6752,6 +6764,8 @@ export default function App() {
         onChangeLevel={changeLevel}
         wakeAt={controlsWakeAt}
         onToggleOutputMute={toggleOutputMute}
+        onTalkThrough={(on) => sessionRef.current?.talkThrough(on)}
+        heardThrough={heardThrough}
         onSetLevel={setLevelTo}
         versionWarning={versionWarning}
         frontCamera={frontCamera}

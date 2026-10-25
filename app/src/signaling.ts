@@ -94,7 +94,9 @@ export type SignalMessage =
       /** when a finger last moved each of these: the other side rings only for those */
       hand?: Hand;
       /** putting back how things were on coming in: not choices of the moment */
-      restoring?: boolean }
+      restoring?: boolean;
+      /** we let them talk through our silence: see talkThrough in webrtc.ts */
+      talkThrough?: boolean }
   // "I did not leave: the phone closed the window on me."
   //
   // Sent by the headless presence when it takes the place of an app
@@ -163,7 +165,11 @@ export type SignalMessage =
   // A loud sound to call back somebody who is in the channel but not
   // answering: asleep, or with the phone on the far side of the room.
   // The sender picks it, the receiver's phone plays it.
-  | { kind: 'alarm'; sound: string; at?: number };
+  | { kind: 'alarm'; sound: string; at?: number }
+  // A finger held down over there to talk through our silence: heard
+  // while it keeps coming, every two seconds. See talkThrough in
+  // webrtc.ts. An older app does not know it and stays silent.
+  | { kind: 'talkThrough'; on: boolean };
 
 export type PairMessage =
   | { kind: 'pubkey'; pub: string; name: string }

@@ -206,6 +206,8 @@ export type PairSettings = {
   alertPicked: '' | 'chosen' | 'duetto';
   /** how loud this connection's calls sound when they arrive */
   alertLevel: AlertLevel;
+  /** whether the other may talk through our listening turned off */
+  talkThrough: boolean;
   /** which language the app speaks: 'auto' follows the phone */
   language: LanguageChoice;
   /** where the sound comes out: 'SPEAKER_PHONE', 'EARPIECE', ... */
@@ -220,7 +222,7 @@ export type PairSettings = {
 const PAIR_FIELDS: (keyof PairSettings)[] = [
   'displayName', 'videoQuality', 'richerAudio', 'shortPackets', 'micOnEntry', 'controls',
   'videoCodec', 'alertVibration', 'alertSound', 'alertSoundUri', 'alertSoundName',
-  'alertDuettoSound', 'alertPicked', 'alertLevel',
+  'alertDuettoSound', 'alertPicked', 'alertLevel', 'talkThrough',
   'audioOutput', 'gains', 'frontCamera', 'language',
   'videoQualityAt', 'shortPacketsAt', 'richerAudioAt',
 ];
@@ -515,6 +517,12 @@ export type DuoConfig = {
   alertPicked: '' | 'chosen' | 'duetto';
   /** how loud the calls received sound: see AlertLevel */
   alertLevel: AlertLevel;
+  /**
+   * Whether the other person may talk through our listening turned
+   * off, holding a button down: see talkThrough in webrtc.ts. On by
+   * default, like their calls, which get through it too.
+   */
+  talkThrough: boolean;
 
   /**
    * Where the sound comes out.
@@ -643,6 +651,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   alertDuettoSound: 'drumroll',
   alertPicked: '',
   alertLevel: 'full',
+  talkThrough: true,
   audioOutput: 'SPEAKER_PHONE',
   earOnProximity: true,
   earEvenWithVideo: false,

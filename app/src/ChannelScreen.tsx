@@ -591,7 +591,17 @@ type Props = {
     /** the two halves of `volume`, when they say them */
     volSys?: number | null;
     gain?: number;
+    /** they let us talk through their listening turned off */
+    talkThrough?: boolean;
   };
+  /**
+   * Held down, our voice through their silence: see talkThrough in
+   * webrtc.ts. The button shows only while they do not hear us and let
+   * us.
+   */
+  onTalkThrough?: (on: boolean) => void;
+  /** their voice heard here through our silence, right now */
+  heardThrough?: boolean;
   /** in another call on THIS phone: Duetto is silent until it ends */
   onCall?: boolean;
   /** the other side broke this pair: it cannot work any more */
@@ -1176,6 +1186,9 @@ export default function ChannelScreen(props: Props) {
    * hush ours; their microphone has a mark of its own beside it.
    */
   const peerDeaf = peerState.busy === true || (peerState.volume != null && peerState.volume <= 0);
+  /** their listening off by choice - not a call of theirs - and they let us through it */
+  const talkThroughOpen = !!props.onTalkThrough && speaking && peerDeaf && peerState.busy !== true
+    && peerState.talkThrough === true && !props.onCall;
   const peerMark = React.useCallback((size: number, background: string) => {
     const where = (peerState.output as AudioRoute) ?? 'SPEAKER_PHONE';
     const Icon = OUTPUT_ICON[where] ?? OUTPUT_ICON.SPEAKER_PHONE;
@@ -1657,6 +1670,26 @@ export default function ChannelScreen(props: Props) {
           styles.panel,
           { opacity, bottom: 8 + inset.v, left: 12 + inset.h, right: 12 + inset.h },
         ]}>
+        {/* They turned the listening off, and something has to be
+            said: held down, it is heard over there all the same. */}
+        {talkThroughOpen ? (
+          <TalkThroughButton
+            who={peerName || t('channel.theOther')}
+            onHold={(on) => props.onTalkThrough?.(on)}
+            refuse={() => {
+              if (blocked()) return true;
+              wake();
+              return false;
+            }}
+          />
+        ) : null}
+        {/* And the other way: why a voice is heard with the listening off. */}
+        {props.heardThrough && outputMuted ? (
+          <Text style={styles.heardThroughLine} numberOfLines={1} adjustsFontSizeToFit
+            minimumFontScale={0.7}>
+            {t('channel.heardThrough', { who: peerName || t('channel.theOther') })}
+          </Text>
+        ) : null}
         {/* Different versions: it is said whatever one is doing, and
             without asking for Diagnostics. It is not a technical
             number: it is the explanation of things one notices by
@@ -2874,6 +2907,42 @@ function CircleButton(props: {
   );
 }
 
+/**
+ * Held down, our voice through their silence: see talkThrough in
+ * webrtc.ts. A button that goes away under the finger - their
+ * listening back on, the link gone - lets go too: nothing else would,
+ * and the microphone would stay open over there for good.
+ */
+function TalkThroughButton(props: {
+  who: string;
+  onHold: (on: boolean) => void;
+  /** the screen covered: the touch is nobody's */
+  refuse: () => boolean;
+}) {
+  const [held, setHeld] = useState(false);
+  const heldRef = useRef(false);
+  const onHold = useRef(props.onHold);
+  onHold.current = props.onHold;
+  const hold = (on: boolean) => {
+    if (on === heldRef.current) return;
+    heldRef.current = on;
+    setHeld(on);
+    onHold.current(on);
+  };
+  useEffect(() => () => { if (heldRef.current) onHold.current(false); }, []);
+  return (
+    <Pressable
+      style={[styles.talkThrough, held && styles.talkThroughHeld]}
+      onPressIn={() => { if (!props.refuse()) hold(true); }}
+      onPressOut={() => hold(false)}>
+      <Text style={[styles.talkThroughText, held && styles.talkThroughTextHeld]}
+        numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+        {t(held ? 'channel.talkingThrough' : 'channel.holdToTalk', { who: props.who })}
+      </Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#0b0e14' },
 
@@ -2903,6 +2972,17 @@ const styles = StyleSheet.create({
    */
   versionLine: {
     color: '#e0b341', fontSize: 13, textAlign: 'center',
+    marginBottom: 6, paddingHorizontal: 8,
+  },
+  talkThrough: {
+    alignSelf: 'center', marginBottom: 8, paddingVertical: 10, paddingHorizontal: 22,
+    borderRadius: 22, backgroundColor: '#2b2f36', borderWidth: 1, borderColor: '#2f7cf6',
+  },
+  talkThroughHeld: { backgroundColor: '#2f7cf6' },
+  talkThroughText: { color: '#e6ebf1', fontSize: 15, fontWeight: '600' },
+  talkThroughTextHeld: { color: '#ffffff' },
+  heardThroughLine: {
+    color: '#7fd4a0', fontSize: 14, textAlign: 'center',
     marginBottom: 6, paddingHorizontal: 8,
   },
   statsBox: { justifyContent: 'center' },
