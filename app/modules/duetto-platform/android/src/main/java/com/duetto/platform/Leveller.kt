@@ -41,26 +41,36 @@ object Leveller {
 
     private const val TAG = "Duetto"
 
-    /** above this the voice is brought down, by RATIO */
-    private const val THRESHOLD_DB = -30f
-    private const val RATIO = 3f
+    /**
+     * How hard: above `threshold` the voice is brought down by `ratio`,
+     * and raised back by `makeup` - so that a voice arriving where
+     * WebRTC's gain control puts it, around -18 dB, comes out about
+     * where it was at every strength. The strength changes how much the
+     * voice varies, not how loud it is.
+     */
+    private class Strength(val threshold: Float, val ratio: Float, val makeup: Float)
+
+    private val STRENGTHS = mapOf(
+        // the peaks only: the voice keeps its shape
+        "light" to Strength(-26f, 2f, 5f),
+        "medium" to Strength(-30f, 3f, 8f),
+        // nearly all at one level; the room between words comes up with it
+        "strong" to Strength(-36f, 5f, 13f),
+    )
+
     private const val KNEE_DB = 10f
     private const val ATTACK_MS = 5f
     private const val RELEASE_MS = 250f
     /** under this the room between words, taken down rather than lifted */
     private const val GATE_DB = -55f
     private const val EXPANDER_RATIO = 2f
-    /**
-     * Raised back by this much: a voice that arrived where WebRTC's
-     * gain control puts it, around -18 dB, comes out where it was.
-     */
-    private const val MAKEUP_DB = 8f
     private const val LIMIT_DB = -2f
 
     /** asked for, in the settings of the connection in use */
     @Volatile private var wanted = false
     /** the level chosen, as a gain: 1 = as it arrives */
     @Volatile private var gain = 1f
+    @Volatile private var strength = STRENGTHS.getValue("medium")
     private var session = 0
     private var channels = 1
     private var dp: DynamicsProcessing? = null
@@ -81,6 +91,17 @@ object Leveller {
     @Synchronized
     fun setGain(g: Float) {
         gain = g
+        retune()
+    }
+
+    /** "light", "medium" or "strong": changed on the voice as it flows. */
+    @Synchronized
+    fun setStrength(name: String) {
+        strength = STRENGTHS[name] ?: return
+        retune()
+    }
+
+    private fun retune() {
         val d = dp ?: return
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return
         try {
@@ -167,8 +188,8 @@ object Leveller {
     private fun band(): DynamicsProcessing.MbcBand {
         val levelDb = 20f * log10(max(gain, 0.001f))
         return DynamicsProcessing.MbcBand(
-            true, 20_000f, ATTACK_MS, RELEASE_MS, RATIO, THRESHOLD_DB, KNEE_DB,
-            GATE_DB, EXPANDER_RATIO, 0f, MAKEUP_DB + levelDb,
+            true, 20_000f, ATTACK_MS, RELEASE_MS, strength.ratio, strength.threshold, KNEE_DB,
+            GATE_DB, EXPANDER_RATIO, 0f, strength.makeup + levelDb,
         )
     }
 

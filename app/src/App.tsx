@@ -2192,6 +2192,10 @@ export default function App() {
     });
     return stop;
   }, []);
+  const levelStrength = cfg?.levelStrength ?? 'medium';
+  useEffect(() => {
+    Leveller.setStrength(levelStrength).catch(() => { /* noop */ });
+  }, [levelStrength]);
   useEffect(() => {
     Leveller.setWanted(levelWanted).catch(() => { /* noop */ });
   }, [levelWanted]);
@@ -6787,14 +6791,14 @@ export default function App() {
         onToggleOutputMute={toggleOutputMute}
         onTalkThrough={(on) => sessionRef.current?.talkThrough(on)}
         heardThrough={heardThrough}
-        levelVoice={levelWanted}
+        levelChoice={levelWanted ? levelStrength : 'off'}
         levellerState={levellerState}
         // The same setting as in the Settings, for this connection.
-        onToggleLevelVoice={() => setCfg((prev) => {
+        onLevelChoice={(c) => setCfg((prev) => {
           if (!prev) return prev;
-          const on = prev.levelVoice !== true;
-          Journal.mark(`command:level-voice:${on ? 'on' : 'off'}`).catch(() => { /* noop */ });
-          return saveCfg({ ...prev, levelVoice: on });
+          Journal.mark(`command:level-voice:${c}`).catch(() => { /* noop */ });
+          return saveCfg(c === 'off' ? { ...prev, levelVoice: false }
+            : { ...prev, levelVoice: true, levelStrength: c });
         })}
         onSetLevel={setLevelTo}
         versionWarning={versionWarning}

@@ -210,6 +210,8 @@ export type PairSettings = {
   talkThrough: boolean;
   /** the other's voice through a compressor, at nearly one level */
   levelVoice: boolean;
+  /** how hard, when it is on */
+  levelStrength: LevelStrength;
   /** which language the app speaks: 'auto' follows the phone */
   language: LanguageChoice;
   /** where the sound comes out: 'SPEAKER_PHONE', 'EARPIECE', ... */
@@ -220,11 +222,17 @@ export type PairSettings = {
   frontCamera: boolean;
 };
 
+/** How hard the leveller works: see Leveller.kt. */
+export type LevelStrength = 'light' | 'medium' | 'strong';
+/** The leveller off, or one of its strengths: the four choices shown. */
+export type LevelChoice = 'off' | LevelStrength;
+export const LEVEL_CHOICES: LevelChoice[] = ['off', 'light', 'medium', 'strong'];
+
 /** The fields that travel with the connection, in one place. */
 const PAIR_FIELDS: (keyof PairSettings)[] = [
   'displayName', 'videoQuality', 'richerAudio', 'shortPackets', 'micOnEntry', 'controls',
   'videoCodec', 'alertVibration', 'alertSound', 'alertSoundUri', 'alertSoundName',
-  'alertDuettoSound', 'alertPicked', 'alertLevel', 'talkThrough', 'levelVoice',
+  'alertDuettoSound', 'alertPicked', 'alertLevel', 'talkThrough', 'levelVoice', 'levelStrength',
   'audioOutput', 'gains', 'frontCamera', 'language',
   'videoQualityAt', 'shortPacketsAt', 'richerAudioAt',
 ];
@@ -531,6 +539,12 @@ export type DuoConfig = {
    * tried on more phones.
    */
   levelVoice: boolean;
+  /**
+   * How hard it levels: the peaks only, the middle, or nearly all at
+   * one level. A field apart from the switch, so that the phones that
+   * already had it on find the middle one, the one they had.
+   */
+  levelStrength: LevelStrength;
 
   /**
    * Where the sound comes out.
@@ -661,6 +675,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   alertLevel: 'full',
   talkThrough: true,
   levelVoice: false,
+  levelStrength: 'medium',
   audioOutput: 'SPEAKER_PHONE',
   earOnProximity: true,
   earEvenWithVideo: false,

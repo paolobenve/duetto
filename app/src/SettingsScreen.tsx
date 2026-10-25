@@ -21,6 +21,7 @@ const SWITCH_COLOURS = {
   thumbColor: '#e6ebf1',
 } as const;
 import type { DuoConfig, PairInfo, PendingPair, VideoQuality } from './config';
+import { LEVEL_CHOICES } from './config';
 import type { PersonOnServer, InvitationOnServer } from './signaling';
 import { t, LANGUAGES, longDate } from './i18n';
 import { inviteLink, pairLink, BETA_TESTER_LINK } from './links';
@@ -1030,22 +1031,34 @@ export default function SettingsScreen({
             <Switch value={!!(cfg.richerAudio)} {...SWITCH_COLOURS} />
           </View>
         </TouchableOpacity>
-        {/* The other's voice at nearly one level, here: see Leveller.kt. */}
-        <TouchableOpacity
-          style={styles.switchRow}
-          onPress={() => {
-            const v = !cfg.levelVoice;
-            setCfg({ ...cfg, levelVoice: v });
-            onLive?.({ levelVoice: v });
-          }}>
-          <View style={styles.choiceText}>
-            <Text style={styles.choiceLabel}>{t('settings.levelVoice')}</Text>
-            <Text style={styles.choiceNote}>{t('settings.levelVoiceNote')}</Text>
-          </View>
-          <View pointerEvents="none">
-            <Switch value={!!cfg.levelVoice} {...SWITCH_COLOURS} />
-          </View>
-        </TouchableOpacity>
+        {/* The other's voice at nearly one level, here, and how hard:
+            see Leveller.kt. */}
+        <Text style={styles.sectionHint}>{t('settings.levelVoice')}</Text>
+        <Text style={styles.hint}>{t('settings.levelVoiceNote')}</Text>
+        <View style={styles.group}>
+          {LEVEL_CHOICES.map((v) => {
+            const chosen = (cfg.levelVoice ? (cfg.levelStrength ?? 'medium') : 'off') === v;
+            return (
+              <TouchableOpacity
+                key={v}
+                style={[styles.option, chosen && styles.optionPicked]}
+                onPress={() => {
+                  const patch = v === 'off' ? { levelVoice: false }
+                    : { levelVoice: true, levelStrength: v };
+                  setCfg({ ...cfg, ...patch });
+                  onLive?.(patch);
+                }}>
+                <View style={[styles.radio, chosen && styles.radioPicked]} />
+                <View style={styles.choiceText}>
+                  <Text style={styles.choiceLabel}>{t(`settings.levelVoice_${v}`)}</Text>
+                  {v !== 'off' ? (
+                    <Text style={styles.choiceNote}>{t(`settings.levelVoice_${v}Note`)}</Text>
+                  ) : null}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
         {/* What moves the sound by itself. Each a switch of its own; the
             second only makes sense under the first. */}
         {([
