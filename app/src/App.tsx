@@ -2183,10 +2183,11 @@ export default function App() {
    * hung on it - and only then the level moves from the track to it.
    */
   const levelWanted = cfg?.levelVoice === true;
-  const [levellerOn, setLevellerOn] = useState(false);
+  const [levellerState, setLevellerState] = useState('off');
+  const levellerOn = levellerState === 'on';
   useEffect(() => {
     const stop = Leveller.subscribe((s) => {
-      setLevellerOn(s === 'on');
+      setLevellerState(s);
       Journal.mark(`leveller:${s}`).catch(() => { /* noop */ });
     });
     return stop;
@@ -6786,6 +6787,15 @@ export default function App() {
         onToggleOutputMute={toggleOutputMute}
         onTalkThrough={(on) => sessionRef.current?.talkThrough(on)}
         heardThrough={heardThrough}
+        levelVoice={levelWanted}
+        levellerState={levellerState}
+        // The same setting as in the Settings, for this connection.
+        onToggleLevelVoice={() => setCfg((prev) => {
+          if (!prev) return prev;
+          const on = prev.levelVoice !== true;
+          Journal.mark(`command:level-voice:${on ? 'on' : 'off'}`).catch(() => { /* noop */ });
+          return saveCfg({ ...prev, levelVoice: on });
+        })}
         onSetLevel={setLevelTo}
         versionWarning={versionWarning}
         frontCamera={frontCamera}

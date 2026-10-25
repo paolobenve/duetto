@@ -10,7 +10,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated,
-  useWindowDimensions, Modal, Pressable, PanResponder, LayoutAnimation, UIManager, Platform,
+  useWindowDimensions, Modal, Pressable, PanResponder, LayoutAnimation, UIManager, Platform, Switch,
 } from 'react-native';
 import type { GestureResponderEvent } from 'react-native';
 import { MediaStream } from 'react-native-webrtc';
@@ -611,6 +611,11 @@ type Props = {
   onTalkThrough?: (on: boolean) => void;
   /** their voice heard here through our silence, right now */
   heardThrough?: boolean;
+  /** the voice levelled, as the connection's settings say: see Leveller.kt */
+  levelVoice?: boolean;
+  /** what the leveller is really doing: "on", "off", "waiting", "failed:why" */
+  levellerState?: string;
+  onToggleLevelVoice?: () => void;
   /** in another call on THIS phone: Duetto is silent until it ends */
   onCall?: boolean;
   /** the other side broke this pair: it cannot work any more */
@@ -2191,6 +2196,29 @@ export default function ChannelScreen(props: Props) {
               </Text>
             ) : null}
             <Text style={styles.sheetHint}>{t('channel.voiceHint')}</Text>
+
+            {/* The voice levelled, beside its volume: tried while the
+                other speaks, and the menu stays open to hear it. The
+                line under it says what is really happening - a switch
+                on that does nothing looked like one that works. */}
+            {props.onToggleLevelVoice ? (
+              <TouchableOpacity style={styles.sheetRow} onPress={props.onToggleLevelVoice}>
+                <View style={styles.sheetText}>
+                  <Text style={styles.sheetLabel}>{t('settings.levelVoice')}</Text>
+                  {props.levelVoice ? (
+                    <Text style={styles.sheetNote}>
+                      {t(props.levellerState === 'on' ? 'channel.levellerOn'
+                        : props.levellerState?.startsWith('failed') ? 'channel.levellerFailed'
+                          : 'channel.levellerWaiting')}
+                    </Text>
+                  ) : null}
+                </View>
+                <View pointerEvents="none">
+                  <Switch value={!!props.levelVoice}
+                    trackColor={{ false: '#3a4250', true: '#2f7cf6' }} thumbColor="#e6ebf1" />
+                </View>
+              </TouchableOpacity>
+            ) : null}
           </View>
         </Pressable>
       </Modal>
