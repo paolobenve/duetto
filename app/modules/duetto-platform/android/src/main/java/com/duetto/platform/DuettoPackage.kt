@@ -44,6 +44,7 @@ class DuettoPackage : ReactPackage {
         CallsModule(reactContext),
         AudioDevicesModule(reactContext),
         OtherSoundsModule(reactContext),
+        LevellerModule(reactContext),
     )
 
     override fun createViewManagers(

@@ -448,6 +448,8 @@ export const fr: Dictionary = {
     audio: 'Audio',
     richerVoice: 'Voix plus riche',
     richerVoiceNote: 'Double le plafond de l’audio, d’environ 4 à 8kB/s : la voix cesse de sonner téléphonique. Ça coûte 4 kB/s de plus par direction. Ça vaut pour les deux téléphones : ce que tu entends, c’est l’autre qui l’envoie.\nAvec la vidéo allumée, il monte tout seul, activée ou non : à côté d’un demi-mégabit de vidéo ces 4 kB/s passent inaperçus, et renoncer à la bonne voix pour les économiser serait une mauvaise affaire. Il compte de nouveau quand la vidéo s’éteint.',
+    levelVoice: 'Voix nivelée',
+    levelVoiceNote: 'La voix de l’autre sort presque toujours au même niveau : quand il parle bas ou s’éloigne du téléphone elle est montée, quand il crie elle est baissée. Seulement sur ce téléphone, sur ce que tu entends ; le volume reste le tien. Depuis Android 9.',
     earOnProximity: 'À l\'oreille, dans l\'écouteur',
     earOnProximityNote: 'En haut-parleur, porter le téléphone à l\'oreille fait passer le son dans l\'écouteur et éteint l\'écran, comme dans un appel ; l\'éloigner ramène le haut-parleur. Le capteur ne distingue pas l\'oreille de la poche : si tu gardes le téléphone dans une poche avec le haut-parleur, éteins cette option.',
     earEvenWithVideo: 'Même avec la vidéo allumée',

@@ -17,7 +17,7 @@ import {
   MediaStream,
   MediaStreamTrack,
 } from 'react-native-webrtc';
-import { Journal, Heartbeat, AudioDevices } from 'duetto-platform';
+import { Journal, Heartbeat, AudioDevices, Leveller } from 'duetto-platform';
 import type { DuoConfig } from './config';
 import { iceServers, VIDEO_PROFILES, CAPTURE_FPS } from './config';
 import type { Hand, Signaling, SignalMessage } from './signaling';
@@ -468,6 +468,8 @@ export class ChannelSession {
   private throughGain = 1;
   /** whether we let them: said in the state, and an older app never asks */
   private throughAllowed = true;
+  /** the leveller is working: the level goes to it, the track plays whole */
+  private levelling = false;
   /** the battery, told to the other side for their diagnostics */
   private battery: { percent: number; charging: boolean } | null = null;
   /** the network carrying us, told with the battery: with diagnostics on */
@@ -3402,9 +3404,13 @@ export class ChannelSession {
     // would give it, no louder.
     const base = this.peerGain === 0 && this.heardThrough ? this.throughGain : this.peerGain;
     const gain = this.hushed ? 0 : this.ducked ? base * 0.25 : base;
+    // Levelled, the level comes after the compressor, which would undo
+    // it on the track: see Leveller.kt. Silence stays on the track.
+    if (this.levelling) Leveller.setGain(gain).catch(() => { /* noop */ });
+    const onTrack = this.levelling && gain > 0 ? 1 : gain;
     for (const t of tracks) {
       try {
-        (t as any)._setVolume?.(gain);
+        (t as any)._setVolume?.(onTrack);
       } catch { /* an unadjusted voice is not worth an error */ }
     }
   }
@@ -3435,6 +3441,13 @@ export class ChannelSession {
     say();
     if (on) this.talkThroughBeat = setInterval(say, TALK_THROUGH_EVERY_MS);
     Journal.mark(`talk-through:${on ? 'on' : 'off'}`).catch(() => { /* noop */ });
+  }
+
+  /** The leveller started or stopped working: the level moves to it, or back. */
+  setLevelling(on: boolean) {
+    if (on === this.levelling) return;
+    this.levelling = on;
+    this.applyGain();
   }
 
   /** Whether they may talk through our silence: see talkThrough. */

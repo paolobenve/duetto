@@ -208,6 +208,8 @@ export type PairSettings = {
   alertLevel: AlertLevel;
   /** whether the other may talk through our listening turned off */
   talkThrough: boolean;
+  /** the other's voice through a compressor, at nearly one level */
+  levelVoice: boolean;
   /** which language the app speaks: 'auto' follows the phone */
   language: LanguageChoice;
   /** where the sound comes out: 'SPEAKER_PHONE', 'EARPIECE', ... */
@@ -222,7 +224,7 @@ export type PairSettings = {
 const PAIR_FIELDS: (keyof PairSettings)[] = [
   'displayName', 'videoQuality', 'richerAudio', 'shortPackets', 'micOnEntry', 'controls',
   'videoCodec', 'alertVibration', 'alertSound', 'alertSoundUri', 'alertSoundName',
-  'alertDuettoSound', 'alertPicked', 'alertLevel', 'talkThrough',
+  'alertDuettoSound', 'alertPicked', 'alertLevel', 'talkThrough', 'levelVoice',
   'audioOutput', 'gains', 'frontCamera', 'language',
   'videoQualityAt', 'shortPacketsAt', 'richerAudioAt',
 ];
@@ -523,6 +525,12 @@ export type DuoConfig = {
    * default, like their calls, which get through it too.
    */
   talkThrough: boolean;
+  /**
+   * The other's voice levelled by a compressor on this phone, so that
+   * it comes out at nearly the same level: see Leveller.kt. Off until
+   * tried on more phones.
+   */
+  levelVoice: boolean;
 
   /**
    * Where the sound comes out.
@@ -652,6 +660,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   alertPicked: '',
   alertLevel: 'full',
   talkThrough: true,
+  levelVoice: false,
   audioOutput: 'SPEAKER_PHONE',
   earOnProximity: true,
   earEvenWithVideo: false,

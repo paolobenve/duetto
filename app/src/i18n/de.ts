@@ -448,6 +448,8 @@ export const de: Dictionary = {
     audio: 'Ton',
     richerVoice: 'Vollere Stimme',
     richerVoiceNote: 'Sie verdoppelt die Obergrenze des Tons, von etwa 4 auf 8kB/s: die Stimme klingt nicht mehr nach Telefon. Das kostet 4 kB/s mehr in jede Richtung. Es gilt für beide Telefone: was du hörst, schickt die andere Person.\nMit eingeschaltetem Video geht es von selbst hinauf, ob an oder aus: neben einem halben Megabit Video fallen diese 4 kB/s nicht auf, und eine gute Stimme dafür aufzugeben wäre ein schlechter Handel. Geht das Video aus, zählt es wieder.',
+    levelVoice: 'Ausgeglichene Stimme',
+    levelVoiceNote: 'Die Stimme der anderen Person kommt fast immer gleich laut heraus: spricht sie leise oder entfernt sich vom Telefon, wird sie angehoben, schreit sie, wird sie gesenkt. Nur auf diesem Telefon, für das, was du hörst; die Lautstärke bleibt deine. Ab Android 9.',
     earOnProximity: 'Am Ohr in den Hörer',
     earOnProximityNote: 'Mit Lautsprecher: hältst du das Telefon ans Ohr, wechselt der Ton in den Hörer und der Bildschirm geht aus, wie bei einem Anruf; nimmst du es weg, kommt der Lautsprecher zurück. Der Sensor unterscheidet nicht zwischen Ohr und Tasche: wer das Telefon mit Lautsprecher in der Tasche trägt, schaltet dies aus.',
     earEvenWithVideo: 'Auch bei eingeschaltetem Video',

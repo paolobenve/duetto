@@ -205,6 +205,16 @@ declare module 'duetto-platform' {
     onOpened(cb: () => void): () => void;
   };
 
+  /** The other's voice levelled by a compressor: see Leveller.kt. */
+  export const Leveller: {
+    setWanted(on: boolean): Promise<boolean>;
+    setGain(gain: number): Promise<boolean>;
+    /** "on", "off", "waiting", or "failed:why" */
+    state(): Promise<string | false>;
+    /** Gives back the function to stop listening. */
+    subscribe(cb: (state: string) => void): () => void;
+  };
+
   /** What the video side of this phone can do. */
   export const Codecs: {
     hasHardwareVp9Encoder(): Promise<boolean>;

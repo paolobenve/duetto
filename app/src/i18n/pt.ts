@@ -448,6 +448,8 @@ export const pt: Dictionary = {
     audio: 'Áudio',
     richerVoice: 'Voz mais rica',
     richerVoiceNote: 'Dobra o teto do áudio, de uns 4 para 8kB/s: a voz deixa de soar telefônica. Custa 4 kB/s a mais por direção. Vale para os dois telefones: o que você ouve é o outro que manda.\nCom o vídeo ligado sobe sozinha, ativada ou não: ao lado de meio megabit de vídeo esses 4 kB/s nem se notam, e abrir mão da voz boa para poupá-los seria um mau negócio. Volta a contar quando o vídeo se apaga.',
+    levelVoice: 'Voz nivelada',
+    levelVoiceNote: 'A voz do outro sai quase sempre no mesmo nível: quando ele fala baixo ou se afasta do telefone ela é aumentada, quando grita é abaixada. Só neste telefone, no que você ouve; o volume continua sendo o seu. A partir do Android 9.',
     earOnProximity: 'Ao ouvido, no auricular',
     earOnProximityNote: 'No viva-voz, ao levar o telefone ao ouvido o som passa para o auricular e a tela se apaga, como numa chamada; ao afastá-lo volta o viva-voz. O sensor não distingue o ouvido do bolso: se você guarda o telefone no bolso com o viva-voz ligado, desligue esta opção.',
     earEvenWithVideo: 'Também com o vídeo ligado',

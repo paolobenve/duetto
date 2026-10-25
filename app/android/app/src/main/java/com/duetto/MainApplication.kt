@@ -52,5 +52,8 @@ class MainApplication : Application(), ReactApplication {
     // with it: see GuardedCodecs.kt.
     WebRTCModuleOptions.getInstance().videoEncoderFactory = GuardedEncoderFactory(this)
     WebRTCModuleOptions.getInstance().videoDecoderFactory = LazyDecoderFactory()
+    // The sound device, which says where the other's voice plays: for
+    // the leveller, see LevelledAudio.kt.
+    WebRTCModuleOptions.getInstance().audioDeviceModule = LevelledAudio.deviceModule(this)
   }
 }

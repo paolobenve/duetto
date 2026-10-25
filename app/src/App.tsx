@@ -19,7 +19,7 @@ import InCallManager from 'react-native-incall-manager';
 import {
   Foreground, Pip, AppWindow, Visibility, Codecs, Audio, Alerts, Journal, Volume, Call, AudioDevices,
   Heartbeat, Network,
-  Alarm, OtherSounds,
+  Alarm, OtherSounds, Leveller,
 } from 'duetto-platform';
 import { attachWatchdog, Watchdog } from './watchdog';
 import {
@@ -2177,6 +2177,26 @@ export default function App() {
     // silence - the level the listening on would give it.
     sessionRef.current?.setRemoteGain(outputMuted ? 0 : appliedGain, appliedGain);
   }, [appliedGain, outputMuted, inChannel, sessionGen]);
+  /**
+   * The other's voice levelled, if asked: see Leveller.kt. The native
+   * side says when it really works - WebRTC's track playing, the effect
+   * hung on it - and only then the level moves from the track to it.
+   */
+  const levelWanted = cfg?.levelVoice === true;
+  const [levellerOn, setLevellerOn] = useState(false);
+  useEffect(() => {
+    const stop = Leveller.subscribe((s) => {
+      setLevellerOn(s === 'on');
+      Journal.mark(`leveller:${s}`).catch(() => { /* noop */ });
+    });
+    return stop;
+  }, []);
+  useEffect(() => {
+    Leveller.setWanted(levelWanted).catch(() => { /* noop */ });
+  }, [levelWanted]);
+  useEffect(() => {
+    sessionRef.current?.setLevelling(levellerOn);
+  }, [levellerOn, inChannel, sessionGen]);
   // Whether they may: said to the session, which says it to them.
   const talkThroughAllowed = cfg?.talkThrough !== false;
   useEffect(() => {

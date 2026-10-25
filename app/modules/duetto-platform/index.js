@@ -28,6 +28,7 @@ const NativeAlarm = NativeModules.DuettoAlarm;
 const NativeCalls = NativeModules.DuettoCalls;
 const NativeAudioDevices = NativeModules.DuettoAudioDevices;
 const NativeOtherSounds = NativeModules.DuettoOtherSounds;
+const NativeLeveller = NativeModules.DuettoLeveller;
 
 /**
  * Calls a native method only if it really exists.
@@ -306,6 +307,29 @@ export const AppWindow = isAndroid && NativePip
  * encoding: in software it costs more battery than the bandwidth it
  * saves. So it has to be asked of the phone, not guessed from the model.
  */
+/**
+ * The other's voice levelled: a compressor on what arrives, so that it
+ * comes out at nearly the same level. See Leveller.kt.
+ *
+ * While it is "on" the level chosen is applied by it, after the
+ * compressor - `setGain` - and the track plays at 1; otherwise the
+ * track's volume does it, as before.
+ */
+export const Leveller = isAndroid && NativeLeveller
+  ? {
+      setWanted: (on) => call(NativeLeveller, 'setWanted', !!on),
+      setGain: (gain) => call(NativeLeveller, 'setGain', Number(gain) || 0),
+      /** "on", "off", "waiting", or "failed:why" */
+      state: () => call(NativeLeveller, 'state'),
+      /** Calls `cb(state)` at every change. Gives back the function to stop. */
+      subscribe(cb) {
+        const emitter = new NativeEventEmitter(NativeLeveller);
+        const sub = emitter.addListener('duetto-leveller', (s) => cb(String(s)));
+        return () => sub.remove();
+      },
+    }
+  : { setWanted: unavailable, setGain: unavailable, state: unavailable, subscribe: () => () => {} };
+
 export const Codecs = isAndroid && NativeCodecs
   ? { hasHardwareVp9Encoder: () => call(NativeCodecs, 'hasHardwareVp9Encoder') }
   : { hasHardwareVp9Encoder: unavailable };

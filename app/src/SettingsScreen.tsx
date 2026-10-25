@@ -1030,6 +1030,22 @@ export default function SettingsScreen({
             <Switch value={!!(cfg.richerAudio)} {...SWITCH_COLOURS} />
           </View>
         </TouchableOpacity>
+        {/* The other's voice at nearly one level, here: see Leveller.kt. */}
+        <TouchableOpacity
+          style={styles.switchRow}
+          onPress={() => {
+            const v = !cfg.levelVoice;
+            setCfg({ ...cfg, levelVoice: v });
+            onLive?.({ levelVoice: v });
+          }}>
+          <View style={styles.choiceText}>
+            <Text style={styles.choiceLabel}>{t('settings.levelVoice')}</Text>
+            <Text style={styles.choiceNote}>{t('settings.levelVoiceNote')}</Text>
+          </View>
+          <View pointerEvents="none">
+            <Switch value={!!cfg.levelVoice} {...SWITCH_COLOURS} />
+          </View>
+        </TouchableOpacity>
         {/* What moves the sound by itself. Each a switch of its own; the
             second only makes sense under the first. */}
         {([
