@@ -37,9 +37,9 @@
  *
  * And the preview: a build between two releases, put on GitLab by hand
  * as the generic package "duetto-preview" when it is worth handing out.
- * Offered on the invitation's page only - invitations go to testers;
- * a code goes to the other person, who asked for nothing - and only
- * while it is newer than the release.
+ * Offered on the link pages, under the release, while it is newer than
+ * the release: the pair's two phones had better be on the same build.
+ * Not to the phones, which are offered releases only.
  */
 const PROJECT = process.env.RELEASES_PROJECT || 'paolobenve/duetto';
 const GITLAB = (process.env.GITLAB_URL || 'https://gitlab.com').replace(/\/+$/, '');

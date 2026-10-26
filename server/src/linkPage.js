@@ -186,7 +186,7 @@ export function bouncePage(req, latest) {
 ${latest?.apk
     ? `<a class="b get" href="${esc(latest.apk)}">${esc(w.download.replace('{v}', latest.version))}</a>
 <p>${esc(w.orFdroid).replace('{f}', fdroid)}</p>
-${kind === 'invite' && latest.preview
+${latest.preview
     ? `<p><small>${esc(w.previewLine).replace('{l}', `<a class="get" href="${esc(latest.preview.apk)}">${
       esc(w.previewLink.replace('{b}', String(latest.preview.build)))}</a>`)}</small></p>`
     : ''}
