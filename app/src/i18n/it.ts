@@ -646,7 +646,7 @@ export const it: Dictionary = {
     inOwnerBackTitle: 'Bentornato',
     inOwnerBackBody: '{server} ti riconosce di nuovo come proprietario, grazie alla chiave. Le tue coppie sono quelle che questo telefono aveva; le altre erano fatte con un’altra carta.',
     inMemberTitle: 'Ciao {name}!',
-    inMemberBody: 'Ti è stata data la possibilità di creare connessioni sul server {server}. Ora puoi offrire un collegamento a qualcuno - crei un codice e glielo detti, o glielo fai inquadrare - oppure scrivere il codice che ti dettano.',
+    inMemberBody: 'Sul server {server} puoi creare collegamenti tuoi. Adesso collega il telefono dell’altra persona: con «Avanti» compare il codice, da dettarle o da farle inquadrare, e il link da mandarle se è lontana.',
     go: 'Avanti',
     serverTitle: 'Quale server?',
     serverBody: 'Duetto gira su un server tuo, o di chi ti ha fatto entrare. Scrivi il suo nome, o metti il link di invito che ti hanno mandato; oppure inquadra il codice QR che ti mostra l\'altro telefono: il server arriva insieme.',

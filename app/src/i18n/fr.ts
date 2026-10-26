@@ -647,7 +647,7 @@ export const fr: Dictionary = {
     inOwnerBackTitle: 'Bon retour',
     inOwnerBackBody: '{server} te reconnaît de nouveau comme propriétaire, grâce à la clé. Tes paires sont celles que ce téléphone avait ; les autres ont été faites avec une autre carte.',
     inMemberTitle: 'Salut {name} !',
-    inMemberBody: 'On t’a donné la possibilité de créer des liaisons sur le serveur {server}. Maintenant tu peux offrir une liaison à quelqu’un - tu crées un code et tu le lui dictes, ou tu le lui fais lire avec la caméra - ou saisir le code qu’on te dicte.',
+    inMemberBody: 'Sur le serveur {server} tu peux créer tes propres liaisons. Maintenant, relie le téléphone de l’autre personne : « Suivant » affiche le code, à lui dicter ou à lui faire lire avec la caméra, et le lien à lui envoyer si elle est loin.',
     go: 'Suivant',
     serverTitle: 'Quel serveur ?',
     serverBody: 'Duetto tourne sur un serveur à toi, ou de qui t\'a fait entrer. Écris son nom, ou colle le lien d\'invitation qu\'on t\'a envoyé ; ou vise le code QR que l\'autre téléphone te montre : le serveur vient avec.',

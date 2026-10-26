@@ -6545,7 +6545,7 @@ export default function App() {
           initial={cfg}
           arrived={arrived}
           accept={accepting}
-          onDone={(next, _answer, code, pub) => {
+          onDone={(next, knocked, code, pub) => {
             // Opened by a link, or by "accept": the two ways a phone
             // with a pair reaches another server without meaning to
             // move; "change server" is the third way in, and means it.
@@ -6582,10 +6582,15 @@ export default function App() {
             // a pair, and used to be sent back into the channel with
             // the code dropped on the floor. Without one: already
             // paired, the pair has just moved to the new server with
-            // us and there is nothing to do but go back in; otherwise
-            // the settings, where one sees where one has come in, and
-            // how, before dictating a code.
-            setScreen(code ? 'pairing' : isPaired(next) ? 'channel' : 'settings');
+            // us and there is nothing to do but go back in. Just come in
+            // - an invitation spent, a free server taken - the code for
+            // the other phone: it is the one thing left to do, and in
+            // the settings, among the boxes, the people who had just
+            // come in with an invitation stopped there, never to make
+            // it. Otherwise the settings, where one sees where one is.
+            const cameIn = opensHere(next) && (!!knocked.adopted
+              || next.serverRole !== cfg.serverRole || next.serverUrl !== cfg.serverUrl);
+            setScreen(code ? 'pairing' : isPaired(next) ? 'channel' : cameIn ? 'pairing' : 'settings');
           }}
           // From the settings there is somewhere to go back to; at the
           // first start there is not.
@@ -6734,15 +6739,17 @@ export default function App() {
               ? saveCfg({ ...prev, pending: (prev.pending ?? []).filter((x) => x.id !== id) })
               : prev));
           }}
-          // Before the first pairing, "change server" means the
-          // welcome: there is nothing in the settings yet worth going
-          // back to.
+          // Before the first pairing, a guest goes back to the welcome:
+          // there is nothing in the settings yet worth going back to.
+          // Whoever may open connections goes to the settings, as at
+          // the start of the app: the welcome would ask again for the
+          // server just come in to.
           onBack={() => {
             // Out of a pairing begun on another server, with no pair
             // made there: nothing to put back, the app's own server
             // never left the pair's.
             setPairingServer(null);
-            setScreen(isPaired(cfg) ? 'settings' : 'welcome');
+            setScreen(isPaired(cfg) || opensHere(cfg) ? 'settings' : 'welcome');
           }}
         />
       </View>

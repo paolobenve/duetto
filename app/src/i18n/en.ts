@@ -660,7 +660,7 @@ export const en = {
     inOwnerBackTitle: 'Welcome back',
     inOwnerBackBody: '{server} knows you as its owner again, by the key. Your pairs are the ones this phone had; the others were made on another card.',
     inMemberTitle: 'Hello {name}!',
-    inMemberBody: 'You have been given the possibility of creating connections on {server}. Now you can offer somebody a connection - create a code and read it to them, or let them read it with the camera - or type the code somebody reads to you.',
+    inMemberBody: 'On {server} you can make connections of your own. Next, connect the other person’s phone: “Next” shows the code, to read out to them or let them scan, and a link to send them if they are far away.',
     go: 'Next',
     serverTitle: 'Which server?',
     serverBody: 'Duetto runs on a server of your own, or of somebody who let you in. Write its name, or paste the invitation link you were sent; or point the camera at the QR code the other phone shows you: the server comes with it.',

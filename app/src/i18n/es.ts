@@ -647,7 +647,7 @@ export const es: Dictionary = {
     inOwnerBackTitle: 'Bienvenido de nuevo',
     inOwnerBackBody: '{server} vuelve a reconocerte como propietario, gracias a la clave. Tus parejas son las que tenía este teléfono; las otras se hicieron con otra tarjeta.',
     inMemberTitle: '¡Hola {name}!',
-    inMemberBody: 'Se te ha dado la posibilidad de crear conexiones en el servidor {server}. Ahora puedes ofrecer una conexión a alguien - creas un código y se lo dictas, o dejas que lo lea con la cámara - o escribir el código que te dicten.',
+    inMemberBody: 'En el servidor {server} puedes crear conexiones tuyas. Ahora conecta el teléfono de la otra persona: con «Siguiente» aparece el código, para dictárselo o dejar que lo lea con la cámara, y el enlace para mandárselo si está lejos.',
     go: 'Siguiente',
     serverTitle: '¿Qué servidor?',
     serverBody: 'Duetto funciona en un servidor tuyo, o de quien te dejó entrar. Escribe su nombre, o pega el enlace de invitación que te enviaron; o apunta la cámara al código QR que te muestra el otro teléfono: el servidor viene con él.',

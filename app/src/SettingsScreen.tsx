@@ -646,16 +646,21 @@ export default function SettingsScreen({
 
       {/* The same box as the first screen's: once connected, that
           screen is out of reach, and asking to be a beta tester is
-          something one may want from here too. */}
-      <View style={styles.betaBox}>
-        <Text style={styles.betaTitle}>{t('welcome.betaTitle')}</Text>
-        <Text style={styles.betaBody}>{t('welcome.betaBody')}</Text>
-        <TouchableOpacity
-          style={styles.betaButton}
-          onPress={() => { Linking.openURL(BETA_TESTER_LINK).catch(() => {}); }}>
-          <Text style={styles.betaButtonText}>{t('welcome.betaButton')}</Text>
-        </TouchableOpacity>
-      </View>
+          something one may want from here too - somebody's guest,
+          who has no connections of their own. Not whoever has them
+          already: to somebody just come in with an invitation it
+          asked for one more time, in the middle of the screen. */}
+      {opensHere(initial) ? null : (
+        <View style={styles.betaBox}>
+          <Text style={styles.betaTitle}>{t('welcome.betaTitle')}</Text>
+          <Text style={styles.betaBody}>{t('welcome.betaBody')}</Text>
+          <TouchableOpacity
+            style={styles.betaButton}
+            onPress={() => { Linking.openURL(BETA_TESTER_LINK).catch(() => {}); }}>
+            <Text style={styles.betaButtonText}>{t('welcome.betaButton')}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </>
   );
   /*
