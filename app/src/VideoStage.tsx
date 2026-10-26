@@ -439,6 +439,29 @@ export default function VideoStage(props: Props) {
   const dragged = useRef(false);
 
   /**
+   * Which corner the resize handle is at: the one towards the middle.
+   *
+   * It was always the bottom right, pulled to the right to grow. With
+   * the little square on the right the handle sat against the edge of
+   * the screen, and the finger had to push towards the edge to make it
+   * bigger, where there is no room. Past the middle of the screen it
+   * moves to the bottom left, and is pulled to the left. It changes as
+   * the little square is dragged over the middle - not while it is
+   * being resized, or growing would move it from under the finger.
+   */
+  const resizing = useRef(false);
+  const handleLeftRef = useRef(false);
+  const [handleLeft, setHandleLeft] = useState(false);
+  const noteHandleSide = useCallback((x: number) => {
+    if (resizing.current) return;
+    const left = x + sizeRef.current.w / 2 > width / 2;
+    if (left === handleLeftRef.current) return;
+    handleLeftRef.current = left;
+    setHandleLeft(left);
+  }, [width]);
+  useEffect(() => { noteHandleSide(posRef.current.x); }, [noteHandleSide, pipWidth]);
+
+  /**
    * Records which edge it rests against and how far from it.
    *
    * The NEAREST edge is always chosen: whoever puts the little square
@@ -510,6 +533,7 @@ export default function VideoStage(props: Props) {
     };
     const id = pan.addListener((v) => {
       posRef.current = v;
+      noteHandleSide(v.x);
       if (gestureUnderWay.current || weAreFixing.current) return;
       const { minX, minY, maxX, maxY } = room();
       const x = Math.min(Math.max(v.x, minX), maxX);
@@ -525,7 +549,7 @@ export default function VideoStage(props: Props) {
       }
     });
     return () => pan.removeListener(id);
-  }, [pan, room, pipAlive]);
+  }, [pan, room, pipAlive, noteHandleSide]);
 
   /**
    * Puts the little square back where the user chose it, worked out
@@ -739,6 +763,7 @@ export default function VideoStage(props: Props) {
         onPanResponderGrant: () => {
           resizeStart.current = sizeRef.current.w;
           handleStart.current = null;
+          resizing.current = true;
         },
         onPanResponderMove: (_e, g) => {
           // As with the drag: the first movement carries leftovers
@@ -746,13 +771,23 @@ export default function VideoStage(props: Props) {
           // changed size with a jerk as soon as the handle was
           // touched.
           if (handleStart.current === null) handleStart.current = g.dx;
-          applyWidth(clampWidth(resizeStart.current + g.dx - handleStart.current));
+          // The handle on the left grows the little square to the left.
+          const toward = handleLeftRef.current ? -1 : 1;
+          applyWidth(clampWidth(resizeStart.current + toward * (g.dx - handleStart.current)));
           pan.setValue(inside(posRef.current.x, posRef.current.y));
         },
-        onPanResponderRelease: () => clampIntoScreen(),
-        onPanResponderTerminate: () => clampIntoScreen(),
+        onPanResponderRelease: () => {
+          resizing.current = false;
+          clampIntoScreen();
+          noteHandleSide(posRef.current.x);
+        },
+        onPanResponderTerminate: () => {
+          resizing.current = false;
+          clampIntoScreen();
+          noteHandleSide(posRef.current.x);
+        },
       }),
-    [pan, inside, clampWidth, clampIntoScreen, applyWidth],
+    [pan, inside, clampWidth, clampIntoScreen, applyWidth, noteHandleSide],
   );
 
   // --- Zoom on the big video ----------------------------------------------
@@ -1047,7 +1082,7 @@ export default function VideoStage(props: Props) {
             styles.handle,
             {
               transform: [
-                { translateX: Animated.add(pan.x, pipWidth - HANDLE / 2) },
+                { translateX: Animated.add(pan.x, handleLeft ? -HANDLE / 2 : pipWidth - HANDLE / 2) },
                 { translateY: Animated.add(pan.y, pipHeight - HANDLE / 2) },
               ],
             },
