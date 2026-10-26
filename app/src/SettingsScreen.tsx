@@ -754,6 +754,10 @@ export default function SettingsScreen({
     (b.met ?? 0) - (a.met ?? 0)
     || (b.days ?? 0) - (a.days ?? 0)
     || (b.lastMet ?? '').localeCompare(a.lastMet ?? ''));
+  // The newest first: the one just made is the one to hand over, and
+  // it went to the bottom of the list. They all last the same days, so
+  // the latest to expire is the latest made.
+  const invitesWaiting = [...invitations].sort((a, b) => b.expires.localeCompare(a.expires));
 
   const pageBody = (page: Tab) => (
     <>
@@ -957,7 +961,7 @@ export default function SettingsScreen({
             {invitations.length ? (
               <Text style={styles.subsection}>{t('settings.invitesPending', { n: invitations.length })}</Text>
             ) : null}
-            {invitations.map((i) => (
+            {invitesWaiting.map((i) => (
               <View key={i.code} style={styles.choice}>
                 <View style={styles.choiceText}>
                   {/* The person first, as in the rows above: the code
