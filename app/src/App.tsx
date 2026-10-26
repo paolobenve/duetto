@@ -6420,6 +6420,10 @@ export default function App() {
     // on - into a pair that had never seen it, and the new pair opened
     // on video nobody had asked for.
     if (isPaired(cfg)) {
+      // And, as after a switch, the way back to it in the channel: a
+      // pair made while talking to somebody else opened the new one
+      // with no "Back to" - the old one was only in the settings.
+      if (cfg.pair) setPreviousPair({ id: cfg.pair.id, wasIn: inChannelRef.current });
       await putAwayChannel('paired', cfg.pair?.id);
       sayGoodbye.current = true;
     }
