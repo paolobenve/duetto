@@ -29,7 +29,8 @@
  * browser's language, among the app's own; the button goes through
  * the same intent:// as the page, and without the app comes back here
  * saying so (stay=1); and that page puts first the APK of the latest
- * release, one download, with F-Droid beside it.
+ * release, one download, with F-Droid beside it - the light one, which
+ * Play Protect lets in from a browser (see releases.js).
  */
 
 const WORDS = {

@@ -24,13 +24,27 @@
  * start and every few hours; until it has been read, or if it cannot
  * be, there is simply no latest to tell, and nothing says otherwise.
  * RELEASES_PROJECT names another project, for a server that hands out
- * a Duetto of its own; "off" asks nothing of anybody.
+ * a Duetto of its own; "off" asks nobody.
+ *
+ * Two APKs to a release. The light one, without the notification
+ * listener, is the one for a browser: Play Protect stops an app that
+ * reads notifications when it comes from a browser, a messaging app or
+ * a files app - not from a store. The full one, for whoever has it
+ * already from a file, so as not to take a feature away with an
+ * update. And F-Droid's version, read from its own list: whoever got
+ * Duetto there updates there - from a browser Android would ask a
+ * leave they never gave - and F-Droid builds a few days after GitLab.
  */
 const PROJECT = process.env.RELEASES_PROJECT || 'paolobenve/duetto';
 const GITLAB = (process.env.GITLAB_URL || 'https://gitlab.com').replace(/\/+$/, '');
+const FDROID_PACKAGE = 'com.duetto';
 const EVERY_MS = 6 * 3600_000;
 
-/** { version: '0.9.21', page: release page, apk: the full APK, or '' } */
+/**
+ * { version: '0.9.21', page: the release's page, apk: the light APK -
+ * or the only one -, full: the full APK, fdroid: the version on F-Droid;
+ * '' for what is not known }
+ */
 let latest = null;
 
 export function latestRelease() {
@@ -47,17 +61,34 @@ async function look() {
     const r = await res.json();
     const version = String(r.tag_name || '').replace(/^v/, '');
     if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error(`tag ${r.tag_name}`);
-    // The full one, not the light: whoever gets it from a link is not
-    // choosing between the two.
     const apks = (r.assets?.links || [])
       .map((l) => String(l.direct_asset_url || l.url || ''))
       .filter((u) => /^https:\/\/\S+\.apk$/i.test(u));
-    const apk = apks.find((u) => !/light/i.test(u)) || apks[0] || '';
+    const full = apks.find((u) => !/light/i.test(u)) || '';
+    const apk = apks.find((u) => /light/i.test(u)) || full;
     const page = /^https:\/\//.test(String(r._links?.self || '')) ? r._links.self : '';
-    if (latest?.version !== version) console.log(`[duetto] latest release: ${version}`);
-    latest = { version, page, apk };
+    const fdroid = await fdroidVersion();
+    if (latest?.version !== version || latest?.fdroid !== fdroid) {
+      console.log(`[duetto] latest release: ${version}, on F-Droid: ${fdroid || '?'}`);
+    }
+    latest = { version, page, apk, full, fdroid };
   } catch (e) {
     console.warn(`[duetto] latest release not read: ${e.message}`);
+  }
+}
+
+/** The version F-Droid offers, '' if it cannot be read. */
+async function fdroidVersion() {
+  try {
+    const res = await fetch(`https://f-droid.org/api/v1/packages/${FDROID_PACKAGE}`,
+      { signal: AbortSignal.timeout(20_000) });
+    if (!res.ok) return '';
+    const p = await res.json();
+    const offered = (p.packages || []).find((x) => x.versionCode === p.suggestedVersionCode);
+    const name = String(offered?.versionName || '');
+    return /^\d+\.\d+\.\d+$/.test(name) ? name : '';
+  } catch {
+    return '';
   }
 }
 
