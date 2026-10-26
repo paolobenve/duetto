@@ -266,6 +266,13 @@ const DECODER_STALLED_MS = 8_000;
 /** or decoded at under this share of the frames arriving, when this many arrive - or of those sent */
 const DECODER_BEHIND_SHARE = 0.5;
 const DECODER_ARRIVING_FPS = 15;
+/**
+ * Nothing whole arriving: frames a second at or under this, drawn and
+ * arriving, with at least this many kbit/s coming in all the same.
+ * See weighStalledDecoder.
+ */
+const STARVED_FPS = 1;
+const STARVED_KBPS = 100;
 /** our frames a second are said again in the state when they move by this many */
 const SENT_FPS_STEP = 5;
 /** the incoming video turned off or on: the answer waited for so long at most */
@@ -2476,6 +2483,16 @@ export class ChannelSession {
    * minutes for nothing. 8 of 25 and 10 of 10 look the same from here;
    * only the sender knows which it is, and it says so in the state.
    * Where it does not - an older Duetto - the 6 alone, as before.
+   *
+   * And nothing whole arriving, with the data still coming: on 26
+   * October, after a hiccup of the home wifi that dropped 85% of the
+   * packets for a moment, the POCO went on receiving 300 to 800 kbit/s
+   * of the edge's video, with 10 to 20% lost, and for over a minute not
+   * one frame came whole - 0 arriving, 0 drawn, a black picture. None
+   * of the above saw it: they watch frames that arrive and are not
+   * drawn. The edge's owner set it right by hand, the video off and on
+   * and then out and in; the same cures, asked here, after the same 8
+   * seconds - unless the other side says it is sending nothing.
    */
   private stalledDecoderSince = 0;
 
@@ -2503,13 +2520,21 @@ export class ChannelSession {
       && pic !== null && pic.kbps !== null && pic.kbps * 1000 >= ceiling * DECODER_BUSY_SHARE
       && behind
       && lossPct !== null && lossPct < 1 && rttMs !== null && rttMs < 200;
-    this.weighUncured(pic, behind, stuck, rttMs, lossPct, ceiling, now);
-    if (!stuck) { this.stalledDecoderSince = 0; return; }
+    // No condition on the road here: a lossy one is exactly when it came.
+    const starved = this.peerVideoDeclared && this.localWatching
+      && now - this.linkedAt > GRAINY_AFTER_LINK_MS
+      && pic !== null && pic.kbps !== null && pic.kbps >= STARVED_KBPS
+      && pic.fps <= STARVED_FPS && (arriving === null || arriving <= STARVED_FPS)
+      && sent !== 0;
+    this.weighUncured(pic, behind, stuck || starved, rttMs, lossPct, ceiling, now);
+    if (!stuck && !starved) { this.stalledDecoderSince = 0; return; }
     if (!this.stalledDecoderSince) { this.stalledDecoderSince = now; return; }
     if (now - this.stalledDecoderSince < DECODER_STALLED_MS) return;
     this.stalledDecoderSince = 0;
     const of = (arriving !== null ? `/${arriving}` : '') + (sent !== null ? `/${sent}` : '');
-    this.events.onSessionRenewWanted?.(`decoder-stalled:${pic!.w}x${pic!.h}@${pic!.fps}${of}:${pic!.kbps}k`);
+    // The same ladder of cures in the app: the prefix is what it reads.
+    const kind = stuck ? 'decoder-stalled' : 'decoder-stalled:starved';
+    this.events.onSessionRenewWanted?.(`${kind}:${pic!.w}x${pic!.h}@${pic!.fps}${of}:${pic!.kbps}k`);
   }
 
   /**
