@@ -2965,7 +2965,11 @@ function CircleButton(props: {
 function TalkThroughButton(props: {
   who: string;
   onHold: (on: boolean) => void;
-  /** the little cross beside it: away from the part held down, not to be touched talking */
+  /**
+   * The little cross, inside the pill at its end, past a thin line: beside
+   * it, it looked like the cross that closes the controls. Its own touch,
+   * not a part of the one held down, with no slop towards the words.
+   */
   onHide?: () => void;
   /** the screen covered: the touch is nobody's */
   refuse: () => boolean;
@@ -2982,9 +2986,9 @@ function TalkThroughButton(props: {
   };
   useEffect(() => () => { if (heldRef.current) onHold.current(false); }, []);
   return (
-    <View style={styles.talkThroughRow}>
+    <View style={[styles.talkThrough, held && styles.talkThroughHeld]}>
       <Pressable
-        style={[styles.talkThrough, held && styles.talkThroughHeld]}
+        style={styles.talkThroughHold}
         onPressIn={() => { if (!props.refuse()) hold(true); }}
         onPressOut={() => hold(false)}>
         <Text style={[styles.talkThroughText, held && styles.talkThroughTextHeld]}
@@ -2992,13 +2996,19 @@ function TalkThroughButton(props: {
           {t(held ? 'channel.talkingThrough' : 'channel.holdToTalk', { who: props.who })}
         </Text>
       </Pressable>
-      {props.onHide && !held ? (
-        <Pressable
-          style={styles.talkThroughHide}
-          hitSlop={8}
-          onPress={() => { if (!props.refuse()) props.onHide?.(); }}>
-          <Text style={styles.talkThroughHideText}>{'\u2715'}</Text>
-        </Pressable>
+      {/* Hidden while held, its room kept: the pill growing narrower
+          moved the words under the finger. */}
+      {props.onHide ? (
+        <>
+          <View style={[styles.talkThroughSplit, held && styles.talkThroughGone]} />
+          <Pressable
+            style={[styles.talkThroughHide, held && styles.talkThroughGone]}
+            disabled={held}
+            hitSlop={{ top: 8, bottom: 8, right: 8 }}
+            onPress={() => { if (!props.refuse()) props.onHide?.(); }}>
+            <Text style={styles.talkThroughHideText}>{'\u2715'}</Text>
+          </Pressable>
+        </>
       ) : null}
     </View>
   );
@@ -3035,18 +3045,18 @@ const styles = StyleSheet.create({
     color: '#e0b341', fontSize: 13, textAlign: 'center',
     marginBottom: 6, paddingHorizontal: 8,
   },
-  talkThroughRow: {
-    flexDirection: 'row', alignItems: 'center', alignSelf: 'center', marginBottom: 8,
-  },
-  talkThroughHide: {
-    marginLeft: 14, width: 34, height: 34, borderRadius: 17,
-    alignItems: 'center', justifyContent: 'center', backgroundColor: '#2b2f36',
-  },
-  talkThroughHideText: { color: '#8892a0', fontSize: 15, fontWeight: '700' },
   talkThrough: {
-    paddingVertical: 10, paddingHorizontal: 22,
+    flexDirection: 'row', alignSelf: 'center', marginBottom: 8, overflow: 'hidden',
     borderRadius: 22, backgroundColor: '#2b2f36', borderWidth: 1, borderColor: '#2f7cf6',
   },
+  talkThroughHold: {
+    flexShrink: 1, justifyContent: 'center', paddingVertical: 10, paddingHorizontal: 22,
+  },
+  /** the thin line between the words and the cross */
+  talkThroughSplit: { width: 1, marginVertical: 9, backgroundColor: '#4a5263' },
+  talkThroughHide: { width: 42, alignItems: 'center', justifyContent: 'center' },
+  talkThroughHideText: { color: '#8892a0', fontSize: 14, fontWeight: '700' },
+  talkThroughGone: { opacity: 0 },
   talkThroughHeld: { backgroundColor: '#2f7cf6' },
   talkThroughText: { color: '#e6ebf1', fontSize: 15, fontWeight: '600' },
   talkThroughTextHeld: { color: '#ffffff' },
