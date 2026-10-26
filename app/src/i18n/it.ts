@@ -512,7 +512,7 @@ export const it: Dictionary = {
     talkButton: 'Mostra il pulsante per parlare quando l’altro non ascolta',
     talkButtonNote: 'Quando l’altro ti mette in Silenzio, e lo permette, sopra i comandi compare un pulsante: tenendolo premuto ti fai sentire lo stesso. Spento, non compare, e resta solo la chiamata.',
     soundDuetto: 'Un suono di Duetto',
-    soundDuettoNote: 'Uno dei cinque suoni di Duetto.',
+    soundDuettoNote: 'Uno dei suoni di Duetto.',
     soundDuettoChoose: 'Scegli un suono di Duetto…',
     soundDuettoHint: 'Toccane uno per sentirlo: diventa il suono con cui ti avvisa questo telefono.',
     people: 'Chi può usare questo server',

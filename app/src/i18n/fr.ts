@@ -513,7 +513,7 @@ export const fr: Dictionary = {
     talkButton: 'Afficher le bouton pour parler quand l’autre n’écoute pas',
     talkButtonNote: 'Quand l’autre te met en Silence, et le permet, un bouton apparaît au-dessus des commandes : en le maintenant appuyé, tu te fais entendre quand même. Désactivé, il n’apparaît pas, et il ne reste que l’appel.',
     soundDuetto: 'Un son de Duetto',
-    soundDuettoNote: 'Un des cinq sons de Duetto.',
+    soundDuettoNote: 'Un des sons de Duetto.',
     soundDuettoChoose: 'Choisir un son de Duetto…',
     soundDuettoHint: 'Touches-en un pour l’entendre : c’est le son avec lequel ce téléphone te prévient.',
     people: 'Qui peut utiliser ce serveur',

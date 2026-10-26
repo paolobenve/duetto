@@ -513,7 +513,7 @@ export const de: Dictionary = {
     talkButton: 'Den Knopf zum Sprechen zeigen, wenn die andere Person nicht zuhört',
     talkButtonNote: 'Wenn die andere Person dich auf Still stellt und es erlaubt, erscheint über den Bedienelementen ein Knopf: gedrückt gehalten, wirst du trotzdem gehört. Aus, erscheint er nicht, und es bleibt nur der Anruf.',
     soundDuetto: 'Ein Ton von Duetto',
-    soundDuettoNote: 'Einer der fünf Töne von Duetto.',
+    soundDuettoNote: 'Einer der Töne von Duetto.',
     soundDuettoChoose: 'Einen Ton von Duetto wählen…',
     soundDuettoHint: 'Tippe einen an, um ihn zu hören: mit ihm meldet sich dieses Telefon bei dir.',
     people: 'Wer diesen Server benutzen darf',

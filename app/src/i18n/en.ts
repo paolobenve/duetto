@@ -526,7 +526,7 @@ export const en = {
     talkButton: 'Show the button to talk when the other is not listening',
     talkButtonNote: 'When the other puts you on Silent, and allows it, a button appears above the controls: held down, it lets you be heard all the same. Off, it does not appear, and calling is all that is left.',
     soundDuetto: 'One of Duetto\'s sounds',
-    soundDuettoNote: 'One of Duetto\'s five sounds.',
+    soundDuettoNote: 'One of Duetto\'s own sounds.',
     soundDuettoChoose: 'Choose one of Duetto\'s sounds…',
     soundDuettoHint: 'Touch one to hear it: it becomes the sound this phone alerts you with.',
     people: 'Who may use this server',
