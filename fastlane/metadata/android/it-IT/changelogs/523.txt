@@ -1,0 +1,6 @@
+- Tieni premuto un pulsante e l’altro ti sente, anche col silenzio.
+- La voce dell’altro livellata: debole o forte, arriva quasi uguale.
+- Se esce una versione nuova, Duetto lo dice e porta ad aggiornarla.
+- Due versioni: la completa, che fa suonare nel canale le notifiche delle altre app; la leggera, senza, che Google non blocca se installata da file.
+- Duetto resta in verticale.
+- E vari altri miglioramenti minori.

@@ -1,0 +1,6 @@
+- Knopf gedrückt halten: der andere hört dich, auch stumm geschaltet.
+- Die Stimme des anderen ausgeglichen: leise oder laut, fast gleich.
+- Neue Version? Duetto sagt es und führt zum Update.
+- Zwei Versionen: die volle lässt im Kanal Benachrichtigungen anderer Apps klingen; die leichte nicht, dafür blockiert Google sie aus einer Datei nicht.
+- Duetto bleibt im Hochformat.
+- Und weitere kleine Verbesserungen.

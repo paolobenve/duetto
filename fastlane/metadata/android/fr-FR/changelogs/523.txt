@@ -1,0 +1,6 @@
+- Bouton maintenu : l’autre t’entend, même s’il a coupé le son.
+- La voix de l’autre nivelée : faible ou forte, elle arrive pareille.
+- Nouvelle version ? Duetto le dit et mène à la mise à jour.
+- Deux versions : la complète fait sonner dans le canal les notifications des autres applis ; la légère non, mais Google ne la bloque pas depuis un fichier.
+- Duetto reste à la verticale.
+- Et diverses autres petites améliorations.

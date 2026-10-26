@@ -107,6 +107,59 @@ export function isBehind(latest: string): boolean {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.9.21',
+    notes: {
+      en: [
+        'Hold a button down and the other hears you, even with their sound off.',
+        'The other’s voice levelled: faint or loud, it arrives nearly the same.',
+        'When a new version is out, Duetto says so and leads to it.',
+        'Two versions: the full one, which sounds other apps’ notifications in the channel; the light one, without, which Google does not block from a file.',
+        'Duetto stays upright.',
+        'And various other minor improvements.',
+      ],
+      it: [
+        'Tieni premuto un pulsante e l’altro ti sente, anche col silenzio.',
+        'La voce dell’altro livellata: debole o forte, arriva quasi uguale.',
+        'Se esce una versione nuova, Duetto lo dice e porta ad aggiornarla.',
+        'Due versioni: la completa, che fa suonare nel canale le notifiche delle altre app; la leggera, senza, che Google non blocca se installata da file.',
+        'Duetto resta in verticale.',
+        'E vari altri miglioramenti minori.',
+      ],
+      es: [
+        'Mantén pulsado un botón y el otro te oye, aunque tenga el silencio.',
+        'La voz del otro nivelada: débil o fuerte, llega casi igual.',
+        'Si sale una versión nueva, Duetto lo dice y lleva a actualizarla.',
+        'Dos versiones: la completa, que hace sonar en el canal los avisos de otras apps; la ligera, sin ellos, que Google no bloquea desde un archivo.',
+        'Duetto se queda en vertical.',
+        'Y varias otras mejoras menores.',
+      ],
+      fr: [
+        'Bouton maintenu : l’autre t’entend, même s’il a coupé le son.',
+        'La voix de l’autre nivelée : faible ou forte, elle arrive pareille.',
+        'Nouvelle version ? Duetto le dit et mène à la mise à jour.',
+        'Deux versions : la complète fait sonner dans le canal les notifications des autres applis ; la légère non, mais Google ne la bloque pas depuis un fichier.',
+        'Duetto reste à la verticale.',
+        'Et diverses autres petites améliorations.',
+      ],
+      de: [
+        'Knopf gedrückt halten: der andere hört dich, auch stumm geschaltet.',
+        'Die Stimme des anderen ausgeglichen: leise oder laut, fast gleich.',
+        'Neue Version? Duetto sagt es und führt zum Update.',
+        'Zwei Versionen: die volle lässt im Kanal Benachrichtigungen anderer Apps klingen; die leichte nicht, dafür blockiert Google sie aus einer Datei nicht.',
+        'Duetto bleibt im Hochformat.',
+        'Und weitere kleine Verbesserungen.',
+      ],
+      pt: [
+        'Segure um botão e o outro te ouve, mesmo com o silêncio ligado.',
+        'A voz do outro nivelada: fraca ou forte, chega quase igual.',
+        'Se sair uma versão nova, o Duetto avisa e leva à atualização.',
+        'Duas versões: a completa, que toca no canal os avisos dos outros apps; a leve, sem eles, que o Google não bloqueia a partir de um arquivo.',
+        'O Duetto fica na vertical.',
+        'E várias outras melhorias menores.',
+      ],
+    },
+  },
+  {
     version: '0.9.20',
     notes: {
       en: [

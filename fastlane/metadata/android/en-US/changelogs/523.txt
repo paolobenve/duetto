@@ -1,0 +1,6 @@
+- Hold a button down and the other hears you, even with their sound off.
+- The other’s voice levelled: faint or loud, it arrives nearly the same.
+- When a new version is out, Duetto says so and leads to it.
+- Two versions: the full one, which sounds other apps’ notifications in the channel; the light one, without, which Google does not block from a file.
+- Duetto stays upright.
+- And various other minor improvements.
