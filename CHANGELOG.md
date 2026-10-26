@@ -14,7 +14,7 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
-## 0.9.21 build 523
+## 0.9.21 build 524
 
 **Version 0.9.21: talking through the silence, the levelled voice, and the way in.** When
 the other turns their listening off, a button appears above the controls - their name, "is not
