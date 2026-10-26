@@ -12,7 +12,8 @@
     "test:smoke": "node smoke-test.mjs",
     "test:door": "node door-test.mjs",
     "invite": "node tools/invite.mjs",
-    "devices": "node tools/devices.mjs"
+    "devices": "node tools/devices.mjs",
+    "backfill-visits": "node tools/backfill-visits.mjs"
   },
   "engines": {
     "node": ">=18"
