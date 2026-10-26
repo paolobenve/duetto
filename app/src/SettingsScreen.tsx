@@ -680,6 +680,73 @@ export default function SettingsScreen({
   ) : null;
 
   /** One tab's page: the title on top, scrolling away with the rest. */
+  /** A row of the list of people: see the section in pageBody. */
+  const personRow = (person: PersonOnServer) => {
+    // "You, the owner, on the POCO": who they are here, on
+    // what phone. A name alone may not even have been set.
+    const who = person.you
+      ? t(person.owner ? 'settings.youOwner' : 'settings.youMember')
+      : `${person.name} · ${t(person.owner ? 'settings.isOwner' : 'settings.isMember')}`;
+    const where = person.model ? `, ${t('settings.onPhone', { model: person.model })}` : '';
+    // Our own rooms by the names we gave them; other people's
+    // we know only by number.
+    const mine = person.you
+      ? person.theirs
+        .map((r) => {
+          const p = connections.find((c) => c.id === r.room);
+          const name = p ? nameOf(p) : t('settings.unnamed');
+          return r.guest ? `${name} (${t('settings.guestCame')})` : name;
+        })
+      : [];
+    const rooms = mine.length
+      ? t(mine.length === 1 ? 'settings.yourPairOne' : 'settings.yourPairMany',
+        { list: mine.join(', ') })
+      : !person.rooms ? ''
+        : person.rooms === 1 ? t('settings.personRoomsOne')
+          : t('settings.personRoomsMany', { n: person.rooms });
+    const brought = mine.length || !person.brought ? ''
+      : person.brought === 1 ? t('settings.personBroughtOne')
+        : t('settings.personBroughtMany', { n: person.brought });
+    // Whether the invitation became a habit, by the day; nothing
+    // from a server that does not count, and nothing of our own
+    // phone, which knows.
+    const used = person.you || person.days == null ? ''
+      : person.met ? t('settings.personMet',
+        { n: person.met, of: person.days, when: dayText(person.lastMet ?? '') })
+        : person.days ? t('settings.personNeverMet', { when: dayText(person.seen ?? '') })
+          : t('settings.personNeverIn');
+    const usage = [used, person.you ? '' : person.version ?? ''].filter(Boolean).join('  ·  ');
+    return (
+      <View key={person.name} style={styles.choice}>
+        <View style={styles.choiceText}>
+          <Text style={styles.choiceLabel}>{who + where}</Text>
+          <Text style={styles.choiceNote}>
+            {t('settings.personSince', { date: longDate(person.since) })}
+            {rooms ? `  ·  ${rooms}` : ''}
+            {brought ? `  ·  ${brought}` : ''}
+          </Text>
+          {usage ? <Text style={styles.choiceNote}>{usage}</Text> : null}
+        </View>
+        {!person.you ? (
+          <TouchableOpacity onPress={() => confirmForget(person)}>
+            <Text style={styles.linkInline}>{t('settings.forgetPerson')}</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    );
+  };
+  /** The owner's own phones: they are no invitation. */
+  const ownPhones = people.filter((p) => p.owner);
+  /**
+   * The invitations taken, the most used first: the days together, then
+   * the days at all, then the latest together. From a server that does
+   * not count they stay in its order (the sort is stable).
+   */
+  const accepted = people.filter((p) => !p.owner).sort((a, b) =>
+    (b.met ?? 0) - (a.met ?? 0)
+    || (b.days ?? 0) - (a.days ?? 0)
+    || (b.lastMet ?? '').localeCompare(a.lastMet ?? ''));
+
   const pageBody = (page: Tab) => (
     <>
       <View style={styles.header}>
@@ -855,61 +922,33 @@ export default function SettingsScreen({
             <Text style={styles.section}>{t('settings.people')}</Text>
             <Text style={styles.sectionHint}>{t('settings.peopleHint')}</Text>
 
-            {people.map((person) => {
-              // "You, the owner, on the POCO": who they are here, on
-              // what phone. A name alone may not even have been set.
-              const who = person.you
-                ? t(person.owner ? 'settings.youOwner' : 'settings.youMember')
-                : `${person.name} · ${t(person.owner ? 'settings.isOwner' : 'settings.isMember')}`;
-              const where = person.model ? `, ${t('settings.onPhone', { model: person.model })}` : '';
-              // Our own rooms by the names we gave them; other people's
-              // we know only by number.
-              const mine = person.you
-                ? person.theirs
-                  .map((r) => {
-                    const p = connections.find((c) => c.id === r.room);
-                    const name = p ? nameOf(p) : t('settings.unnamed');
-                    return r.guest ? `${name} (${t('settings.guestCame')})` : name;
-                  })
-                : [];
-              const rooms = mine.length
-                ? t(mine.length === 1 ? 'settings.yourPairOne' : 'settings.yourPairMany',
-                  { list: mine.join(', ') })
-                : !person.rooms ? ''
-                  : person.rooms === 1 ? t('settings.personRoomsOne')
-                    : t('settings.personRoomsMany', { n: person.rooms });
-              const brought = mine.length || !person.brought ? ''
-                : person.brought === 1 ? t('settings.personBroughtOne')
-                  : t('settings.personBroughtMany', { n: person.brought });
-              // Whether the invitation became a habit, by the day; nothing
-              // from a server that does not count, and nothing of our own
-              // phone, which knows.
-              const used = person.you || person.days == null ? ''
-                : person.met ? t('settings.personMet',
-                  { n: person.met, of: person.days, when: dayText(person.lastMet ?? '') })
-                  : person.days ? t('settings.personNeverMet', { when: dayText(person.seen ?? '') })
-                    : t('settings.personNeverIn');
-              const usage = [used, person.you ? '' : person.version ?? ''].filter(Boolean).join('  ·  ');
-              return (
-                <View key={person.name} style={styles.choice}>
-                  <View style={styles.choiceText}>
-                    <Text style={styles.choiceLabel}>{who + where}</Text>
-                    <Text style={styles.choiceNote}>
-                      {t('settings.personSince', { date: longDate(person.since) })}
-                      {rooms ? `  ·  ${rooms}` : ''}
-                      {brought ? `  ·  ${brought}` : ''}
-                    </Text>
-                    {usage ? <Text style={styles.choiceNote}>{usage}</Text> : null}
-                  </View>
-                  {!person.you ? (
-                    <TouchableOpacity onPress={() => confirmForget(person)}>
-                      <Text style={styles.linkInline}>{t('settings.forgetPerson')}</Text>
-                    </TouchableOpacity>
-                  ) : null}
-                </View>
-              );
-            })}
+            {/* The owner's own phones first: they are no invitation. */}
+            {ownPhones.map(personRow)}
 
+            {/* The form before the lists, which grow long: and a new
+                invitation appears just under it, among those waiting. */}
+            <Field
+              label={t('settings.invitePerson')}
+              value={inviteName}
+              onChange={setInviteName}
+              placeholder={t('settings.invitePersonPlaceholder')}
+              hint={t('settings.invitePersonHint')}
+            />
+            <TouchableOpacity
+              style={[styles.rowButton, styles.rowAfterChoices]}
+              onPress={() => {
+                const name = inviteName.trim();
+                if (!name) return;
+                onInvite?.(name);
+                setInviteName('');
+              }}>
+              <Text style={styles.rowButtonText}>{t('settings.makeInvitation')}</Text>
+              <Text style={styles.rowButtonArrow}>{'\u203A'}</Text>
+            </TouchableOpacity>
+
+            {invitations.length ? (
+              <Text style={styles.subsection}>{t('settings.invitesPending', { n: invitations.length })}</Text>
+            ) : null}
             {invitations.map((i) => (
               <View key={i.code} style={styles.choice}>
                 <View style={styles.choiceText}>
@@ -948,27 +987,10 @@ export default function SettingsScreen({
               </View>
             ))}
 
-            {/* Room above: it is a new thing, not one more row of the
-                list it follows. */}
-            <View style={styles.afterList} />
-            <Field
-              label={t('settings.invitePerson')}
-              value={inviteName}
-              onChange={setInviteName}
-              placeholder={t('settings.invitePersonPlaceholder')}
-              hint={t('settings.invitePersonHint')}
-            />
-            <TouchableOpacity
-              style={[styles.rowButton, styles.rowAfterChoices]}
-              onPress={() => {
-                const name = inviteName.trim();
-                if (!name) return;
-                onInvite?.(name);
-                setInviteName('');
-              }}>
-              <Text style={styles.rowButtonText}>{t('settings.makeInvitation')}</Text>
-              <Text style={styles.rowButtonArrow}>{'\u203A'}</Text>
-            </TouchableOpacity>
+            {accepted.length ? (
+              <Text style={styles.subsection}>{t('settings.invitesAccepted', { n: accepted.length })}</Text>
+            ) : null}
+            {accepted.map(personRow)}
           </>
         ) : null}
 

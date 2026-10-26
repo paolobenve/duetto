@@ -527,6 +527,8 @@ export const en = {
     personRoomsMany: '{n} connections',
     personBroughtOne: 'in 1 the other person was let in as a guest',
     personBroughtMany: 'in {n} the other person was let in as a guest',
+    invitesPending: 'Invitations waiting ({n})',
+    invitesAccepted: 'Invitations accepted ({n})',
     personMet: 'days together: {n} of {of}, the last {when}',
     personNeverMet: 'never connected · last seen {when}',
     personNeverIn: 'never in a connection',

@@ -513,6 +513,8 @@ export const it: Dictionary = {
     personRoomsMany: '{n} collegamenti',
     personBroughtOne: 'in 1 ha fatto entrare l’altra persona come ospite',
     personBroughtMany: 'in {n} ha fatto entrare l’altra persona come ospite',
+    invitesPending: 'Inviti in attesa ({n})',
+    invitesAccepted: 'Inviti accettati ({n})',
     personMet: 'giorni insieme: {n} su {of}, l’ultimo {when}',
     personNeverMet: 'mai collegato · visto l’ultima volta {when}',
     personNeverIn: 'mai entrato in un collegamento',

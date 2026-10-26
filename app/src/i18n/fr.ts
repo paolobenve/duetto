@@ -514,6 +514,8 @@ export const fr: Dictionary = {
     personRoomsMany: '{n} liaisons',
     personBroughtOne: 'dans 1 l’autre personne est entrée comme invitée',
     personBroughtMany: 'dans {n} l’autre personne est entrée comme invitée',
+    invitesPending: 'Invitations en attente ({n})',
+    invitesAccepted: 'Invitations acceptées ({n})',
     personMet: 'jours ensemble : {n} sur {of}, le dernier {when}',
     personNeverMet: 'jamais connecté · vu pour la dernière fois {when}',
     personNeverIn: 'jamais entré dans une liaison',
