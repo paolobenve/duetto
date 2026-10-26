@@ -37,6 +37,28 @@ class ReportModule(private val ctx: ReactApplicationContext) :
         promise.resolve(Journal.phoneName())
     }
 
+    /**
+     * Which app installed Duetto: "org.fdroid.fdroid", the package of a
+     * browser or a files app, "com.android.shell" for adb; "" if Android
+     * does not say. The new version is offered by the road this one
+     * came by: from F-Droid, an APK from the browser would want leave to
+     * install apps that F-Droid's user never gave the browser.
+     */
+    @ReactMethod
+    fun installer(promise: Promise) {
+        val name = try {
+            val pm = ctx.packageManager
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                val info = pm.getInstallSourceInfo(ctx.packageName)
+                info.installingPackageName ?: info.initiatingPackageName
+            } else {
+                @Suppress("DEPRECATION")
+                pm.getInstallerPackageName(ctx.packageName)
+            }
+        } catch (_: Exception) { null }
+        promise.resolve(name ?: "")
+    }
+
     /** The journal's files of the last `days` days, newest first: name and text. */
     @ReactMethod
     fun journalFiles(days: Int, promise: Promise) {

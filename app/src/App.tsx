@@ -36,7 +36,8 @@ import type { Hand, PersonOnServer, InvitationOnServer } from './signaling';
 import { useLanguage, t } from './i18n';
 import { alarmLabel, sentGain } from './alarms';
 import { BUILD, VERSION_FULL, VERSION_LABEL } from './version';
-import type { LatestRelease } from './releases';
+import { updateFor, type LatestRelease } from './releases';
+import UpdateModal from './UpdateModal';
 import { logger, setLogging } from './log';
 import { ChannelSession } from './webrtc';
 import type { VideoStats } from './webrtc';
@@ -88,6 +89,8 @@ type Screen = 'loading' | 'welcome' | 'settings' | 'pairing' | 'setup' | 'channe
  * goodbye from a drop.
  */
 const RETURN_WAIT_MS = 6000;
+/** a newer Duetto put off with "Later" is offered again after this: see UpdateModal */
+const UPDATE_ASK_AGAIN_MS = 3 * 86400_000;
 
 /**
  * How often our own journal goes to the other phone.
@@ -1201,6 +1204,20 @@ export default function App() {
   const [reportsOpen, setReportsOpen] = useState(false);
   /** the latest Duetto out, as the server said it last: the settings say if this one is behind */
   const [latestOut, setLatestOut] = useState<LatestRelease | null>(null);
+  /** who installed Duetto, and whether this is the light build: the road to a newer one */
+  const [installedBy, setInstalledBy] = useState<{ installer: string; light: boolean } | null>(null);
+  useEffect(() => {
+    Promise.all([Journal.installer(), OtherSounds.declared()])
+      .then(([installer, listener]) => {
+        setInstalledBy({ installer: String(installer || ''), light: !listener });
+        Journal.mark(`installed-by:${installer || '?'}:${listener ? 'full' : 'light'}`).catch(() => { /* noop */ });
+      })
+      .catch(() => { /* noop */ });
+  }, []);
+  const update = React.useMemo(
+    () => (installedBy ? updateFor(latestOut, installedBy.installer, installedBy.light) : null),
+    [latestOut, installedBy],
+  );
   /** the report on its way through the server, waiting for the answer */
   const reportPending = useRef<((o: ReportOutcome) => void) | null>(null);
   /**
@@ -6541,6 +6558,32 @@ export default function App() {
     );
   }
 
+  /**
+   * A newer Duetto, offered at a quiet moment: the app in front, on the
+   * channel or in the settings, not while the two are talking or a call
+   * rings; once a version, and again three days after "Later".
+   */
+  const asked = cfg.updateAsked;
+  const updateOffer = update && appActive && !inPip
+    && !(inChannel && status === 'together') && !callAlert && !diagAskedBy
+    && !(asked && asked.version === update.version && Date.now() - asked.at < UPDATE_ASK_AGAIN_MS)
+    ? update : null;
+  const updateAnswered = (how: 'now' | 'later') => {
+    if (!updateOffer) return;
+    Journal.mark(`update:${how}:${updateOffer.via}:${updateOffer.version}`).catch(() => { /* noop */ });
+    setCfg((prev) => (prev
+      ? saveCfg({ ...prev, updateAsked: { version: updateOffer.version, at: Date.now() } })
+      : prev));
+    if (how === 'now') Linking.openURL(updateOffer.url).catch(() => { /* noop */ });
+  };
+  const updateSheet = (
+    <UpdateModal
+      update={updateOffer}
+      onUpdate={() => updateAnswered('now')}
+      onLater={() => updateAnswered('later')}
+    />
+  );
+
   if (screen === 'welcome') {
     return (
       <View style={styles.safe}>
@@ -6627,7 +6670,7 @@ export default function App() {
           onClose={isPaired(cfg) ? () => setScreen('channel') : undefined}
           onOpenSetup={() => { setSetupFrom('settings'); setScreen('setup'); }}
           reportsOpen={reportsOpen}
-          latest={latestOut}
+          update={update}
           onReport={sendReport}
           onInviteToWorkItem={sendInviteNote}
           onQualityChange={(q) => applyQuality(q, true)}
@@ -6692,6 +6735,7 @@ export default function App() {
           onLater={() => answerAsk('later')}
           onNo={() => answerAsk('no')}
         /> : null}
+        {updateSheet}
       </View>
     );
   }
@@ -6946,6 +6990,7 @@ export default function App() {
           onLater={() => answerAsk('later')}
           onNo={() => answerAsk('no')}
         /> : null}
+      {updateSheet}
     </View>
   );
 }

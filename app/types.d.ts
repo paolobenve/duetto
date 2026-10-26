@@ -248,6 +248,8 @@ declare module 'duetto-platform' {
     share(days: number, title: string): Promise<boolean>;
     /** which phone this is, for the head of a report */
     phone(): Promise<string>;
+    /** which app installed Duetto: its package, '' if Android does not say */
+    installer(): Promise<string>;
     /** `who`: which connection it comes from, to keep the files apart */
     appendOther(text: string, who?: string): Promise<boolean>;
     path(): Promise<string>;

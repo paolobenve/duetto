@@ -66,6 +66,15 @@ export const en = {
     buildsDiffer: 'The same version, different builds: {here} here, {there} over there',
   },
 
+  update: {
+    title: 'Duetto {v} is out',
+    bodyFdroid: 'F-Droid opens: there, just touch “Update”.',
+    bodyApk: 'The new version’s file is downloaded: when it has finished, touch it, and Android will ask whether to update Duetto.',
+    bodyPage: 'The new version’s page opens, with what is new and the file to download.',
+    kept: 'Your pairs and settings stay as they are.',
+    now: 'Update',
+    later: 'Later',
+  },
   quality: {
     saver: 'Saver',
     saverNote: 'up to 640×360 · ceiling 37kB/s',

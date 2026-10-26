@@ -34,7 +34,7 @@ import {
 import { peerAvatar } from './avatar';
 import { isRealName } from './presence';
 import { VERSION_FULL } from './version';
-import { isBehind, type LatestRelease } from './releases';
+import type { Update } from './releases';
 import { Alarm, Alerts, Journal, Call, OtherSounds } from 'duetto-platform';
 import { ALARMS } from './alarms';
 import { said, type AskState } from './diagnosticsAsk';
@@ -186,8 +186,8 @@ type Props = {
   onLive?: (patch: Partial<DuoConfig>) => void;
   /** whether the server carries reports to the beta testers' work items */
   reportsOpen?: boolean;
-  /** the latest Duetto out, as the server said it last; null if it has not */
-  latest?: LatestRelease | null;
+  /** a newer Duetto for this phone, and where: see updateFor */
+  update?: Update | null;
   /** a report: the person's words, the journal along or not */
   onReport?: (text: string, withJournal: boolean) => Promise<ReportOutcome>;
   /** an invitation, written on the work item of the person it is for */
@@ -211,7 +211,7 @@ type Props = {
 export default function SettingsScreen({
   initial, onForgetPair, onSwitchPair, onRenamePair, onChangeServer, onLeaveServer, onRepair, onHaveCode, onClose, onOpenSetup,
   onVolumeTest,
-  vp9Here, vp9Peer, onQualityChange, onLive, reportsOpen, latest, onReport, onInviteToWorkItem,
+  vp9Here, vp9Peer, onQualityChange, onLive, reportsOpen, update, onReport, onInviteToWorkItem,
   canInvite, canAddPair, people = [], invitations = [],
   onAskPeople, onInvite, onForget, onForgetInvitation, pending = [], onForgetPending,
   diagAsk,
@@ -1742,10 +1742,10 @@ export default function SettingsScreen({
 
         <Text style={styles.version}>{VERSION_FULL}</Text>
         {/* A newer Duetto is out: said where the version is, and the
-            release's page - its notes and its APK - a touch away. */}
-        {latest && isBehind(latest.version) ? (
-          <TouchableOpacity onPress={() => { Linking.openURL(latest.page).catch(() => {}); }}>
-            <Text style={styles.newVersion}>{t('settings.newVersion', { v: latest.version })}</Text>
+            way to it - F-Droid, or the APK - a touch away. */}
+        {update ? (
+          <TouchableOpacity onPress={() => { Linking.openURL(update.url).catch(() => {}); }}>
+            <Text style={styles.newVersion}>{t('settings.newVersion', { v: update.version })}</Text>
           </TouchableOpacity>
         ) : null}
     </>

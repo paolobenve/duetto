@@ -60,6 +60,15 @@ export const fr: Dictionary = {
     buildsDiffer: 'Même version, builds différentes : ici {here}, là-bas {there}',
   },
 
+  update: {
+    title: 'Duetto {v} est sorti',
+    bodyFdroid: 'F-Droid s’ouvre : là, il suffit de toucher « Mettre à jour ».',
+    bodyApk: 'Le fichier de la nouvelle version se télécharge : quand c’est fini, touche-le, et Android demandera s’il faut mettre Duetto à jour.',
+    bodyPage: 'La page de la nouvelle version s’ouvre, avec les nouveautés et le fichier à télécharger.',
+    kept: 'Les couples et les réglages restent comme ils sont.',
+    now: 'Mettre à jour',
+    later: 'Plus tard',
+  },
   quality: {
     saver: 'Économie',
     saverNote: 'jusqu’à 640×360 · plafond 37kB/s',

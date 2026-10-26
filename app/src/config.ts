@@ -374,6 +374,8 @@ export type DuoConfig = {
   setupShown: boolean;
   /** the settings tab last looked at: it is where one comes back to */
   settingsTab?: 'links' | 'use' | 'diagnostics';
+  /** the newer Duetto last offered, and when: asked again only days later (see UpdateModal) */
+  updateAsked?: { version: string; at: number };
   /**
    * The notice about Google's developer verification: when to show it
    * next (a time), or never again.

@@ -799,7 +799,13 @@ export class Signaling {
           peerAvailable: moment(msg.peerAvailable),
           latest: msg.latest && /^\d+\.\d+\.\d+$/.test(String(msg.latest.version))
             && /^https:\/\//.test(String(msg.latest.page))
-            ? { version: String(msg.latest.version), page: String(msg.latest.page) }
+            ? {
+              version: String(msg.latest.version),
+              page: String(msg.latest.page),
+              apk: /^https:\/\//.test(String(msg.latest.apk || '')) ? String(msg.latest.apk) : '',
+              full: /^https:\/\//.test(String(msg.latest.full || '')) ? String(msg.latest.full) : '',
+              fdroid: /^\d+\.\d+\.\d+$/.test(String(msg.latest.fdroid || '')) ? String(msg.latest.fdroid) : '',
+            }
             : null,
         });
         break;

@@ -41,7 +41,55 @@ export type Release = {
  * version three weeks old - because nothing told them. The phone asks
  * nobody but its server, so the server is the one that says it.
  */
-export type LatestRelease = { version: string; page: string };
+export type LatestRelease = {
+  version: string;
+  /** the release's page: its notes and its APKs */
+  page: string;
+  /** the light APK, without the notification listener; or the only one */
+  apk: string;
+  /** the full APK, '' if the release has only one */
+  full: string;
+  /** the version F-Droid offers, '' if not known */
+  fdroid: string;
+};
+
+/** Where a newer Duetto is, for this phone: see updateFor. */
+export type Update = { version: string; url: string; via: 'fdroid' | 'apk' | 'page' };
+
+/** The stores of F-Droid's repository, and Obtainium, which says it by itself. */
+const FDROID_STORES = ['org.fdroid.fdroid', 'org.fdroid.basic', 'com.looker.droidify', 'com.machiav3lli.fdroid'];
+const OBTAINIUM = ['dev.imranr.obtainium', 'dev.imranr.obtainium.fdroid'];
+export const FDROID_PAGE = 'https://f-droid.org/packages/com.duetto/';
+
+/**
+ * The newer Duetto this phone should be offered, by the road it came,
+ * or null.
+ *
+ * From an F-Droid store, from F-Droid, once it has it: from a browser
+ * Android would ask for a leave its owner never gave the browser, and
+ * the full Duetto F-Droid builds would be stopped by Play Protect when
+ * coming from a file. From Obtainium, nothing: it says it by itself.
+ * From a browser or a file, the APK of the same kind as this one - the
+ * light for the light; the full for the full, not to take a feature
+ * away - and the release's page if that one is missing.
+ *
+ * `installer` is the package that installed Duetto, '' if not known;
+ * `light`, whether this build is the one without the listener.
+ */
+export function updateFor(latest: LatestRelease | null, installer: string, light: boolean): Update | null {
+  if (!latest) return null;
+  if (OBTAINIUM.includes(installer)) return null;
+  if (FDROID_STORES.includes(installer)) {
+    return latest.fdroid && isBehind(latest.fdroid)
+      ? { version: latest.fdroid, url: FDROID_PAGE, via: 'fdroid' }
+      : null;
+  }
+  if (!isBehind(latest.version)) return null;
+  const apk = light ? latest.apk : latest.full || '';
+  return apk
+    ? { version: latest.version, url: apk, via: 'apk' }
+    : { version: latest.version, url: latest.page, via: 'page' };
+}
 
 /**
  * Whether `latest` is ahead of this app. A build before a version is

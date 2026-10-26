@@ -385,6 +385,8 @@ export const Journal = isAndroid && NativeJournal
       share: (days, title) => call(NativeReport, 'shareJournal', Math.max(1, Number(days) || 3), String(title || 'Duetto')),
       /** which phone this is, for the head of a report */
       phone: () => call(NativeReport, 'phone'),
+      /** which app installed Duetto: its package, '' if Android does not say */
+      installer: () => call(NativeReport, 'installer'),
       appendOther: (text, who) =>
         call(NativeJournal, 'appendOther', String(text), String(who || '')),
       path: () => call(NativeJournal, 'path'),
@@ -403,6 +405,7 @@ export const Journal = isAndroid && NativeJournal
       files: () => Promise.resolve([]),
       share: unavailable,
       phone: () => Promise.resolve(''),
+      installer: () => Promise.resolve(''),
       unsent: () => Promise.resolve({ text: '', cursor: '' }),
       markSent: unavailable,
       appendOther: unavailable,
