@@ -108,6 +108,33 @@ export function longDate(iso: string): string {
 }
 
 /**
+ * A day in a line of a list: "5 October", with the year only when it
+ * is not this one, and "today" or "yesterday" when it is one of those.
+ * `day` is YYYY-MM-DD, UTC's, as the server counts the days.
+ */
+export function dayText(day: string): string {
+  const d = new Date(`${day}T12:00:00Z`);
+  if (Number.isNaN(d.getTime())) return day;
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400_000).toISOString().slice(0, 10);
+  if (day === today) return t('settings.dayToday');
+  if (day === yesterday) return t('settings.dayYesterday');
+  const locale = {
+    en: 'en-GB', it: 'it-IT', es: 'es-ES', pt: 'pt-BR', fr: 'fr-FR', de: 'de-DE',
+  }[current];
+  let said: string;
+  try {
+    said = d.toLocaleDateString(locale, {
+      day: 'numeric', month: 'long',
+      ...(day.slice(0, 4) !== today.slice(0, 4) ? { year: 'numeric' } : {}),
+    });
+  } catch {
+    said = day;
+  }
+  return t('settings.dayOn', { date: said });
+}
+
+/**
  * A moment down to the second, as the notifications say it.
  *
  * Today it is the hour alone, "13:05:02". Another day it carries the

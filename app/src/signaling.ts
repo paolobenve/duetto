@@ -404,6 +404,17 @@ export type PersonOnServer = {
   you: boolean;
   /** their rooms: the id is the pair's, known to the phone that opened it */
   theirs: { room: string; guest: boolean }[];
+  /**
+   * The days the phone came, and those it found the other, with the
+   * last of those (YYYY-MM-DD, UTC's): null from a server that does not
+   * count them, where nothing can be said.
+   */
+  days?: number | null;
+  met?: number | null;
+  lastMet?: string;
+  /** the last day it was at the door, and which Duetto it has */
+  seen?: string;
+  version?: string;
 };
 
 export type InvitationOnServer = { name: string; code: string; expires: string };

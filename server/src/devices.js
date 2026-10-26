@@ -204,6 +204,49 @@ export function useInvitation(code, pub, model = '', version = '') {
   return invitation.name;
 }
 
+/**
+ * The days a phone of the list came, and the days it found the other.
+ *
+ * For the owner's list: "together 20 days out of 27, the last today"
+ * says whether an invitation turned into a habit, and "never connected"
+ * that somebody came once with one phone and stopped there. Days, never
+ * hours: the owner may know whether a pair is used, not when they talk.
+ * A day is UTC's, as `seen` is, and each is written once: the file
+ * changes at most twice a day per phone, not at every coming in.
+ *
+ * `pubs` are the phones in the room now: when there are two, both found
+ * the other today. A guest - a phone not on the list - is no row of
+ * anybody's: its day goes to whoever let it in, the room's owner, since
+ * it is their connection being used, even with their own phone away.
+ */
+export function noteVisit(room, pubs, together) {
+  const data = read();
+  const today = new Date().toISOString().slice(0, 10);
+  const listed = new Set(data.devices.map((d) => d.pub));
+  const credit = new Set(pubs.filter((p) => listed.has(p)));
+  const known = data.rooms.find((r) => r.room === room);
+  const ownerOf = (d) => (known.ownerPub ? d.pub === known.ownerPub : d.name === known.owner);
+  if (known && pubs.some((p) => !listed.has(p))) {
+    for (const d of data.devices) if (ownerOf(d)) credit.add(d.pub);
+  }
+  let changed = false;
+  for (const d of data.devices) {
+    if (!credit.has(d.pub)) continue;
+    if (d.lastDay !== today) {
+      d.days = (d.days || 0) + 1;
+      d.lastDay = today;
+      changed = true;
+    }
+    if (together && d.lastMet !== today) {
+      d.met = (d.met || 0) + 1;
+      if (!d.firstMet) d.firstMet = today;
+      d.lastMet = today;
+      changed = true;
+    }
+  }
+  if (changed) write(data);
+}
+
 /** Takes an unused invitation back. */
 export function removeInvitation(code) {
   const data = read();

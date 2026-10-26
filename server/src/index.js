@@ -44,7 +44,7 @@ import {
 } from 'node:crypto';
 import {
   addInvitation, adopt, isBroken, markBroken, noteGuest, noteRoom, mayOpen, read, refresh,
-  remove as removePerson, removeInvitation, removeRoom, roomOf, useInvitation,
+  remove as removePerson, removeInvitation, removeRoom, roomOf, useInvitation, noteVisit,
   awaitRoom, pendingRoom, dropPending, leaveMail, takeMail, saveMoments, takeMoments,
 } from './devices.js';
 import { credentialsFor as turnCredentials, drop as dropTurn } from './turn.js';
@@ -428,6 +428,19 @@ const MODES = ['listening', 'active'];
 
 /** @type {Map<string, Set<import('ws').WebSocket>>} presences per pairId */
 const rooms = new Map();
+
+/**
+ * The day of a room, for the owner's list: see noteVisit. At every
+ * coming in, and again every hour for those that stay - a pair may keep
+ * the same sockets for days, and a day with no coming in is still a day
+ * they had each other.
+ */
+function countVisit(roomId, set) {
+  noteVisit(roomId, [...set].map((p) => p.pub).filter(Boolean), set.size >= 2);
+}
+setInterval(() => {
+  for (const [roomId, set] of rooms) if (set.size) countVisit(roomId, set);
+}, 3600_000).unref?.();
 
 function send(ws, obj) {
   if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(obj));
@@ -1210,6 +1223,9 @@ wss.on('connection', (ws, req) => {
       // figures only: the log is not the place for a whole code.
       console.log(`[duetto] ${ws.who || ws.name || '?'} in room ${roomId.slice(0, 4)}… `
         + `(${set.size} in, ${ws.mode})`);
+      // And for the owner's list, by the day: see noteVisit. The guest's
+      // coming counts for the one on the list who was waiting for it.
+      countVisit(roomId, set);
 
       // "polite" in the sense of WebRTC's perfect negotiation: whoever
       // was in the room already gives way if the offers collide.
@@ -1667,6 +1683,15 @@ function peopleMessage(ws) {
       model: d.model || '',
       you: !!ws.pub && d.pub === ws.pub,
       rooms: theirRooms.filter((r) => r.owner === d.name).length,
+      // Whether the invitation became a habit, by the day: see noteVisit.
+      // Null where nothing was ever counted - a server older than the
+      // counting - so the app does not say "never" about what it does
+      // not know.
+      days: typeof d.days === 'number' ? d.days : null,
+      met: typeof d.met === 'number' ? d.met : null,
+      lastMet: d.lastMet || '',
+      seen: d.seen || '',
+      version: d.version || '',
       brought: theirRooms.filter((r) => r.owner === d.name && r.guest).length,
       // The rooms themselves, by name: the phone asking knows its own
       // by the names it gave them, and can say "the pair with Anna"

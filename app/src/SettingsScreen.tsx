@@ -23,7 +23,7 @@ const SWITCH_COLOURS = {
 import type { DuoConfig, PairInfo, PendingPair, VideoQuality } from './config';
 import { LEVEL_CHOICES } from './config';
 import type { PersonOnServer, InvitationOnServer } from './signaling';
-import { t, LANGUAGES, longDate } from './i18n';
+import { t, LANGUAGES, longDate, dayText } from './i18n';
 import { inviteLink, pairLink, BETA_TESTER_LINK } from './links';
 import QrCode from './QrCode';
 import type { LanguageChoice } from './i18n';
@@ -881,6 +881,15 @@ export default function SettingsScreen({
               const brought = mine.length || !person.brought ? ''
                 : person.brought === 1 ? t('settings.personBroughtOne')
                   : t('settings.personBroughtMany', { n: person.brought });
+              // Whether the invitation became a habit, by the day; nothing
+              // from a server that does not count, and nothing of our own
+              // phone, which knows.
+              const used = person.you || person.days == null ? ''
+                : person.met ? t('settings.personMet',
+                  { n: person.met, of: person.days, when: dayText(person.lastMet ?? '') })
+                  : person.days ? t('settings.personNeverMet', { when: dayText(person.seen ?? '') })
+                    : t('settings.personNeverIn');
+              const usage = [used, person.you ? '' : person.version ?? ''].filter(Boolean).join('  ·  ');
               return (
                 <View key={person.name} style={styles.choice}>
                   <View style={styles.choiceText}>
@@ -890,6 +899,7 @@ export default function SettingsScreen({
                       {rooms ? `  ·  ${rooms}` : ''}
                       {brought ? `  ·  ${brought}` : ''}
                     </Text>
+                    {usage ? <Text style={styles.choiceNote}>{usage}</Text> : null}
                   </View>
                   {!person.you ? (
                     <TouchableOpacity onPress={() => confirmForget(person)}>
