@@ -89,7 +89,7 @@ android {
         applicationId "com.duetto"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 518
+        versionCode 519
         versionName "0.9.21-pre"
         ndk {
             // Only real phones: the x86 emulators doubled the APK.
