@@ -440,6 +440,9 @@ async function requestAllPermissions(): Promise<{ mic: boolean; camera: boolean 
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('loading');
+  /** the screen, for what runs outside the drawing: see enterChannel */
+  const screenRef = useRef<Screen>('loading');
+  useEffect(() => { screenRef.current = screen; }, [screen]);
   /** a pairing code typed at the welcome, handed to the pairing screen */
   const [pairingCode, setPairingCode] = useState('');
   /** the maker's key, when the code came as a link that carried one: see links.ts */
@@ -5353,7 +5356,10 @@ export default function App() {
 
     setInChannel(true);
     inChannelRef.current = true;
-    setScreen('channel');
+    // In front, unless a pairing or the welcome is under way: an entry
+    // by itself - a connection rebuilt, its way back in - closed them
+    // half done. One is in the channel all the same, behind them.
+    if (screenRef.current !== 'pairing' && screenRef.current !== 'welcome') setScreen('channel');
     sig.setMode('active');
     // Now, until the server says its own moment (onModeSince).
     setMySince(Date.now());
@@ -6623,7 +6629,23 @@ export default function App() {
               setScreen('pairing');
               return;
             }
-            setCfg(saveCfg(alignPairServer(next)));
+            /*
+             * A code accepted on the server in use leaves the connection
+             * in use as it is: only the word the door said is kept.
+             * Written over with what the welcome had - the invitation
+             * field among it, always empty there - it looked like
+             * another connection, was rebuilt, came back into the
+             * channel and in front of the pairing under way, which
+             * closed half done: on 26 October the moto finished the
+             * pair alone, and the POCO never had it.
+             */
+            if (code && isPaired(cfg) && next.serverUrl === cfg.serverUrl) {
+              setCfg((prev) => (prev && prev.serverRole !== next.serverRole
+                ? saveCfg({ ...prev, serverRole: next.serverRole })
+                : prev));
+            } else {
+              setCfg(saveCfg(alignPairServer(next)));
+            }
             // With a code - typed, scanned, or opened as a link - the
             // pairing, which runs it: a phone already paired is adding
             // a pair, and used to be sent back into the channel with
