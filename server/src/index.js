@@ -48,6 +48,8 @@ import {
   awaitRoom, pendingRoom, dropPending, leaveMail, takeMail, saveMoments, takeMoments,
 } from './devices.js';
 import { credentialsFor as turnCredentials, drop as dropTurn } from './turn.js';
+import { bouncePage } from './linkPage.js';
+import { latestRelease, watchReleases } from './releases.js';
 
 const PORT = parseInt(process.env.PORT || '8787', 10);
 const HOST = process.env.HOST || '127.0.0.1'; // behind a reverse proxy: loopback only
@@ -854,74 +856,6 @@ function cleanVersion(raw) {
   return /^[\w.\- ()]{1,24}$/.test(s) ? s : '';
 }
 
-/**
- * The page behind a link that is handed to people.
- *
- * A pairing code or an invitation goes out as https://host/duetto/p/...
- * or /duetto/i/..., because a messaging app makes an https address a
- * link and a custom scheme plain text - mail cut "duetto://" off and
- * offered the server's name instead. This page is what that link
- * opens: on a phone with Duetto it goes straight into the app, through
- * an intent:// that Chrome resolves and a duetto:// link for the rest;
- * with no app it says where to get one and what to type by hand. The
- * host is the one the request came to: nothing of the server's own
- * name lives here.
- */
-function bouncePage(req) {
-  const m = String(req.url || '').match(/\/duetto\/(p|i)\/([A-Za-z0-9-]{4,12})(?:\/([A-Za-z0-9_-]{43}))?\/?(?:[?#].*)?$/);
-  if (!m) return null;
-  const kind = m[1] === 'p' ? 'pair' : 'invite';
-  const code = m[2];
-  const key = m[3] || '';
-  const host = String(req.headers.host || '').replace(/[^A-Za-z0-9.:\-\[\]]/g, '');
-  if (!host) return null;
-  const path = `${host}/${kind}/${code}${key ? `/${key}` : ''}`;
-  const app = `duetto://${path}`;
-  const here = `https://${host}${req.url}`;
-  const intent = `intent://${path}#Intent;scheme=duetto;package=com.duetto;`
-    + `S.browser_fallback_url=${encodeURIComponent(here + (here.includes('?') ? '&' : '?') + 'stay=1')};end`;
-  const shown = kind === 'pair' ? `${code.slice(0, 4)} ${code.slice(4)}` : code;
-  const what = kind === 'pair' ? 'a pairing code' : 'an invitation';
-  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-  const stay = /[?&]stay=1/.test(String(req.url));
-  return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Duetto</title>
-<style>
-body{margin:0;background:#0b0e14;color:#e6ebf1;font:17px/1.5 system-ui,sans-serif}
-main{max-width:30rem;margin:0 auto;padding:2.5rem 1.5rem}
-h1{font-size:2rem;margin:0 0 .5rem}p{color:#c9d1dc}
-a.b{display:block;text-align:center;background:#2f7cf6;color:#fff;text-decoration:none;
-padding:1rem;border-radius:1rem;font-weight:700;margin:1.5rem 0}
-code{font-size:1.4rem;letter-spacing:.1em;color:#fff}small{color:#8892a0}
-</style></head><body><main>
-<h1>Duetto</h1>
-<p>This is ${what} for Duetto, the voice and video channel for two.</p>
-<a class="b" href="${esc(app)}">Open in Duetto</a>
-<p>No Duetto on this phone yet? Get it from <a href="https://f-droid.org/packages/com.duetto/">F-Droid</a>,
-open it, and ${kind === 'pair'
-    ? 'in the first screen write this server and the code'
-    : 'in the first screen write this server and this invitation'}:</p>
-<p><code>${esc(host)}</code><br><code>${esc(shown)}</code></p>
-<small>${stay ? 'Come back to this page once Duetto is installed, and touch the button.'
-    : 'If Duetto did not open by itself, touch the button.'}</small>
-</main>
-${stay ? '' : `<script>
-// Handed to the app after the page is on the screen, and by assigning
-// the location rather than replacing it, which keeps this tab as it is.
-// An intent:// names the package and falls back to this page (stay=1)
-// when the app is not there; Android's browsers take it, Firefox
-// included. Off Android there is nothing to open: the page stays,
-// with the code. And whoever's browser does not jump has the button.
-if (/Android/.test(navigator.userAgent)) {
-  setTimeout(function () { window.location.href = ${JSON.stringify(intent)}; }, 150);
-}
-</script>`}
-</body></html>
-`;
-}
-
 const httpServer = createServer((req, res) => {
   // We accept both /healthz and /any/prefix/healthz: in front there may
   // be a proxy that forwards the path without rewriting it (HAProxy) or
@@ -932,7 +866,7 @@ const httpServer = createServer((req, res) => {
     return;
   }
   // The page a link opens: see bouncePage.
-  const page = bouncePage(req);
+  const page = bouncePage(req, latestRelease());
   if (page) {
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
     res.end(page);
@@ -1883,6 +1817,8 @@ httpServer.listen(PORT, HOST, () => {
       ? 'a key is asked for'
       : 'open - anybody who knows the address can use this server'}`);
   console.log(`[duetto] TURN fallback: ${turnConfig() ? TURN_URL : 'not configured (different networks will not connect)'}`);
+  // The latest Duetto, for the link pages and the phones: releases.js.
+  watchReleases();
 });
 
 for (const sig of ['SIGINT', 'SIGTERM']) {
