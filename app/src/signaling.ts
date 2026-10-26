@@ -752,6 +752,12 @@ export class Signaling {
             theirs: Array.isArray(p.theirs)
               ? p.theirs.map((r: any) => ({ room: String(r.room || ''), guest: r.guest === true }))
               : [],
+            // How much they use it: null from a server that does not count.
+            days: typeof p.days === 'number' ? p.days : null,
+            met: typeof p.met === 'number' ? p.met : null,
+            lastMet: String(p.lastMet || ''),
+            seen: String(p.seen || ''),
+            version: String(p.version || ''),
           })),
           msg.invitations ?? [],
         );
