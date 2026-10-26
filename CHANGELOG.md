@@ -14,6 +14,61 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
+## 0.9.21 build 523
+
+**Version 0.9.21: talking through the silence, the levelled voice, and the way in.** When
+the other turns their listening off, a button appears above the controls - their name, "is not
+listening · hold to talk" - and held down, our voice is heard over there all the same, at
+the level their listening on would give it, the microphone opened too if it was off; their
+listening is not touched, and the line under their buttons says who is talking through it.
+Whoever turned the listening off can refuse it, "Let them talk to me when I am not
+listening"; whoever sees the button can take it away, from the settings or from a little
+cross beside it, which says first what changes and where it comes back from. How loud the
+other would hear us is shown even with their listening off, grey, and yellow when too
+faint; with their listening on the figure is white, and alone.
+
+The other's voice can be levelled: a compressor on what arrives brings a faint voice and a
+shout out at nearly the same level, in three strengths - light, medium, strong - from the
+output's menu, beside the volume, holding the Listen button down; with the phone's own
+engine where it has one.
+
+In the channel Android keeps the other apps' notifications quiet, as in a call: Duetto
+sounds them, at a level of its own or like Android's, asking once on entering for the
+notification access, with the way through Android 13's restricted settings. That access is
+what Play Protect stops in an app installed from a browser, so there are now two builds:
+the full one, with it, which F-Droid ships, and a light one without it, for a file. The
+buttons' sounds and the calls in the conversation keep their level whatever the voice's
+volume; the calls' levels are 6 dB apart, and "full" is the phone's top. The caller hears
+a bell's ding instead of two knocks on a door, and the bell is among the sounds to choose;
+the other's cues ring only for what a finger did.
+
+A stuck picture is seen more often: fewer than 15 frames drawn of a full picture, judged
+against the frames the other side says it sends, and nothing whole arriving at all, a
+black picture; the first cure renews the incoming picture alone and keeps the link, and no
+renewal says "video off, video on" to the other phone. On a choked road - half a second of
+round trip or more - the cure waits thirty seconds instead of eight: a new decoder cannot
+make the road carry more. A link rebuilt forgets the old one's state, and the side that
+answers asks for an offer when the other comes back. Duetto stays upright, its window
+locked in portrait. The little square's handle sits on the side towards the middle of the
+screen, and resizing keeps the far side still.
+
+The way in is shorter. After an invitation, "Next" goes straight to the code for the other
+phone, and the beta tester box shows only to whoever has no connections of their own. The
+pages behind a link speak the browser's language, among the app's six; without the app
+they offer the latest release first - the light build - with F-Droid beside it and the
+latest test build for testers, and the download copies the link: Duetto, at its first
+start, finds it there and begins from the code or the invitation, or says where to find
+it. A code accepted from inside a channel no longer loses the pair, and the channel offers
+"Back to" the one left; the first entry's questions come one at a time; the guest's
+"Paired" reads right with no name known yet.
+
+When a newer Duetto is out, the server says so and the app offers it at a quiet moment, by
+the road this one came: F-Droid once it has the version, nothing for Obtainium, which says
+it by itself, and for a browser or a file the build of the same kind; the settings say it
+under the version. The owner's "People" list says, of each person invited, on how many days
+they came and on how many they found the other, and the last; the invitations waiting and
+those accepted apart, the newest first, under the form that makes them.
+
 ## 0.9.20 build 497
 
 **Version 0.9.20: the notification, the server's restart, and the older phones.** The
