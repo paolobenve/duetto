@@ -15,7 +15,7 @@ import {
 import type { GestureResponderEvent } from 'react-native';
 import { MediaStream } from 'react-native-webrtc';
 import { Journal, Proximity } from 'duetto-platform';
-import { t, around, currentLanguage } from './i18n';
+import { t, around } from './i18n';
 import type { PresenceStatus } from './signaling';
 import VideoStage from './VideoStage';
 import { AudioRoute, routeLabel } from './audioRoute';
@@ -1243,27 +1243,6 @@ export default function ChannelScreen(props: Props) {
   const ownCameraMark = React.useCallback((size: number) => (frontCamera
     ? <FrontCameraIcon size={size} color="#e6ebf1" />
     : <BackCameraIcon size={size} color="#e6ebf1" />), [frontCamera]);
-  /**
-   * The level with its two halves: "25%×2.5=62%" - the phone's knob,
-   * Duetto's gain, what is really heard. With diagnostics on one wants
-   * to see which half moves under the volume keys, and which does not.
-   * Without the halves (an older app on the other side) the product alone.
-   */
-  /**
-   * The level they hear at, and - when Duetto lifts it above their
-   * phone's top - how: "230% (100% × 2,3)". All three in the same
-   * measure, the loudness the ear hears, so that the product holds: the
-   * phone's part used to be its step taken as a share, and the gain an
-   * amplitude, and the three figures never multiplied back.
-   */
-  const levelText = (applied?: number, sys?: number | null, gain?: number) => {
-    if (sys == null || gain == null || gain <= 1.001 || !(sys > 0)) return dbText(applied);
-    const comma = currentLanguage() !== 'en';
-    const factor = 2 ** (20 * Math.log10(gain) / 10);
-    const g = (Math.round(factor * 10) / 10).toString().replace('.', comma ? ',' : '.');
-    return `${dbText(applied)} (${dbText(sys)} × ${g})`;
-  };
-
   // Their microphone always, on or crossed out: with their video full
   // screen it was shown only when off, and "on" could not be read.
   const peerBadge = React.useMemo(() => (
@@ -1274,7 +1253,7 @@ export default function ChannelScreen(props: Props) {
       {peerHeld != null ? (
         <Text style={[styles.pillVolume, styles.volumeHeld, peerHeldQuiet && styles.volumeQuiet]}>{dbText(peerHeld)}</Text>
       ) : (showStats || peerQuiet) && peerState.volume != null ? (
-        <Text style={[styles.pillVolume, peerQuiet && styles.volumeQuiet]}>{dbText(peerState.volume)}</Text>
+        <Text style={[styles.pillVolume, styles.peerVolume, peerQuiet && styles.volumeQuiet]}>{dbText(peerState.volume)}</Text>
       ) : null}
     </>
   ), [peerMark, peerMicMark, peerCameraMark, showStats, peerState.volume, peerQuiet, peerHeld, peerHeldQuiet]);
@@ -1456,11 +1435,11 @@ export default function ChannelScreen(props: Props) {
                 {peerCameraMark(17)}
                 {peerHeld != null ? (
                   <Text style={[styles.cardVolume, styles.volumeHeld, peerHeldQuiet && styles.volumeQuiet]}>
-                    {levelText(peerHeld, peerState.volSys, peerState.gain)}
+                    {dbText(peerHeld)}
                   </Text>
                 ) : ((showStats && !peerDeaf) || peerQuiet) && peerState.volume != null ? (
-                  <Text style={[styles.cardVolume, peerQuiet && styles.volumeQuiet]}>
-                    {levelText(peerState.volume, peerState.volSys, peerState.gain)}
+                  <Text style={[styles.cardVolume, styles.peerVolume, peerQuiet && styles.volumeQuiet]}>
+                    {dbText(peerState.volume)}
                   </Text>
                 ) : null}
                 {showStats ? <StatusMarks battery={peerState.battery} net={peerState.net} /> : null}
@@ -3233,6 +3212,8 @@ const styles = StyleSheet.create({
   pillVolume: { color: '#9fb4c8', fontSize: 11, fontWeight: '700' },
   /** they hear us too faintly: the yellow of the warnings */
   volumeQuiet: { color: '#e0b341', fontWeight: '700' },
+  /** how loudly they hear us: white, as the marks before it */
+  peerVolume: { color: '#e6ebf1' },
   /** their level while they do not listen: what a held button would sound at */
   volumeHeld: { color: '#5d6672' },
   badge: {
