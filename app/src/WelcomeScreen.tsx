@@ -15,7 +15,7 @@ import {
 import { DuoConfig, displayServer, normalizeServerUrl, isServerConfigured } from './config';
 import { knock, watchDoor, formatInvitation, DoorAnswer } from './door';
 import { parseLink, BETA_TESTER_LINK, type DuettoLink } from './links';
-import { Scanner } from 'duetto-platform';
+import { Scanner, Journal } from 'duetto-platform';
 import { normalizeCode, formatCode, isCodeComplete } from './pairing';
 import { VERSION_FULL } from './version';
 import { t } from './i18n';
@@ -261,6 +261,39 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived, accep
       knockNow('server', { server: arrived.serverUrl, code: arrived.code, pub: arrived.pub });
     }
   }, [arrived, knockNow]);
+
+  /**
+   * The link the page copied, at the first start.
+   *
+   * Whoever had no Duetto got a link - a code, an invitation - and the
+   * page sent them to download it; Android opens the app just installed
+   * knowing nothing of that link, and on 26 October the moto opened on
+   * "Which server?" with the code to be found again. The download copies
+   * the link into the clipboard (see the server's linkPage.js), and here
+   * it is taken, as if touched. Only at the very first start - no
+   * server yet, no link arriving, nobody accepting - and only if what
+   * is there is one of ours: the clipboard holds one thing, the last.
+   * A moment late, not at once: Android lets an app read it only once
+   * its window has the focus.
+   */
+  const lookedInClipboard = useRef(false);
+  const gone = useRef(false);
+  useEffect(() => () => { gone.current = true; }, []);
+  useEffect(() => {
+    if (lookedInClipboard.current || arrived || accept || onClose || isServerConfigured(initial)) return;
+    lookedInClipboard.current = true;
+    // Not cleared on a redraw: it is looked at once, whatever changes.
+    setTimeout(() => {
+      if (gone.current) return;
+      Clipboard.getString().then((text) => {
+        const link = parseLink(text);
+        if (gone.current || !link || took.current) return;
+        took.current = `clipboard:${link.kind}:${link.code}`;
+        Journal.mark(`link:clipboard:${link.kind}`).catch(() => { /* noop */ });
+        takeLink(link, 'server');
+      }).catch(() => { /* nothing to read */ });
+    }, 800);
+  }, [arrived, accept, onClose, initial, takeLink]);
 
   /**
    * The phone's Back key does what the screen's own "Back" does: from
