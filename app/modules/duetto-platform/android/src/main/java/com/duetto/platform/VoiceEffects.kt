@@ -14,6 +14,7 @@ import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.media.MediaRecorder
 import android.media.audiofx.AcousticEchoCanceler
+import android.media.audiofx.AutomaticGainControl
 import android.media.audiofx.NoiseSuppressor
 import android.os.Build
 
@@ -79,6 +80,10 @@ object VoiceEffects {
         parts += "phone-has=" + listOfNotNull(
             if (AcousticEchoCanceler.isAvailable()) "aec" else null,
             if (NoiseSuppressor.isAvailable()) "ns" else null,
+            // Whether the phone could level the microphone, if asked: the
+            // POCO does it by itself (AGC V2 among the effects), the Edge
+            // does not, and its voice went out some ten decibels lower.
+            if (AutomaticGainControl.isAvailable()) "agc" else null,
         ).joinToString("+").ifEmpty { "none" }
         val recs = am?.activeRecordingConfigurations.orEmpty()
         if (recs.isEmpty()) parts += "recording=none"
