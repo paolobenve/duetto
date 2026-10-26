@@ -612,6 +612,10 @@ type Props = {
    * us.
    */
   onTalkThrough?: (on: boolean) => void;
+  /** that button shown here, unless taken away (DuoConfig.talkButton) */
+  talkButton?: boolean;
+  /** its little cross: asks, and takes it away */
+  onHideTalkButton?: () => void;
   /** their voice heard here through our silence, right now */
   heardThrough?: boolean;
   /** the voice levelled, and how hard, as the connection's settings say: see Leveller.kt */
@@ -1217,7 +1221,7 @@ export default function ChannelScreen(props: Props) {
   const peerHeldQuiet = peerHeld != null && 20 * Math.log10(peerHeld) < PEER_QUIET_DB - 0.05;
   /** their listening off by choice - not a call of theirs - and they let us through it */
   const talkThroughOpen = !!props.onTalkThrough && speaking && peerDeaf && peerState.busy !== true
-    && peerState.talkThrough === true && !props.onCall;
+    && peerState.talkThrough === true && !props.onCall && props.talkButton !== false;
   const peerMark = React.useCallback((size: number, background: string) => {
     const where = (peerState.output as AudioRoute) ?? 'SPEAKER_PHONE';
     const Icon = OUTPUT_ICON[where] ?? OUTPUT_ICON.SPEAKER_PHONE;
@@ -1690,6 +1694,7 @@ export default function ChannelScreen(props: Props) {
           <TalkThroughButton
             who={peerName || t('channel.theOther')}
             onHold={(on) => props.onTalkThrough?.(on)}
+            onHide={props.onHideTalkButton}
             refuse={() => {
               if (blocked()) return true;
               wake();
@@ -2960,6 +2965,8 @@ function CircleButton(props: {
 function TalkThroughButton(props: {
   who: string;
   onHold: (on: boolean) => void;
+  /** the little cross beside it: away from the part held down, not to be touched talking */
+  onHide?: () => void;
   /** the screen covered: the touch is nobody's */
   refuse: () => boolean;
 }) {
@@ -2975,15 +2982,25 @@ function TalkThroughButton(props: {
   };
   useEffect(() => () => { if (heldRef.current) onHold.current(false); }, []);
   return (
-    <Pressable
-      style={[styles.talkThrough, held && styles.talkThroughHeld]}
-      onPressIn={() => { if (!props.refuse()) hold(true); }}
-      onPressOut={() => hold(false)}>
-      <Text style={[styles.talkThroughText, held && styles.talkThroughTextHeld]}
-        numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-        {t(held ? 'channel.talkingThrough' : 'channel.holdToTalk', { who: props.who })}
-      </Text>
-    </Pressable>
+    <View style={styles.talkThroughRow}>
+      <Pressable
+        style={[styles.talkThrough, held && styles.talkThroughHeld]}
+        onPressIn={() => { if (!props.refuse()) hold(true); }}
+        onPressOut={() => hold(false)}>
+        <Text style={[styles.talkThroughText, held && styles.talkThroughTextHeld]}
+          numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+          {t(held ? 'channel.talkingThrough' : 'channel.holdToTalk', { who: props.who })}
+        </Text>
+      </Pressable>
+      {props.onHide && !held ? (
+        <Pressable
+          style={styles.talkThroughHide}
+          hitSlop={8}
+          onPress={() => { if (!props.refuse()) props.onHide?.(); }}>
+          <Text style={styles.talkThroughHideText}>{'\u2715'}</Text>
+        </Pressable>
+      ) : null}
+    </View>
   );
 }
 
@@ -3018,8 +3035,16 @@ const styles = StyleSheet.create({
     color: '#e0b341', fontSize: 13, textAlign: 'center',
     marginBottom: 6, paddingHorizontal: 8,
   },
+  talkThroughRow: {
+    flexDirection: 'row', alignItems: 'center', alignSelf: 'center', marginBottom: 8,
+  },
+  talkThroughHide: {
+    marginLeft: 14, width: 34, height: 34, borderRadius: 17,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: '#2b2f36',
+  },
+  talkThroughHideText: { color: '#8892a0', fontSize: 15, fontWeight: '700' },
   talkThrough: {
-    alignSelf: 'center', marginBottom: 8, paddingVertical: 10, paddingHorizontal: 22,
+    paddingVertical: 10, paddingHorizontal: 22,
     borderRadius: 22, backgroundColor: '#2b2f36', borderWidth: 1, borderColor: '#2f7cf6',
   },
   talkThroughHeld: { backgroundColor: '#2f7cf6' },

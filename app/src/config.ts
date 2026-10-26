@@ -208,6 +208,8 @@ export type PairSettings = {
   alertLevel: AlertLevel;
   /** whether the other may talk through our listening turned off */
   talkThrough: boolean;
+  /** whether the button to talk through theirs is shown here */
+  talkButton: boolean;
   /** the other's voice through a compressor, at nearly one level */
   levelVoice: boolean;
   /** how hard, when it is on */
@@ -232,7 +234,7 @@ export const LEVEL_CHOICES: LevelChoice[] = ['off', 'light', 'medium', 'strong']
 const PAIR_FIELDS: (keyof PairSettings)[] = [
   'displayName', 'videoQuality', 'richerAudio', 'shortPackets', 'micOnEntry', 'controls',
   'videoCodec', 'alertVibration', 'alertSound', 'alertSoundUri', 'alertSoundName',
-  'alertDuettoSound', 'alertPicked', 'alertLevel', 'talkThrough', 'levelVoice', 'levelStrength',
+  'alertDuettoSound', 'alertPicked', 'alertLevel', 'talkThrough', 'talkButton', 'levelVoice', 'levelStrength',
   'audioOutput', 'gains', 'frontCamera', 'language',
   'videoQualityAt', 'shortPacketsAt', 'richerAudioAt',
 ];
@@ -536,6 +538,12 @@ export type DuoConfig = {
    */
   talkThrough: boolean;
   /**
+   * Whether the button to talk through THEIR listening turned off is
+   * shown here, when they let us: taken away from the settings, or from
+   * its own little cross, by whoever finds it in the way. On by default.
+   */
+  talkButton: boolean;
+  /**
    * The other's voice levelled by a compressor on this phone, so that
    * it comes out at nearly the same level: see Leveller.kt. Off until
    * tried on more phones.
@@ -676,6 +684,7 @@ export const DEFAULT_CONFIG: DuoConfig = {
   alertPicked: '',
   alertLevel: 'full',
   talkThrough: true,
+  talkButton: true,
   levelVoice: false,
   levelStrength: 'medium',
   audioOutput: 'SPEAKER_PHONE',

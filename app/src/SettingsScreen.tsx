@@ -1499,6 +1499,24 @@ export default function SettingsScreen({
             <Switch value={cfg.talkThrough !== false} {...SWITCH_COLOURS} />
           </View>
         </TouchableOpacity>
+        {/* And the button to talk through theirs, here: shown unless
+            taken away - from here, or from its own little cross. */}
+        <TouchableOpacity
+          style={styles.switchRow}
+          onPress={() => {
+            const on = cfg.talkButton === false;
+            setCfg({ ...cfg, talkButton: on });
+            onLive?.({ talkButton: on });
+            Journal.mark(`talk-button:${on ? 'shown' : 'hidden'}:settings`).catch(() => {});
+          }}>
+          <View style={styles.choiceText}>
+            <Text style={styles.choiceLabel}>{t('settings.talkButton')}</Text>
+            <Text style={styles.choiceNote}>{t('settings.talkButtonNote')}</Text>
+          </View>
+          <View pointerEvents="none">
+            <Switch value={cfg.talkButton !== false} {...SWITCH_COLOURS} />
+          </View>
+        </TouchableOpacity>
 
         <Text style={styles.subsection}>{t('settings.controlsWhileWatching')}</Text>
         <Text style={styles.sectionHint}>{t('settings.controlsHint')}</Text>

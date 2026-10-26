@@ -6916,6 +6916,21 @@ export default function App() {
         wakeAt={controlsWakeAt}
         onToggleOutputMute={toggleOutputMute}
         onTalkThrough={(on) => sessionRef.current?.talkThrough(on)}
+        talkButton={cfg.talkButton !== false}
+        // Taken away from where it shows: said what that means, and
+        // where it comes back from, before doing it.
+        onHideTalkButton={() => {
+          Alert.alert(t('channel.talkButtonHideTitle'), t('channel.talkButtonHideBody', { who: shownName || t('channel.theOther') }), [
+            { text: t('channel.talkButtonKeep'), style: 'cancel' },
+            {
+              text: t('channel.talkButtonHide'),
+              onPress: () => {
+                Journal.mark('talk-button:hidden:channel').catch(() => {});
+                setCfg((prev) => (prev ? saveCfg({ ...prev, talkButton: false }) : prev));
+              },
+            },
+          ]);
+        }}
         heardThrough={heardThrough}
         levelChoice={levelWanted ? levelStrength : 'off'}
         levellerState={levellerState}
