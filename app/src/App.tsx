@@ -38,6 +38,7 @@ import { alarmLabel, sentGain } from './alarms';
 import { BUILD, VERSION_FULL, VERSION_LABEL } from './version';
 import { updateFor, type LatestRelease } from './releases';
 import UpdateModal from './UpdateModal';
+import { inTurn } from './inTurn';
 import { logger, setLogging } from './log';
 import { ChannelSession } from './webrtc';
 import type { VideoStats } from './webrtc';
@@ -510,9 +511,18 @@ export default function App() {
     if (!inChannel || screen !== 'channel' || !cfg) return;
     const at = cfg.googleNoticeAt;
     if (at === 'never' || (typeof at === 'number' && at > Date.now())) return;
-    const timer = setTimeout(() => {
+    // In turn with the other questions of the entry (see inTurn): it
+    // came up in the middle of the volume test's beeps. When its turn
+    // comes, asked only if still owed and still in the channel.
+    const timer = setTimeout(() => inTurn((done) => {
+      const now = cfgRef.current?.googleNoticeAt;
+      if (!inChannelRef.current || now === 'never' || (typeof now === 'number' && now > Date.now())) {
+        done();
+        return;
+      }
       const remember = (next: number | 'never') => {
         setCfg((prev) => (prev ? saveCfg({ ...prev, googleNoticeAt: next }) : prev));
+        done();
       };
       Journal.mark('google-notice:shown').catch(() => {});
       Alert.alert(
@@ -532,7 +542,7 @@ export default function App() {
         ],
         { cancelable: true, onDismiss: () => remember(Date.now() + GOOGLE_NOTICE_LATER_MS) },
       );
-    }, 6000);
+    }), 6000);
     return () => clearTimeout(timer);
   }, [inChannel, screen, cfg?.googleNoticeAt]);
 
@@ -2433,13 +2443,15 @@ export default function App() {
    * the first entry after it exists, and again from the settings.
    */
   const volumeTestAsked = useRef(false);
-  const runVolumeTest = useCallback(async () => {
+  /** `done`: when asked at the entry, its turn passes on (see inTurn) */
+  const runVolumeTest = useCallback(async (done: () => void = () => {}) => {
     if (!inChannelRef.current) {
       Alert.alert(t('volumeTest.title'), t('volumeTest.needChannel'));
+      done();
       return;
     }
     const phone = systemVolumeRef.current;
-    if (phone.max <= 0) return;
+    if (phone.max <= 0) { done(); return; }
     const was = phone.volume;
     const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
     Journal.mark('volume-test:start').catch(() => {});
@@ -2459,17 +2471,26 @@ export default function App() {
       // no harm if it ever starts working.
       if (works === 'no') Volume.set(phone.max).catch(() => {});
     };
+    let answered = false;
     Alert.alert(t('volumeTest.title'), t('volumeTest.question'), [
-      { text: t('volumeTest.again'), onPress: () => { runVolumeTest(); } },
-      { text: t('volumeTest.no'), onPress: () => answer('no') },
-      { text: t('volumeTest.yes'), onPress: () => answer('yes') },
-    ]);
+      { text: t('volumeTest.again'), onPress: () => { answered = true; runVolumeTest(done); } },
+      { text: t('volumeTest.no'), onPress: () => { answered = true; answer('no'); done(); } },
+      { text: t('volumeTest.yes'), onPress: () => { answered = true; answer('yes'); done(); } },
+    ], { cancelable: true, onDismiss: () => { if (!answered) done(); } });
   }, [saveCfg]);
   const offerVolumeTest = useCallback(() => {
-    Alert.alert(t('volumeTest.title'), t('volumeTest.intro'), [
-      { text: t('volumeTest.later'), style: 'cancel', onPress: () => Journal.mark('volume-test:later').catch(() => {}) },
-      { text: t('volumeTest.start'), onPress: () => { runVolumeTest(); } },
-    ]);
+    // In turn with the other questions of the entry: see inTurn.
+    inTurn((done) => {
+      let answered = false;
+      Alert.alert(t('volumeTest.title'), t('volumeTest.intro'), [
+        {
+          text: t('volumeTest.later'),
+          style: 'cancel',
+          onPress: () => { answered = true; Journal.mark('volume-test:later').catch(() => {}); done(); },
+        },
+        { text: t('volumeTest.start'), onPress: () => { answered = true; runVolumeTest(done); } },
+      ], { cancelable: true, onDismiss: () => { if (!answered) done(); } });
+    });
   }, [runVolumeTest]);
   useEffect(() => {
     if (!inChannel || volumeTestAsked.current || cfg?.knobWorks !== 'unknown') return;
@@ -2730,27 +2751,39 @@ export default function App() {
   const askRingPermission = () => {
     const c = cfgRef.current;
     if (!c || Platform.OS !== 'android') return;
-    if (c.ringPermissionAsked) { askOtherAppsAccess(); return; }
-    setCfg((prev) => (prev ? saveCfg({ ...prev, ringPermissionAsked: true }) : prev));
-    Alert.alert(t('channel.ringPermTitle'), t('channel.ringPermBody'), [
-      {
-        text: t('channel.ringPermNo'),
-        style: 'cancel',
-        onPress: () => {
-          Journal.mark('ring-permission:not-now').catch(() => {});
-          askOtherAppsAccess();
+    // In turn with the other questions of the entry (see inTurn): put
+    // up 4 seconds before the volume test, it was closed by it unread.
+    inTurn((done) => {
+      if (cfgRef.current?.ringPermissionAsked) { askOtherAppsAccess(done); return; }
+      // Asked once it is answered, not once it is up: closed unread, it
+      // comes again at the next entry.
+      let answered = false;
+      const asked = () => {
+        answered = true;
+        setCfg((prev) => (prev ? saveCfg({ ...prev, ringPermissionAsked: true }) : prev));
+      };
+      Alert.alert(t('channel.ringPermTitle'), t('channel.ringPermBody'), [
+        {
+          text: t('channel.ringPermNo'),
+          style: 'cancel',
+          onPress: () => {
+            asked();
+            Journal.mark('ring-permission:not-now').catch(() => {});
+            askOtherAppsAccess(done);
+          },
         },
-      },
-      {
-        text: t('channel.ringPermOk'),
-        onPress: () => {
-          PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE).then((r) => {
-            Journal.mark(`ring-permission:${r}`).catch(() => {});
-            if (r === PermissionsAndroid.RESULTS.GRANTED) Call.watchRinging().catch(() => {});
-          }).catch(() => {}).finally(askOtherAppsAccess);
+        {
+          text: t('channel.ringPermOk'),
+          onPress: () => {
+            asked();
+            PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE).then((r) => {
+              Journal.mark(`ring-permission:${r}`).catch(() => {});
+              if (r === PermissionsAndroid.RESULTS.GRANTED) Call.watchRinging().catch(() => {});
+            }).catch(() => {}).finally(() => askOtherAppsAccess(done));
+          },
         },
-      },
-    ]);
+      ], { cancelable: true, onDismiss: () => { if (!answered) done(); } });
+    });
   };
 
   /**
@@ -2760,22 +2793,27 @@ export default function App() {
    * a call (see OtherSounds.kt). The warning is said before Android's
    * own, which is a stern one; refused, they stay silent, and the
    * settings can change it. Accepted, the sound starts as Android's.
+   * `done`: the turn of the entry's questions passes on (see inTurn).
    */
-  const askOtherAppsAccess = () => {
+  const askOtherAppsAccess = (done: () => void = () => {}) => {
     const c = cfgRef.current;
-    if (!c || c.otherAppsAsked || Platform.OS !== 'android') return;
+    if (!c || c.otherAppsAsked || Platform.OS !== 'android') { done(); return; }
     // A build without the listener has nothing to ask for, and the
     // question stays for the build that has it.
     OtherSounds.declared().then((has) => (has ? OtherSounds.allowed() : null)).then((yes) => {
-      if (yes === null) return;
+      if (yes === null) { done(); return; }
       setCfg((prev) => (prev ? saveCfg({ ...prev, otherAppsAsked: true }) : prev));
-      if (yes) return;
+      if (yes) { done(); return; }
       // From Android 13 an app installed from a file gets this access
       // only after "allow restricted settings": the way is said here.
       const body = t('channel.otherAppsPermBody')
         + (Number(Platform.Version) >= 33 ? `\n\n${t('channel.otherAppsPermRestricted')}` : '');
       Alert.alert(t('channel.otherAppsPermTitle'), body, [
-        { text: t('channel.ringPermNo'), style: 'cancel', onPress: () => Journal.mark('other-apps-permission:not-now').catch(() => {}) },
+        {
+          text: t('channel.ringPermNo'),
+          style: 'cancel',
+          onPress: () => { Journal.mark('other-apps-permission:not-now').catch(() => {}); done(); },
+        },
         {
           text: t('channel.ringPermOk'),
           onPress: () => {
@@ -2783,10 +2821,11 @@ export default function App() {
             setCfg((prev) => (prev && (prev.otherAppsSound ?? 'off') === 'off'
               ? saveCfg({ ...prev, otherAppsSound: 'android' }) : prev));
             OtherSounds.openAccess().catch(() => {});
+            done();
           },
         },
-      ]);
-    }).catch(() => {});
+      ], { cancelable: true, onDismiss: done });
+    }).catch(done);
   };
 
   /** the other's leaving, waiting to be heard: see onPeerMode */
