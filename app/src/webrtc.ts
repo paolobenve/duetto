@@ -275,6 +275,9 @@ const DECODER_ARRIVING_FPS = 15;
  */
 const STARVED_FPS = 1;
 const STARVED_KBPS = 100;
+/** a round trip this long is the road choking, not the decoder: the cure waits longer */
+const STARVED_CHOKED_RTT_MS = 500;
+const STARVED_CHOKED_MS = 30_000;
 /** our frames a second are said again in the state when they move by this many */
 const SENT_FPS_STEP = 5;
 /** the incoming video turned off or on: the answer waited for so long at most */
@@ -2502,8 +2505,21 @@ export class ChannelSession {
    * drawn. The edge's owner set it right by hand, the video off and on
    * and then out and in; the same cures, asked here, after the same 8
    * seconds - unless the other side says it is sending nothing.
+   *
+   * Unless the road itself is choking. On 26 October, at 14:08, the POCO
+   * on mobile data saw its round trip go from 90 ms to 600, then 1.2 and
+   * 3.5 seconds, and almost nothing coming in: the cure came after its 8
+   * seconds, the video renewed, then the microphone, the link rebuilt -
+   * four rebuilds asked of the edge in 25 seconds - and every rebuild
+   * starts again from 300 kbit/s: the picture came back at 0 to 3 frames
+   * a second for a minute, and at 14:10 went black again. A new decoder
+   * cannot make a choked road carry more; the road often clears by
+   * itself. With a round trip of half a second or more, the cure waits
+   * 30 seconds, and comes then if the picture is still black.
    */
   private stalledDecoderSince = 0;
+  /** the wait for a choked road written in the journal, once an episode */
+  private chokedTold = false;
 
   /** Our frames a second, told the other side when they move: see weighStalledDecoder. */
   private weighSentFps(fps: number) {
@@ -2536,10 +2552,20 @@ export class ChannelSession {
       && pic.fps <= STARVED_FPS && (arriving === null || arriving <= STARVED_FPS)
       && sent !== 0;
     this.weighUncured(pic, behind, stuck || starved, rttMs, lossPct, ceiling, now);
-    if (!stuck && !starved) { this.stalledDecoderSince = 0; return; }
+    if (!stuck && !starved) { this.stalledDecoderSince = 0; this.chokedTold = false; return; }
     if (!this.stalledDecoderSince) { this.stalledDecoderSince = now; return; }
-    if (now - this.stalledDecoderSince < DECODER_STALLED_MS) return;
+    const choked = !stuck && rttMs !== null && rttMs >= STARVED_CHOKED_RTT_MS;
+    const waited = now - this.stalledDecoderSince;
+    if (choked && waited >= DECODER_STALLED_MS && waited < STARVED_CHOKED_MS) {
+      if (!this.chokedTold) {
+        this.chokedTold = true;
+        Journal.mark(`decoder:starved:road-choked:rtt=${rttMs}:${pic!.kbps}k`).catch(() => { /* noop */ });
+      }
+      return;
+    }
+    if (waited < DECODER_STALLED_MS) return;
     this.stalledDecoderSince = 0;
+    this.chokedTold = false;
     const of = (arriving !== null ? `/${arriving}` : '') + (sent !== null ? `/${sent}` : '');
     // The same ladder of cures in the app: the prefix is what it reads.
     const kind = stuck ? 'decoder-stalled' : 'decoder-stalled:starved';
