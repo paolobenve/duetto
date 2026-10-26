@@ -571,6 +571,7 @@ export const pt: Dictionary = {
     reportNoWorkItem: 'Não encontro um work item aberto com este nome: escreva acima o nome que você tem no work item, ou peça para ser beta tester na aba «Servidor e pares».',
     reportBadToken: 'O GitLab não aceita o token: confira, ou crie de novo.',
     reportNoRoad: 'Para mandar ao work item é preciso um token, ou um servidor que leve os relatos.',
+    newVersion: 'Saiu a versão {v}: toque aqui para baixar.',
     controlsWhileWatching: 'Os comandos enquanto você olha',
     controlsHint: 'Depois de alguns segundos eles se afastam para deixar a imagem. Como quer que estejam, continuam clicáveis, e um toque em qualquer lugar os traz de volta: só muda quanta imagem deixam ver.',
     controlsNone: 'Sempre visíveis',

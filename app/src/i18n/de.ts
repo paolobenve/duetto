@@ -571,6 +571,7 @@ export const de: Dictionary = {
     reportNoWorkItem: 'Kein offenes Work Item mit diesem Namen: schreib oben den Namen hin, den du im Work Item hast, oder bitte im Reiter «Server und Paare» darum, Beta-Tester zu werden.',
     reportBadToken: 'GitLab nimmt das Token nicht an: prüfe es, oder lege es neu an.',
     reportNoRoad: 'Um an das Work Item zu schicken, braucht es ein Token oder einen Server, der Meldungen weiterträgt.',
+    newVersion: 'Version {v} ist erschienen: tippe hier, um sie zu holen.',
     controlsWhileWatching: 'Die Tasten, während du zusiehst',
     controlsHint: 'Nach ein paar Sekunden treten sie beiseite und lassen das Bild frei. Wie sie auch eingestellt sind, sie bleiben drückbar, und eine Berührung irgendwo holt sie zurück: es ändert sich nur, wie viel Bild sie frei lassen.',
     controlsNone: 'Immer sichtbar',

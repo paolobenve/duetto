@@ -1195,6 +1195,11 @@ wss.on('connection', (ws, req) => {
         peerSince: other ? other.since : undefined,
         peerAvailable: other ? other.present : undefined,
         peerGone: other ? undefined : goneFor(roomId, side) ?? undefined,
+        // The latest Duetto out, when known: the phone says so if it
+        // is behind it (releases.js).
+        latest: latestRelease()?.page
+          ? { version: latestRelease().version, page: latestRelease().page }
+          : undefined,
       });
 
       // The mail: what the other half of a code handed over as a link

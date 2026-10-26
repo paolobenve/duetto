@@ -571,6 +571,7 @@ export const fr: Dictionary = {
     reportNoWorkItem: 'Pas de work item ouvert à ce nom : écris ci-dessus le nom que tu as sur le work item, ou demande à être bêta-testeur depuis l’onglet « Serveur et paires ».',
     reportBadToken: 'GitLab n’accepte pas le jeton : vérifie-le, ou crée-le à nouveau.',
     reportNoRoad: 'Pour envoyer au work item il faut un jeton, ou un serveur qui porte les signalements.',
+    newVersion: 'La version {v} est sortie : touche ici pour la télécharger.',
     controlsWhileWatching: 'Les commandes pendant que tu regardes',
     controlsHint: 'Après quelques secondes elles s’effacent pour laisser l’image. Quel que soit le réglage, elles restent pressables, et un toucher n’importe où les rappelle : seule change la part d’image qu’elles laissent voir.',
     controlsNone: 'Toujours visibles',

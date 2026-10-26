@@ -36,6 +36,7 @@ import type { Hand, PersonOnServer, InvitationOnServer } from './signaling';
 import { useLanguage, t } from './i18n';
 import { alarmLabel, sentGain } from './alarms';
 import { BUILD, VERSION_FULL, VERSION_LABEL } from './version';
+import type { LatestRelease } from './releases';
 import { logger, setLogging } from './log';
 import { ChannelSession } from './webrtc';
 import type { VideoStats } from './webrtc';
@@ -1198,6 +1199,8 @@ export default function App() {
   const replacedWait = useRef(3000);
   /** whether the server carries reports to the beta testers' work items */
   const [reportsOpen, setReportsOpen] = useState(false);
+  /** the latest Duetto out, as the server said it last: the settings say if this one is behind */
+  const [latestOut, setLatestOut] = useState<LatestRelease | null>(null);
   /** the report on its way through the server, waiting for the answer */
   const reportPending = useRef<((o: ReportOutcome) => void) | null>(null);
   /**
@@ -4074,7 +4077,7 @@ export default function App() {
 
           onJoined: ({
             peerPresent: present, peerActive, peerName: n, turn, stun, owner, opens, reports,
-            peerSince: since, peerGone, since: ownSince, available, peerAvailable: theirs,
+            peerSince: since, peerGone, since: ownSince, available, peerAvailable: theirs, latest,
           }) => {
             setMySince(ownSince || Date.now());
             setMyAvailable(available);
@@ -4087,6 +4090,7 @@ export default function App() {
             if (!present && peerGone) setPeerDetached(peerGone.reason === 'bye');
             setCanInvite(owner);
             setReportsOpen(reports);
+            if (latest) setLatestOut(latest);
             replacedWait.current = 3000;
             setCanAddPair(opens);
             // The word the door gave is kept true by every join: what
@@ -6623,6 +6627,7 @@ export default function App() {
           onClose={isPaired(cfg) ? () => setScreen('channel') : undefined}
           onOpenSetup={() => { setSetupFrom('settings'); setScreen('setup'); }}
           reportsOpen={reportsOpen}
+          latest={latestOut}
           onReport={sendReport}
           onInviteToWorkItem={sendInviteNote}
           onQualityChange={(q) => applyQuality(q, true)}

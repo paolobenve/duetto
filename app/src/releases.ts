@@ -8,6 +8,7 @@
  * <https://www.gnu.org/licenses/>.
  */
 import type { Language } from './i18n';
+import { VERSION, VERSION_LABEL } from './version';
 
 /**
  * What is new, as the app tells it: one entry per VERSION, a few short
@@ -33,6 +34,28 @@ export type Release = {
    */
   notes: Partial<Record<Language, string[]>> & { en: string[] };
 };
+
+/**
+ * The latest version out, as the server reads it from the project's
+ * releases: the testers did not update - one talked every day on a
+ * version three weeks old - because nothing told them. The phone asks
+ * nobody but its server, so the server is the one that says it.
+ */
+export type LatestRelease = { version: string; page: string };
+
+/**
+ * Whether `latest` is ahead of this app. A build before a version is
+ * behind it: "0.9.21-pre" is what led to 0.9.21, not what came after.
+ */
+export function isBehind(latest: string): boolean {
+  const parts = (v: string) => v.split('.').map((n) => parseInt(n, 10) || 0);
+  const out = parts(latest);
+  const here = parts(VERSION);
+  for (let i = 0; i < 3; i++) {
+    if (out[i] !== here[i]) return out[i] > here[i];
+  }
+  return (VERSION_LABEL as string) !== VERSION;
+}
 
 export const RELEASES: Release[] = [
   {

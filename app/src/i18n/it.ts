@@ -570,6 +570,7 @@ export const it: Dictionary = {
     reportNoWorkItem: 'Non trovo un work item aperto con questo nome: scrivi qui sopra il nome che hai nel work item, oppure chiedi di fare da beta tester dalla scheda «Server e coppie».',
     reportBadToken: 'GitLab non accetta il token: controllalo, o crealo di nuovo.',
     reportNoRoad: 'Per mandare al work item serve un token, oppure un server che porti le segnalazioni.',
+    newVersion: 'È uscita la versione {v}: tocca qui per scaricarla.',
     controlsWhileWatching: 'I comandi mentre guardi',
     controlsHint: 'Dopo qualche secondo si fanno da parte per lasciare l’immagine. Comunque scelti restano premibili, e un tocco ovunque li richiama: cambia solo quanta immagine lasciano vedere.',
     controlsNone: 'Sempre visibili',

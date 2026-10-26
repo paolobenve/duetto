@@ -12,6 +12,7 @@ import { SignalCrypto } from './crypto';
 import { logger } from './log';
 import { deviceKey, deviceModel, deviceName, signNonce } from './device';
 import { VERSION_LABEL, BUILD } from './version';
+import type { LatestRelease } from './releases';
 
 /**
  * The connection to the signalling server.
@@ -231,6 +232,8 @@ export type SignalingEvents = {
     available: number;
     /** since when the other is available; 0 if unknown or away */
     peerAvailable: number;
+    /** the latest Duetto out, as the server knows it; null if it does not say */
+    latest: LatestRelease | null;
   }) => void;
   /** the answer to a report sent through the server */
   onReportResult?: (ok: boolean, error?: string, url?: string) => void;
@@ -794,6 +797,10 @@ export class Signaling {
           peerGone: gone(msg.peerGone),
           available: moment(msg.available),
           peerAvailable: moment(msg.peerAvailable),
+          latest: msg.latest && /^\d+\.\d+\.\d+$/.test(String(msg.latest.version))
+            && /^https:\/\//.test(String(msg.latest.page))
+            ? { version: String(msg.latest.version), page: String(msg.latest.page) }
+            : null,
         });
         break;
 

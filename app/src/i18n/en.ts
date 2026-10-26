@@ -584,6 +584,7 @@ export const en = {
     reportNoWorkItem: 'No open work item with this name: write above the name you have on the work item, or ask to be a beta tester from the "Server and pairs" tab.',
     reportBadToken: 'GitLab does not accept the token: check it, or create it again.',
     reportNoRoad: 'Sending to the work item needs a token, or a server that carries reports.',
+    newVersion: 'Version {v} is out: touch here to get it.',
     controlsWhileWatching: 'The controls while you watch',
     controlsHint: 'After a few seconds they step aside to leave the picture. However they are set they stay pressable, and a touch anywhere calls them back: only how much picture they leave visible changes.',
     controlsNone: 'Always visible',
