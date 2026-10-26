@@ -601,6 +601,8 @@ type Props = {
     /** the two halves of `volume`, when they say them */
     volSys?: number | null;
     gain?: number;
+    /** the level with their listening on, told even while it is off */
+    held?: number;
     /** they let us talk through their listening turned off */
     talkThrough?: boolean;
   };
@@ -1204,6 +1206,15 @@ export default function ChannelScreen(props: Props) {
   /** they hear us, but so faintly it is as if they did not: see PEER_QUIET_DB */
   const peerQuiet = !peerDeaf && peerState.volume != null && peerState.volume > 0
     && 20 * Math.log10(peerState.volume) < PEER_QUIET_DB - 0.05;
+  /**
+   * Their listening off by choice, and the level it would be at on: a
+   * voice talked through it comes out at that level, and without the
+   * number there was no telling whether it would be heard. Grey, since
+   * nothing is heard now; yellow if faint, as `peerQuiet`.
+   */
+  const peerHeld = peerDeaf && peerState.busy !== true && peerState.held != null && peerState.held > 0
+    ? peerState.held : null;
+  const peerHeldQuiet = peerHeld != null && 20 * Math.log10(peerHeld) < PEER_QUIET_DB - 0.05;
   /** their listening off by choice - not a call of theirs - and they let us through it */
   const talkThroughOpen = !!props.onTalkThrough && speaking && peerDeaf && peerState.busy !== true
     && peerState.talkThrough === true && !props.onCall;
@@ -1260,11 +1271,13 @@ export default function ChannelScreen(props: Props) {
       {peerMicMark(13, '#1b1d21')}
       {peerMark(13, '#1b1d21')}
       {peerCameraMark(13)}
-      {(showStats || peerQuiet) && peerState.volume != null ? (
+      {peerHeld != null ? (
+        <Text style={[styles.pillVolume, styles.volumeHeld, peerHeldQuiet && styles.volumeQuiet]}>{dbText(peerHeld)}</Text>
+      ) : (showStats || peerQuiet) && peerState.volume != null ? (
         <Text style={[styles.pillVolume, peerQuiet && styles.volumeQuiet]}>{dbText(peerState.volume)}</Text>
       ) : null}
     </>
-  ), [peerMark, peerMicMark, peerCameraMark, showStats, peerState.volume, peerQuiet]);
+  ), [peerMark, peerMicMark, peerCameraMark, showStats, peerState.volume, peerQuiet, peerHeld, peerHeldQuiet]);
 
   /** Where the sound comes out HERE, as `peerMark` does for theirs. */
   const ownOutputMark = React.useCallback((size: number, background: string) => {
@@ -1441,7 +1454,11 @@ export default function ChannelScreen(props: Props) {
                 {peerMicMark(17, '#0b0e14')}
                 {peerMark(17, '#0b0e14')}
                 {peerCameraMark(17)}
-                {((showStats && !peerDeaf) || peerQuiet) && peerState.volume != null ? (
+                {peerHeld != null ? (
+                  <Text style={[styles.cardVolume, styles.volumeHeld, peerHeldQuiet && styles.volumeQuiet]}>
+                    {levelText(peerHeld, peerState.volSys, peerState.gain)}
+                  </Text>
+                ) : ((showStats && !peerDeaf) || peerQuiet) && peerState.volume != null ? (
                   <Text style={[styles.cardVolume, peerQuiet && styles.volumeQuiet]}>
                     {levelText(peerState.volume, peerState.volSys, peerState.gain)}
                   </Text>
@@ -3216,6 +3233,8 @@ const styles = StyleSheet.create({
   pillVolume: { color: '#9fb4c8', fontSize: 11, fontWeight: '700' },
   /** they hear us too faintly: the yellow of the warnings */
   volumeQuiet: { color: '#e0b341', fontWeight: '700' },
+  /** their level while they do not listen: what a held button would sound at */
+  volumeHeld: { color: '#5d6672' },
   badge: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 18,

@@ -69,6 +69,8 @@ export type ChannelEvents = {
     /** the two halves of `volume`, when they say them: the phone's knob (0..1) and Duetto's gain */
     volSys?: number | null;
     gain?: number;
+    /** the level `volume` would be with their listening on: it says how a held button will sound there */
+    held?: number;
     /** in another call on the phone */
     busy?: boolean;
     /** their battery, when they say */
@@ -764,6 +766,12 @@ export class ChannelSession {
   /** the two halves of `heardLevel`, told alongside: the phone's knob (0..1, null if unknown) and our gain */
   private heardSys: number | null = null;
   private heardGain = 1;
+  /**
+   * The level with the listening on, even while it is off: `heardLevel`
+   * is then 0, and the other side could not know how loudly a voice
+   * talked through it - at this level - would come out.
+   */
+  private heardHeld = 1;
 
   /** The audio sender of the live connection. */
   private liveAudioSender(): any {
@@ -1453,6 +1461,7 @@ export class ChannelSession {
         volume: msg.volume,
         volSys: typeof msg.volSys === 'number' ? msg.volSys : null,
         gain: typeof msg.gain === 'number' ? msg.gain : undefined,
+        held: typeof msg.held === 'number' ? msg.held : undefined,
         busy: msg.busy === true,
         battery: typeof msg.batteryPct === 'number'
           ? { percent: msg.batteryPct, charging: msg.charging === true }
@@ -3353,6 +3362,7 @@ export class ChannelSession {
       volume: this.heardLevel,
       volSys: this.heardSys,
       gain: this.heardGain,
+      held: this.heardHeld,
       video: this.isVideoEnabled(),
       aspect: this.getLocalVideoAspect(),
       watching: this.localWatching,
@@ -3412,14 +3422,16 @@ export class ChannelSession {
   }
 
   /** The level declared to the other side; it changes the telling, not the sound. */
-  setHeardLevel(l: number, sys: number | null = null, gain = 1) {
+  setHeardLevel(l: number, sys: number | null = null, gain = 1, held = l) {
     // Zero is a value like any other: it means they are not heard at
     // all, and that is precisely what the other side needs to know.
-    if (!(l >= 0)) return;
-    if (l === this.heardLevel && sys === this.heardSys && gain === this.heardGain) return;
+    if (!(l >= 0) || !(held >= 0)) return;
+    if (l === this.heardLevel && sys === this.heardSys && gain === this.heardGain
+      && held === this.heardHeld) return;
     this.heardLevel = l;
     this.heardSys = sys;
     this.heardGain = gain;
+    this.heardHeld = held;
     this.broadcastState();
   }
 

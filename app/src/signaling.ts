@@ -88,6 +88,8 @@ export type SignalMessage =
       busy?: boolean;
       /** the battery, for the other side's diagnostics */
       batteryPct?: number; charging?: boolean; volSys?: number | null; gain?: number;
+      /** how loudly they would hear us with their listening on: `volume` is 0 while it is off */
+      held?: number;
       net?: string;
       /** the frames a second our video goes out at: a dark camera sends few */
       sentFps?: number;

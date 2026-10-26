@@ -1394,6 +1394,8 @@ export default function App() {
     /** the two halves of `volume`, when they say them */
     volSys?: number | null;
     gain?: number;
+    /** the level with their listening on, told even while it is off */
+    held?: number;
     /** where the sound comes out over there: they say so */
     output?: string;
     /** which Duetto they have; missing if older than this field */
@@ -2221,6 +2223,9 @@ export default function App() {
       outputMuted ? 0 : level,
       systemVolume.max > 0 ? sysFraction : null,
       appliedGain,
+      // Hushed, the level they would hear us at all the same: a voice
+      // talked through the silence comes out at it.
+      level,
     );
   }, [level, inChannel, systemVolume.max, sysFraction, appliedGain, outputMuted, sessionGen]);
 
