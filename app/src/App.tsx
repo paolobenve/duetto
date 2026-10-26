@@ -34,7 +34,7 @@ import {
 import { Signaling, PresenceStatus } from './signaling';
 import type { Hand, PersonOnServer, InvitationOnServer } from './signaling';
 import { useLanguage, t } from './i18n';
-import { alarmLabel, sentGain } from './alarms';
+import { alarmLabel, sentGain, wireName, soundName } from './alarms';
 import { BUILD, VERSION_FULL, VERSION_LABEL } from './version';
 import { updateFor, type LatestRelease } from './releases';
 import UpdateModal from './UpdateModal';
@@ -4540,7 +4540,7 @@ export default function App() {
             // phone is paired with, in the channel or waiting.
             if (msg.kind === 'alarm') {
               // As loud as this connection's calls were asked to sound.
-              Alarm.play(String(msg.sound ?? ''), false, 0,
+              Alarm.play(soundName(String(msg.sound ?? '')), false, 0,
                 ALERT_GAIN[cfgRef.current?.alertLevel ?? 'full'] ?? 1).catch(() => {});
               Journal.mark(`alarm:${msg.sound}`).catch(() => {});
               // Outside the channel it also says who it is: a rooster
@@ -6396,7 +6396,7 @@ export default function App() {
    */
   const onAlarm = useCallback((sound: string) => {
     // With its moment: a sound delivered late still says when it was sent.
-    signalingRef.current?.sendSignal({ kind: 'alarm', sound, at: Date.now() });
+    signalingRef.current?.sendSignal({ kind: 'alarm', sound: wireName(sound), at: Date.now() });
     // It is heard on this side too: whoever sends a sound must know
     // what they sent, and hear that it really left. Here, though, it
     // comes out quietly and by way of the conversation, not the alarm:
@@ -7002,7 +7002,7 @@ export default function App() {
           // leaves towards a phone far away and from here nothing would
           // be heard - the button just blinks. Knowing that it left is
           // worth as much as sending it.
-          if (cueGain > 0) Alarm.play('knock', true, KNOCK_ECHO_MS, sentGain('knock', cueGain)).catch(() => {});
+          if (cueGain > 0) Alarm.play('bell', true, KNOCK_ECHO_MS, sentGain('bell', cueGain)).catch(() => {});
           Journal.mark('knock').catch(() => {});
         }}
         onLeave={leaveChannel}

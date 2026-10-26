@@ -348,6 +348,8 @@ export const pt: Dictionary = {
     hornNote: 'A buzina de um carro. Acorda qualquer um, e incomoda.',
     rooster: 'Canto do galo',
     roosterNote: 'Cocoricó. Faz sorrir quem estava pegando no sono.',
+    bell: 'Campainha',
+    bellNote: 'Um toque de campainha: curto e discreto.',
   },
 
   settings: {
@@ -611,7 +613,7 @@ export const pt: Dictionary = {
     secWhat: 'o que',
     secServerKnowsTail: ' vocês dizem um ao outro.',
     soundsOrigin: 'De onde vêm os sons',
-    soundsOriginText: 'Os sons para chamar o outro são gravações publicadas em freesound.org, todas em CC0: nenhum direito reservado, e são nomeadas por cortesia, não por obrigação.\nTambores — waveplaysfx (#556255)\nBateria — hewnmarrow (#695331)\nFanfarra — plasterbrain (#397355)\nCanto do galo — kyles (#454174)\nSininho de quem chama — kyles (#453980)\nA buzinada, por sua vez, o app é que a gera: não vem de ninguém. Também os oito sinais, câmera e microfone que ligam e desligam, a câmera que gira, entrar, sair, sair de vez, são feitos pelo app.',
+    soundsOriginText: 'Os sons para chamar o outro são gravações publicadas em freesound.org, todas em CC0: nenhum direito reservado, e são nomeadas por cortesia, não por obrigação.\nTambores — waveplaysfx (#556255)\nBateria — hewnmarrow (#695331)\nFanfarra — plasterbrain (#397355)\nCanto do galo — kyles (#454174)\nCampainha — kyles (#453980)\nA buzinada, por sua vez, o app é que a gera: não vem de ninguém. Também os oito sinais, câmera e microfone que ligam e desligam, a câmera que gira, entrar, sair, sair de vez, são feitos pelo app.',
     connectionName: 'Nome da ligação',
     connectionNamePlaceholder: 'Casa, trabalho, montanha…',
     connectionNameHint: 'É o nome da ligação, não da pessoa: serve a você, para saber em qual das suas ligações está. Aparece na pílula lá em cima e na notificação. Fica neste telefone: o outro não o vê e nunca o saberá.',

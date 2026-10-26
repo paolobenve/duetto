@@ -361,6 +361,8 @@ export const en = {
     hornNote: 'A car horn. Wakes anybody, and annoys them.',
     rooster: 'Rooster',
     roosterNote: 'Cock-a-doodle-doo. It makes whoever was dozing off smile.',
+    bell: 'Bell',
+    bellNote: 'One ding of a bell: short and discreet.',
   },
 
   settings: {
@@ -624,7 +626,7 @@ export const en = {
     secWhat: 'what',
     secServerKnowsTail: ' you say to each other.',
     soundsOrigin: 'Where the sounds come from',
-    soundsOriginText: 'The sounds for calling the other person back are recordings published on freesound.org, all of them under CC0: no rights reserved, and they are named out of fairness rather than duty.\nDrums — waveplaysfx (#556255)\nDrum kit — hewnmarrow (#695331)\nFanfare — plasterbrain (#397355)\nRooster — kyles (#454174)\nThe caller\'s bell — kyles (#453980)\nThe car horn, on the other hand, is made by the app and comes from nobody. The eight cues - camera and microphone on and off, the camera turning round, coming in, going out, going out for good - are made by the app too.',
+    soundsOriginText: 'The sounds for calling the other person back are recordings published on freesound.org, all of them under CC0: no rights reserved, and they are named out of fairness rather than duty.\nDrums — waveplaysfx (#556255)\nDrum kit — hewnmarrow (#695331)\nFanfare — plasterbrain (#397355)\nRooster — kyles (#454174)\nBell — kyles (#453980)\nThe car horn, on the other hand, is made by the app and comes from nobody. The eight cues - camera and microphone on and off, the camera turning round, coming in, going out, going out for good - are made by the app too.',
     connectionName: 'The connection\'s name',
     connectionNamePlaceholder: 'Home, office, mountains…',
     connectionNameHint: 'It is the connection\'s name, not the person\'s: it is for you, to know which of your connections you are in. It appears on the pill at the top and in the notification. It stays on this phone: the other person does not see it and will never know it.',

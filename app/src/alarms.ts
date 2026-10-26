@@ -27,12 +27,12 @@ import { t } from './i18n';
  * the level of the buttons' own: the old knock was some 6 dB below them, the
  * fanfare 7, and on the moto the call one sends sounded "a bit low".
  * Heard on the side that sends, every sound is brought to the buttons'
- * level, under the same option; at the top the knock stays short -
+ * level, under the same option; at the top the bell stays short -
  * the bell's ding is all in its strike, 15 dB quieter than the buttons
  * at full volume - because a sound cannot go past its full volume.
  */
 const RECORDED_LUFS: Record<string, number> = {
-  knock: -24.8, drumroll: -15.7, drumkit: -13.9, fanfare: -17.2, horn: -10.5, rooster: -12.2,
+  bell: -24.8, drumroll: -15.7, drumkit: -13.9, fanfare: -17.2, horn: -10.5, rooster: -12.2,
 };
 const BUTTONS_LUFS = -10;
 export function sentGain(name: string, gain: number): number {
@@ -43,7 +43,15 @@ export function sentGain(name: string, gain: number): number {
 
 /** The name of a sound as the list shows it; the bare name if unknown. */
 export const alarmLabel = (name: string): string =>
-  ALARMS().find((a) => a.name === name)?.label ?? name;
+  ALARMS().find((a) => a.name === soundName(name))?.label ?? name;
+
+/**
+ * The bell travels as "knock": the name an older Duetto knows it by - it
+ * plays there its old two raps on a door - where "bell" would be silence.
+ * Sent as `wireName`, read back with `soundName`.
+ */
+export const wireName = (name: string): string => (name === 'bell' ? 'knock' : name);
+export const soundName = (name: string): string => (name === 'knock' ? 'bell' : name);
 
 export const ALARMS = (): { name: string; label: string; note: string }[] => [
   { name: 'drumroll', label: t('alarms.drums'), note: t('alarms.drumsNote') },
@@ -51,4 +59,6 @@ export const ALARMS = (): { name: string; label: string; note: string }[] => [
   { name: 'fanfare', label: t('alarms.fanfare'), note: t('alarms.fanfareNote') },
   { name: 'horn', label: t('alarms.horn'), note: t('alarms.hornNote') },
   { name: 'rooster', label: t('alarms.rooster'), note: t('alarms.roosterNote') },
+  // The ding the caller hears, asked for in the list too (26 October).
+  { name: 'bell', label: t('alarms.bell'), note: t('alarms.bellNote') },
 ];

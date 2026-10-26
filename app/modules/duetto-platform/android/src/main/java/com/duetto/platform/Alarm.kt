@@ -86,9 +86,10 @@ object Alarm {
         "fanfare" -> R.raw.alarm_fanfare
         "horn" -> R.raw.alarm_horn
         "rooster" -> R.raw.alarm_rooster
-        // Not an alarm, and not in the list: it is the answer heard by
-        // whoever knocks, one ding of a bell.
-        "knock" -> R.raw.knock
+        // One ding of a bell: the answer heard by whoever calls, and a
+        // sound of the list as well. "knock" is its name on the wire, the
+        // only one an older Duetto knows it by (see onAlarm in App.tsx).
+        "bell", "knock" -> R.raw.bell
         // The cues, on both phones: the camera, the microphone and the
         // listening going on and off, the camera turning round, coming in, going out,
         // going out for good.
@@ -112,7 +113,7 @@ object Alarm {
         "fanfara" -> R.raw.alarm_fanfare
         "strombazzata" -> R.raw.alarm_horn
         "gallo" -> R.raw.alarm_rooster
-        "bussata" -> R.raw.knock
+        "bussata" -> R.raw.bell
         else -> null
     }
 

@@ -28,7 +28,7 @@ The sources live in assets/, and here is where they come from:
   drumkit.wav    freesound.org #695331, "hewnmarrow"     CC0
   fanfare.flac   freesound.org #397355, "plasterbrain"   CC0
   rooster.flac   freesound.org #454174, "kyles"          CC0
-  bell.flac      freesound.org #453980, "kyles"          CC0  (the knock;
+  bell.flac      freesound.org #453980, "kyles"          CC0  (the bell;
                  the first two seconds of forty)
 
 CC0 means no rights reserved: not one of them asks for anything, and
@@ -179,7 +179,7 @@ def rooster():
 # in assets/ is already cut there; here it only gets a gentle end.
 BELL = os.path.join(HERE, 'bell.flac')
 
-def knock():
+def bell():
     return normalise(soft_tail(sample(BELL), 0.3))
 
 # --- Cues ------------------------------------------------------------------
@@ -313,7 +313,7 @@ if __name__ == '__main__':
     save('alarm_fanfare', fanfare())
     save('alarm_horn', horn())
     save('alarm_rooster', rooster())
-    save('knock', knock())
+    save('bell', bell())
     save('cue_video_on', cue_video_on())
     save('cue_video_off', cue_video_off())
     save('cue_audio_on', cue_audio_on())

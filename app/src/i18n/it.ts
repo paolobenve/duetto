@@ -347,6 +347,8 @@ export const it: Dictionary = {
     hornNote: 'Il clacson di un’automobile. Sveglia chiunque, e infastidisce.',
     rooster: 'Canto del gallo',
     roosterNote: 'Chicchirichì. Fa sorridere chi si stava addormentando.',
+    bell: 'Campanello',
+    bellNote: 'Un rintocco di campanello: breve e discreto.',
   },
 
   settings: {
@@ -610,7 +612,7 @@ export const it: Dictionary = {
     secWhat: 'cosa',
     secServerKnowsTail: ' vi dite.',
     soundsOrigin: 'Da dove vengono i suoni',
-    soundsOriginText: 'I suoni per richiamare l’altro sono registrazioni pubblicate su freesound.org, tutte in CC0: nessun diritto riservato, e sono nominate per correttezza, non per obbligo.\nTamburi — waveplaysfx (#556255)\nBatteria — hewnmarrow (#695331)\nFanfara — plasterbrain (#397355)\nCanto del gallo — kyles (#454174)\nCampanella di chi chiama — kyles (#453980)\nLa strombazzata invece la genera l’app, non viene da nessuno. Anche gli otto segnali, telecamera e microfono che si accendono e spengono, la telecamera che gira, entrare, uscire, uscire del tutto, li fa l\'app.',
+    soundsOriginText: 'I suoni per richiamare l’altro sono registrazioni pubblicate su freesound.org, tutte in CC0: nessun diritto riservato, e sono nominate per correttezza, non per obbligo.\nTamburi — waveplaysfx (#556255)\nBatteria — hewnmarrow (#695331)\nFanfara — plasterbrain (#397355)\nCanto del gallo — kyles (#454174)\nCampanello — kyles (#453980)\nLa strombazzata invece la genera l’app, non viene da nessuno. Anche gli otto segnali, telecamera e microfono che si accendono e spengono, la telecamera che gira, entrare, uscire, uscire del tutto, li fa l\'app.',
     connectionName: 'Nome del collegamento',
     connectionNamePlaceholder: 'Casa, ufficio, montagna…',
     connectionNameHint: 'È il nome del collegamento, non della persona: serve a te per sapere in quale dei tuoi collegamenti stai. Compare sulla pastiglia in alto e nella notifica. Resta su questo telefono: l’altro non lo vede e non lo saprà mai.',

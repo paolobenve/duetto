@@ -348,6 +348,8 @@ export const es: Dictionary = {
     hornNote: 'La bocina de un auto. Despierta a cualquiera, y molesta.',
     rooster: 'Canto del gallo',
     roosterNote: 'Quiquiriquí. Hace sonreír a quien se estaba durmiendo.',
+    bell: 'Campanilla',
+    bellNote: 'Un toque de campanilla: breve y discreto.',
   },
 
   settings: {
@@ -611,7 +613,7 @@ export const es: Dictionary = {
     secWhat: 'qué',
     secServerKnowsTail: ' se dicen.',
     soundsOrigin: 'De dónde vienen los sonidos',
-    soundsOriginText: 'Los sonidos para llamar al otro son grabaciones publicadas en freesound.org, todas en CC0: sin derechos reservados, y se nombran por cortesía, no por obligación.\nTambores — waveplaysfx (#556255)\nBatería — hewnmarrow (#695331)\nFanfarria — plasterbrain (#397355)\nCanto del gallo — kyles (#454174)\nCampanilla de quien llama — kyles (#453980)\nEl bocinazo, en cambio, lo genera la app: no viene de nadie. También las ocho señales, cámara y micrófono que se encienden y apagan, la cámara que gira, entrar, salir, salir del todo, las hace la app.',
+    soundsOriginText: 'Los sonidos para llamar al otro son grabaciones publicadas en freesound.org, todas en CC0: sin derechos reservados, y se nombran por cortesía, no por obligación.\nTambores — waveplaysfx (#556255)\nBatería — hewnmarrow (#695331)\nFanfarria — plasterbrain (#397355)\nCanto del gallo — kyles (#454174)\nCampanilla — kyles (#453980)\nEl bocinazo, en cambio, lo genera la app: no viene de nadie. También las ocho señales, cámara y micrófono que se encienden y apagan, la cámara que gira, entrar, salir, salir del todo, las hace la app.',
     connectionName: 'Nombre de la conexión',
     connectionNamePlaceholder: 'Casa, oficina, montaña…',
     connectionNameHint: 'Es el nombre de la conexión, no de la persona: te sirve a ti para saber en cuál de tus conexiones estás. Aparece en la pastilla de arriba y en la notificación. Se queda en este teléfono: el otro no lo ve y no lo sabrá nunca.',
