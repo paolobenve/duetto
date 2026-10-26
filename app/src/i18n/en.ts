@@ -675,6 +675,7 @@ export const en = {
     serverTitle: 'Which server?',
     serverBody: 'Duetto runs on a server of your own, or of somebody who let you in. Write its name, or paste the invitation link you were sent; or point the camera at the QR code the other phone shows you: the server comes with it.',
     serverOrLink: 'Server, or an invitation link',
+    linkHint: 'Did you get a Duetto link? Touch it again in the message it came in: now that Duetto is installed, it opens here. Or paste it above; if you have copied something else since, you will find it in your keyboard’s clipboard history.',
     acceptTitle: 'Accept an invitation or a connection',
     acceptBody: 'Somebody handed you something: point the camera at their QR code, paste the link, or write what they read out. Duetto tells an invitation from a connection by itself.',
     acceptField: 'Code, invitation or link',

@@ -662,6 +662,7 @@ export const pt: Dictionary = {
     serverTitle: 'Qual servidor?',
     serverBody: 'O Duetto roda num servidor seu, ou de quem deixou você entrar. Escreva o nome dele, ou cole o link de convite que te mandaram; ou aponte a câmera para o código QR que o outro telefone mostra: o servidor vem junto.',
     serverOrLink: 'Servidor, ou link de convite',
+    linkHint: 'Recebeu um link do Duetto? Toque nele de novo na mensagem onde o recebeu: agora que o Duetto está instalado, ele abre aqui. Ou cole-o acima; se nesse meio-tempo copiou outra coisa, você o encontra no histórico da área de transferência do teclado.',
     acceptTitle: 'Aceitar um convite ou uma conexão',
     acceptBody: 'Alguém te deu algo: aponte a câmera para o código QR, cole o link, ou escreva o que te ditaram. O Duetto distingue sozinho um convite de uma conexão.',
     acceptField: 'Código, convite ou link',

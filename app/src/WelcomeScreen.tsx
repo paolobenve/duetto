@@ -277,6 +277,13 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived, accep
    * its window has the focus.
    */
   const lookedInClipboard = useRef(false);
+  /**
+   * Nothing of ours there: maybe nothing came, maybe something else was
+   * copied after the download. Said once, at the first start, with the
+   * ways back to the link - touching it again, now that Duetto is there,
+   * or the keyboard's clipboard history, which no app can read.
+   */
+  const [noLinkCopied, setNoLinkCopied] = useState(false);
   const gone = useRef(false);
   useEffect(() => () => { gone.current = true; }, []);
   useEffect(() => {
@@ -287,7 +294,8 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived, accep
       if (gone.current) return;
       Clipboard.getString().then((text) => {
         const link = parseLink(text);
-        if (gone.current || !link || took.current) return;
+        if (gone.current || took.current) return;
+        if (!link) { setNoLinkCopied(true); return; }
         took.current = `clipboard:${link.kind}:${link.code}`;
         Journal.mark(`link:clipboard:${link.kind}`).catch(() => { /* noop */ });
         takeLink(link, 'server');
@@ -523,6 +531,11 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived, accep
           keyboardType="url"
           autoFocus
         />
+        {noLinkCopied && !server.trim() ? (
+          <View style={styles.linkBox}>
+            <Text style={styles.betaBody}>{t('welcome.linkHint')}</Text>
+          </View>
+        ) : null}
         {note ? <Text style={styles.note}>{note}</Text> : null}
         <Primary
           label={t('welcome.next')}
@@ -668,6 +681,10 @@ const styles = StyleSheet.create({
     color: '#ffd28a', fontSize: 15, lineHeight: 21, width: '100%',
     backgroundColor: '#2a2114', borderColor: '#ffb454', borderWidth: 1, borderRadius: 12,
     padding: 14, marginBottom: 14,
+  },
+  linkBox: {
+    width: '100%', marginTop: 14, padding: 14, borderRadius: 12,
+    backgroundColor: '#121a27', borderColor: '#27405f', borderWidth: 1,
   },
   betaBox: {
     width: '100%', marginTop: 28, padding: 16, borderRadius: 12,

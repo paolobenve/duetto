@@ -662,6 +662,7 @@ export const fr: Dictionary = {
     serverTitle: 'Quel serveur ?',
     serverBody: 'Duetto tourne sur un serveur à toi, ou de qui t\'a fait entrer. Écris son nom, ou colle le lien d\'invitation qu\'on t\'a envoyé ; ou vise le code QR que l\'autre téléphone te montre : le serveur vient avec.',
     serverOrLink: 'Serveur, ou lien d\'invitation',
+    linkHint: 'Tu as reçu un lien Duetto ? Touche-le de nouveau dans le message où tu l’as reçu : maintenant que Duetto est installé, il s’ouvre ici. Ou colle-le ci-dessus ; si tu as copié autre chose entre-temps, tu le trouveras dans l’historique du presse-papiers du clavier.',
     acceptTitle: 'Accepter une invitation ou une connexion',
     acceptBody: 'Quelqu\'un t\'a donné quelque chose : vise son code QR, colle le lien, ou écris ce qu\'on t\'a dicté. Duetto distingue tout seul une invitation d\'une connexion.',
     acceptField: 'Code, invitation ou lien',
