@@ -30,7 +30,10 @@
  * the same intent:// as the page, and without the app comes back here
  * saying so (stay=1); and that page puts first the APK of the latest
  * release, one download, with F-Droid beside it - the light one, which
- * Play Protect lets in from a browser (see releases.js).
+ * Play Protect lets in from a browser (see releases.js). No button to
+ * open Duetto there, where there is none: the download copies the link
+ * instead, for the app to find at its first start - Android opens an
+ * app just installed knowing nothing of the link that led to it.
  */
 
 const WORDS = {
@@ -44,9 +47,10 @@ const WORDS = {
     orFdroid: 'or get it from {f}.',
     fdroidOnly: 'Get Duetto from F-Droid',
     allow: 'Android will ask you to let the browser install apps: say yes, it is only for this one.',
-    then: 'Once it is installed, come back to this page and touch:',
     byHandPair: 'Or open Duetto and, in the first screen, write this server and the code:',
     byHandInvite: 'Or open Duetto and, in the first screen, write this server and this invitation:',
+    copiedPair: 'Downloading also copies the code: when you open Duetto once it is installed, it finds it by itself.',
+    copiedInvite: 'Downloading also copies the invitation: when you open Duetto once it is installed, it finds it by itself.',
   },
   it: {
     leadPair: 'Questo è un codice per collegarsi con Duetto, il canale di voce e video per due.',
@@ -58,9 +62,10 @@ const WORDS = {
     orFdroid: 'oppure prendilo da {f}.',
     fdroidOnly: 'Prendi Duetto da F-Droid',
     allow: 'Android ti chiederà di permettere al browser di installare app: rispondi sì, serve solo per questa.',
-    then: 'Quando è installato, torna su questa pagina e tocca:',
     byHandPair: 'Oppure apri Duetto e, nella prima schermata, scrivi questo server e il codice:',
     byHandInvite: 'Oppure apri Duetto e, nella prima schermata, scrivi questo server e questo invito:',
+    copiedPair: 'Scaricando, il codice viene copiato: quando apri Duetto dopo averlo installato, lo trova da solo.',
+    copiedInvite: 'Scaricando, l’invito viene copiato: quando apri Duetto dopo averlo installato, lo trova da solo.',
   },
   es: {
     leadPair: 'Este es un código para conectarse con Duetto, el canal de voz y vídeo para dos.',
@@ -72,9 +77,10 @@ const WORDS = {
     orFdroid: 'o consíguelo en {f}.',
     fdroidOnly: 'Consigue Duetto en F-Droid',
     allow: 'Android te pedirá que permitas al navegador instalar apps: di que sí, es solo para esta.',
-    then: 'Cuando esté instalado, vuelve a esta página y toca:',
     byHandPair: 'O abre Duetto y, en la primera pantalla, escribe este servidor y el código:',
     byHandInvite: 'O abre Duetto y, en la primera pantalla, escribe este servidor y esta invitación:',
+    copiedPair: 'Al descargar, se copia el código: cuando abras Duetto ya instalado, lo encontrará solo.',
+    copiedInvite: 'Al descargar, se copia la invitación: cuando abras Duetto ya instalado, la encontrará solo.',
   },
   pt: {
     leadPair: 'Este é um código para se ligar com o Duetto, o canal de voz e vídeo para dois.',
@@ -86,9 +92,10 @@ const WORDS = {
     orFdroid: 'ou pegue no {f}.',
     fdroidOnly: 'Pegue o Duetto no F-Droid',
     allow: 'O Android vai pedir para você permitir que o navegador instale apps: diga sim, é só para este.',
-    then: 'Quando estiver instalado, volte a esta página e toque:',
     byHandPair: 'Ou abra o Duetto e, na primeira tela, escreva este servidor e o código:',
     byHandInvite: 'Ou abra o Duetto e, na primeira tela, escreva este servidor e este convite:',
+    copiedPair: 'Ao baixar, o código é copiado: quando você abrir o Duetto já instalado, ele o encontra sozinho.',
+    copiedInvite: 'Ao baixar, o convite é copiado: quando você abrir o Duetto já instalado, ele o encontra sozinho.',
   },
   fr: {
     leadPair: 'Ceci est un code pour se relier avec Duetto, le canal de voix et de vidéo pour deux.',
@@ -100,9 +107,10 @@ const WORDS = {
     orFdroid: 'ou prends-le sur {f}.',
     fdroidOnly: 'Prends Duetto sur F-Droid',
     allow: 'Android te demandera d’autoriser le navigateur à installer des applis : réponds oui, c’est seulement pour celle-ci.',
-    then: 'Une fois installé, reviens sur cette page et touche :',
     byHandPair: 'Ou ouvre Duetto et, sur le premier écran, écris ce serveur et le code :',
     byHandInvite: 'Ou ouvre Duetto et, sur le premier écran, écris ce serveur et cette invitation :',
+    copiedPair: 'En téléchargeant, le code est copié : quand tu ouvriras Duetto une fois installé, il le trouvera tout seul.',
+    copiedInvite: 'En téléchargeant, l’invitation est copiée : quand tu ouvriras Duetto une fois installé, il la trouvera tout seul.',
   },
   de: {
     leadPair: 'Das ist ein Code, um sich mit Duetto zu verbinden, dem Sprach- und Videokanal für zwei.',
@@ -114,9 +122,10 @@ const WORDS = {
     orFdroid: 'oder hol es dir bei {f}.',
     fdroidOnly: 'Hol dir Duetto bei F-Droid',
     allow: 'Android fragt dich, ob der Browser Apps installieren darf: sag ja, es ist nur für diese.',
-    then: 'Wenn es installiert ist, komm auf diese Seite zurück und tippe:',
     byHandPair: 'Oder öffne Duetto und schreib im ersten Bildschirm diesen Server und den Code:',
     byHandInvite: 'Oder öffne Duetto und schreib im ersten Bildschirm diesen Server und diese Einladung:',
+    copiedPair: 'Beim Herunterladen wird der Code kopiert: Wenn du Duetto nach der Installation öffnest, findet es ihn von selbst.',
+    copiedInvite: 'Beim Herunterladen wird die Einladung kopiert: Wenn du Duetto nach der Installation öffnest, findet es sie von selbst.',
   },
 };
 
@@ -159,17 +168,32 @@ export function bouncePage(req, latest) {
   const opener = android ? intent : app;
   const byHand = `<p>${esc(kind === 'pair' ? w.byHandPair : w.byHandInvite)}</p>
 <p><code>${esc(host)}</code><br><code>${esc(shown)}</code></p>`;
-  const fdroid = `<a href="${FDROID}">F-Droid</a>`;
+  const fdroid = `<a class="get" href="${FDROID}">F-Droid</a>`;
   const body = stay
     ? `<p><strong>${esc(w.missing)}</strong></p>
 ${latest?.apk
-    ? `<a class="b" href="${esc(latest.apk)}">${esc(w.download.replace('{v}', latest.version))}</a>
+    ? `<a class="b get" href="${esc(latest.apk)}">${esc(w.download.replace('{v}', latest.version))}</a>
 <p>${esc(w.orFdroid).replace('{f}', fdroid)}</p>
-<small>${esc(w.allow)}</small>`
-    : `<a class="b" href="${FDROID}">${esc(w.fdroidOnly)}</a>`}
-<p>${esc(w.then)}</p>
-<a class="b o" href="${esc(opener)}">${esc(w.open)}</a>
-${byHand}`
+<p><small>${esc(w.allow)}</small></p>`
+    : `<a class="b get" href="${FDROID}">${esc(w.fdroidOnly)}</a>`}
+<p><small>${esc(kind === 'pair' ? w.copiedPair : w.copiedInvite)}</small></p>
+${byHand}
+<script>
+// The link goes with the download, in the clipboard: Android opens
+// the app just installed knowing nothing of the link that led to it,
+// and Duetto, at its first start, looks there (see WelcomeScreen).
+function keep() {
+  var link = ${JSON.stringify(bare)};
+  function old() {
+    var t = document.createElement('textarea');
+    t.value = link; document.body.appendChild(t); t.select();
+    try { document.execCommand('copy'); } catch (e) { /* typed by hand, then */ }
+    document.body.removeChild(t);
+  }
+  try { navigator.clipboard.writeText(link).catch(old); } catch (e) { old(); }
+}
+document.querySelectorAll('a.get').forEach(function (a) { a.addEventListener('click', keep); });
+</script>`
     : `<a class="b" href="${esc(opener)}">${esc(w.open)}</a>
 <small>${esc(w.notOpened)}</small>
 ${byHand}`;
@@ -183,7 +207,6 @@ main{max-width:30rem;margin:0 auto;padding:2.5rem 1.5rem}
 h1{font-size:2rem;margin:0 0 .5rem}p{color:#c9d1dc}a{color:#6ab0ff}
 a.b{display:block;text-align:center;background:#2f7cf6;color:#fff;text-decoration:none;
 padding:1rem;border-radius:1rem;font-weight:700;margin:1.5rem 0}
-a.o{background:none;border:2px solid #2f7cf6;color:#6ab0ff}
 code{font-size:1.4rem;letter-spacing:.1em;color:#fff}small{color:#8892a0}
 </style></head><body><main>
 <h1>Duetto</h1>
