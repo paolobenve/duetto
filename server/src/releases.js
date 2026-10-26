@@ -34,16 +34,23 @@
  * update. And F-Droid's version, read from its own list: whoever got
  * Duetto there updates there - from a browser Android would ask a
  * leave they never gave - and F-Droid builds a few days after GitLab.
+ *
+ * And the preview: a build between two releases, put on GitLab by hand
+ * as the generic package "duetto-preview" when it is worth handing out.
+ * Offered on the invitation's page only - invitations go to testers;
+ * a code goes to the other person, who asked for nothing - and only
+ * while it is newer than the release.
  */
 const PROJECT = process.env.RELEASES_PROJECT || 'paolobenve/duetto';
 const GITLAB = (process.env.GITLAB_URL || 'https://gitlab.com').replace(/\/+$/, '');
 const FDROID_PACKAGE = 'com.duetto';
+const PREVIEW_PACKAGE = 'duetto-preview';
 const EVERY_MS = 6 * 3600_000;
 
 /**
  * { version: '0.9.21', page: the release's page, apk: the light APK -
  * or the only one -, full: the full APK, fdroid: the version on F-Droid;
- * '' for what is not known }
+ * '' for what is not known; preview: { build, apk } or null }
  */
 let latest = null;
 
@@ -68,12 +75,42 @@ async function look() {
     const apk = apks.find((u) => /light/i.test(u)) || full;
     const page = /^https:\/\//.test(String(r._links?.self || '')) ? r._links.self : '';
     const fdroid = await fdroidVersion();
-    if (latest?.version !== version || latest?.fdroid !== fdroid) {
-      console.log(`[duetto] latest release: ${version}, on F-Droid: ${fdroid || '?'}`);
+    const built = Number((full || apk).match(/build(\d+)/)?.[1] || 0);
+    const preview = await previewBuild(built);
+    if (latest?.version !== version || latest?.fdroid !== fdroid || latest?.preview?.build !== preview?.build) {
+      console.log(`[duetto] latest release: ${version}, on F-Droid: ${fdroid || '?'}`
+        + `, preview: ${preview ? preview.build : 'none'}`);
     }
-    latest = { version, page, apk, full, fdroid };
+    latest = { version, page, apk, full, fdroid, preview };
   } catch (e) {
     console.warn(`[duetto] latest release not read: ${e.message}`);
+  }
+}
+
+/**
+ * The latest preview, if newer than the release's build `after`: its
+ * build and its APK, the light one if there is one. Null otherwise.
+ */
+async function previewBuild(after) {
+  try {
+    const base = `${GITLAB}/api/v4/projects/${encodeURIComponent(PROJECT)}`;
+    const res = await fetch(`${base}/packages?package_name=${PREVIEW_PACKAGE}`
+      + '&order_by=created_at&sort=desc&per_page=1', { signal: AbortSignal.timeout(20_000) });
+    if (!res.ok) return null;
+    const [p] = await res.json();
+    const build = Number(String(p?.version || '').match(/build(\d+)$/)?.[1] || 0);
+    if (!p || p.name !== PREVIEW_PACKAGE || !build || build <= after) return null;
+    const files = await fetch(`${base}/packages/${p.id}/package_files`,
+      { signal: AbortSignal.timeout(20_000) }).then((r) => (r.ok ? r.json() : []));
+    const names = files.map((f) => String(f.file_name || '')).filter((n) => /^[\w.+-]+\.apk$/.test(n));
+    const name = names.find((n) => /light/i.test(n)) || names[0];
+    if (!name) return null;
+    return {
+      build,
+      apk: `${base}/packages/generic/${PREVIEW_PACKAGE}/${encodeURIComponent(p.version)}/${name}`,
+    };
+  } catch {
+    return null;
   }
 }
 

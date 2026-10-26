@@ -51,6 +51,8 @@ const WORDS = {
     byHandInvite: 'Or open Duetto and, in the first screen, write this server and this invitation:',
     copiedPair: 'Downloading also copies the code: when you open Duetto once it is installed, it finds it by itself.',
     copiedInvite: 'Downloading also copies the invitation: when you open Duetto once it is installed, it finds it by itself.',
+    previewLine: 'For testers: {l}.',
+    previewLink: 'the latest test build ({b})',
   },
   it: {
     leadPair: 'Questo è un codice per collegarsi con Duetto, il canale di voce e video per due.',
@@ -66,6 +68,8 @@ const WORDS = {
     byHandInvite: 'Oppure apri Duetto e, nella prima schermata, scrivi questo server e questo invito:',
     copiedPair: 'Scaricando, il codice viene copiato: quando apri Duetto dopo averlo installato, lo trova da solo.',
     copiedInvite: 'Scaricando, l’invito viene copiato: quando apri Duetto dopo averlo installato, lo trova da solo.',
+    previewLine: 'Per i tester: {l}.',
+    previewLink: 'la build di prova più recente ({b})',
   },
   es: {
     leadPair: 'Este es un código para conectarse con Duetto, el canal de voz y vídeo para dos.',
@@ -81,6 +85,8 @@ const WORDS = {
     byHandInvite: 'O abre Duetto y, en la primera pantalla, escribe este servidor y esta invitación:',
     copiedPair: 'Al descargar, se copia el código: cuando abras Duetto ya instalado, lo encontrará solo.',
     copiedInvite: 'Al descargar, se copia la invitación: cuando abras Duetto ya instalado, la encontrará solo.',
+    previewLine: 'Para quien prueba: {l}.',
+    previewLink: 'la compilación de prueba más reciente ({b})',
   },
   pt: {
     leadPair: 'Este é um código para se ligar com o Duetto, o canal de voz e vídeo para dois.',
@@ -96,6 +102,8 @@ const WORDS = {
     byHandInvite: 'Ou abra o Duetto e, na primeira tela, escreva este servidor e este convite:',
     copiedPair: 'Ao baixar, o código é copiado: quando você abrir o Duetto já instalado, ele o encontra sozinho.',
     copiedInvite: 'Ao baixar, o convite é copiado: quando você abrir o Duetto já instalado, ele o encontra sozinho.',
+    previewLine: 'Para quem testa: {l}.',
+    previewLink: 'a versão de teste mais recente ({b})',
   },
   fr: {
     leadPair: 'Ceci est un code pour se relier avec Duetto, le canal de voix et de vidéo pour deux.',
@@ -111,6 +119,8 @@ const WORDS = {
     byHandInvite: 'Ou ouvre Duetto et, sur le premier écran, écris ce serveur et cette invitation :',
     copiedPair: 'En téléchargeant, le code est copié : quand tu ouvriras Duetto une fois installé, il le trouvera tout seul.',
     copiedInvite: 'En téléchargeant, l’invitation est copiée : quand tu ouvriras Duetto une fois installé, il la trouvera tout seul.',
+    previewLine: 'Pour les testeurs : {l}.',
+    previewLink: 'la version de test la plus récente ({b})',
   },
   de: {
     leadPair: 'Das ist ein Code, um sich mit Duetto zu verbinden, dem Sprach- und Videokanal für zwei.',
@@ -126,6 +136,8 @@ const WORDS = {
     byHandInvite: 'Oder öffne Duetto und schreib im ersten Bildschirm diesen Server und diese Einladung:',
     copiedPair: 'Beim Herunterladen wird der Code kopiert: Wenn du Duetto nach der Installation öffnest, findet es ihn von selbst.',
     copiedInvite: 'Beim Herunterladen wird die Einladung kopiert: Wenn du Duetto nach der Installation öffnest, findet es sie von selbst.',
+    previewLine: 'Für Tester: {l}.',
+    previewLink: 'die neueste Testversion ({b})',
   },
 };
 
@@ -174,6 +186,10 @@ export function bouncePage(req, latest) {
 ${latest?.apk
     ? `<a class="b get" href="${esc(latest.apk)}">${esc(w.download.replace('{v}', latest.version))}</a>
 <p>${esc(w.orFdroid).replace('{f}', fdroid)}</p>
+${kind === 'invite' && latest.preview
+    ? `<p><small>${esc(w.previewLine).replace('{l}', `<a class="get" href="${esc(latest.preview.apk)}">${
+      esc(w.previewLink.replace('{b}', String(latest.preview.build)))}</a>`)}</small></p>`
+    : ''}
 <p><small>${esc(w.allow)}</small></p>`
     : `<a class="b get" href="${FDROID}">${esc(w.fdroidOnly)}</a>`}
 <p><small>${esc(kind === 'pair' ? w.copiedPair : w.copiedInvite)}</small></p>
