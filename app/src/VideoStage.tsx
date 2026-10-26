@@ -753,6 +753,14 @@ export default function VideoStage(props: Props) {
 
   // --- A corner handle for resizing with one finger -----------------------
   const resizeStart = useRef(0);
+  /**
+   * The side away from the handle, which stays where it is while the
+   * handle is pulled. Left to the anchor, the little square grew on
+   * both sides in proportion to how far it sat from its edge: with the
+   * handle on the left it widened to the right too, away from the
+   * finger. The anchor is written anew on release.
+   */
+  const resizeRight = useRef(0);
   /** the finger's zero point on the handle, like `fingerStart` */
   const handleStart = useRef<number | null>(null);
   const resizeResponder = useMemo(
@@ -762,8 +770,11 @@ export default function VideoStage(props: Props) {
         onMoveShouldSetPanResponder: () => true,
         onPanResponderGrant: () => {
           resizeStart.current = sizeRef.current.w;
+          resizeRight.current = posRef.current.x + sizeRef.current.w;
           handleStart.current = null;
           resizing.current = true;
+          // No realigning on the anchor while the finger is on it.
+          gestureUnderWay.current = true;
         },
         onPanResponderMove: (_e, g) => {
           // As with the drag: the first movement carries leftovers
@@ -773,16 +784,20 @@ export default function VideoStage(props: Props) {
           if (handleStart.current === null) handleStart.current = g.dx;
           // The handle on the left grows the little square to the left.
           const toward = handleLeftRef.current ? -1 : 1;
-          applyWidth(clampWidth(resizeStart.current + toward * (g.dx - handleStart.current)));
-          pan.setValue(inside(posRef.current.x, posRef.current.y));
+          const w = clampWidth(resizeStart.current + toward * (g.dx - handleStart.current));
+          applyWidth(w);
+          const x = handleLeftRef.current ? resizeRight.current - w : posRef.current.x;
+          pan.setValue(inside(x, posRef.current.y));
         },
         onPanResponderRelease: () => {
           resizing.current = false;
+          gestureUnderWay.current = false;
           clampIntoScreen();
           noteHandleSide(posRef.current.x);
         },
         onPanResponderTerminate: () => {
           resizing.current = false;
+          gestureUnderWay.current = false;
           clampIntoScreen();
           noteHandleSide(posRef.current.x);
         },
