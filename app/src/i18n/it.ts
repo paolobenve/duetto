@@ -708,7 +708,7 @@ export const it: Dictionary = {
 
   pairing: {
     doneTitle: 'Collegati',
-    doneGuest: 'Da ora tu e {who} siete una coppia: aprendo l’app vi trovate. Su questo server sei ospite di {who}: parli con lui, e con nessun altro.',
+    doneGuest: 'Da ora tu e {who} siete una coppia: aprendo l’app vi trovate. Su questo server sei ospite di chi ti ha dato il codice: parli solo con questa persona.',
     doneOpens: 'Da ora tu e {who} siete una coppia: aprendo l’app vi trovate. Altre coppie si aggiungono dalle impostazioni.',
     doneByLetter: 'L\'altro telefono si troverà collegato la prossima volta che Duetto si apre: di là non c\'è niente da fare.',
     canClose: 'Puoi chiudere: il codice aspetta fino a {when}. Chi apre il link si collega subito, e tu lo saprai.',

@@ -722,7 +722,7 @@ export const en = {
 
   pairing: {
     doneTitle: 'Connected',
-    doneGuest: 'From now on you and {who} are a pair: open the app and you find each other. On this server you are the guest of {who}: you talk to them, and to nobody else.',
+    doneGuest: 'From now on you and {who} are a pair: open the app and you find each other. On this server you are the guest of whoever gave you the code: you talk to that person alone.',
     doneOpens: 'From now on you and {who} are a pair: open the app and you find each other. Other pairs can be added from the settings.',
     doneByLetter: 'The other phone will find you connected the next time Duetto opens on it: nothing to do over there.',
     canClose: 'You can close this: the code waits until {when}. Whoever opens the link is connected at once, and you will hear it.',

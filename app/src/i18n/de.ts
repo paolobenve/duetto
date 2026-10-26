@@ -709,7 +709,7 @@ export const de: Dictionary = {
 
   pairing: {
     doneTitle: 'Verbunden',
-    doneGuest: 'Von jetzt an seid du und {who} ein Paar: öffnet die App, und ihr findet euch. Auf diesem Server bist du Gast von {who}: du sprichst mit ihnen, und mit niemandem sonst.',
+    doneGuest: 'Von jetzt an seid du und {who} ein Paar: öffnet die App, und ihr findet euch. Auf diesem Server bist du Gast der Person, die dir den Code gegeben hat: du sprichst nur mit ihr.',
     doneOpens: 'Von jetzt an seid du und {who} ein Paar: öffnet die App, und ihr findet euch. Weitere Paare lassen sich in den Einstellungen hinzufügen.',
     doneByLetter: 'Das andere Telefon findet sich beim nächsten Öffnen von Duetto verbunden: dort ist nichts zu tun.',
     canClose: 'Du kannst schließen: der Code wartet bis {when}. Wer den Link öffnet, ist sofort verbunden, und du erfährst es.',
