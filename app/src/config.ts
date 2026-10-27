@@ -600,9 +600,11 @@ export type DuoConfig = {
    * the address is hidden): its name, and whether it takes the channel
    * the moment it connects. Written down when it is met, `auto` missing
    * until it is chosen - meanwhile the old single choice, autoBluetooth,
-   * holds for it, and is the answer offered first.
+   * holds for it, and is the answer offered first. And the phone's call
+   * volume it was last heard at: Android keeps one for all of Bluetooth
+   * (see App, the call volume read again).
    */
-  btDevices: Record<string, { name: string; auto?: boolean }>;
+  btDevices: Record<string, { name: string; auto?: boolean; knob?: { volume: number; max: number } }>;
   /** a wired headset that is plugged in takes the sound at once */
   autoWired: boolean;
 

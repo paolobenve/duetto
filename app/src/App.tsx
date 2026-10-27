@@ -217,6 +217,14 @@ const dbOf = (x: number) => 20 * Math.log10(x);
 const ofDb = (d: number) => Math.pow(10, d / 20);
 
 /**
+ * Our gain kept under `key` - an output, or "BLUETOOTH:<device>" - and
+ * for a device never set, the one Bluetooth had before devices were
+ * told apart.
+ */
+const gainOf = (gains: Record<string, number> | undefined, key: string) =>
+  gains?.[key] ?? gains?.[key.split(':')[0]] ?? 1;
+
+/**
  * A step of the phone's call volume, in dB below its top: from
  * Android's own table when it gives one (Volume.steps), else as the
  * step's share, as it always was.
@@ -1842,12 +1850,22 @@ export default function App() {
   btGoneRef.current = audio.btGone;
 
   /**
+   * Where the gain is kept: under the output, and on Bluetooth under the
+   * device as well - the helmet and the earphones are not heard at the
+   * same level. A device met for the first time starts from what
+   * Bluetooth had before: see gainOf.
+   */
+  const gainKey = audio.route === 'BLUETOOTH' && btHere ? `BLUETOOTH:${btHere.id}` : audio.route;
+  const gainKeyRef = useRef(gainKey);
+  gainKeyRef.current = gainKey;
+
+  /**
    * How far the other voice is lifted ABOVE the phone's own top.
    *
    * One per output: the right level against the ear is not the right
    * level on speaker. It is 1 until more than the top is asked for.
    */
-  const gain = cfg?.gains?.[audio.route] ?? 1;
+  const gain = gainOf(cfg?.gains, gainKey);
 
   /**
    * Copies for the handlers, which are born once and would never see a
@@ -2128,6 +2146,19 @@ export default function App() {
     // the one it was born in.
   }, [peerSeen, peerState.version, peerState.build, cfg?.language]);
 
+  /** A Bluetooth device's call volume, written down when it changes: see the reading below. */
+  const keepBtKnob = useCallback((id: string, v: { volume: number; max: number }) => {
+    setCfg((prev) => {
+      if (!prev) return prev;
+      const dev = prev.btDevices?.[id];
+      if (dev?.knob?.volume === v.volume && dev.knob.max === v.max) return prev;
+      return saveCfg({
+        ...prev,
+        btDevices: { ...(prev.btDevices ?? {}), [id]: { ...(dev ?? { name: id }), knob: v } },
+      });
+    });
+  }, [saveCfg]);
+
   /**
    * The call volume is read again whenever it may have changed.
    *
@@ -2144,15 +2175,38 @@ export default function App() {
     const known = knownVolume.current[where];
     if (known) setSystemVolume(known);
     /**
+     * On Bluetooth, the device's own volume put back. Android keeps one
+     * call volume for all of Bluetooth: the helmet took the earphones'
+     * level, and the other way. Each device's is written down while it
+     * is in use and put back once the sound has moved onto it - and
+     * until then nothing is written under it, as the answer may still be
+     * the device before's.
+     */
+    const btId = inChannel && where === 'BLUETOOTH' ? btHereIdRef.current : null;
+    const btKnob = btId ? cfgRef.current?.btDevices?.[btId]?.knob : undefined;
+    let toRestore = btKnob && btKnob.max > 0 && btKnob.volume > 0 ? btKnob : null;
+    /**
      * `settled` says the sound has had time to move, and only then is
      * the answer about this output: before that it is about the one
      * before, and writing it down under this one is how the jump came
      * back, in both directions - the memory being filled with the
      * wrong figure at every switch.
      */
-    const reread = (settled: boolean) => {
+    const reread = (settled: boolean, moved = false) => {
       Volume.read().then((v) => {
         if (!alive || !v || !(v.max > 0)) return;
+        if (moved && toRestore) {
+          const want = toRestore;
+          toRestore = null;
+          if (want.max === v.max && want.volume !== v.volume) {
+            Journal.mark(`level:knob ${want.volume}/${want.max}:bt-device`).catch(() => { /* noop */ });
+            knownVolume.current[where] = want;
+            ownKnob.current = { step: want.volume, at: Date.now() };
+            setSystemVolume(want);
+            Volume.set(want.volume).catch(() => { /* the read-back puts the truth back */ });
+            return;
+          }
+        }
         // The echo of our own move: a key held down moves the knob a step
         // at a time, and each move's announcement, read back late, brought
         // an older step back - up one, down one, up two. What differs from
@@ -2160,6 +2214,7 @@ export default function App() {
         const own = ownKnob.current;
         if (own && Date.now() - own.at < OWN_KNOB_ECHO_MS && v.volume !== own.step) return;
         if (settled) knownVolume.current[where] = { volume: v.volume, max: v.max };
+        if (settled && btId && !toRestore) keepBtKnob(btId, { volume: v.volume, max: v.max });
         // Nothing remembered: even an answer about the output before is
         // better than the zero the strip starts from.
         if (settled || !known) setSystemVolume({ volume: v.volume, max: v.max });
@@ -2175,7 +2230,7 @@ export default function App() {
     // another output, and the answer given a moment before was about
     // the one before: the strip then drew the phone's share in the
     // wrong place, and Duetto's share along with it.
-    const again = [setTimeout(() => reread(true), 700), setTimeout(() => reread(true), 2500)];
+    const again = [setTimeout(() => reread(true, true), 700), setTimeout(() => reread(true, true), 2500)];
     /**
      * A volume moved from outside leaves our gain alone.
      *
@@ -2201,7 +2256,7 @@ export default function App() {
       stop();
       for (const t of again) clearTimeout(t);
     };
-  }, [inChannel, audio.route, saveCfg]);
+  }, [inChannel, audio.route, btHere?.id, saveCfg, keepBtKnob]);
 
   /**
    * The gain is applied again at every change and at every re-entry
@@ -2288,7 +2343,7 @@ export default function App() {
    * keys: the same ladder, and the same two ends.
    */
   const setLevelTo = useCallback((db: number, done: boolean) => {
-    const output = audioRouteRef.current;
+    const output = gainKeyRef.current;
     const phone = systemVolumeRef.current;
     const steps = stepsRef.current;
     // The controls are called back once, when the finger lands: doing
@@ -2302,7 +2357,7 @@ export default function App() {
         .catch(() => { /* noop */ });
     }
     const target = ofDb(next);
-    const g = cfgRef.current?.gains?.[output] ?? 1;
+    const g = gainOf(cfgRef.current?.gains, output);
     const r3 = (x: number) => Math.round(x * 1000) / 1000;
     if (phone.max <= 0 || cfgRef.current?.knobWorks === 'no') {
       // No knob known: the gain alone, as it always was.
@@ -2351,6 +2406,7 @@ export default function App() {
     systemVolumeRef.current = v;
     setSystemVolume(v);
     knownVolume.current[audioRouteRef.current] = v;
+    if (audioRouteRef.current === 'BLUETOOTH' && btHereIdRef.current) keepBtKnob(btHereIdRef.current, v);
     ownKnob.current = { step, at: Date.now() };
     Volume.set(step).catch(() => { /* the read-back puts the truth back */ });
   };
@@ -2359,7 +2415,7 @@ export default function App() {
   const setGain = (output: string, wanted: number) => {
     setCfg((prev) => {
       if (!prev) return prev;
-      if (wanted === (prev.gains?.[output] ?? 1)) return prev;
+      if (wanted === gainOf(prev.gains, output) && prev.gains?.[output] !== undefined) return prev;
       return saveCfg({ ...prev, gains: { ...(prev.gains ?? {}), [output]: wanted } });
     });
   };
@@ -2370,10 +2426,10 @@ export default function App() {
     // doing - faded, or gone altogether - they come back, and with them
     // the scale that says where the level is going.
     setControlsWakeAt(Date.now());
-    const output = audioRouteRef.current;
+    const output = gainKeyRef.current;
     const phone = systemVolumeRef.current;
     const ignored = cfgRef.current?.knobWorks === 'no';
-    const g = cfgRef.current?.gains?.[output] ?? 1;
+    const g = gainOf(cfgRef.current?.gains, output);
     setOutputMuted(false);
     /** the gain by a rung, kept between `lo` and `hi` decibels */
     const gainStep = (d: number, lo = LEVEL_MIN_DB, hi = LEVEL_MAX_DB) => {
@@ -2426,13 +2482,13 @@ export default function App() {
     Journal.mark(`level:gain-below-one ${gain}`).catch(() => { /* noop */ });
     if (was >= floor) {
       moveKnob(nearestStep(dbOf(was), systemVolume.max, stepsDb));
-      setGain(audio.route, 1);
+      setGain(gainKey, 1);
     } else {
       moveKnob(low);
-      setGain(audio.route, Math.round((was / floor) * 1000) / 1000);
+      setGain(gainKey, Math.round((was / floor) * 1000) / 1000);
     }
     setCfg((prev) => (prev ? saveCfg({ ...prev, ladderLaidOut: true }) : prev));
-  }, [inChannel, gain, systemVolume.max, systemVolume.volume, stepsDb, sysFraction, knobIgnored, cfg?.ladderLaidOut]);
+  }, [inChannel, gain, gainKey, systemVolume.max, systemVolume.volume, stepsDb, sysFraction, knobIgnored, cfg?.ladderLaidOut]);
 
   /**
    * The volume test: does the phone's call volume change what one hears?
