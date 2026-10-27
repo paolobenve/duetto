@@ -1680,8 +1680,14 @@ export default function ChannelScreen(props: Props) {
         </Animated.View>
       ) : null}
 
-      {/* The controls: always there, at the bottom, inside a dark panel */}
+      {/* The controls: always there, at the bottom, inside a dark panel.
+          Built afresh when the talk button comes or goes: on 26 October
+          it came while a layout animation was under way, and Android
+          moved the buttons down and nothing else - the panel kept its
+          old height and the statistics their old place, across the
+          buttons. Taking the button away and back put it right. */}
       <Animated.View
+        key={talkThroughOpen ? 'panel-talk' : 'panel'}
         pointerEvents={gone ? 'none' : 'auto'}
         onLayout={(e) => setPanelHeight(Math.round(e.nativeEvent.layout.height))}
         style={[
@@ -3046,7 +3052,7 @@ const styles = StyleSheet.create({
     marginBottom: 6, paddingHorizontal: 8,
   },
   talkThrough: {
-    flexDirection: 'row', alignSelf: 'center', marginBottom: 8, overflow: 'hidden',
+    flexDirection: 'row', alignSelf: 'center', maxWidth: '100%', marginBottom: 8, overflow: 'hidden',
     borderRadius: 22, backgroundColor: '#2b2f36', borderWidth: 1, borderColor: '#2f7cf6',
   },
   talkThroughHold: {
