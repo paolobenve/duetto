@@ -4343,6 +4343,21 @@ export default function App() {
                   Journal.mark('peer-back:link-kept').catch(() => { /* noop */ });
                   return;
                 }
+                /*
+                 * Nothing arriving, and nothing to arrive: their voice
+                 * paused because we are not listening, or their
+                 * microphone off, or a call of theirs, and no picture
+                 * of theirs. Silence then says nothing of the link -
+                 * on 27 October the edge, its listening off, rebuilt a
+                 * link that was fine. Its state says it instead.
+                 */
+                const them = peerStateRef.current;
+                const voiceDue = them.audio === true && them.busy !== true && !outputMutedRef.current;
+                if (sess?.hasPeer() && !voiceDue && them.video !== true
+                  && sess.linkState() === 'connected') {
+                  Journal.mark('peer-back:link-kept:quiet').catch(() => { /* noop */ });
+                  return;
+                }
                 if (!inChannelRef.current || !peerActiveRef.current) return;
                 if (sessionRef.current !== sess) return;
                 cue('cue_enter');
