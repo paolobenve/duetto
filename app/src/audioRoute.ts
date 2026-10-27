@@ -54,7 +54,8 @@ const isRoute = (v: any): v is AudioRoute =>
  *
  * @param enabled   only while we are in the channel
  * @param preferred the output remembered for THIS connection
- * @param remember  called when the user picks one
+ * @param remember  called when the user picks one, and when a headset
+ *                  gone gives the sound back to the phone
  *
  * The output is not a setting of the app any more but of the
  * connection: with one person you talk on speaker while cooking, with
@@ -146,6 +147,8 @@ export function useAudioRoute(
   const noteBuiltIn = (r: AudioRoute) => {
     if (r === 'SPEAKER_PHONE' || r === 'EARPIECE') builtIn.current = r;
   };
+  const rememberRef = useRef(remember);
+  rememberRef.current = remember;
 
   /**
    * Applies an output: through the channel's call when there is one
@@ -162,6 +165,23 @@ export function useAudioRoute(
     // Refs only, in both: the first render's are as good as any.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /**
+   * A headset gone, the sound back on the phone's own output used last -
+   * and that is now the output remembered for the pair. Remembered
+   * only when picked by hand, the helmet switched off stayed the pair's
+   * output: entering again twenty minutes later went looking for it, and
+   * Android put the sound to the ear (27 October). Coming back, the
+   * headset takes the sound by its own rule, asked or always.
+   */
+  const fallBack = useCallback((back: AudioRoute, why = '') => {
+    wanted.current = back;
+    currentRef.current = back;
+    setCurrent(back);
+    applyRoute(back);
+    Journal.mark(`output:back:${back}${why}`).catch(() => { /* noop */ });
+    rememberRef.current?.(back);
+  }, [applyRoute]);
 
   /**
    * An output asked for during the call, confirmed.
@@ -324,12 +344,7 @@ export function useAudioRoute(
             applyRoute(w);
             return;
           }
-          const back = builtIn.current;
-          wanted.current = back;
-          currentRef.current = back;
-          setCurrent(back);
-          applyRoute(back);
-          Journal.mark(`output:back:${back}`).catch(() => { /* noop */ });
+          fallBack(builtIn.current);
         }, KEEP_WAIT_MS);
         return;
       }
@@ -340,19 +355,17 @@ export function useAudioRoute(
       const was = currentRef.current;
       const wasHeadset = was === 'BLUETOOTH' || was === 'WIRED_HEADSET';
       if (wasHeadset && !headset && r !== builtIn.current && wanted.current !== r) {
-        const back = builtIn.current;
-        wanted.current = back;
-        currentRef.current = back;
-        setCurrent(back);
-        applyRoute(back);
-        Journal.mark(`output:back:${back}`).catch(() => { /* noop */ });
+        fallBack(builtIn.current);
         return;
       }
       // Out of a headset onto the phone's own output: that is what is
       // wanted now. Left on the headset, the speaker the sound came back
       // to was never remembered, and the next restart looked for the
       // headset that had gone.
-      if (wasHeadset && !headset) wanted.current = r;
+      if (wasHeadset && !headset) {
+        wanted.current = r;
+        rememberRef.current?.(r);
+      }
       currentRef.current = r;
       setCurrent(r);
       // The phone's own output used last is the one chosen or reached,
@@ -361,17 +374,30 @@ export function useAudioRoute(
       // off, instead of to the speaker in use before.
       if (r === wanted.current) noteBuiltIn(r);
     });
-  }, [enabled, applyRoute]);
+  }, [enabled, applyRoute, fallBack]);
 
   // The preference comes from the connection in use, and changes with it.
   useEffect(() => {
     if (!isRoute(preferred)) return;
-    wanted.current = preferred;
-    noteBuiltIn(preferred);
-    setCurrent(preferred);
+    let want: AudioRoute = preferred;
+    /*
+     * A headset remembered and not here: the phone's own output used
+     * last. Applied all the same, it went to Android's default - the
+     * earpiece - on 27 October, the helmet switched off twenty minutes
+     * before. Only once the outputs are known: before the first event
+     * the list is a guess, and the first event looks after it (below).
+     */
+    if (enabled && initialised.current && (want === 'BLUETOOTH' || want === 'WIRED_HEADSET')
+      && !availableRef.current.includes(want)) {
+      want = builtIn.current;
+      Journal.mark(`output:entry:${preferred}-absent:${want}`).catch(() => { /* noop */ });
+    }
+    wanted.current = want;
+    noteBuiltIn(want);
+    setCurrent(want);
     // Not applied outside the channel: an output is chosen when there is
     // a sound to send somewhere.
-    if (enabled) applyRoute(preferred);
+    if (enabled) applyRoute(want);
   }, [preferred, enabled, applyRoute]);
 
   /**
@@ -490,11 +516,7 @@ export function useAudioRoute(
             && selected !== builtIn.current && routes.includes(builtIn.current);
           headsetWas.current = selected === 'BLUETOOTH' || selected === 'WIRED_HEADSET';
           if (headsetGone) {
-            const back = builtIn.current;
-            wanted.current = back;
-            setCurrent(back);
-            applyRoute(back);
-            Journal.mark(`output:back:${back}`).catch(() => { /* noop */ });
+            fallBack(builtIn.current);
           } else if (selected) {
             noteBuiltIn(selected);
           }
@@ -555,7 +577,7 @@ export function useAudioRoute(
     );
 
     return () => sub.remove();
-  }, [enabled, applyRoute]);
+  }, [enabled, applyRoute, fallBack]);
 
   /** Moves to the next available output, and remembers it. */
   const cycle = useCallback(() => {
@@ -656,13 +678,8 @@ export function useAudioRoute(
     routeTimes.current = [];
     if (inCall.current) return;
     if (wanted.current !== 'BLUETOOTH' && currentRef.current !== 'BLUETOOTH') return;
-    const back = builtIn.current;
-    wanted.current = back;
-    currentRef.current = back;
-    setCurrent(back);
-    applyRoute(back);
-    Journal.mark(`output:back:${back}:bt-gone`).catch(() => { /* noop */ });
-  }, [enabled, applyRoute]);
+    fallBack(builtIn.current, ':bt-gone');
+  }, [enabled, fallBack]);
 
   return {
     route: current,

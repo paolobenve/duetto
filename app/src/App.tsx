@@ -1715,7 +1715,8 @@ export default function App() {
     // Written down: on 8 October the entry took back the earpiece, and
     // nothing said when the earpiece had been remembered.
     if (cfgRef.current?.audioOutput !== route) {
-      // Picked by hand, and only then: see useAudioRoute.
+      // Picked by hand, or the phone's own output after a headset
+      // gone: see useAudioRoute.
       Journal.mark(`output:remembered:${route}`).catch(() => { /* noop */ });
     }
     setCfg((prev) => (prev && prev.audioOutput !== route
