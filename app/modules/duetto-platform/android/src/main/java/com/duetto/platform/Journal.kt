@@ -295,10 +295,6 @@ object Journal {
     }
 
     private fun folder(ctx: Context): File? {
-        // Before touching any file: the names have changed, and the first
-        // line written would create the new folder under the bridge's
-        // nose. It costs one boolean after the first time.
-        Bridge.migrate(ctx)
         val base = ctx.getExternalFilesDir(null) ?: ctx.filesDir
         val dir = File(base, FOLDER)
         return if (dir.exists() || dir.mkdirs()) dir else null

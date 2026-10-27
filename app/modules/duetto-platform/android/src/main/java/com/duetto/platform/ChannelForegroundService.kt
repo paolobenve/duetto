@@ -311,8 +311,6 @@ class ChannelForegroundService : Service() {
         // and the journal would fill with twin lines.
         if (!journalStarted) {
             journalStarted = true
-            // Before any reading: the names in storage have changed.
-            Bridge.migrate(applicationContext)
             Journal.onWrite { rescheduleJournal() }
             // How it ended last time: if the process before died, here is
             // where we find out why.

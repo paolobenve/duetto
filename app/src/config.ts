@@ -9,7 +9,6 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { LanguageChoice } from './i18n';
-import { fromItalianStorage } from './legacy';
 
 /**
  * The app's configuration.
@@ -711,10 +710,7 @@ export async function loadConfig(): Promise<DuoConfig> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_CONFIG;
-    // The names first, then everything else: what follows reads fields
-    // that on a phone updating from an earlier Duetto are still
-    // written in Italian.
-    const stored = fromItalianStorage(JSON.parse(raw));
+    const stored = JSON.parse(raw);
     return tidyPending(tidyPairs(oneDiagnostics({ ...DEFAULT_CONFIG, ...stored })));
   } catch {
     return DEFAULT_CONFIG;

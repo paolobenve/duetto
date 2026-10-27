@@ -151,15 +151,6 @@ function closeDetached() {
 }
 
 /**
- * TEMPORARY. The names things used to be stored under, in Italian.
- *
- * The project is moving to English to be published, and the names under
- * which things are written in the phone's memory move with the rest.
- * Whoever already has the app must not notice: the first read looks for
- * the new name and, failing that, takes the old one and writes it back
- * under the new. To be REMOVED once every phone has been through here.
- */
-/**
  * Where the drawers below are kept, so that they survive the app.
  *
  * They used to live in memory alone, and an update - which kills the
@@ -169,27 +160,6 @@ function closeDetached() {
  * passed, not whether the process is the same one.
  */
 const HOW_IT_WAS_KEY = 'duetto.how-it-was';
-
-const OLD_KEYS = {
-  sent: 'duetto.diario.inviate',
-  death: 'duetto.morte.raccontata',
-};
-
-/**
- * Reads something from storage, accepting the old name as well.
- *
- * Finding it under the old name it writes it back under the new one and
- * deletes the old: at the second start the bridge is no longer needed.
- */
-async function readWithBridge(fresh: string, old: string): Promise<string | null> {
-  const mine = await AsyncStorage.getItem(fresh);
-  if (mine !== null) return mine;
-  const before = await AsyncStorage.getItem(old);
-  if (before === null) return null;
-  await AsyncStorage.setItem(fresh, before).catch(() => { /* noop */ });
-  await AsyncStorage.removeItem(old).catch(() => { /* noop */ });
-  return before;
-}
 
 /**
  * The level, in loudness.
@@ -3632,7 +3602,7 @@ export default function App() {
         Journal.mark('death:while-detached').catch(() => {});
         return;
       }
-      const told = await readWithBridge(DEATH_TOLD_KEY, OLD_KEYS.death);
+      const told = await AsyncStorage.getItem(DEATH_TOLD_KEY);
       if (Number(told) >= m.when) return;
       // The time of the return is now: the app is starting again at
       // this very moment, and this is the only phone that can know it.

@@ -25,8 +25,6 @@ import androidx.core.content.ContextCompat
 class BootReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
-        // The names in storage have changed: this is the first stop.
-        Bridge.migrate(context)
         val action = intent.action ?: return
         val updated = action == Intent.ACTION_MY_PACKAGE_REPLACED
         if (action != Intent.ACTION_BOOT_COMPLETED &&
