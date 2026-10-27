@@ -1412,6 +1412,11 @@ export class ChannelSession {
     return this.pc?.connectionState ?? null;
   }
 
+  /** How many links have been thrown away: one made since a moment ago has a higher number. */
+  linkGeneration(): number {
+    return this.generation;
+  }
+
   private async negotiate() {
     const pc = this.pc;
     if (!pc) return;

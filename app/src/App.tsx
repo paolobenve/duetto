@@ -4317,10 +4317,24 @@ export default function App() {
                 }
                 return;
               }
+              /*
+               * The link of the moment of the return. Made again since -
+               * they asked for it, starting afresh - the return has had
+               * its answer. On 27 October the edge's timer, frozen with
+               * its app behind, went off five minutes late, when the app
+               * came forward: it found the link made a second after the
+               * return, and rebuilt it.
+               */
+              const sessAtReturn = sessionRef.current;
+              const linkAtReturn = sessAtReturn?.linkGeneration();
               peerBackTimer.current = setTimeout(async () => {
                 peerBackTimer.current = null;
                 if (!inChannelRef.current || !peerActiveRef.current) return;
                 const sess = sessionRef.current;
+                if (sess !== sessAtReturn || sess?.linkGeneration() !== linkAtReturn) {
+                  Journal.mark('peer-back:answered').catch(() => { /* noop */ });
+                  return;
+                }
                 // Asked of the link itself, now: with the app behind the
                 // sampled counters are ten seconds old and the timer
                 // itself can fire late - a link carrying audio was
