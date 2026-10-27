@@ -23,6 +23,7 @@ import { callerFor } from './notificationCall';
 import { onNewDay } from './dayTurn';
 import { alertSaid } from './alertWords';
 import { VERSION_LABEL, BUILD } from './version';
+import { PROTOCOL_SAID } from './protocol';
 import { deliverAsk, answerHeard, noteAskedOfUs, said as saidOfThem } from './diagnosticsAsk';
 
 const log = logger('[duetto-standby]');
@@ -234,7 +235,7 @@ let diagnosticsOn = false;
 
 /** Which Duetto, and whether its diagnostics are on: the hello, from here too. */
 function sayHello(sig: Signaling, pairId: string) {
-  sig.sendSignal({ kind: 'hello', version: VERSION_LABEL, build: BUILD, diagnostics: diagnosticsOn });
+  sig.sendSignal({ kind: 'hello', version: VERSION_LABEL, build: BUILD, ...PROTOCOL_SAID, diagnostics: diagnosticsOn });
   deliverAsk(sig, pairId).catch(() => { /* noop */ });
 }
 

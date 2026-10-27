@@ -51,6 +51,16 @@ import { credentialsFor as turnCredentials, drop as dropTurn } from './turn.js';
 import { bouncePage } from './linkPage.js';
 import { latestRelease, watchReleases } from './releases.js';
 
+/**
+ * How the phones and this server talk, as a number, and the oldest way
+ * it still understands: said in every "joined", and the phone judges
+ * (see protocol.ts in the app). Raised only when the way of talking
+ * changes so that an older side would misunderstand. A phone that says
+ * none speaks 1.
+ */
+const PROTOCOL = 1;
+const PROTOCOL_MIN = 1;
+
 const PORT = parseInt(process.env.PORT || '8787', 10);
 const HOST = process.env.HOST || '127.0.0.1'; // behind a reverse proxy: loopback only
 
@@ -1157,6 +1167,14 @@ wss.on('connection', (ws, req) => {
       // figures only: the log is not the place for a whole code.
       console.log(`[duetto] ${ws.who || ws.name || '?'} in room ${roomId.slice(0, 4)}… `
         + `(${set.size} in, ${ws.mode})`);
+      // A phone that does not understand this server, or that this
+      // server does not understand: it is told on its screen, and here.
+      const theirs = Number.isInteger(msg.protocol) && msg.protocol >= 1 ? msg.protocol : 1;
+      const theirMin = Number.isInteger(msg.protocolMin) && msg.protocolMin >= 1 ? msg.protocolMin : 1;
+      if (theirs < PROTOCOL_MIN || theirMin > PROTOCOL) {
+        console.log(`[duetto] ${ws.who || ws.name || '?'} speaks protocol ${theirs} (from ${theirMin}),`
+          + ` this server ${PROTOCOL} (from ${PROTOCOL_MIN})`);
+      }
       // And for the owner's list, by the day: see noteVisit. The guest's
       // coming counts for the one on the list who was waiting for it.
       countVisit(roomId, set);
@@ -1199,6 +1217,8 @@ wss.on('connection', (ws, req) => {
         // is behind it (releases.js).
         // Not the preview: the phones are offered releases only.
         latest: latestRelease()?.page ? { ...latestRelease(), preview: undefined } : undefined,
+        protocol: PROTOCOL,
+        protocolMin: PROTOCOL_MIN,
       });
 
       // The mail: what the other half of a code handed over as a link

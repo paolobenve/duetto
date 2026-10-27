@@ -12,6 +12,7 @@ import { SignalCrypto } from './crypto';
 import { logger } from './log';
 import { deviceKey, deviceModel, deviceName, signNonce } from './device';
 import { VERSION_LABEL, BUILD } from './version';
+import { PROTOCOL_SAID } from './protocol';
 import type { LatestRelease } from './releases';
 
 /**
@@ -121,7 +122,7 @@ export type SignalMessage =
   // version somebody is running is their business, not his.
   // And whether its diagnostics are on: the other side shows it, and
   // does not offer to ask for what is there already.
-  | { kind: 'hello'; version: string; build?: number; diagnostics?: boolean }
+  | { kind: 'hello'; version: string; build?: number; protocol?: number; protocolMin?: number; diagnostics?: boolean }
   /** one phone asking the other to turn diagnostics on: see diagnosticsAsk.ts */
   | { kind: 'askDiagnostics' }
   // `already`: they were on before the request - nothing to announce.
@@ -234,6 +235,9 @@ export type SignalingEvents = {
     peerAvailable: number;
     /** the latest Duetto out, as the server knows it; null if it does not say */
     latest: LatestRelease | null;
+    /** how the server talks, and the oldest way it understands; undefined from an older one */
+    serverProtocol?: number;
+    serverProtocolMin?: number;
   }) => void;
   /** the answer to a report sent through the server */
   onReportResult?: (ok: boolean, error?: string, url?: string) => void;
@@ -634,6 +638,8 @@ export class Signaling {
       model: deviceModel(),
       // Which Duetto this is, for the owner's list: "0.9.16 (364)".
       version: `${VERSION_LABEL} (${BUILD})`,
+      // How it talks: the server judges it, and says its own (see protocol.ts).
+      ...PROTOCOL_SAID,
       mode: this.mode,
       side: this.opts.side,
     });
@@ -758,6 +764,8 @@ export class Signaling {
               fdroid: /^\d+\.\d+\.\d+$/.test(String(msg.latest.fdroid || '')) ? String(msg.latest.fdroid) : '',
             }
             : null,
+          serverProtocol: typeof msg.protocol === 'number' ? msg.protocol : undefined,
+          serverProtocolMin: typeof msg.protocolMin === 'number' ? msg.protocolMin : undefined,
         });
         break;
 

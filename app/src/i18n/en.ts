@@ -64,6 +64,10 @@ export const en = {
     versionsDiffer: 'Different versions: {here} here, {there} over there',
     versionsDifferOlder: 'Different versions: {here} here, an older one over there',
     buildsDiffer: 'The same version, different builds: {here} here, {there} over there',
+    peerTooOld: 'The other has a Duetto too old for this one: it needs updating for you to talk',
+    selfTooOld: 'This Duetto is too old for the other’s: update it for you to talk',
+    serverTooOld: 'The server is too old for this Duetto: ask whoever keeps it to update it',
+    selfTooOldForServer: 'This Duetto is too old for its server: update it',
   },
 
   update: {

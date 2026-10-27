@@ -512,6 +512,14 @@ announcing: it is a decision, not a counter. Publishing starts at **0.9.0** and 
 with 0.9.1, 0.9.2 and so on; 1.0.0 will come when the thing feels finished enough to be
 called that.
 
+Whether two Duettos understand each other is a third number, the protocol
+(`app/src/protocol.ts`, and the same in the server). Each phone says it to the other and
+to its server, with the oldest it still understands; it is raised only when the way of
+talking changes so that an older Duetto would misunderstand. Whoever finds the other too
+old - or itself too old for the other - says so above the buttons, instead of a channel
+that half works. Every Duetto 1.x will talk to every other 1.x for as long as that number
+stands.
+
 The build number is a separate matter and goes up by itself at every compilation. It is
 what tells two APKs that call themselves the same version apart, so it is beside the
 version at the bottom of the settings: when you report a problem, say that number too.

@@ -58,6 +58,10 @@ export const fr: Dictionary = {
     versionsDiffer: 'Versions différentes : ici {here}, là-bas {there}',
     versionsDifferOlder: 'Versions différentes : ici {here}, là-bas une plus ancienne',
     buildsDiffer: 'Même version, builds différentes : ici {here}, là-bas {there}',
+    peerTooOld: 'L’autre a un Duetto trop ancien pour celui-ci : il faut le mettre à jour pour vous parler',
+    selfTooOld: 'Ce Duetto est trop ancien pour celui de l’autre : mettez-le à jour pour vous parler',
+    serverTooOld: 'Le serveur est trop ancien pour ce Duetto : demandez à qui le gère de le mettre à jour',
+    selfTooOldForServer: 'Ce Duetto est trop ancien pour son serveur : mettez-le à jour',
   },
 
   update: {

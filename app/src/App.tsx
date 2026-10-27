@@ -36,6 +36,7 @@ import type { Hand, PersonOnServer, InvitationOnServer } from './signaling';
 import { useLanguage, t } from './i18n';
 import { alarmLabel, sentGain, wireName, soundName } from './alarms';
 import { BUILD, VERSION_FULL, VERSION_LABEL } from './version';
+import { PROTOCOL_SAID, protocolFit } from './protocol';
 import { updateFor, type LatestRelease } from './releases';
 import UpdateModal from './UpdateModal';
 import { inTurn } from './inTurn';
@@ -1413,6 +1414,9 @@ export default function App() {
     version?: string;
     /** which APK of that version; missing if older than this field */
     build?: number;
+    /** how they talk, and the oldest way they understand: see protocol.ts */
+    protocol?: number;
+    protocolMin?: number;
     /** whether their diagnostics are on, as their hello says; missing from an older app */
     diagnostics?: boolean;
     /** the two halves their phone can time: with ours they make both journeys */
@@ -1433,6 +1437,8 @@ export default function App() {
    * means they have not spoken yet.
    */
   const [peerSeen, setPeerSeen] = useState(false);
+  /** whether the server and this Duetto understand each other: see protocol.ts */
+  const [serverFit, setServerFit] = useState<'ok' | 'theirs-old' | 'mine-old'>('ok');
   /** a state of theirs has been heard since we met: the next ones are changes */
   const peerStateHeard = useRef(false);
   /** their finger's stamps, as last rung for: see Hand */
@@ -2059,13 +2065,26 @@ export default function App() {
     // The build goes with it: the version alone no longer says which
     // APK is over there, now that all three of its numbers are raised
     // by hand.
-    const said = peerState.build ? `${v}+${peerState.build}` : v;
+    // And the protocol, where it is not the one everybody speaks.
+    const fit = protocolFit(peerState.protocol, peerState.protocolMin);
+    const said = (peerState.build ? `${v}+${peerState.build}` : v)
+      + (fit === 'ok' ? '' : ` protocol:${peerState.protocol ?? 1}/${peerState.protocolMin ?? 1}:${fit}`);
     if (said === peerVersionSeen.current) return;
     peerVersionSeen.current = said;
     Journal.mark(`peer-version:${said}`).catch(() => { /* noop */ });
-  }, [peerState.version, peerState.build]);
+  }, [peerState.version, peerState.build, peerState.protocol, peerState.protocolMin]);
 
   const versionWarning = React.useMemo(() => {
+    /**
+     * Before any difference of version, one that stops the two from
+     * understanding each other: the server's first, which is everybody's,
+     * then the other phone's. See protocol.ts.
+     */
+    if (serverFit === 'theirs-old') return t('news.serverTooOld');
+    if (serverFit === 'mine-old') return t('news.selfTooOldForServer');
+    const fit = protocolFit(peerState.protocol, peerState.protocolMin);
+    if (fit === 'theirs-old') return t('news.peerTooOld');
+    if (fit === 'mine-old') return t('news.selfTooOld');
     const theirs = peerState.version;
     /**
      * Said from the hello, while merely waiting too: the version
@@ -2114,7 +2133,8 @@ export default function App() {
     // The language is among the dependencies because the sentence is
     // built here: without it, changing language would leave this line in
     // the one it was born in.
-  }, [peerSeen, peerState.version, peerState.build, cfg?.language]);
+  }, [peerSeen, peerState.version, peerState.build, peerState.protocol, peerState.protocolMin,
+    serverFit, cfg?.language]);
 
   /** A Bluetooth device's call volume, written down when it changes: see the reading below. */
   const keepBtKnob = useCallback((id: string, v: { volume: number; max: number }) => {
@@ -3941,7 +3961,7 @@ export default function App() {
     // calls itself 0.9.14 like the version itself, and the two looked
     // like the same one with different builds.
     signalingRef.current?.sendSignal({
-      kind: 'hello', version: VERSION_LABEL, build: BUILD,
+      kind: 'hello', version: VERSION_LABEL, build: BUILD, ...PROTOCOL_SAID,
       // Said by whoever has just changed it: the configuration's
       // reference catches up a moment later, and the hello said the old
       // state - the other side learnt the new one ten seconds on, from
@@ -4164,6 +4184,7 @@ export default function App() {
           onJoined: ({
             peerPresent: present, peerActive, peerName: n, turn, stun, owner, opens, reports,
             peerSince: since, peerGone, since: ownSince, available, peerAvailable: theirs, latest,
+            serverProtocol, serverProtocolMin,
           }) => {
             setMySince(ownSince || Date.now());
             setMyAvailable(available);
@@ -4177,6 +4198,12 @@ export default function App() {
             setCanInvite(owner);
             setReportsOpen(reports);
             if (latest) setLatestOut(latest);
+            const fit = protocolFit(serverProtocol, serverProtocolMin);
+            setServerFit(fit);
+            if (fit !== 'ok') {
+              Journal.mark(`server-protocol:${serverProtocol ?? 1}/${serverProtocolMin ?? 1}:${fit}`)
+                .catch(() => { /* noop */ });
+            }
             replacedWait.current = 3000;
             setCanAddPair(opens);
             // The word the door gave is kept true by every join: what
@@ -4492,6 +4519,8 @@ export default function App() {
                 ...prev,
                 version: msg.version,
                 build: msg.build,
+                protocol: msg.protocol,
+                protocolMin: msg.protocolMin,
                 diagnostics: typeof msg.diagnostics === 'boolean' ? msg.diagnostics : undefined,
               }));
               // On already: nothing left to ask for.

@@ -21,6 +21,7 @@ import { t, momentText } from './i18n';
 import { alarmLabel } from './alarms';
 import { logger, setLogging } from './log';
 import { VERSION_LABEL, BUILD } from './version';
+import { PROTOCOL_SAID } from './protocol';
 import { refreshStandby, stopStandby } from './standby';
 import { keepCall } from './callsUnseen';
 import { sendJournalOver } from './journalSwap';
@@ -644,7 +645,7 @@ async function listenNow(): Promise<boolean> {
   /** Which Duetto is on this phone: see the same in App.tsx. */
   const sayHello = () => {
     signaling?.sendSignal({
-      kind: 'hello', version: VERSION_LABEL, build: BUILD, diagnostics: cfg.diagnostics === true,
+      kind: 'hello', version: VERSION_LABEL, build: BUILD, ...PROTOCOL_SAID, diagnostics: cfg.diagnostics === true,
     });
     // A request for their diagnostics waiting to go goes now: see
     // diagnosticsAsk.ts.
