@@ -173,8 +173,8 @@ declare module 'duetto-platform' {
     note(name: string, text: string): Promise<boolean>;
     /** takes the news away when it is not true any more */
     clearNote(): Promise<boolean>;
-    /** quiet news that stays until touched, or until clearKeptNote */
-    noteKept(name: string, text: string): Promise<boolean>;
+    /** why Android closed Duetto: stays until touched or clearKeptNote, ten minutes if `fades` */
+    noteKept(name: string, text: string, fades?: boolean): Promise<boolean>;
     clearKeptNote(): Promise<boolean>;
     /** the other connections under the standing notification's own: "id\tstate\twords" a line */
     setPairLines(lines: string): Promise<boolean>;

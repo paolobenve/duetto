@@ -168,16 +168,16 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
 
     /** Quiet news that waits to be read: see Notifier.showNote. */
     @ReactMethod
-    fun noteKept(name: String, text: String, promise: Promise) {
+    fun noteKept(name: String, text: String, fades: Boolean, promise: Promise) {
         try {
-            Notifier.showNote(ctx, name, text, kept = true)
+            Notifier.showNote(ctx, name, text, kept = true, fades = fades)
             promise.resolve(true)
         } catch (e: Exception) {
             promise.reject("notify_error", e)
         }
     }
 
-    /** Takes it away: the app has said it. */
+    /** Takes it away: the app has said it, or is in the channel. */
     @ReactMethod
     fun clearKeptNote(promise: Promise) {
         Notifier.clearKeptNote(ctx)

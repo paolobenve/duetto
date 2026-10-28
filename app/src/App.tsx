@@ -5487,6 +5487,10 @@ export default function App() {
     // the other person's voice.
     Audio.claimVolumeKeys(true).catch(() => {});
 
+    // "You were in the channel: touch Enter to go back in", left by the
+    // presence after a closing, is not true any more: see tellOwnDeath.
+    Foreground.clearKeptNote().catch(() => {});
+
     setInChannel(true);
     inChannelRef.current = true;
     // In front, unless a pairing or the welcome is under way: an entry

@@ -123,11 +123,13 @@ object Notifier {
     }
 
     /**
-     * `kept`: with no ten minutes, until it is touched or the app says it.
-     * Why Android closed Duetto in the night went away at 06:27 on 28
-     * October, unread: it had been put up at 06:17, and nobody was awake.
+     * `kept`: why Android closed Duetto, on an id of its own that the app
+     * takes away when it says it or enters the channel. `fades`: gone by
+     * itself after ten minutes, as all other news; a closing is kept
+     * until read - it went away at 06:27 on 28 October, unread: put up at
+     * 06:17, with nobody awake - except Duetto's own update.
      */
-    fun showNote(ctx: Context, name: String, text: String, kept: Boolean = false) {
+    fun showNote(ctx: Context, name: String, text: String, kept: Boolean = false, fades: Boolean = !kept) {
         val launch = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)?.apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
@@ -145,7 +147,7 @@ object Notifier {
             .setContentIntent(pending)
             .setAutoCancel(true)
             .setSilent(true)
-            .apply { if (!kept) setTimeoutAfter(NOTE_TIMEOUT_MS) }
+            .apply { if (fades) setTimeoutAfter(NOTE_TIMEOUT_MS) }
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setGroup(GROUP)
             .setSortKey(SORT_NOTE)

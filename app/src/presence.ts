@@ -510,7 +510,8 @@ const DEATH_SHOWN_KEY = 'duetto.death-shown';
  * of one's own making, nor for old news.
  *
  * Old news is about the closing, not the reading: once said, it stays
- * until it is touched or the app says it in its place. With the ten
+ * until it is touched, or the app says it in its place or enters the
+ * channel - where "touch Enter" is not true any more. With the ten
  * minutes of the other news it went away unread on 28 October, closed
  * at 06:16 and looked for at seven.
  */
@@ -522,13 +523,17 @@ async function tellOwnDeath(channel: string, wasIn: boolean): Promise<void> {
   await AsyncStorage.setItem(DEATH_SHOWN_KEY, String(m.when)).catch(() => { /* noop */ });
   const cause = deathCause(m);
   if (['force-stopped', 'closed-by-user', 'self-exit', 'permissions-changed'].includes(cause)) return;
+  // The app open already: it says it itself, and "touch Enter to go back
+  // in" would be read under a channel it has entered by itself.
+  if (uiInCharge) {
+    Journal.mark(`death:left-to-app:${cause}`).catch(() => { /* noop */ });
+    return;
+  }
   Journal.mark(`death:told-here:${cause}`).catch(() => { /* noop */ });
   const text = `${t('death.closedNow', { when: deathWhen(m.when), why: deathWhy(cause) })} ${
     wasIn ? t('death.wereInChannel', { channel: inTheChannel(channel) }) : t('death.waitingAgain')}`;
-  // Duetto's own update excepted: whoever installed it knows, and the
-  // app, which leaves it unsaid, would never take the note away.
-  if (cause === 'updated-self') Foreground.note('', text).catch(() => { /* noop */ });
-  else Foreground.noteKept('', text).catch(() => { /* noop */ });
+  // Duetto's own update fades as other news: whoever installed it knows.
+  Foreground.noteKept('', text, cause === 'updated-self').catch(() => { /* noop */ });
   Alarm.play('cue_leave', true, 0, 0.5).catch(() => { /* noop */ });
 }
 

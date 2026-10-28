@@ -155,11 +155,12 @@ export const Foreground = isAndroid && NativeForeground
       clearNote: () => call(NativeForeground, 'clearNote'),
 
       /**
-       * News that waits to be read, with no ten minutes: until touched,
-       * or until the app says it and takes it away with clearKeptNote.
+       * Why Android closed Duetto, on a place of its own: until touched,
+       * or until the app says it or enters the channel and takes it away
+       * with clearKeptNote. `fades`: gone after ten minutes all the same.
        */
-      noteKept: (name, text) =>
-        call(NativeForeground, 'noteKept', String(name || ''), String(text)),
+      noteKept: (name, text, fades = false) =>
+        call(NativeForeground, 'noteKept', String(name || ''), String(text), !!fades),
       clearKeptNote: () => call(NativeForeground, 'clearKeptNote'),
 
       /** the other connections, one line each under the standing notification's own */
