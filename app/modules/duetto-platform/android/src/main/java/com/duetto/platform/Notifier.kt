@@ -149,6 +149,10 @@ object Notifier {
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setGroup(GROUP)
             .setSortKey(SORT_NOTE)
+            // Whole on the locked screen, like the standing notification:
+            // left private, HyperOS showed "content hidden" under a line
+            // that says the other's name and state in clear all the same.
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build()
         try {
             NotificationManagerCompat.from(ctx)
