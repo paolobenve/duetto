@@ -675,6 +675,21 @@ export const Network = isAndroid && NativeNetwork
        * Tells Android that on this network the traffic does not get
        * through, and to check it now. See NetworkModule.
        */
+      /**
+       * React Native's WebSocket without WebView's cookies, so that a
+       * WebView update does not close Duetto: "ok", or why not.
+       * Synchronous, as it must come before the first socket. See
+       * SocketsWithoutCookies.
+       */
+      socketsWithoutCookies() {
+        try {
+          const fn = NativeNetwork.socketsWithoutCookies;
+          return typeof fn === 'function' ? String(fn()) : 'missing';
+        } catch {
+          return 'failed';
+        }
+      },
+
       reportNotCarrying: () => call(NativeNetwork, 'reportNotCarrying'),
 
       /**
@@ -706,6 +721,7 @@ export const Network = isAndroid && NativeNetwork
     }
   : {
       subscribe: () => () => {},
+      socketsWithoutCookies: () => 'not-android',
       reportNotCarrying: unavailable,
       recheck: unavailable,
       requestMobile: unavailable,

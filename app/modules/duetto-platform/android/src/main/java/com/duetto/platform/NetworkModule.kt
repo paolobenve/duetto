@@ -46,6 +46,10 @@ class NetworkModule(private val ctx: ReactApplicationContext) :
 
     override fun getName() = "DuettoNetwork"
 
+    /** See SocketsWithoutCookies: before the first socket, so blocking. */
+    @ReactMethod(isBlockingSynchronousMethod = true)
+    fun socketsWithoutCookies(): String = SocketsWithoutCookies.install(ctx)
+
     private var registered = false
 
     /** The last address seen: it keeps us from crying wolf. */

@@ -114,6 +114,8 @@ declare module 'duetto-platform' {
   /** The phone's changes of network: cell, wifi, new address. */
   export const Network: {
     subscribe(cb: (what: string) => void): () => void;
+    /** React Native's WebSocket without WebView's cookies: "ok", or why not */
+    socketsWithoutCookies(): string;
     /** "on this network the traffic does not get through, check it now" */
     reportNotCarrying(): Promise<boolean>;
     /** looks at the network now, and announces a change nobody heard */

@@ -12,6 +12,8 @@
  * before any use of tweetnacl.
  */
 import 'react-native-get-random-values';
+// Before anything can open a socket: see src/noCookies.ts.
+import './src/noCookies';
 import { AppRegistry } from 'react-native';
 import App from './src/App';
 import { name as appName } from './app.json';
