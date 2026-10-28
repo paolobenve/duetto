@@ -41,6 +41,16 @@ export function sentGain(name: string, gain: number): number {
   return Math.min(1, gain * 10 ** ((BUTTONS_LUFS - l) / 20));
 }
 
+/**
+ * The cap on how long the knocker's own sound may last.
+ *
+ * The bell's ding lasts two seconds and ends by itself: the cap stays
+ * as a net, a little past it, because a confirming sound that carries
+ * on while you are already doing something else is the thing we set
+ * out to remove.
+ */
+export const KNOCK_ECHO_MS = 2_500;
+
 /** The name of a sound as the list shows it; the bare name if unknown. */
 export const alarmLabel = (name: string): string =>
   ALARMS().find((a) => a.name === soundName(name))?.label ?? name;

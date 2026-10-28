@@ -34,7 +34,7 @@ import {
 import { Signaling, PresenceStatus } from './signaling';
 import type { Hand, PersonOnServer, InvitationOnServer } from './signaling';
 import { useLanguage, t } from './i18n';
-import { alarmLabel, sentGain, wireName, soundName } from './alarms';
+import { alarmLabel, sentGain, wireName, soundName, KNOCK_ECHO_MS } from './alarms';
 import { BUILD, VERSION_FULL, VERSION_LABEL } from './version';
 import { PROTOCOL_SAID, protocolFit } from './protocol';
 import { updateFor, type LatestRelease } from './releases';
@@ -310,16 +310,6 @@ const STUCK_RETRY_GAP_MS = 120_000;
 
 /** How often we look to see whether we are still without a server. */
 const SERVER_CHECK_MS = 3_000;
-
-/**
- * The cap on how long the knocker's own sound may last.
- *
- * The bell's ding lasts two seconds and ends by itself: the cap stays
- * as a net, a little past it, because a confirming sound that carries
- * on while you are already doing something else is the thing we set
- * out to remove.
- */
-const KNOCK_ECHO_MS = 2_500;
 
 /**
  * A short sound for a thing that just happened in the channel - the

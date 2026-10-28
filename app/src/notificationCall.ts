@@ -18,10 +18,16 @@
  * otherwise - each answers only when the connection is its own. What
  * happened is said with a toast over the shade: sent, or the other not
  * there to hear it.
+ *
+ * And the bell's ding, quietly, on this phone, as from the app's own
+ * button: whatever holds the connection, sent from the shade it was
+ * silent here, and the toast alone did not say it had left.
  */
 import { DeviceEventEmitter } from 'react-native';
-import { Foreground, Journal } from 'duetto-platform';
+import { Alarm, Foreground, Journal } from 'duetto-platform';
 import { news } from './presence';
+import { CUE_GAIN, loadConfig } from './config';
+import { KNOCK_ECHO_MS, sentGain } from './alarms';
 
 export type CallOutcome = { sent: boolean; who: string; channel: string };
 /** null: this connection is not mine now */
@@ -59,4 +65,10 @@ DeviceEventEmitter.addListener('duettoNotificationAction', (a: string) => {
     .catch(() => { /* noop */ });
   Foreground.toast(news.callFromNotification(out?.who ?? '', out?.channel ?? '', !!out?.sent))
     .catch(() => { /* noop */ });
+  if (out?.sent) {
+    loadConfig().then((c) => {
+      const gain = CUE_GAIN[c.cueVolume] ?? CUE_GAIN.veryLow;
+      if (gain > 0) return Alarm.play('bell', true, KNOCK_ECHO_MS, sentGain('bell', gain));
+    }).catch(() => { /* noop */ });
+  }
 });
