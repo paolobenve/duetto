@@ -166,6 +166,24 @@ class ForegroundModule(private val ctx: ReactApplicationContext) :
         promise.resolve(true)
     }
 
+    /** Quiet news that waits to be read: see Notifier.showNote. */
+    @ReactMethod
+    fun noteKept(name: String, text: String, promise: Promise) {
+        try {
+            Notifier.showNote(ctx, name, text, kept = true)
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("notify_error", e)
+        }
+    }
+
+    /** Takes it away: the app has said it. */
+    @ReactMethod
+    fun clearKeptNote(promise: Promise) {
+        Notifier.clearKeptNote(ctx)
+        promise.resolve(true)
+    }
+
     /** Takes the quiet note away when it is not true any more. */
     @ReactMethod
     fun clearNote(promise: Promise) {

@@ -41,6 +41,12 @@ object Notifier {
     private const val NOTE_NOTIFICATION_ID = 4713
 
     /**
+     * News that waits to be read: why Android closed Duetto. Of its own,
+     * so that the next piece of news does not take its place.
+     */
+    private const val KEPT_NOTE_NOTIFICATION_ID = 4714
+
+    /**
      * One group, ordered by hand.
      *
      * Left to itself, Android stacks the app's notifications by age:
@@ -109,7 +115,19 @@ object Notifier {
         } catch (_: Exception) { /* noop */ }
     }
 
-    fun showNote(ctx: Context, name: String, text: String) {
+    /** Takes away the news that waits to be read: it has been. */
+    fun clearKeptNote(ctx: Context) {
+        try {
+            NotificationManagerCompat.from(ctx).cancel(KEPT_NOTE_NOTIFICATION_ID)
+        } catch (_: Exception) { /* noop */ }
+    }
+
+    /**
+     * `kept`: with no ten minutes, until it is touched or the app says it.
+     * Why Android closed Duetto in the night went away at 06:27 on 28
+     * October, unread: it had been put up at 06:17, and nobody was awake.
+     */
+    fun showNote(ctx: Context, name: String, text: String, kept: Boolean = false) {
         val launch = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)?.apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
@@ -127,13 +145,14 @@ object Notifier {
             .setContentIntent(pending)
             .setAutoCancel(true)
             .setSilent(true)
-            .setTimeoutAfter(NOTE_TIMEOUT_MS)
+            .apply { if (!kept) setTimeoutAfter(NOTE_TIMEOUT_MS) }
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setGroup(GROUP)
             .setSortKey(SORT_NOTE)
             .build()
         try {
-            NotificationManagerCompat.from(ctx).notify(NOTE_NOTIFICATION_ID, notification)
+            NotificationManagerCompat.from(ctx)
+                .notify(if (kept) KEPT_NOTE_NOTIFICATION_ID else NOTE_NOTIFICATION_ID, notification)
         } catch (_: SecurityException) {
         }
     }

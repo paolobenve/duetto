@@ -869,6 +869,8 @@ export default function App() {
    * be here too, where the eye already is.
    */
   const [notice, setNotice] = useState<string | null>(null);
+  /** the notice that does not fade by itself: see readOwnDeath */
+  const [stayingNotice, setStayingNotice] = useState<string | null>(null);
   /**
    * Leaving is under way: the journal is being flushed.
    *
@@ -3630,7 +3632,14 @@ export default function App() {
       // And it is said on this phone too: whoever holds it was
       // unreachable all that while without knowing, and is the only
       // one who can tell the phone to stop doing it.
-      setNotice(myDeathStory(m.when, cause));
+      //
+      // Until touched, not ten seconds: on 28 October the app was opened
+      // to answer a call, and the story faded under the hurry of
+      // entering. Said here, the notification that said it goes.
+      const story = myDeathStory(m.when, cause);
+      setStayingNotice(story);
+      setNotice(story);
+      Foreground.clearKeptNote().catch(() => {});
     } catch { /* if the phone does not know, it does not know */ }
   }, []);
 
@@ -6981,6 +6990,7 @@ export default function App() {
           return saveCfg({ ...prev, controls: v });
         })}
         news={notice}
+        newsStays={!!notice && notice === stayingNotice}
         onNewsRead={() => setNotice(null)}
         // The screen is given the LEVEL, not the gain: it is the number
         // that says how loud you are hearing the other person.

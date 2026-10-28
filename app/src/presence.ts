@@ -508,6 +508,11 @@ const DEATH_SHOWN_KEY = 'duetto.death-shown';
  * short sound once: the moment, the reason, and whether one was in the
  * channel - Enter is on the standing notification. Not for a closing
  * of one's own making, nor for old news.
+ *
+ * Old news is about the closing, not the reading: once said, it stays
+ * until it is touched or the app says it in its place. With the ten
+ * minutes of the other news it went away unread on 28 October, closed
+ * at 06:16 and looked for at seven.
  */
 async function tellOwnDeath(channel: string, wasIn: boolean): Promise<void> {
   const m = await Journal.lastDeath().catch(() => null);
@@ -520,7 +525,7 @@ async function tellOwnDeath(channel: string, wasIn: boolean): Promise<void> {
   Journal.mark(`death:told-here:${cause}`).catch(() => { /* noop */ });
   const text = `${t('death.closedNow', { when: deathWhen(m.when), why: deathWhy(cause) })} ${
     wasIn ? t('death.wereInChannel', { channel: inTheChannel(channel) }) : t('death.waitingAgain')}`;
-  Foreground.note('', text).catch(() => { /* noop */ });
+  Foreground.noteKept('', text).catch(() => { /* noop */ });
   Alarm.play('cue_leave', true, 0, 0.5).catch(() => { /* noop */ });
 }
 

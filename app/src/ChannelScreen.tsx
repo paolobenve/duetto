@@ -489,6 +489,8 @@ type Props = {
    * goes away when touched.
    */
   news?: string | null;
+  /** the news stays until touched: see NEWS_MS */
+  newsStays?: boolean;
   onNewsRead?: () => void;
   /**
    * How loud the other person is being heard, while pressing.
@@ -696,7 +698,7 @@ type Props = {
 export default function ChannelScreen(props: Props) {
   const {
     entered, onEnter, openInto, onEnterAlways, lossSheet, onLossChoice, ownGain, network,
-    connectionName, peerName, peerAvatar, peerPresent, peerDetached, peerTornDown, peerTornDownBy, videoStats, peerSendDelay, peerRecvDelay, delayTotalOnly, qualityLabel, showStats, controls, onSelectControls, news, onNewsRead, peerGain, systemVolume, onChangeLevel,
+    connectionName, peerName, peerAvatar, peerPresent, peerDetached, peerTornDown, peerTornDownBy, videoStats, peerSendDelay, peerRecvDelay, delayTotalOnly, qualityLabel, showStats, controls, onSelectControls, news, newsStays, onNewsRead, peerGain, systemVolume, onChangeLevel,
     versionWarning, frontCamera, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localVideoKey, localAspect, remoteAspect,
     knockPending, audioRoute, audioRoutes, btBattery,
@@ -932,6 +934,9 @@ export default function ChannelScreen(props: Props) {
    * again" while meanwhile they have gone out again - the box ended up
    * saying things that were no longer true in the very place the eye
    * goes first. It can still be touched to clear it at once.
+   *
+   * Except news that does not age - why Android closed Duetto - which
+   * stays until touched.
    */
   const newsOpacity = useRef(new Animated.Value(1)).current;
   /**
@@ -946,6 +951,7 @@ export default function ChannelScreen(props: Props) {
   useEffect(() => {
     if (!news) return;
     newsOpacity.setValue(1);
+    if (newsStays) return;
     const anim = Animated.timing(newsOpacity, {
       toValue: 0,
       delay: NEWS_MS,
@@ -954,7 +960,7 @@ export default function ChannelScreen(props: Props) {
     });
     anim.start(({ finished }) => { if (finished) onNewsReadRef.current?.(); });
     return () => anim.stop();
-  }, [news, newsOpacity]);
+  }, [news, newsStays, newsOpacity]);
   // Leaving the screen with news on it: it has been seen, and does not
   // come back on returning - it used to, for another ten seconds.
   useEffect(() => () => { if (newsRef.current) onNewsReadRef.current?.(); }, []);

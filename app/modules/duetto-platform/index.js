@@ -154,6 +154,14 @@ export const Foreground = isAndroid && NativeForeground
       /** Takes the news away, when what it said does not hold any more. */
       clearNote: () => call(NativeForeground, 'clearNote'),
 
+      /**
+       * News that waits to be read, with no ten minutes: until touched,
+       * or until the app says it and takes it away with clearKeptNote.
+       */
+      noteKept: (name, text) =>
+        call(NativeForeground, 'noteKept', String(name || ''), String(text)),
+      clearKeptNote: () => call(NativeForeground, 'clearKeptNote'),
+
       /** the other connections, one line each under the standing notification's own */
       setPairLines: (lines) => call(NativeForeground, 'setPairLines', String(lines || '')),
 
@@ -229,6 +237,8 @@ export const Foreground = isAndroid && NativeForeground
       takeOpenedPair: () => Promise.resolve(null),
       note: unavailable,
       clearNote: unavailable,
+      noteKept: unavailable,
+      clearKeptNote: unavailable,
       setPairLines: () => Promise.resolve(false),
       resumePresence: unavailable,
       clearNotification: unavailable,
