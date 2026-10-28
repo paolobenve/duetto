@@ -525,7 +525,10 @@ async function tellOwnDeath(channel: string, wasIn: boolean): Promise<void> {
   Journal.mark(`death:told-here:${cause}`).catch(() => { /* noop */ });
   const text = `${t('death.closedNow', { when: deathWhen(m.when), why: deathWhy(cause) })} ${
     wasIn ? t('death.wereInChannel', { channel: inTheChannel(channel) }) : t('death.waitingAgain')}`;
-  Foreground.noteKept('', text).catch(() => { /* noop */ });
+  // Duetto's own update excepted: whoever installed it knows, and the
+  // app, which leaves it unsaid, would never take the note away.
+  if (cause === 'updated-self') Foreground.note('', text).catch(() => { /* noop */ });
+  else Foreground.noteKept('', text).catch(() => { /* noop */ });
   Alarm.play('cue_leave', true, 0, 0.5).catch(() => { /* noop */ });
 }
 
