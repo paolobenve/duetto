@@ -46,7 +46,7 @@ import {
   addInvitation, adopt, isBroken, markBroken, noteGuest, noteRoom, mayOpen, read, refresh,
   remove as removePerson, removeInvitation, removeRoom, roomOf, useInvitation, noteVisit,
   awaitRoom, pendingRoom, dropPending, leaveMail, takeMail, saveMoments, takeMoments,
-  invitationOf,
+  invitationOf, signsSecondKind, noteSecondKind,
 } from './devices.js';
 import { credentialsFor as turnCredentials, drop as dropTurn } from './turn.js';
 import { bouncePage } from './linkPage.js';
@@ -206,16 +206,86 @@ function asKey(base64) {
   }
 }
 
-/** Whether this key really made this signature. */
-function signed(pub, signature, nonce) {
+/** Whether this key really made this signature of these bytes. */
+function verifies(pub, bytes, signature) {
   const key = asKey(pub);
   if (!key) return false;
   try {
-    return verify(null, Buffer.from(nonce, 'base64'), key,
-      Buffer.from(String(signature || ''), 'base64'));
+    return verify(null, bytes, key, Buffer.from(String(signature || ''), 'base64'));
   } catch {
     return false;
   }
+}
+
+/**
+ * The names this server is reached by: `HOST_NAMES=example.org`, more
+ * than one with commas - every name the phones dial, since a signature
+ * made for a name that is not here is no good here.
+ *
+ * A phone used to sign the bare number this server picked, and that
+ * signature was good at any door: a server could hand a phone the
+ * number this one had just picked, and walk in here with what came
+ * back - as that phone, an owner's included. With the names set, the
+ * hello says door 2, and a phone that knows how signs the name it
+ * dialed along with the number: a server that is not that name cannot
+ * use it anywhere else.
+ *
+ * OLD_SIGNATURES=off refuses the bare number from everybody, once every
+ * phone has moved. Until then it is refused only to a card seen signing
+ * the new way here: see signed.
+ */
+const HOST_NAMES = new Set(
+  (process.env.HOST_NAMES || '').split(',').map((n) => n.trim().toLowerCase()).filter(Boolean),
+);
+const OLD_SIGNATURES = HOST_NAMES.size === 0 || process.env.OLD_SIGNATURES !== 'off';
+
+/** A card this server knows: in the .env, on the list, or a room's guest. */
+function isKnownCard(pub) {
+  if (AUTHORISED_KEYS.has(pub)) return true;
+  const data = read();
+  return data.devices.some((d) => d.pub === pub) || data.rooms.some((r) => r.guest === pub);
+}
+
+/** When a signature for a name not ours was last said in the log. */
+let foreignNameSaid = 0;
+
+/**
+ * Whether the card in this message signed this connection's number.
+ *
+ * The new way (`sigv: 2`) signs `duetto-door-v2|name|number`, the name
+ * being the one the phone dialed, and is good only for one of ours. The
+ * bare number is still taken from a card never seen signing the new way
+ * here, while OLD_SIGNATURES allows it: the apps from before. A card
+ * this server knows, seen signing the new way, is written down, and
+ * from then on the bare number is not taken from it - the phone does
+ * not make one for this server any more, so one that arrives was made
+ * for another, which brought it here.
+ */
+function signed(msg, nonce) {
+  const pub = String(msg.pub || '');
+  if (!pub) return false;
+  if (msg.sigv === 2) {
+    // Looked up as a name is, in any case; checked as it was signed.
+    const said = String(msg.host || '');
+    const host = said.toLowerCase();
+    if (!HOST_NAMES.has(host)) {
+      // Said now and then, for whoever runs the server: a name the
+      // phones dial and HOST_NAMES leaves out locks them out. Only the
+      // characters of a name: a line break in it would write a line of
+      // its own in the journal, a refusal for fail2ban included.
+      if (Date.now() - foreignNameSaid > 60_000) {
+        foreignNameSaid = Date.now();
+        console.log(`[duetto] a card signed for "${host.replace(/[^a-z0-9.:[\]-]/g, '?').slice(0, 64)}",`
+          + ' which is not in HOST_NAMES');
+      }
+      return false;
+    }
+    if (!verifies(pub, Buffer.from(`duetto-door-v2|${said}|${nonce}`, 'utf8'), msg.sig)) return false;
+    if (isKnownCard(pub)) noteSecondKind(pub);
+    return true;
+  }
+  if (!OLD_SIGNATURES || (HOST_NAMES.size > 0 && signsSecondKind(pub))) return false;
+  return verifies(pub, Buffer.from(nonce, 'base64'), msg.sig);
 }
 
 /**
@@ -242,7 +312,7 @@ function signed(pub, signature, nonce) {
  */
 function whoIsThere(msg, nonce) {
   const pub = String(msg.pub || '');
-  if (!pub || !signed(pub, msg.sig, nonce)) return null;
+  if (!pub || !signed(msg, nonce)) return null;
 
   const fromEnv = AUTHORISED_KEYS.get(pub);
   if (fromEnv) return { name: fromEnv, opens: true, invites: true };
@@ -283,7 +353,7 @@ function whoIsThere(msg, nonce) {
  */
 function asGuest(msg, nonce, roomId, here) {
   const pub = String(msg.pub || '');
-  if (!pub || !signed(pub, msg.sig, nonce)) return null;
+  if (!pub || !signed(msg, nonce)) return null;
 
   const room = roomOf(roomId);
   if (!room) return null;
@@ -966,7 +1036,8 @@ wss.on('connection', (ws, req) => {
    * there is nothing to steal by listening - and nothing to replay.
    */
   ws.nonce = randomBytes(16).toString('base64');
-  send(ws, { type: 'hello', nonce: ws.nonce });
+  // door 2: sign the name dialed along with the number (see signed).
+  send(ws, { type: 'hello', nonce: ws.nonce, ...(HOST_NAMES.size > 0 ? { door: 2 } : {}) });
   ws.peerId = randomUUID();
   ws.roomId = null;
   ws.joined = false;
@@ -1106,7 +1177,7 @@ wss.on('connection', (ws, req) => {
        * remove. The name is provisional: the phone says what it is
        * called at the first hello.
        */
-      const adopted = !known && signed(String(msg.pub || ''), msg.sig, ws.nonce)
+      const adopted = !known && signed(msg, ws.nonce)
         && keyIsRight(msg.key)
         && (!doorIsShut() || (SERVER_KEY && String(msg.key || '') !== ''))
         ? adopt(saidName(msg.name) || 'the first phone', String(msg.pub), true,
@@ -1803,7 +1874,7 @@ function answerDoor(ws, msg) {
   const needsKey = !!SERVER_KEY;
   const reply = (rest) => send(ws, { type: 'door', hasOwner, needsKey, ...rest });
 
-  if (!pub || !signed(pub, msg.sig, ws.nonce)) {
+  if (!pub || !signed(msg, ws.nonce)) {
     reply({ role: 'stranger', error: 'bad-signature' });
     return;
   }
@@ -1930,6 +2001,14 @@ httpServer.listen(PORT, HOST, () => {
     : SERVER_KEY
       ? 'a key is asked for'
       : 'open - anybody who knows the address can use this server'}`);
+  console.log(`[duetto] signatures: ${HOST_NAMES.size === 0
+    ? 'of the bare number only - HOST_NAMES is not set'
+    : `bound to ${[...HOST_NAMES].join(', ')}; the bare number ${OLD_SIGNATURES
+      ? 'still taken from the phones not seen signing the new way'
+      : 'refused (OLD_SIGNATURES=off)'}`}`);
+  if (HOST_NAMES.size === 0 && process.env.OLD_SIGNATURES === 'off') {
+    console.warn('[duetto] OLD_SIGNATURES=off ignored: without HOST_NAMES there is no other signature');
+  }
   console.log(`[duetto] TURN fallback: ${turnConfig() ? TURN_URL : 'not configured (different networks will not connect)'}`);
   // The latest Duetto, for the link pages and the phones: releases.js.
   watchReleases();

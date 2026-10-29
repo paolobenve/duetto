@@ -78,6 +78,21 @@ AUTHORISED_KEYS=anna:kK9v…Q=,bruno:7Yt2…w=
 The cards are in `devices.json` and in the log. To take one phone away, its entry goes and
 nobody else notices.
 
+A card is shown by signing a number the server picks, and the bare number signed is good
+at any door: a server of somebody else's could hand your phone the number this one had
+just picked, and walk in here with the answer — as your phone, the owner's included. So
+the phones sign the name they dialed as well, once the server says which its names are:
+
+```
+HOST_NAMES=duetto.example.org
+```
+
+Every name the phones dial goes in, separated by commas: a phone that dialed one left out
+is turned away, and the log says which name it signed for. The apps from before go on
+signing the bare number and are let in; a phone seen signing the new way is not let in on
+the bare number any more. When every phone has moved, `OLD_SIGNATURES=off` refuses the
+bare number to everybody.
+
 ### Inviting somebody
 
 Writing keys into the `.env` works for the two or three phones of whoever owns the server.

@@ -41,6 +41,7 @@ const INVITE_DAYS = Number(process.env.INVITE_DAYS || 7);
 
 const EMPTY = {
   devices: [], invitations: [], rooms: [], broken: [], turn: {}, pending: [], mail: [], moments: null,
+  secondKind: [],
 };
 /** How long a pairing code waits for the other phone, at most. */
 const AWAIT_HOURS = Number(process.env.AWAIT_HOURS || 24);
@@ -91,6 +92,7 @@ export function read() {
       pending: Array.isArray(parsed.pending) ? parsed.pending : [],
       mail: Array.isArray(parsed.mail) ? parsed.mail : [],
       moments: parsed.moments && typeof parsed.moments === 'object' ? parsed.moments : null,
+      secondKind: Array.isArray(parsed.secondKind) ? parsed.secondKind : [],
     };
     return cached;
   } catch {
@@ -458,6 +460,25 @@ export function removeRoom(room, owner) {
 export function nameOf(pub) {
   const found = read().devices.find((d) => d.pub === pub);
   return found ? found.name : null;
+}
+
+/**
+ * The cards that sign the second way, with the server's name inside
+ * (see `signed` in index.js). Once seen doing it, a card is not let in
+ * any more on a signature of the first kind: the phone does not make
+ * those for this server, and one that arrives was made for another
+ * server, which carried it here.
+ */
+export function signsSecondKind(pub) {
+  return read().secondKind.includes(pub);
+}
+
+/** Writes the card down as one that signs the second way, once. */
+export function noteSecondKind(pub) {
+  const data = read();
+  if (!pub || data.secondKind.includes(pub)) return;
+  data.secondKind = [...data.secondKind, pub];
+  write(data);
 }
 
 /** Takes a phone away: it is out at the next knock, with no restart. */

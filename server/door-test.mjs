@@ -13,9 +13,14 @@ import { unlinkSync } from 'node:fs';
 const PORT = 8791;
 const PORT_K = 8792;
 const PORT_B = 8793;
+/** Two servers with names: the signature bound to them, and the bare number refused. */
+const PORT_H = 8794;
+const PORT_O = 8790;
 const FILE = `${tmpdir()}/duetto-door-${process.pid}.json`;
 const FILE_K = `${tmpdir()}/duetto-door-k-${process.pid}.json`;
 const FILE_B = `${tmpdir()}/duetto-door-b-${process.pid}.json`;
+const FILE_H = `${tmpdir()}/duetto-door-h-${process.pid}.json`;
+const FILE_O = `${tmpdir()}/duetto-door-o-${process.pid}.json`;
 
 function phone() {
   const { publicKey, privateKey } = generateKeyPairSync('ed25519');
@@ -23,8 +28,15 @@ function phone() {
   return {
     pub: pub.toString('base64'),
     signs: (nonce) => sign(null, Buffer.from(nonce, 'base64'), privateKey).toString('base64'),
+    /** the new way: the server's name inside, as the phone dialed it */
+    signs2: (nonce, host) => sign(null, Buffer.from(`duetto-door-v2|${host}|${nonce}`, 'utf8'), privateKey)
+      .toString('base64'),
   };
 }
+/** The card and its signature, the bare number or - with a name - the new way. */
+const cardFor = (ph, nonce, host) => (host
+  ? { pub: ph.pub, sig: ph.signs2(nonce, host), sigv: 2, host }
+  : { pub: ph.pub, sig: ph.signs(nonce) });
 const start = (port, file, extra = {}) => spawn('node', ['src/index.js'], {
   env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', DEVICES_FILE: file, AUTHORISED_KEYS: '', SERVER_KEY: '', ...extra },
   stdio: ['ignore', 'pipe', 'inherit'],
@@ -39,31 +51,47 @@ function knock(port, ph, extra = {}, headers = {}) {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(`ws://127.0.0.1:${port}`, { headers });
     const got = [];
+    let hello = null;
     ws.on('message', (d) => {
       const m = JSON.parse(d.toString());
       if (m.type === 'hello') {
-        ws.send(JSON.stringify({ type: 'door', pub: ph.pub, sig: ph.signs(m.nonce), name: 'tester', ...extra }));
+        hello = m;
+        const { v2, ...rest } = extra;
+        ws.send(JSON.stringify({ type: 'door', ...cardFor(ph, m.nonce, v2), name: 'tester', ...rest }));
         return;
       }
       got.push(m);
-      if (m.type === 'door' || m.type === 'error') resolve({ ws, answer: m, got });
+      if (m.type === 'door' || m.type === 'error') resolve({ ws, answer: m, got, hello });
     });
     ws.on('error', reject);
   });
 }
 /** Joins a room, and hands back `joined` or the error, keeping the socket. */
-function join(port, ph, room, name, headers = {}) {
+function join(port, ph, room, name, headers = {}, v2 = '') {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(`ws://127.0.0.1:${port}`, { headers });
     ws.on('message', (d) => {
       const m = JSON.parse(d.toString());
       if (m.type === 'hello') {
-        ws.send(JSON.stringify({ type: 'join', room, pub: ph.pub, sig: ph.signs(m.nonce), name, mode: 'listening' }));
+        ws.send(JSON.stringify({ type: 'join', room, ...cardFor(ph, m.nonce, v2), name, mode: 'listening' }));
         return;
       }
       if (m.type === 'joined' || m.type === 'error') resolve({ ws, answer: m });
     });
     ws.on('error', reject);
+  });
+}
+/** Says something and waits for the answer of that type: other words may come first. */
+function askFor(ws, obj, type, ms = 3000) {
+  return new Promise((resolve) => {
+    const on = (d) => {
+      const m = JSON.parse(d.toString());
+      if (m.type === type) { ws.off('message', on); clearTimeout(t); resolve(m); }
+    };
+    // No answer is an answer too: a test that hangs says nothing.
+    const t = setTimeout(() => { ws.off('message', on); resolve({}); }, ms);
+    ws.on('message', on);
+    ws.send(JSON.stringify(obj));
   });
 }
 function ask(ws, obj) {
@@ -85,6 +113,8 @@ const srv = start(PORT, FILE, { TURN_URL: 'turn:relay.test:3478', TURN_USER: 'sh
 const srvK = start(PORT_K, FILE_K, { SERVER_KEY: 'sesamo' });
 // A brake of three knocks a minute, and its log read: who it counts.
 const srvB = start(PORT_B, FILE_B, { JOIN_LIMIT: '3' });
+const srvH = start(PORT_H, FILE_H, { HOST_NAMES: 'duetto.test, WWW.duetto.test' });
+const srvO = start(PORT_O, FILE_O, { HOST_NAMES: 'duetto.test', OLD_SIGNATURES: 'off' });
 let logB = '';
 srvB.stdout.on('data', (d) => { logB += d; });
 await sleep(700);
@@ -298,8 +328,48 @@ try {
   await sleep(100);
   const forgedLine = logB.split('\n').find((l) => l.includes('turned away: x from 6.6.6'));
   check('a "from" written in the card gets nobody else banned', !!forgedLine && banned(forgedLine) === '10.0.0.12', forgedLine);
+  // --- the signature bound to the server's name ------------------------
+  // A server could hand a phone the number another server had just
+  // picked, and walk in there with the signature: as that phone. With
+  // HOST_NAMES the phone signs the name it dialed too, and a card seen
+  // doing so is not let in any more on the bare number.
+  const H = 'duetto.test';
+  const hOwner = phone(), hOld = phone();
+  r = await knock(PORT_H, hOwner, { v2: H });
+  check('a server with names says door 2 in its hello', r.hello?.door === 2, r.hello);
+  check('a card signed for its name takes the free house', r.answer.role === 'owner', r.answer);
+  const hInv = await askFor(r.ws, { type: 'invite', name: 'old-phone' }, 'invited');
+  r.ws.close();
+  r = await knock(PORT_H, hOwner, { v2: 'www.DUETTO.test' });
+  check('another of its names, written any way: the owner', r.answer.role === 'owner', r.answer); r.ws.close();
+  r = await knock(PORT_H, hOwner);
+  check('the same card with the bare number - what another server could carry here: refused',
+    r.answer.error === 'bad-signature', r.answer); r.ws.close();
+  r = await knock(PORT_H, hOwner, { v2: 'evil.test' });
+  check('a signature made for another name: no good here', r.answer.error === 'bad-signature', r.answer); r.ws.close();
+  r = await knock(PORT_H, hOld, { invite: hInv.code });
+  check('an app from before, with the bare number: still let in', r.answer.role === 'member', r.answer); r.ws.close();
+  r = await knock(PORT_H, hOld, { v2: H });
+  check('the same phone updated: in the new way', r.answer.role === 'member', r.answer); r.ws.close();
+  r = await knock(PORT_H, hOld);
+  check('and from then on its bare number is refused', r.answer.error === 'bad-signature', r.answer); r.ws.close();
+  let hj = await join(PORT_H, hOwner, 'h-room', 'owner', {}, H);
+  check('into a room the new way', hj.answer.type === 'joined', hj.answer); hj.ws.close();
+  await sleep(100);
+  hj = await join(PORT_H, hOwner, 'h-room', 'owner');
+  check('into a room with the bare number, from a card that has moved: refused',
+    hj.answer.type === 'error' && hj.answer.error === 'not-allowed', hj.answer); hj.ws.close();
+  r = await knock(PORT_B, phone(), {}, { 'X-Forwarded-For': '10.0.0.20' });
+  check('a server without names says nothing new', r.hello && r.hello.door === undefined, r.hello); r.ws.close();
+  r = await knock(PORT_O, phone());
+  check('OLD_SIGNATURES=off: the bare number refused to everybody', r.answer.error === 'bad-signature', r.answer);
+  r.ws.close();
+  r = await knock(PORT_O, phone(), { v2: H });
+  check('and the new way takes the house', r.answer.role === 'owner', r.answer); r.ws.close();
 } finally {
-  srv.kill(); srvK.kill(); srvB.kill();
+  srv.kill(); srvK.kill(); srvB.kill(); srvH.kill(); srvO.kill();
+  try { unlinkSync(FILE_H); } catch {}
+  try { unlinkSync(FILE_O); } catch {}
   try { unlinkSync(FILE_B); } catch {}
   try { unlinkSync(FILE); } catch {}
   try { unlinkSync(ADMIN); unlinkSync(ADMIN_LOG); } catch {}
