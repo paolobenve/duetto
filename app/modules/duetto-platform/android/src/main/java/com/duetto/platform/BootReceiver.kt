@@ -72,17 +72,5 @@ class BootReceiver : BroadcastReceiver() {
     companion object {
         const val PREFS = "duetto_boot"
         const val LAST_AUTO_START = "last_auto_start"
-
-        /**
-         * The former names, in Italian: they are read once and written
-         * back under the new ones.
-         *
-         * The project moves to English to be published, and along with
-         * the rest the names things are stored under on the phone change
-         * too. Whoever already has the app must not notice. This bridge
-         * goes away in the next version.
-         */
-        const val OLD_PREFS = "duetto_avvio"
-        const val OLD_LAST_AUTO_START = "ultimo_avvio_automatico"
     }
 }
