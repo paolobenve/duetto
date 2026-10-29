@@ -917,7 +917,27 @@ wss.on('connection', (ws, req) => {
     ws.lastSeen = Date.now();
   });
 
+  /**
+   * What a message makes go wrong goes wrong for its own connection.
+   *
+   * A throw in here went up to the process, and the process left on
+   * it: a `null` - valid JSON, and no message - sent by anybody who
+   * knew the address brought every pair down at once, as many times
+   * as it was sent. The connection that said it is closed instead: its
+   * state is the one in doubt, and an app comes back on a fresh one by
+   * itself.
+   */
   ws.on('message', (data, isBinary) => {
+    try {
+      takeMessage(data, isBinary);
+    } catch (e) {
+      const where = /\w+\.js:\d+/.exec(String(e?.stack || ''))?.[0] || '?';
+      console.warn(`[duetto] a message from ${ws.who || ws.ip} failed: ${e?.message || e} (${where})`);
+      try { ws.close(1011, 'failed'); } catch { /* noop */ }
+    }
+  });
+
+  function takeMessage(data, isBinary) {
     // A message is proof enough that they are there, and it has just
     // refreshed the NAT mapping: we push the next tap further ahead.
     // It also forgives a pending ping: a phone busy talking may well
@@ -930,6 +950,12 @@ wss.on('connection', (ws, req) => {
     try {
       msg = JSON.parse(data.toString());
     } catch {
+      send(ws, { type: 'error', error: 'invalid-json' });
+      return;
+    }
+    // A message is an object: `null`, a number, a list are JSON and no
+    // message at all.
+    if (!msg || typeof msg !== 'object' || Array.isArray(msg)) {
       send(ws, { type: 'error', error: 'invalid-json' });
       return;
     }
@@ -1471,7 +1497,7 @@ wss.on('connection', (ws, req) => {
       leaveRoom(ws);
       return;
     }
-  });
+  }
 
   ws.on('close', () => leaveRoom(ws));
   ws.on('error', () => leaveRoom(ws));
@@ -1872,10 +1898,11 @@ for (const sig of ['SIGINT', 'SIGTERM']) {
   });
 }
 
-// A throw anywhere in the message path would otherwise take down every
-// pair at once, in an unknown state. Better to say what happened and
-// leave: systemd puts us back up in seconds, and the phones rejoin by
-// themselves - a clean restart beats limping on with corrupt state.
+// A throw outside the messages - theirs are caught per connection, see
+// takeMessage - leaves the whole server in an unknown state. Better to
+// say what happened and leave: systemd puts us back up in seconds, and
+// the phones rejoin by themselves - a clean restart beats limping on
+// with corrupt state.
 process.on('uncaughtException', (err) => {
   console.error('[duetto] uncaught exception:', err?.stack || err);
   process.exit(1);
