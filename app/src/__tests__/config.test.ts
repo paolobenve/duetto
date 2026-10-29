@@ -1,4 +1,7 @@
-import { normalizeServerUrl, displayServer, isServerConfigured } from '../config';
+import {
+  normalizeServerUrl, displayServer, isServerConfigured, keyForServer, keyForPair,
+  switchToPair, forgetPair, DEFAULT_CONFIG, type DuoConfig, type PairInfo,
+} from '../config';
 
 describe('the server address', () => {
   test('a bare host becomes the full address', () => {
@@ -26,5 +29,63 @@ describe('the server address', () => {
   test('a phone with a host is configured, one without is not', () => {
     expect(isServerConfigured({ serverUrl: 'example.org' } as any)).toBe(true);
     expect(isServerConfigured({ serverUrl: '' } as any)).toBe(false);
+  });
+});
+
+describe('a server\'s key goes to that server alone', () => {
+  const HOME = 'wss://home.example/duetto/ws';
+  const ELSEWHERE = 'wss://elsewhere.example/duetto/ws';
+  const inUse = { serverUrl: HOME, serverKey: 'home-key' };
+
+  test('the key of the server in use, said at its own door only', () => {
+    const untouched = { key: 'home-key', at: HOME };
+    expect(keyForServer(HOME, untouched, inUse)).toBe('home-key');
+    expect(keyForServer('home.example', untouched, inUse)).toBe('home-key');
+    expect(keyForServer(ELSEWHERE, untouched, inUse)).toBe('');
+  });
+
+  test('a key typed for another server goes there, and the home one comes back home', () => {
+    const typed = { key: ' their-key ', at: ELSEWHERE };
+    expect(keyForServer(ELSEWHERE, typed, inUse)).toBe('their-key');
+    expect(keyForServer(HOME, typed, inUse)).toBe('home-key');
+    expect(keyForServer('wss://third.example/duetto/ws', typed, inUse)).toBe('');
+  });
+
+  test('a phone with no server has no key to give', () => {
+    expect(keyForServer(ELSEWHERE, { key: '', at: '' }, { serverUrl: '', serverKey: '' })).toBe('');
+  });
+
+  test('a pair\'s own key, even an empty one, is its own', () => {
+    expect(keyForPair({ serverUrl: ELSEWHERE, serverKey: 'pair-key' }, inUse)).toBe('pair-key');
+    expect(keyForPair({ serverUrl: ELSEWHERE, serverKey: '' }, inUse)).toBe('');
+  });
+
+  test('an old pair with no key borrows the one in use only on the same server', () => {
+    expect(keyForPair({ serverUrl: HOME }, inUse)).toBe('home-key');
+    expect(keyForPair({}, inUse)).toBe('home-key');
+    expect(keyForPair({ serverUrl: ELSEWHERE }, inUse)).toBe('');
+  });
+
+  const pair = (id: string, serverUrl: string, serverKey?: string): PairInfo => ({
+    id, key: 'k', side: 'A', peerName: id, pairedAt: '2026-10-01T00:00:00Z', serverUrl, serverKey,
+  } as PairInfo);
+  const twoServers = (): DuoConfig => {
+    const here = pair('here', HOME, 'home-key');
+    return {
+      ...DEFAULT_CONFIG, serverUrl: HOME, serverKey: 'home-key',
+      pair: here, pairs: [here, pair('old-elsewhere', ELSEWHERE)],
+    };
+  };
+
+  test('moving to an old pair on another server does not carry the key along', () => {
+    const after = switchToPair(twoServers(), 'old-elsewhere');
+    expect(after.serverUrl).toBe(ELSEWHERE);
+    expect(after.serverKey).toBe('');
+  });
+
+  test('nor does forgetting the pair in use, when the next one lives elsewhere', () => {
+    const after = forgetPair(twoServers(), 'here');
+    expect(after.serverUrl).toBe(ELSEWHERE);
+    expect(after.serverKey).toBe('');
   });
 });

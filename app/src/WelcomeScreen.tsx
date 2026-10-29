@@ -12,7 +12,9 @@ import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator,
   ScrollView, KeyboardAvoidingView, Platform, BackHandler, Linking, Clipboard,
 } from 'react-native';
-import { DuoConfig, displayServer, normalizeServerUrl, isServerConfigured } from './config';
+import {
+  DuoConfig, displayServer, normalizeServerUrl, isServerConfigured, keyForServer,
+} from './config';
 import { knock, watchDoor, formatInvitation, DoorAnswer } from './door';
 import { parseLink, BETA_TESTER_LINK, type DuettoLink } from './links';
 import { Scanner, Journal } from 'duetto-platform';
@@ -69,6 +71,8 @@ type Step = 'server' | 'knocking' | 'key' | 'stranger' | 'welcomed' | 'accept';
 export default function WelcomeScreen({ initial, onDone, onClose, arrived, accept }: Props) {
   const [server, setServer] = useState(displayServer(initial.serverUrl));
   const [key, setKey] = useState(initial.serverKey || '');
+  /** the server the key in the field is for: it goes there alone, see keyForServer */
+  const [keyAt, setKeyAt] = useState(initial.serverUrl);
   // Never the one remembered: an invitation is spent at its first
   // use, and the old one in the field made a "Next" that only knocked
   // again, to be told it was no good.
@@ -95,11 +99,11 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived, accep
     onDone({
       ...initial,
       serverUrl: at,
-      serverKey: key.trim(),
+      serverKey: keyForServer(at, { key, at: keyAt }, initial),
       invitation: inv,
       serverRole: a.role,
     }, a, withCode, withCode ? linkPub.current || undefined : undefined);
-  }, [initial, key, onDone]);
+  }, [initial, key, keyAt, onDone]);
   const finish = useCallback((a: DoorAnswer, withCode?: string) => {
     finishWith(a, withCode, resolved, invitation.trim());
   }, [finishWith, resolved, invitation]);
@@ -115,12 +119,15 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived, accep
     linkPub.current = over?.pub || '';
     const at = over?.server ? normalizeServerUrl(over.server) : resolved;
     const inv = (over?.invitation ?? invitation).trim();
+    // The field follows the server knocked at: its own key, or none.
+    const keyHere = keyForServer(at, { key, at: keyAt }, initial);
+    if (normalizeServerUrl(keyAt) !== at) { setKey(keyHere); setKeyAt(at); }
     setStep('knocking');
     setNote('');
     let a: DoorAnswer;
     try {
       a = await knock(at, {
-        key: key.trim() || undefined,
+        key: keyHere || undefined,
         invite: inv || undefined,
         name: initial.displayName || undefined,
       });
@@ -182,7 +189,7 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived, accep
     // write the list. Nothing to do from here but say so.
     setNote(t('welcome.notTaken'));
     setStep('server');
-  }, [resolved, key, invitation, initial.displayName, finishWith]);
+  }, [resolved, key, keyAt, initial, invitation, finishWith]);
 
   /** A QR code held up by the other phone: server and code, typed by nobody. */
   /** A link of ours, however it came: fields filled, and knocked with. */
@@ -327,7 +334,8 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived, accep
   useEffect(() => {
     if (step !== 'welcomed' || !welcomed) return;
     const stop = watchDoor(welcomed.at, {
-      key: key.trim() || undefined,
+      key: keyForServer(welcomed.at, { key, at: keyAt },
+        { serverUrl: initial.serverUrl, serverKey: initial.serverKey }) || undefined,
       name: initial.displayName || undefined,
     }, () => {
       setWelcomed(null);
@@ -335,7 +343,7 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived, accep
       setStep('server');
     });
     return stop;
-  }, [step, welcomed, key, initial.displayName]);
+  }, [step, welcomed, key, keyAt, initial.serverUrl, initial.serverKey, initial.displayName]);
 
   // --- the screens --------------------------------------------------------
   if (step === 'welcomed' && welcomed) {

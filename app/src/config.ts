@@ -789,7 +789,7 @@ export function switchToPair(cfg: DuoConfig, id: string): DuoConfig {
   const after: DuoConfig = {
     ...stored,
     serverUrl: chosen.serverUrl || stored.serverUrl,
-    serverKey: chosen.serverKey ?? stored.serverKey,
+    serverKey: keyForPair(chosen, stored),
     serverRole: chosen.serverRole ?? stored.serverRole,
     pair: chosen,
     pairs: [chosen, ...stored.pairs.filter((p) => p.id !== id)],
@@ -822,7 +822,7 @@ export function forgetPair(cfg: DuoConfig, id: string): DuoConfig {
   const after: DuoConfig = {
     ...cfg,
     serverUrl: next?.serverUrl || cfg.serverUrl,
-    serverKey: next?.serverKey ?? cfg.serverKey,
+    serverKey: next ? keyForPair(next, cfg) : cfg.serverKey,
     pair: next,
     pairs: left,
   };
@@ -1081,6 +1081,54 @@ export function displayServer(url: string): string {
 export function isServerConfigured(cfg: DuoConfig): boolean {
   const url = normalizeServerUrl(cfg.serverUrl);
   return /^wss?:\/\/[^/]+\/.+/.test(url);
+}
+
+const sameServer = (a?: string, b?: string) =>
+  !!a && !!b && normalizeServerUrl(a) === normalizeServerUrl(b);
+
+/**
+ * The key to say at the door of `at`.
+ *
+ * A server's key is the house's own word - whoever says it is taken
+ * for its owner - so it goes to the server it was given for and to no
+ * other. The welcome's field used to start with the key of the server
+ * in use, and hand it to whatever server a link named. `typed` is what
+ * the field holds and the server it holds it for; failing that, the key
+ * of the server in use, if that is the one knocked at; else none.
+ */
+export function keyForServer(
+  at: string,
+  typed: { key: string; at: string },
+  inUse: { serverUrl: string; serverKey?: string },
+): string {
+  if (sameServer(typed.at, at)) return typed.key.trim();
+  return sameServer(inUse.serverUrl, at) ? (inUse.serverKey || '').trim() : '';
+}
+
+/**
+ * A pair's server key: its own. A pair written before pairs kept one
+ * has none, and borrowed the key of the server in use - wherever its
+ * own server was, which handed that key to another house. Borrowed
+ * now only when the two servers are the same.
+ */
+export function keyForPair(
+  pair: Pick<PairInfo, 'serverUrl' | 'serverKey'>,
+  inUse: { serverUrl: string; serverKey?: string },
+): string {
+  if (pair.serverKey !== undefined) return pair.serverKey;
+  return !pair.serverUrl || sameServer(pair.serverUrl, inUse.serverUrl) ? inUse.serverKey || '' : '';
+}
+
+/**
+ * A server this phone has never been to, while it is somewhere already:
+ * neither the one in use nor the server of any of its pairs. Knocking
+ * shows the phone's card, which a server could hand on to another; a
+ * link alone is not reason enough to show it there. A phone with no
+ * server yet has nothing to lose, and its first link is its way in.
+ */
+export function isStrangeServer(cfg: DuoConfig, url: string): boolean {
+  if (!isServerConfigured(cfg)) return false;
+  return ![cfg.serverUrl, ...cfg.pairs.map((p) => p.serverUrl)].some((u) => sameServer(u, url));
 }
 
 /**

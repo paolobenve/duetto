@@ -11,7 +11,7 @@ import { AppState } from 'react-native';
 import { Foreground, Journal, Alarm, Heartbeat } from 'duetto-platform';
 import {
   DuoConfig, PairInfo, peerShown, alertSoundFor, myNameOn, loadConfig, saveConfig, rememberPeerName,
-  ALERT_GAIN, sharedChoiceHeard,
+  ALERT_GAIN, sharedChoiceHeard, keyForPair,
 } from './config';
 import { Signaling } from './signaling';
 import type { PeerGone } from './signaling';
@@ -387,7 +387,7 @@ function open(cfg: DuoConfig, pair: PairInfo) {
   const sig: Signaling = new Signaling(
     {
       serverUrl: (pair.serverUrl || cfg.serverUrl).trim(),
-      serverKey: pair.serverKey ?? cfg.serverKey,
+      serverKey: keyForPair(pair, cfg),
       room: pair.id,
       displayName: myNameOn(cfg, pair),
       key: pair.key,

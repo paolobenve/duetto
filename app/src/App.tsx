@@ -25,7 +25,7 @@ import { attachWatchdog, Watchdog } from './watchdog';
 import {
   DuoConfig, PairInfo, ServerRole, loadConfig, saveConfig,
   isServerConfigured, isPaired, displayServer, opensHere, VIDEO_PROFILES,
-  addPair, switchToPair, forgetPair, markPairBroken, rememberPeerName,
+  addPair, switchToPair, forgetPair, markPairBroken, rememberPeerName, keyForPair,
   alertSoundFor, alignPairServer, renamePair, pairFileKey, pairName, peerShown, namePeer, nameMyself,
   oweToPeer, paidToPeer, sharedChoiceHeard,
   CUE_GAIN, ALERT_GAIN, OTHER_APPS_GAIN,
@@ -6525,7 +6525,7 @@ export default function App() {
         pending: (cfg.pending ?? []).filter((p) => p.id !== pair.id),
         ...(pair.serverUrl ? {
           serverUrl: pair.serverUrl,
-          serverKey: pair.serverKey ?? cfg.serverKey,
+          serverKey: keyForPair(pair, cfg),
           serverRole: pair.serverRole ?? cfg.serverRole,
         } : {}),
       },
