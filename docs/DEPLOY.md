@@ -225,9 +225,9 @@ stays local to your machine.
 
 A proxy on the host reaches the container from the bridge's address, usually
 `172.17.0.1` (`docker network inspect bridge`): name it in `TRUSTED_PROXY` in the
-`.env`, or the knock limit per address believes whatever address each client writes
-in `X-Forwarded-For`, and a client that invents a new one at every knock is never
-counted twice.
+`.env`, or every client arrives from that one address, and the knock limit per
+address counts them all together. Of `X-Forwarded-For` the server takes the address the
+proxy wrote, the last one, never what the client put before it.
 
 Two things live on the host and not in the container. The relay user per phone
 (below) is written in coturn's database: give the container that file, read-write,

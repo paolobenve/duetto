@@ -12,8 +12,10 @@ import { unlinkSync } from 'node:fs';
 
 const PORT = 8791;
 const PORT_K = 8792;
+const PORT_B = 8793;
 const FILE = `${tmpdir()}/duetto-door-${process.pid}.json`;
 const FILE_K = `${tmpdir()}/duetto-door-k-${process.pid}.json`;
+const FILE_B = `${tmpdir()}/duetto-door-b-${process.pid}.json`;
 
 function phone() {
   const { publicKey, privateKey } = generateKeyPairSync('ed25519');
@@ -29,10 +31,13 @@ const start = (port, file, extra = {}) => spawn('node', ['src/index.js'], {
 });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** Knocks at the door and hands back the answer, keeping the socket. */
-function knock(port, ph, extra = {}) {
+/**
+ * Knocks at the door and hands back the answer, keeping the socket.
+ * `headers`: what a proxy in front would add, X-Forwarded-For.
+ */
+function knock(port, ph, extra = {}, headers = {}) {
   return new Promise((resolve, reject) => {
-    const ws = new WebSocket(`ws://127.0.0.1:${port}`);
+    const ws = new WebSocket(`ws://127.0.0.1:${port}`, { headers });
     const got = [];
     ws.on('message', (d) => {
       const m = JSON.parse(d.toString());
@@ -47,9 +52,9 @@ function knock(port, ph, extra = {}) {
   });
 }
 /** Joins a room, and hands back `joined` or the error, keeping the socket. */
-function join(port, ph, room, name) {
+function join(port, ph, room, name, headers = {}) {
   return new Promise((resolve, reject) => {
-    const ws = new WebSocket(`ws://127.0.0.1:${port}`);
+    const ws = new WebSocket(`ws://127.0.0.1:${port}`, { headers });
     ws.on('message', (d) => {
       const m = JSON.parse(d.toString());
       if (m.type === 'hello') {
@@ -78,6 +83,10 @@ const ADMIN_LOG = `${ADMIN}.log`;
 writeFileSync(ADMIN, `#!/bin/sh\necho "$@" >> ${ADMIN_LOG}\n`); chmodSync(ADMIN, 0o755);
 const srv = start(PORT, FILE, { TURN_URL: 'turn:relay.test:3478', TURN_USER: 'shared', TURN_PASS: 'shared', TURN_ADMIN_CMD: ADMIN });
 const srvK = start(PORT_K, FILE_K, { SERVER_KEY: 'sesamo' });
+// A brake of three knocks a minute, and its log read: who it counts.
+const srvB = start(PORT_B, FILE_B, { JOIN_LIMIT: '3' });
+let logB = '';
+srvB.stdout.on('data', (d) => { logB += d; });
 await sleep(700);
 try {
   const anna = phone(), bruno = phone(), carla = phone(), dario = phone();
@@ -243,8 +252,31 @@ try {
   check('with stay=1 the page does not bounce', !page.includes('location.replace'), page.slice(-200));
   const r404 = await fetch(`http://127.0.0.1:${PORT}/duetto/x/12345678`);
   check('an unknown path is not a page', r404.status === 426, r404.status);
+
+  // The address is the one the proxy wrote, the last in X-Forwarded-For:
+  // what the client puts before it neither escapes the brake nor gets
+  // somebody else named in the refusals that fail2ban reads.
+  const host = phone(), knocker = phone();
+  r = await knock(PORT_B, host, {}, { 'X-Forwarded-For': '10.0.0.1' });
+  check('braked house: taken', r.answer.role === 'owner', r.answer); r.ws.close();
+  for (let i = 1; i <= 3; i += 1) {
+    r = await knock(PORT_B, knocker, {}, { 'X-Forwarded-For': `${i}.${i}.${i}.${i}, 10.0.0.9` });
+    r.ws.close();
+  }
+  check('three knocks, each with a new address before the proxy\'s: let through', r.answer.role === 'stranger', r.answer);
+  r = await knock(PORT_B, knocker, {}, { 'X-Forwarded-For': '4.4.4.4, 10.0.0.9' });
+  check('the fourth is braked: counted on the proxy\'s address', r.answer.error === 'too-many-attempts', r.answer);
+  r.ws.close();
+  r = await knock(PORT_B, knocker, {}, { 'X-Forwarded-For': '10.0.0.10' });
+  check('another address is not braked with it', r.answer.role === 'stranger', r.answer); r.ws.close();
+  const turned = await join(PORT_B, phone(), 'room-of-nobody', 'x', { 'X-Forwarded-For': '6.6.6.6, 10.0.0.11' });
+  turned.ws.close();
+  await sleep(100);
+  check('a refusal names the proxy\'s address, not the client\'s writing',
+    /turned away: .* from 10\.0\.0\.11,/.test(logB) && !logB.includes('6.6.6.6'), logB.split('\n').filter((l) => l.includes('turned away')));
 } finally {
-  srv.kill(); srvK.kill();
+  srv.kill(); srvK.kill(); srvB.kill();
+  try { unlinkSync(FILE_B); } catch {}
   try { unlinkSync(FILE); } catch {}
   try { unlinkSync(ADMIN); unlinkSync(ADMIN_LOG); } catch {}
   try { unlinkSync(FILE_K); } catch {}

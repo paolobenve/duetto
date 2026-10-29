@@ -399,13 +399,23 @@ function trustsHeaderFrom(remote) {
   return LOOPBACK.test(HOST);
 }
 
+/**
+ * The client's address, read from the right.
+ *
+ * A proxy does not replace X-Forwarded-For: it adds the address it was
+ * reached from at the end, after whatever the request already carried.
+ * The first entry was the client's own writing - a new one at every
+ * knock went past the brake, and the refusals fail2ban reads named
+ * whoever the client liked. The last one is the proxy's; behind a chain
+ * of them, the ones named in TRUSTED_PROXY are passed over.
+ */
 function clientIp(req) {
   const remote = bareAddress(req.socket?.remoteAddress) || 'unknown';
   const fwd = req.headers['x-forwarded-for'];
-  if (typeof fwd === 'string' && fwd.length > 0 && trustsHeaderFrom(remote)) {
-    return fwd.split(',')[0].trim();
-  }
-  return remote;
+  if (typeof fwd !== 'string' || fwd.length === 0 || !trustsHeaderFrom(remote)) return remote;
+  const hops = fwd.split(',').map((a) => bareAddress(a.trim())).filter(Boolean);
+  while (hops.length > 1 && TRUSTED_PROXY.has(hops[hops.length - 1])) hops.pop();
+  return hops[hops.length - 1] || remote;
 }
 
 /** @type {number[]} moments of the recent attempts, from everywhere */
