@@ -49,12 +49,16 @@ From then on that work item is yours: whatever you notice - a bug, a doubt, a wi
 there as a follow-up, and the app's own journal (Settings → Use → Diagnostics) is the best
 thing you can attach.
 
-**Installing and updating.** The [releases](https://gitlab.com/paolobenve/duetto/-/releases)
-page has the APK; open it on the phone and Android installs it. To be kept up to date by
-itself, either add Duetto to [Obtainium](https://github.com/ImranR98/Obtainium) - a free app that
-watches GitLab and GitHub for new releases - with the address of this repository:
-`https://gitlab.com/paolobenve/duetto`. Or you can install Duetto from the [Official F-Droid repository](https://f-droid.org/en/packages/com.duetto/) - which builds every app from source on its own servers. The
-IzzyOnDroid repository rules it out, because its code was written with an AI assistant.
+**Installing and updating.** Duetto is on
+[F-Droid](https://f-droid.org/en/packages/com.duetto/), which builds it from source on its
+own servers and keeps it up to date - a few days after a release here. The APK is also on
+the [releases](https://gitlab.com/paolobenve/duetto/-/releases) page: open it on the phone
+and Android installs it. To have that one kept up to date by itself, add Duetto to
+[Obtainium](https://github.com/ImranR98/Obtainium) - a free app that watches GitLab and
+GitHub for new releases - with the address of this repository:
+`https://gitlab.com/paolobenve/duetto`. The APK from F-Droid and the one from here are
+signed with the same key: either updates the other. (The IzzyOnDroid repository rules
+Duetto out, because its code was written with an AI assistant.)
 
 Two things to know. Android only, 7.0 or later. And on mobile data where the direct link
 between the phones is not possible - some carriers only allow the relay - a video
