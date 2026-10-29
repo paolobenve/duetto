@@ -702,6 +702,9 @@ export const pt: Dictionary = {
     invitationWrong: 'O convite {code} não vale: já foi usado, ou está errado ou vencido. Um convite funciona uma vez só: peça um novo ao dono do servidor.',
     ownKeyHint: 'Se o servidor é seu e este telefone foi reinstalado, a chave do servidor traz você de volta para casa.',
     notTaken: 'O servidor não conseguiu anotar este telefone. Quem cuida dele deveria olhar o registro.',
+    otherServerTitle: 'Um servidor novo',
+    otherServerBody: 'O link leva a {server}, um servidor onde este telefone nunca esteve. Só bata na porta se o link vier de alguém que você conhece.',
+    otherServerKnock: 'Bater na porta',
   },
 
   qr: {

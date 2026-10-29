@@ -1,5 +1,5 @@
 import {
-  normalizeServerUrl, displayServer, isServerConfigured, keyForServer, keyForPair,
+  normalizeServerUrl, displayServer, isServerConfigured, keyForServer, keyForPair, isStrangeServer,
   switchToPair, forgetPair, DEFAULT_CONFIG, type DuoConfig, type PairInfo,
 } from '../config';
 
@@ -87,5 +87,29 @@ describe('a server\'s key goes to that server alone', () => {
     const after = forgetPair(twoServers(), 'here');
     expect(after.serverUrl).toBe(ELSEWHERE);
     expect(after.serverKey).toBe('');
+  });
+});
+
+describe('a link to a server this phone has never been to', () => {
+  const HOME = 'wss://home.example/duetto/ws';
+  const PAIRS_SERVER = 'wss://friend.example/duetto/ws';
+  const here = {
+    ...DEFAULT_CONFIG, serverUrl: HOME,
+    pairs: [{ id: 'p', key: 'k', side: 'A', peerName: 'p', pairedAt: '2026-10-01T00:00:00Z', serverUrl: PAIRS_SERVER } as PairInfo],
+  };
+
+  test('is strange: neither the server in use nor a pair\'s', () => {
+    expect(isStrangeServer(here, 'wss://unknown.example/duetto/ws')).toBe(true);
+    expect(isStrangeServer(here, 'unknown.example')).toBe(true);
+  });
+
+  test('the server in use and a pair\'s server are not, however written', () => {
+    expect(isStrangeServer(here, HOME)).toBe(false);
+    expect(isStrangeServer(here, 'home.example')).toBe(false);
+    expect(isStrangeServer(here, 'https://friend.example/')).toBe(false);
+  });
+
+  test('to a phone with no server yet nothing is strange: its first link is its way in', () => {
+    expect(isStrangeServer(DEFAULT_CONFIG, 'wss://unknown.example/duetto/ws')).toBe(false);
   });
 });

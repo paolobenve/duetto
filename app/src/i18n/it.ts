@@ -701,6 +701,9 @@ export const it: Dictionary = {
     invitationWrong: 'L’invito {code} non vale: è già stato usato, oppure è sbagliato o scaduto. Un invito funziona una volta sola: chiedine uno nuovo a chi possiede il server.',
     ownKeyHint: 'Se il server è tuo e questo telefono è stato reinstallato, la chiave del server ti riporta a casa.',
     notTaken: 'Il server non è riuscito a segnarsi questo telefono. Chi lo gestisce guardi il suo log.',
+    otherServerTitle: 'Un server nuovo',
+    otherServerBody: 'Il link porta a {server}, un server dove questo telefono non è mai stato. Bussa solo se il link viene da qualcuno che conosci.',
+    otherServerKnock: 'Bussa',
   },
 
   qr: {

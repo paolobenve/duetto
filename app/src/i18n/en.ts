@@ -715,6 +715,9 @@ export const en = {
     invitationWrong: 'The invitation {code} is no good: it has already been used, or it is wrong or expired. An invitation works once; ask the owner of the server for a new one.',
     ownKeyHint: 'If the server is yours and this phone has been reinstalled, the server\'s key brings you home.',
     notTaken: 'The server could not write this phone down. Whoever runs it should look at its log.',
+    otherServerTitle: 'A new server',
+    otherServerBody: 'The link leads to {server}, a server this phone has never been to. Knock only if the link comes from somebody you know.',
+    otherServerKnock: 'Knock',
   },
 
   qr: {

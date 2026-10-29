@@ -10,10 +10,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator,
-  ScrollView, KeyboardAvoidingView, Platform, BackHandler, Linking, Clipboard,
+  ScrollView, KeyboardAvoidingView, Platform, BackHandler, Linking, Clipboard, Alert,
 } from 'react-native';
 import {
-  DuoConfig, displayServer, normalizeServerUrl, isServerConfigured, keyForServer,
+  DuoConfig, displayServer, normalizeServerUrl, isServerConfigured, keyForServer, isStrangeServer,
 } from './config';
 import { knock, watchDoor, formatInvitation, DoorAnswer } from './door';
 import { parseLink, BETA_TESTER_LINK, type DuettoLink } from './links';
@@ -260,14 +260,34 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived, accep
     took.current = mark;
     setNote('');
     setServer(displayServer(arrived.serverUrl));
-    if (arrived.kind === 'invite') {
-      setInvitation(arrived.code);
-      knockNow('server', { server: arrived.serverUrl, invitation: arrived.code });
-    } else {
-      setCode(arrived.code);
-      knockNow('server', { server: arrived.serverUrl, code: arrived.code, pub: arrived.pub });
-    }
-  }, [arrived, knockNow]);
+    if (arrived.kind === 'invite') setInvitation(arrived.code);
+    else setCode(arrived.code);
+    const go = () => (arrived.kind === 'invite'
+      ? knockNow('server', { server: arrived.serverUrl, invitation: arrived.code })
+      : knockNow('server', { server: arrived.serverUrl, code: arrived.code, pub: arrived.pub }));
+    /*
+     * A server this phone has never been to is asked about first. A
+     * link opens the app from anywhere - a message, a page - and a
+     * knock shows the phone's card, which a server could hand on to
+     * another: whether the link is to be trusted, only the person can
+     * tell, from where it came. A phone with no server yet is not
+     * asked: its first link is its way in.
+     */
+    if (!isStrangeServer(initial, arrived.serverUrl)) { go(); return; }
+    const no = () => { Journal.mark('link:new-server:no').catch(() => { /* noop */ }); };
+    Alert.alert(
+      t('welcome.otherServerTitle'),
+      t('welcome.otherServerBody', { server: displayServer(arrived.serverUrl) }),
+      [
+        { text: t('settings.cancel'), style: 'cancel', onPress: no },
+        {
+          text: t('welcome.otherServerKnock'),
+          onPress: () => { Journal.mark('link:new-server:yes').catch(() => { /* noop */ }); go(); },
+        },
+      ],
+      { cancelable: true, onDismiss: no },
+    );
+  }, [arrived, knockNow, initial]);
 
   /**
    * The link the page copied, at the first start.

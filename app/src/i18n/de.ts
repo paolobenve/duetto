@@ -702,6 +702,9 @@ export const de: Dictionary = {
     invitationWrong: 'Die Einladung {code} taugt nicht: sie ist schon benutzt, oder falsch, oder abgelaufen. Eine Einladung geht einmal; bitte den Besitzer des Servers um eine neue.',
     ownKeyHint: 'Wenn der Server dir gehört und dieses Telefon neu aufgesetzt wurde, bringt dich der Schlüssel des Servers nach Hause.',
     notTaken: 'Der Server konnte dieses Telefon nicht aufschreiben. Wer ihn betreibt, sollte in sein Protokoll sehen.',
+    otherServerTitle: 'Ein neuer Server',
+    otherServerBody: 'Der Link führt zu {server}, einem Server, bei dem dieses Telefon noch nie war. Klopf nur an, wenn der Link von jemandem kommt, den du kennst.',
+    otherServerKnock: 'Anklopfen',
   },
 
   qr: {
