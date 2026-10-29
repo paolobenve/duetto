@@ -123,6 +123,8 @@ function visit(serverUrl: string, ask: DoorRequest): Promise<Visit> {
     ws.onmessage = async (ev: any) => {
       let msg: any;
       try { msg = JSON.parse(String(ev.data)); } catch { return; }
+      // A message is an object: see Signaling.handle.
+      if (!msg || typeof msg !== 'object') return;
       if (msg.type === 'hello' && !settled) {
         let card: { pub: string; sig: string; sigv?: 2; host?: string } | null = null;
         try {

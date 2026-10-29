@@ -694,6 +694,10 @@ export class Signaling {
     } catch {
       return;
     }
+    // A message is an object. `null` is JSON too, and any server - one a
+    // link led to, say - could send it: reading its type brought the
+    // whole app down.
+    if (!msg || typeof msg !== 'object') return;
 
     switch (msg.type) {
       // The server picks a number and asks for it signed: it wants to
