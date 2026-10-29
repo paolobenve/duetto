@@ -105,15 +105,6 @@ object Alarm {
         "cue_detach" -> R.raw.cue_detach
         // The volume test's beeps: see playTest.
         "test_tone" -> R.raw.test_tone
-        // The names as the older Duetto said them: they come from a
-        // phone that has not been updated yet. These six lines go away
-        // with the next version.
-        "tamburi" -> R.raw.alarm_drumroll
-        "batteria" -> R.raw.alarm_drumkit
-        "fanfara" -> R.raw.alarm_fanfare
-        "strombazzata" -> R.raw.alarm_horn
-        "gallo" -> R.raw.alarm_rooster
-        "bussata" -> R.raw.bell
         else -> null
     }
 
