@@ -23,10 +23,18 @@ object OpenedFrom {
     @Volatile var enter: Boolean = false
 
     fun read(intent: Intent?) {
-        val id = intent?.getStringExtra(Notifier.EXTRA_PAIR)
-        if (!id.isNullOrEmpty()) {
-            pair = id
-            enter = intent.getBooleanExtra(Notifier.EXTRA_ENTER, false)
+        if (intent == null) return
+        // Any app's intent is read here too, and before Android 13 extras
+        // that could not be unpacked threw: the whole app went down with
+        // it, its presence included.
+        try {
+            val id = intent.getStringExtra(Notifier.EXTRA_PAIR)
+            if (!id.isNullOrEmpty()) {
+                pair = id
+                enter = intent.getBooleanExtra(Notifier.EXTRA_ENTER, false)
+            }
+        } catch (e: Exception) {
+            // nobody's word
         }
     }
 }
