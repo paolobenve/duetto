@@ -274,6 +274,30 @@ try {
   await sleep(100);
   check('a refusal names the proxy\'s address, not the client\'s writing',
     /turned away: .* from 10\.0\.0\.11,/.test(logB) && !logB.includes('6.6.6.6'), logB.split('\n').filter((l) => l.includes('turned away')));
+
+  // And fail2ban reads that line with the filter in deploy/: it has to
+  // find it, and that address in it. It stopped finding anything when
+  // the line grew a room and an app after the address, and nothing said
+  // so. Of fail2ban's own words, what these lines need: the prefix is
+  // the journal's, not here, and <HOST> is an address.
+  const filter = readFileSync(new URL('./deploy/fail2ban/duetto-door.conf', import.meta.url), 'utf8');
+  const failregex = new RegExp(/^failregex = (.+)$/m.exec(filter)[1]
+    .replace('^%(__prefix_line)s', '^')
+    .replace('<HOST>', '(?<host>[0-9A-Fa-f.:]*[0-9A-Fa-f])'));
+  const banned = (line) => failregex.exec(line)?.groups.host ?? null;
+  const lines = logB.split('\n').filter(Boolean);
+  const refusals = lines.filter((l) => l.includes('turned away'));
+  check('fail2ban\'s filter finds the refusal, and the proxy\'s address in it',
+    refusals.length === 1 && banned(refusals[0]) === '10.0.0.11', refusals);
+  check('and no other line of the server', lines.filter((l) => !l.includes('turned away')).every((l) => banned(l) === null),
+    lines.filter((l) => !l.includes('turned away') && banned(l) !== null));
+  // The card in the line is the client's writing: a "from" in it names nobody.
+  const forged = await join(PORT_B, { pub: 'x from 6.6.6', signs: () => 'x' }, 'room-of-nobody', 'x',
+    { 'X-Forwarded-For': '10.0.0.12' });
+  forged.ws.close();
+  await sleep(100);
+  const forgedLine = logB.split('\n').find((l) => l.includes('turned away: x from 6.6.6'));
+  check('a "from" written in the card gets nobody else banned', !!forgedLine && banned(forgedLine) === '10.0.0.12', forgedLine);
 } finally {
   srv.kill(); srvK.kill(); srvB.kill();
   try { unlinkSync(FILE_B); } catch {}
