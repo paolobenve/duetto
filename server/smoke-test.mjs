@@ -98,6 +98,8 @@ function client(port = PORT) {
   // counted.
   let pings = 0;
   ws.on('ping', () => { pings++; });
+  let closedWith = null;
+  ws.on('close', (code) => { closedWith = code; });
   return {
     // With a limit: a server that does not come up would otherwise
     // leave the whole test waiting for ever, saying nothing.
@@ -108,12 +110,20 @@ function client(port = PORT) {
     /** The number the server greeted us with, to be signed. */
     nonce: () => nonce,
     send: (o) => ws.send(JSON.stringify(o)),
+    /** A frame as it is, for what no app would ever send. */
+    raw: (text) => ws.send(text),
     pings: () => pings,
     /** Stops reading: from here on it no longer answers the pings. */
     die: () => ws.pause(),
     closed: (ms) => new Promise((r) => {
       const t = setTimeout(() => r(false), ms);
       ws.once('close', () => { clearTimeout(t); r(true); });
+    }),
+    /** The code it was closed with, or null if still open after ms. */
+    closeCode: (ms) => new Promise((r) => {
+      if (closedWith !== null) { r(closedWith); return; }
+      const t = setTimeout(() => r(null), ms);
+      ws.once('close', (code) => { clearTimeout(t); r(code); });
     }),
     expect(type) {
       const i = queue.findIndex((m) => m.type === type);
@@ -696,6 +706,45 @@ try {
   await after.expect('joined');
   check(true, 'poisoned messages: the server is still standing');
   poison.close(); after.close();
+
+  // Frames that are JSON and no message, a card that cannot be made a
+  // string, a payload too deep to be forwarded: each of them brought
+  // the whole server down, with every pair on it. Now they cost the
+  // connection that sent them, and nothing else.
+  const nothing = client();
+  await nothing.open();
+  for (const frame of ['null', '[]', '7', '"x"', 'true']) nothing.raw(frame);
+  const answers = await Promise.all([1, 2, 3, 4, 5].map(() => nothing.expect('error')));
+  check(answers.every((a) => a.error === 'invalid-json'),
+    'null, a list, a number, a string: each answered as no message');
+  check(await nothing.closeCode(300) === null, 'and the connection stays');
+  nothing.close();
+
+  const odd = client();
+  await odd.open();
+  odd.send({ type: 'door', pub: { toString: 1, valueOf: 1 }, sig: 'x' });
+  check(await odd.closeCode(1000) === 1011, 'a card that is no string closes that connection alone');
+
+  const deepA = client();
+  await deepA.open();
+  deepA.send({ type: 'join', key: KEY, room: 'deep', name: 'A', side: 'A' });
+  await deepA.expect('joined');
+  const deepB = client();
+  await deepB.open();
+  deepB.send({ type: 'join', key: KEY, room: 'deep', name: 'B', side: 'B' });
+  await deepB.expect('joined');
+  const depth = 100000;
+  deepA.raw(`{"type":"signal","payload":${'['.repeat(depth)}${']'.repeat(depth)}}`);
+  check(await deepA.closeCode(1000) === 1011, 'a payload too deep to forward closes its sender');
+  check(await deepB.closeCode(300) === null, 'and the other side stays in');
+  deepB.close();
+
+  const standing = client();
+  await standing.open();
+  standing.send({ type: 'join', key: KEY, room: 'poison3', name: 'OK', side: 'A' });
+  await standing.expect('joined');
+  check(true, 'and after all of them the server is still standing');
+  standing.close();
 
   // --- a phone with a key of its own ------------------------------------------
   // The server is restarted with a list of allowed phones: from that
