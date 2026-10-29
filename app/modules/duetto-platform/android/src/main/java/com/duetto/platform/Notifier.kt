@@ -425,6 +425,9 @@ object Notifier {
         val open = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("duetto://channel/enter")).apply {
             setPackage(ctx.packageName)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            // Duetto's own word: without it the activity takes the link
+            // away (see ChannelCommand).
+            putExtra(ChannelCommand.EXTRA, ChannelCommand.word(ctx))
         }
         return PendingIntent.getActivity(
             ctx, 3, open,

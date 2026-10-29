@@ -2,6 +2,7 @@ package com.duetto
 
 import android.content.Intent
 import android.os.Bundle
+import com.duetto.platform.ChannelCommand
 import com.duetto.platform.OpenedFrom
 import android.view.KeyEvent
 import com.duetto.platform.Volume
@@ -56,10 +57,13 @@ class MainActivity : ReactActivity() {
    * interface needs it to know whether the leaving of a moment ago
    * still holds.
    *
-   * super first, and always: React Native reads the intent from there,
-   * and the links would stop arriving.
+   * super always, or the links would stop arriving: React Native reads
+   * the intent from there. Only the channel's commands are looked at
+   * before it, so that one not said by Duetto never reaches it: see
+   * ChannelCommand.
    */
   override fun onNewIntent(intent: Intent) {
+    ChannelCommand.vet(this, intent)
     super.onNewIntent(intent)
     OpenedFrom.read(intent)
     PipModule.opened()
@@ -67,6 +71,7 @@ class MainActivity : ReactActivity() {
 
   /** Opened from a call's notification: which connection it came from. */
   override fun onCreate(savedInstanceState: Bundle?) {
+    ChannelCommand.vet(this, intent)
     super.onCreate(savedInstanceState)
     OpenedFrom.read(intent)
   }
