@@ -46,6 +46,7 @@ import {
   addInvitation, adopt, isBroken, markBroken, noteGuest, noteRoom, mayOpen, read, refresh,
   remove as removePerson, removeInvitation, removeRoom, roomOf, useInvitation, noteVisit,
   awaitRoom, pendingRoom, dropPending, leaveMail, takeMail, saveMoments, takeMoments,
+  invitationOf,
 } from './devices.js';
 import { credentialsFor as turnCredentials, drop as dropTurn } from './turn.js';
 import { bouncePage } from './linkPage.js';
@@ -700,10 +701,28 @@ async function findWorkItem(name) {
   const titled = list.filter((i) => String(i.title || '').toLowerCase().includes(lower));
   const beta = titled.find((i) => /^beta tester\b/i.test(String(i.title || '')));
   const pick = beta || titled[0] || null;
-  return pick ? { iid: pick.iid, url: pick.web_url } : null;
+  return pick ? { iid: pick.iid, url: pick.web_url, beta: pick === beta } : null;
 }
 
 const REPORT_MAX_BYTES = 6 * 1024 * 1024;
+/**
+ * A report is written in the project's name in a public place, costs
+ * GitLab a call per file, and is held here whole until its end: a few
+ * an hour from each phone, a few at a time from all of them, and a
+ * journal's worth of files in each - three days of ours and of the
+ * other sides'.
+ */
+const REPORTS_PER_HOUR = 6;
+const REPORTS_AT_ONCE = 4;
+const REPORT_MAX_FILES = 24;
+/** @type {Map<string, number[]>} reports begun in the last hour, per card */
+const reportsBegun = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [who, times] of reportsBegun) {
+    if (times.every((t) => now - t >= 3600_000)) reportsBegun.delete(who);
+  }
+}, 3600_000).unref?.();
 
 /**
  * The invitation, written on the work item of whoever asked for it.
@@ -717,19 +736,32 @@ const REPORT_MAX_BYTES = 6 * 1024 * 1024;
  * is made.
  */
 async function handleInviteNote(ws, msg) {
+  // The owner's, as the invitations are: anybody in a room used to be
+  // able to have the project write a link of their choosing on a work
+  // item of their choosing - and open it, shut or not.
+  if (!ws.invites) {
+    send(ws, { type: 'invite-note-result', ok: false, error: 'not-yours' });
+    return;
+  }
   if (!reportsOpen()) {
     send(ws, { type: 'invite-note-result', ok: false, error: 'no-road' });
     return;
   }
-  const name = cleanName(String(msg.name || ''));
+  // And only an invitation of this house, still good: the code the link
+  // ends with is looked up, and the name and the day it runs out are the
+  // invitation's own, not what the message says.
   const link = String(msg.link || '').trim();
-  if (!/^(duetto|https?):\/\/[^\s]{3,200}$/.test(link)) {
+  const code = /^(?:https?:\/\/\S{1,200}?\/duetto\/i|duetto:\/\/\S{1,200}?\/invite)\/([A-Za-z0-9-]{4,16})\/?$/
+    .exec(link)?.[1];
+  const invitation = code ? invitationOf(code) : null;
+  if (!invitation) {
     send(ws, { type: 'invite-note-result', ok: false, error: 'bad-link' });
     return;
   }
+  const name = cleanName(invitation.name);
   // The day it runs out, said in the note's own tongue.
   let until = '';
-  const when = new Date(String(msg.expires || ''));
+  const when = new Date(String(invitation.expires || ''));
   if (!Number.isNaN(when.getTime())) {
     until = when.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   }
@@ -742,12 +774,16 @@ async function handleInviteNote(ws, msg) {
   // item used to ask for a confidential one, and every app still on
   // that version goes on making them: it is not the tester's choice,
   // it is ours from before. The invitation goes in the open now, and a
-  // shut item would only keep out the people who come to help.
-  await gitlab(`/issues/${item.iid}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ confidential: false }),
-  }).catch(() => { /* already open, or not ours to open */ });
+  // shut item would only keep out the people who come to help. A beta
+  // tester's own and nothing else: another work item shut was shut by
+  // somebody, on purpose.
+  if (item.beta) {
+    await gitlab(`/issues/${item.iid}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confidential: false }),
+    }).catch(() => { /* already open, or not ours to open */ });
+  }
   const body = [
     'Welcome aboard, and thank you for wanting to try Duetto.',
     `Here is your invitation, ${link}`,
@@ -785,6 +821,22 @@ async function handleReport(ws, msg) {
   }
   const part = String(msg.part || '');
   if (part === 'begin') {
+    ws.report = null;
+    // See REPORTS_PER_HOUR. Counted per card: a phone in a room always
+    // has one, on a house with a list.
+    const who = ws.pub || ws.ip;
+    const now = Date.now();
+    const begun = (reportsBegun.get(who) || []).filter((t) => now - t < 3600_000);
+    if (begun.length >= REPORTS_PER_HOUR) {
+      send(ws, { type: 'report-result', ok: false, error: 'too-many' });
+      return;
+    }
+    if ([...wss.clients].filter((peer) => peer.report).length >= REPORTS_AT_ONCE) {
+      send(ws, { type: 'report-result', ok: false, error: 'busy' });
+      return;
+    }
+    begun.push(now);
+    reportsBegun.set(who, begun);
     ws.report = {
       // The name on the work item, when the person says one: the
       // invitation's name may be wrong, or there may be no invitation
@@ -804,7 +856,9 @@ async function handleReport(ws, msg) {
     const name = String(msg.name || 'journal.csv').replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 80);
     const text = String(msg.text || '');
     r.bytes += text.length;
-    if (r.bytes > REPORT_MAX_BYTES) {
+    // A new name for every empty piece was a new file each time: held
+    // here without end, and sent to GitLab one by one.
+    if (r.bytes > REPORT_MAX_BYTES || (!r.files.has(name) && r.files.size >= REPORT_MAX_FILES)) {
       ws.report = null;
       send(ws, { type: 'report-result', ok: false, error: 'too-big' });
       return;

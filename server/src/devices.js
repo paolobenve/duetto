@@ -177,6 +177,11 @@ function liveInvitation(data, code) {
     i.code === said && Date.parse(i.expires) > now) || null;
 }
 
+/** The same, looked at and not spent: what the invitation note is about. */
+export function invitationOf(code) {
+  return liveInvitation(read(), code);
+}
+
 /**
  * Takes an invitation and writes the phone that used it down.
  *

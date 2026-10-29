@@ -11,6 +11,7 @@
     "dev": "node --watch src/index.js",
     "test:smoke": "node smoke-test.mjs",
     "test:door": "node door-test.mjs",
+    "test:reports": "node reports-test.mjs",
     "invite": "node tools/invite.mjs",
     "devices": "node tools/devices.mjs",
     "backfill-visits": "node tools/backfill-visits.mjs"
