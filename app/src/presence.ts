@@ -124,20 +124,6 @@ function deathWhy(cause: string): string {
     other: 'phoneClosedIt',
     'updated-self': 'updatedDuetto',
     'updated-webview': 'updatedWebview',
-    // The causes as the older Duetto said them: they arrive from a phone
-    // that has not been updated yet. This half of the table goes away
-    // with the next version.
-    'memoria-finita': 'outOfMemory',
-    errore: 'crashed',
-    'errore-nativo': 'crashed',
-    bloccata: 'frozen',
-    'arresto-forzato': 'stoppedByHand',
-    'chiusa-dall-utente': 'closed',
-    'troppe-risorse': 'resources',
-    'permessi-cambiati': 'permissions',
-    congelata: 'phoneClosedIt',
-    segnale: 'phoneClosedIt',
-    altro: 'phoneClosedIt',
   }[cause] ?? 'unknown'}`);
 }
 
