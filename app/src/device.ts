@@ -12,7 +12,7 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Foreground } from 'duetto-platform';
 import nacl from 'tweetnacl';
-import { encodeBase64, decodeBase64 } from 'tweetnacl-util';
+import { encodeBase64 } from 'tweetnacl-util';
 
 /**
  * The card of this phone: a key it makes once and never gives away.
@@ -72,12 +72,6 @@ export async function deviceKey(): Promise<DeviceKey> {
   return fresh;
 }
 
-/** Signs the number the server picked, and nothing else. */
-export function signNonce(key: DeviceKey, nonce: string): string {
-  return encodeBase64(
-    nacl.sign.detached(decodeBase64(nonce), decodeBase64(key.sec)),
-  );
-}
 
 /**
  * The card as a person reads it out.

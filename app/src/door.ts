@@ -7,7 +7,8 @@
  * the LICENSE file at the root of the project, and at
  * <https://www.gnu.org/licenses/>.
  */
-import { deviceKey, deviceModel, deviceName, signNonce } from './device';
+import { deviceKey, deviceModel, deviceName } from './device';
+import { signAtDoor } from './doorSign';
 import { VERSION_LABEL, BUILD } from './version';
 import type { ServerRole } from './config';
 
@@ -123,16 +124,19 @@ function visit(serverUrl: string, ask: DoorRequest): Promise<Visit> {
       let msg: any;
       try { msg = JSON.parse(String(ev.data)); } catch { return; }
       if (msg.type === 'hello' && !settled) {
-        let card: { pub: string; sig: string } | null = null;
+        let card: { pub: string; sig: string; sigv?: 2; host?: string } | null = null;
         try {
           await deviceName();
           const key = await deviceKey();
-          card = { pub: key.pub, sig: signNonce(key, String(msg.nonce || '')) };
+          // The server's name inside, when it asks for it: see doorSign.ts.
+          card = { pub: key.pub, ...signAtDoor(key.sec, String(msg.nonce || ''), serverUrl, msg.door) };
         } catch { /* unable to sign: the server will say so */ }
         send({
           type: 'door',
           pub: card?.pub,
           sig: card?.sig,
+          sigv: card?.sigv,
+          host: card?.host,
           key: ask.key || undefined,
           invite: ask.invite || undefined,
           name: ask.name || undefined,

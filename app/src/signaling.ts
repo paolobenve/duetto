@@ -10,7 +10,8 @@
 import { Foreground, Heartbeat, Journal } from 'duetto-platform';
 import { SignalCrypto } from './crypto';
 import { logger } from './log';
-import { deviceKey, deviceModel, deviceName, signNonce } from './device';
+import { deviceKey, deviceModel, deviceName } from './device';
+import { signAtDoor } from './doorSign';
 import { VERSION_LABEL, BUILD } from './version';
 import { PROTOCOL_SAID } from './protocol';
 import type { LatestRelease } from './releases';
@@ -410,6 +411,8 @@ export class Signaling {
   private joinTimer: ReturnType<typeof setTimeout> | null = null;
   /** The number to sign, when the server has one. */
   private nonce: string | null = null;
+  /** How the server wants it signed: 2 is with its name inside (see doorSign.ts). */
+  private door: unknown = undefined;
   private crypto: SignalCrypto | null = null;
   private closedByUser = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -555,6 +558,7 @@ export class Signaling {
       // signed on a new connection, is worth nothing and would be
       // refused.
       this.nonce = null;
+      this.door = undefined;
       this.joinTimer = setTimeout(() => { this.join(); }, GREETING_WAIT_MS);
     };
 
@@ -614,12 +618,13 @@ export class Signaling {
     this.joined = true;
     if (this.joinTimer) { clearTimeout(this.joinTimer); this.joinTimer = null; }
 
-    let card: { pub: string; sig: string } | null = null;
+    let card: { pub: string; sig: string; sigv?: 2; host?: string } | null = null;
     if (this.nonce) {
       try {
         await deviceName();
         const key = await deviceKey();
-        card = { pub: key.pub, sig: signNonce(key, this.nonce) };
+        // The server's name inside, when it asks for it: see doorSign.ts.
+        card = { pub: key.pub, ...signAtDoor(key.sec, this.nonce, this.opts.serverUrl, this.door) };
       } catch {
         // Unable to sign: we knock all the same, and a server that
         // wants a signature will say no. Better a clear "not allowed"
@@ -633,6 +638,8 @@ export class Signaling {
       key: this.opts.serverKey || undefined,
       pub: card?.pub,
       sig: card?.sig,
+      sigv: card?.sigv,
+      host: card?.host,
       invite: this.opts.invitation || undefined,
       name: this.opts.displayName || 'Someone',
       model: deviceModel(),
@@ -694,6 +701,7 @@ export class Signaling {
       // away, without waiting out the breath above.
       case 'hello':
         this.nonce = typeof msg.nonce === 'string' ? msg.nonce : null;
+        this.door = msg.door;
         this.join();
         break;
 
