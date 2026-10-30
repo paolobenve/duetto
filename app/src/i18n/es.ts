@@ -556,7 +556,7 @@ export const es: Dictionary = {
     shareWaiting: 'Compartir…',
     invitePerson: 'Invitar a alguien a usar el servidor, con parejas propias',
     invitePersonPlaceholder: 'su nombre',
-    invitePersonHint: 'El nombre es para ti: es el que dirán esta lista y el registro. Él no lo ve.',
+    invitePersonHint: 'El nombre es para ti: es el que dirán esta lista y el registro. La persona invitada no lo ve.',
     makeInvitation: 'Hacer la invitación',
     diagnostics: 'Diagnóstico',
     shortPackets: 'Paquetes cortos',
