@@ -288,8 +288,11 @@ export type SignalingEvents = {
   onKnockResult?: (ok: boolean, error?: string) => void;
   /** the other side broke this pair: told now, or found on joining; the room, when said */
   onPairBroken?: (room?: string) => void;
-  /** taken off this server's list, by its owner */
-  onRemoved?: () => void;
+  /**
+   * Taken off this server's list: by its owner, or - 'new-owner' - by
+   * another phone that came with the key and took the owner's place.
+   */
+  onRemoved?: (why?: 'new-owner') => void;
   /** a member left the server by themselves: only the owner is told */
   onMemberLeft?: (name: string) => void;
   /** @param reason with `not-allowed`: 'stranger', 'bad-invite', 'bad-key' or 'taken-room' */
@@ -879,7 +882,7 @@ export class Signaling {
         break;
 
       case 'removed':
-        this.events.onRemoved?.();
+        this.events.onRemoved?.(msg.why === 'new-owner' ? 'new-owner' : undefined);
         break;
 
       case 'member-left':

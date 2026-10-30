@@ -639,14 +639,6 @@ export default function SettingsScreen({
           <Text style={styles.pairNameText}>{'\u270E'}</Text>
         </TouchableOpacity>
       </View>
-      {initial.serverKey ? (
-        <View style={styles.field}>
-          <Text style={styles.label}>{t('settings.serverKey')}</Text>
-          <Text style={styles.readonly}>{initial.serverKey}</Text>
-          <Text style={styles.hint}>{t('settings.serverKeyShownHint')}</Text>
-        </View>
-      ) : null}
-
       {/* The same box as the first screen's: once connected, that
           screen is out of reach, and asking to be a beta tester is
           something one may want from here too - somebody's guest,
@@ -2276,7 +2268,6 @@ const styles = StyleSheet.create({
   sectionHint: { color: '#6b7686', fontSize: 13, marginTop: 14, marginBottom: 12, lineHeight: 19 },
   field: { marginBottom: 16 },
   label: { color: '#c9d2de', marginBottom: 6, fontWeight: '600' },
-  readonly: { color: '#e6ebf1', fontSize: 16, paddingVertical: 4 },
   reportInput: { minHeight: 110, textAlignVertical: 'top' },
   betaBox: {
     marginTop: 18, padding: 16, borderRadius: 12,

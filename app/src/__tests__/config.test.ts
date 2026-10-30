@@ -1,6 +1,8 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   normalizeServerUrl, displayServer, isServerConfigured, keyForServer, keyForPair, isStrangeServer,
   switchToPair, forgetPair, DEFAULT_CONFIG, type DuoConfig, type PairInfo,
+  withoutServerKeys, loadConfig, saveConfig,
 } from '../config';
 
 describe('the server address', () => {
@@ -111,5 +113,47 @@ describe('a link to a server this phone has never been to', () => {
 
   test('to a phone with no server yet nothing is strange: its first link is its way in', () => {
     expect(isStrangeServer(DEFAULT_CONFIG, 'wss://unknown.example/duetto/ws')).toBe(false);
+  });
+});
+
+describe('the key of the server is kept nowhere', () => {
+  const pair = (id: string, serverKey?: string): PairInfo =>
+    ({ id, key: `k-${id}`, side: 'A', serverUrl: 'wss://example.org/duetto/ws', serverKey } as PairInfo);
+  const withKeys: DuoConfig = {
+    ...DEFAULT_CONFIG,
+    serverUrl: 'wss://example.org/duetto/ws',
+    serverKey: 'sesamo',
+    pair: pair('p1', 'sesamo'),
+    pairs: [pair('p1', 'sesamo'), pair('p2', 'other'), pair('p3')],
+  };
+  const STORED = 'duetto.config.v3';
+  /** The keys a stored configuration holds, wherever they are. */
+  const keysIn = (raw: string | null) => {
+    const c = JSON.parse(raw || '{}');
+    return [c, c.pair, ...(c.pairs || [])].map((x) => x?.serverKey).filter(Boolean);
+  };
+
+  beforeEach(() => AsyncStorage.clear());
+
+  test('neither the one in use nor any pair\'s', () => {
+    const clean = withoutServerKeys(withKeys);
+    expect(clean.serverKey).toBe('');
+    expect(clean.pair?.serverKey).toBe('');
+    expect(clean.pairs.map((p) => p.serverKey || '')).toEqual(['', '', '']);
+    expect(clean.pairs.map((p) => p.id)).toEqual(['p1', 'p2', 'p3']);
+  });
+
+  test('saving writes none, whatever the screen holds', async () => {
+    await saveConfig(withKeys);
+    expect(keysIn(await AsyncStorage.getItem(STORED))).toEqual([]);
+  });
+
+  test('one written by a version from before is wiped at the first start, from the phone too', async () => {
+    await AsyncStorage.setItem(STORED, JSON.stringify(withKeys));
+    const cfg = await loadConfig();
+    expect(cfg.serverKey).toBe('');
+    expect(cfg.pairs.every((p) => !p.serverKey)).toBe(true);
+    expect(keysIn(await AsyncStorage.getItem(STORED))).toEqual([]);
+    expect(cfg.pairs.map((p) => p.id)).toEqual(['p1', 'p2', 'p3']);
   });
 });

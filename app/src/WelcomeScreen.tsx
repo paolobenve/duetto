@@ -36,7 +36,12 @@ import { t } from './i18n';
  *  - a server that wants a key asks for the key, and only that;
  *  - a server with an owner who does not know us offers the two ways
  *    in: the invitation, for connections of one's own, or the pairing
- *    code of whoever is calling, which needs nothing else.
+ *    code of whoever is calling, which needs nothing else - and, for
+ *    the owner on a new phone, the key, which takes the owner's place
+ *    once the person has said yes to that.
+ *
+ * The key is said at the knock it was typed for, and kept nowhere: it
+ * is the owner's password (see DuoConfig.serverKey).
  *
  * Whatever the road, it ends at the pairing screen with a word - owner,
  * member, guest - that says which buttons can work there.
@@ -70,7 +75,7 @@ type Step = 'server' | 'knocking' | 'key' | 'stranger' | 'welcomed' | 'accept';
 
 export default function WelcomeScreen({ initial, onDone, onClose, arrived, accept }: Props) {
   const [server, setServer] = useState(displayServer(initial.serverUrl));
-  const [key, setKey] = useState(initial.serverKey || '');
+  const [key, setKey] = useState('');
   /** the server the key in the field is for: it goes there alone, see keyForServer */
   const [keyAt, setKeyAt] = useState(initial.serverUrl);
   // Never the one remembered: an invitation is spent at its first
@@ -99,11 +104,12 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived, accep
     onDone({
       ...initial,
       serverUrl: at,
-      serverKey: keyForServer(at, { key, at: keyAt }, initial),
+      // Said at the door, and not kept: see DuoConfig.serverKey.
+      serverKey: '',
       invitation: inv,
       serverRole: a.role,
     }, a, withCode, withCode ? linkPub.current || undefined : undefined);
-  }, [initial, key, keyAt, onDone]);
+  }, [initial, onDone]);
   const finish = useCallback((a: DoorAnswer, withCode?: string) => {
     finishWith(a, withCode, resolved, invitation.trim());
   }, [finishWith, resolved, invitation]);
@@ -114,11 +120,14 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived, accep
    * up yet - and goes where the answer says.
    */
   const knockNow = useCallback(async (from: Step, over?: {
-    server?: string; invitation?: string; code?: string; pub?: string;
+    server?: string; invitation?: string; code?: string; pub?: string; claim?: boolean;
   }) => {
     linkPub.current = over?.pub || '';
     const at = over?.server ? normalizeServerUrl(over.server) : resolved;
-    const inv = (over?.invitation ?? invitation).trim();
+    // The house asked for with the key: the owner's road, and not the
+    // invitation's - one typed beside it is not spent on the way.
+    const claim = !!over?.claim;
+    const inv = claim ? '' : (over?.invitation ?? invitation).trim();
     // The field follows the server knocked at: its own key, or none.
     const keyHere = keyForServer(at, { key, at: keyAt }, initial);
     if (normalizeServerUrl(keyAt) !== at) { setKey(keyHere); setKeyAt(at); }
@@ -128,6 +137,7 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived, accep
     try {
       a = await knock(at, {
         key: keyHere || undefined,
+        claim: claim && !!keyHere,
         invite: inv || undefined,
         name: initial.displayName || undefined,
       });
@@ -353,28 +363,57 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived, accep
    */
   useEffect(() => {
     if (step !== 'welcomed' || !welcomed) return;
-    const stop = watchDoor(welcomed.at, {
-      key: keyForServer(welcomed.at, { key, at: keyAt },
-        { serverUrl: initial.serverUrl, serverKey: initial.serverKey }) || undefined,
-      name: initial.displayName || undefined,
-    }, () => {
+    // Known by its card now: the key has nothing more to do.
+    const stop = watchDoor(welcomed.at, { name: initial.displayName || undefined }, (word) => {
       setWelcomed(null);
-      setNote(t('welcome.removedMeanwhile'));
+      setNote(t(word === 'new-owner' ? 'welcome.newOwnerMeanwhile' : 'welcome.removedMeanwhile'));
       setStep('server');
     });
     return stop;
-  }, [step, welcomed, key, keyAt, initial.serverUrl, initial.serverKey, initial.displayName]);
+  }, [step, welcomed, initial.displayName]);
+
+  /**
+   * The key typed at a house that has an owner: this phone would take
+   * the owner's place, and the phone of before would leave the list with
+   * its pairs. Right for one's own phone lost, broken or reinstalled;
+   * said first, and asked, since it cannot be undone from here.
+   */
+  const confirmClaim = useCallback(() => {
+    const no = () => { Journal.mark('door:claim:no').catch(() => { /* noop */ }); };
+    Alert.alert(
+      t('welcome.claimTitle'),
+      t('welcome.claimBody', { server: displayServer(resolved) }),
+      [
+        { text: t('settings.cancel'), style: 'cancel', onPress: no },
+        {
+          text: t('welcome.claimYes'),
+          style: 'destructive',
+          onPress: () => {
+            Journal.mark('door:claim:yes').catch(() => { /* noop */ });
+            knockNow('stranger', { claim: true });
+          },
+        },
+      ],
+      { cancelable: true, onDismiss: no },
+    );
+  }, [resolved, knockNow]);
 
   // --- the screens --------------------------------------------------------
   if (step === 'welcomed' && welcomed) {
     const { a } = welcomed;
+    // Taken with the key from a house that had somebody on its list:
+    // the phone of before, when there was one, has left it with its
+    // pairs, and that is said.
+    const claimed = !!a.adopted && a.hasOwner;
+    const ownerTitle = claimed ? 'welcome.inOwnerClaimedTitle'
+      : a.adopted ? 'welcome.inOwnerTitle' : 'welcome.inOwnerBackTitle';
+    const ownerBody = claimed && a.replaced ? 'welcome.inOwnerClaimedBody'
+      : a.adopted && !claimed ? 'welcome.inOwnerBody' : 'welcome.inOwnerBackBody';
     const title = a.role === 'owner'
-      ? (a.adopted ? t('welcome.inOwnerTitle') : t('welcome.inOwnerBackTitle'))
+      ? t(ownerTitle)
       : t('welcome.inMemberTitle', { name: a.name || '' });
     const body = a.role === 'owner'
-      ? (a.adopted
-        ? t('welcome.inOwnerBody', { server: displayServer(welcomed.at) })
-        : t('welcome.inOwnerBackBody', { server: displayServer(welcomed.at) }))
+      ? t(ownerBody, { server: displayServer(welcomed.at) })
       : t('welcome.inMemberBody', { server: displayServer(welcomed.at), name: a.name || '' });
     return (
       <Screen>
@@ -534,7 +573,7 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived, accep
             label={t('welcome.next')}
             outline
             disabled={!invitation.trim() && !(withKey && key.trim())}
-            onPress={() => knockNow('stranger')}
+            onPress={() => (withKey && key.trim() ? confirmClaim() : knockNow('stranger'))}
           />
           <Secondary label={t('welcome.back')} onPress={() => { setNote(''); setStep('server'); }} />
         </Screen>

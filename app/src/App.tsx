@@ -4781,14 +4781,18 @@ export default function App() {
           },
           // Taken off the list by the owner: what this phone is here
           // has changed, and the buttons hang on it. Out of the channel
-          // and to the welcome, which knocks and finds out.
-          onRemoved: () => {
-            Journal.mark('removed-from-server').catch(() => { /* noop */ });
+          // and to the welcome, which knocks and finds out. Or this
+          // phone was the owner, and another took its place with the
+          // key: said in those words, since it may not have been us.
+          onRemoved: (why) => {
+            Journal.mark(why === 'new-owner' ? 'removed-from-server:new-owner' : 'removed-from-server')
+              .catch(() => { /* noop */ });
             const server = displayServer(cfgRef.current?.serverUrl || '');
             setCfg((prev) => (prev ? saveCfg({ ...prev, serverRole: 'stranger' }) : prev));
             leaveChannelRef.current?.();
             setScreen('welcome');
-            Alert.alert(t('errors.removed'), t('errors.removedBody', { server }));
+            if (why === 'new-owner') Alert.alert(t('errors.newOwner'), t('errors.newOwnerBody', { server }));
+            else Alert.alert(t('errors.removed'), t('errors.removedBody', { server }));
           },
           onMemberLeft: (name) => {
             Journal.mark(`member-left:${name}`).catch(() => { /* noop */ });
@@ -6644,7 +6648,9 @@ export default function App() {
         Journal.mark(`door-watch:${word}`).catch(() => { /* noop */ });
         setCfg((prev) => (prev ? saveCfg({ ...prev, serverRole: 'stranger' }) : prev));
         setScreen('welcome');
-        Alert.alert(t('errors.removed'), t('errors.removedBody', { server: displayServer(cfg.serverUrl) }));
+        const server = displayServer(cfg.serverUrl);
+        if (word === 'new-owner') Alert.alert(t('errors.newOwner'), t('errors.newOwnerBody', { server }));
+        else Alert.alert(t('errors.removed'), t('errors.removedBody', { server }));
       })
       : () => { /* nothing to watch */ };
     return () => { gone = true; stop(); };

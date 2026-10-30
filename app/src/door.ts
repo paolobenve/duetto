@@ -22,9 +22,10 @@ import type { ServerRole } from './config';
  * ask for, and what not to.
  *
  * Knocking is not only asking. A free server is taken by the first card
- * shown; an invitation carried here is spent here; the key brings the
- * owner home after a reinstall. So the answer to "what am I to you"
- * can be "the owner, as of now".
+ * shown; an invitation carried here is spent here; the key, typed and
+ * claimed, brings the owner home after a reinstall, or to a new phone,
+ * in the old card's place. So the answer to "what am I to you" can be
+ * "the owner, as of now".
  *
  * Each visit is one socket: hello, the card signed, the question, the
  * answer, and the socket is closed. The owner's business - an
@@ -42,13 +43,21 @@ export type DoorAnswer = {
   name?: string;
   /** taken at this very knock */
   adopted?: boolean;
+  /** the owner's cards whose place it took, when the house had one */
+  replaced?: number;
   /** 'bad-key', 'bad-invite', 'bad-signature' */
   error?: string;
 };
 
 export type DoorRequest = {
-  /** the key of the server, when we have one to say */
+  /** the key of the server, when somebody has just typed it */
   key?: string;
+  /**
+   * The house asked for, with the key: at a house that has an owner,
+   * the key alone takes nothing - see answerDoor in the server - and
+   * this phone takes the owner's place only when the person says so.
+   */
+  claim?: boolean;
   /** an invitation, spent at this knock if it is good */
   invite?: string;
   /** what we are called: the server writes it down when it adopts us */
@@ -140,6 +149,7 @@ function visit(serverUrl: string, ask: DoorRequest): Promise<Visit> {
           sigv: card?.sigv,
           host: card?.host,
           key: ask.key || undefined,
+          claim: ask.claim && ask.key ? true : undefined,
           invite: ask.invite || undefined,
           name: ask.name || undefined,
           model: deviceModel(),
@@ -155,6 +165,7 @@ function visit(serverUrl: string, ask: DoorRequest): Promise<Visit> {
             needsKey: msg.needsKey === true,
             name: typeof msg.name === 'string' ? msg.name : undefined,
             adopted: msg.adopted === true,
+            replaced: typeof msg.replaced === 'number' ? msg.replaced : undefined,
             error: typeof msg.error === 'string' ? msg.error : undefined,
           };
           finish(() => resolve(result));
@@ -189,14 +200,15 @@ function visit(serverUrl: string, ask: DoorRequest): Promise<Visit> {
  * Such a phone never joins a room, and so never hears what the server
  * has to say - that it was taken off the list, first of all: it went
  * on offering connections it could not open. Kept at the door, it
- * hears. The word comes as 'removed' from the server, or as 'stranger'
- * from the door's own answer on reopening; the caller does the rest.
- * Returns what stops the watching.
+ * hears. The word comes as 'removed' from the server - 'new-owner'
+ * when another phone has taken the house with its key - or as
+ * 'stranger' from the door's own answer on reopening; the caller does
+ * the rest. Returns what stops the watching.
  */
 export function watchDoor(
   serverUrl: string,
   ask: DoorRequest,
-  onWord: (word: 'removed' | 'stranger') => void,
+  onWord: (word: 'removed' | 'new-owner' | 'stranger') => void,
 ): () => void {
   let stopped = false;
   let current: Visit | null = null;
@@ -217,7 +229,9 @@ export function watchDoor(
     if (stopped) { v.close(); return; }
     current = v;
     if (v.answer.role === 'stranger') { onWord('stranger'); return; }
-    v.onWord = (msg) => { if (msg?.type === 'removed') onWord('removed'); };
+    v.onWord = (msg) => {
+      if (msg?.type === 'removed') onWord(msg.why === 'new-owner' ? 'new-owner' : 'removed');
+    };
     v.onGone = () => { current = null; later(); };
   };
   open();

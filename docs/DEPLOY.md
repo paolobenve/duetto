@@ -590,7 +590,7 @@ For presence to really hold:
 | `Upgrade Required` from healthz | the proxy forwards a path the server does not recognise | update the server: it accepts any prefix |
 | healthz answers but the app does not connect | the WebSocket rules are never reached | check the **order** of the rules in the proxy |
 | Presence drops every ~50 seconds | `timeout tunnel` not set | set it to 3600s |
-| "This server does not let you in" | `SERVER_KEY` set on the server and wrong on the phone | write the right one in the app under the address |
+| "This server does not let you in" | `SERVER_KEY` set on the server and wrong on the phone | type the right one where the app asks for it: the app keeps it nowhere |
 | "This server does not know this phone" | the server has an owner, and this phone is not on its list | an invitation from the owner, or their pairing code; if the server is yours, its key brings you home |
 | "The invitation does not work" | wrong, already spent, or expired | make another one |
 | "No answer from the other phone" | a different code, or the other one is not connected | do the pairing again with a new code |

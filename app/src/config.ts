@@ -127,12 +127,8 @@ export type PairInfo = {
    */
   serverRole?: ServerRole;
   /**
-   * The key of the server this pairing was born on.
-   *
-   * It travels with the address for the same reason: two connections
-   * can live on two servers, and each server has its own key. It is not
-   * a secret of the pair - the pair has its own, and a far better one -
-   * it is what the server asks at the door.
+   * The key of the server this pairing was born on: kept no more, and
+   * always empty. See DuoConfig.serverKey.
    */
   serverKey?: string;
   /**
@@ -320,13 +316,17 @@ export type DuoConfig = {
   /** wss://YOUR_DOMAIN/duetto/ws */
   serverUrl: string;
   /**
-   * The key the server asks for, if it asks for one.
+   * The key of the server: kept no more, and always empty.
    *
-   * Without it, anybody who has learnt the address can use the server -
-   * and, worse, is handed the relay's credentials in the very first
-   * message. With it, a stranger is turned away before being told
-   * anything at all. A server that does not ask for one leaves this
-   * empty, and nothing changes.
+   * It is the owner's password - whoever says it, and asks for the
+   * house, becomes the server's owner in place of the one there was -
+   * and a phone on the list never needs it: the server knows it by its
+   * card. It was kept here, shown in the settings and said at every
+   * connection, and a phone taken off the list came back with it by
+   * itself. Now it is typed on the first screen when it is wanted, said
+   * at that knock, and forgotten; whatever an older version wrote here
+   * is wiped at the first start (see withoutServerKeys). The field stays
+   * so that the configurations from before are read as they were.
    */
   serverKey: string;
   /**
@@ -711,10 +711,34 @@ export async function loadConfig(): Promise<DuoConfig> {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_CONFIG;
     const stored = JSON.parse(raw);
-    return tidyPending(tidyPairs(oneDiagnostics({ ...DEFAULT_CONFIG, ...stored })));
+    const cfg = withoutServerKeys(tidyPending(tidyPairs(oneDiagnostics({ ...DEFAULT_CONFIG, ...stored }))));
+    // A key written by a version from before goes from the phone now,
+    // not at the next change of a setting.
+    if (hadServerKey(stored)) await saveConfig(cfg).catch(() => { /* next time */ });
+    return cfg;
   } catch {
     return DEFAULT_CONFIG;
   }
+}
+
+/** Whether a stored configuration still holds a server's key, anywhere. */
+function hadServerKey(stored: any): boolean {
+  const pairs = Array.isArray(stored?.pairs) ? stored.pairs : [];
+  return [stored, stored?.pair, ...pairs].some((x) => typeof x?.serverKey === 'string' && x.serverKey !== '');
+}
+
+/**
+ * The configuration with no server's key in it: neither the one in use
+ * nor any pair's. See DuoConfig.serverKey.
+ */
+export function withoutServerKeys(cfg: DuoConfig): DuoConfig {
+  const clean = (p: PairInfo): PairInfo => (p.serverKey ? { ...p, serverKey: '' } : p);
+  return {
+    ...cfg,
+    serverKey: '',
+    pair: cfg.pair ? clean(cfg.pair) : cfg.pair,
+    pairs: (cfg.pairs || []).map(clean),
+  };
 }
 
 /**
@@ -1028,7 +1052,8 @@ export function alignPairServer(cfg: DuoConfig): DuoConfig {
 }
 
 export async function saveConfig(cfg: DuoConfig): Promise<void> {
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+  // Never written, whatever the screen in memory holds.
+  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(withoutServerKeys(cfg)));
 }
 
 /**
