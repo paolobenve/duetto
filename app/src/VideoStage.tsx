@@ -326,6 +326,15 @@ export default function VideoStage(props: Props) {
    * the one that is drawn.
    */
   const pipAlive = !compact && (!!pipStream || pipEmpty);
+  /**
+   * One's own picture in the little square, and the summary in the
+   * middle: the summary's "You" row already says what the square's
+   * label did - microphone, output, camera, and with the diagnostics
+   * how loud one hears - and the only picture there is can be nobody
+   * else's. The label said it twice (30 October), and goes. Where the
+   * summary is not drawn - an interruption, a notice over it - it stays.
+   */
+  const selfInSummary = pipIsSelf && !bigStream && !notice && !awaitingRemote;
 
   // Whoever looks from outside needs to know how much room the big
   // video really takes, so as not to rest the controls half on it.
@@ -1075,14 +1084,16 @@ export default function VideoStage(props: Props) {
           ) : (
             <View style={styles.pipWaiting} />
           )}
-          <View style={styles.pipTag} pointerEvents="none">
-            <Text style={styles.pipTagText}>
-              {pipStream
-                ? (pipIsSelf ? t('channel.you') : t('channel.notYou'))
-                : (emptyLabel || t('channel.waiting'))}
-            </Text>
-            {pipIsSelf ? ownBadge : peerBadge}
-          </View>
+          {selfInSummary ? null : (
+            <View style={styles.pipTag} pointerEvents="none">
+              <Text style={styles.pipTagText}>
+                {pipStream
+                  ? (pipIsSelf ? t('channel.you') : t('channel.notYou'))
+                  : (emptyLabel || t('channel.waiting'))}
+              </Text>
+              {pipIsSelf ? ownBadge : peerBadge}
+            </View>
+          )}
         </Animated.View>
       ) : null}
 

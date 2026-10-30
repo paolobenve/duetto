@@ -1552,6 +1552,10 @@ export default function ChannelScreen(props: Props) {
                   ) : null}
                 </View>
                 {ownCameraMark(17)}
+                {/* How loud one hears them, with the diagnostics: it was
+                    on the little square's label only, which goes when
+                    this row is on the screen (see VideoStage). */}
+                {showStats ? <Text style={styles.cardVolume}>{dbText(peerGain)}</Text> : null}
                 {showStats ? <StatusMarks battery={battery} net={network} /> : null}
               </View>
             )}
