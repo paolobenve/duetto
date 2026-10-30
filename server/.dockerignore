@@ -7,6 +7,5 @@ yarn-error.log*
 devices.json
 *.local
 data/
-smoke-test.mjs
-door-test.mjs
+*-test.mjs
 deploy/
