@@ -14,30 +14,38 @@ sudo mkdir -p /opt/duetto && sudo chown $USER /opt/duetto
 From your **PC**, to copy the code over:
 
 ```bash
-rsync -rltvz --no-owner --no-group --exclude node_modules --exclude .env \
-  --exclude devices.json \
+rsync -rltvz --no-owner --no-group --chmod=g-w,o-rwx --exclude node_modules \
+  --exclude .env --exclude devices.json \
   /path/to/duetto/server/ user@YOUR_SERVER:/opt/duetto/server/
 ```
 
-Both `.env` and `devices.json` belong to the installation and not to the code: the first
-holds the relay's password, the second the phones let in. Copying them over from a
-developer's machine would replace what the server knows with somebody else's list.
+The settings and the list belong to the installation and not to the code, and they do not
+live beside it: the settings — the relay's password, the key of the house — in
+`/etc/duetto/server.env`, the phones let in in `/var/lib/duetto/`. The two `--exclude` stay
+all the same: a developer's own `.env` or list, copied over, would replace what the server
+knows with somebody else's. `--chmod` keeps the code writable by you alone: the service
+reads it, and writes none of it.
 
 Back on the **server**:
 
 ```bash
 cd /opt/duetto/server
-cp .env.example .env      # it is fine as it is
-npm install --omit=dev
+(umask 027 && npm install --omit=dev)    # nothing in it writable by the service
 npm run test:smoke        # it has to print ALL OK
+sudo install -d -m 750 /etc/duetto
+sudo install -m 640 .env.example /etc/duetto/server.env    # it is fine as it is
+echo 'DEVICES_FILE=/var/lib/duetto/devices.json' | sudo tee -a /etc/duetto/server.env
 ```
+
+From now on the settings are changed with `sudoedit /etc/duetto/server.env`, and read by
+the service at its next start.
 
 ### The key of the house
 
 The door shuts by itself: the first phone that knocks at a server nobody has taken becomes
 its owner, and from then on a stranger is turned away before being told anything — the TURN
 credentials included. On a public address, though, "the first phone that knocks" may not
-be yours. One line in the `.env` makes the first knock have to know a word:
+be yours. One line in the settings makes the first knock have to know a word:
 
 ```bash
 openssl rand -hex 12          # something like 3f9c1a77e4b20d58c6a1
@@ -66,9 +74,9 @@ A phone carries a key of its own. It makes one the first time it is asked for, a
 secret half never leaves it; the other half — the card — is what the server writes down,
 and at every connection the server picks a number and the phone signs it. Normally the
 server writes it down by itself: the first card at the door takes the house, the others
-come in by invitation. The list lives in `devices.json`, beside the server.
+come in by invitation. The list lives in `/var/lib/duetto/devices.json`.
 
-The same can be written by hand in the `.env`, for whoever prefers to see the list in a
+The same can be written by hand in the settings, for whoever prefers to see the list in a
 file of their own:
 
 ```
@@ -95,7 +103,7 @@ bare number to everybody.
 
 ### Inviting somebody
 
-Writing keys into the `.env` works for the two or three phones of whoever owns the server.
+Writing keys into the settings works for the two or three phones of whoever owns the server.
 It stops working the moment somebody else is to be let in: you would have to be at a
 keyboard, with their card in front of you, at the moment they ask.
 
@@ -134,8 +142,8 @@ code is spent: whoever it was passed on to finds it worth nothing, which is the 
 way of noticing that it was passed on.
 
 ```bash
-npm run devices                      # who is on the list, and what is still invited
-npm run devices -- --remove anna     # takes a phone away, at the next knock
+sudo -u duetto npm run devices                      # who is on the list, and what is still invited
+sudo -u duetto npm run devices -- --remove anna     # takes a phone away, at the next knock
 ```
 
 **Whoever you let in brings their own people.** Anna does not need an invitation for the
@@ -149,43 +157,46 @@ time, so many rooms cost open sockets and not conversations. `npm run devices` s
 count beside each name, which is worth seeing without being worth forbidding.
 
 Nothing needs restarting: the list is read every time somebody knocks. It lives in
-`devices.json` beside the server, or wherever `DEVICES_FILE` says.
+`/var/lib/duetto/devices.json`, wherever `DEVICES_FILE` in the settings says; the server
+names it in its log as it starts (`list: …`).
 
-⚠️ The service has to be **allowed to write it**. The unit here hardens the server with
-`ProtectSystem=strict`, which makes the whole filesystem read-only — right for something
-that only forwards envelopes, and wrong from the moment it keeps a list. The line that
-opens the one door it needs is already in the example:
+⚠️ The service has to be **allowed to write it**, and nothing else. The unit here hardens
+the server with `ProtectSystem=strict`, which makes the whole filesystem read-only — right
+for something that only forwards envelopes, and wrong from the moment it keeps a list. The
+lines that open the one door it needs are already in the example:
 
 ```
-ReadWritePaths=/opt/duetto/server
+StateDirectory=duetto
+StateDirectoryMode=0750
 ```
 
+systemd makes `/var/lib/duetto` for the service's user, and that folder alone is writable.
 Without it the server says `cannot write …: read-only file system` and carries on with no
-memory: phones are let in and forgotten at the next restart. Whoever set the server up
-before this existed has to add the line and `systemctl daemon-reload`.
+memory: phones are let in and forgotten at the next restart.
 
-The file is written by the service, as its own user. So the commands above are run as that
-user too:
+The file is written by the service, as its own user, and the settings are readable by root
+and the service's group alone. So the commands above are run as that user too: they read
+the settings the service reads, and find the list where it does.
 
 ```bash
 sudo -u duetto npm run invite -- anna
 ```
 
 ⚠️ The door is shut as soon as **one** phone is on the list — the one that took the
-server, one from the `.env`, or one from an invitation. So knock with a phone of yours
+server, one from the settings, or one from an invitation. So knock with a phone of yours
 first: otherwise the first phone to arrive shuts the door on you. On a public address,
 set a `SERVER_KEY` before starting, and only whoever knows it can take the house.
 
 ### Starting it for good
 
-A dedicated service user, which only has to **read** the files:
+A dedicated service user, which only has to **read** the code and the settings:
 
 ```bash
 sudo useradd --system --no-create-home --shell /usr/sbin/nologin duetto
 sudo chown -R $USER:duetto /opt/duetto
-sudo chmod -R u+rwX,g+rX,o-rwx /opt/duetto
+sudo chmod -R u+rwX,g=rX,o= /opt/duetto                # read by the service, written by you
 sudo find /opt/duetto -type d -exec chmod g+s {} \;   # new files inherit the group
-sudo chmod 640 /opt/duetto/server/.env
+sudo chgrp -R duetto /etc/duetto                       # its settings: read, never changed
 
 sudo cp /opt/duetto/server/deploy/duetto-signaling.service /etc/systemd/system/
 sudo sed -i "s|^User=.*|User=duetto|; s|^ExecStart=.*|ExecStart=$(which node) src/index.js|" \
@@ -194,6 +205,7 @@ sudo sed -i "s|^User=.*|User=duetto|; s|^ExecStart=.*|ExecStart=$(which node) sr
 sudo systemctl daemon-reload
 sudo systemctl enable --now duetto-signaling
 curl -s http://127.0.0.1:8787/healthz      # {"ok":true,"rooms":0}
+sudo journalctl -u duetto-signaling --since '1 min ago' --no-pager | grep -E 'door:|list:'
 ```
 
 The unit starts after the reverse proxy, so that at a reboot it stops
@@ -208,6 +220,43 @@ sudo mkdir -p /etc/systemd/system/duetto-signaling.service.d
 printf '[Unit]\nAfter=haproxy.service\n' \
   | sudo tee /etc/systemd/system/duetto-signaling.service.d/order.conf
 sudo systemctl daemon-reload    # no restart needed: it counts at the next stop
+```
+
+### Settings and list beside the code, from before
+
+An installation set up before this was written keeps its settings in `.env` and its list
+in `devices.json`, both in the server's folder — and that folder was writable by the
+service, so that it could write the list: whatever got to run as the service could have
+rewritten the code, or the key of the house, and stayed past a restart. The move takes a
+minute, with the service stopped (here the folder is `/opt/duetto/server`):
+
+```bash
+sudo systemctl stop duetto-signaling
+sudo install -d -o root -g duetto -m 750 /etc/duetto
+sudo install -o root -g duetto -m 640 /opt/duetto/server/.env /etc/duetto/server.env
+echo 'DEVICES_FILE=/var/lib/duetto/devices.json' | sudo tee -a /etc/duetto/server.env
+sudo install -d -o duetto -g duetto -m 750 /var/lib/duetto
+sudo mv /opt/duetto/server/devices.json /var/lib/duetto/
+sudo mkdir -p /etc/systemd/system/duetto-signaling.service.d
+printf '[Service]\nEnvironmentFile=\nEnvironmentFile=/etc/duetto/server.env\nStateDirectory=duetto\nStateDirectoryMode=0750\nReadWritePaths=\n' \
+  | sudo tee /etc/systemd/system/duetto-signaling.service.d/00-layout.conf
+sudo systemctl daemon-reload && sudo systemctl start duetto-signaling
+sudo journalctl -u duetto-signaling --since '1 min ago' --no-pager | grep -E 'door:|list:'
+#   door: as many phones as before; list: /var/lib/duetto/devices.json
+sudo chgrp -R duetto /opt/duetto && sudo chmod -R g-w,o= /opt/duetto
+sudo find /opt/duetto -type d -exec chmod g+s {} \;
+sudo rm /opt/duetto/server/.env
+```
+
+The drop-in replaces the unit's `EnvironmentFile` and empties its `ReadWritePaths`, which
+named the server's folder; its name starts with `00-` so that it comes before the others,
+and a drop-in after it — `/var/lib/turn` for the relay users, below — adds its own place
+again. With the daily copy installed, its path moves too:
+
+```bash
+sudo sed -i 's|/opt/duetto/server/devices.json|/var/lib/duetto/devices.json|' \
+  /etc/systemd/system/duetto-backup.service
+sudo systemctl daemon-reload
 ```
 
 ### With Docker, instead of systemd
@@ -263,7 +312,7 @@ in place of the `cp` in the backup unit.
 
 ### Reports from the beta testers
 
-With `GITLAB_TOKEN` and `GITLAB_PROJECT` in `.env` the server carries the
+With `GITLAB_TOKEN` and `GITLAB_PROJECT` in the settings the server carries the
 testers' reports: the app offers "send the journal to my work item" and
 "report a problem", the server finds the open work item whose title holds the
 name on the person's invitation (the one titled "Beta tester: ..." first),
@@ -284,7 +333,7 @@ the app writes on GitLab by itself, in their name.
 `devices.json` is the phones, the invitations and the rooms: losing it means pairing
 everybody again. A timer in `deploy/` copies it once a day into `/var/backups/duetto/`,
 dated, and keeps a month of copies. It runs as root, which may read the file whoever owns
-it; the path in the unit is the server's folder, to adjust if yours is elsewhere:
+it; the path in the unit is `/var/lib/duetto`, where the signalling unit keeps the list:
 
 ```bash
 sudo cp /opt/duetto/server/deploy/duetto-backup.{service,timer} /etc/systemd/system/
@@ -294,8 +343,8 @@ sudo systemctl start duetto-backup.service     # the first copy, now
 ls -l /var/backups/duetto/
 ```
 
-To put a copy back: stop the service, copy the file over `devices.json` with the same owner
-and mode, start the service.
+To put a copy back: stop the service, copy the file over `/var/lib/duetto/devices.json`,
+owned by the service's user and with mode 640, start the service.
 
 ### A relay user per phone
 
@@ -320,7 +369,7 @@ sudo systemctl edit duetto-signaling      # add, under [Service]:
 #   ReadWritePaths=/var/lib/turn
 ```
 
-then, in the server's `.env`:
+then, in the settings (`sudoedit /etc/duetto/server.env`):
 
 ```
 TURN_DB=/var/lib/turn/turndb
@@ -498,7 +547,7 @@ Check that the relay answers **from outside**, not from the server itself:
 node server/tools/stun-check.mjs YOUR_DOMAIN 3478
 ```
 
-Then tell the signalling server, which will pass it on to the phones: in the `.env`
+Then tell the signalling server, which will pass it on to the phones: in the settings
 
 ```
 TURN_URL=turns:YOUR_DOMAIN:5349?transport=tcp

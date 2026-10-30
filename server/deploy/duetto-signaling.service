@@ -3,7 +3,9 @@
 #   sudo systemctl daemon-reload
 #   sudo systemctl enable --now duetto-signaling
 #
-# Adjust User, WorkingDirectory and the path to node.
+# Adjust User, WorkingDirectory and the path to node. The settings are
+# in /etc/duetto/server.env and the list in /var/lib/duetto, away from
+# the code: see docs/DEPLOY.md.
 #
 # BEWARE when copying this over an existing installation: the User
 # below is an example, and the real one is whoever owns (or shares the
@@ -30,7 +32,10 @@ StartLimitIntervalSec=0
 Type=simple
 User=www-data
 WorkingDirectory=/opt/duetto/server
-EnvironmentFile=/opt/duetto/server/.env
+# Outside the code, which a deploy copies over, and root's: the service
+# reads its settings and cannot change them - the key of the house
+# among them.
+EnvironmentFile=/etc/duetto/server.env
 ExecStart=/usr/bin/node src/index.js
 # `always` and not `on-failure`: the server deliberately exits on any
 # uncaught error, and even a clean-but-wrong exit must not leave the
@@ -48,11 +53,16 @@ PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
 # The one place it may write: the list of the phones let in, and the
-# invitations not yet used. With `strict` above and nothing here the
-# whole filesystem is read-only - which is what one wants of a server
-# that only forwards envelopes, and was true of this one until it began
-# keeping a list.
-ReadWritePaths=/opt/duetto/server
+# invitations not yet used. With `strict` above the whole filesystem is
+# read-only - which is what one wants of a server that only forwards
+# envelopes, and was true of this one until it began keeping a list.
+# The list is kept in /var/lib/duetto, made here for the service's user
+# and writable without being named (DEVICES_FILE in the settings points
+# there). It used to be kept beside the code, and the folder of the
+# code was the writable one: whatever got to run as the service could
+# have rewritten the code, or the settings, and stayed past a restart.
+StateDirectory=duetto
+StateDirectoryMode=0750
 
 [Install]
 WantedBy=multi-user.target
