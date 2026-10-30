@@ -864,6 +864,14 @@ async function handleInviteNote(ws, msg) {
       + (until ? ` It is used once, and it works until ${until}.` : ' It is used once.'),
     'If you would rather type: open Duetto and, in the first screen, paste the link, or'
       + ' write the server and the code the link ends with.',
+    // The other phone needs no invitation. On 28 October a tester asked
+    // for another one, the first having run out: it had been used, on
+    // the tester's phone, and what had run out was the pairing link for
+    // the second phone - which then came in by a second invitation.
+    'One invitation is enough, and it is for your phone. The other phone - the other'
+      + ' person\'s, or a second one of yours - needs none: once yours is in, Duetto shows a'
+      + ' pairing code, as a QR code to hold up to the other phone or as a link to send. A link'
+      + ' waits a day; after that, Settings, "Server and pairs", "Add a connection" makes a new one.',
     'Please keep the app at the latest version:'
       + ' https://gitlab.com/paolobenve/duetto/-/releases - what F-Droid has can be a few days'
       + ' behind, and at this age Duetto is mended often.',
