@@ -318,7 +318,7 @@ export const es: Dictionary = {
     notInChannelButCall: ': no está en el canal,\npero el aviso le llega.',
     touchWord: 'Toca ',
     backWhenReopened: 'Volverá a estar localizable cuando reabra la app.',
-    untilBackNoCall: 'Hasta que vuelva, el aviso no puede alcanzarlo.',
+    untilBackNoCall: 'Hasta que vuelva, el aviso no puede llegarle.',
     peerInChannel: '{who} está en el canal',
     holdToTalk: '{who} no escucha · mantén pulsado para hablar',
     talkingThrough: '{who} te oye',
