@@ -7,7 +7,7 @@
  * the LICENSE file at the root of the project, and at
  * <https://www.gnu.org/licenses/>.
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, Animated,
@@ -118,7 +118,8 @@ type Props = {
   canAddPair?: boolean;
   people?: PersonOnServer[];
   invitations?: InvitationOnServer[];
-  freshInvite?: { name: string; code: string } | null;
+  /** the server's answer to the last invitation asked for: made, or the name taken */
+  inviteAnswer?: { ok: boolean; at: number } | null;
   onAskPeople?: () => void;
   onInvite?: (name: string) => void;
   onForget?: (name: string) => void;
@@ -212,7 +213,7 @@ export default function SettingsScreen({
   initial, onForgetPair, onSwitchPair, onRenamePair, onChangeServer, onLeaveServer, onRepair, onHaveCode, onClose, onOpenSetup,
   onVolumeTest,
   vp9Here, vp9Peer, onQualityChange, onLive, reportsOpen, update, onReport, onInviteToWorkItem,
-  canInvite, canAddPair, people = [], invitations = [],
+  canInvite, canAddPair, people = [], invitations = [], inviteAnswer,
   onAskPeople, onInvite, onForget, onForgetInvitation, pending = [], onForgetPending,
   diagAsk,
 }: Props) {
@@ -400,6 +401,32 @@ export default function SettingsScreen({
 
   /** the name of the person being invited, while it is typed */
   const [inviteName, setInviteName] = useState('');
+  /**
+   * The name asked for, until the server answers.
+   *
+   * The field used to be emptied at the press, and a name already on
+   * the list came back to nobody: on 30 October the name vanished and
+   * nothing was made, without a word. Now the field keeps it until the
+   * answer: emptied when the invitation is made, kept - with the
+   * reason under it - when the name is somebody's already.
+   */
+  const [inviteAsked, setInviteAsked] = useState('');
+  const [inviteRefused, setInviteRefused] = useState('');
+  const answerSeen = useRef(inviteAnswer?.at ?? 0);
+  useEffect(() => {
+    if (!inviteAnswer || inviteAnswer.at === answerSeen.current) return;
+    answerSeen.current = inviteAnswer.at;
+    if (!inviteAsked) return;
+    setInviteAsked('');
+    if (inviteAnswer.ok) setInviteName('');
+    else setInviteRefused(t('errors.nameTaken'));
+  }, [inviteAnswer, inviteAsked]);
+  // No answer - the connection gone meanwhile: the button works again.
+  useEffect(() => {
+    if (!inviteAsked) return;
+    const tm = setTimeout(() => setInviteAsked(''), 10_000);
+    return () => clearTimeout(tm);
+  }, [inviteAsked]);
   // The list is asked for when this screen opens: it lives on the
   // server, and it may have changed since the last look.
   useEffect(() => { if (canInvite) onAskPeople?.(); }, [canInvite]);
@@ -934,17 +961,21 @@ export default function SettingsScreen({
             <Field
               label={t('settings.invitePerson')}
               value={inviteName}
-              onChange={setInviteName}
+              onChange={(v) => { setInviteName(v); setInviteRefused(''); }}
               placeholder={t('settings.invitePersonPlaceholder')}
               hint={t('settings.invitePersonHint')}
+              warn={inviteRefused}
             />
             <TouchableOpacity
               style={[styles.rowButton, styles.rowAfterChoices]}
               onPress={() => {
                 const name = inviteName.trim();
-                if (!name) return;
+                // Once: a second press before the answer would find the
+                // name taken - by the invitation the first one made.
+                if (!name || inviteAsked) return;
+                setInviteRefused('');
+                setInviteAsked(name);
                 onInvite?.(name);
-                setInviteName('');
               }}>
               <Text style={styles.rowButtonText}>{t('settings.makeInvitation')}</Text>
               <Text style={styles.rowButtonArrow}>{'\u203A'}</Text>
@@ -2171,6 +2202,8 @@ function Field(props: {
   secure?: boolean;
   autoCapitalize?: 'none' | 'sentences';
   hint?: string;
+  /** what was wrong with what was typed, under the hint */
+  warn?: string;
 }) {
   return (
     <View style={styles.field}>
@@ -2186,6 +2219,7 @@ function Field(props: {
         autoCorrect={false}
       />
       {props.hint ? <Text style={styles.hint}>{props.hint}</Text> : null}
+      {props.warn ? <Text style={styles.fieldWarn}>{props.warn}</Text> : null}
     </View>
   );
 }
@@ -2289,6 +2323,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#252c38',
   },
   hint: { color: '#6b7686', fontSize: 12, marginTop: 6, lineHeight: 17 },
+  fieldWarn: { color: '#ffb454', fontSize: 13, marginTop: 6, lineHeight: 18 },
   pairRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'stretch', gap: 8, marginTop: 10 },
   pairStandby: {
     flexBasis: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

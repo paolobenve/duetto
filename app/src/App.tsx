@@ -1357,7 +1357,8 @@ export default function App() {
   const [canAddPair, setCanAddPair] = useState(true);
   const [people, setPeople] = useState<PersonOnServer[]>([]);
   const [invitations, setInvitations] = useState<InvitationOnServer[]>([]);
-  const [freshInvite, setFreshInvite] = useState<{ name: string; code: string } | null>(null);
+  /** the server's answer to the last invitation asked for: see SettingsScreen */
+  const [inviteAnswer, setInviteAnswer] = useState<{ ok: boolean; at: number } | null>(null);
   /** rooms already told to the server as gone: once is enough */
   const forgottenRooms = useRef<Set<string>>(new Set());
   const [connState, setConnState] = useState('new');
@@ -4899,10 +4900,10 @@ export default function App() {
               }
             }
           },
-          onInvited: (name, code) => {
+          onInvited: () => {
             // The list follows on its own: the server sends it right
             // after, with this invitation already in it.
-            setFreshInvite({ name, code });
+            setInviteAnswer({ ok: true, at: Date.now() });
           },
           // The letter of somebody who opened a link of ours: the
           // pair is made from it, here and now, as if they had been
@@ -4926,6 +4927,11 @@ export default function App() {
             }
             else if (code === 'decrypt-failed') {
               Alert.alert(t('errors.differentKeys'), t('errors.differentKeysBody'));
+            }
+            // An invitation under a name somebody has already: said in
+            // the settings, under the name, which stays there to change.
+            else if (code === 'name-taken') {
+              setInviteAnswer({ ok: false, at: Date.now() });
             }
             // The server does not know us: it is not a fault of the
             // pair, and trying again would change nothing until
@@ -6933,7 +6939,7 @@ export default function App() {
         canAddPair={canAddPair}
         people={people}
         invitations={invitations}
-        freshInvite={freshInvite}
+        inviteAnswer={inviteAnswer}
         onAskPeople={() => signalingRef.current?.askPeople()}
         onInvite={(name) => signalingRef.current?.askInvite(name)}
         onForget={(name) => signalingRef.current?.forgetPerson(name)}
