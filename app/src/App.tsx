@@ -48,7 +48,7 @@ import SetupScreen from './SetupScreen';
 import PairingScreen from './PairingScreen';
 import WelcomeScreen from './WelcomeScreen';
 import { leaveServer, knock, watchDoor } from './door';
-import ChannelScreen from './ChannelScreen';
+import ChannelScreen, { LevelBubble } from './ChannelScreen';
 import { loadPipPosition } from './VideoStage';
 import { useAudioRoute, type AudioRoute } from './audioRoute';
 import { pairFromLetter } from './pairing';
@@ -1213,6 +1213,8 @@ export default function App() {
 
   /** the last moment something asked for the controls to be seen */
   const [controlsWakeAt, setControlsWakeAt] = useState(0);
+  /** the last volume key pressed away from the channel's screen: see LevelBubble */
+  const [levelPressAt, setLevelPressAt] = useState(0);
   /** the pause before taking the place back after a "replaced", doubling each time */
   const replacedWait = useRef(3000);
   /** whether the server carries reports to the beta testers' work items */
@@ -2616,7 +2618,9 @@ export default function App() {
     Volume.takeKeys(true).catch(() => {});
     // The presses that come while the app is busy, summed and climbed
     // in one go: one by one, each with its redraw, they queued (see
-    // keysGain).
+    // keysGain). Away from the channel's screen the scale comes up for
+    // a moment, or nothing would show where the level went: see
+    // LevelBubble.
     let presses = 0;
     let due: ReturnType<typeof setTimeout> | null = null;
     const stop = Volume.subscribe((d) => {
@@ -2627,6 +2631,7 @@ export default function App() {
         const n = presses;
         presses = 0;
         changeLevel(n);
+        if (screenRef.current !== 'channel') setLevelPressAt(Date.now());
       }, 0);
     });
     return () => {
@@ -6766,6 +6771,22 @@ export default function App() {
   useEffect(() => { onForgetPairRef.current = (id) => { onForgetPair(id); }; }, [onForgetPair]);
 
   // --- what is drawn -------------------------------------------------------
+  /** The level as the scale draws it, in the channel and over the other screens. */
+  const levelOnScale = {
+    pct: Math.round(100 * 2 ** (dbOf(level) / 10)),
+    level: level > 0 ? dbOf(level) : levelMinDb,
+    phone: sysFraction > 0 ? dbOf(sysFraction) : levelMinDb,
+    ceiling: dbOf(levelCeiling),
+    min: levelMinDb,
+    knobFloor: knobFloorDb ?? undefined,
+    max: LEVEL_MAX_DB,
+    muted: outputMuted,
+  };
+  // While the channel is on, the keys are Duetto's on every screen.
+  const levelBubble = inChannel
+    ? <LevelBubble at={levelPressAt} level={levelOnScale} route={audio.route} onPick={setLevelTo} />
+    : null;
+
   if (screen === 'loading' || !cfg) {
     return (
       <View style={styles.center}>
@@ -6880,6 +6901,7 @@ export default function App() {
             ? () => { forgetArrived(); setAccepting(false); setScreen('settings'); }
             : undefined}
         />
+        {levelBubble}
       </View>
     );
   }
@@ -6969,6 +6991,7 @@ export default function App() {
           onNo={() => answerAsk('no')}
         /> : null}
         {updateSheet}
+        {levelBubble}
       </View>
     );
   }
@@ -6989,6 +7012,7 @@ export default function App() {
             setScreen(setupFrom === 'settings' ? 'settings' : 'channel');
           }}
         />
+        {levelBubble}
       </View>
     );
   }
@@ -7034,6 +7058,7 @@ export default function App() {
             setScreen(isPaired(cfg) || opensHere(cfg) ? 'settings' : 'welcome');
           }}
         />
+        {levelBubble}
       </View>
     );
   }
@@ -7070,16 +7095,7 @@ export default function App() {
         // that says how loud you are hearing the other person.
         ownGain={appliedGain}
         peerGain={outputMuted ? 0 : level}
-        levelDb={{
-          pct: Math.round(100 * 2 ** (dbOf(level) / 10)),
-          level: level > 0 ? dbOf(level) : levelMinDb,
-          phone: sysFraction > 0 ? dbOf(sysFraction) : levelMinDb,
-          ceiling: dbOf(levelCeiling),
-          min: levelMinDb,
-          knobFloor: knobFloorDb ?? undefined,
-          max: LEVEL_MAX_DB,
-          muted: outputMuted,
-        }}
+        levelDb={levelOnScale}
         systemVolume={systemVolume}
         onChangeLevel={changeLevel}
         wakeAt={controlsWakeAt}

@@ -414,6 +414,78 @@ function VolumeScale(p: {
   );
 }
 
+/** How long the scale stays over another screen after the last press. */
+const BUBBLE_MS = 1800;
+
+type LevelOnScale = Omit<Parameters<typeof VolumeScale>[0], 'route' | 'onPick' | 'onFigureLong'>;
+
+/**
+ * The scale, for a moment, over a screen that is not the channel's.
+ *
+ * In the channel the volume keys are Duetto's (Volume.kt), and the
+ * settings opened from it leave the channel on: on 30 October the keys
+ * went on moving the level there, and nothing said so. The scale lives
+ * on the channel's screen, and the system's own bar does not come for
+ * a key Duetto has taken. Now the same scale comes up at every press,
+ * on the right edge as in the channel, and goes a moment after the
+ * last one - not while a finger is on it: it can be dragged there too.
+ *
+ * `at` is the moment of the last press. One made before the scale was
+ * there - in the channel, a moment before the settings opened - does
+ * not bring it up.
+ */
+export function LevelBubble(p: {
+  at: number;
+  level: LevelOnScale;
+  route: AudioRoute;
+  onPick?: (db: number, done: boolean) => void;
+}) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const [shown, setShown] = useState(false);
+  const since = useRef(p.at);
+  const held = useRef(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const goLater = useCallback(() => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      if (held.current) return;
+      Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: true })
+        .start(({ finished }) => { if (finished) setShown(false); });
+    }, BUBBLE_MS);
+  }, [opacity]);
+  useEffect(() => {
+    if (!p.at || p.at === since.current) return;
+    since.current = p.at;
+    setShown(true);
+    opacity.stopAnimation();
+    Animated.timing(opacity, { toValue: 1, duration: 120, useNativeDriver: true }).start();
+    goLater();
+  }, [p.at, opacity, goLater]);
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+  if (!shown) return null;
+  return (
+    <Animated.View pointerEvents="box-none" style={[styles.bubble, { opacity }]}>
+      <VolumeScale
+        {...p.level}
+        route={p.route}
+        onPick={(db, done) => {
+          // Held, it stays; let go, it goes a moment later, as after a key.
+          held.current = !done;
+          if (done) {
+            goLater();
+          } else {
+            if (timer.current) { clearTimeout(timer.current); timer.current = null; }
+            opacity.stopAnimation();
+            opacity.setValue(1);
+          }
+          p.onPick?.(db, done);
+        }}
+      />
+    </Animated.View>
+  );
+}
+
 type Props = {
   /**
    * We are inside the system's little window, says the activity.
@@ -3122,6 +3194,17 @@ const styles = StyleSheet.create({
   // a little shorter than before.
   scale: {
     position: 'absolute', bottom: '31%', height: '42%', width: 72, alignItems: 'center',
+  },
+  /**
+   * The scale over another screen (LevelBubble): on the right edge, as
+   * in the channel, on a card of its own - what lies under it is text,
+   * not a picture.
+   */
+  bubble: {
+    position: 'absolute', right: 8, top: '24%', height: '46%', width: 88,
+    paddingTop: 12, alignItems: 'center',
+    borderRadius: 18, backgroundColor: 'rgba(11,14,20,0.94)',
+    borderWidth: 1, borderColor: 'rgba(230,235,241,0.12)',
   },
   scaleBox: { flex: 1, alignItems: 'center', width: 72 },
   scaleFigure: { color: '#7cc4ff', fontSize: 19, fontWeight: '800', lineHeight: 22 },
