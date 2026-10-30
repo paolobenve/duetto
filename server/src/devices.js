@@ -154,11 +154,9 @@ export function addInvitation(name) {
   const data = read();
   // One name, one phone: the list, the rooms and the leaving all go by
   // name, and two people under the same one would be taken off
-  // together. Null, when the name is already somebody's.
-  const now = Date.now();
-  const taken = data.devices.some((d) => d.name === name)
-    || data.invitations.some((i) => i.name === name && Date.parse(i.expires) > now);
-  if (taken) return null;
+  // together. Null, when the name is already somebody's, capitals or
+  // not (see nameKey).
+  if (nameTaken(data, name)) return null;
   const code = makeCode();
   data.invitations.push({
     code,
@@ -307,11 +305,25 @@ export function refresh(pub, name, model, version = '') {
   return known.name;
 }
 
+/**
+ * A name as the list compares it: "Anna" and "anna" are one name.
+ *
+ * Compared letter for letter, on 28 October an invitation went out
+ * under a name already on the list with a capital where the list had
+ * none, and the list showed the same person twice, with nothing but
+ * that letter to tell the rows apart. Accents still count: "Andrea"
+ * and "Andréa" may be two people.
+ */
+function nameKey(name) {
+  return String(name ?? '').normalize('NFC').trim().toLowerCase();
+}
+
 /** Whether another phone on the list, or a live invitation, has this name. */
 function nameTaken(data, name, pub = '') {
   const now = Date.now();
-  return data.devices.some((d) => d.name === name && d.pub !== pub)
-    || data.invitations.some((i) => i.name === name && Date.parse(i.expires) > now);
+  const key = nameKey(name);
+  return data.devices.some((d) => nameKey(d.name) === key && d.pub !== pub)
+    || data.invitations.some((i) => nameKey(i.name) === key && Date.parse(i.expires) > now);
 }
 
 /**

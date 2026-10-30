@@ -60,6 +60,10 @@ try {
       && !existsSync(path.join(DIR, 'devices.json')), r);
   check('and lasts the days they say, quotes taken off', r.out.includes('good for 3 days'), r.out);
 
+  r = run('invite', ['ANNA'], { DUETTO_ENV: SETTINGS });
+  check('a name that is somebody\'s, in capitals: the command says so and writes nothing',
+    r.code === 1 && r.err.includes('somebody\'s already') && invitedIn(LIST).length === 1, r);
+
   r = run('devices', [], { DUETTO_ENV: SETTINGS });
   check('the list is read from there too', r.code === 0 && r.out.startsWith(LIST) && r.out.includes('for anna'), r);
 

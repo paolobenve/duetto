@@ -28,7 +28,14 @@ if (!name) {
 }
 
 const before = read();
-const { code, days } = addInvitation(name);
+const made = addInvitation(name);
+// A name that is somebody's already used to end in a TypeError.
+if (!made) {
+  console.error(`"${name}" is somebody's already, on the list or in an invitation still good`);
+  console.error('  - capitals do not count: choose another name.');
+  process.exit(1);
+}
+const { code, days } = made;
 
 console.log(`\n  ${code}\n`);
 console.log(`for ${name}, good for ${days} days.`);

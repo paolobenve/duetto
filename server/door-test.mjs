@@ -223,6 +223,17 @@ try {
   check('inviting under the owner\'s name: name-taken', inv4.type === 'error' && inv4.error === 'name-taken', inv4);
   const inv5 = await ask(annaWs, { type: 'invite', name: 'carla' });
   check('inviting under a member\'s name: name-taken', inv5.type === 'error' && inv5.error === 'name-taken', inv5);
+  // Capitals or not, it is the same name.
+  // An invitation made is followed by the list: askFor waits for the
+  // answer itself.
+  const inv6 = await askFor(annaWs, { type: 'invite', name: 'Carla' }, 'error');
+  check('a member\'s name with a capital: name-taken', inv6.error === 'name-taken', inv6);
+  const inv7 = await askFor(annaWs, { type: 'invite', name: 'dora' }, 'invited');
+  const inv8 = await askFor(annaWs, { type: 'invite', name: 'DORA' }, 'error');
+  check('an invitation still good, in capitals: name-taken',
+    inv7.name === 'dora' && inv8.error === 'name-taken', { inv7, inv8 });
+  const inv9 = await askFor(annaWs, { type: 'invite', name: 'Dóra' }, 'invited');
+  check('an accent is another name', inv9.name === 'Dóra', inv9);
   a = await join(PORT, anna, '11112222', 'anna');
   check('the owner comes back', a.answer.type === 'joined', a.answer); a.ws.close(); await sleep(200);
   b = await join(PORT, bruno, '33334444', 'bruno');
