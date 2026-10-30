@@ -392,7 +392,7 @@ export const de: Dictionary = {
     openIntoDoor: 'Die Tür, mit Eintreten',
     openIntoDoorNote: 'Die App öffnet sich an der Tür: ein Tippen auf Eintreten, und du bist im Kanal. Vorher hört dich niemand.',
     openIntoChannel: 'Direkt in den Kanal',
-    openIntoChannelNote: 'Die App öffnen heißt eintreten: der andere hört dich sofort.',
+    openIntoChannelNote: 'Die App öffnen heißt eintreten: die andere Person hört dich sofort.',
     outputOnEntry: 'Ton beim Eintreten',
     outputOnEntryEar: 'Im Hörer',
     outputOnEntryEarNote: 'Jeder Eintritt beginnt im Hörer, wie ein Anruf; den Lautsprecher wählst du jedes Mal selbst.',
