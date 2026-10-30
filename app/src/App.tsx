@@ -225,6 +225,37 @@ function nearestStep(db: number, max: number, steps: number[]): number {
   return best;
 }
 
+/**
+ * One rung of the ladder the keys climb, from where the level stands.
+ *
+ * The ladder in three stretches: the gain below 1 with the knob at its
+ * lowest step; the knob, step by step, with the gain at 1; the gain
+ * above 1 with the knob at its top. Up, in that order; down, the other
+ * way. With no knob - or one that changes nothing - the gain alone,
+ * between its two ends.
+ */
+function nextRung(
+  at: { g: number; volume: number },
+  up: boolean,
+  ladder: { max: number; low: number; ignored: boolean },
+): { g: number; volume: number } {
+  /** the gain by a rung, kept between `lo` and `hi` decibels */
+  const gainBy = (d: number, lo = LEVEL_MIN_DB, hi = LEVEL_MAX_DB) => {
+    const now = Math.round(dbOf(at.g) / LEVEL_STEP_DB) * LEVEL_STEP_DB;
+    const next = Math.max(lo, Math.min(hi, now + d * LEVEL_STEP_DB));
+    return { g: next === 0 ? 1 : Math.round(ofDb(next) * 1000) / 1000, volume: at.volume };
+  };
+  if (ladder.max <= 0 || ladder.ignored) return gainBy(up ? 1 : -1);
+  if (up) {
+    if (at.g < 0.999) return gainBy(1, -ATTENUATION_SPAN_DB, 0);
+    return at.volume < ladder.max ? { g: at.g, volume: at.volume + 1 } : gainBy(1);
+  }
+  if (at.g > 1.001) return gainBy(-1, 0, LEVEL_MAX_DB);
+  return at.volume > ladder.low
+    ? { g: at.g, volume: at.volume - 1 }
+    : gainBy(-1, -ATTENUATION_SPAN_DB, 0);
+}
+
 
 
 /**
@@ -2339,7 +2370,10 @@ export default function App() {
         .catch(() => { /* noop */ });
     }
     const target = ofDb(next);
-    const g = gainOf(cfgRef.current?.gains, output);
+    // From where the keys left it, if they just did: see keysGain.
+    const g = keysGain.current?.output === output
+      ? keysGain.current.g
+      : gainOf(cfgRef.current?.gains, output);
     const r3 = (x: number) => Math.round(x * 1000) / 1000;
     if (phone.max <= 0 || cfgRef.current?.knobWorks === 'no') {
       // No knob known: the gain alone, as it always was.
@@ -2393,56 +2427,80 @@ export default function App() {
     Volume.set(step).catch(() => { /* the read-back puts the truth back */ });
   };
 
-  /** Our gain for an output, written down only when it changes. */
-  const setGain = (output: string, wanted: number) => {
+  /**
+   * The gain the keys last asked for, ahead of `cfg`.
+   *
+   * On the POCO, on 30 October, every press saved the whole
+   * configuration and redrew the app, and the presses queued behind
+   * it: three a second, while a key held down sends many more. The
+   * level went on going down for two seconds after the key up had been
+   * pressed, and up for five after that. Now the presses are summed and
+   * climbed in one go (see the keys below), and the level is saved once
+   * the keys are let go; meanwhile the next presses climb from here, not
+   * from a configuration the redraw has not caught up with. It goes
+   * when the level is saved, and at any other way of setting the gain.
+   */
+  const keysGain = useRef<{ output: string; g: number } | null>(null);
+  const levelSaveDue = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveLevelNow = useCallback(() => {
+    if (levelSaveDue.current) { clearTimeout(levelSaveDue.current); levelSaveDue.current = null; }
+    keysGain.current = null;
+    setCfg((prev) => (prev ? saveCfg(prev) : prev));
+  }, [saveCfg]);
+  const saveLevelSoon = useCallback(() => {
+    if (levelSaveDue.current) clearTimeout(levelSaveDue.current);
+    levelSaveDue.current = setTimeout(saveLevelNow, 700);
+  }, [saveLevelNow]);
+
+  /**
+   * Our gain for an output, written down only when it changes; `later`,
+   * by the keys, saved when they are let go (keysGain).
+   */
+  const setGain = (output: string, wanted: number, later = false) => {
+    if (!later) keysGain.current = null;
     setCfg((prev) => {
       if (!prev) return prev;
       if (wanted === gainOf(prev.gains, output) && prev.gains?.[output] !== undefined) return prev;
-      return saveCfg({ ...prev, gains: { ...(prev.gains ?? {}), [output]: wanted } });
+      const next = { ...prev, gains: { ...(prev.gains ?? {}), [output]: wanted } };
+      return later ? next : saveCfg(next);
     });
   };
 
-  const changeLevel = useCallback((direction: number) => {
-    if (!direction) return;
+  /** The level by rungs: up for a positive count, down for a negative one. */
+  const changeLevel = useCallback((presses: number) => {
+    if (!presses) return;
     // The keys are pressed without looking: whatever the controls were
     // doing - faded, or gone altogether - they come back, and with them
     // the scale that says where the level is going.
     setControlsWakeAt(Date.now());
     const output = gainKeyRef.current;
     const phone = systemVolumeRef.current;
-    const ignored = cfgRef.current?.knobWorks === 'no';
-    const g = gainOf(cfgRef.current?.gains, output);
-    setOutputMuted(false);
-    /** the gain by a rung, kept between `lo` and `hi` decibels */
-    const gainStep = (d: number, lo = LEVEL_MIN_DB, hi = LEVEL_MAX_DB) => {
-      const now = Math.round(dbOf(g) / LEVEL_STEP_DB) * LEVEL_STEP_DB;
-      const next = Math.max(lo, Math.min(hi, now + d * LEVEL_STEP_DB));
-      Journal.mark(`level:gain ${next > 0 ? '+' : ''}${Math.round(next)}dB`).catch(() => { /* noop */ });
-      setGain(output, next === 0 ? 1 : Math.round(ofDb(next) * 1000) / 1000);
+    const from = {
+      g: keysGain.current?.output === output ? keysGain.current.g : gainOf(cfgRef.current?.gains, output),
+      volume: phone.volume,
     };
-    if (phone.max <= 0 || ignored) { gainStep(direction); return; }
-    const low = minStep(phone.max, stepsRef.current);
-    if (direction > 0) {
-      // Up: the gain below 1 first, then the knob, then the gain above 1.
-      if (g < 0.999) { gainStep(1, -ATTENUATION_SPAN_DB, 0); return; }
-      if (phone.volume < phone.max) {
-        moveKnob(phone.volume + 1);
-        Journal.mark(`level:knob ${phone.volume + 1}/${phone.max}`).catch(() => { /* noop */ });
-      } else {
-        gainStep(1);
-      }
-      return;
+    setOutputMuted(false);
+    const ladder = {
+      max: phone.max,
+      low: minStep(phone.max, stepsRef.current),
+      ignored: cfgRef.current?.knobWorks === 'no',
+    };
+    let at = from;
+    for (let i = 0; i < Math.abs(presses); i++) at = nextRung(at, presses > 0, ladder);
+    // One line for the presses climbed together, with how many they were.
+    const many = Math.abs(presses) > 1 ? ` x${Math.abs(presses)}` : '';
+    if (at.volume !== from.volume) {
+      moveKnob(at.volume);
+      Journal.mark(`level:knob ${at.volume}/${phone.max}${many}`).catch(() => { /* noop */ });
     }
-    // Down: the gain above 1 first, then the knob, then the gain below 1.
-    if (g > 1.001) {
-      gainStep(-1, 0, LEVEL_MAX_DB);
-    } else if (phone.volume > low) {
-      moveKnob(phone.volume - 1);
-      Journal.mark(`level:knob ${phone.volume - 1}/${phone.max}`).catch(() => { /* noop */ });
-    } else {
-      gainStep(-1, -ATTENUATION_SPAN_DB, 0);
+    if (at.g !== from.g) {
+      keysGain.current = { output, g: at.g };
+      setGain(output, at.g, true);
+      saveLevelSoon();
+      const db = Math.round(dbOf(at.g));
+      Journal.mark(`level:gain ${db > 0 ? '+' : ''}${db}dB${many}`).catch(() => { /* noop */ });
     }
-  }, [saveCfg]);
+  }, [saveCfg, saveLevelSoon]);
 
   /**
    * A gain below 1 is a leftover of the two knobs: it is turned into the
@@ -2556,12 +2614,28 @@ export default function App() {
   useEffect(() => {
     if (!inChannel) return;
     Volume.takeKeys(true).catch(() => {});
-    const stop = Volume.subscribe(changeLevel);
+    // The presses that come while the app is busy, summed and climbed
+    // in one go: one by one, each with its redraw, they queued (see
+    // keysGain).
+    let presses = 0;
+    let due: ReturnType<typeof setTimeout> | null = null;
+    const stop = Volume.subscribe((d) => {
+      presses += d;
+      if (due) return;
+      due = setTimeout(() => {
+        due = null;
+        const n = presses;
+        presses = 0;
+        changeLevel(n);
+      }, 0);
+    });
     return () => {
       stop();
+      if (due) clearTimeout(due);
+      if (levelSaveDue.current) saveLevelNow();
       Volume.takeKeys(false).catch(() => {});
     };
-  }, [inChannel, changeLevel]);
+  }, [inChannel, changeLevel, saveLevelNow]);
 
   /**
    * The name is needed inside the connection handlers too, and those
