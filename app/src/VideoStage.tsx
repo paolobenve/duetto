@@ -226,6 +226,31 @@ type Props = {
   emptyLabel?: string;
 };
 
+/**
+ * The little square's label, never wider than the square.
+ *
+ * "Non tu" and three marks - four, with the diagnostics' figure - are
+ * wider than the square at its smallest, a fifth of the screen: the
+ * label ran past the square's right edge, and with the square against
+ * the right of the screen, past the screen's (30 October). Now it is
+ * shrunk to the room there is, from its corner, as the technical lines
+ * are under the buttons. Laid out in a box wider than any label, so
+ * that what is measured is the width it wants, not the room it has.
+ */
+function PipTag({ room, children }: { room: number; children: React.ReactNode }) {
+  const [need, setNeed] = useState(0);
+  const scale = room > 0 && need > room ? room / need : 1;
+  return (
+    <View style={styles.pipTagBox} pointerEvents="none">
+      <View
+        style={[styles.pipTag, scale < 1 ? { transform: [{ scale }] } : null]}
+        onLayout={(e) => setNeed(e.nativeEvent.layout.width)}>
+        {children}
+      </View>
+    </View>
+  );
+}
+
 export default function VideoStage(props: Props) {
   const {
     localStream, remoteStream, localHasVideo, remoteHasVideo,
@@ -1085,14 +1110,14 @@ export default function VideoStage(props: Props) {
             <View style={styles.pipWaiting} />
           )}
           {selfInSummary ? null : (
-            <View style={styles.pipTag} pointerEvents="none">
+            <PipTag room={pipWidth - 10}>
               <Text style={styles.pipTagText}>
                 {pipStream
                   ? (pipIsSelf ? t('channel.you') : t('channel.notYou'))
                   : (emptyLabel || t('channel.waiting'))}
               </Text>
               {pipIsSelf ? ownBadge : peerBadge}
-            </View>
+            </PipTag>
           )}
         </Animated.View>
       ) : null}
@@ -1160,11 +1185,14 @@ const styles = StyleSheet.create({
    * looked nothing like the big video's label, which is the same thing
    * said at the same moment.
    */
+  /** wider than any label: see PipTag */
+  pipTagBox: { position: 'absolute', top: 5, left: 5, width: 2000, alignItems: 'flex-start' },
   pipTag: {
-    position: 'absolute', top: 5, left: 5,
     flexDirection: 'row', alignItems: 'center', gap: 5,
     backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 10,
     paddingHorizontal: 7, paddingVertical: 3,
+    // Shrunk from its corner, where it stays.
+    transformOrigin: 'left top',
   },
   pipTagText: { color: '#e6ebf1', fontSize: 10, fontWeight: '700' },
   /**
