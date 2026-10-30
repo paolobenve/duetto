@@ -17,6 +17,7 @@
  * by message, however you like. Whoever types it into the app gets
  * their phone written down under that name, and the code is spent.
  */
+import './settings.mjs';
 import { addInvitation, fileName, read } from '../src/devices.js';
 
 const name = process.argv[2];

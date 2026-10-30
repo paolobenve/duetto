@@ -31,6 +31,7 @@
  * harm: a day is a day however many times it is read, and what the
  * server has counted by itself is never lowered.
  */
+import './settings.mjs';
 import { createInterface } from 'node:readline';
 import { fileName, read, write } from '../src/devices.js';
 

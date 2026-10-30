@@ -16,6 +16,7 @@
  *
  * Taking one away needs no restart: the list is read at every knock.
  */
+import './settings.mjs';
 import { fileName, read, remove } from '../src/devices.js';
 
 const args = process.argv.slice(2);

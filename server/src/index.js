@@ -46,7 +46,7 @@ import {
   addInvitation, adopt, isBroken, markBroken, noteGuest, noteRoom, mayOpen, read, refresh,
   remove as removePerson, removeInvitation, removeRoom, roomOf, useInvitation, noteVisit,
   awaitRoom, pendingRoom, dropPending, leaveMail, takeMail, saveMoments, takeMoments,
-  invitationOf, signsSecondKind, noteSecondKind,
+  invitationOf, signsSecondKind, noteSecondKind, fileName as listFile,
 } from './devices.js';
 import { credentialsFor as turnCredentials, drop as dropTurn } from './turn.js';
 import { bouncePage } from './linkPage.js';
@@ -2001,6 +2001,9 @@ httpServer.listen(PORT, HOST, () => {
     : SERVER_KEY
       ? 'a key is asked for'
       : 'open - anybody who knows the address can use this server'}`);
+  // Where the list is: one not found is a door that knows nobody, and
+  // after a move the path is the first thing to look at.
+  console.log(`[duetto] list: ${listFile()}`);
   console.log(`[duetto] signatures: ${HOST_NAMES.size === 0
     ? 'of the bare number only - HOST_NAMES is not set'
     : `bound to ${[...HOST_NAMES].join(', ')}; the bare number ${OLD_SIGNATURES
