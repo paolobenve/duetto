@@ -43,7 +43,7 @@ import {
   createHash, createPublicKey, randomBytes, randomUUID, timingSafeEqual, verify,
 } from 'node:crypto';
 import {
-  addInvitation, adopt, isBroken, markBroken, noteGuest, noteRoom, mayOpen, read, refresh,
+  addInvitation, takeHouse, isBroken, markBroken, noteGuest, noteRoom, mayOpen, read, refresh,
   remove as removePerson, removeInvitation, removeRoom, roomOf, useInvitation, noteVisit,
   awaitRoom, pendingRoom, dropPending, leaveMail, takeMail, saveMoments, takeMoments,
   invitationOf, signsSecondKind, noteSecondKind, fileName as listFile,
@@ -121,10 +121,12 @@ function stunConfig() {
  * in the very first message, which is your bandwidth paid by you. With
  * it, a stranger is turned away before being told anything at all.
  *
- * It is not an identity and it protects nothing of the conversation:
- * whoever has it can knock at this door, and no further. What keeps a
- * pair apart from anybody else is the pairing code, which never comes
- * here.
+ * It is the owner's word, and nobody else's: whoever says it at the
+ * door, and asks for the house, becomes its owner in place of the one
+ * there was (see answerDoor). Of the conversation it protects nothing -
+ * what keeps a pair apart from anybody else is the pairing code, which
+ * never comes here - but the house is all of it: the list, the
+ * invitations, the taking away. Whoever is to come in is invited.
  *
  * Left empty, the server lets everybody in, as it always did: a server
  * that is already running does not lock its own owners out overnight.
@@ -1159,29 +1161,27 @@ wss.on('connection', (ws, req) => {
       }
 
       /**
-       * The first phone adopts the server; the key of the server brings
-       * one back.
+       * The first phone adopts the server.
        *
        * Setting a server up ended at a command line: the first phone's
        * card had to be copied into the `.env` by hand, and until then
        * the door stood open to anybody at all. Now a knock at a server
        * with nobody on its list writes that phone down as its owner,
-       * and the door shuts behind it.
+       * and the door shuts behind it - with the key of the server, when
+       * the operator has set one: only whoever knows it can be adopted.
+       * The name is provisional: the phone says what it is called at
+       * the first hello.
        *
-       * The key of the server, when the operator has set one, does two
-       * things at once: it closes that first window - only whoever
-       * knows it can be adopted - and it is the way home for a phone
-       * that has lost its card, which is what a reinstall does. Without
-       * it the owner is locked out of their own house with no way in
-       * but ssh, which is exactly the command line this is here to
-       * remove. The name is provisional: the phone says what it is
-       * called at the first hello.
+       * A house already taken is not taken here. The key used to bring
+       * a new card home in a join too, and every app sent it at every
+       * join: a phone taken off the list came back as an owner at its
+       * next connection, by itself. A taken house changes hands at the
+       * door alone, with the key typed and the house asked for (see
+       * answerDoor).
        */
-      const adopted = !known && signed(msg, ws.nonce)
-        && keyIsRight(msg.key)
-        && (!doorIsShut() || (SERVER_KEY && String(msg.key || '') !== ''))
-        ? adopt(saidName(msg.name) || 'the first phone', String(msg.pub), true,
-          cleanModel(msg.model))
+      const adopted = !known && !doorIsShut() && signed(msg, ws.nonce) && keyIsRight(msg.key)
+        ? takeHouse(saidName(msg.name) || 'the first phone', String(msg.pub),
+          cleanModel(msg.model))?.name ?? null
         : null;
       if (adopted) {
         console.log(`[duetto] ${adopted} takes the server: `
@@ -1769,6 +1769,9 @@ function ownersBusiness(ws, msg) {
       console.log(`[duetto] ${ws.who} takes back an invitation (${gone})`);
     } else {
       const name = String(msg.name || '').trim();
+      // Never the phone asking: the app does not offer it, and a name
+      // that was its own as well took it away with the other phone.
+      if (name === ws.who) { send(ws, { type: 'error', error: 'not-yourself' }); return; }
       // Their card first: whoever is connected with it is told, and
       // let go, so the phone learns at once and not at its next try.
       const pubs = read().devices.filter((d) => d.name === name).map((d) => d.pub);
@@ -1852,6 +1855,29 @@ function refusalReason(msg) {
 }
 
 /**
+ * The owner's cards that another card has just taken the house from.
+ *
+ * Let go at once, like a phone taken off the list: their relay users
+ * and those of their rooms' guests go, whoever is connected with one
+ * of those cards is told why and closed, and whoever is in one of
+ * their rooms right now is told that the pair is broken. On a phone
+ * lost, nobody hears it; on one still in somebody's hand, the word
+ * says that somebody has the key - which is the moment to change it.
+ */
+function letGoOwners(took, ws) {
+  const cards = took.gone.map((g) => g.pub);
+  for (const pub of cards) dropTurn(pub);
+  for (const guest of took.guests) dropTurn(guest);
+  for (const peer of wss.clients) {
+    if (peer !== ws && peer.pub && cards.includes(peer.pub)) {
+      send(peer, { type: 'removed', why: 'new-owner' });
+      try { peer.close(4006, 'removed'); } catch { /* noop */ }
+    }
+  }
+  for (const room of took.rooms) tellPairBroken(room, ws);
+}
+
+/**
  * What this server is to the phone at the door.
  *
  * The phone shows its card, signed, and says what it has - the key of
@@ -1864,9 +1890,15 @@ function refusalReason(msg) {
  *
  * It is not only a question. A free house is taken here, by the first
  * card shown - with the key, if the operator set one - and an
- * invitation carried here is spent here. A phone that comes home with
- * the key after a reinstall is written down again as the owner. What
- * the join does on its own remains, for apps that never knock first.
+ * invitation carried here is spent here. A house already taken changes
+ * hands here too, and only here: a card that comes with the key, and
+ * says `claim` beside it, takes the owner's place - the way home after
+ * a reinstall, or from a new phone when the old one is lost. The key
+ * alone does not do it: the apps before this one kept the key and sent
+ * it at every knock, and a phone taken off the list was back the next
+ * minute. The app asks for `claim` with the key just typed, and keeps
+ * neither. What the join does on its own remains, for apps that never
+ * knock first: a free house, and nothing more.
  */
 function answerDoor(ws, msg) {
   const pub = String(msg.pub || '');
@@ -1907,22 +1939,23 @@ function answerDoor(ws, msg) {
     return;
   }
   // The house is taken by the first card - with the key, if one is
-  // wanted - and the key brings the owner home to a house already
-  // taken.
-  const mayAdopt = hasOwner ? (needsKey && keySaid) : (!needsKey || keySaid);
-  if (mayAdopt) {
-    const name = adopt(saidName(msg.name) || 'the first phone', pub, true,
-      cleanModel(msg.model));
-    if (name) {
-      console.log(`[duetto] ${name} takes the server at the door: `
-        + `phone ${pub.slice(0, 12)}…`);
+  // wanted - and a house already taken by the card that comes with the
+  // key and asks for it.
+  const mayTake = hasOwner ? (needsKey && keySaid && msg.claim === true) : (!needsKey || keySaid);
+  if (mayTake) {
+    const took = takeHouse(saidName(msg.name) || 'the first phone', pub, cleanModel(msg.model));
+    if (took) {
+      console.log(`[duetto] ${took.name} takes the server at the door: `
+        + `phone ${pub.slice(0, 12)}…${took.gone.length
+          ? `, in place of ${took.gone.map((g) => g.name).join(', ')}` : ''}`);
+      letGoOwners(took, ws);
       setTimeout(tellOwners, 0);
       ws.pub = pub;
-      ws.who = name;
+      ws.who = took.name;
       ws.opens = true;
       ws.invites = true;
       ws.atDoor = true;
-      reply({ role: 'owner', name, adopted: true });
+      reply({ role: 'owner', name: took.name, adopted: true, replaced: took.gone.length });
       return;
     }
   }

@@ -58,14 +58,18 @@ openssl rand -hex 12          # something like 3f9c1a77e4b20d58c6a1
 SERVER_KEY=3f9c1a77e4b20d58c6a1
 ```
 
-The app asks for it when the server does, and only then. It does two things: it decides
-who may take the house, and it brings the owner home — a reinstalled phone is known by a
-new card, and with the key it is written down as the owner again. Without a key the owner
-of a server they have lost the card to has no way in but a terminal.
+The app asks for it when the server does, and only then, and keeps it nowhere. It does two
+things: it decides who may take the house, and it brings the owner home — a reinstalled
+phone, or a new one when the old is lost, is known by a new card, and with the key it takes
+the owner's place. The house has one owner: the card that was the owner's leaves the list,
+its pairs with it, and is told so if it is connected. Without a key the owner of a server
+they have lost the card to has no way in but a terminal.
 
-It is not an identity and it protects nothing of the conversation: whoever has it can take
-this house, and no further. What keeps a pair apart from everybody else is the pairing
-code, which never reaches the server.
+It is the owner's password. Whoever has it can take this house — the list, the invitations,
+the taking away — so it is given to nobody: whoever is to come in is invited. Of the
+conversation it protects nothing: what keeps a pair apart from everybody else is the
+pairing code, which never reaches the server. Should it get out, change it in the settings
+and restart: the phones on the list are known by their cards, and none of them needs it.
 
 ### One key per phone
 

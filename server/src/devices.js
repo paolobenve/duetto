@@ -291,7 +291,9 @@ export function refresh(pub, name, model, version = '') {
   const today = new Date().toISOString().slice(0, 10);
   if (version && version !== known.version) { known.version = version; changed = true; }
   if (known.seen !== today) { known.seen = today; changed = true; }
-  if (name && name !== known.name && known.owner === true) {
+  // Not a name another phone has: the list, the rooms and the taking
+  // away go by name, and two phones under one would go together.
+  if (name && name !== known.name && known.owner === true && !nameTaken(data, name, pub)) {
     const old = known.name;
     known.name = name;
     for (const r of data.rooms) if (r.owner === old) r.owner = name;
@@ -305,34 +307,85 @@ export function refresh(pub, name, model, version = '') {
   return known.name;
 }
 
+/** Whether another phone on the list, or a live invitation, has this name. */
+function nameTaken(data, name, pub = '') {
+  const now = Date.now();
+  return data.devices.some((d) => d.name === name && d.pub !== pub)
+    || data.invitations.some((i) => i.name === name && Date.parse(i.expires) > now);
+}
+
 /**
- * The phone that adopts a server nobody has claimed, or comes back to
- * one with the key of the server in hand.
+ * A name of its own for a phone that takes the house: the one it says,
+ * or - should that be somebody else's already - the same with its model,
+ * or a number. One name, one phone: see addInvitation.
+ */
+function freeName(data, name, model, pub) {
+  if (!nameTaken(data, name, pub)) return name;
+  if (model && !nameTaken(data, `${name} (${model})`, pub)) return `${name} (${model})`;
+  for (let i = 2; ; i += 1) if (!nameTaken(data, `${name} ${i}`, pub)) return `${name} ${i}`;
+}
+
+/**
+ * The phone that takes the house: the first one at a server nobody has
+ * claimed, or one that comes with the key of the server and says it
+ * wants the house.
  *
  * Setting a server up used to end at a command line: the first phone's
  * card had to be copied and written into the `.env` by hand, on the
  * server, and until then the door stood open to anybody. Now the first
  * phone to knock at a server with nobody on its list is written down
  * as its owner, and from that instant the door is shut for everybody
- * else. The same road brings a phone back when it has lost its card -
- * a reinstall makes a new one - as long as it carries the key of the
- * server: without it the owner would be locked out of their own house
- * with no way in but ssh.
+ * else.
  *
- * `owner` may hand out invitations; a guest brought in by one may not.
+ * The house has one owner. The key brought a phone home after a
+ * reinstall - a new card - and wrote it down beside the old one, which
+ * stayed on the list under the same name: a lost phone stayed an owner
+ * until somebody took it away, and taking it away by name took the new
+ * one too. Now the card that comes with the key takes the owner's
+ * place: the cards that were owners before leave the list, their rooms
+ * with them - written down as broken, for the other side to be told -
+ * and their waiting codes. A phone on the list by invitation stays as
+ * it is, and so does a phone written in the settings, which is the
+ * operator's.
+ *
+ * Returns the name the phone is written down under, the cards that
+ * left, the guests of their rooms and the rooms themselves, for the
+ * caller to let go; null if the list could not be written.
  */
-export function adopt(name, pub, owner = true, model = '') {
+export function takeHouse(name, pub, model = '') {
   const data = read();
-  data.devices = data.devices
-    .filter((d) => d.pub !== pub)
-    .concat({
-      name,
-      pub,
-      owner: owner === true,
-      model: model || undefined,
-      since: new Date().toISOString(),
-    });
-  return write(data) ? name : null;
+  const gone = data.devices.filter((d) => d.owner === true && d.pub !== pub);
+  const cards = new Set(gone.map((d) => d.pub));
+  const names = new Set(gone.map((d) => d.name));
+  // A room is known by its owner's card; a room written down before
+  // the cards were kept, by the name.
+  const theirs = (r) => (r.ownerPub ? cards.has(r.ownerPub) : names.has(r.owner));
+  const rooms = data.rooms.filter(theirs).map((r) => r.room);
+  const guests = data.rooms.filter((r) => theirs(r) && r.guest).map((r) => r.guest);
+  for (const room of rooms) noteBroken(data, room);
+  data.rooms = data.rooms.filter((r) => !theirs(r));
+  // The rooms where they were the second party stay with their owner,
+  // and the pair in them is broken all the same.
+  for (const r of data.rooms) {
+    const theirSeat = r.partnerPub ? cards.has(r.partnerPub) : !!r.partner && names.has(r.partner);
+    if (theirSeat) { noteBroken(data, r.room); r.partner = null; r.partnerPub = undefined; }
+  }
+  const waiting = new Set(data.pending
+    .filter((x) => (x.ownerPub ? cards.has(x.ownerPub) : names.has(x.owner)))
+    .map((x) => x.room));
+  data.pending = data.pending.filter((x) => !waiting.has(x.room));
+  data.mail = data.mail.filter((x) => !waiting.has(x.room) && !rooms.includes(x.room));
+  data.devices = data.devices.filter((d) => !cards.has(d.pub) && d.pub !== pub);
+  const free = freeName(data, name, model, pub);
+  data.devices.push({
+    name: free,
+    pub,
+    owner: true,
+    model: model || undefined,
+    since: new Date().toISOString(),
+  });
+  if (!write(data)) return null;
+  return { name: free, gone: gone.map((d) => ({ name: d.name, pub: d.pub })), guests, rooms };
 }
 
 /**

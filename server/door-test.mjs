@@ -16,11 +16,14 @@ const PORT_B = 8793;
 /** Two servers with names: the signature bound to them, and the bare number refused. */
 const PORT_H = 8794;
 const PORT_O = 8790;
+/** One owner: the house taken with the key and the claim. */
+const PORT_C = 8789;
 const FILE = `${tmpdir()}/duetto-door-${process.pid}.json`;
 const FILE_K = `${tmpdir()}/duetto-door-k-${process.pid}.json`;
 const FILE_B = `${tmpdir()}/duetto-door-b-${process.pid}.json`;
 const FILE_H = `${tmpdir()}/duetto-door-h-${process.pid}.json`;
 const FILE_O = `${tmpdir()}/duetto-door-o-${process.pid}.json`;
+const FILE_C = `${tmpdir()}/duetto-door-c-${process.pid}.json`;
 
 function phone() {
   const { publicKey, privateKey } = generateKeyPairSync('ed25519');
@@ -94,6 +97,39 @@ function askFor(ws, obj, type, ms = 3000) {
     ws.send(JSON.stringify(obj));
   });
 }
+/** A join with more said, and everything heard before the answer. */
+function joinWith(port, ph, room, extra = {}) {
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket(`ws://127.0.0.1:${port}`);
+    const got = [];
+    ws.on('message', (d) => {
+      const m = JSON.parse(d.toString());
+      if (m.type === 'hello') {
+        ws.send(JSON.stringify({ type: 'join', room, ...cardFor(ph, m.nonce), name: 'tester', mode: 'listening', ...extra }));
+        return;
+      }
+      got.push(m);
+      if (m.type === 'joined' || m.type === 'error') resolve({ ws, answer: m, got });
+    });
+    ws.on('error', reject);
+  });
+}
+/** The first word of this type said on a socket, or null after a while. */
+function heard(ws, type, ms = 3000) {
+  return new Promise((resolve) => {
+    const on = (d) => {
+      const m = JSON.parse(d.toString());
+      if (m.type === type) { ws.off('message', on); clearTimeout(t); resolve(m); }
+    };
+    const t = setTimeout(() => { ws.off('message', on); resolve(null); }, ms);
+    ws.on('message', on);
+  });
+}
+/** The code a socket is closed with, or null after a while. */
+const closedWith = (ws, ms = 3000) => new Promise((resolve) => {
+  const t = setTimeout(() => resolve(null), ms);
+  ws.once('close', (code) => { clearTimeout(t); resolve(code); });
+});
 function ask(ws, obj) {
   return new Promise((resolve) => {
     ws.once('message', (d) => resolve(JSON.parse(d.toString())));
@@ -115,6 +151,7 @@ const srvK = start(PORT_K, FILE_K, { SERVER_KEY: 'sesamo' });
 const srvB = start(PORT_B, FILE_B, { JOIN_LIMIT: '3' });
 const srvH = start(PORT_H, FILE_H, { HOST_NAMES: 'duetto.test, WWW.duetto.test' });
 const srvO = start(PORT_O, FILE_O, { HOST_NAMES: 'duetto.test', OLD_SIGNATURES: 'off' });
+const srvC = start(PORT_C, FILE_C, { SERVER_KEY: 'apriti' });
 let logB = '';
 srvB.stdout.on('data', (d) => { logB += d; });
 await sleep(700);
@@ -220,15 +257,71 @@ try {
   check('keyed house, wrong key: bad-key', r.answer.error === 'bad-key', r.answer); r.ws.close();
   r = await knock(PORT_K, dario, { key: 'sesamo' });
   check('keyed house, right key: owner', r.answer.role === 'owner' && r.answer.adopted === true, r.answer); r.ws.close();
-  // A reinstalled phone (new card) with the key comes home as owner.
+  // A reinstalled phone, a new card. The key alone - as the apps before
+  // the claim sent it, at every knock - takes nothing.
   const dario2 = phone();
   r = await knock(PORT_K, dario2);
   check('new card at owned keyed house: stranger, needsKey', r.answer.role === 'stranger' && r.answer.hasOwner && r.answer.needsKey, r.answer); r.ws.close();
   r = await knock(PORT_K, dario2, { key: 'sesamo' });
-  check('new card with the key: owner again', r.answer.role === 'owner' && r.answer.adopted === true, r.answer); r.ws.close();
+  check('new card with the key alone: still a stranger', r.answer.role === 'stranger' && !r.answer.adopted && !r.answer.error, r.answer); r.ws.close();
+  // The key and the claim: the owner's place, and the old card out.
+  r = await knock(PORT_K, dario2, { key: 'sesamo', claim: true });
+  check('new card with the key, claimed: owner, in place of the old card', r.answer.role === 'owner' && r.answer.adopted === true && r.answer.replaced === 1, r.answer); r.ws.close();
+  r = await knock(PORT_K, dario, { key: 'sesamo' });
+  check('the old card, with the key it kept: a stranger', r.answer.role === 'stranger' && !r.answer.adopted, r.answer); r.ws.close();
   const dario3 = phone();
-  r = await knock(PORT_K, dario3, { key: 'wrong' });
+  r = await knock(PORT_K, dario3, { key: 'wrong', claim: true });
   check('new card, wrong key at owned house: bad-key', r.answer.error === 'bad-key', r.answer); r.ws.close();
+
+  // One owner. Whoever took the house has a room with a guest in it, a
+  // member, and a thread at the door; a new phone comes with the key.
+  const paolo = phone(), edge = phone(), moto = phone(), newPhone = phone();
+  r = await knock(PORT_C, paolo, { key: 'apriti', name: 'paolo', model: 'POCO' });
+  check('one owner: the first phone takes the house with the key', r.answer.role === 'owner' && r.answer.adopted === true, r.answer);
+  const paoloDoor = r.ws;
+  const invMoto = await askFor(paoloDoor, { type: 'invite', name: 'moto' }, 'invited');
+  r = await knock(PORT_C, moto, { invite: invMoto.code }); r.ws.close();
+  let o = await join(PORT_C, paolo, 'room0001', 'paolo');
+  const e = await join(PORT_C, edge, 'room0001', 'edge');
+  check('the owner\'s room has its guest', e.answer.type === 'joined', e.answer);
+  e.ws.close(); o.ws.close(); await sleep(200);
+  const notMe = await askFor(paoloDoor, { type: 'forget', name: 'paolo' }, 'error');
+  check('"take away" never takes the phone asking', notMe.error === 'not-yourself', notMe);
+  // A join that carries the key, from a card nobody knows: the way the
+  // apps before took a house again, and not a way any more.
+  o = await joinWith(PORT_C, newPhone, 'room0002', { key: 'apriti' });
+  check('a join with the key does not take a taken house', o.answer.type === 'error' && o.answer.error === 'not-allowed', o.answer);
+  o.ws.close();
+  // The claim, with the name of the member: the old owner, at the door,
+  // is told why and let go.
+  const told = heard(paoloDoor, 'removed');
+  const shut = closedWith(paoloDoor);
+  r = await knock(PORT_C, newPhone, { key: 'apriti', claim: true, name: 'moto', model: 'Pixel' });
+  check('the claim: the owner, one card replaced', r.answer.role === 'owner' && r.answer.adopted === true && r.answer.replaced === 1, r.answer);
+  check('a name a member has: told apart by the model', r.answer.name === 'moto (Pixel)', r.answer);
+  const why = await told;
+  const code = await shut;
+  check('the old owner is told why, and let go', why?.why === 'new-owner' && code === 4006, { why, code });
+  const people = await askFor(r.ws, { type: 'people' }, 'people');
+  const owners = (people.people || []).filter((x) => x.owner);
+  check('one owner on the list, and the member as before',
+    owners.length === 1 && owners[0].you === true && people.people.some((x) => x.name === 'moto' && !x.owner)
+      && !people.people.some((x) => x.name === 'paolo'), people);
+  r.ws.close();
+  r = await knock(PORT_C, newPhone, { name: 'moto', model: 'Pixel' });
+  check('and the member\'s name is not taken at the next knock either', r.answer.role === 'owner' && r.answer.name === 'moto (Pixel)', r.answer); r.ws.close();
+  r = await knock(PORT_C, moto);
+  check('the member is still a member', r.answer.role === 'member' && r.answer.name === 'moto', r.answer); r.ws.close();
+  // The guest of the old owner's room: told the pair is broken.
+  o = await joinWith(PORT_C, edge, 'room0001');
+  check('the guest of the old room: pair broken, and not let in',
+    o.got.some((m) => m.type === 'pair-broken' && m.room === 'room0001') && o.answer.error === 'not-allowed', o.got);
+  o.ws.close();
+  // The old owner, back with the key it kept: nothing, at the door or in a room.
+  r = await knock(PORT_C, paolo, { key: 'apriti', name: 'paolo' });
+  check('the old owner, back with the key it kept: a stranger', r.answer.role === 'stranger' && !r.answer.adopted, r.answer); r.ws.close();
+  o = await joinWith(PORT_C, paolo, 'room0001', { key: 'apriti' });
+  check('nor in a room', o.answer.type === 'error' && o.answer.error === 'not-allowed', o.answer); o.ws.close();
 
   // A code that waits: the maker leaves, the other half comes in alone
   // and leaves its key, the maker finds it at the door of any room.
@@ -367,7 +460,8 @@ try {
   r = await knock(PORT_O, phone(), { v2: H });
   check('and the new way takes the house', r.answer.role === 'owner', r.answer); r.ws.close();
 } finally {
-  srv.kill(); srvK.kill(); srvB.kill(); srvH.kill(); srvO.kill();
+  srv.kill(); srvK.kill(); srvB.kill(); srvH.kill(); srvO.kill(); srvC.kill();
+  try { unlinkSync(FILE_C); } catch {}
   try { unlinkSync(FILE_H); } catch {}
   try { unlinkSync(FILE_O); } catch {}
   try { unlinkSync(FILE_B); } catch {}

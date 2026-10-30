@@ -179,8 +179,10 @@ owner, and the door shuts behind it.
 
 Another phone of yours, or a person who is to open connections of their own on your
 server, is invited: from the pairing screen, or from *the cogwheel → Who may use this
-server*. And should your phone be reinstalled — the card it is known by is made anew — the
-server's key brings it home as the owner, which is the other reason to set one.
+server*. And should your phone be reinstalled, or lost — the card it is known by is made
+anew — the server's key brings the new one home as the owner, in place of the old card,
+which leaves the list with its pairs: the other reason to set one. It is the owner's
+password, and it is given to nobody.
 
 Whoever you let in brings their own people: the person they pair with has nothing to ask
 anybody — they install the app, write the address, and pair. That phone is let in beside
