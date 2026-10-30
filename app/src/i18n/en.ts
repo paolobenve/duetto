@@ -331,7 +331,7 @@ export const en = {
     backWhenReopened: 'They will be reachable again when they reopen the app.',
     untilBackNoCall: 'Until they are back, the call cannot reach them.',
     peerInChannel: '{who} is in the channel',
-    holdToTalk: '{who} is not listening · hold to talk',
+    holdToTalk: 'Not listening to you · hold to talk',
     talkingThrough: '{who} hears you',
     talkButtonHideTitle: 'Remove the button?',
     talkButtonHideBody: 'When {who} is not listening, the button to make yourself heard will not appear any more, and calling will be all that is left. You can bring it back in Settings → Use → “Show the button to talk when the other is not listening”.',

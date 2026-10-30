@@ -320,7 +320,7 @@ export const fr: Dictionary = {
     backWhenReopened: 'Il redeviendra joignable quand il rouvrira l’app.',
     untilBackNoCall: 'Tant que l’autre personne n’est pas revenue, l’appel ne peut pas l’atteindre.',
     peerInChannel: '{who} est dans le canal',
-    holdToTalk: '{who} n’écoute pas · maintiens pour parler',
+    holdToTalk: 'Ne t’écoute pas · maintiens pour parler',
     talkingThrough: '{who} t’entend',
     talkButtonHideTitle: 'Retirer le bouton ?',
     talkButtonHideBody: 'Quand {who} n’écoute pas, le bouton pour te faire entendre n’apparaîtra plus, et il ne restera que l’appel. Tu le remets dans Réglages → Usage → « Afficher le bouton pour parler quand l’autre n’écoute pas ».',

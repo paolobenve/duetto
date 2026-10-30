@@ -320,7 +320,7 @@ export const de: Dictionary = {
     backWhenReopened: 'Sie sind wieder erreichbar, sobald sie die App neu öffnen.',
     untilBackNoCall: 'Bis die andere Person zurück ist, kann der Ruf sie nicht erreichen.',
     peerInChannel: '{who} ist im Kanal',
-    holdToTalk: '{who} hört nicht zu · gedrückt halten zum Sprechen',
+    holdToTalk: 'Hört dich nicht · gedrückt halten zum Sprechen',
     talkingThrough: '{who} hört dich',
     talkButtonHideTitle: 'Den Knopf entfernen?',
     talkButtonHideBody: 'Wenn {who} nicht zuhört, erscheint der Knopf, mit dem du dich hörbar machst, nicht mehr, und es bleibt nur der Anruf. Zurückholen kannst du ihn unter Einstellungen → Gebrauch → „Den Knopf zum Sprechen zeigen, wenn die andere Person nicht zuhört“.',
