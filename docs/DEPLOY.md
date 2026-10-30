@@ -22,9 +22,12 @@ rsync -rltvz --no-owner --no-group --chmod=g-w,o-rwx --exclude node_modules \
 The settings and the list belong to the installation and not to the code, and they do not
 live beside it: the settings — the relay's password, the key of the house — in
 `/etc/duetto/server.env`, the phones let in in `/var/lib/duetto/`. The two `--exclude` stay
-all the same: a developer's own `.env` or list, copied over, would replace what the server
-knows with somebody else's. `--chmod` keeps the code writable by you alone: the service
-reads it, and writes none of it.
+all the same: nothing on the server reads those files beside the code any more, but a
+developer's own `.env` holds their secrets, and a list of theirs is somebody else's phones.
+`--chmod` keeps the code writable by you alone: the service reads it, and writes none of it.
+And rsync takes nothing away: a file the code no longer has stays on the server until it is
+removed by hand — `--delete` would do it, and would take with it whatever was put there by
+hand.
 
 Back on the **server**:
 
