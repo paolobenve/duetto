@@ -10,6 +10,11 @@
 package com.duetto.platform
 
 import android.content.Context
+import android.media.VolumeProvider
+import android.media.session.MediaSession
+import android.media.session.PlaybackState
+import android.os.Handler
+import android.os.Looper
 import android.view.KeyEvent
 
 /**
@@ -94,4 +99,117 @@ object Volume {
     /** The released key goes with the pressed one, or it sounds twice. */
     fun consumeRelease(keyCode: Int): Boolean =
         active && (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)
+
+    // --- With the app out of sight ------------------------------------------
+
+    /*
+     * The keys above reach the activity only while it is on the screen.
+     * With another app in front, or the phone locked, Android keeps them
+     * and moves the call volume - which on a Motorola Edge changes
+     * nothing at the ear (see the top of this file).
+     *
+     * A media session that says its volume is "remote" - the way a
+     * Chromecast's is - is offered the keys instead: the system's bar
+     * comes up, but over Duetto's level, and every step is passed on to
+     * JavaScript like a key pressed in the app. In the app nothing
+     * changes: there the activity takes the keys before the session.
+     *
+     * Not certain everywhere: while a call is on, a phone may keep the
+     * keys for the call volume all the same. The journal says which:
+     * "volume-outside:up/down" when the session got them.
+     *
+     * The level is said in rungs of the app's ladder, from its bottom:
+     * the system's bar wants whole numbers and a top.
+     */
+
+    /** Who carries a level picked on the system's bar; the module puts it here. */
+    @Volatile
+    var tellTo: ((Int) -> Unit)? = null
+
+    private val main = Handler(Looper.getMainLooper())
+    private var session: MediaSession? = null
+    private var provider: VolumeProvider? = null
+    private var rung = 0
+    private var rungs = 0
+    private var lastOutsideNote = 0L
+
+    /** Where the level stands, and how many rungs the ladder has. */
+    fun showLevel(ctx: Context, at: Int, of: Int) {
+        val app = ctx.applicationContext
+        main.post {
+            rungs = of.coerceAtLeast(0)
+            rung = at.coerceIn(0, rungs)
+            settle(app)
+        }
+    }
+
+    /** In the channel on, outside off: called with `active`. */
+    fun outside(ctx: Context) {
+        val app = ctx.applicationContext
+        main.post { settle(app) }
+    }
+
+    private fun settle(ctx: Context) {
+        if (!active || rungs <= 0) {
+            session?.let {
+                try { it.isActive = false; it.release() } catch (_: Exception) { /* noop */ }
+            }
+            session = null
+            provider = null
+            return
+        }
+        try {
+            val s = session ?: MediaSession(ctx, "duetto-voice").also { made ->
+                // Without a callback the session drops the volume steps
+                // it is sent: they travel through the callback's handler.
+                made.setCallback(object : MediaSession.Callback() {}, main)
+                made.setPlaybackState(
+                    PlaybackState.Builder()
+                        .setState(PlaybackState.STATE_PLAYING, 0, 1f)
+                        .build(),
+                )
+                session = made
+            }
+            val p = provider
+            if (p == null || p.maxVolume != rungs) {
+                // The top of a VolumeProvider is fixed: a new ladder
+                // (another output, another floor) wants a new one.
+                val made = object : VolumeProvider(VolumeProvider.VOLUME_CONTROL_ABSOLUTE, rungs, rung) {
+                    override fun onAdjustVolume(direction: Int) {
+                        if (direction == 0) return
+                        val up = direction > 0
+                        currentVolume = (currentVolume + if (up) 1 else -1).coerceIn(0, maxVolume)
+                        tell?.invoke(if (up) 1 else -1)
+                        noteOutside(ctx, if (up) "up" else "down")
+                    }
+
+                    override fun onSetVolumeTo(volume: Int) {
+                        val v = volume.coerceIn(0, maxVolume)
+                        currentVolume = v
+                        tellTo?.invoke(v)
+                        noteOutside(ctx, "to")
+                    }
+                }
+                provider = made
+                s.setPlaybackToRemote(made)
+            } else if (p.currentVolume != rung) {
+                p.currentVolume = rung
+            }
+            if (!s.isActive) {
+                s.isActive = true
+                Journal.sample(ctx, "volume-outside:on")
+            }
+        } catch (_: Exception) {
+            // No session, the keys stay the system's: as before.
+        }
+    }
+
+    private fun noteOutside(ctx: Context, what: String) {
+        val now = System.currentTimeMillis()
+        if (now - lastOutsideNote < 2000) return
+        lastOutsideNote = now
+        try {
+            Journal.sample(ctx, "volume-outside:$what")
+        } catch (_: Exception) { /* noop */ }
+    }
 }

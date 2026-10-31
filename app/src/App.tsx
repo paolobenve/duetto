@@ -7001,6 +7001,21 @@ export default function App() {
     max: LEVEL_MAX_DB,
     muted: outputMuted,
   };
+  /**
+   * The level, in rungs from the bottom, for the system's bar with the
+   * app out of sight - see Volume.kt; a level picked there is set as if
+   * dragged on the scale.
+   */
+  const levelRungs = Math.round((LEVEL_MAX_DB - levelMinDb) / LEVEL_STEP_DB);
+  const levelRung = Math.round((levelOnScale.level - levelMinDb) / LEVEL_STEP_DB);
+  useEffect(() => {
+    if (!inChannel) return;
+    Volume.showLevel(levelRung, levelRungs).catch(() => { /* noop */ });
+  }, [inChannel, levelRung, levelRungs]);
+  useEffect(() => {
+    if (!inChannel) return;
+    return Volume.subscribeTo((rung) => setLevelTo(levelMinRef.current + rung * LEVEL_STEP_DB, true));
+  }, [inChannel, setLevelTo]);
   // While the channel is on, the keys are Duetto's on every screen.
   const levelBubble = inChannel
     ? <LevelBubble at={levelPressAt} level={levelOnScale} route={audio.route} onPick={setLevelTo} />

@@ -78,6 +78,10 @@ declare module 'duetto-platform' {
     setStream(name: string, value: number): Promise<'ok' | 'held' | 'refused' | 'failed' | 'unknown'>;
     /** `cb(value)` when the call volume changes, from outside as well */
     listenToSystem(cb: (value: number) => void): () => void;
+    /** where the level stands, in rungs from the bottom, for the system's bar */
+    showLevel(rung: number, rungs: number): Promise<boolean>;
+    /** `cb(rung)` when a level is picked on the system's bar */
+    subscribeTo(cb: (rung: number) => void): () => void;
   };
 
   /** Reading a QR code with the camera: its text, or '' if none was read. */
