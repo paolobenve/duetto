@@ -17,9 +17,10 @@ import { decodeUTF8, encodeBase64, decodeBase64 } from 'tweetnacl-util';
  * one types it in. From that moment the two are paired for good and the
  * code is of no further use.
  *
- * The code is NEVER sent to the server: all the server sees is
- * `pairId`, a fingerprint of the code, which is what brings the two of
- * you into the same room.
+ * The app never sends the code to the server: all it says is `pairId`,
+ * a fingerprint of the code, which is what brings the two of you into
+ * the same room. A link opened in a browser shows the code to the
+ * server's page, though - see "The link's secret" below.
  *
  * The key is not derived from the code: the two phones do a
  * Diffie-Hellman exchange (X25519) and stir the code into the result.

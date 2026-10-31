@@ -33,7 +33,8 @@
 //     anyway).
 //
 // The room is called `pairId` and is a fingerprint of the pairing code:
-// the real code never reaches the server. Different pairs have different
+// the app never sends the code itself - a link's page sees it in its
+// address, but not the secret after the '#'. Different pairs have different
 // pairIds and do not see one another.
 // -------------------------------------------------------------
 

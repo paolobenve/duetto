@@ -212,8 +212,10 @@ the two phones are paired for good and the code is of no further use: throw it a
 
 What happens underneath:
 
-1. From the code comes `pairId`, the only thing the server sees. The code **never reaches
-   it**.
+1. From the code comes `pairId`, the only thing the app tells the server. The app never
+   sends the code; a link opened in a browser does show it to the server's page, in its
+   address. What never reaches the server is the secret a link can carry after its `#`:
+   with it in the key, the code alone is not enough.
 2. The two phones exchange public keys and do a Diffie-Hellman (X25519), mixing the code
    into the derivation.
 3. Each one sends a proof that it holds the key. If the code typed in is wrong the proof

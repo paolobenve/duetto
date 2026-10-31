@@ -67,8 +67,9 @@ they have lost the card to has no way in but a terminal.
 
 It is the owner's password. Whoever has it can take this house — the list, the invitations,
 the taking away — so it is given to nobody: whoever is to come in is invited. Of the
-conversation it protects nothing: what keeps a pair apart from everybody else is the
-pairing code, which never reaches the server. Should it get out, change it in the settings
+conversation it protects nothing: what keeps a pair apart from everybody else is made on
+the two phones, from the pairing code - and, for a link, from the secret after its `#`, which
+never reaches the server (see ARCHITECTURE.md). Should it get out, change it in the settings
 and restart: the phones on the list are known by their cards, and none of them needs it.
 
 ### One key per phone

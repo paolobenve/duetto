@@ -126,7 +126,14 @@ code: 8147 1828                                        code typed in
 
 Three properties, and the reason for each:
 
-**The code never reaches the server.** Only `pairId` does, its fingerprint.
+**The app never sends the code to the server.** Only `pairId`, its fingerprint. A link is
+another matter: opened in a browser, it asks the server for the page behind it, and the
+address holds the code and the maker's key - all the pair's key used to be made of. So a
+link can carry a secret after its `#`, which no browser sends: 128 bits that go into the
+key, that make the proof a letter carries, and that buy the seat of the room waiting for
+it (see pairing.ts). The apps read such links from build 540; making them waits a release,
+for the apps out there to read them first. Until then, a link handed over is as safe as
+the server it goes through.
 
 **Working out `pairId` is somewhat costly, but not too much.** Eight digits are only 10⁸
 combinations: with an ordinary hash the server could try them all in a few seconds.

@@ -22,8 +22,9 @@ import type { LatestRelease } from './releases';
  * The same connection serves two phases:
  *
  *  - PAIRING: public keys are exchanged in the clear (`pair` messages).
- *    There is nothing to hide: without the code, which never reaches
- *    the server, those keys are not enough to work anything out.
+ *    There is nothing to hide: without the code - and the secret of a
+ *    link that carries one, which never reaches the server - those keys
+ *    are not enough to work anything out (see pairing.ts).
  *
  *  - EVERYDAY USE: everything else travels inside `signal`, encrypted
  *    with the key settled while pairing. The server forwards opaque
