@@ -313,6 +313,12 @@ export type PendingPair = {
   /** the pair made for this exchange, both halves, base64 */
   pub: string;
   sec: string;
+  /**
+   * The link's secret, when the code went out with one (see
+   * pairing.ts): in the key, and in the link handed on again. Absent
+   * for the codes made before, or with LINK_SECRETS_MADE off.
+   */
+  secret?: string;
   serverUrl: string;
   /** ISO: after this the server has forgotten it, and so do we */
   until: string;

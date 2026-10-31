@@ -1019,10 +1019,13 @@ export class Signaling {
   /**
    * This room - the code's - waits for its other half until `untilMs`:
    * whoever opens the link may come in alone and leave a letter. Zero
-   * takes the wait back, letter included.
+   * takes the wait back, letter included. `seat`, for a link with its
+   * secret: the check of the token that alone may sit there while we
+   * are away (seatCheck in pairing.ts). Without it, the server keeps
+   * the one it was given before.
    */
-  awaitRoom(untilMs: number) {
-    this.rawSend({ type: 'await-room', until: untilMs });
+  awaitRoom(untilMs: number, seat?: string) {
+    this.rawSend({ type: 'await-room', until: untilMs, ...(seat ? { seat } : {}) });
   }
 
   /** The letter for the maker of the code: our public key, for later. */

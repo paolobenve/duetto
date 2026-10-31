@@ -177,6 +177,18 @@ export function confirmationFor(key: Uint8Array, side: 'A' | 'B'): string {
  */
 const LINK_SECRET_BYTES = 16;
 
+/**
+ * Whether the codes made here go out with a secret.
+ *
+ * Off until the apps that read such links are the ones people install:
+ * a link with a secret means nothing to an app before build 540, and
+ * whoever has one could not open it - nor type the digits while the
+ * maker is away, since the room's seat would want the token. Everything
+ * else - reading those links, checking letters and proofs - is on
+ * already, and stays the same either way.
+ */
+export const LINK_SECRETS_MADE = false;
+
 const toUrl64 = (b: Uint8Array) => encodeBase64(b).replace(/\+/g, '-').replace(/\//g, '_').replace(/[=]+$/, '');
 const fromUrl64 = (s: string) => {
   const b = s.replace(/-/g, '+').replace(/_/g, '/');

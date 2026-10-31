@@ -537,7 +537,7 @@ export default function SettingsScreen({
   const [qrFor, setQrFor] = useState<InvitationOnServer | null>(null);
   /** the waiting code whose QR code and link are shown, to hand on again */
   const [shareFor, setShareFor] = useState<PendingPair | null>(null);
-  const shareLink = shareFor ? pairLink(shareFor.serverUrl, shareFor.code, shareFor.pub) : '';
+  const shareLink = shareFor ? pairLink(shareFor.serverUrl, shareFor.code, shareFor.pub, shareFor.secret) : '';
   /** the list of Duetto's own sounds, to hear them and pick one */
   const [duettoSounds, setDuettoSounds] = useState(false);
   /**

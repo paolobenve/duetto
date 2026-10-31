@@ -20,6 +20,7 @@ import {
   generateCode, normalizeCode, formatCode, isCodeComplete,
   pairIdFromCode, newKeyPair, deriveSharedKey, confirmationFor,
   keyToBase64, pubToBase64, pubFromBase64, pairFromLetter, pairKey, seatToken,
+  seatCheck, newLinkSecret, LINK_SECRETS_MADE,
 } from './pairing';
 import { VERSION_FULL } from './version';
 import { t } from './i18n';
@@ -89,6 +90,9 @@ const TIMEOUT_MS = 90_000;
  */
 const RETRY_WAIT_S = 20;
 
+/** What the server keeps of a link's secret for the room's seat; none without one. */
+const seatFor = (secret: string) => (secret ? seatCheck(seatToken(secret)) : undefined);
+
 export default function PairingScreen({
   cfg, onPaired, onPending, onPendingGone, onBack, role = 'unknown', joinWith, joinWithKey, joinWithSecret,
   onRefused, onHaveCode,
@@ -108,6 +112,8 @@ export default function PairingScreen({
   const codeRef = useRef('');
   const pairIdRef = useRef('');
   const sharedRef = useRef<Uint8Array | null>(null);
+  /** the secret of the link made here; '' when it goes out without one */
+  const linkSecretRef = useRef('');
   const sentPubRef = useRef(false);
   const peerNameRef = useRef('');
   const doneRef = useRef(false);
@@ -154,6 +160,7 @@ export default function PairingScreen({
     const clean = normalizeCode(rawCode);
     codeRef.current = clean;
     keysRef.current = newKeyPair();
+    linkSecretRef.current = side === 'A' && LINK_SECRETS_MADE ? newLinkSecret() : '';
     doneRef.current = false;
     sentPubRef.current = false;
     sharedRef.current = null;
@@ -201,6 +208,7 @@ export default function PairingScreen({
             id: pairId,
             pub: pubToBase64(keysRef.current.publicKey),
             sec: keyToBase64(keysRef.current.secretKey),
+            ...(linkSecretRef.current ? { secret: linkSecretRef.current } : {}),
             serverUrl: cfg.serverUrl.trim(),
             until,
           });
@@ -480,13 +488,14 @@ export default function PairingScreen({
     if (doneRef.current || !id || !code || awaitingRef.current) return;
     if (!signalingRef.current?.connected) return;
     const until = new Date(Date.now() + 24 * 3600_000).toISOString();
-    signalingRef.current.awaitRoom(Date.parse(until));
+    signalingRef.current.awaitRoom(Date.parse(until), seatFor(linkSecretRef.current));
     awaitingRef.current = until;
     onPending?.({
       code,
       id,
       pub: pubToBase64(keysRef.current.publicKey),
       sec: keyToBase64(keysRef.current.secretKey),
+      ...(linkSecretRef.current ? { secret: linkSecretRef.current } : {}),
       serverUrl: cfg.serverUrl.trim(),
       until,
     });
@@ -569,7 +578,11 @@ export default function PairingScreen({
     // With our key in it: whoever opens it pairs at once, and leaves
     // a letter. Without it, the link was the old kind, and the code at
     // its end read as a telephone number to a messaging app.
-    const link = pairLink(cfg.serverUrl, code, pubToBase64(keysRef.current.publicKey));
+    // And with the link's secret, where codes are made with one: see
+    // pairing.ts.
+    const link = pairLink(
+      cfg.serverUrl, code, pubToBase64(keysRef.current.publicKey), linkSecretRef.current || undefined,
+    );
     // The room waits a day from the moment the link leaves the phone -
     // copied or shared - and not before: a screen opened and closed
     // used to leave a waiting code behind every time, and one phone
@@ -577,7 +590,7 @@ export default function PairingScreen({
     // nothing waits. See devices.js on the server.
     const startWaiting = () => {
       if (awaitingRef.current) return;
-      signalingRef.current?.awaitRoom(Date.now() + 24 * 3600_000);
+      signalingRef.current?.awaitRoom(Date.now() + 24 * 3600_000, seatFor(linkSecretRef.current));
     };
     return (
       <Screen>
