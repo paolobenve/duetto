@@ -55,7 +55,7 @@ type Props = {
    * typed the eight digits here, and has nothing else to press.
    */
   /** `pub`: the maker's key, when the code came as a link that carried one */
-  onDone: (cfg: DuoConfig, answer: DoorAnswer, code?: string, pub?: string) => void;
+  onDone: (cfg: DuoConfig, answer: DoorAnswer, code?: string, pub?: string, secret?: string) => void;
   /** goes back without touching anything; absent at the first start, which has nowhere to go */
   onClose?: () => void;
   /**
@@ -105,6 +105,8 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived, accep
 
   /** the maker's key that came with the last link, if any */
   const linkPub = useRef('');
+  /** and the secret after it, if the link had one: see pairing.ts */
+  const linkSecret = useRef('');
   const finishWith = useCallback((
     a: DoorAnswer, withCode: string | undefined, at: string, inv: string,
   ) => {
@@ -115,7 +117,8 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived, accep
       serverKey: '',
       invitation: inv,
       serverRole: a.role,
-    }, a, withCode, withCode ? linkPub.current || undefined : undefined);
+    }, a, withCode, withCode ? linkPub.current || undefined : undefined,
+    withCode ? linkSecret.current || undefined : undefined);
   }, [initial, onDone]);
   const finish = useCallback((a: DoorAnswer, withCode?: string) => {
     finishWith(a, withCode, resolved, invitation.trim());
@@ -127,9 +130,10 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived, accep
    * up yet - and goes where the answer says.
    */
   const knockNow = useCallback(async (from: Step, over?: {
-    server?: string; invitation?: string; code?: string; pub?: string; claim?: boolean;
+    server?: string; invitation?: string; code?: string; pub?: string; secret?: string; claim?: boolean;
   }) => {
     linkPub.current = over?.pub || '';
+    linkSecret.current = over?.pub ? over?.secret || '' : '';
     const at = over?.server ? normalizeServerUrl(over.server) : resolved;
     // The house asked for with the key: the owner's road, and not the
     // invitation's - one typed beside it is not spent on the way.
@@ -218,7 +222,7 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived, accep
       knockNow(from, { server: link.serverUrl, invitation: link.code });
     } else {
       setCode(link.code);
-      knockNow(from, { server: link.serverUrl, code: link.code, pub: link.pub });
+      knockNow(from, { server: link.serverUrl, code: link.code, pub: link.pub, secret: link.secret });
     }
   }, [knockNow]);
 
@@ -284,7 +288,9 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived, accep
     else setCode(arrived.code);
     const go = () => (arrived.kind === 'invite'
       ? knockNow('server', { server: arrived.serverUrl, invitation: arrived.code })
-      : knockNow('server', { server: arrived.serverUrl, code: arrived.code, pub: arrived.pub }));
+      : knockNow('server', {
+        server: arrived.serverUrl, code: arrived.code, pub: arrived.pub, secret: arrived.secret,
+      }));
     /*
      * A server this phone has never been to is asked about first. A
      * link opens the app from anywhere - a message, a page - and a

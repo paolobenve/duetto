@@ -454,6 +454,8 @@ export default function App() {
   const [pairingCode, setPairingCode] = useState('');
   /** the maker's key, when the code came as a link that carried one: see links.ts */
   const [pairingPub, setPairingPub] = useState('');
+  /** and the link's secret, when it had one after the key: see pairing.ts */
+  const [pairingSecret, setPairingSecret] = useState('');
   /** the pairing opened on typing a code, from the settings */
   /** the welcome opened to accept an invitation or a connection handed over */
   const [accepting, setAccepting] = useState(false);
@@ -7048,7 +7050,7 @@ export default function App() {
           arrived={arrived}
           accept={accepting}
           onHandover={onHandoverScanned}
-          onDone={(next, knocked, code, pub) => {
+          onDone={(next, knocked, code, pub, secret) => {
             // Opened by a link, or by "accept": the two ways a phone
             // with a pair reaches another server without meaning to
             // move; "change server" is the third way in, and means it.
@@ -7059,6 +7061,7 @@ export default function App() {
             Journal.mark(`door:${next.serverRole || 'unknown'}`).catch(() => { /* noop */ });
             setPairingCode(code || '');
             setPairingPub(pub || '');
+            setPairingSecret(pub ? secret || '' : '');
             /*
              * Two ways to come out of the welcome with a pair in use.
              * "Change server" moves the pair along: its server is
@@ -7280,6 +7283,7 @@ export default function App() {
           role={pairingServer ? pairingServer.serverRole : cfg.serverRole}
           joinWith={pairingCode}
           joinWithKey={pairingPub}
+          joinWithSecret={pairingSecret}
           onHaveCode={() => { setAccepting(true); setScreen('welcome'); }}
           onRefused={(reason) => {
             // Not what we thought we were here: the welcome knocks

@@ -180,7 +180,10 @@ export type SignalMessage =
   | { kind: 'talkThrough'; on: boolean };
 
 export type PairMessage =
-  | { kind: 'pubkey'; pub: string; name: string }
+  // From a link with its secret (see pairing.ts): `linked` says the
+  // key has the secret in it, `proof` is the other side's word made
+  // with that key, for a letter read with nobody to answer it.
+  | { kind: 'pubkey'; pub: string; name: string; linked?: boolean; proof?: string }
   | { kind: 'confirm'; proof: string };
 
 export type Mode = 'listening' | 'active';
@@ -418,6 +421,8 @@ export type SignalingOptions = {
    *  away */
   side?: 'A' | 'B';
   mode?: Mode;
+  /** the token for a waiting room's seat, from a link's secret: see pairing.ts */
+  seat?: string;
 };
 
 export class Signaling {
@@ -665,6 +670,8 @@ export class Signaling {
       ...PROTOCOL_SAID,
       mode: this.mode,
       side: this.opts.side,
+      // A server from before does not read it, and lets in as it did.
+      seat: this.opts.seat || undefined,
     });
   }
 

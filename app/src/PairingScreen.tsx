@@ -19,7 +19,7 @@ import { Signaling, PairMessage } from './signaling';
 import {
   generateCode, normalizeCode, formatCode, isCodeComplete,
   pairIdFromCode, newKeyPair, deriveSharedKey, confirmationFor,
-  keyToBase64, pubToBase64, pubFromBase64, pairFromLetter,
+  keyToBase64, pubToBase64, pubFromBase64, pairFromLetter, pairKey, seatToken,
 } from './pairing';
 import { VERSION_FULL } from './version';
 import { t } from './i18n';
@@ -50,6 +50,12 @@ type Props = {
    * and theirs is left as a letter on the server.
    */
   joinWithKey?: string;
+  /**
+   * The link's secret, when it had one after the key: it goes into the
+   * key, buys the seat of the waiting room, and proves the letter. See
+   * pairing.ts.
+   */
+  joinWithSecret?: string;
   /**
    * Somebody handed a code over: the screen that takes them all.
    *
@@ -84,7 +90,8 @@ const TIMEOUT_MS = 90_000;
 const RETRY_WAIT_S = 20;
 
 export default function PairingScreen({
-  cfg, onPaired, onPending, onPendingGone, onBack, role = 'unknown', joinWith, joinWithKey, onRefused, onHaveCode,
+  cfg, onPaired, onPending, onPendingGone, onBack, role = 'unknown', joinWith, joinWithKey, joinWithSecret,
+  onRefused, onHaveCode,
 }: Props) {
   const [step, setStep] = useState<Step>('choose');
   const [code, setCode] = useState('');
@@ -320,8 +327,12 @@ export default function PairingScreen({
    * which they find the next time their phone comes to the door; and
    * the same key said live too, in case they are in the room right now,
    * which is the old exchange and ends with their proof.
+   *
+   * With the link's secret the key has it inside, the room's seat is
+   * taken with its token, and the letter carries our proof: a maker
+   * that made the link with a secret takes no letter without it.
    */
-  const startJoinWithKey = useCallback(async (rawCode: string, theirPub: string) => {
+  const startJoinWithKey = useCallback(async (rawCode: string, theirPub: string, secret?: string) => {
     const clean = normalizeCode(rawCode);
     codeRef.current = clean;
     keysRef.current = newKeyPair();
@@ -329,7 +340,7 @@ export default function PairingScreen({
     sentPubRef.current = false;
     let key: Uint8Array;
     try {
-      key = deriveSharedKey(keysRef.current.secretKey, pubFromBase64(theirPub), clean);
+      key = pairKey(keysRef.current.secretKey, pubFromBase64(theirPub), clean, secret || undefined);
     } catch {
       fail(t('pairing.keyExchangeFailed'));
       return;
@@ -358,6 +369,7 @@ export default function PairingScreen({
       kind: 'pubkey',
       pub: pubToBase64(keysRef.current.publicKey),
       name: cfg.displayName || '',
+      ...(secret ? { linked: true, proof: confirmationFor(key, 'B') } : {}),
     });
 
     // Whether the maker is in the room: a QR code held up puts both
@@ -373,6 +385,7 @@ export default function PairingScreen({
         key: null,
         side: 'B',
         mode: 'listening',
+        seat: secret ? seatToken(secret) : undefined,
       },
       {
         onJoined: ({ peerPresent }) => {
@@ -441,9 +454,9 @@ export default function PairingScreen({
   useEffect(() => {
     if (!joinWith || !isCodeComplete(joinWith) || startedWith.current === joinWith) return;
     startedWith.current = joinWith;
-    if (joinWithKey) startJoinWithKey(joinWith, joinWithKey);
+    if (joinWithKey) startJoinWithKey(joinWith, joinWithKey, joinWithSecret);
     else startExchange(joinWith, 'B');
-  }, [joinWith, joinWithKey, startExchange, startJoinWithKey]);
+  }, [joinWith, joinWithKey, joinWithSecret, startExchange, startJoinWithKey]);
 
   const reset = useCallback(() => {
     cleanup();
