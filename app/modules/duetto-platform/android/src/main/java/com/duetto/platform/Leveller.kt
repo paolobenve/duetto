@@ -27,10 +27,12 @@ import kotlin.math.max
  * under it that keeps the room's hiss between words from being lifted
  * too, and a limiter at the end.
  *
- * The level chosen with the keys comes AFTER the compressor: put before
- * it, as the track's volume is, the compressor would undo it. So while
- * the leveller works the track plays at 1 and the level is the band's
- * gain here (see setGain, and applyGain in webrtc.ts).
+ * The level chosen with the keys comes AFTER the compressor and the
+ * limiter, as the limiter's own gain: put before them, as the track's
+ * volume is, the compressor would undo it, and the ceiling would move
+ * with the level. So while the leveller works the track plays at 1 and
+ * the level is the limiter's gain here (see setGain, and applyGain in
+ * webrtc.ts).
  *
  * It hangs on WebRTC's AudioTrack, which WebRTC does not show: the app's
  * LevelledAudio reaches it and says when it starts and stops. Where it
@@ -65,12 +67,19 @@ object Leveller {
     )
 
     private const val KNEE_DB = 10f
-    private const val ATTACK_MS = 5f
+    /** 5 ms let the first of a loud sound through whole (31 October) */
+    private const val ATTACK_MS = 2f
     private const val RELEASE_MS = 250f
     /** under this the room between words, taken down rather than lifted */
     private const val GATE_DB = -55f
     private const val EXPANDER_RATIO = 2f
-    private const val LIMIT_DB = -2f
+    /**
+     * The ceiling: about 8 dB over where a voice comes out (-22 to -24
+     * dB, see STRENGTHS), before the level the keys choose. At -2 dB it
+     * held only what would have broken the sound, and the loud went
+     * through; with the level's +12 dB on top it is at -2 again.
+     */
+    private const val LIMIT_DB = -14f
 
     /** asked for, in the settings of the connection in use */
     @Volatile private var wanted = false
@@ -112,6 +121,7 @@ object Leveller {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return
         try {
             d.setMbcBandAllChannelsTo(0, band())
+            d.setLimiterAllChannelsTo(limiter())
         } catch (e: Exception) {
             Log.w(TAG, "leveller gain: ${e.message}")
         }
@@ -172,9 +182,7 @@ object Leveller {
                     variant, channels, false, 0, true, 1, false, 0, true,
                 ).build()
                 cfg.setMbcBandAllChannelsTo(0, band())
-                cfg.setLimiterAllChannelsTo(
-                    DynamicsProcessing.Limiter(true, true, 0, 1f, 60f, 10f, LIMIT_DB, 0f),
-                )
+                cfg.setLimiterAllChannelsTo(limiter())
                 val d = DynamicsProcessing(0, session, cfg)
                 d.enabled = true
                 dp = d
@@ -189,14 +197,19 @@ object Leveller {
         say("failed:$why")
     }
 
-    /** The one band, all frequencies, with the chosen level after it. */
+    /** The one band, all frequencies. */
     @RequiresApi(Build.VERSION_CODES.P)
-    private fun band(): DynamicsProcessing.MbcBand {
-        val levelDb = 20f * log10(max(gain, 0.001f))
-        return DynamicsProcessing.MbcBand(
+    private fun band(): DynamicsProcessing.MbcBand =
+        DynamicsProcessing.MbcBand(
             true, 20_000f, ATTACK_MS, RELEASE_MS, strength.ratio, strength.threshold, KNEE_DB,
-            GATE_DB, EXPANDER_RATIO, 0f, strength.makeup + levelDb,
+            GATE_DB, EXPANDER_RATIO, 0f, strength.makeup,
         )
+
+    /** The ceiling, with the chosen level after it. */
+    @RequiresApi(Build.VERSION_CODES.P)
+    private fun limiter(): DynamicsProcessing.Limiter {
+        val levelDb = 20f * log10(max(gain, 0.001f))
+        return DynamicsProcessing.Limiter(true, true, 0, 1f, 60f, 10f, LIMIT_DB, levelDb)
     }
 
     private fun release() {
