@@ -279,7 +279,7 @@ export const de: Dictionary = {
     youHear: 'du hörst {pct}',
     resolution: 'Auflösung',
     resolutionHint: 'Sie gilt für beide Telefone: was du hier änderst, ändert sich auch bei der anderen Person.',
-    callThem: 'Sie rufen',
+    callThem: 'Mit welchem Ton rufen',
     alarmHint: 'Es klingt auf dem anderen Telefon in der Lautstärke des Weckers: man hört es auch bei leisem Klingelton und wenn das Telefon im anderen Zimmer liegt.',
     leaveTitle: 'Den Kanal verlassen?',
     leaveStay: 'Verlassen und erreichbar bleiben',

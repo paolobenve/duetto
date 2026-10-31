@@ -279,7 +279,7 @@ export const fr: Dictionary = {
     youHear: 'tu l’entends {pct}',
     resolution: 'Résolution',
     resolutionHint: 'Elle vaut pour les deux téléphones : la changer ici la change aussi chez l’autre.',
-    callThem: 'Rappelle-le',
+    callThem: 'Avec quel son l’appeler',
     alarmHint: 'Ça sonne sur son téléphone, au volume du réveil : on l’entend même avec la sonnerie basse et le téléphone loin.',
     leaveTitle: 'Sortir du canal ?',
     leaveStay: 'Sors et reste disponible',

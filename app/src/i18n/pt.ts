@@ -279,7 +279,7 @@ export const pt: Dictionary = {
     youHear: 'você o ouve {pct}',
     resolution: 'Resolução',
     resolutionHint: 'Vale para os dois telefones: mudá-la aqui muda também para o outro.',
-    callThem: 'Chame-o',
+    callThem: 'Com que som chamá-lo',
     alarmHint: 'Toca no outro telefone, no volume do despertador: dá para ouvir mesmo com a campainha baixa e o telefone longe.',
     leaveTitle: 'Sair do canal?',
     leaveStay: 'Saia e continue disponível',
