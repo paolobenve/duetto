@@ -760,7 +760,10 @@ export default function SettingsScreen({
         { n: person.met, of: person.days, when: dayText(person.lastMet ?? '') })
         : person.days ? t('settings.personNeverMet', { when: dayText(person.seen ?? '') })
           : t('settings.personNeverIn');
-    const usage = [used, person.you ? '' : person.version ?? ''].filter(Boolean).join('  ·  ');
+    // A place passed to a new phone: said to everybody, the owner too -
+    // a phone they do not recognise is the one to ask about.
+    const moved = person.newPhone ? t('settings.personNewPhone', { when: dayText(person.newPhone) }) : '';
+    const usage = [used, person.you ? '' : person.version ?? '', moved].filter(Boolean).join('  ·  ');
     return (
       <View key={person.name} style={styles.choice}>
         <View style={styles.choiceText}>

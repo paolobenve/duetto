@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   normalizeServerUrl, displayServer, isServerConfigured, keyForServer, keyForPair, isStrangeServer,
   switchToPair, forgetPair, DEFAULT_CONFIG, type DuoConfig, type PairInfo,
-  withoutServerKeys, loadConfig, saveConfig,
+  withoutServerKeys, loadConfig, saveConfig, markNewPhoneSeen,
 } from '../config';
 
 describe('the server address', () => {
@@ -155,5 +155,18 @@ describe('the key of the server is kept nowhere', () => {
     expect(cfg.pairs.every((p) => !p.serverKey)).toBe(true);
     expect(keysIn(await AsyncStorage.getItem(STORED))).toEqual([]);
     expect(cfg.pairs.map((p) => p.id)).toEqual(['p1', 'p2', 'p3']);
+  });
+});
+
+describe('the other side\'s new phone, answered', () => {
+  test('marked on that pair alone, in use or not', () => {
+    const pair = (id: string): PairInfo => ({ id, key: 'k', side: 'A', peerName: '', pairedAt: '2026-10-01' });
+    const cfg: DuoConfig = { ...DEFAULT_CONFIG, pair: pair('a'), pairs: [pair('a'), pair('b')] };
+    const inUse = markNewPhoneSeen(cfg, 'a', '2026-10-31');
+    expect(inUse.pair?.newPhoneSeen).toBe('2026-10-31');
+    expect(inUse.pairs.map((p) => p.newPhoneSeen)).toEqual(['2026-10-31', undefined]);
+    const other = markNewPhoneSeen(cfg, 'b', '2026-10-30');
+    expect(other.pair?.newPhoneSeen).toBeUndefined();
+    expect(other.pairs.map((p) => p.newPhoneSeen)).toEqual([undefined, '2026-10-30']);
   });
 });

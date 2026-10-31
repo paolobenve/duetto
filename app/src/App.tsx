@@ -29,11 +29,11 @@ import {
   alertSoundFor, alignPairServer, renamePair, pairFileKey, pairName, peerShown, namePeer, nameMyself,
   oweToPeer, paidToPeer, sharedChoiceHeard,
   CUE_GAIN, ALERT_GAIN, OTHER_APPS_GAIN,
-  storeSettingsInPair, DEFAULT_CONFIG,
+  storeSettingsInPair, DEFAULT_CONFIG, markNewPhoneSeen,
 } from './config';
 import { Signaling, PresenceStatus } from './signaling';
 import type { Hand, PersonOnServer, InvitationOnServer } from './signaling';
-import { useLanguage, t } from './i18n';
+import { useLanguage, t, dayText } from './i18n';
 import { alarmLabel, sentGain, wireName, soundName, KNOCK_ECHO_MS } from './alarms';
 import { BUILD, VERSION_FULL, VERSION_LABEL } from './version';
 import { PROTOCOL_SAID, protocolFit } from './protocol';
@@ -4879,6 +4879,7 @@ export default function App() {
           // The other side broke this pair: it cannot work any more,
           // and the screen must stop saying "waiting" for somebody who
           // is not coming.
+          onPeerNewPhone: (room, day) => peerNewPhoneRef.current?.(room, day),
           onPairBroken: (room) => {
             // The room named, when it is: one may be told of a pair
             // other than the one in use, from another room.
@@ -6539,6 +6540,48 @@ export default function App() {
     if (!isPaired(next)) setScreen(opensHere(next) ? 'settings' : 'welcome');
     else setScreen(next.setupShown ? 'channel' : 'setup');
   }, []);
+
+  /**
+   * Opposite, a new phone: the other person changed phone with a
+   * hand-over - or somebody did, with their old phone in hand. Said
+   * once for each change, with the way out at hand: a pair whose other
+   * side is nobody one knows is taken away here.
+   */
+  const newPhoneAsked = useRef(new Set<string>());
+  const peerNewPhone = useCallback((room: string, day: string) => {
+    const p = cfgRef.current?.pairs.find((x) => x.id === room);
+    const asked = `${room}|${day}`;
+    if (!p || p.newPhoneSeen === day || newPhoneAsked.current.has(asked)) return;
+    newPhoneAsked.current.add(asked);
+    Journal.mark(`peer-new-phone:${room.slice(0, 8)}:${day}`).catch(() => { /* noop */ });
+    const who = peerShown(p) || t('channel.theOther');
+    Alert.alert(
+      t('channel.peerNewPhoneTitle'),
+      t('channel.peerNewPhoneBody', { who, when: dayText(day) }),
+      [
+        {
+          text: t('channel.peerNewPhoneRemove'),
+          style: 'destructive',
+          // Not marked first: the pair goes, and a mark written after
+          // its going would bring it back.
+          onPress: () => {
+            Journal.mark('peer-new-phone:removed').catch(() => { /* noop */ });
+            onForgetPairRef.current?.(room);
+          },
+        },
+        {
+          text: t('channel.peerNewPhoneOk'),
+          onPress: () => {
+            Journal.mark('peer-new-phone:ok').catch(() => { /* noop */ });
+            setCfg((prev) => (prev ? saveCfg(markNewPhoneSeen(prev, room, day)) : prev));
+          },
+        },
+      ],
+      { cancelable: false },
+    );
+  }, [saveCfg]);
+  const peerNewPhoneRef = useRef(peerNewPhone);
+  useEffect(() => { peerNewPhoneRef.current = peerNewPhone; }, [peerNewPhone]);
 
   /** A hand-over's code, read on the first screen: only a phone with nothing on it takes it. */
   const onHandoverScanned = useCallback((qr: HandoverQr) => {

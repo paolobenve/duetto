@@ -47,6 +47,9 @@ function gone(v: any): PeerGone {
   return at ? { at, reason: v.reason === 'bye' ? 'bye' : 'dropped' } : null;
 }
 
+/** A day as the server writes it: YYYY-MM-DD, never the hour. */
+const isDay = (v: unknown): boolean => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+
 /**
  * When a finger last moved the microphone, the camera, the video - a
  * stamp each, kept across a session made again. The other side rings
@@ -295,6 +298,12 @@ export type SignalingEvents = {
    * new one (see handover.ts).
    */
   onRemoved?: (why?: 'new-owner' | 'handed-over') => void;
+  /**
+   * Opposite, in this room, a new phone: the other person handed their
+   * place over to it (see handover.ts) - the day it did. Said when it
+   * happens, and at every joining for thirty days after.
+   */
+  onPeerNewPhone?: (room: string, day: string) => void;
   /** a member left the server by themselves: only the owner is told */
   onMemberLeft?: (name: string) => void;
   /** @param reason with `not-allowed`: 'stranger', 'bad-invite', 'bad-key' or 'taken-room' */
@@ -379,6 +388,8 @@ export type PersonOnServer = {
   /** the last day it was at the door, and which Duetto it has */
   seen?: string;
   version?: string;
+  /** the day this place last passed to a new phone (YYYY-MM-DD), if it ever did */
+  newPhone?: string;
 };
 
 export type InvitationOnServer = { name: string; code: string; expires: string };
@@ -735,6 +746,7 @@ export class Signaling {
             lastMet: String(p.lastMet || ''),
             seen: String(p.seen || ''),
             version: String(p.version || ''),
+            newPhone: isDay(p.newPhone) ? String(p.newPhone) : '',
           })),
           msg.invitations ?? [],
         );
@@ -754,6 +766,7 @@ export class Signaling {
         if (this.peerThere) this.flushOutbox();
         this.events.onStatus?.(msg.peerActive ? 'together' : 'alone');
         if (msg.broken === true) this.events.onPairBroken?.();
+        if (isDay(msg.peerNewPhone)) this.events.onPeerNewPhone?.(this.opts.room, String(msg.peerNewPhone));
         this.events.onJoined?.({
           polite: !!msg.polite,
           owner: !!msg.owner,
@@ -881,6 +894,10 @@ export class Signaling {
         this.events.onMail?.((Array.isArray(msg.items) ? msg.items : [])
           .filter((i: any) => i && typeof i.room === 'string' && i.payload)
           .map((i: any) => ({ room: String(i.room), payload: i.payload as PairMessage })));
+        break;
+
+      case 'peer-new-phone':
+        if (isDay(msg.day)) this.events.onPeerNewPhone?.(String(msg.room || this.opts.room), String(msg.day));
         break;
 
       case 'removed':

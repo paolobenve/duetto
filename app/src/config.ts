@@ -76,6 +76,12 @@ export type PairInfo = {
    * away here too, or made again.
    */
   brokenByPeer?: string;
+  /**
+   * The day of the other side's last new phone that this side has been
+   * told of and answered: see markNewPhoneSeen. The server says it for
+   * thirty days, at every joining; it is asked about once.
+   */
+  newPhoneSeen?: string;
   /** what the other person is called, to show it in the notifications */
   peerName: string;
   /**
@@ -839,6 +845,16 @@ export function switchToPair(cfg: DuoConfig, id: string): DuoConfig {
 export function markPairBroken(cfg: DuoConfig, id: string): DuoConfig {
   const at = new Date().toISOString();
   const mark = (p: PairInfo) => (p.id === id && !p.brokenByPeer ? { ...p, brokenByPeer: at } : p);
+  return {
+    ...cfg,
+    pair: cfg.pair ? mark(cfg.pair) : cfg.pair,
+    pairs: cfg.pairs.map(mark),
+  };
+}
+
+/** The other side's new phone, of that day, said and answered: not asked about again. */
+export function markNewPhoneSeen(cfg: DuoConfig, id: string, day: string): DuoConfig {
+  const mark = (p: PairInfo) => (p.id === id ? { ...p, newPhoneSeen: day } : p);
   return {
     ...cfg,
     pair: cfg.pair ? mark(cfg.pair) : cfg.pair,
