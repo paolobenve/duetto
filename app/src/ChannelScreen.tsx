@@ -10,7 +10,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated,
-  useWindowDimensions, Modal, Pressable, PanResponder, LayoutAnimation, UIManager, Platform,
+  useWindowDimensions, Pressable, PanResponder, LayoutAnimation, UIManager, Platform,
 } from 'react-native';
 import type { GestureResponderEvent } from 'react-native';
 import { MediaStream } from 'react-native-webrtc';
@@ -23,6 +23,7 @@ import { ALARMS } from './alarms';
 import { VERSION_LABEL } from './version';
 import ChangelogModal from './ChangelogModal';
 import VolumesSheet from './VolumesSheet';
+import SheetLayer from './SheetLayer';
 import type { Avatar } from './avatar';
 import { VIDEO_PROFILES } from './config';
 import type { VideoQuality, LevelChoice } from './config';
@@ -1984,10 +1985,8 @@ export default function ChannelScreen(props: Props) {
       <ChangelogModal visible={changelogOpen} onClose={() => setChangelogOpen(false)} />
 
       {/* Resolution: it opens by holding the Video button down. */}
-      <Modal
+      <SheetLayer
         visible={qualityMenu}
-        transparent
-        animationType="fade"
         onRequestClose={() => setQualityMenu(false)}>
         <Pressable style={styles.sheetBack} onPress={() => setQualityMenu(false)}>
           <View style={styles.sheet}>
@@ -2011,13 +2010,11 @@ export default function ChannelScreen(props: Props) {
             <Text style={styles.sheetHint}>{t('channel.resolutionHint')}</Text>
           </View>
         </Pressable>
-      </Modal>
+      </SheetLayer>
 
       {/* The road loses: four answers, and where the option lives. */}
-      <Modal
+      <SheetLayer
         visible={!!lossSheet}
-        transparent
-        animationType="fade"
         onRequestClose={() => onLossChoice?.('later')}>
         <Pressable style={styles.sheetBack} onPress={() => onLossChoice?.('later')}>
           <View style={styles.sheet}>
@@ -2033,13 +2030,11 @@ export default function ChannelScreen(props: Props) {
             <Text style={styles.sheetHint}>{t('channel.lossHint')}</Text>
           </View>
         </Pressable>
-      </Modal>
+      </SheetLayer>
 
       {/* The sounds for calling back: opens by holding "Call" down. */}
-      <Modal
+      <SheetLayer
         visible={alarmMenu}
-        transparent
-        animationType="fade"
         onRequestClose={() => setAlarmMenu(false)}>
         <Pressable style={styles.sheetBack} onPress={() => setAlarmMenu(false)}>
           <View style={styles.sheet}>
@@ -2064,15 +2059,13 @@ export default function ChannelScreen(props: Props) {
             <Text style={styles.sheetHint}>{t('channel.alarmHint')}</Text>
           </View>
         </Pressable>
-      </Modal>
+      </SheetLayer>
 
       {/* How far the buttons step aside: opens by holding a finger on
           the picture. The same choices as the settings, one list for
           both, reachable without leaving what one is watching. */}
-      <Modal
+      <SheetLayer
         visible={fadeMenu}
-        transparent
-        animationType="fade"
         onRequestClose={() => setFadeMenu(false)}>
         <Pressable style={styles.sheetBack} onPress={() => setFadeMenu(false)}>
           <View style={styles.sheet}>
@@ -2092,13 +2085,11 @@ export default function ChannelScreen(props: Props) {
             ))}
           </View>
         </Pressable>
-      </Modal>
+      </SheetLayer>
 
       {/* The two ways out: opens by holding "Leave" down. */}
-      <Modal
+      <SheetLayer
         visible={leaveMenu}
-        transparent
-        animationType="fade"
         onRequestClose={() => setLeaveMenu(false)}>
         <Pressable style={styles.sheetBack} onPress={() => setLeaveMenu(false)}>
           <View style={[
@@ -2221,14 +2212,12 @@ export default function ChannelScreen(props: Props) {
             </TouchableOpacity>
           ) : null}
         </Pressable>
-      </Modal>
+      </SheetLayer>
 
       <VolumesSheet visible={volumesOpen} onClose={() => setVolumesOpen(false)} />
 
-      <Modal
+      <SheetLayer
         visible={routeMenu}
-        transparent
-        animationType="fade"
         onRequestClose={() => setRouteMenu(false)}>
         <Pressable style={styles.sheetBack} onPress={() => setRouteMenu(false)}>
           <View style={styles.sheet}>
@@ -2318,7 +2307,7 @@ export default function ChannelScreen(props: Props) {
             ) : null}
           </View>
         </Pressable>
-      </Modal>
+      </SheetLayer>
     </View>
   );
 }

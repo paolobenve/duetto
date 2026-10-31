@@ -19,11 +19,12 @@
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Modal, Pressable, Linking,
+  View, Text, StyleSheet, TouchableOpacity, Pressable, Linking,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Journal, Volume } from 'duetto-platform';
 import { t } from './i18n';
+import SheetLayer from './SheetLayer';
 
 type Stream = Awaited<ReturnType<typeof Volume.streams>>[number];
 
@@ -119,7 +120,7 @@ export default function VolumesSheet({ visible, onClose }: {
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <SheetLayer visible={visible} onRequestClose={onClose}>
       <Pressable style={styles.back} onPress={onClose}>
         {/* A touch inside is a choice, not a way out. */}
         <Pressable style={styles.sheet} onPress={() => { /* hold it */ }}>
@@ -159,7 +160,7 @@ export default function VolumesSheet({ visible, onClose }: {
           </View>
         </Pressable>
       </Pressable>
-    </Modal>
+    </SheetLayer>
   );
 }
 
