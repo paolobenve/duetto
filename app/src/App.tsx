@@ -4970,8 +4970,11 @@ export default function App() {
             for (const item of items) {
               const p = cfgRef.current?.pending?.find((x) => x.id === item.room);
               if (!p || item.payload.kind !== 'pubkey') continue;
+              const made = pairFromLetter(p, item.payload.pub, item.payload.name, 'A', item.payload.proof);
+              // A link's secret and no proof: not who opened our link.
+              if (!made) { Journal.mark('pairing:letter-refused').catch(() => { /* noop */ }); continue; }
               Journal.mark('paired:by-letter').catch(() => { /* noop */ });
-              onPaired(pairFromLetter(p, item.payload.pub, item.payload.name, 'A'));
+              onPaired(made);
               sayPaired(item.payload.name);
             }
           },
@@ -6879,8 +6882,10 @@ export default function App() {
           for (const item of items) {
             const mine = (cfgRef.current?.pending ?? []).find((x) => x.id === item.room);
             if (!mine || item.payload.kind !== 'pubkey') continue;
+            const made = pairFromLetter(mine, item.payload.pub, item.payload.name, 'A', item.payload.proof);
+            if (!made) { Journal.mark('pairing:letter-refused').catch(() => { /* noop */ }); continue; }
             Journal.mark('paired:by-letter:unpaired').catch(() => { /* noop */ });
-            onPairedRef.current(pairFromLetter(mine, item.payload.pub, item.payload.name, 'A'));
+            onPairedRef.current(made);
             sayPaired(item.payload.name);
           }
         },

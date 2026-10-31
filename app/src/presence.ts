@@ -915,7 +915,11 @@ async function listenNow(): Promise<boolean> {
           for (const item of items) {
             const p = next.pending?.find((x) => x.id === item.room);
             if (!p || item.payload.kind !== 'pubkey') continue;
-            const made1 = pairFromLetter(p, item.payload.pub, item.payload.name, 'A');
+            const made1 = pairFromLetter(p, item.payload.pub, item.payload.name, 'A', item.payload.proof);
+            if (!made1) {
+              Journal.mark('pairing:letter-refused:headless').catch(() => { /* noop */ });
+              continue;
+            }
             next = addPair(
               { ...next, pending: (next.pending ?? []).filter((x) => x.id !== p.id) },
               made1,

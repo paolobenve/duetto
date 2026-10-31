@@ -70,7 +70,7 @@ describe('the key exchange', () => {
     const byLetter = pairFromLetter(
       { id: 'room', sec: keyToBase64(maker.secretKey), code: '1234 5678' },
       pubToBase64(other.publicKey), 'Mamma', 'A',
-    );
+    )!;
     expect(byLetter.key).toBe(keyToBase64(live));
     expect(byLetter.peerName).toBe('Mamma');
     expect(byLetter.side).toBe('A');
@@ -109,11 +109,15 @@ describe('the link\'s secret', () => {
     const other = newKeyPair();
     const secret = newLinkSecret();
     const theirs = pairKey(other.secretKey, maker.publicKey, '12345678', secret);
-    const byLetter = pairFromLetter(
-      { id: 'room', sec: keyToBase64(maker.secretKey), code: '12345678', secret },
-      pubToBase64(other.publicKey), '', 'A',
-    );
-    expect(byLetter.key).toBe(keyToBase64(theirs));
+    const mine = { id: 'room', sec: keyToBase64(maker.secretKey), code: '12345678', secret };
+    const byLetter = pairFromLetter(mine, pubToBase64(other.publicKey), '', 'A', confirmationFor(theirs, 'B'));
+    expect(byLetter?.key).toBe(keyToBase64(theirs));
+    // Without the proof, or with one made without the secret: refused.
+    expect(pairFromLetter(mine, pubToBase64(other.publicKey), '', 'A')).toBeNull();
+    const codeOnly = deriveSharedKey(other.secretKey, maker.publicKey, '12345678');
+    expect(pairFromLetter(mine, pubToBase64(other.publicKey), '', 'A', confirmationFor(codeOnly, 'B'))).toBeNull();
+    // A key that is not one: refused, not thrown.
+    expect(pairFromLetter(mine, 'not a key', '', 'A', 'x')).toBeNull();
   });
 
   test('the letter\'s proof: made with the key, and with nothing else', () => {

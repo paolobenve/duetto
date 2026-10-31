@@ -248,23 +248,31 @@ export const pubToBase64 = (k: Uint8Array) => encodeBase64(k);
 export const pubFromBase64 = (s: string) => decodeBase64(s);
 
 /**
- * The pair, from the other half's letter.
+ * The pair, from the other half's letter; null for a letter refused.
  *
  * The maker kept the secret half of the pair made for the code; the
- * letter brings the other phone's public half and its name. The shared
- * key is the same one a live exchange would have made. A link with its
- * secret puts the secret into the key; a link without one - the kind
- * every app made until now - does not, and a letter for it is taken
- * without a proof, as before: a letter for the wrong key simply makes
- * a key nobody else has.
+ * letter brings the other phone's public half, its name and its proof.
+ * The shared key is the same one a live exchange would have made. A
+ * link with its secret puts the secret into the key, and its letter is
+ * taken only with the proof made with that key: whoever got to the
+ * code some other way - from the room's id, or the link's path - has
+ * not got the secret and cannot make it. A link without one - the kind
+ * every app made until now - is taken without a proof, as before.
  */
 export function pairFromLetter(
   mine: { id: string; sec: string; code: string; secret?: string },
   theirPub: string,
   theirName: string,
   side: 'A' | 'B',
-): { id: string; key: string; side: 'A' | 'B'; peerName: string; pairedAt: string } {
-  const key = pairKey(keyFromBase64(mine.sec), pubFromBase64(theirPub), mine.code, mine.secret);
+  proof?: unknown,
+): { id: string; key: string; side: 'A' | 'B'; peerName: string; pairedAt: string } | null {
+  let key: Uint8Array;
+  try {
+    key = pairKey(keyFromBase64(mine.sec), pubFromBase64(theirPub), mine.code, mine.secret);
+  } catch {
+    return null;
+  }
+  if (mine.secret && !letterProves(key, proof)) return null;
   return {
     id: mine.id,
     key: keyToBase64(key),

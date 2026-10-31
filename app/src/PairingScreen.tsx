@@ -218,13 +218,21 @@ export default function PairingScreen({
         onMail: (items) => {
           const mine = items.find((i) => i.room === pairId);
           if (!mine || doneRef.current || mine.payload.kind !== 'pubkey') return;
+          const byLetter = pairFromLetter(
+            {
+              id: pairId,
+              sec: keyToBase64(keysRef.current.secretKey),
+              code: clean,
+              ...(linkSecretRef.current ? { secret: linkSecretRef.current } : {}),
+            },
+            mine.payload.pub, mine.payload.name, 'A', mine.payload.proof,
+          );
+          // Not from who opened our link: the code goes on waiting.
+          if (!byLetter) return;
           doneRef.current = true;
           awaitingRef.current = '';
           cleanup();
-          setMade(pairFromLetter(
-            { id: pairId, sec: keyToBase64(keysRef.current.secretKey), code: clean },
-            mine.payload.pub, mine.payload.name, 'A',
-          ));
+          setMade(byLetter);
           setStep('done');
         },
 
