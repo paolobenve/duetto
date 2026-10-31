@@ -3421,7 +3421,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   sheetIcon: { fontSize: 20 },
-  sheetLabel: { color: '#c9d2de', fontSize: 17, flex: 1 },
+  /*
+   * No flex: in the column of a choice, `flex: 1` gave the label no
+   * height of its own - it was to share out what was left, and nothing
+   * was - and only the note under it showed.
+   */
+  sheetLabel: { color: '#c9d2de', fontSize: 17 },
   /**
    * A label alone in its row. The one above grows to fill what is left
    * (flex: 1) and, with no note under it to give the row a height, it
