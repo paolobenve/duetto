@@ -290,9 +290,11 @@ export type SignalingEvents = {
   onPairBroken?: (room?: string) => void;
   /**
    * Taken off this server's list: by its owner, or - 'new-owner' - by
-   * another phone that came with the key and took the owner's place.
+   * another phone that came with the key and took the owner's place;
+   * or - 'handed-over' - by this phone itself, giving its place to a
+   * new one (see handover.ts).
    */
-  onRemoved?: (why?: 'new-owner') => void;
+  onRemoved?: (why?: 'new-owner' | 'handed-over') => void;
   /** a member left the server by themselves: only the owner is told */
   onMemberLeft?: (name: string) => void;
   /** @param reason with `not-allowed`: 'stranger', 'bad-invite', 'bad-key' or 'taken-room' */
@@ -882,7 +884,7 @@ export class Signaling {
         break;
 
       case 'removed':
-        this.events.onRemoved?.(msg.why === 'new-owner' ? 'new-owner' : undefined);
+        this.events.onRemoved?.(msg.why === 'new-owner' || msg.why === 'handed-over' ? msg.why : undefined);
         break;
 
       case 'member-left':

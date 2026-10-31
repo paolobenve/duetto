@@ -132,6 +132,8 @@ type Props = {
   onChangeServer: () => void;
   /** leaves the server, as a member: the pairs made on it go too */
   onLeaveServer?: () => void;
+  /** opens the hand-over: this phone's place, pairs and settings to a new phone */
+  onHandover?: () => void;
   /** forgets a connection, in use or not */
   onForgetPair: (id: string) => void;
   /** brings a connection already set up into use */
@@ -210,7 +212,8 @@ type Props = {
  * All the rest is optional and sits under "Other settings".
  */
 export default function SettingsScreen({
-  initial, onForgetPair, onSwitchPair, onRenamePair, onChangeServer, onLeaveServer, onRepair, onHaveCode, onClose, onOpenSetup,
+  initial, onForgetPair, onSwitchPair, onRenamePair, onChangeServer, onLeaveServer, onHandover, onRepair, onHaveCode,
+  onClose, onOpenSetup,
   onVolumeTest,
   vp9Here, vp9Peer, onQualityChange, onLive, reportsOpen, update, onReport, onInviteToWorkItem,
   canInvite, canAddPair, people = [], invitations = [], inviteAnswer,
@@ -705,6 +708,21 @@ export default function SettingsScreen({
       <Text style={styles.rowButtonArrow}>{'\u203A'}</Text>
     </TouchableOpacity>
   ) : null;
+  /*
+   * Changing phone: for whoever has something to take along - a place
+   * where connections are made, or connections - owner, member or
+   * guest alike, each for their own place. See handover.ts.
+   */
+  const handOver = onHandover && (isPaired(initial) || initial.pairs.length > 0 || opensHere(initial)) ? (
+    <>
+      <Text style={styles.subsection}>{t('handover.settingsTitle')}</Text>
+      <Text style={styles.sectionHint}>{t('handover.settingsHint')}</Text>
+      <TouchableOpacity style={styles.rowButton} onPress={onHandover}>
+        <Text style={styles.rowButtonText}>{t('handover.button')}</Text>
+        <Text style={styles.rowButtonArrow}>{'\u203A'}</Text>
+      </TouchableOpacity>
+    </>
+  ) : null;
 
   /** One tab's page: the title on top, scrolling away with the rest. */
   /** A row of the list of people: see the section in pageBody. */
@@ -1032,6 +1050,7 @@ export default function SettingsScreen({
         {/* Under the connections, a title like theirs. */}
         {paired ? serverPart(styles.section) : null}
         {leaveServer}
+        {handOver}
           </>
         ) : null}
 

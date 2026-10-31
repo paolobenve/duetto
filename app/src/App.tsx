@@ -29,7 +29,7 @@ import {
   alertSoundFor, alignPairServer, renamePair, pairFileKey, pairName, peerShown, namePeer, nameMyself,
   oweToPeer, paidToPeer, sharedChoiceHeard,
   CUE_GAIN, ALERT_GAIN, OTHER_APPS_GAIN,
-  storeSettingsInPair,
+  storeSettingsInPair, DEFAULT_CONFIG,
 } from './config';
 import { Signaling, PresenceStatus } from './signaling';
 import type { Hand, PersonOnServer, InvitationOnServer } from './signaling';
@@ -47,14 +47,20 @@ import SettingsScreen from './SettingsScreen';
 import SetupScreen from './SetupScreen';
 import PairingScreen from './PairingScreen';
 import WelcomeScreen from './WelcomeScreen';
-import { leaveServer, knock, watchDoor } from './door';
+import HandoverScreen from './HandoverScreen';
+import { leaveServer, knock, watchDoor, openDoorLine } from './door';
+import { emptyThisPhone } from './device';
+import {
+  type HandoverQr, type Moving, isEmptyPhone, incomingReady, dropIncoming,
+} from './handover';
 import ChannelScreen, { LevelBubble } from './ChannelScreen';
 import { loadPipPosition } from './VideoStage';
 import { useAudioRoute, type AudioRoute } from './audioRoute';
 import { pairFromLetter } from './pairing';
 import CallAlert, { CallBand, CALL_ALERT_MS } from './CallAlert';
 import {
-  refreshStandby, onStandbyCall, onStandbyAsk, onStandbyName, onStandbyChoice, helloStandby, sendStandby,
+  refreshStandby, stopStandby, onStandbyCall, onStandbyAsk, onStandbyName, onStandbyChoice, helloStandby,
+  sendStandby,
 } from './standby';
 import { takeCall } from './callsUnseen';
 import { sendJournalOver, JOURNAL_PIECE } from './journalSwap';
@@ -78,7 +84,7 @@ import { avatarFor, peerAvatar } from './avatar';
 // No screen in between: either you are setting things up, or pairing,
 // or in the channel. Opening the app - from the icon or from a
 // notification - means going in.
-type Screen = 'loading' | 'welcome' | 'settings' | 'pairing' | 'setup' | 'channel';
+type Screen = 'loading' | 'welcome' | 'settings' | 'pairing' | 'setup' | 'channel' | 'handover';
 
 /**
  * How long the other person's seat is kept when their network drops.
@@ -823,6 +829,22 @@ export default function App() {
    */
   const [available, setAvailable] = useState(true);
   /**
+   * Handing over to a new phone, this one quiet.
+   *
+   * From the moment the person has seen the same figures on both
+   * phones, nothing connects from here - not the interface, not the
+   * connections waiting, not the presence in the background - so that
+   * nothing new comes in after what there is has gone across. Once the
+   * place has started moving, `handingOver` in the configuration keeps
+   * it so, restarts included. See handover.ts.
+   */
+  const [giving, setGiving] = useState(false);
+  const handoverQuiet = giving || !!cfg?.handingOver;
+  /** the quiet reached, said by the connection effect: see quietForHandover */
+  const quietReached = useRef<(() => void) | null>(null);
+  /** what the hand-over's screen shows: this phone's place going, or another's coming */
+  const [handover, setHandover] = useState<{ left?: Moving | null } | { qr: HandoverQr } | null>(null);
+  /**
    * How a call on the connection in use sounds and buzzes.
    *
    * It lives in Android, in the notification channel, which has to be
@@ -862,8 +884,14 @@ export default function App() {
    */
   useEffect(() => {
     if (!cfg) return;
+    // Handing over: nobody waits here, and with no goodbye - the new
+    // phone takes the seats in a moment.
+    if (handoverQuiet) {
+      stopStandby();
+      return;
+    }
     refreshStandby(available ? cfg : null).catch(() => { /* noop */ });
-  }, [cfg?.pairs, cfg?.pair?.id, available]);
+  }, [cfg?.pairs, cfg?.pair?.id, available, handoverQuiet]);
   /**
    * The next close is a goodbye, not a handover.
    *
@@ -3963,6 +3991,13 @@ export default function App() {
       let c = await loadConfig();
       setCfg(c);
       readOwnDeath();
+      // Handing over to a new phone, and stopped half way - the app
+      // closed, the phone restarted: finishing it is all that is left.
+      if (c.handingOver) {
+        setHandover({ left: c.handingOver });
+        setScreen('handover');
+        return;
+      }
       // Opened on an invitation or on a pairing code: the welcome,
       // which has them in hand and knocks by itself.
       if (arrivedRef.current) setScreen('welcome');
@@ -4151,6 +4186,20 @@ export default function App() {
   // the channel" reconnects nothing, it only changes the state declared
   // to the server.
   useEffect(() => {
+    /*
+     * Handing over: nobody connects from here. The interface holds the
+     * phone with nothing in its hands, so that the headless presence
+     * does not open a connection of its own either; and the service
+     * goes, or its line would promise a presence there is not.
+     */
+    if (handoverQuiet) {
+      interfaceInCharge(true);
+      stopListening();
+      Foreground.stop().catch(() => { /* noop */ });
+      quietReached.current?.();
+      quietReached.current = null;
+      return () => { interfaceInCharge(false); };
+    }
     if (!cfg || !isPaired(cfg) || !isServerConfigured(cfg) || !available) return;
     // A pair broken from the other side has nobody to knock for: its
     // room is gone, and the knocking went on every few seconds, turned
@@ -4865,6 +4914,12 @@ export default function App() {
           // phone was the owner, and another took its place with the
           // key: said in those words, since it may not have been us.
           onRemoved: (why) => {
+            // This phone's own doing: its place went to a new phone, and
+            // the hand-over's screen says what is happening.
+            if (why === 'handed-over') {
+              Journal.mark('removed-from-server:handed-over').catch(() => { /* noop */ });
+              return;
+            }
             Journal.mark(why === 'new-owner' ? 'removed-from-server:new-owner' : 'removed-from-server')
               .catch(() => { /* noop */ });
             const server = displayServer(cfgRef.current?.serverUrl || '');
@@ -5035,7 +5090,7 @@ export default function App() {
     // attachPeer is stable: it only uses refs. `cfg` is read from the
     // closure but is not a dependency: only connKey must redo it all.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connKey, available]);
+  }, [connKey, available, handoverQuiet]);
 
   const absenceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -5575,7 +5630,8 @@ export default function App() {
     // In front, unless a pairing or the welcome is under way: an entry
     // by itself - a connection rebuilt, its way back in - closed them
     // half done. One is in the channel all the same, behind them.
-    if (screenRef.current !== 'pairing' && screenRef.current !== 'welcome') setScreen('channel');
+    if (screenRef.current !== 'pairing' && screenRef.current !== 'welcome'
+      && screenRef.current !== 'handover') setScreen('channel');
     sig.setMode('active');
     // Now, until the server says its own moment (onModeSince).
     setMySince(Date.now());
@@ -6407,6 +6463,118 @@ export default function App() {
    */
   const cfgRef = useRef<DuoConfig | null>(null);
   useEffect(() => { cfgRef.current = cfg; }, [cfg]);
+
+  // --- changing phone: see handover.ts and HandoverScreen ---------------------
+  /** The configuration as it is this moment, for a conversation that lasts minutes. */
+  const currentCfg = useCallback(() => cfgRef.current ?? DEFAULT_CONFIG, []);
+
+  /**
+   * The old phone goes quiet, before what it has goes across: out of
+   * the channel, the connections closed - the effect says when.
+   */
+  const quietForHandover = useCallback(() => new Promise<void>((resolve) => {
+    Journal.mark('handover:quiet').catch(() => { /* noop */ });
+    if (inChannelRef.current) leaveChannelRef.current?.();
+    Foreground.watchdogWanted(false).catch(() => { /* noop */ });
+    stopListening();
+    stopStandby();
+    quietReached.current = resolve;
+    setGiving(true);
+    // A word that does not come is not waited for long.
+    setTimeout(() => {
+      quietReached.current?.();
+      quietReached.current = null;
+    }, 2000);
+  }), []);
+
+  /** Stopped before anything moved: the phone is itself again. */
+  const wakeAfterHandover = useCallback(() => {
+    Journal.mark('handover:wake').catch(() => { /* noop */ });
+    setGiving(false);
+  }, []);
+
+  /** Where the place has got to, on disk before the next server is asked. */
+  const handoverMoving = useCallback(async (m: Moving) => {
+    const base = cfgRef.current;
+    if (!base) return;
+    const next = storeSettingsInPair({ ...base, handingOver: m });
+    cfgRef.current = next;
+    await saveConfig(next);
+    setCfg(next);
+  }, []);
+
+  /** All moved: nothing of Duetto is left on this phone, as on the day it was installed. */
+  const emptyAfterHandover = useCallback(async () => {
+    Journal.mark('handover:emptied').catch(() => { /* noop */ });
+    Foreground.stop().catch(() => { /* noop */ });
+    Foreground.watchdogWanted(false).catch(() => { /* noop */ });
+    stopStandby();
+    stopListening();
+    await emptyThisPhone();
+    cfgRef.current = DEFAULT_CONFIG;
+    setCfg(DEFAULT_CONFIG);
+    setPeerName('');
+    setPeerPresent(false);
+    setPeople([]);
+  }, []);
+
+  /**
+   * The new phone: what came is in use from now, and kept aside no
+   * more. Then where any phone goes with what it has: the system
+   * settings first, which this phone has never seen.
+   */
+  const onTaken = useCallback(async (got: DuoConfig) => {
+    Journal.mark(`handover:taken:${got.pairs.length}`).catch(() => { /* noop */ });
+    const next = storeSettingsInPair(got);
+    cfgRef.current = next;
+    try {
+      await saveConfig(next);
+      await dropIncoming();
+    } catch { /* kept aside still: the next start takes it again */ }
+    setHandover(null);
+    setCfg(next);
+    setPeerName(next.pair?.peerName || '');
+    setPeerPresent(false);
+    setSetupFrom('start');
+    if (!isPaired(next)) setScreen(opensHere(next) ? 'settings' : 'welcome');
+    else setScreen(next.setupShown ? 'channel' : 'setup');
+  }, []);
+
+  /** A hand-over's code, read on the first screen: only a phone with nothing on it takes it. */
+  const onHandoverScanned = useCallback((qr: HandoverQr) => {
+    const c = cfgRef.current;
+    if (!c || !isEmptyPhone(c)) {
+      Journal.mark('handover:scanned:not-empty').catch(() => { /* noop */ });
+      Alert.alert(t('handover.takeTitle'), t('handover.notEmpty'));
+      return;
+    }
+    Journal.mark('handover:scanned').catch(() => { /* noop */ });
+    forgetArrived();
+    setAccepting(false);
+    setHandover({ qr });
+    setScreen('handover');
+  }, [forgetArrived]);
+
+  /**
+   * What came from an old phone and was kept aside, and the place came
+   * meanwhile - the old phone finished while this one was not looking:
+   * in use now. Asked whenever an empty phone shows its first screen;
+   * with nothing kept aside, nothing is asked of the server.
+   */
+  const emptyNow = !!cfg && isEmptyPhone(cfg);
+  useEffect(() => {
+    if (screen !== 'welcome' || !emptyNow) return undefined;
+    let gone = false;
+    incomingReady((url) => openDoorLine(url, {})).then((got) => {
+      if (gone || !got) return;
+      Journal.mark('handover:taken-later').catch(() => { /* noop */ });
+      Alert.alert(t('handover.takenTitle'), t('handover.takenBody', {
+        server: displayServer(got.cfg.serverUrl), n: got.cfg.pairs.length,
+      }));
+      onTaken(got.cfg);
+    }).catch(() => { /* noop */ });
+    return () => { gone = true; };
+  }, [screen, emptyNow, onTaken]);
   const levelRef = useRef(level);
   useEffect(() => { levelRef.current = level; }, [level]);
   // Said to the journal at every change: the periodic line carries the
@@ -6647,7 +6815,7 @@ export default function App() {
   const waitingRoom = !cfg || isPaired(cfg) || !isServerConfigured(cfg) || !(cfg.pending ?? []).length
     ? '' : cfg.pending![cfg.pending!.length - 1].id;
   useEffect(() => {
-    if (!waitingRoom || screen === 'pairing') return;
+    if (!waitingRoom || screen === 'pairing' || screen === 'handover' || handoverQuiet) return;
     const c = cfgRef.current;
     if (!c) return;
     const sig = new Signaling(
@@ -6675,7 +6843,7 @@ export default function App() {
     );
     sig.connect();
     return () => sig.close();
-  }, [waitingRoom, screen]);
+  }, [waitingRoom, screen, handoverQuiet]);
 
   /**
    * Leaving the server, as a member: the pairs made on it go too,
@@ -6836,6 +7004,7 @@ export default function App() {
           initial={cfg}
           arrived={arrived}
           accept={accepting}
+          onHandover={onHandoverScanned}
           onDone={(next, knocked, code, pub) => {
             // Opened by a link, or by "accept": the two ways a phone
             // with a pair reaches another server without meaning to
@@ -6912,6 +7081,37 @@ export default function App() {
     );
   }
 
+  if (screen === 'handover' && handover) {
+    return (
+      <View style={styles.safe}>
+        <StatusBar barStyle="light-content" />
+        {'qr' in handover ? (
+          <HandoverScreen
+            mode="take"
+            qr={handover.qr}
+            onTaken={onTaken}
+            onClose={() => { setHandover(null); setScreen('welcome'); }}
+          />
+        ) : (
+          <HandoverScreen
+            mode="give"
+            cfg={currentCfg}
+            left={handover.left}
+            quiet={quietForHandover}
+            wake={wakeAfterHandover}
+            moving={handoverMoving}
+            emptied={emptyAfterHandover}
+            onClose={(done) => {
+              setHandover(null);
+              setGiving(false);
+              setScreen(done ? 'welcome' : 'settings');
+            }}
+          />
+        )}
+      </View>
+    );
+  }
+
   if (screen === 'settings') {
     return (
       <View style={styles.safe}>
@@ -6921,6 +7121,11 @@ export default function App() {
           onVolumeTest={runVolumeTest}
           onChangeServer={() => setScreen('welcome')}
           onLeaveServer={onLeaveServer}
+          onHandover={() => {
+            Journal.mark('handover:give:open').catch(() => { /* noop */ });
+            setHandover({});
+            setScreen('handover');
+          }}
           onForgetPair={onForgetPair}
           onSwitchPair={onSwitchPair}
           onRenamePair={onRenamePair}

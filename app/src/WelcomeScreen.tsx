@@ -19,6 +19,7 @@ import { knock, watchDoor, formatInvitation, DoorAnswer } from './door';
 import { parseLink, BETA_TESTER_LINK, type DuettoLink } from './links';
 import { Scanner, Journal } from 'duetto-platform';
 import { normalizeCode, formatCode, isCodeComplete } from './pairing';
+import { parseQr, isEmptyPhone, type HandoverQr } from './handover';
 import { VERSION_FULL } from './version';
 import { t } from './i18n';
 
@@ -69,11 +70,17 @@ type Props = {
    * already on a server: one screen that tells them apart.
    */
   accept?: boolean;
+  /**
+   * A hand-over's code was read: another phone of the same person's
+   * gives this one its place. Whether this phone can take it is for
+   * the app to say (see isEmptyPhone).
+   */
+  onHandover?: (qr: HandoverQr) => void;
 };
 
 type Step = 'server' | 'knocking' | 'key' | 'stranger' | 'welcomed' | 'accept';
 
-export default function WelcomeScreen({ initial, onDone, onClose, arrived, accept }: Props) {
+export default function WelcomeScreen({ initial, onDone, onClose, arrived, accept, onHandover }: Props) {
   const [server, setServer] = useState(displayServer(initial.serverUrl));
   const [key, setKey] = useState('');
   /** the server the key in the field is for: it goes there alone, see keyForServer */
@@ -225,10 +232,13 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived, accep
       return;
     }
     if (!text) return;
+    // An old phone's code: not a link, and not for knocking - see handover.ts.
+    const handing = parseQr(text);
+    if (handing && onHandover) { onHandover(handing); return; }
     const link = parseLink(text);
     if (!link) { setNote(t('qr.notOurs')); return; }
     takeLink(link, from);
-  }, [takeLink]);
+  }, [takeLink, onHandover]);
 
   /**
    * A link from the clipboard: for whoever got it as plain text - a
@@ -601,6 +611,20 @@ export default function WelcomeScreen({ initial, onDone, onClose, arrived, accep
         {noLinkCopied && !server.trim() ? (
           <View style={styles.linkBox}>
             <Text style={styles.betaBody}>{t('welcome.linkHint')}</Text>
+          </View>
+        ) : null}
+        {/* Changing phone: the old one shows a code, read from here
+            with the button below. Only on a phone with nothing on it,
+            which is the only one that can take it. */}
+        {onHandover && isEmptyPhone(initial) ? (
+          <View style={styles.linkBox}>
+            <Text style={styles.betaBody}>
+              {t('handover.welcomeHint', {
+                settings: t('settings.title'),
+                tab: t('settings.tabLinks'),
+                button: t('handover.button'),
+              })}
+            </Text>
           </View>
         ) : null}
         {note ? <Text style={styles.note}>{note}</Text> : null}

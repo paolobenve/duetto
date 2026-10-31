@@ -276,7 +276,8 @@ export async function refreshStandby(cfg: DuoConfig | null): Promise<void> {
     for (const p of cfg.pairs) latest.set(p.id, p);
   }
   const available = await Foreground.isAvailable().catch(() => true);
-  const want = cfg && available ? wanted(cfg) : new Map<string, PairInfo>();
+  // Handing over to a new phone: nobody waits here any more - see handover.ts.
+  const want = cfg && available && !cfg.handingOver ? wanted(cfg) : new Map<string, PairInfo>();
   /**
    * Unavailable by choice: the waiting connections say goodbye, as the
    * one in use does. Closed without a word, the other side read a drop -

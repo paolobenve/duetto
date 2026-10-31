@@ -2,7 +2,7 @@ import nacl from 'tweetnacl';
 import { encodeBase64 } from 'tweetnacl-util';
 import {
   Giving, Taking, parseQr, qrText, newSecret, meetingId, meetingKey, figuresOf, commitmentTo,
-  bundleOf, fromBundle, serversOf, keepIncoming, readIncoming, dropIncoming, finishMoving,
+  bundleOf, fromBundle, serversOf, keepIncoming, readIncoming, dropIncoming, finishMoving, isEmptyPhone,
   type GiveView, type TakeView, type Moving,
 } from '../handover';
 import { SignalCrypto } from '../crypto';
@@ -355,5 +355,19 @@ describe('what came, kept aside', () => {
     }
     expect(await readIncoming()).toBeNull();
     await dropIncoming();
+  });
+});
+
+describe('who can take a place', () => {
+  test('a phone with nothing on it, and no other', () => {
+    expect(isEmptyPhone(DEFAULT_CONFIG)).toBe(true);
+    // Knocked once and turned away: nothing of its own to lose.
+    expect(isEmptyPhone({ ...DEFAULT_CONFIG, serverUrl: SERVER, serverRole: 'stranger' })).toBe(true);
+    const old = oldConfig();
+    expect(isEmptyPhone(old)).toBe(false);
+    // A place where it makes connections, even with none made yet.
+    expect(isEmptyPhone({ ...DEFAULT_CONFIG, serverUrl: SERVER, serverRole: 'member' })).toBe(false);
+    // A code waiting for its other half.
+    expect(isEmptyPhone({ ...DEFAULT_CONFIG, pending: old.pending })).toBe(false);
   });
 });

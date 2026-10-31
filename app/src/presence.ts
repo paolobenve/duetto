@@ -553,6 +553,17 @@ async function listenNow(): Promise<boolean> {
   // its own to read, and without this it would talk to a log nobody
   // asked for.
   setLogging(cfg.diagnostics);
+  /**
+   * Handing the place over to a new phone (see handover.ts): the pairs
+   * are the new phone's already, and where the place has moved this
+   * card is nobody - a connection would only be turned away, and the
+   * refusal read as a pair broken. Nothing starts until it is done.
+   */
+  if (cfg.handingOver) {
+    log('handing over to a new phone: nothing to hold');
+    Foreground.watchdogWanted(false).catch(() => { /* noop */ });
+    return false;
+  }
   if (!isPaired(cfg) || !isServerConfigured(cfg)) {
     log('no pair set up: there is nothing to listen for');
     // Said to the watchdog alarm too, or it would spend the night

@@ -13,7 +13,7 @@ import { decodeUTF8, encodeBase64, decodeBase64 } from 'tweetnacl-util';
 import { SignalCrypto } from './crypto';
 import {
   DEFAULT_CONFIG, type DuoConfig, type PairInfo, type ServerRole,
-  displayServer, normalizeServerUrl, storeSettingsInPair, withoutServerKeys,
+  displayServer, isPaired, normalizeServerUrl, opensHere, storeSettingsInPair, withoutServerKeys,
 } from './config';
 import type { DoorLine } from './door';
 
@@ -196,6 +196,16 @@ export function fromBundle(raw: unknown): DuoConfig | null {
 
 function keyLength(b64: string): number {
   try { return decodeBase64(b64).length; } catch { return 0; }
+}
+
+/**
+ * A phone that can take another's place: nothing of its own to lose.
+ * What comes replaces the whole configuration, so a phone with
+ * connections, codes waiting, or a place where it may make them, would
+ * lose them - and a hand-over is for a new phone, not for merging two.
+ */
+export function isEmptyPhone(cfg: DuoConfig): boolean {
+  return !isPaired(cfg) && cfg.pairs.length === 0 && !(cfg.pending ?? []).length && !opensHere(cfg);
 }
 
 /** The servers this phone has something on: the one in use, its pairs', its codes'. */
