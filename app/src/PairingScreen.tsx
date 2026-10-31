@@ -18,7 +18,7 @@ import QrCode from './QrCode';
 import { Signaling, PairMessage } from './signaling';
 import {
   generateCode, normalizeCode, formatCode, isCodeComplete,
-  pairIdFromCode, newKeyPair, deriveSharedKey, confirmationFor,
+  pairIdFromCode, newKeyPair, confirmationFor, letterProves,
   keyToBase64, pubToBase64, pubFromBase64, pairFromLetter, pairKey, seatToken,
   seatCheck, newLinkSecret, LINK_SECRETS_MADE,
 } from './pairing';
@@ -239,23 +239,35 @@ export default function PairingScreen({
         onPair: (msg: PairMessage) => {
           if (msg.kind === 'pubkey') {
             sendPubOnce(sig);
-            if (sharedRef.current) return; // already worked out
+            // From our link, with its secret: the key has it inside,
+            // and the proof comes with the key. Without, the digits
+            // were typed, and the old exchange ends with their confirm.
+            const secret = side === 'A' ? linkSecretRef.current : '';
+            const linked = !!secret && !!msg.linked;
+            // Already worked out - unless this is our link's, after
+            // somebody who merely had the code: theirs counts.
+            if (sharedRef.current && !linked) return;
             try {
-              peerNameRef.current = msg.name || '';
-              const key = deriveSharedKey(
+              const key = pairKey(
                 keysRef.current.secretKey,
                 pubFromBase64(msg.pub),
                 codeRef.current,
+                linked ? secret : undefined,
               );
+              // "From our link" with no proof of the secret: not so.
+              if (linked && !letterProves(key, msg.proof)) return;
+              peerNameRef.current = msg.name || '';
               sharedRef.current = key;
               setStep('exchanging');
               sig.sendPair({ kind: 'confirm', proof: confirmationFor(key, side) });
-              // The code went out as a link with our key in it, and
-              // whoever opened it has the pair made already: their key
-              // is all we needed, and their proof may never come - they
-              // close the moment their letter is in. Done here, as by
-              // letter; the confirm above serves an older app.
-              if (side === 'A' && awaitingRef.current) {
+              // Whoever opened our link has the pair made already: their
+              // key is all we needed, and their confirm may never come -
+              // they close the moment their letter is in. Done here, as
+              // by letter; the confirm above serves an older app. With
+              // a secret, only their proof does it: a bare key after a
+              // link with a secret is somebody who got to the code
+              // another way, and has to see the exchange through.
+              if (side === 'A' && (linked || (awaitingRef.current && !secret))) {
                 doneRef.current = true;
                 awaitingRef.current = '';
                 cleanup();
