@@ -960,10 +960,6 @@ async function handleReport(ws, msg) {
   if (!r) return;
   if (part === 'file') {
     const name = String(msg.name || 'journal.csv').replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 80);
-    // The sender's own journal only: the work item is open to anybody,
-    // and the other person's - which apps before build 542 attached
-    // too - is theirs to publish. Dropped in silence, the rest goes.
-    if (!name.startsWith('mine-')) return;
     const text = String(msg.text || '');
     r.bytes += text.length;
     // A new name for every empty piece was a new file each time: held
@@ -996,10 +992,28 @@ async function handleReport(ws, msg) {
   const quoted = r.text.trim()
     ? r.text.trim().split('\n').map((l) => `> ${l}`).join('\n')
     : '';
+  /*
+   * The journal in an internal note: the work item is open to anybody,
+   * and the journal - the sender's and the other person's, who sends it
+   * to that phone - says when the two talked, from where, how. Internal
+   * notes are seen by the project's members only, and the files' links
+   * are written nowhere else. First, so that if GitLab will not take it
+   * the report stops here and nothing goes in the open.
+   */
+  if (attachments.length) {
+    await gitlab(`/issues/${item.iid}/notes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        body: `Journal of ${who}'s report, Duetto ${r.version}: ${attachments.join(' ')}`,
+        internal: true,
+      }),
+    });
+  }
   const body = [
     `**Report from _${who}_** · Duetto ${r.version} · ${r.phone}`,
     quoted,
-    attachments.length ? `Journal: ${attachments.join(' ')}` : '',
+    attachments.length ? 'Journal: in an internal note, for the developers only.' : '',
   ].filter(Boolean).join('\n\n');
   await gitlab(`/issues/${item.iid}/notes`, {
     method: 'POST',

@@ -199,8 +199,8 @@ try {
   await sleep(100);
 
   // The member began one already (the refused one): five more, then no.
-  // Each with the other person's journal too, as apps before 542 did:
-  // that one stays out.
+  // Each with the other person's journal too: both go up, and their
+  // links only in an internal note.
   let fine = 0;
   calls = [];
   for (let i = 0; i < 5; i += 1) {
@@ -211,7 +211,14 @@ try {
     if ((await mem.expect('report-result'))?.ok === true) fine += 1;
   }
   check('five reports more in the hour: all written', fine === 5, fine);
-  check('each with our journal, never the other person\'s', uploads().length === 5, seen(uploads()));
+  check('each with both journals', uploads().length === 10, seen(uploads()));
+  const bodies = notes().map((n) => JSON.parse(n.body));
+  const inside = bodies.filter((b) => b.internal === true);
+  const open = bodies.filter((b) => b.internal !== true);
+  check('the journal\'s links in internal notes, one a report',
+    inside.length === 5 && inside.every((b) => b.body.includes('/uploads/')), bodies);
+  check('and never in the open ones',
+    open.length === 5 && open.every((b) => !b.body.includes('/uploads/') && b.body.includes('internal note')), bodies);
   mem.send({ type: 'report', part: 'begin', name: 'Mario', text: 'the seventh' });
   answer = await mem.expect('report-result');
   check('the seventh in the hour: too many', answer?.ok === false && answer.error === 'too-many', answer);
