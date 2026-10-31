@@ -401,6 +401,18 @@ export default function SettingsScreen({
     : cfg.alertPicked === 'chosen' && hasOwnSound
       ? { label: cfg.alertSoundName || t('settings.soundChosen'), note: t('settings.soundChosenNote') }
       : null;
+  /**
+   * The sound just chosen, heard the way a call arriving now would
+   * sound: the same preview as the levels further down. Nothing else
+   * plays it. The phone's own picker cannot be counted on - the POCO's
+   * is a list of files that stays silent (31 October) - and a touched
+   * entry used to stay silent too. Silence stays silent: the preview
+   * plays nothing for 'none'.
+   */
+  const hearSound = (after: DuoConfig) => {
+    Alerts.preview(after.alertSound, alertSoundFor(after), ALERT_GAIN[after.alertLevel ?? 'full'])
+      .catch(() => {});
+  };
 
   /** the name of the person being invited, while it is typed */
   const [inviteName, setInviteName] = useState('');
@@ -1431,8 +1443,10 @@ export default function SettingsScreen({
               key={s.value}
               style={[styles.option, cfg.alertSound === s.value && styles.optionPicked]}
               onPress={() => {
-                setCfg({ ...cfg, alertSound: s.value });
+                const after = { ...cfg, alertSound: s.value };
+                setCfg(after);
                 onLive?.({ alertSound: s.value });
+                hearSound(after);
               }}>
               <View style={[styles.radio, cfg.alertSound === s.value && styles.radioPicked]} />
               <View style={styles.choiceText}>
@@ -1457,8 +1471,10 @@ export default function SettingsScreen({
             <TouchableOpacity
               style={[styles.option, cfg.alertSound === cfg.alertPicked && styles.optionPicked]}
               onPress={() => {
-                setCfg({ ...cfg, alertSound: cfg.alertPicked as 'chosen' | 'duetto' });
-                onLive?.({ alertSound: cfg.alertPicked as 'chosen' | 'duetto' });
+                const after = { ...cfg, alertSound: cfg.alertPicked as 'chosen' | 'duetto' };
+                setCfg(after);
+                onLive?.({ alertSound: after.alertSound });
+                hearSound(after);
               }}>
               <View style={[
                 styles.radio, cfg.alertSound === cfg.alertPicked && styles.radioPicked,
@@ -1494,8 +1510,10 @@ export default function SettingsScreen({
               alertSoundUri: fromPhone.uri,
               alertSoundName: fromPhone.name,
             };
-            setCfg({ ...cfg, ...patch });
+            const after = { ...cfg, ...patch };
+            setCfg(after);
             onLive?.(patch);
+            hearSound(after);
           }}>
           <Text style={styles.rowButtonText}>
             {hasOwnSound ? t('settings.soundChooseAnother') : t('settings.soundChoose')}
