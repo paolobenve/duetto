@@ -600,7 +600,7 @@ export const en = {
     reportProblem: 'Report a problem',
     reportPlaceholder: 'What happened, when, what you expected…',
     reportAttach: 'Attach the journal',
-    reportAttachNote: 'The last three days, yours and the other person\'s.',
+    reportAttachNote: 'The last three days of yours, not the other person\'s. On the work item anybody can see it.',
     reportSend: 'Send',
     reportSending: 'Sending…',
     reportSentTitle: 'Sent',

@@ -59,12 +59,17 @@ class ReportModule(private val ctx: ReactApplicationContext) :
         promise.resolve(name ?: "")
     }
 
-    /** The journal's files of the last `days` days, newest first: name and text. */
+    /**
+     * Our own journal's files of the last `days` days, newest first:
+     * name and text. For a report, which lands on a work item anybody
+     * can read: the other person's journal, sent to this phone for us
+     * to read, is theirs to publish, not ours - it stays out.
+     */
     @ReactMethod
     fun journalFiles(days: Int, promise: Promise) {
         val arr = Arguments.createArray()
         try {
-            for (f in Journal.recentFiles(ctx, days)) {
+            for (f in Journal.recentFiles(ctx, days).filter { it.name.startsWith("mine-") }) {
                 val m = Arguments.createMap()
                 m.putString("name", f.name)
                 m.putString("path", f.absolutePath)

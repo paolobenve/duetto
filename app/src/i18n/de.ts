@@ -587,7 +587,7 @@ export const de: Dictionary = {
     reportProblem: 'Ein Problem melden',
     reportPlaceholder: 'Was geschehen ist, wann, was du erwartet hattest…',
     reportAttach: 'Das Tagebuch anhängen',
-    reportAttachNote: 'Die letzten drei Tage, deine und die der anderen Person.',
+    reportAttachNote: 'Die letzten drei Tage deines Tagebuchs, nicht das der anderen Person. Im Work Item kann es jeder sehen.',
     reportSend: 'Schicken',
     reportSending: 'Ich schicke…',
     reportSentTitle: 'Geschickt',

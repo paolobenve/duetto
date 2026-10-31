@@ -587,7 +587,7 @@ export const es: Dictionary = {
     reportProblem: 'Avisar de un problema',
     reportPlaceholder: 'Qué pasó, cuándo, qué esperabas…',
     reportAttach: 'Adjuntar el diario',
-    reportAttachNote: 'Los últimos tres días, tuyos y de la otra persona.',
+    reportAttachNote: 'Los últimos tres días del tuyo, no el de la otra persona. En el work item lo ve cualquiera.',
     reportSend: 'Mandar',
     reportSending: 'Mandando…',
     reportSentTitle: 'Mandado',
