@@ -583,7 +583,6 @@ export const fr: Dictionary = {
     gitlabToken: 'Jeton GitLab (facultatif)',
     gitlabTokenNote: 'Un jeton personnel avec la permission « api ». Il reste sur ce téléphone ; tu peux le révoquer quand tu veux.',
     gitlabTokenMake: 'Créer le jeton sur GitLab',
-    sendJournal: 'Envoyer le journal à mon work item',
     reportProblem: 'Signaler un problème',
     reportPlaceholder: 'Ce qui s’est passé, quand, ce que tu attendais…',
     reportAttach: 'Joindre le journal',

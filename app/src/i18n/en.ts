@@ -596,7 +596,6 @@ export const en = {
     gitlabToken: 'GitLab token (optional)',
     gitlabTokenNote: 'A personal access token with the "api" scope. It stays on this phone; you can revoke it whenever you like.',
     gitlabTokenMake: 'Create the token on GitLab',
-    sendJournal: 'Send the journal to my work item',
     reportProblem: 'Report a problem',
     reportPlaceholder: 'What happened, when, what you expected…',
     reportAttach: 'Attach the journal',

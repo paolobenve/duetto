@@ -582,7 +582,6 @@ export const it: Dictionary = {
     gitlabToken: 'Token di GitLab (facoltativo)',
     gitlabTokenNote: 'Un token personale con permesso «api». Resta su questo telefono; lo puoi revocare quando vuoi.',
     gitlabTokenMake: 'Crea il token su GitLab',
-    sendJournal: 'Manda il giornale al mio work item',
     reportProblem: 'Segnala un problema',
     reportPlaceholder: 'Cosa è successo, quando, cosa ti aspettavi…',
     reportAttach: 'Allega il giornale',

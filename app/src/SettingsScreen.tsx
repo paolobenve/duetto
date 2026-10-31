@@ -236,9 +236,14 @@ export default function SettingsScreen({
   const [reportText, setReportText] = useState('');
   const [reportWithJournal, setReportWithJournal] = useState(false);
   const [reportBusy, setReportBusy] = useState(false);
-  const openReport = (withJournal: boolean) => {
+  /**
+   * One way in, with the journal along unless one takes it off: there
+   * were two buttons - "Send the journal" and "Report a problem" - that
+   * opened the same form, the switch set one way or the other.
+   */
+  const openReport = () => {
     setReportText('');
-    setReportWithJournal(withJournal);
+    setReportWithJournal(true);
     setReportOpen(true);
   };
   const submitReport = async () => {
@@ -1809,10 +1814,7 @@ export default function SettingsScreen({
         </TouchableOpacity>
         {cfg.gitlabToken || reportsOpen ? (
           <>
-            <TouchableOpacity style={styles.secondary} onPress={() => openReport(true)}>
-              <Text style={styles.secondaryText}>{t('settings.sendJournal')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.secondary} onPress={() => openReport(false)}>
+            <TouchableOpacity style={styles.secondary} onPress={openReport}>
               <Text style={styles.secondaryText}>{t('settings.reportProblem')}</Text>
             </TouchableOpacity>
           </>
@@ -2178,7 +2180,7 @@ export default function SettingsScreen({
         <Pressable style={styles.sheetBack} onPress={() => { if (!reportBusy) setReportOpen(false); }}>
           <Pressable style={styles.sheet} onPress={() => { /* hold it */ }}>
             <Text style={styles.sheetTitle}>
-              {t(reportWithJournal ? 'settings.sendJournal' : 'settings.reportProblem')}
+              {t('settings.reportProblem')}
             </Text>
             <TextInput
               style={[styles.input, styles.reportInput]}
