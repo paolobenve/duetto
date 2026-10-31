@@ -2195,7 +2195,11 @@ export default function SettingsScreen({
               onPress={() => setReportWithJournal(!reportWithJournal)}>
               <View style={styles.choiceText}>
                 <Text style={styles.choiceLabel}>{t('settings.reportAttach')}</Text>
-                <Text style={styles.choiceNote}>{t('settings.reportAttachNote')}</Text>
+                <Text style={styles.choiceNote}>
+                  {/* Through the server, in an internal note; else in
+                      the open, with the person's own token. */}
+                  {t(reportsOpen ? 'settings.reportAttachNote' : 'settings.reportAttachNotePublic')}
+                </Text>
               </View>
               <View pointerEvents="none">
                 <Switch value={!!(reportWithJournal)} {...SWITCH_COLOURS} />

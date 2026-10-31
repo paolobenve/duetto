@@ -158,7 +158,11 @@ export async function reportDirectly(o: {
     if (!item) return { ok: false, error: 'no-work-item' };
     const attachments: string[] = [];
     if (o.withJournal) {
-      const files: ReportFile[] = await Journal.files(3);
+      // In the open, under the person's own name: a member of nothing
+      // cannot write an internal note. So our journal only - the other
+      // person's is theirs to publish - and the app sends the journal
+      // through the server instead, where it can (see sendReport).
+      const files: ReportFile[] = (await Journal.files(3)).filter((f: ReportFile) => f.name.startsWith('mine-'));
       for (const f of files) {
         const md = await upload(o.token, f);
         if (md) attachments.push(md);

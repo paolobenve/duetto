@@ -1270,13 +1270,17 @@ export default function App() {
   /**
    * A report: with the person's own token straight to GitLab, in their
    * name; else through the server, which writes it in the project's
-   * name with theirs in the first line.
+   * name with theirs in the first line. With the journal, through the
+   * server wherever it carries reports, token or not: there the journal
+   * - both sides' - goes in an internal note, which the person's own
+   * token cannot write.
    */
   const sendReport = useCallback(async (text: string, withJournal: boolean): Promise<ReportOutcome> => {
     const phone = await Journal.phone().catch(() => '');
     const token = (cfgRef.current?.gitlabToken || '').trim();
     const name = (cfgRef.current?.betaName || '').trim();
-    if (token) {
+    const serverRoad = !!signalingRef.current?.connected && reportsOpen;
+    if (token && !(withJournal && serverRoad)) {
       return reportDirectly({ token, name, text, withJournal, version: VERSION_FULL, phone });
     }
     const sig = signalingRef.current;

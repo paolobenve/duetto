@@ -60,16 +60,15 @@ class ReportModule(private val ctx: ReactApplicationContext) :
     }
 
     /**
-     * Our own journal's files of the last `days` days, newest first:
-     * name and text. For a report, which lands on a work item anybody
-     * can read: the other person's journal, sent to this phone for us
-     * to read, is theirs to publish, not ours - it stays out.
+     * The journal's files of the last `days` days, ours and the other
+     * side's, newest first: name and text. For a report: which of them
+     * go, and where, is the report's to say (see gitlab.ts).
      */
     @ReactMethod
     fun journalFiles(days: Int, promise: Promise) {
         val arr = Arguments.createArray()
         try {
-            for (f in Journal.recentFiles(ctx, days).filter { it.name.startsWith("mine-") }) {
+            for (f in Journal.recentFiles(ctx, days)) {
                 val m = Arguments.createMap()
                 m.putString("name", f.name)
                 m.putString("path", f.absolutePath)
