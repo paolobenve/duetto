@@ -178,6 +178,27 @@ export function bouncePage(req, latest) {
   // back here, to the page that says so, instead of doing nothing.
   const android = /Android/.test(String(req.headers['user-agent'] || ''));
   const opener = android ? intent : app;
+  /*
+   * A link's secret (see the app's pairing.ts) follows a '#', which the
+   * browser keeps for itself: this page never sees it, and puts it back
+   * where it goes from here, in the browser. To the app as one more
+   * piece of the path - in an intent:// what follows the '#' is
+   * Android's - to the page that says the app is missing as the '#' it
+   * came with, and to the clipboard as the whole link. Only with the
+   * maker's key, which a secret means nothing without; with no script,
+   * the old link, which an app from before reads too.
+   */
+  const secretJs = kind === 'pair' && key
+    ? `var s = /^#[A-Za-z0-9_-]{22}$/.test(location.hash) ? location.hash.slice(1) : '';
+var app = ${JSON.stringify(app)} + (s ? '/' + s : '');
+var intent = ${JSON.stringify(`intent://${path}`)} + (s ? '/' + s : '')
+  + '#Intent;scheme=duetto;package=com.duetto;S.browser_fallback_url='
+  + encodeURIComponent(${JSON.stringify(`${bare}?stay=1`)} + (s ? '#' + s : '')) + ';end';
+var link = ${JSON.stringify(bare)} + (s ? '#' + s : '');`
+    : `var s = '';
+var app = ${JSON.stringify(app)};
+var intent = ${JSON.stringify(intent)};
+var link = ${JSON.stringify(bare)};`;
   const byHand = `<p>${esc(kind === 'pair' ? w.byHandPair : w.byHandInvite)}</p>
 <p><code>${esc(host)}</code><br><code>${esc(shown)}</code></p>`;
   const fdroid = `<a class="get" href="${FDROID}">F-Droid</a>`;
@@ -195,11 +216,11 @@ ${latest.preview
 <p><small>${esc(kind === 'pair' ? w.copiedPair : w.copiedInvite)}</small></p>
 ${byHand}
 <script>
+${secretJs}
 // The link goes with the download, in the clipboard: Android opens
 // the app just installed knowing nothing of the link that led to it,
 // and Duetto, at its first start, looks there (see WelcomeScreen).
 function keep() {
-  var link = ${JSON.stringify(bare)};
   function old() {
     var t = document.createElement('textarea');
     t.value = link; document.body.appendChild(t); t.select();
@@ -210,7 +231,7 @@ function keep() {
 }
 document.querySelectorAll('a.get').forEach(function (a) { a.addEventListener('click', keep); });
 </script>`
-    : `<a class="b" href="${esc(opener)}">${esc(w.open)}</a>
+    : `<a class="b" id="open" href="${esc(opener)}">${esc(w.open)}</a>
 <small>${esc(w.notOpened)}</small>
 ${byHand}`;
   return `<!doctype html>
@@ -230,6 +251,8 @@ code{font-size:1.4rem;letter-spacing:.1em;color:#fff}small{color:#8892a0}
 ${body}
 </main>
 ${stay ? '' : `<script>
+${secretJs}
+document.getElementById('open').href = ${android ? 'intent' : 'app'};
 // Handed to the app after the page is on the screen, and by assigning
 // the location rather than replacing it, which keeps this tab as it is.
 // An intent:// names the package and falls back to this page (stay=1)
@@ -237,7 +260,7 @@ ${stay ? '' : `<script>
 // included. Off Android there is nothing to open: the page stays,
 // with the code. And whoever's browser does not jump has the button.
 if (/Android/.test(navigator.userAgent)) {
-  setTimeout(function () { window.location.href = ${JSON.stringify(intent)}; }, 150);
+  setTimeout(function () { window.location.href = intent; }, 150);
 }
 </script>`}
 </body></html>

@@ -403,6 +403,21 @@ try {
   let page = await (await fetch(`http://${HOST}/duetto/p/12345678/${KEY}`)).text();
   check('pairing link page bounces into the app', page.includes(`href="duetto://${HOST}/pair/12345678/${KEY}"`)
     && page.includes(`intent://${HOST}/pair/12345678/`) && page.includes('1234 5678'), page.slice(-400));
+  // The secret after the '#': the page never gets it, its script puts it back.
+  {
+    const SECRET = 'AbCdEfGhIjKlMnOpQrSt_-';
+    const js = page.match(/<script>\n([\s\S]*?)\ndocument\.getElementById/)?.[1] || '';
+    const run = (hash) => new Function('location', `${js}; return { app, intent, link };`)({ hash });
+    const withIt = run(`#${SECRET}`);
+    const without = run('');
+    check('the page hands the secret on: in the path to the app, after the # elsewhere',
+      withIt.app === `duetto://${HOST}/pair/12345678/${KEY}/${SECRET}`
+      && withIt.intent.startsWith(`intent://${HOST}/pair/12345678/${KEY}/${SECRET}#Intent;`)
+      && decodeURIComponent(withIt.intent).includes(`?stay=1#${SECRET};end`)
+      && withIt.link === `https://${HOST}/duetto/p/12345678/${KEY}#${SECRET}`, withIt);
+    check('and without one, the old link', without.app === `duetto://${HOST}/pair/12345678/${KEY}`
+      && !without.link.includes('#') && run('#short').app === without.app, without);
+  }
   page = await (await fetch(`http://${HOST}/duetto/i/ABCD-2345`)).text();
   check('invitation link page bounces into the app', page.includes(`href="duetto://${HOST}/invite/ABCD-2345"`), page.slice(-400));
   page = await (await fetch(`http://${HOST}/duetto/p/12345678?stay=1`)).text();
