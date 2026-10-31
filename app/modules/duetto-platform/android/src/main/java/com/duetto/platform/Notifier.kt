@@ -242,6 +242,11 @@ object Notifier {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setGroup(GROUP)
             .setSortKey(SORT_ALERT)
+            // Whole on the locked screen, like every other one of ours: the
+            // standing notification already says the other's name and
+            // state in clear, and a call hidden as "content hidden" is a
+            // call one does not know who made.
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .apply { if (briefMs > 0) setTimeoutAfter(briefMs) }
             .apply { if (silent) setSilent(true) }
 
@@ -482,6 +487,9 @@ object Notifier {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setGroup(GROUP)
             .setSortKey(SORT_STATE)
+            // Whole on the locked screen, as the channel's is: left
+            // private, HyperOS hid a line that says no more than that.
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build()
 
         /**
