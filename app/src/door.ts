@@ -242,6 +242,37 @@ export function watchDoor(
   };
 }
 
+/**
+ * A line kept open at the door, for a conversation longer than one
+ * question: the hand-over (see handover.ts). Every word after the
+ * answer goes to whoever listens.
+ */
+export type DoorLine = {
+  /** what the door said this phone is there */
+  role: ServerRole;
+  send: (obj: unknown) => void;
+  /** hears every word after the answer; gives back what stops hearing */
+  listen: (fn: (msg: any) => void) => () => void;
+  /** the socket went */
+  onGone: (fn: () => void) => void;
+  close: () => void;
+};
+
+export async function openDoorLine(serverUrl: string, ask: DoorRequest): Promise<DoorLine> {
+  const v = await visit(serverUrl, ask);
+  const ears = new Set<(msg: any) => void>();
+  const gone = new Set<() => void>();
+  v.onWord = (msg) => { for (const fn of [...ears]) fn(msg); };
+  v.onGone = () => { for (const fn of [...gone]) fn(); };
+  return {
+    role: v.answer.role,
+    send: (obj) => { try { v.ws.send(JSON.stringify(obj)); } catch { /* noop */ } },
+    listen: (fn) => { ears.add(fn); return () => { ears.delete(fn); }; },
+    onGone: (fn) => { gone.add(fn); },
+    close: () => v.close(),
+  };
+}
+
 const isRole = (v: any): v is ServerRole =>
   v === 'owner' || v === 'member' || v === 'guest' || v === 'stranger' || v === 'unknown';
 

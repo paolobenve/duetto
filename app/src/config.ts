@@ -371,6 +371,13 @@ export type DuoConfig = {
   pairs: PairInfo[];
   /** codes made here that still wait for their other half: see PendingPair */
   pending?: PendingPair[];
+  /**
+   * A hand-over under way, on the old phone: the new phone has every
+   * pair already, and these servers still have to give it this
+   * phone's place. Finished at the next start if the app stops half
+   * way; then the phone empties itself. See handover.ts.
+   */
+  handingOver?: { to: string; servers: string[] };
   /** the system settings have already been offered once */
   setupShown: boolean;
   /** the settings tab last looked at: it is where one comes back to */

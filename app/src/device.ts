@@ -74,6 +74,20 @@ export async function deviceKey(): Promise<DeviceKey> {
 
 
 /**
+ * The phone emptied of Duetto, as on the day it was installed: every
+ * one of its keys in storage - the configuration with the pairs, the
+ * card, the small memories - and the card in memory. It is what the old
+ * phone does at the end of a hand-over (see handover.ts), once the new
+ * one has it all. The journal stays, until Duetto is uninstalled.
+ */
+export async function emptyThisPhone(): Promise<void> {
+  const keys = (await AsyncStorage.getAllKeys().catch(() => [] as readonly string[]))
+    .filter((k) => k.startsWith('duetto.'));
+  if (keys.length > 0) await AsyncStorage.multiRemove([...keys]);
+  mine = null;
+}
+
+/**
  * The card as a person reads it out.
  *
  * The whole key is forty-four characters, which nobody dictates: this
