@@ -25,6 +25,29 @@ describe('links: what a QR code or a tapped link says', () => {
     expect(parseLink(link)).toEqual({ kind: 'pair', serverUrl: SERVER, code: '12345678', pub });
   });
 
+  test('after the key, a secret: after the # in https, in the path in duetto://', () => {
+    const pub = Buffer.from(Array.from({ length: 32 }, (_, i) => (i * 11 + 3) % 256)).toString('base64');
+    const secret = 'AbCdEfGhIjKlMnOpQrSt_-';
+    const link = pairLink(SERVER, '12345678', pub, secret);
+    expect(link).toMatch(/^https:\/\/example\.org\/duetto\/p\/12345678\/[A-Za-z0-9_-]{43}#AbCdEfGhIjKlMnOpQrSt_-$/);
+    const want = { kind: 'pair', serverUrl: SERVER, code: '12345678', pub, secret };
+    expect(parseLink(link)).toEqual(want);
+    const key = link.split('/').pop()!.split('#')[0];
+    expect(parseLink(`duetto://example.org/pair/12345678/${key}/${secret}`)).toEqual(want);
+    expect(parseLink(`duetto://example.org/pair/12345678/${key}#${secret}`)).toEqual(want);
+    // Never in an https path: there it would have gone to the server.
+    expect(parseLink(`https://example.org/duetto/p/12345678/${key}/${secret}`)).toBeNull();
+    // Nothing without the key, and nothing for an invitation.
+    expect(parseLink(`https://example.org/duetto/p/12345678#${secret}`)).toBeNull();
+    expect(parseLink(`https://example.org/duetto/i/ABCD-2345#${secret}`)).toBeNull();
+    // A secret of the wrong length is not ours either.
+    expect(parseLink(`${link}x`)).toBeNull();
+  });
+
+  test('a secret asked for without a key makes the old link', () => {
+    expect(pairLink(SERVER, '12345678', undefined, 'AbCdEfGhIjKlMnOpQrSt_-')).toBe('https://example.org/duetto/p/12345678');
+  });
+
   test('a key of the wrong length is not a link of ours', () => {
     expect(parseLink('duetto://example.org/pair/12345678/tooshort')).toBeNull();
     expect(parseLink('https://example.org/duetto/i/ABCD-2345/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA')).toBeNull();

@@ -152,6 +152,83 @@ export function confirmationFor(key: Uint8Array, side: 'A' | 'B'): string {
   return encodeBase64(sha512(label(`duetto-confirm|${side}|`), key).slice(0, 16));
 }
 
+// --- The link's secret ------------------------------------------------------
+
+/*
+ * A link handed over is opened in a browser, and the browser asks the
+ * server for the page: the server reads the path, and with it the code
+ * and the maker's key - all that the pair's key used to be made of. And
+ * the code comes back from pairId too, with enough computing (see the
+ * top of this file). What follows a '#' no browser ever sends. So a
+ * link carries one more thing there, 128 random bits, and they go into
+ * the pair's key: whoever has the code and the maker's key, the server
+ * included, still cannot make it.
+ *
+ * Two more things come from the same secret:
+ *  - the proof a letter carries: without it the maker takes no letter,
+ *    where a letter for the wrong key used to make a pair with nobody;
+ *  - the token for the seat a waiting room keeps: the maker leaves the
+ *    server a check of it, the phone that opened the link says the
+ *    token itself, and nobody else sits there while the maker is away.
+ *
+ * Digits read out and typed carry none: that exchange stays the old
+ * one, live, with both phones there, and so do its limits.
+ */
+const LINK_SECRET_BYTES = 16;
+
+const toUrl64 = (b: Uint8Array) => encodeBase64(b).replace(/\+/g, '-').replace(/\//g, '_').replace(/[=]+$/, '');
+const fromUrl64 = (s: string) => {
+  const b = s.replace(/-/g, '+').replace(/_/g, '/');
+  return decodeBase64(b + '='.repeat((4 - (b.length % 4)) % 4));
+};
+
+/** A secret is 22 characters of base64url: 16 bytes, as a link carries it. */
+export function isLinkSecret(s: unknown): s is string {
+  return typeof s === 'string' && /^[A-Za-z0-9_-]{22}$/.test(s);
+}
+
+export function newLinkSecret(): string {
+  return toUrl64(nacl.randomBytes(LINK_SECRET_BYTES));
+}
+
+/**
+ * Shared key = KDF(Diffie-Hellman secret, code, link's secret), or the
+ * old one where there is no secret: a code read out, or a link made by
+ * an app from before.
+ */
+export function pairKey(
+  mySecret: Uint8Array,
+  theirPublic: Uint8Array,
+  code: string,
+  linkSecret?: string,
+): Uint8Array {
+  if (!linkSecret) return deriveSharedKey(mySecret, theirPublic, code);
+  if (!isLinkSecret(linkSecret)) throw new Error('not a link secret');
+  const dh = nacl.scalarMult(mySecret, theirPublic);
+  return sha512(
+    label('duetto-key-linked|'), dh, label('|'), label(normalizeCode(code)), label('|'), fromUrl64(linkSecret),
+  ).slice(0, nacl.secretbox.keyLength);
+}
+
+/** The token for the waiting room's seat, said by the phone that opened the link. */
+export function seatToken(linkSecret: string): string {
+  return toUrl64(sha512(label('duetto-seat|'), fromUrl64(linkSecret)).slice(0, 16));
+}
+
+/**
+ * What the maker leaves with the server to know that token when it is
+ * said: its hash, which does not turn back into it. The server checks
+ * it the same way, with SHA-512 (see the server's index.js).
+ */
+export function seatCheck(token: string): string {
+  return toUrl64(nacl.hash(fromUrl64(token)).slice(0, 16));
+}
+
+/** Whether a letter's proof was made with this key: the other side's word. */
+export function letterProves(key: Uint8Array, proof: unknown): boolean {
+  return typeof proof === 'string' && proof === confirmationFor(key, 'B');
+}
+
 export const keyToBase64 = (k: Uint8Array) => encodeBase64(k);
 export const keyFromBase64 = (s: string) => decodeBase64(s);
 export const pubToBase64 = (k: Uint8Array) => encodeBase64(k);
@@ -162,18 +239,19 @@ export const pubFromBase64 = (s: string) => decodeBase64(s);
  *
  * The maker kept the secret half of the pair made for the code; the
  * letter brings the other phone's public half and its name. The shared
- * key is the same one a live exchange would have made, and the proof
- * is not needed: the code never travelled through the server, only in
- * the link, and a letter for the wrong room simply makes a key nobody
- * else has.
+ * key is the same one a live exchange would have made. A link with its
+ * secret puts the secret into the key; a link without one - the kind
+ * every app made until now - does not, and a letter for it is taken
+ * without a proof, as before: a letter for the wrong key simply makes
+ * a key nobody else has.
  */
 export function pairFromLetter(
-  mine: { id: string; sec: string; code: string },
+  mine: { id: string; sec: string; code: string; secret?: string },
   theirPub: string,
   theirName: string,
   side: 'A' | 'B',
 ): { id: string; key: string; side: 'A' | 'B'; peerName: string; pairedAt: string } {
-  const key = deriveSharedKey(keyFromBase64(mine.sec), pubFromBase64(theirPub), mine.code);
+  const key = pairKey(keyFromBase64(mine.sec), pubFromBase64(theirPub), mine.code, mine.secret);
   return {
     id: mine.id,
     key: keyToBase64(key),

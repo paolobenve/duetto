@@ -38,9 +38,18 @@ export const BETA_TESTER_LINK =
  * pairs at once, without the maker awake at the same moment. It is
  * public by definition; the code beside it is what was always secret.
  * Without it, the link is the old kind, and the exchange is live.
+ *
+ * After the key, a link can carry a secret (see pairing.ts): after a
+ * '#' in the https form, which no browser sends to the server, and as
+ * one more piece of the path in the duetto:// form, which the server
+ * never sees - the page hands it to the app that way, because in an
+ * intent:// address what follows the '#' is Android's.
+ *
+ *   https://yourserver.org/duetto/p/12345678/KEY#SECRET
+ *   duetto://yourserver.org/pair/12345678/KEY/SECRET
  */
 export type DuettoLink =
-  | { kind: 'pair'; serverUrl: string; code: string; pub?: string }
+  | { kind: 'pair'; serverUrl: string; code: string; pub?: string; secret?: string }
   | { kind: 'invite'; serverUrl: string; code: string };
 
 /** base64 to base64url, so the key can live in a link without escaping */
@@ -63,9 +72,10 @@ const fromUrl = (u: string) => {
  * to get it and what to type. The host is the one the settings show,
  * so no server name lives in the app. Both forms read back below.
  */
-export function pairLink(serverUrl: string, code: string, pub?: string): string {
+export function pairLink(serverUrl: string, code: string, pub?: string, secret?: string): string {
   const base = `https://${displayServer(serverUrl)}/duetto/p/${code.replace(/\D/g, '')}`;
-  return pub ? `${base}/${toUrl(pub)}` : base;
+  if (!pub) return base;
+  return secret ? `${base}/${toUrl(pub)}#${secret}` : `${base}/${toUrl(pub)}`;
 }
 
 export function inviteLink(serverUrl: string, code: string): string {
@@ -75,19 +85,26 @@ export function inviteLink(serverUrl: string, code: string): string {
 /** Reads a link back; null for anything that is not one of ours. */
 export function parseLink(text: string): DuettoLink | null {
   const m = (text || '').trim()
-    .match(/^(?:duetto:\/\/([^/\s]+)\/(pair|invite)|https?:\/\/([^/\s]+)\/duetto\/(p|i))\/([^/\s?#]+)(?:\/([A-Za-z0-9_-]{43}))?\/?$/i);
+    .match(/^(?:duetto:\/\/([^/\s]+)\/(pair|invite)|https?:\/\/([^/\s]+)\/duetto\/(p|i))\/([^/\s?#]+)(?:\/([A-Za-z0-9_-]{43}))?(?:\/([A-Za-z0-9_-]{22}))?\/?(?:#([A-Za-z0-9_-]{22}))?$/i);
   if (!m) return null;
   const serverUrl = normalizeServerUrl(m[1] || m[3]);
   const kind = (m[2] || (m[4].toLowerCase() === 'p' ? 'pair' : 'invite')).toLowerCase();
-  m[3] = m[5];
-  m[4] = m[6];
+  const [rawCode, key, inPath, afterHash] = [m[5], m[6], m[7], m[8]];
+  // In an https path the secret would have gone to the server: no link
+  // of ours puts it there. And a secret means nothing without the key.
+  if (inPath && !m[1]) return null;
+  const secret = inPath || afterHash;
+  if (secret && !key) return null;
   if (kind === 'pair') {
-    const code = m[3].replace(/\D/g, '');
+    const code = rawCode.replace(/\D/g, '');
     if (code.length !== 8) return null;
-    return m[4] ? { kind: 'pair', serverUrl, code, pub: fromUrl(m[4]) } : { kind: 'pair', serverUrl, code };
+    if (!key) return { kind: 'pair', serverUrl, code };
+    return secret
+      ? { kind: 'pair', serverUrl, code, pub: fromUrl(key), secret }
+      : { kind: 'pair', serverUrl, code, pub: fromUrl(key) };
   }
-  if (m[4]) return null;
-  const code = m[3].toUpperCase();
+  if (key) return null;
+  const code = rawCode.toUpperCase();
   return /^[A-Z0-9]{4}-?[A-Z0-9]{4}$/.test(code)
     ? { kind: 'invite', serverUrl, code: code.includes('-') ? code : `${code.slice(0, 4)}-${code.slice(4)}` }
     : null;
