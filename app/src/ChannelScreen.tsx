@@ -656,6 +656,8 @@ type Props = {
   onEnterAlways?: () => void;
   /** the road loses and the voice comes choppy: the sheet that offers short packets */
   lossSheet?: boolean;
+  /** a menu open over the channel, or none: the level's scale goes over it (see App) */
+  onMenuOpen?: (open: boolean) => void;
   onLossChoice?: (choice: 'always' | 'once' | 'later' | 'never') => void;
   connectionState: string;
   audioOn: boolean;
@@ -770,7 +772,7 @@ type Props = {
  */
 export default function ChannelScreen(props: Props) {
   const {
-    entered, onEnter, openInto, onEnterAlways, lossSheet, onLossChoice, ownGain, network,
+    entered, onEnter, openInto, onEnterAlways, lossSheet, onLossChoice, onMenuOpen, ownGain, network,
     connectionName, peerName, peerAvatar, peerPresent, peerDetached, peerTornDown, peerTornDownBy, videoStats, peerSendDelay, peerRecvDelay, delayTotalOnly, qualityLabel, showStats, controls, onSelectControls, news, newsStays, onNewsRead, peerGain, systemVolume, onChangeLevel,
     versionWarning, frontCamera, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localVideoKey, localAspect, remoteAspect,
@@ -881,6 +883,12 @@ export default function ChannelScreen(props: Props) {
   const [fadeMenu, setFadeMenu] = useState(false);
   /** the sounds for calling the other person back, by holding "Call" */
   const [alarmMenu, setAlarmMenu] = useState(false);
+  // Any of them open: the volume keys' scale, under the menu with the
+  // controls, comes up over it instead.
+  const menuOpen = routeMenu || volumesOpen || qualityMenu || leaveMenu || fadeMenu || alarmMenu || !!lossSheet;
+  const onMenuOpenRef = useRef(onMenuOpen);
+  onMenuOpenRef.current = onMenuOpen;
+  useEffect(() => { onMenuOpenRef.current?.(menuOpen); }, [menuOpen]);
   /** who fills the screen when there is only one video: 'you', 'peer', or nothing */
   const [onlyBig, setOnlyBig] = useState<'you' | 'peer' | null>(null);
 

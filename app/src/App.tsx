@@ -1245,6 +1245,9 @@ export default function App() {
   const [controlsWakeAt, setControlsWakeAt] = useState(0);
   /** the last volume key pressed away from the channel's screen: see LevelBubble */
   const [levelPressAt, setLevelPressAt] = useState(0);
+  /** a menu open over the channel: the scale goes over it, see LevelBubble */
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuOpenRef = useRef(false);
   /** the pause before taking the place back after a "replaced", doubling each time */
   const replacedWait = useRef(3000);
   /** whether the server carries reports to the beta testers' work items */
@@ -2666,7 +2669,7 @@ export default function App() {
         const n = presses;
         presses = 0;
         changeLevel(n);
-        if (screenRef.current !== 'channel') setLevelPressAt(Date.now());
+        if (screenRef.current !== 'channel' || menuOpenRef.current) setLevelPressAt(Date.now());
       }, 0);
     });
     return () => {
@@ -7347,6 +7350,7 @@ export default function App() {
     <View style={styles.safe}>
       <StatusBar barStyle="light-content" />
       <ChannelScreen
+        onMenuOpen={(open) => { menuOpenRef.current = open; setMenuOpen(open); }}
         pip={inPip}
         connectionName={connectionName}
         peerName={shownName}
@@ -7518,6 +7522,9 @@ export default function App() {
           enterChannel();
         }}
       />
+      {/* Over a menu open in the channel, the scale the keys move: the
+          channel's own is under the menu, with the controls. */}
+      {menuOpen && !inPip ? levelBubble : null}
       {/* Not in the little window of picture-in-picture: it would
           cover the picture, and nobody can touch it away there. The
           yellow fills the little window instead, for half a minute. */}
