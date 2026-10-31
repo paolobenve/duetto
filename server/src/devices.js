@@ -721,14 +721,22 @@ function sweep(data) {
   return data.pending.length !== p || data.mail.length !== m;
 }
 
-/** The maker of a code says: this room waits for its other half. */
-export function awaitRoom(room, owner, pub, untilMs) {
+/**
+ * The maker of a code says: this room waits for its other half.
+ *
+ * `seat` is the check of the token a link's secret makes (see the app's
+ * pairing.ts): with it, only the phone that opened that link sits in
+ * the room while nobody is there. Said again without it, the wait keeps
+ * the one it had - a seat is never opened up by asking again.
+ */
+export function awaitRoom(room, owner, pub, untilMs, seat = '') {
   const data = read();
   sweep(data);
   const cap = now() + AWAIT_HOURS * 3600_000;
   const until = new Date(Math.min(Math.max(untilMs || 0, now()), cap)).toISOString();
+  const kept = seat || data.pending.find((x) => x.room === room && x.owner === owner)?.seat || '';
   data.pending = data.pending.filter((x) => x.room !== room)
-    .concat({ room, owner, ownerPub: pub, until });
+    .concat({ room, owner, ownerPub: pub, until, ...(kept ? { seat: kept } : {}) });
   write(data);
   return until;
 }

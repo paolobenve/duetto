@@ -6,7 +6,7 @@
 // a reason. Run from this directory: `npm run test:door`.
 import { spawn } from 'node:child_process';
 import { WebSocket } from 'ws';
-import { generateKeyPairSync, sign } from 'node:crypto';
+import { createHash, generateKeyPairSync, sign } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { unlinkSync } from 'node:fs';
 
@@ -372,6 +372,29 @@ try {
   mu = await join(PORT, ugo, ROOM, 'ugo');
   check('a third phone at the taken room: turned away', mu.answer.type === 'error', mu.answer);
   mu.ws.close();
+
+  // A link with a secret: the room waits with the check of a token, and
+  // while the maker is away only the token takes the seat.
+  const SEATROOM = 'waitroom-seat';
+  const token = 'AbCdEfGhIjKlMnOpQrSt_-';
+  const seatCheck = createHash('sha512').update(Buffer.from(token, 'base64url')).digest()
+    .subarray(0, 16).toString('base64url');
+  ma = await join(PORT, anna, SEATROOM, 'anna');
+  mw = await ask(ma.ws, { type: 'await-room', until: Date.now() + 3600_000, seat: seatCheck });
+  check('the room waits, with a seat', mw.type === 'awaiting' && !!mw.until, mw);
+  mw = await ask(ma.ws, { type: 'await-room', until: Date.now() + 3600_000 });
+  check('asked again without it, still waiting', mw.type === 'awaiting' && !!mw.until, mw);
+  ma.ws.close(); await sleep(100);
+  const nora = phone(), olga = phone();
+  let ms = await joinWith(PORT, nora, SEATROOM);
+  check('without the token, nobody takes the seat', ms.answer.type === 'error' && ms.answer.error === 'not-allowed', ms.answer);
+  ms.ws.close();
+  ms = await joinWith(PORT, nora, SEATROOM, { seat: 'ZZZZZZZZZZZZZZZZZZZZZZ' });
+  check('nor with another token', ms.answer.type === 'error' && ms.answer.error === 'not-allowed', ms.answer);
+  ms.ws.close();
+  ms = await joinWith(PORT, olga, SEATROOM, { seat: token });
+  check('the token takes it, and the seat kept its check when asked again', ms.answer.type === 'joined', ms.answer);
+  ms.ws.close();
 
   // The page behind a link: bounces into the app, names host and code.
   const KEY = 'A'.repeat(43);

@@ -367,12 +367,36 @@ function asGuest(msg, nonce, roomId, here) {
   // The owner in the room, or the room waiting for its other half: a
   // code handed over as a link, to be opened later. See devices.js.
   const ownerIsHere = [...here].some((peer) => peer.opens && peer.who === room.owner);
-  if (!ownerIsHere && !pendingRoom(roomId)) return null;
+  const waiting = ownerIsHere ? null : pendingRoom(roomId);
+  if (!ownerIsHere && !waiting) return null;
+  // Waiting with nobody there, for a link that carried a secret: the
+  // seat goes only to whoever says the token made from it. Knowing the
+  // room's name is no longer enough to take the place of the person
+  // the link was sent to. With the owner here it is the live exchange,
+  // digits read out included, and their app judges it, as before.
+  if (waiting?.seat && !seatFits(msg.seat, waiting.seat)) {
+    console.log(`[duetto] the seat of room ${roomId.slice(0, 4)}… asked for without its token`);
+    return null;
+  }
 
   noteGuest(roomId, pub);
   console.log(`[duetto] ${room.owner} brings somebody along in their room, `
     + `phone ${pub.slice(0, 12)}…`);
   return { name: `${room.owner}+`, opens: false, invites: false };
+}
+
+/**
+ * Whether the token said fits the check the maker left: its SHA-512,
+ * cut to 16 bytes, as the app makes it (see pairing.ts, seatCheck). The
+ * check does not turn back into the token, and neither into the secret
+ * the token is made of, which only the two phones ever see.
+ */
+const SEAT = /^[A-Za-z0-9_-]{22}$/;
+function seatFits(token, check) {
+  if (typeof token !== 'string' || !SEAT.test(token) || !SEAT.test(String(check))) return false;
+  const made = createHash('sha512').update(Buffer.from(token, 'base64url')).digest().subarray(0, 16);
+  const kept = Buffer.from(String(check), 'base64url');
+  return kept.length === made.length && timingSafeEqual(made, kept);
 }
 
 /** Is the door shut? It is, as soon as one phone is on the list. */
@@ -1521,7 +1545,10 @@ wss.on('connection', (ws, req) => {
         send(ws, { type: 'awaiting', room: ws.roomId, until: null });
         return;
       }
-      const until = awaitRoom(ws.roomId, ws.who, ws.pub, untilMs);
+      // The check of the seat's token, from a link with a secret: an
+      // app from before sends none, and its room waits as it did.
+      const seat = typeof msg.seat === 'string' && SEAT.test(msg.seat) ? msg.seat : '';
+      const until = awaitRoom(ws.roomId, ws.who, ws.pub, untilMs, seat);
       console.log(`[duetto] ${ws.who} leaves room ${ws.roomId.slice(0, 4)}… waiting until ${until}`);
       send(ws, { type: 'awaiting', room: ws.roomId, until });
       return;
