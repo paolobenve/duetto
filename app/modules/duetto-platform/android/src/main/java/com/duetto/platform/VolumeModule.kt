@@ -42,12 +42,6 @@ class VolumeModule(private val ctx: ReactApplicationContext) :
                     .emit(EVENT, direction)
             }
         }
-        Volume.tellTo = { rung ->
-            if (ctx.hasActiveReactInstance()) {
-                ctx.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-                    .emit(TO_EVENT, rung)
-            }
-        }
     }
 
     private val am: AudioManager?
@@ -263,17 +257,6 @@ class VolumeModule(private val ctx: ReactApplicationContext) :
     @ReactMethod
     fun takeKeys(active: Boolean, promise: Promise) {
         Volume.active = active
-        Volume.outside(ctx)
-        promise.resolve(true)
-    }
-
-    /**
-     * Where the level stands, in rungs of the ladder from its bottom,
-     * for the system's bar with the app out of sight: see Volume.
-     */
-    @ReactMethod
-    fun showLevel(rung: Int, rungs: Int, promise: Promise) {
-        Volume.showLevel(ctx, rung, rungs)
         promise.resolve(true)
     }
 
@@ -285,7 +268,6 @@ class VolumeModule(private val ctx: ReactApplicationContext) :
     companion object {
         const val EVENT = "duetto-volume"
         const val SYSTEM_EVENT = "duetto-volume-system"
-        const val TO_EVENT = "duetto-volume-to"
         private const val VOLUME_ACTION = "android.media.VOLUME_CHANGED_ACTION"
         private const val EXTRA_TYPE = "android.media.EXTRA_VOLUME_STREAM_TYPE"
         private const val EXTRA_VALUE = "android.media.EXTRA_VOLUME_STREAM_VALUE"

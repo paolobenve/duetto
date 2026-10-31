@@ -829,20 +829,6 @@ export const Volume = isAndroid && NativeVolume
         const sub = emitter.addListener('duetto-volume-system', (v) => cb(Number(v)));
         return () => sub.remove();
       },
-
-      /**
-       * Where the level stands, in rungs from the ladder's bottom, for
-       * the system's bar while the app is out of sight.
-       */
-      showLevel: (rung, rungs) =>
-        call(NativeVolume, 'showLevel', Math.round(Number(rung) || 0), Math.round(Number(rungs) || 0)),
-
-      /** Calls `cb(rung)` when a level is picked on the system's bar. */
-      subscribeTo(cb) {
-        const emitter = new NativeEventEmitter(NativeVolume);
-        const sub = emitter.addListener('duetto-volume-to', (v) => cb(Number(v) || 0));
-        return () => sub.remove();
-      },
     }
   : {
       takeKeys: unavailable,
@@ -853,8 +839,6 @@ export const Volume = isAndroid && NativeVolume
       streams: () => Promise.resolve([]),
       setStream: () => Promise.resolve('unknown'),
       listenToSystem: () => () => {},
-      showLevel: () => Promise.resolve(false),
-      subscribeTo: () => () => {},
     };
 
 
