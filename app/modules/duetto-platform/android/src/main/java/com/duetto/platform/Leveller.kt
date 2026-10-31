@@ -43,19 +43,25 @@ object Leveller {
 
     /**
      * How hard: above `threshold` the voice is brought down by `ratio`,
-     * and raised back by `makeup` - so that a voice arriving where
-     * WebRTC's gain control puts it, around -18 dB, comes out about
-     * where it was at every strength. The strength changes how much the
-     * voice varies, not how loud it is.
+     * and raised back by `makeup`.
+     *
+     * The makeup used to give back, at -18 dB - where WebRTC's gain
+     * control puts a voice - just what the ratio took: the voice that
+     * arrives there came out where it was, the faint rose, and since
+     * hardly anything arrives above that, nothing was heard to come
+     * down (31 October, on the POCO). Now the makeup is what leaves a
+     * voice at -24 dB where it was: (-24 - threshold) * (1 - 1/ratio).
+     * The faint still rise, a voice at -18 comes down three to five dB,
+     * a shout ten and more; what is lost in loudness the keys give back.
      */
     private class Strength(val threshold: Float, val ratio: Float, val makeup: Float)
 
     private val STRENGTHS = mapOf(
         // the peaks only: the voice keeps its shape
-        "light" to Strength(-26f, 2f, 5f),
-        "medium" to Strength(-30f, 3f, 8f),
+        "light" to Strength(-26f, 2f, 1f),
+        "medium" to Strength(-30f, 3f, 4f),
         // nearly all at one level; the room between words comes up with it
-        "strong" to Strength(-36f, 5f, 13f),
+        "strong" to Strength(-36f, 5f, 9.6f),
     )
 
     private const val KNEE_DB = 10f
