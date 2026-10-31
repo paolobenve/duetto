@@ -6185,11 +6185,22 @@ export default function App() {
     (videoOn ? localAspect : undefined) ??
     9 / 16;
 
+  /*
+   * Registered once, the state read when the key comes. Back handlers
+   * are asked newest first, and this one was registered again at every
+   * change of the configuration - the volume keys save it - and so got
+   * in ahead of an open menu's: Back after the volume keys took the
+   * channel into the little window instead of closing the menu.
+   */
+  const stageAspectRef = useRef(stageAspect);
+  stageAspectRef.current = stageAspect;
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      const where = screenRef.current;
+      const c = cfgRef.current;
       // From the settings the Back key takes you into the channel,
       // instead of closing the app and leaving you without a way out.
-      if (screen === 'settings' && cfg && isPaired(cfg)) {
+      if (where === 'settings' && c && isPaired(c)) {
         setScreen('channel');
         return true;
       }
@@ -6198,18 +6209,18 @@ export default function App() {
       // Without this, the Back key on the "Connect the two phones"
       // screen closed the app - and whoever had got there to add a
       // connection had no way of going back where they came from.
-      if (screen === 'pairing') {
+      if (where === 'pairing') {
         setScreen('settings');
         return true;
       }
-      if (screen !== 'channel') return false;
+      if (where !== 'channel') return false;
       if (!pipSupported.current) return false;
       Journal.mark('back:pip').catch(() => { /* noop */ });
-      Pip.enter(stageAspect).catch(() => {});
+      Pip.enter(stageAspectRef.current).catch(() => {});
       return true;
     });
     return () => sub.remove();
-  }, [screen, stageAspect, cfg]);
+  }, []);
 
   // Turning the phone changes the shape of our own video: it has to be
   // told again.
