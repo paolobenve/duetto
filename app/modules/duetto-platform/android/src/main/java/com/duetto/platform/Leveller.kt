@@ -56,14 +56,31 @@ object Leveller {
      * The faint still rise, a voice at -18 comes down three to five dB,
      * a shout ten and more; what is lost in loudness the keys give back.
      */
-    private class Strength(val threshold: Float, val ratio: Float, val makeup: Float)
+    private class Strength(
+        val threshold: Float, val ratio: Float, val makeup: Float,
+        /** the same three for the band over SPLIT_HZ: see below */
+        val hiThreshold: Float, val hiRatio: Float, val hiMakeup: Float,
+    )
+
+    /*
+     * Two bands, not one. A shrill voice is not louder than another: it
+     * has more over 2 kHz, where the ear hears most, and a compressor
+     * that weighs all the voice together found it at a normal level and
+     * let it through as it was (31 October, "voce acuta"). Over SPLIT_HZ
+     * a band of its own, held harder: an ordinary voice has some 10 dB
+     * less up there than in all, and its makeup leaves it where it was
+     * there - (-34 - hiThreshold) * (1 - 1/hiRatio) - so the voice is
+     * not made duller; a voice with 10 dB more up there comes down
+     * seven to nine.
+     */
+    private const val SPLIT_HZ = 2000f
 
     private val STRENGTHS = mapOf(
         // the peaks only: the voice keeps its shape
-        "light" to Strength(-26f, 2f, 1f),
-        "medium" to Strength(-30f, 3f, 4f),
+        "light" to Strength(-26f, 2f, 1f, -38f, 3f, 2.7f),
+        "medium" to Strength(-30f, 3f, 4f, -40f, 4f, 4.5f),
         // nearly all at one level; the room between words comes up with it
-        "strong" to Strength(-36f, 5f, 9.6f),
+        "strong" to Strength(-36f, 5f, 9.6f, -44f, 8f, 8.75f),
     )
 
     private const val KNEE_DB = 10f
@@ -121,6 +138,7 @@ object Leveller {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return
         try {
             d.setMbcBandAllChannelsTo(0, band())
+            d.setMbcBandAllChannelsTo(1, highBand())
             d.setLimiterAllChannelsTo(limiter())
         } catch (e: Exception) {
             Log.w(TAG, "leveller gain: ${e.message}")
@@ -179,9 +197,10 @@ object Leveller {
         )) {
             try {
                 val cfg = DynamicsProcessing.Config.Builder(
-                    variant, channels, false, 0, true, 1, false, 0, true,
+                    variant, channels, false, 0, true, 2, false, 0, true,
                 ).build()
                 cfg.setMbcBandAllChannelsTo(0, band())
+                cfg.setMbcBandAllChannelsTo(1, highBand())
                 cfg.setLimiterAllChannelsTo(limiter())
                 val d = DynamicsProcessing(0, session, cfg)
                 d.enabled = true
@@ -197,12 +216,20 @@ object Leveller {
         say("failed:$why")
     }
 
-    /** The one band, all frequencies. */
+    /** The body of the voice, up to SPLIT_HZ. */
     @RequiresApi(Build.VERSION_CODES.P)
     private fun band(): DynamicsProcessing.MbcBand =
         DynamicsProcessing.MbcBand(
-            true, 20_000f, ATTACK_MS, RELEASE_MS, strength.ratio, strength.threshold, KNEE_DB,
+            true, SPLIT_HZ, ATTACK_MS, RELEASE_MS, strength.ratio, strength.threshold, KNEE_DB,
             GATE_DB, EXPANDER_RATIO, 0f, strength.makeup,
+        )
+
+    /** Over SPLIT_HZ, where a shrill voice has its edge: held harder. */
+    @RequiresApi(Build.VERSION_CODES.P)
+    private fun highBand(): DynamicsProcessing.MbcBand =
+        DynamicsProcessing.MbcBand(
+            true, 20_000f, ATTACK_MS, RELEASE_MS, strength.hiRatio, strength.hiThreshold, KNEE_DB,
+            GATE_DB - 10f, EXPANDER_RATIO, 0f, strength.hiMakeup,
         )
 
     /** The ceiling, with the chosen level after it. */
