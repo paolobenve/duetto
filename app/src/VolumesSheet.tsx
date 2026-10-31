@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
   },
   /** what the sheet is: above all the rest, as the channel's menus say it */
   title: {
-    color: '#f2f5f9', fontSize: 19, fontWeight: '700',
+    color: '#f2f5f9', fontSize: 16, fontWeight: '700',
     paddingHorizontal: 14, paddingTop: 12, paddingBottom: 6,
   },
   row: { paddingHorizontal: 14, paddingVertical: 8 },

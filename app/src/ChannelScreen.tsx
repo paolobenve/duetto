@@ -3387,8 +3387,8 @@ const styles = StyleSheet.create({
   },
   /** what the menu is: above all the rest, the first thing one reads */
   sheetTitle: {
-    color: '#f2f5f9', fontSize: 19, fontWeight: '700',
-    paddingHorizontal: 14, paddingTop: 12, paddingBottom: 10,
+    color: '#f2f5f9', fontSize: 16, fontWeight: '700',
+    paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8,
   },
   /** the space between the two ways out: a finger falling short lands on nothing */
   sheetGap: { height: 28 },
