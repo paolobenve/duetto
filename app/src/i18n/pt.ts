@@ -542,7 +542,7 @@ export const pt: Dictionary = {
     invitesPending: 'Convites em espera ({n})',
     invitesAccepted: 'Convites aceitos ({n})',
     personMet: 'dias juntos: {n} de {of}, o último {when}',
-    personNeverMet: 'nunca conectado · visto pela última vez {when}',
+    personNeverMet: 'nunca em ligação · última visita {when}',
     personNeverIn: 'nunca entrou numa ligação',
     personNewPhone: 'telefone novo {when}',
     dayToday: 'hoje',
