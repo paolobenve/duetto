@@ -40,8 +40,8 @@ import androidx.core.app.NotificationManagerCompat
  *
  * Seeing the notifications takes the notification access, which shows
  * all of them. Only the app, its channel and its flags are looked at,
- * never the text, and nothing is written but the app's name in the
- * journal. Off unless chosen.
+ * never the text, and the journal says only that one sounded - not
+ * which app. Off unless chosen.
  */
 object OtherSounds {
 
@@ -126,7 +126,10 @@ object OtherSounds {
         if (now - lastAt < GAP_MS) return
         lastAt = now
         play(ctx, sound, level)
-        Journal.sample(ctx, "notif-sound:${sbn.packageName}")
+        // That one sounded, and not whose: the journal leaves the phone -
+        // to the other side, and with a report onto a public work item -
+        // and which apps write to somebody, and when, is theirs alone.
+        Journal.sample(ctx, "notif-sound")
     }
 
     /**
