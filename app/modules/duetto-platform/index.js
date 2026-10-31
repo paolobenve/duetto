@@ -754,6 +754,12 @@ export const Visibility = isAndroid && NativeVisibility
       get: () => call(NativeVisibility, 'isVisible'),
 
       /**
+       * Keeps the screen out of screenshots, recordings and the recent
+       * apps while `on`: for the hand-over's QR code.
+       */
+      secure: (on) => call(NativeVisibility, 'secure', !!on),
+
+      /**
        * Calls `cb(visible)` at every change. Gives back the function to
        * stop.
        */
@@ -764,7 +770,7 @@ export const Visibility = isAndroid && NativeVisibility
         return () => sub.remove();
       },
     }
-  : { get: unavailable, subscribe: () => () => {} };
+  : { get: unavailable, secure: unavailable, subscribe: () => () => {} };
 
 
 /**

@@ -294,6 +294,8 @@ declare module 'duetto-platform' {
    */
   export const Visibility: {
     get(): Promise<boolean>;
+    /** The screen out of screenshots, recordings and the recent apps while on: see handover.ts. */
+    secure(on: boolean): Promise<boolean>;
     /** Gives back the function to stop listening. */
     subscribe(cb: (visible: boolean) => void): () => void;
   };

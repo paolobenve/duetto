@@ -12,6 +12,7 @@ package com.duetto.platform
 import android.app.Activity
 import android.app.Application
 import android.os.Bundle
+import android.view.WindowManager
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
@@ -96,6 +97,28 @@ class VisibilityModule(private val ctx: ReactApplicationContext) :
     @ReactMethod
     fun isVisible(promise: Promise) {
         promise.resolve(started > 0)
+    }
+
+    /**
+     * The screen kept out of screenshots, of recordings and of the
+     * picture in the recent apps, while it shows something worth a
+     * phone: the QR code of a hand-over, which gives whoever reads it
+     * the pairs and the place on the server (see handover.ts). Off again
+     * as soon as it is gone.
+     */
+    @ReactMethod
+    fun secure(on: Boolean, promise: Promise) {
+        val activity = ctx.currentActivity
+        if (activity == null) { promise.resolve(false); return }
+        activity.runOnUiThread {
+            try {
+                if (on) activity.window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                else activity.window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                promise.resolve(true)
+            } catch (_: Exception) {
+                promise.resolve(false)
+            }
+        }
     }
 
     // Required by NativeEventEmitter: without them React Native warns on
