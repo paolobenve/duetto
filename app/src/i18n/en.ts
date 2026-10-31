@@ -290,7 +290,7 @@ export const en = {
     youHear: 'you hear {pct}',
     resolution: 'Resolution',
     resolutionHint: 'It holds for both phones: changing it here changes it for the other person too.',
-    callThem: 'Which sound to call them with',
+    callThem: 'Which sound to call with',
     alarmHint: 'It plays on their phone, at the alarm volume: it is heard even with the ringer low and the phone across the room.',
     leaveTitle: 'Leave the channel?',
     leaveStay: 'Leave and stay available',

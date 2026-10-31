@@ -278,7 +278,7 @@ export const it: Dictionary = {
     youHear: 'lo senti {pct}',
     resolution: 'Risoluzione',
     resolutionHint: 'Vale per tutti e due i telefoni: cambiandola qui cambia anche all’altro.',
-    callThem: 'Con che suono chiamarlo',
+    callThem: 'Con che suono chiamare',
     alarmHint: 'Suona sul suo telefono, al volume della sveglia: si sente anche con la suoneria bassa e il telefono lontano.',
     leaveTitle: 'Uscire dal canale?',
     leaveStay: 'Esci e resta disponibile',
