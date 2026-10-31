@@ -294,10 +294,54 @@ object Journal {
         }
     }
 
+    /**
+     * Where the journal lives.
+     *
+     * From Android 11 in the app's folder on the shared storage,
+     * Android/data/com.duetto: no other app may read it there, and adb
+     * reaches it - how the journal of a phone at hand is read. Before 11
+     * any app with the storage permission reads that folder, and the
+     * journal says when the two talked, and from where: there it lives
+     * among the app's private files, and what was written outside before
+     * is moved in, once.
+     */
     private fun folder(ctx: Context): File? {
-        val base = ctx.getExternalFilesDir(null) ?: ctx.filesDir
-        val dir = File(base, FOLDER)
+        val inside = File(ctx.filesDir, FOLDER)
+        val dir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            ctx.getExternalFilesDir(null)?.let { File(it, FOLDER) } ?: inside
+        } else {
+            moveInside(ctx, inside)
+            inside
+        }
         return if (dir.exists() || dir.mkdirs()) dir else null
+    }
+
+    @Volatile private var movedInside = false
+
+    /** The files written outside before, moved among the private ones: see folder. */
+    private fun moveInside(ctx: Context, inside: File) {
+        if (movedInside) return
+        movedInside = true
+        try {
+            val outside = ctx.getExternalFilesDir(null)?.let { File(it, FOLDER) } ?: return
+            val files = outside.listFiles() ?: return
+            if (files.isNotEmpty() && !inside.exists()) inside.mkdirs()
+            for (f in files) {
+                val to = File(inside, f.name)
+                if (!to.exists()) {
+                    f.copyTo(to)
+                } else {
+                    // The same day on both sides: its rows after ours,
+                    // the column names only once.
+                    to.appendText(f.readLines().drop(1).joinToString("") { it + "\n" })
+                }
+                f.delete()
+            }
+            outside.delete()
+        } catch (_: Exception) {
+            // What could not be moved stays where it was, and is tried
+            // again at the next start.
+        }
     }
 
     /** today's file of our own rows */
