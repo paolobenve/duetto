@@ -960,6 +960,10 @@ async function handleReport(ws, msg) {
   if (!r) return;
   if (part === 'file') {
     const name = String(msg.name || 'journal.csv').replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 80);
+    // The sender's own journal only: the work item is open to anybody,
+    // and the other person's - which apps before build 542 attached
+    // too - is theirs to publish. Dropped in silence, the rest goes.
+    if (!name.startsWith('mine-')) return;
     const text = String(msg.text || '');
     r.bytes += text.length;
     // A new name for every empty piece was a new file each time: held

@@ -175,7 +175,7 @@ try {
   // --- the reports ---
   calls = [];
   mem.send({ type: 'report', part: 'begin', name: 'Mario', text: 'hello' });
-  for (let i = 0; i < 30; i += 1) mem.send({ type: 'report', part: 'file', name: `piece-${i}.csv`, text: '' });
+  for (let i = 0; i < 30; i += 1) mem.send({ type: 'report', part: 'file', name: `mine-piece-${i}.csv`, text: '' });
   mem.send({ type: 'report', part: 'end' });
   answer = await mem.expect('report-result');
   check('a report of thirty files, empty ones too: refused', answer?.ok === false && answer.error === 'too-big', answer);
@@ -199,14 +199,19 @@ try {
   await sleep(100);
 
   // The member began one already (the refused one): five more, then no.
+  // Each with the other person's journal too, as apps before 542 did:
+  // that one stays out.
   let fine = 0;
+  calls = [];
   for (let i = 0; i < 5; i += 1) {
     mem.send({ type: 'report', part: 'begin', name: 'Mario', text: `report ${i}` });
     mem.send({ type: 'report', part: 'file', name: 'mine-2026-10-29.csv', text: 'a,b,c\n' });
+    mem.send({ type: 'report', part: 'file', name: 'other-abc-2026-10-29.csv', text: 'd,e,f\n' });
     mem.send({ type: 'report', part: 'end' });
     if ((await mem.expect('report-result'))?.ok === true) fine += 1;
   }
   check('five reports more in the hour: all written', fine === 5, fine);
+  check('each with our journal, never the other person\'s', uploads().length === 5, seen(uploads()));
   mem.send({ type: 'report', part: 'begin', name: 'Mario', text: 'the seventh' });
   answer = await mem.expect('report-result');
   check('the seventh in the hour: too many', answer?.ok === false && answer.error === 'too-many', answer);
