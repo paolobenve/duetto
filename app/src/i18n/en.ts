@@ -831,7 +831,7 @@ export const en = {
     expired: 'The code has run out.',
     again: 'A new code',
     compareTitle: 'The same number?',
-    compareGive: 'The new phone must show this number. If it is the same, confirm. If it is different, cancel: another phone has got in between.',
+    compareGive: 'The new phone must show this number. If it is the same, confirm. If it is different, or the new phone shows none, cancel: another phone has got in between.',
     newPhone: 'New phone: {model}',
     same: 'It is the same number',
     different: 'It is different: cancel',

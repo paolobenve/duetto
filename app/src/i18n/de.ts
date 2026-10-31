@@ -818,7 +818,7 @@ export const de: Dictionary = {
     expired: 'Der Code ist abgelaufen.',
     again: 'Ein neuer Code',
     compareTitle: 'Dieselbe Zahl?',
-    compareGive: 'Das neue Telefon muss diese Zahl zeigen. Ist sie gleich, bestätige. Ist sie anders, brich ab: ein anderes Telefon hat sich dazwischengeschoben.',
+    compareGive: 'Das neue Telefon muss diese Zahl zeigen. Ist sie gleich, bestätige. Ist sie anders, oder zeigt das neue Telefon keine, brich ab: ein anderes Telefon hat sich dazwischengeschoben.',
     newPhone: 'Neues Telefon: {model}',
     same: 'Es ist dieselbe Zahl',
     different: 'Sie ist anders: abbrechen',
