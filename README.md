@@ -184,6 +184,15 @@ anew — the server's key brings the new one home as the owner, in place of the 
 which leaves the list with its pairs: the other reason to set one. It is the owner's
 password, and it is given to nobody.
 
+Changing phone with the old one still in hand is another matter, and needs no key:
+*the cogwheel → Server and pairs → Move to a new phone* shows a code, the new phone reads
+it from its first screen, and the two show the same six figures. Then the place on the
+server, the connections and the settings move to the new phone, and the old one is
+emptied: the other person has nothing to redo, and is told that on the other side there
+is a new phone. Anybody with a place can do it, for their own: the owner, a person
+invited, the other half of a connection. A lost phone hands nothing over: then it is the
+key, as above, and the pairs are made again.
+
 Whoever you let in brings their own people: the person they pair with has nothing to ask
 anybody — they install the app, write the address, and pair. That phone is let in beside
 theirs and is known for that connection alone, so it cannot open one of its own. The chain

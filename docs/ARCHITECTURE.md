@@ -93,6 +93,14 @@ A minimal WebSocket server in Node.js. It does four things:
   compared as digests, in a fixed time, and a wrong one costs an attempt against the brake
   above. It protects the server, not the pair: what keeps a pair apart from everybody else
   is the pairing code, which never comes here.
+- **A place handed over**: a card with a place opens a meeting at the door, a card with
+  none joins it, and the server relays sealed envelopes it cannot read - five minutes to
+  join, a quarter of an hour in all, a few dozen messages. Then the old card, signed in,
+  says `handover` with the new one: its row, its seats in the rooms, its codes waiting and
+  its letters pass to the new card, its relay user goes, and its other connections are
+  closed with `removed`/`handed-over`. A card written in `AUTHORISED_KEYS` is refused:
+  the settings are for whoever runs the server to change. The rooms remember the day, and
+  the other party is told now or at its next joining, for thirty days.
 
 The room is called `pairId`. Different pairs have different `pairId`s and do not see one
 another: the same server serves as many pairs as you like.
@@ -157,6 +165,27 @@ the link, and a letter for the wrong room makes a key nobody else has. The room 
 only for one guest, the first to leave a letter, as with a code read out loud. What A
 keeps meanwhile is `PendingPair` in its configuration - the secret half and the code -
 and the server keeps the wait and the letter in `devices.json`.
+
+**Changing phone, the pairs go along** (`app/src/handover.ts`). The pair keys are the two
+phones' secret, so a new phone can only get them from the old one. The old phone shows a
+QR code - a server and 256 random bits, not a link - and the new one reads it from its
+first screen. The two meet at that server's door, in a meeting the server knows by a
+fingerprint of the secret (`handover-open`, `handover-join`); what they say is sealed with
+a key made of it, which the server never has. Both phones show six figures, to which each
+puts a share, and the new one commits to its share before it sees the old one's: whoever
+would sit in between, the server included, cannot make the two show the same figures.
+Whoever photographed the code and got there first is not the phone in the person's hand:
+that one says the code was taken and shows no figures, and the old phone names the other's
+model - the person cancels. Confirmed on the old phone, it goes quiet - no connection of
+its own, so that nothing new comes in after - and sends what it has: the pairs, the codes
+waiting, the settings; not the phone's own (the permissions, the battery screen, the
+Bluetooth devices, a sound picked among its files). The new phone keeps it aside; then at
+every server where the old card sits, it gives its place to the new card (`handover`), the
+meeting's server last; the new phone starts, and the old one empties itself. Stopped
+before the place moved, nothing has changed; once it has started moving, `handingOver` in
+the configuration keeps the old phone quiet and finishes the moving, after a failure or a
+restart. The other side of each room is told (`peer-new-phone`) and asked once whether to
+keep the pair.
 
 ### 3. Encryption of the signalling (`app/src/crypto.ts`)
 
@@ -368,6 +397,8 @@ Off, two of them do not simply stop:
 | A compromised server, during the pairing | try to guess the code | manage it in the time available, thanks to the slow KDF |
 | A third party who knows the server | open connections, unless there is a key | get into a pair without the code |
 | The TURN relay | forward packets | decrypt the media |
+| Whoever photographs a hand-over's QR code | join the meeting first | go unnoticed: the new phone in hand says the code was taken, and shows no figures to confirm |
+| Whoever photographs the code and also holds the server | sit between the two phones | make both show the same figures: each fixes its share before it sees the other's |
 
 The delicate moment is **the pairing alone**. Afterwards the key is 256 bits and random.
 
