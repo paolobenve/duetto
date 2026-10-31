@@ -192,9 +192,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#151a23', borderRadius: 16, padding: 8, paddingBottom: 12,
     borderWidth: 1, borderColor: '#252c38',
   },
+  /** what the sheet is: above all the rest, as the channel's menus say it */
   title: {
-    color: '#8892a0', fontSize: 13, fontWeight: '700',
-    paddingHorizontal: 14, paddingTop: 12, paddingBottom: 4,
+    color: '#f2f5f9', fontSize: 19, fontWeight: '700',
+    paddingHorizontal: 14, paddingTop: 12, paddingBottom: 6,
   },
   row: { paddingHorizontal: 14, paddingVertical: 8 },
   head: { flexDirection: 'row', alignItems: 'baseline', marginBottom: 6 },

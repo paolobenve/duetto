@@ -3385,9 +3385,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#151a23', borderRadius: 16, padding: 8, paddingBottom: 16,
     borderWidth: 1, borderColor: '#252c38',
   },
+  /** what the menu is: above all the rest, the first thing one reads */
   sheetTitle: {
-    color: '#8892a0', fontSize: 13, fontWeight: '700',
-    paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8,
+    color: '#f2f5f9', fontSize: 19, fontWeight: '700',
+    paddingHorizontal: 14, paddingTop: 12, paddingBottom: 10,
   },
   /** the space between the two ways out: a finger falling short lands on nothing */
   sheetGap: { height: 28 },
