@@ -47,6 +47,7 @@ import {
   remove as removePerson, removeInvitation, removeRoom, roomOf, useInvitation, noteVisit,
   awaitRoom, pendingRoom, dropPending, leaveMail, takeMail, saveMoments, takeMoments,
   invitationOf, signsSecondKind, noteSecondKind, fileName as listFile,
+  placeOf, handOver, newPhoneIn,
 } from './devices.js';
 import { credentialsFor as turnCredentials, drop as dropTurn } from './turn.js';
 import { bouncePage } from './linkPage.js';
@@ -1129,6 +1130,12 @@ wss.on('connection', (ws, req) => {
       leaveServer(ws);
       return;
     }
+    // A phone handing its place over to another, and the other one: at
+    // the door, before any room. See the hand-over below.
+    if (!ws.joined && isHandover(msg.type)) {
+      handoverMessage(ws, msg);
+      return;
+    }
 
     // --- 1) Handshake ---------------------------------------------------
     if (!ws.joined) {
@@ -1364,6 +1371,9 @@ wss.on('connection', (ws, req) => {
         // said now, or it would go on waiting for somebody who is not
         // coming.
         broken: isBroken(roomId),
+        // A new phone sits in the other seat, since that day: see
+        // handOver in devices.js. Only the other side is told.
+        peerNewPhone: newPhoneIn(roomId, ws.pub) ?? undefined,
         // Whether this phone may invite: it is one of those written in
         // the .env. The app shows or hides a whole section on it.
         owner: ws.invites === true,
@@ -1642,8 +1652,8 @@ wss.on('connection', (ws, req) => {
     }
   }
 
-  ws.on('close', () => leaveRoom(ws));
-  ws.on('error', () => leaveRoom(ws));
+  ws.on('close', () => { leaveRoom(ws); handoverGone(ws); });
+  ws.on('error', () => { leaveRoom(ws); handoverGone(ws); });
 });
 
 /**
@@ -1713,6 +1723,199 @@ function leaveServer(ws) {
     }
   }
   tellOwners();
+}
+
+// --- A phone handing its place over to another ------------------------------
+//
+// Changing phone without losing the pairs. The old phone shows a QR
+// code, the new one reads it, and the two talk through here for a few
+// minutes, in envelopes sealed with a key that lives in the QR code
+// alone: what passes - the pairs, the settings - is the two phones'
+// business, and this server sees its length. Then the old card, signed
+// in, hands its place to the new one (handOver, in devices.js), and the
+// old phone empties itself.
+//
+// The meeting is known by a fingerprint of the QR code's secret, never
+// by the secret, and kept in memory: it lasts minutes, and a restart
+// that cuts it short closes both sockets, which is how the phones learn
+// to start again.
+
+/**
+ * @type {Map<string, { id: string, card: string, oldWs: any, newWs: any,
+ *   until: number, bytes: number, count: number, timer: any }>}
+ */
+const handovers = new Map();
+/** How long the code waits for the new phone. */
+const HANDOVER_WAIT_MS = ms(process.env.HANDOVER_WAIT_MS, 5 * 60_000);
+/** And the whole of it, at most, once the new phone has come. */
+const HANDOVER_LIFE_MS = 15 * 60_000;
+/** What may pass between the two: a phone's pairs and settings are a few kilobytes. */
+const HANDOVER_BYTES = 2 * 1024 * 1024;
+const HANDOVER_MESSAGES = 64;
+
+function isHandover(type) {
+  return type === 'handover-open' || type === 'handover-join' || type === 'handover-msg'
+    || type === 'handover-close' || type === 'handover';
+}
+
+function handoverMessage(ws, msg) {
+  if (msg.type === 'handover-open') openHandover(ws, msg);
+  else if (msg.type === 'handover-join') joinHandover(ws, msg);
+  else if (msg.type === 'handover-msg') relayHandover(ws, msg);
+  else if (msg.type === 'handover-close') {
+    const h = ws.handover ? handovers.get(ws.handover) : null;
+    if (h) endHandover(h, 'closed', ws);
+  } else handPlaceOver(ws, msg);
+}
+
+/** A meeting ends: its sockets forget it, and whoever is left is told why. */
+function endHandover(h, why, by = null) {
+  if (handovers.get(h.id) !== h) return;
+  handovers.delete(h.id);
+  clearTimeout(h.timer);
+  for (const peer of [h.oldWs, h.newWs]) {
+    if (!peer) continue;
+    if (peer.handover === h.id) peer.handover = null;
+    if (peer !== by) send(peer, { type: 'handover-closed', why });
+  }
+}
+
+/** A socket gone: its meeting goes with it. */
+function handoverGone(ws) {
+  const h = ws.handover ? handovers.get(ws.handover) : null;
+  if (h) endHandover(h, 'gone', ws);
+}
+
+/**
+ * The old phone opens the meeting: a card proved at the door that sits
+ * somewhere here - or there is nothing to hand over. A card written in
+ * the settings is the operator's to move, in the settings.
+ */
+function openHandover(ws, msg) {
+  const id = String(msg.id || '');
+  const no = (error) => send(ws, { type: 'handover-error', error });
+  if (!/^[0-9a-f]{64}$/.test(id)) { no('bad-id'); return; }
+  if (!ws.card) { no('not-yours'); return; }
+  if (AUTHORISED_KEYS.has(ws.card)) { no('in-settings'); return; }
+  if (!placeOf(ws.card)) { no('no-place'); return; }
+  // One meeting per card: a new code puts the one before out.
+  for (const h of [...handovers.values()]) {
+    if (h.card === ws.card || h.id === id) endHandover(h, 'replaced');
+  }
+  const h = {
+    id, card: ws.card, oldWs: ws, newWs: null,
+    until: Date.now() + HANDOVER_WAIT_MS, bytes: 0, count: 0, timer: null,
+  };
+  // Nobody in time: the code is worth nothing any more.
+  h.timer = setTimeout(() => { if (!h.newWs) endHandover(h, 'expired'); }, HANDOVER_WAIT_MS);
+  h.timer.unref?.();
+  handovers.set(id, h);
+  ws.handover = id;
+  console.log(`[duetto] ${ws.who || `phone ${ws.card.slice(0, 12)}…`} opens a hand-over to a new phone`);
+  send(ws, { type: 'handover-opened', until: h.until });
+}
+
+/**
+ * The new phone comes, with a card of its own that sits nowhere here:
+ * one phone, the first - a second one finds the meeting taken, which is
+ * how a code read by somebody else shows.
+ */
+function joinHandover(ws, msg) {
+  const no = (error) => send(ws, { type: 'handover-error', error });
+  // Counted as knocks are: a meeting is not to be found by trying.
+  if (tooManyJoins(ws.ip)) {
+    send(ws, { type: 'error', error: 'too-many-attempts' });
+    ws.close(4004, 'too-many-attempts');
+    return;
+  }
+  if (!ws.card) { no('not-signed'); return; }
+  // A card that sits here already would be two places in one phone.
+  if (placeOf(ws.card) || AUTHORISED_KEYS.has(ws.card)) { no('has-place'); return; }
+  const h = handovers.get(String(msg.id || ''));
+  if (!h) { no('unknown'); return; }
+  if (h.newWs || h.card === ws.card) { no('taken'); return; }
+  h.newWs = ws;
+  ws.handover = h.id;
+  clearTimeout(h.timer);
+  h.timer = setTimeout(() => endHandover(h, 'expired'), HANDOVER_LIFE_MS);
+  h.timer.unref?.();
+  console.log(`[duetto] a new phone ${ws.card.slice(0, 12)}… comes to the hand-over`);
+  send(h.oldWs, { type: 'handover-arrived' });
+  send(ws, { type: 'handover-joined' });
+}
+
+/** Between the two, as it is: sealed by them, for them. */
+function relayHandover(ws, msg) {
+  const h = ws.handover ? handovers.get(ws.handover) : null;
+  const to = !h ? null : ws === h.oldWs ? h.newWs : ws === h.newWs ? h.oldWs : null;
+  if (!to) { send(ws, { type: 'handover-error', error: 'unknown' }); return; }
+  const payload = typeof msg.payload === 'string' ? msg.payload : '';
+  h.count += 1;
+  h.bytes += payload.length;
+  if (!payload || h.count > HANDOVER_MESSAGES || h.bytes > HANDOVER_BYTES) {
+    endHandover(h, 'too-much');
+    return;
+  }
+  send(to, { type: 'handover-msg', payload });
+}
+
+/**
+ * The old card hands its place over. Proved at this door a moment ago,
+ * it is the one sitting there, and it decides: nobody else, and no role.
+ * The new card must be a card, and sit nowhere here (see handOver).
+ */
+function handPlaceOver(ws, msg) {
+  const no = (error) => send(ws, { type: 'handover-error', error });
+  const old = ws.card;
+  const to = String(msg.to || '');
+  if (!old) { no('not-yours'); return; }
+  if (AUTHORISED_KEYS.has(old)) { no('in-settings'); return; }
+  if (!asKey(to)) { no('bad-card'); return; }
+  const moved = handOver(old, to);
+  if (moved.error) { no(moved.error); return; }
+  console.log(`[duetto] ${moved.name || ws.who || `phone ${old.slice(0, 12)}…`} hands their place over`
+    + ` to a new phone ${to.slice(0, 12)}… (${moved.rooms.length} room(s)${moved.owner ? ', the owner' : ''})`);
+  // The old card is nobody here from now on: its relay user goes, and
+  // so does every connection it still has - this one too, as far as
+  // the server is concerned, once it has heard the answer.
+  dropTurn(old);
+  ws.card = null;
+  ws.pub = '';
+  ws.who = null;
+  ws.opens = false;
+  ws.invites = false;
+  ws.atDoor = false;
+  for (const peer of wss.clients) {
+    if (peer !== ws && (peer.pub === old || peer.card === old)) {
+      send(peer, { type: 'removed', why: 'handed-over' });
+      try { peer.close(4006, 'removed'); } catch { /* noop */ }
+    }
+  }
+  send(ws, { type: 'handed-over', rooms: moved.rooms.length, owner: moved.owner });
+  // The new phone, when it is the one at this meeting, hears it here.
+  const h = ws.handover ? handovers.get(ws.handover) : null;
+  if (h?.newWs && h.newWs.card === to) send(h.newWs, { type: 'handover-done' });
+  // The other side of each room: now, if connected, or at its next
+  // coming in, from the room (see newPhoneIn).
+  const day = new Date().toISOString().slice(0, 10);
+  for (const room of moved.rooms) tellNewPhone(room, day, [old, to]);
+  if (moved.name) setTimeout(tellOwners, 0);
+}
+
+/** The other parties of a room, wherever they are connected: a new phone sits opposite. */
+function tellNewPhone(room, day, cards) {
+  const noted = roomOf(room);
+  if (!noted) return;
+  for (const peer of wss.clients) {
+    if (!peer.joined) continue;
+    const card = peer.pub || '';
+    if (!card || cards.includes(card)) continue;
+    const isOwner = noted.ownerPub ? card === noted.ownerPub : peer.opens && peer.who === noted.owner;
+    const isPartner = noted.partnerPub
+      ? card === noted.partnerPub
+      : !!noted.partner && peer.opens && peer.who === noted.partner;
+    if (isOwner || isPartner || card === noted.guest) send(peer, { type: 'peer-new-phone', room, day });
+  }
 }
 
 function isOwnersBusiness(type) {
@@ -1823,6 +2026,9 @@ function peopleMessage(ws) {
       seen: d.seen || '',
       version: d.version || '',
       brought: theirRooms.filter((r) => r.owner === d.name && r.guest).length,
+      // The day this line passed to a new phone, the last time: the day,
+      // never the hour, as for everything on this list.
+      newPhone: d.newPhone || '',
       // The rooms themselves, by name: the phone asking knows its own
       // by the names it gave them, and can say "the pair with Anna"
       // where a count says "1".
@@ -1918,6 +2124,9 @@ function answerDoor(ws, msg) {
     reply({ role: 'stranger', error: 'bad-signature' });
     return;
   }
+  // The card is shown and proved: whatever it is here, a hand-over may
+  // go on from this socket (see openHandover).
+  ws.card = pub;
   // Knocking counts like joining: keys and invitations are not to be
   // guessed at the door any more than in the room.
   if (tooManyJoins(ws.ip)) {

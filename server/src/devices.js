@@ -546,6 +546,106 @@ export function noteSecondKind(pub) {
   write(data);
 }
 
+/**
+ * Where this card sits: its line on the list, and the seats it has in
+ * rooms - as a room's owner, its second party, or its guest. Null when
+ * it sits nowhere: a stranger here.
+ */
+export function placeOf(pub) {
+  if (!pub) return null;
+  const data = read();
+  const row = data.devices.find((d) => d.pub === pub) || null;
+  const rooms = data.rooms.filter((r) => r.ownerPub === pub || r.partnerPub === pub || r.guest === pub
+    || (row && !r.ownerPub && r.owner === row.name)
+    || (row && !r.partnerPub && !!r.partner && r.partner === row.name));
+  if (!row && rooms.length === 0) return null;
+  return { name: row ? row.name : null, owner: row?.owner === true, rooms: rooms.length };
+}
+
+/** How long the other side of a room is told that a new phone sits there. */
+const NEW_PHONE_DAYS = 30;
+
+/**
+ * A phone's place, handed by the phone itself to another one.
+ *
+ * Changing phone used to cost every pair: the new phone was a new card,
+ * the server knew it from nobody, and the owner's way home - the key -
+ * took the house and broke the pairs of the card it replaced. The pairs
+ * themselves are the two phones' secret, which the server never sees:
+ * only the old phone can hand them over, and it does so to the new one
+ * directly (see the hand-over in index.js). What the server has to do is
+ * the rest: the old card, signed in, says "my place goes to this card",
+ * and every place it had here becomes the new card's - its line on the
+ * list, owner or not, with its name and its days; its seats in the
+ * rooms; the codes it is waiting on, and their mail.
+ *
+ * The places do not grow: a card that has a place here already takes
+ * none, and the new phone gets exactly the old one's - an owner stays
+ * the only one, somebody invited does not become the owner, a guest
+ * stays a guest of that room. Nobody hands over anybody else's place:
+ * the card that sat there decides, not a role.
+ *
+ * The other side of each room is told, the day it happened, for a
+ * month: a new phone over there may be the same person with a new
+ * phone, or another person with the old one's things, and only they can
+ * tell (see newPhoneIn). The owner's list keeps the day on the line.
+ *
+ * Returns what moved - the name, whether it is the owner's line, the
+ * rooms - or `{ error }`: 'has-place' for a new card that sits here
+ * already, 'no-place' for an old one that sits nowhere, 'not-written'.
+ */
+export function handOver(oldPub, newPub) {
+  if (!oldPub || !newPub || oldPub === newPub) return { error: 'bad-card' };
+  if (placeOf(newPub)) return { error: 'has-place' };
+  const data = read();
+  const today = new Date().toISOString().slice(0, 10);
+  const row = data.devices.find((d) => d.pub === oldPub) || null;
+  const rooms = [];
+  for (const r of data.rooms) {
+    // A room written down before the cards were kept is known by the
+    // name alone, which stays the same: the new card is written in.
+    let seat = '';
+    if (r.ownerPub === oldPub || (row && !r.ownerPub && r.owner === row.name)) {
+      r.ownerPub = newPub; seat = 'owner';
+    } else if (r.partnerPub === oldPub || (row && !r.partnerPub && !!r.partner && r.partner === row.name)) {
+      r.partnerPub = newPub; seat = 'partner';
+    } else if (r.guest === oldPub) {
+      r.guest = newPub; seat = 'guest';
+    }
+    if (seat) {
+      r.newPhone = { seat, day: today };
+      rooms.push(r.room);
+    }
+  }
+  if (!row && rooms.length === 0) return { error: 'no-place' };
+  if (row) {
+    row.pub = newPub;
+    row.newPhone = today;
+    // What the old phone said of itself is not the new one's: the new
+    // one says it at its first knock.
+    delete row.model;
+    delete row.version;
+  }
+  for (const x of data.pending) if (x.ownerPub === oldPub) x.ownerPub = newPub;
+  for (const x of data.mail) if (x.from === oldPub) x.from = newPub;
+  data.secondKind = data.secondKind.filter((p) => p !== oldPub);
+  if (!write(data)) return { error: 'not-written' };
+  return { name: row ? row.name : null, owner: row?.owner === true, rooms };
+}
+
+/**
+ * The day a new phone took a seat in this room, for whoever sits in the
+ * other one: null for the new phone itself, and after a month.
+ */
+export function newPhoneIn(room, pub) {
+  const r = roomOf(room);
+  if (!r?.newPhone?.day) return null;
+  if (Date.now() - Date.parse(r.newPhone.day) > NEW_PHONE_DAYS * 86400_000) return null;
+  const sitting = r.newPhone.seat === 'owner' ? r.ownerPub
+    : r.newPhone.seat === 'partner' ? r.partnerPub : r.guest;
+  return sitting && sitting === pub ? null : r.newPhone.day;
+}
+
 /** Takes a phone away: it is out at the next knock, with no restart. */
 export function remove(name) {
   const data = read();

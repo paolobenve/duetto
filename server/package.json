@@ -13,6 +13,7 @@
     "test:door": "node door-test.mjs",
     "test:reports": "node reports-test.mjs",
     "test:tools": "node tools-test.mjs",
+    "test:handover": "node handover-test.mjs",
     "invite": "node tools/invite.mjs",
     "devices": "node tools/devices.mjs",
     "backfill-visits": "node tools/backfill-visits.mjs"
