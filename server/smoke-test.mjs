@@ -1041,6 +1041,10 @@ try {
   const withCarla = await a1.expect('people');
   check(withCarla.people.some((p) => p.name === 'carla'),
     'and whoever used it is in the list by name');
+  // Rooms by id only on one's own line: somebody else's are a count.
+  const carlaRow = withCarla.people.find((p) => p.name === 'carla');
+  check(carlaRow?.rooms === 1 && Array.isArray(carlaRow.theirs) && carlaRow.theirs.length === 0,
+    'somebody else’s rooms are counted, never listed by id');
 
   a1.send({ type: 'forget', name: 'carla' });
   // The list now comes unasked at every change, and the one sent when

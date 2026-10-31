@@ -241,6 +241,12 @@ try {
   const mine = people.people?.find((p) => p.you);
   check('the list says it: you, on the new phone, since today',
     mine?.name === 'anna' && mine?.owner === true && mine?.newPhone === today && mine?.model === 'Nuovo 1', people);
+  // Its rooms by id on its own line, the one waiting too; nobody
+  // else's line lists any.
+  check('the rooms by id, on the asking phone\'s line only',
+    [R1, R2, R3].every((id) => mine?.theirs?.some((t) => t.room === id))
+      && people.people.filter((p) => !p.you).every((p) => Array.isArray(p.theirs) && p.theirs.length === 0),
+    people);
   r.ws.close();
   const n1 = await join(PORT, nova, R1, 'anna', 'A');
   check('the new phone comes into R1, and is not told about itself',

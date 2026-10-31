@@ -2029,11 +2029,16 @@ function peopleMessage(ws) {
       // The day this line passed to a new phone, the last time: the day,
       // never the hour, as for everything on this list.
       newPhone: d.newPhone || '',
-      // The rooms themselves, by name: the phone asking knows its own
-      // by the names it gave them, and can say "the pair with Anna"
-      // where a count says "1".
-      theirs: theirRooms.filter((r) => r.owner === d.name)
-        .map((r) => ({ room: r.room, guest: !!r.guest })),
+      // The rooms themselves, only on the asking phone's own line: it
+      // knows its own by the names it gave them, and can say "the pair
+      // with Anna" where a count says "1". Anybody else's are counted
+      // above and never listed - the app never read them, and a room's
+      // id is what a stranger needs to sit in the seat a link keeps
+      // for the person it was sent to (point 7 of the analysis).
+      theirs: ws.pub && d.pub === ws.pub
+        ? theirRooms.filter((r) => r.owner === d.name)
+          .map((r) => ({ room: r.room, guest: !!r.guest }))
+        : [],
     })),
     invitations: invitations
       .filter((i) => Date.parse(i.expires) > Date.now())
