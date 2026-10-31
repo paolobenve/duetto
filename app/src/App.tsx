@@ -185,6 +185,9 @@ const HOW_IT_WAS_KEY = 'duetto.how-it-was';
  * gain alone and moves the level with it; past an end, the level is
  * held at the end.
  */
+/** where the way back to the connection left by the last move is kept */
+const PREVIOUS_PAIR_KEY = 'duetto.previous-pair';
+
 const LEVEL_STEP_DB = 2;
 const LEVEL_MIN_DB = -26;
 /** how far Duetto's gain takes the voice below the phone's lowest step */
@@ -6724,10 +6727,25 @@ export default function App() {
 
   /**
    * The connection left by the last move, and whether one was inside
-   * its channel: the way back, at the top of the channel. Kept while
-   * Duetto runs.
+   * its channel: the way back, at the top of the channel.
+   *
+   * Kept on the phone, not only while Duetto runs: an update closes the
+   * app and opens it again, and so does Android when it reclaims it,
+   * and the way back went with it. A pair gone meanwhile shows none
+   * (see backName).
    */
-  const [previousPair, setPreviousPair] = useState<{ id: string; wasIn: boolean } | null>(null);
+  const [previousPair, keepPreviousPair] = useState<{ id: string; wasIn: boolean } | null>(null);
+  const setPreviousPair = useCallback((p: { id: string; wasIn: boolean } | null) => {
+    keepPreviousPair(p);
+    AsyncStorage.setItem(PREVIOUS_PAIR_KEY, JSON.stringify(p)).catch(() => { /* noop */ });
+  }, []);
+  useEffect(() => {
+    AsyncStorage.getItem(PREVIOUS_PAIR_KEY).then((raw) => {
+      const p = raw ? JSON.parse(raw) : null;
+      // A move made before this was read wins over the one kept.
+      if (p && typeof p.id === 'string') keepPreviousPair((now) => now ?? { id: p.id, wasIn: !!p.wasIn });
+    }).catch(() => { /* none kept */ });
+  }, []);
 
   /**
    * Switches to another connection already set up.
