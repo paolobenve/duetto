@@ -130,7 +130,7 @@ object Journal {
      * of whoever reads the code.
      */
     @Volatile private var voiceKeys = false
-    /** the name of the connection in use, on every row: the file carries the id only */
+    /** the connection in use, on every row: a piece of its id, as its files say it */
     @Volatile private var pair: String = ""
     fun pair(name: String) { pair = name }
 

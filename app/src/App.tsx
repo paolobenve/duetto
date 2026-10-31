@@ -2689,9 +2689,11 @@ export default function App() {
    */
   const journalKeyRef = useRef('');
   useEffect(() => { journalKeyRef.current = pairFileKey(cfg?.pair); }, [cfg?.pair]);
-  // The connection's name, on every row of the journal.
+  // The connection on every row of the journal: by a piece of its id,
+  // the same as its files' names. Its name - the other person's, often
+  // - went in public with every report that had the journal along.
   useEffect(() => {
-    Journal.pair(pairName(cfg?.pair) || '').catch(() => { /* noop */ });
+    Journal.pair(pairFileKey(cfg?.pair)).catch(() => { /* noop */ });
   }, [cfg?.pair]);
 
   /**

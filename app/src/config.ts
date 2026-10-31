@@ -1044,8 +1044,9 @@ export function namePeer(
  */
 export function pairFileKey(p: PairInfo | null | undefined): string {
   if (!p) return '';
-  // The id only: a connection renamed must not start a new file. The
-  // name goes on every row instead, in the journal's own column.
+  // The id only: a connection renamed must not start a new file, and
+  // the journal leaves the phone. The journal's pair column says the
+  // same, for the same reasons.
   return (p.id || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 8).toLowerCase();
 }
 
