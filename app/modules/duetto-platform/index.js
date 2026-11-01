@@ -330,7 +330,7 @@ export const Leveller = isAndroid && NativeLeveller
   ? {
       setWanted: (on) => call(NativeLeveller, 'setWanted', !!on),
       setGain: (gain) => call(NativeLeveller, 'setGain', Number(gain) || 0),
-      /** "on:frequency", "off", "waiting", or "failed:why" */
+      /** "on:frequency:<who wrote it>", "off", "waiting", or "failed:why" */
       state: () => call(NativeLeveller, 'state'),
       /** Calls `cb(state)` at every change. Gives back the function to stop. */
       subscribe(cb) {

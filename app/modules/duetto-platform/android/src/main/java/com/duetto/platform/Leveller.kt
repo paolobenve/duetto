@@ -120,7 +120,7 @@ object Leveller {
     private var channels = 1
     private var dp: DynamicsProcessing? = null
 
-    /** "on:frequency" (the engine), "off", "waiting" (no voice playing yet), "failed:why" */
+    /** "on:frequency:<who wrote it>", "off", "waiting" (no voice playing yet), "failed:why" */
     @Volatile var state = "off"
         private set
 
@@ -209,14 +209,45 @@ object Leveller {
             cfg.setLimiterAllChannelsTo(limiter())
             val d = DynamicsProcessing(0, session, cfg)
             d.enabled = true
+            val missing = engineMissing(d)
+            if (missing != null) {
+                try { d.release() } catch (_: Exception) { /* noop */ }
+                say("failed:$missing")
+                return
+            }
             dp = d
-            say("on:frequency")
+            say("on:frequency:${maker(d)}")
         } catch (e: Exception) {
             Log.w(TAG, "leveller: ${e.message}")
             release()
             say("failed:${e.javaClass.simpleName}(${e.message.orEmpty().take(60)})")
         }
     }
+
+    /**
+     * Whether the effect really has an engine behind it: the ceiling set
+     * is read back. Where Android takes the effect without making the
+     * engine - the POCO with the time variant - the reading comes back
+     * empty, and the voice would go through untouched with the level
+     * lost; then the effect goes and the track carries the level again.
+     */
+    @RequiresApi(Build.VERSION_CODES.P)
+    private fun engineMissing(d: DynamicsProcessing): String? = try {
+        val l = d.getLimiterByChannelIndex(0)
+        if (kotlin.math.abs(l.threshold - LIMIT_DB) > 0.5f) "no-engine" else null
+    } catch (e: Exception) {
+        "no-engine(${e.javaClass.simpleName})"
+    }
+
+    /**
+     * Who wrote the effect, for the journal: "aosp" for Android's own,
+     * the one measured on the computer; a maker's name otherwise.
+     */
+    private fun maker(d: DynamicsProcessing): String = try {
+        val who = d.descriptor.implementor.orEmpty()
+        if (who.contains("Android Open Source")) "aosp"
+        else who.replace(Regex("[^A-Za-z0-9]+"), "-").take(24).ifEmpty { "?" }
+    } catch (_: Exception) { "?" }
 
     /** The body of the voice, up to SPLIT_HZ. */
     @RequiresApi(Build.VERSION_CODES.P)
