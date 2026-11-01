@@ -2339,10 +2339,6 @@ export default function App() {
     });
     return stop;
   }, []);
-  const levelStrength = cfg?.levelStrength ?? 'medium';
-  useEffect(() => {
-    Leveller.setStrength(levelStrength).catch(() => { /* noop */ });
-  }, [levelStrength]);
   useEffect(() => {
     Leveller.setWanted(levelWanted).catch(() => { /* noop */ });
   }, [levelWanted]);
@@ -7419,14 +7415,13 @@ export default function App() {
           ]);
         }}
         heardThrough={heardThrough}
-        levelChoice={levelWanted ? levelStrength : 'off'}
+        levelChoice={levelWanted ? 'on' : 'off'}
         levellerState={levellerState}
         // The same setting as in the Settings, for this connection.
         onLevelChoice={(c) => setCfg((prev) => {
           if (!prev) return prev;
           Journal.mark(`command:level-voice:${c}`).catch(() => { /* noop */ });
-          return saveCfg(c === 'off' ? { ...prev, levelVoice: false }
-            : { ...prev, levelVoice: true, levelStrength: c });
+          return saveCfg({ ...prev, levelVoice: c === 'on' });
         })}
         onSetLevel={setLevelTo}
         versionWarning={versionWarning}

@@ -1137,29 +1137,24 @@ export default function SettingsScreen({
             <Switch value={!!(cfg.richerAudio)} {...SWITCH_COLOURS} />
           </View>
         </TouchableOpacity>
-        {/* The other's voice at nearly one level, here, and how hard:
-            see Leveller.kt. */}
+        {/* The other's voice at nearly one level, here: see Leveller.kt. */}
         <Text style={styles.sectionHint}>{t('settings.levelVoice')}</Text>
         <Text style={styles.hint}>{t('settings.levelVoiceNote')}</Text>
         <View style={styles.group}>
           {LEVEL_CHOICES.map((v) => {
-            const chosen = (cfg.levelVoice ? (cfg.levelStrength ?? 'medium') : 'off') === v;
+            const chosen = (cfg.levelVoice ? 'on' : 'off') === v;
             return (
               <TouchableOpacity
                 key={v}
                 style={[styles.option, chosen && styles.optionPicked]}
                 onPress={() => {
-                  const patch = v === 'off' ? { levelVoice: false }
-                    : { levelVoice: true, levelStrength: v };
+                  const patch = { levelVoice: v === 'on' };
                   setCfg({ ...cfg, ...patch });
                   onLive?.(patch);
                 }}>
                 <View style={[styles.radio, chosen && styles.radioPicked]} />
                 <View style={styles.choiceText}>
                   <Text style={styles.choiceLabel}>{t(`settings.levelVoice_${v}`)}</Text>
-                  {v !== 'off' ? (
-                    <Text style={styles.choiceNote}>{t(`settings.levelVoice_${v}Note`)}</Text>
-                  ) : null}
                 </View>
               </TouchableOpacity>
             );
