@@ -107,6 +107,41 @@ export function isBehind(latest: string): boolean {
 
 export const RELEASES: Release[] = [
   {
+    version: '0.9.22',
+    notes: {
+      en: [
+        'Changing phone? You can move your Duetto installation to the new phone.',
+        'Each Bluetooth device has its own volume.',
+        'And various other minor improvements.',
+      ],
+      it: [
+        'Cambi telefono? Puoi traslocare la tua installazione di Duetto al telefono nuovo.',
+        'Ogni dispositivo Bluetooth ha il suo volume.',
+        'E vari altri miglioramenti minori.',
+      ],
+      es: [
+        '¿Cambias de teléfono? Puedes trasladar tu instalación de Duetto al teléfono nuevo.',
+        'Cada dispositivo Bluetooth tiene su propio volumen.',
+        'Y varias otras mejoras menores.',
+      ],
+      fr: [
+        'Tu changes de téléphone ? Tu peux déménager ton installation de Duetto sur le nouveau.',
+        'Chaque appareil Bluetooth a son propre volume.',
+        'Et diverses autres petites améliorations.',
+      ],
+      pt: [
+        'Vai trocar de telefone? Você pode mudar sua instalação do Duetto para o telefone novo.',
+        'Cada dispositivo Bluetooth tem seu próprio volume.',
+        'E várias outras melhorias menores.',
+      ],
+      de: [
+        'Neues Telefon? Du kannst deine Duetto-Installation auf das neue Telefon umziehen.',
+        'Jedes Bluetooth-Gerät hat seine eigene Lautstärke.',
+        'Und weitere kleine Verbesserungen.',
+      ],
+    },
+  },
+  {
     version: '0.9.21',
     notes: {
       en: [

@@ -1,0 +1,3 @@
+- Cambi telefono? Puoi traslocare la tua installazione di Duetto al telefono nuovo.
+- Ogni dispositivo Bluetooth ha il suo volume.
+- E vari altri miglioramenti minori.
