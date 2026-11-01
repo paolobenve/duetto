@@ -86,18 +86,28 @@ object Leveller {
      * band over SPLIT_HZ has no makeup, and can only bring down; the
      * body's makeup is smaller, 6 dB, so that a faint voice raised does
      * not turn dull against its own treble.
+     *
+     * And still too little was heard: -40 and -18 came out at -34 and
+     * -24, 22 dB become 10, while 22 should become about 5 and 40 about
+     * 10 (Paolo, 1 November). -40 was under the threshold, so only
+     * lifted, never pressed. Now the threshold is under the whole voice,
+     * -48, at 5 to 1, with the makeup that leaves -24 where it is:
+     * (-24 + 48) * (1 - 1/5) = 19.2. -40 comes out at about -27, -18 at
+     * -23. The treble the same 10 dB lower, -58, whose makeup so works
+     * only on a treble already over its threshold: one that is shrill
+     * comes down. The gate moves under it all, at -60 and -70.
      */
     private const val SPLIT_HZ = 2000f
 
     /** nearly all at one level; the room between words comes up with it */
-    private val strength = Strength(-36f, 5f, 6f, -44f, 8f, 0f)
+    private val strength = Strength(-48f, 5f, 19.2f, -58f, 5f, 19.2f)
 
     private const val KNEE_DB = 10f
     /** 5 ms let the first of a loud sound through whole (31 October) */
     private const val ATTACK_MS = 2f
     private const val RELEASE_MS = 250f
     /** under this the room between words, taken down rather than lifted */
-    private const val GATE_DB = -55f
+    private const val GATE_DB = -60f
     private const val EXPANDER_RATIO = 2f
     /**
      * The ceiling: about 8 dB over where a voice comes out (-22 to -24
