@@ -375,6 +375,9 @@ export class ChannelSession {
   /** the last samples, to work out the real bitrate between two reads */
   private lastOutbound: { ts: number; bytes: number } | null = null;
   private lastInbound: { ts: number; bytes: number } | null = null;
+  /** the same for the voice, out and in: see the voice's rate below */
+  private lastAudioOut: { ts: number; bytes: number } | null = null;
+  private lastAudioIn: { ts: number; bytes: number } | null = null;
   /** the incoming video's frames received at the last sample */
   private lastInboundFrames: { ts: number; frames: number } | null = null;
   /** the frames decoded of their picture, as the last reading counted them: see renewIncomingVideo */
@@ -2042,6 +2045,16 @@ export class ChannelSession {
       const onRoad = (kind: string) => (road[kind] ??= {});
       /** the voice's energy counters, out and in: see voicePrev */
       const energy: { mic?: [number, number]; rx?: [number, number] } = {};
+      /**
+       * The voice's own bitrate, out and in: the payload alone, in
+       * kbit/s, and what the encoder aims at going out. The ceiling of
+       * "Richer voice" is only a limit, and the channel's figure counts
+       * everything on the road: these two say what Opus really sends.
+       * With nobody talking DTX sends almost nothing, so a stretch with
+       * silence in it reads lower than the voice is.
+       */
+      let voiceOut = '';
+      let voiceIn = '';
       stats.forEach((r: any) => {
         if (r.kind === 'audio' && typeof r.totalAudioEnergy === 'number'
           && typeof r.totalSamplesDuration === 'number') {
@@ -2086,7 +2099,18 @@ export class ChannelSession {
         if (r.type === 'media-playout') {
           step('audio', 'playout', r.totalPlayoutDelay, r.totalSamplesCount);
         }
-        if (r.kind === 'audio' && r.type === 'outbound-rtp') return;
+        if (r.kind === 'audio' && r.type === 'outbound-rtp') {
+          const kbps = rate(this.lastAudioOut, r.timestamp, Number(r.bytesSent ?? 0));
+          this.lastAudioOut = { ts: r.timestamp, bytes: Number(r.bytesSent ?? 0) };
+          const target = Number(r.targetBitrate);
+          voiceOut = `${kbps ?? '?'}k${target > 0 ? `/${Math.round(target / 1000)}k` : ''}`;
+          return;
+        }
+        if (r.kind === 'audio' && r.type === 'inbound-rtp') {
+          const kbps = rate(this.lastAudioIn, r.timestamp, Number(r.bytesReceived ?? 0));
+          this.lastAudioIn = { ts: r.timestamp, bytes: Number(r.bytesReceived ?? 0) };
+          voiceIn = `${kbps ?? '?'}k`;
+        }
         if (r.kind !== 'video') return;
         if (r.type === 'outbound-rtp') {
           out.out = {
@@ -2328,7 +2352,8 @@ export class ChannelSession {
         if (!(dT > 0) || !(dE >= 0)) return '';
         return dE > 0 ? (10 * Math.log10(dE / dT)).toFixed(0) : '-96';
       };
-      Journal.voice(level(energy.mic, this.voicePrev.mic), level(energy.rx, this.voicePrev.rx))
+      Journal.voice(level(energy.mic, this.voicePrev.mic), level(energy.rx, this.voicePrev.rx),
+        voiceOut, voiceIn)
         .catch(() => { /* noop */ });
       this.voicePrev = energy;
       if (cells.audio || cells.video) {

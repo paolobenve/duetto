@@ -82,6 +82,10 @@ object Journal {
         "micLevel", "rxLevel",
         // the picture, going out and coming in, and what holds it: see video()
         "vOut", "vIn", "bwe", "vLimit", "vCap",
+        // the voice's bitrate, out (sent/aimed at) and in: see voice().
+        // Last, so that a day's file begun by an older build keeps its
+        // columns where its header says.
+        "aOut", "aIn",
     )
     val HEADER = COLUMNS.joinToString("\t")
     fun day(now: Long): String = dayFormat.format(Date(now - DAY_TURNS_AT_MS))
@@ -211,6 +215,8 @@ object Journal {
     @Volatile private var vPeerLoss = ""
     @Volatile private var micLevel = ""
     @Volatile private var rxLevel = ""
+    @Volatile private var aOut = ""
+    @Volatile private var aIn = ""
     @Volatile private var vOut = ""
     @Volatile private var vIn = ""
     @Volatile private var bwe = ""
@@ -222,9 +228,15 @@ object Journal {
      * microphone's, going out, and the other's, coming in. Asked for when
      * one side heard the other too low: from these two, a voice sent low
      * is told from a voice played low.
+     *
+     * With them, the voice's bitrate in kbit/s, the payload alone: going
+     * out, beside what the encoder aims at ("23k/64k"), and coming in.
+     * Asked for when a tester heard the voice too compressed: the
+     * ceiling of "Richer voice" is a limit, and only these say what Opus
+     * really sends.
      */
-    fun voice(mic: String, rx: String) {
-        micLevel = mic; rxLevel = rx
+    fun voice(mic: String, rx: String, out: String, inn: String) {
+        micLevel = mic; rxLevel = rx; aOut = out; aIn = inn
     }
 
     /**
@@ -567,6 +579,8 @@ object Journal {
             values["vPeerLoss"] = vPeerLoss
             values["micLevel"] = micLevel
             values["rxLevel"] = rxLevel
+            values["aOut"] = aOut
+            values["aIn"] = aIn
             values["vOut"] = vOut
             values["vIn"] = vIn
             values["bwe"] = bwe
