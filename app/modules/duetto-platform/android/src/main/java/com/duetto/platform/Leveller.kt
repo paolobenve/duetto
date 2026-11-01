@@ -73,11 +73,19 @@ object Leveller {
      * there - (-34 - hiThreshold) * (1 - 1/hiRatio) - so the voice is
      * not made duller; a voice with 10 dB more up there comes down
      * seven to nine.
+     *
+     * That reckoning failed: with strong, shrill voices came out even
+     * louder (1 November). A makeup is added whether the compressor has
+     * worked or not, and where a band arrives under its threshold it is
+     * only a lift: up there, nearly 9 dB more of the shrill. Now the
+     * band over SPLIT_HZ has no makeup, and can only bring down; the
+     * body's makeup is smaller, 6 dB, so that a faint voice raised does
+     * not turn dull against its own treble.
      */
     private const val SPLIT_HZ = 2000f
 
     /** nearly all at one level; the room between words comes up with it */
-    private val strength = Strength(-36f, 5f, 9.6f, -44f, 8f, 8.75f)
+    private val strength = Strength(-36f, 5f, 6f, -44f, 8f, 0f)
 
     private const val KNEE_DB = 10f
     /** 5 ms let the first of a loud sound through whole (31 October) */
