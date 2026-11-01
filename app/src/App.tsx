@@ -1822,6 +1822,8 @@ export default function App() {
   const [btHere, setBtHere] = useState<{ id: string; name: string } | null>(null);
   /** the audio's and the call's answers to the last Bluetooth device going: see below */
   const btGoneRef = useRef<(() => void) | null>(null);
+  /** the output's brake let go, on moving to another connection: see useAudioRoute */
+  const audioCalmRef = useRef<(() => void) | null>(null);
   const headsetGoneRef = useRef<(() => void) | null>(null);
   useEffect(() => {
     AudioDevices.list().then((l) => setBtHere(l[0] ?? null)).catch(() => {});
@@ -1891,6 +1893,7 @@ export default function App() {
     btHere: !!btHere,
   });
   btGoneRef.current = audio.btGone;
+  audioCalmRef.current = audio.calm;
 
   /**
    * Where the gain is kept: under the output, and on Bluetooth under the
@@ -6792,6 +6795,7 @@ export default function App() {
     // Coming into the next one is a resumption, not an entry: see
     // enterChannel.
     enteringBySwitch.current = true;
+    audioCalmRef.current?.();
     sayGoodbye.current = true;
     setCfg(saveCfg(next));
     setPeerName(next.pair?.peerName || '');

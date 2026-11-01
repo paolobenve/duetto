@@ -742,11 +742,24 @@ export function useAudioRoute(
     fallBack(builtIn.current, ':bt-gone');
   }, [enabled, fallBack]);
 
+  /**
+   * Moving to another connection: the brake let go. It is for two
+   * directors tossing the sound, not for the moves of a call closed and
+   * the next opened - Android puts the new call on an output of its own
+   * before the one wanted comes back; counted as a fight, they left the
+   * sound where it stood (the POCO, 1 November 17:44 and 17:52).
+   */
+  const calm = useCallback(() => {
+    frozenUntil.current = 0;
+    routeTimes.current = [];
+  }, []);
+
   return {
     route: current,
     reapply,
     resume,
     btGone,
+    calm,
     /** only the ones really plugged in, in the order they are shown */
     available: ORDER.filter((r) => available.includes(r)),
     /** with a single output there is nothing to choose */
