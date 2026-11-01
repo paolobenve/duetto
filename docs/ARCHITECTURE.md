@@ -372,6 +372,29 @@ others. The list of the *available* ones changes by itself, so we take it from t
 The choice is **saved** and restored on coming back if that device is still connected;
 otherwise the system's selection is left alone, without imposing one of ours.
 
+**The levelled voice** (`Leveller.kt`, `LevelledAudio.kt`): an option per connection, off or
+on. It is Android's own `DynamicsProcessing` (Android 9 and later), hung on the AudioTrack
+that WebRTC plays the other's voice through. Two bands split at 2 kHz, the body of the voice
+and its treble, each compressed 5 to 1 from under the whole voice, with a gate under it that
+keeps the hiss between words from rising with it, and a limiter at the end. The level chosen
+with the keys is the limiter's own gain, after the compressor: on the track, before it, the
+compressor would undo it. While the leveller works the track plays at 1.
+
+- **Only the engine by frequencies.** The other variant, by time, is asked for but nowhere
+  made: the moto refuses it, and the POCO took it without making the engine
+  (`FAVOR_TIME_RESOLUTION not available now` in its log), the voice through untouched and the
+  level with it.
+- **The engine checked.** After making the effect the limiter's threshold is read back:
+  empty or different, the effect goes and the state says `failed:no-engine`. At the start,
+  once per version of the app and of Android, the same is tried on a session of its own;
+  where it fails the choices are not shown. The journal says `leveller:available:<what>` and
+  `leveller:on:frequency:<who wrote it>`, `aosp` for Android's own.
+- **Measured on the computer.** An app cannot read the sound of a call after its effects
+  (a Visualizer always comes first in the chain), so the curve is measured by running a voice
+  through AOSP's `DPFrequency` (`frameworks/av/media/libeffects/dynamicsproc/dsp`), built on
+  the computer with Eigen, with the same values. On 1 November -40 and -18 dB came out 4.4 dB
+  apart, -50 and -10 8.7 dB; the floor between words rises about 12 dB.
+
 ### 9. Diagnostics (`app/src/log.ts`, `Journal.kt`)
 
 Everything that exists in order to understand sits behind one switch, off by default and

@@ -244,7 +244,7 @@ Each of them carries its own things, and that is the point of them being separat
 - **Its own settings, all of them.** The video quality, the richer voice, the technical
   lines, how much the controls step aside, the codec, the vibration and the sound of the
   alert, where the sound comes out and how much the other voice is lifted for each output,
-  which camera opens, and **the language**: the same phone can speak English with somebody
+  whether it is levelled, which camera opens, and **the language**: the same phone can speak English with somebody
   and Italian with somebody else.
 - **Its own journal**, in a file of its own: the consumption of two different phones does
   not end up mixed into lines that do not say whose they are.
