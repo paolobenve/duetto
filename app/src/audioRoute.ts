@@ -77,6 +77,8 @@ export type AutoOutput = {
   wired: boolean;
   /** for the journal: which Bluetooth device was seen, and its choice */
   btSeen?: string;
+  /** a Bluetooth headset is connected, by the app's own list of devices */
+  btHere?: boolean;
 };
 
 /** More than this many changes of output within the window is a fight: see the brake. */
@@ -88,6 +90,8 @@ const KEEP_WAIT_MS = 1_500;
 const CONFIRM_MS = 1_500;
 /** how long after the ear's own move the telephony's echo of it is taken as the ear's */
 const EAR_ECHO_MS = 2_500;
+/** a call closed this recently is the one before a move to another connection: see wornHeadset */
+const WORN_WITHIN_MS = 30_000;
 
 export function useAudioRoute(
   enabled: boolean,
@@ -119,6 +123,8 @@ export function useAudioRoute(
   const callRoute = useRef<AudioRoute | null>(null);
   /** the same, kept past the call's end: where the sound was in the call before */
   const lastCallRoute = useRef<AudioRoute | null>(null);
+  /** when the last call ended: 0 while one is up */
+  const lastCallEnded = useRef(0);
   /** the latest changes of output, for the brake; and until when it holds */
   const routeTimes = useRef<number[]>([]);
   const frozenUntil = useRef(0);
@@ -148,6 +154,28 @@ export function useAudioRoute(
   const known = useRef<AudioRoute[]>([]);
   const noteBuiltIn = (r: AudioRoute) => {
     if (r === 'SPEAKER_PHONE' || r === 'EARPIECE') builtIn.current = r;
+  };
+  /**
+   * A headset the sound was on in the call just closed, still there.
+   *
+   * Moving to another connection closes the call and opens the next, and
+   * twice the new connection's output - the speaker - was put on over
+   * it: on resuming, and on the connection's output coming in. The
+   * headset came back a moment later by itself, and two moves in a few
+   * seconds made five changes of output: the brake took them for a
+   * fight and left the sound on the speaker (the POCO, 1 November 17:44
+   * and 17:52). The headset worn is the person's, not the connection's.
+   * Only for a call closed a moment ago: a headset left connected on the
+   * desk is not taken back hours later. Bluetooth by the app's own list
+   * of devices - the library's says it gone for a moment, in between.
+   */
+  const wornHeadset = (): AudioRoute | null => {
+    const was = lastCallRoute.current;
+    const ended = lastCallEnded.current;
+    if (!was || (ended > 0 && Date.now() - ended > WORN_WITHIN_MS)) return null;
+    if (was === 'BLUETOOTH') return autoRef.current?.btHere ? was : null;
+    if (was === 'WIRED_HEADSET') return availableRef.current.includes(was) ? was : null;
+    return null;
   };
   const rememberRef = useRef(remember);
   rememberRef.current = remember;
@@ -266,6 +294,7 @@ export function useAudioRoute(
       if (st === 'ended' || st === 'ended-by-system' || st === 'failed') {
         inCall.current = false;
         callRoute.current = null;
+        lastCallEnded.current = Date.now();
         return;
       }
       if (st === 'active' || st === 'resumed') {
@@ -280,6 +309,7 @@ export function useAudioRoute(
       inCall.current = true;
       callRoute.current = r;
       lastCallRoute.current = r;
+      lastCallEnded.current = 0;
       // The ear's own move, coming back: shown, and nothing else - not
       // counted for the brake, not taken for the output wanted.
       const em = earMoved.current;
@@ -394,6 +424,17 @@ export function useAudioRoute(
       && !availableRef.current.includes(want)) {
       want = builtIn.current;
       Journal.mark(`output:entry:${preferred}-absent:${want}`).catch(() => { /* noop */ });
+    }
+    // A headset worn stays here too: see wornHeadset.
+    const worn = enabled ? wornHeadset() : null;
+    if (worn && (want === 'SPEAKER_PHONE' || want === 'EARPIECE')) {
+      noteBuiltIn(want);
+      wanted.current = worn;
+      currentRef.current = worn;
+      setCurrent(worn);
+      Journal.mark(`output:entry-kept:${worn}`).catch(() => { /* noop */ });
+      applyRoute(worn);
+      return;
     }
     wanted.current = want;
     noteBuiltIn(want);
@@ -640,22 +681,13 @@ export function useAudioRoute(
    * output that was in use, whatever the entry's setting says. That
    * setting is for entries one makes.
    */
-  const resume = useCallback((route: AudioRoute, present = true, btHere = false) => {
+  const resume = useCallback((route: AudioRoute, present = true) => {
     // A headset remembered and not connected: the phone's own output.
     if (!present) route = builtIn.current;
-    /*
-     * A headset the sound was on, still there: it stays. Moving to
-     * another connection put back that connection's speaker, and the
-     * headset came back a moment later by itself; two moves in a few
-     * seconds made five changes of output, the brake took them for a
-     * fight and left the sound on the speaker (the POCO, 1 November
-     * 17:44). The headset worn is the person's, not the connection's:
-     * the output remembered is only where to go when it goes.
-     */
-    const was = lastCallRoute.current;
-    const stillThere = was === 'BLUETOOTH' ? btHere
-      : was === 'WIRED_HEADSET' ? availableRef.current.includes('WIRED_HEADSET') : false;
-    if (stillThere && was && (route === 'SPEAKER_PHONE' || route === 'EARPIECE')) {
+    // A headset worn stays: the output remembered is only where to go
+    // when it goes. See wornHeadset.
+    const was = wornHeadset();
+    if (was && (route === 'SPEAKER_PHONE' || route === 'EARPIECE')) {
       noteBuiltIn(route);
       wanted.current = was;
       currentRef.current = was;

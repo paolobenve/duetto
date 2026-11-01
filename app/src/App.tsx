@@ -1888,6 +1888,7 @@ export default function App() {
     btSeen: btHere
       ? `${btHere.name || btHere.id}=${cfg?.btDevices?.[btHere.id]?.auto === undefined ? 'unknown' : (cfg.btDevices[btHere.id].auto ? 'always' : 'asked')}`
       : `none:global=${(cfg?.autoBluetooth ?? true) ? 'always' : 'asked'}`,
+    btHere: !!btHere,
   });
   btGoneRef.current = audio.btGone;
 
@@ -2073,7 +2074,7 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appActive]);
 
-  const resumeRouteRef = useRef<((r: AudioRoute, present?: boolean, btHere?: boolean) => void) | null>(null);
+  const resumeRouteRef = useRef<((r: AudioRoute, present?: boolean) => void) | null>(null);
   const btHereRef = useRef(btHere);
   btHereRef.current = btHere;
   useEffect(() => { resumeRouteRef.current = audio.resume; }, [audio.resume]);
@@ -5726,7 +5727,7 @@ export default function App() {
         Journal.mark(`resume-output:${was}${bySwitch ? ':switch' : ''}`).catch(() => { /* noop */ });
         // A Bluetooth headset remembered that is not connected now: the
         // phone's own output instead of Android's earpiece.
-        resumeRouteRef.current?.(was as AudioRoute, was !== 'BLUETOOTH' || !!btHereRef.current, !!btHereRef.current);
+        resumeRouteRef.current?.(was as AudioRoute, was !== 'BLUETOOTH' || !!btHereRef.current);
       }
       // The microphone: as it was left, however long ago. The clock
       // below judges only the camera.
