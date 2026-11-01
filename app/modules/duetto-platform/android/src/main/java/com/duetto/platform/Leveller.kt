@@ -45,7 +45,8 @@ object Leveller {
 
     /**
      * How hard: above `threshold` the voice is brought down by `ratio`,
-     * and raised back by `makeup`.
+     * and raised back by `makeup`. One strength only: light and medium
+     * were heard to do nothing, and were taken away (1 November).
      *
      * The makeup used to give back, at -18 dB - where WebRTC's gain
      * control puts a voice - just what the ratio took: the voice that
@@ -75,13 +76,8 @@ object Leveller {
      */
     private const val SPLIT_HZ = 2000f
 
-    private val STRENGTHS = mapOf(
-        // the peaks only: the voice keeps its shape
-        "light" to Strength(-26f, 2f, 1f, -38f, 3f, 2.7f),
-        "medium" to Strength(-30f, 3f, 4f, -40f, 4f, 4.5f),
-        // nearly all at one level; the room between words comes up with it
-        "strong" to Strength(-36f, 5f, 9.6f, -44f, 8f, 8.75f),
-    )
+    /** nearly all at one level; the room between words comes up with it */
+    private val strength = Strength(-36f, 5f, 9.6f, -44f, 8f, 8.75f)
 
     private const val KNEE_DB = 10f
     /** 5 ms let the first of a loud sound through whole (31 October) */
@@ -92,7 +88,7 @@ object Leveller {
     private const val EXPANDER_RATIO = 2f
     /**
      * The ceiling: about 8 dB over where a voice comes out (-22 to -24
-     * dB, see STRENGTHS), before the level the keys choose. At -2 dB it
+     * dB, see strength), before the level the keys choose. At -2 dB it
      * held only what would have broken the sound, and the loud went
      * through; with the level's +12 dB on top it is at -2 again.
      */
@@ -102,7 +98,6 @@ object Leveller {
     @Volatile private var wanted = false
     /** the level chosen, as a gain: 1 = as it arrives */
     @Volatile private var gain = 1f
-    @Volatile private var strength = STRENGTHS.getValue("medium")
     private var session = 0
     private var channels = 1
     private var dp: DynamicsProcessing? = null
@@ -123,13 +118,6 @@ object Leveller {
     @Synchronized
     fun setGain(g: Float) {
         gain = g
-        retune()
-    }
-
-    /** "light", "medium" or "strong": changed on the voice as it flows. */
-    @Synchronized
-    fun setStrength(name: String) {
-        strength = STRENGTHS[name] ?: return
         retune()
     }
 

@@ -31,8 +31,6 @@ class LevellerModule(private val ctx: ReactApplicationContext) :
 
     @ReactMethod fun setGain(gain: Double) = Leveller.setGain(gain.toFloat())
 
-    @ReactMethod fun setStrength(name: String) = Leveller.setStrength(name)
-
     @ReactMethod fun state(p: Promise) = p.resolve(Leveller.state)
 
     private fun tell(state: String) {
