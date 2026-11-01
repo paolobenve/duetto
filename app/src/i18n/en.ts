@@ -344,6 +344,7 @@ export const en = {
     heardThrough: '{who} is talking to you through your silence',
     levellerOn: 'On: the voice goes through the compressor',
     levellerWaiting: 'It starts with the other\'s voice',
+    levellerOff: 'Off: the voice arrives as it is',
     levellerFailed: 'Not available on this phone',
     onPhoneCall: 'A call on the phone: Duetto is silent until it ends.',
     peerOnCall: '{who} is in another call',

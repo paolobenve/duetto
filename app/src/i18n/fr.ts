@@ -333,6 +333,7 @@ export const fr: Dictionary = {
     heardThrough: '{who} te parle à travers ton silence',
     levellerOn: 'Active : la voix passe par le compresseur',
     levellerWaiting: 'Elle démarrera avec la voix de l’autre',
+    levellerOff: 'Coupée : la voix arrive telle quelle',
     levellerFailed: 'Pas disponible sur ce téléphone',
     onPhoneCall: 'Appel en cours sur le téléphone : Duetto se tait jusqu’à la fin.',
     peerOnCall: '{who} est dans un autre appel',

@@ -2304,13 +2304,15 @@ export default function ChannelScreen(props: Props) {
                     </TouchableOpacity>
                   ))}
                 </View>
-                {props.levelChoice && props.levelChoice !== 'off' ? (
-                  <Text style={styles.sheetMeta}>
-                    {t(props.levellerState?.startsWith('on') ? 'channel.levellerOn'
+                {/* Always there, "off" included: the menu stands on the
+                    bottom of the screen, and a line that came and went
+                    moved all of it up and down at every touch. */}
+                <Text style={styles.sheetMeta}>
+                  {t(!props.levelChoice || props.levelChoice === 'off' ? 'channel.levellerOff'
+                    : props.levellerState?.startsWith('on') ? 'channel.levellerOn'
                       : props.levellerState?.startsWith('failed') ? 'channel.levellerFailed'
                         : 'channel.levellerWaiting')}
-                  </Text>
-                ) : null}
+                </Text>
               </>
             ) : null}
           </View>
