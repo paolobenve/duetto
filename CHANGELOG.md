@@ -14,6 +14,52 @@ What the app itself shows under "What is new" is another thing: a short summary 
 version, in the app's five languages, with nothing of what is underneath - it lives in
 `app/src/releases.ts` and is written by hand at each new version.
 
+## 0.9.22 build 553
+
+**Version 0.9.22: moving to a new phone, the levelled voice that works, and the outputs.**
+Changing phone with the old one still in hand, nothing is made again: from *the cogwheel
+→ Server and pairs → Move to a new phone* the old phone shows a code, the new one reads it
+from its first screen, and the two show the same six figures; then the place on the
+server, the connections and the settings go to the new phone, and the old one is emptied.
+The other person has nothing to redo, and is told that on the other side there is a new
+phone. Anybody with a place can do it, for their own. A server has one owner, and its key,
+typed into a phone, makes that phone the owner in place of a lost one; it is kept nowhere.
+
+Each Bluetooth device keeps a level of its own. A headset taken off sends the sound back to
+the phone's own output used before - the speaker, if that was it - not to Android's
+earpiece; moving from one connection to another, a headset worn stays where it is. The
+volume keys sum their presses and the level keeps up with them; their scale comes up over
+the settings, and over the channel's menus too: held-down buttons' menus now live in the
+channel's own window, the keys stay Duetto's there, and the back key closes the menu
+before anything else. Each choice in them has its name again, over its note.
+
+The levelled voice works. The engine Duetto used to ask Android for was accepted by some
+phones without anything being made behind it - the voice went through untouched, and the
+level chosen with the keys was lost with it. Now it is Android's own compressor in the one
+engine Android really has, checked once at the start: where the phone cannot, the choice is
+not shown at all. It raises the faint and brings down the loud - 22 dB between a low voice
+and a loud one become about 5 - and holds a shrill voice's edge with the rest; two choices
+are left, off and on, and while it works a small mark stands beside our output.
+
+On the locked screen the call and the standby notifications are shown whole. An update of
+Android's WebView no longer closes Duetto; why Android closed it stays until it is read, and
+Duetto's own update is told for ten minutes. Reporting a problem is one button, with the
+journal along unless taken off, and the journal - ours and the other phone's - reaches the
+developers alone, in a note nobody else sees; it no longer names the connections nor which
+app made a sound, and on Android 10 and older it lives among the app's private files.
+
+A server's key goes to that server alone, and a link to a server never seen asks before
+knocking; the channel's commands come from Duetto alone, and another app can no longer take
+it down. The phone signs with the server's name where the server asks for it; the server
+tells each phone of its own waiting codes only; links can carry a secret after a "#",
+which the browser never sends and the app reads into the pairing.
+
+The other person is never a "he", in any of the six languages. The calls' menu asks "Which
+sound to call with"; the alert sound is heard when chosen; "Back to" the connection left
+survives a restart; one's own little square has no label over the picture, and the talk
+button's words fit whatever the other person is called. An invitation under a name already
+taken says so, and capitals no longer make two names.
+
 ## 0.9.21 build 524
 
 **Version 0.9.21: talking through the silence, the levelled voice, and the way in.** When
