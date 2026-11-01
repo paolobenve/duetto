@@ -214,7 +214,7 @@ declare module 'duetto-platform' {
   export const Leveller: {
     setWanted(on: boolean): Promise<boolean>;
     setGain(gain: number): Promise<boolean>;
-    /** "on:time" or "on:frequency", "off", "waiting", or "failed:why" */
+    /** "on:frequency", "off", "waiting", or "failed:why" */
     state(): Promise<string | false>;
     /** Gives back the function to stop listening. */
     subscribe(cb: (state: string) => void): () => void;

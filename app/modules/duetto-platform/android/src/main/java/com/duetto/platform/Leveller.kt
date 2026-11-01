@@ -120,7 +120,7 @@ object Leveller {
     private var channels = 1
     private var dp: DynamicsProcessing? = null
 
-    /** "on:time" or "on:frequency" (the engine), "off", "waiting" (no voice playing yet), "failed:why" */
+    /** "on:frequency" (the engine), "off", "waiting" (no voice playing yet), "failed:why" */
     @Volatile var state = "off"
         private set
 
@@ -187,39 +187,35 @@ object Leveller {
     }
 
     /**
-     * The engine that follows the voice closest in time where the phone
-     * has it, the one working by frequencies where it does not: the moto
-     * on Android 13 refused the first ("bad parameter value", 25
-     * October), the POCO on Android 16 took it. The second works on
-     * blocks of about ten milliseconds, a little later and a little
-     * coarser on the attacks.
+     * The engine that works by frequencies, on blocks of about ten
+     * milliseconds: the only one Android has. The other, that follows
+     * the voice closer in time, is asked for as a variant, but nowhere
+     * made: the moto on Android 13 refused it ("bad parameter value",
+     * 25 October), and the POCO on Android 16 took it without making
+     * the engine - "FAVOR_TIME_RESOLUTION not available now" in its
+     * log, and the voice through untouched, the level too (1 November;
+     * see setEngineArchitecture in AOSP's DynamicsProcessingContext).
+     * Taken as it was, it explained a leveller that nobody could hear.
      */
     @RequiresApi(Build.VERSION_CODES.P)
     private fun create() {
-        var why = ""
-        for ((variant, name) in listOf(
-            DynamicsProcessing.VARIANT_FAVOR_TIME_RESOLUTION to "time",
-            DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION to "frequency",
-        )) {
-            try {
-                val cfg = DynamicsProcessing.Config.Builder(
-                    variant, channels, false, 0, true, 2, false, 0, true,
-                ).build()
-                cfg.setMbcBandAllChannelsTo(0, band())
-                cfg.setMbcBandAllChannelsTo(1, highBand())
-                cfg.setLimiterAllChannelsTo(limiter())
-                val d = DynamicsProcessing(0, session, cfg)
-                d.enabled = true
-                dp = d
-                say("on:$name")
-                return
-            } catch (e: Exception) {
-                Log.w(TAG, "leveller ($name): ${e.message}")
-                release()
-                why += "$name=${e.javaClass.simpleName}(${e.message.orEmpty().take(60)});"
-            }
+        try {
+            val cfg = DynamicsProcessing.Config.Builder(
+                DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION,
+                channels, false, 0, true, 2, false, 0, true,
+            ).build()
+            cfg.setMbcBandAllChannelsTo(0, band())
+            cfg.setMbcBandAllChannelsTo(1, highBand())
+            cfg.setLimiterAllChannelsTo(limiter())
+            val d = DynamicsProcessing(0, session, cfg)
+            d.enabled = true
+            dp = d
+            say("on:frequency")
+        } catch (e: Exception) {
+            Log.w(TAG, "leveller: ${e.message}")
+            release()
+            say("failed:${e.javaClass.simpleName}(${e.message.orEmpty().take(60)})")
         }
-        say("failed:$why")
     }
 
     /** The body of the voice, up to SPLIT_HZ. */
