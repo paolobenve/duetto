@@ -10,11 +10,16 @@
 package com.duetto.platform
 
 import android.media.audiofx.DynamicsProcessing
+import android.media.audiofx.Visualizer
 import android.os.Build
+import android.os.Handler
+import android.os.HandlerThread
 import android.util.Log
 import androidx.annotation.RequiresApi
+import java.util.Locale
 import kotlin.math.log10
 import kotlin.math.max
+import kotlin.math.pow
 
 /**
  * The other's voice levelled: the faint raised, the loud brought down,
@@ -144,9 +149,10 @@ object Leveller {
     /** WebRTC's AudioTrack has started: see LevelledAudio. */
     @Synchronized
     fun trackStarted(sessionId: Int, channelCount: Int) {
-        if (sessionId != session) release()
+        if (sessionId != session) { release(); meterStop() }
         session = sessionId
         channels = max(1, channelCount)
+        meterStart()
         apply()
     }
 
@@ -154,6 +160,7 @@ object Leveller {
     @Synchronized
     fun trackUnreachable(why: String) {
         release()
+        meterStop()
         session = 0
         say(if (wanted) "failed:$why" else "off")
     }
@@ -161,6 +168,7 @@ object Leveller {
     @Synchronized
     fun trackStopped() {
         release()
+        meterStop()
         session = 0
         apply()
     }
@@ -233,6 +241,97 @@ object Leveller {
     private fun limiter(): DynamicsProcessing.Limiter {
         val levelDb = 20f * log10(max(gain, 0.001f))
         return DynamicsProcessing.Limiter(true, true, 0, 1f, 60f, 10f, LIMIT_DB, levelDb)
+    }
+
+    /*
+     * What comes out, measured. The levels were worked out on paper, and
+     * twice the ear said otherwise (31 October, 1 November): a Visualizer
+     * on the same session reads the power of what plays, ten times a
+     * second, and takeOut gives its mean since the last call. JavaScript
+     * sets it beside the power that WebRTC says arrived, over the same
+     * stretch, and the journal gets the pairs: the real curve.
+     *
+     * Made before the compressor, on purpose: both want the end of the
+     * session's chain, and Android puts the one that comes second just
+     * before the one already there - so the meter stays after it. The
+     * order can be read in `dumpsys media.audio_flinger`.
+     */
+    private const val METER_EVERY_MS = 100L
+    private var meter: Visualizer? = null
+    private var meterThread: Handler? = null
+    private var outPower = 0.0
+    private var outCount = 0
+    /** why there is no meter, said once through takeOut */
+    private var meterProblem = ""
+
+    private val meterTick = object : Runnable {
+        override fun run() {
+            if (meterRead()) meterThread?.postDelayed(this, METER_EVERY_MS)
+        }
+    }
+
+    private fun meterStart() {
+        if (meter != null || session == 0) return
+        try {
+            val v = Visualizer(session)
+            v.measurementMode = Visualizer.MEASUREMENT_MODE_PEAK_RMS
+            v.enabled = true
+            meter = v
+            meterProblem = ""
+        } catch (e: Throwable) {
+            Log.w(TAG, "leveller meter: ${e.message}")
+            meterProblem = "failed:${e.javaClass.simpleName}(${e.message.orEmpty().take(60)})"
+            return
+        }
+        val h = meterThread ?: Handler(HandlerThread("duetto-meter").apply { start() }.looper)
+            .also { meterThread = it }
+        h.removeCallbacks(meterTick)
+        h.postDelayed(meterTick, METER_EVERY_MS)
+    }
+
+    @Synchronized
+    private fun meterRead(): Boolean {
+        val v = meter ?: return false
+        try {
+            val m = Visualizer.MeasurementPeakRms()
+            if (v.getMeasurementPeakRms(m) == Visualizer.SUCCESS) {
+                // millibels: -9600 is silence
+                if (m.mRms > -9600) outPower += 10.0.pow(m.mRms / 1000.0)
+                outCount++
+            }
+        } catch (_: Exception) { /* a reading missed */ }
+        return true
+    }
+
+    private fun meterStop() {
+        meterThread?.removeCallbacks(meterTick)
+        val v = meter ?: return
+        meter = null
+        try { v.release() } catch (_: Exception) { /* noop */ }
+        outPower = 0.0
+        outCount = 0
+    }
+
+    /**
+     * The mean power of what came out since the last call, in dBFS
+     * rounded: "" with nothing read, "-96" for silence, "failed:why"
+     * once if the meter could not be had.
+     */
+    @Synchronized
+    fun takeOut(): String {
+        if (meter == null) {
+            val why = meterProblem
+            meterProblem = ""
+            return why
+        }
+        val out = when {
+            outCount == 0 -> ""
+            outPower <= 0.0 -> "-96"
+            else -> String.format(Locale.US, "%.0f", 10 * log10(outPower / outCount))
+        }
+        outPower = 0.0
+        outCount = 0
+        return out
     }
 
     private fun release() {
