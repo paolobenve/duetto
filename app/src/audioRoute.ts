@@ -117,6 +117,8 @@ export function useAudioRoute(
   const inCall = useRef(false);
   /** where the call says its sound is, as the telephony last reported it */
   const callRoute = useRef<AudioRoute | null>(null);
+  /** the same, kept past the call's end: where the sound was in the call before */
+  const lastCallRoute = useRef<AudioRoute | null>(null);
   /** the latest changes of output, for the brake; and until when it holds */
   const routeTimes = useRef<number[]>([]);
   const frozenUntil = useRef(0);
@@ -277,6 +279,7 @@ export function useAudioRoute(
       if (!isRoute(r)) return;
       inCall.current = true;
       callRoute.current = r;
+      lastCallRoute.current = r;
       // The ear's own move, coming back: shown, and nothing else - not
       // counted for the brake, not taken for the output wanted.
       const em = earMoved.current;
@@ -637,9 +640,30 @@ export function useAudioRoute(
    * output that was in use, whatever the entry's setting says. That
    * setting is for entries one makes.
    */
-  const resume = useCallback((route: AudioRoute, present = true) => {
+  const resume = useCallback((route: AudioRoute, present = true, btHere = false) => {
     // A headset remembered and not connected: the phone's own output.
     if (!present) route = builtIn.current;
+    /*
+     * A headset the sound was on, still there: it stays. Moving to
+     * another connection put back that connection's speaker, and the
+     * headset came back a moment later by itself; two moves in a few
+     * seconds made five changes of output, the brake took them for a
+     * fight and left the sound on the speaker (the POCO, 1 November
+     * 17:44). The headset worn is the person's, not the connection's:
+     * the output remembered is only where to go when it goes.
+     */
+    const was = lastCallRoute.current;
+    const stillThere = was === 'BLUETOOTH' ? btHere
+      : was === 'WIRED_HEADSET' ? availableRef.current.includes('WIRED_HEADSET') : false;
+    if (stillThere && was && (route === 'SPEAKER_PHONE' || route === 'EARPIECE')) {
+      noteBuiltIn(route);
+      wanted.current = was;
+      currentRef.current = was;
+      setCurrent(was);
+      Journal.mark(`output:resume-kept:${was}`).catch(() => { /* noop */ });
+      applyRoute(was);
+      return;
+    }
     wanted.current = route;
     noteBuiltIn(route);
     setCurrent(route);
