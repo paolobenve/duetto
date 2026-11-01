@@ -1,3 +1,4 @@
 - Neues Telefon? Du kannst deine Duetto-Installation auf das neue Telefon umziehen.
 - Jedes Bluetooth-Gerät hat seine eigene Lautstärke.
+- Die ausgeglichene Stimme, die nicht funktionierte, funktioniert jetzt.
 - Und weitere kleine Verbesserungen.

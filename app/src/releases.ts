@@ -112,31 +112,37 @@ export const RELEASES: Release[] = [
       en: [
         'Changing phone? You can move your Duetto installation to the new phone.',
         'Each Bluetooth device has its own volume.',
+        'The levelled voice, which did not work, now works.',
         'And various other minor improvements.',
       ],
       it: [
         'Cambi telefono? Puoi traslocare la tua installazione di Duetto al telefono nuovo.',
         'Ogni dispositivo Bluetooth ha il suo volume.',
+        'La voce livellata, che non funzionava, ora funziona.',
         'E vari altri miglioramenti minori.',
       ],
       es: [
         '¿Cambias de teléfono? Puedes trasladar tu instalación de Duetto al teléfono nuevo.',
         'Cada dispositivo Bluetooth tiene su propio volumen.',
+        'La voz nivelada, que no funcionaba, ahora funciona.',
         'Y varias otras mejoras menores.',
       ],
       fr: [
         'Tu changes de téléphone ? Tu peux déménager ton installation de Duetto sur le nouveau.',
         'Chaque appareil Bluetooth a son propre volume.',
+        'La voix nivelée, qui ne marchait pas, marche maintenant.',
         'Et diverses autres petites améliorations.',
       ],
       pt: [
         'Vai trocar de telefone? Você pode mudar sua instalação do Duetto para o telefone novo.',
         'Cada dispositivo Bluetooth tem seu próprio volume.',
+        'A voz nivelada, que não funcionava, agora funciona.',
         'E várias outras melhorias menores.',
       ],
       de: [
         'Neues Telefon? Du kannst deine Duetto-Installation auf das neue Telefon umziehen.',
         'Jedes Bluetooth-Gerät hat seine eigene Lautstärke.',
+        'Die ausgeglichene Stimme, die nicht funktionierte, funktioniert jetzt.',
         'Und weitere kleine Verbesserungen.',
       ],
     },

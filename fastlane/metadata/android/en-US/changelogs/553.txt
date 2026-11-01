@@ -1,3 +1,4 @@
 - Changing phone? You can move your Duetto installation to the new phone.
 - Each Bluetooth device has its own volume.
+- The levelled voice, which did not work, now works.
 - And various other minor improvements.
