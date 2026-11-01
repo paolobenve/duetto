@@ -208,6 +208,23 @@ export function HeadphonesIcon(p: Props) {
   );
 }
 
+/**
+ * The voice levelled: a wave held between two lines, the loud and the
+ * faint brought to one height. Shown beside our output while the
+ * leveller really works.
+ */
+export function LevelledIcon(p: Props) {
+  const c = p.color ?? '#fff';
+  return (
+    <Base {...p}>
+      <Line x1={2.5} y1={5} x2={21.5} y2={5} stroke={c} strokeWidth={STROKE} strokeLinecap="round" />
+      <Line x1={2.5} y1={19} x2={21.5} y2={19} stroke={c} strokeWidth={STROKE} strokeLinecap="round" />
+      <Path d="M3 12c1.5-3.5 3-3.5 4.5 0s3 3.5 4.5 0 3-3.5 4.5 0 3 3.5 4.5 0"
+        stroke={c} strokeWidth={STROKE} strokeLinecap="round" strokeLinejoin="round" />
+    </Base>
+  );
+}
+
 export function BluetoothIcon(p: Props) {
   const c = p.color ?? '#fff';
   return (

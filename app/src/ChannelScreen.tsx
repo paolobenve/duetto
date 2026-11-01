@@ -32,7 +32,7 @@ import type { VideoStats } from './webrtc';
 import {
   VideoIcon, MicrophoneIcon, BellIcon, BellRingingIcon, LeaveIcon,
   SettingsIcon, FrontCameraIcon, BackCameraIcon,
-  SpeakerIcon, EarpieceIcon, HeadphonesIcon, BluetoothIcon,
+  SpeakerIcon, EarpieceIcon, HeadphonesIcon, BluetoothIcon, LevelledIcon,
   CarBatteryIcon, ChargingIcon, WifiIcon, MobileDataIcon, ClockIcon,
 } from './Icons';
 
@@ -1349,13 +1349,25 @@ export default function ChannelScreen(props: Props) {
     </>
   ), [peerMark, peerMicMark, peerCameraMark, showStats, peerState.volume, peerQuiet, peerHeld, peerHeldQuiet]);
 
+  /**
+   * The leveller really working on what we hear - not only chosen, not
+   * waiting for a voice: its little mark beside our output (1 November).
+   * Ours only: it is about what this phone plays.
+   */
+  const levelling = !!props.levellerState?.startsWith('on');
+
   /** Where the sound comes out HERE, as `peerMark` does for theirs. */
   const ownOutputMark = React.useCallback((size: number, background: string) => {
     const Icon = OUTPUT_ICON[audioRoute] ?? OUTPUT_ICON.SPEAKER_PHONE;
     // Crossed out when the listening is off - it followed the
     // microphone, and went crossed out at the wrong button.
-    return <Icon size={size} color="#e6ebf1" off={outputMuted} background={background} />;
-  }, [audioRoute, outputMuted]);
+    return (
+      <>
+        <Icon size={size} color="#e6ebf1" off={outputMuted} background={background} />
+        {levelling ? <LevelledIcon size={Math.round(size * 0.8)} color="#e6ebf1" /> : null}
+      </>
+    );
+  }, [audioRoute, outputMuted, levelling]);
 
   // The same as theirs: microphone, output, camera.
   const ownBadge = React.useMemo(() => {
@@ -1444,6 +1456,33 @@ export default function ChannelScreen(props: Props) {
     knockFlash();
     onKnock();
   }, [knockFlash, onKnock]);
+
+  /** The Listen button's drawing: the output, the battery of a headset, the leveller's tag. */
+  const listenIcon = (() => {
+    const output = btBattery != null ? (
+      <View style={styles.iconWithFigure}>
+        {React.createElement(OUTPUT_ICON[audioRoute] ?? OUTPUT_ICON.SPEAKER_PHONE, {
+          size: 24, off: outputMuted, ...(outputMuted ? {} : ON_LIGHT),
+        })}
+        <Text style={[styles.iconFigure, !outputMuted && styles.iconFigureOnLight]}>
+          {btBattery}%
+        </Text>
+      </View>
+    ) : React.createElement(OUTPUT_ICON[audioRoute] ?? OUTPUT_ICON.SPEAKER_PHONE, {
+      off: outputMuted, ...(outputMuted ? {} : ON_LIGHT),
+    });
+    if (!levelling) return output;
+    // A tag at the icon's corner: beside it there is no room,
+    // the battery's figure already went under it for that.
+    return (
+      <View>
+        {output}
+        <View style={[styles.levelTag, !outputMuted && styles.levelTagOnLight]}>
+          <LevelledIcon size={11} {...(outputMuted ? { color: '#e6ebf1' } : ON_LIGHT)} />
+        </View>
+      </View>
+    );
+  })();
 
   return (
     // The touch is gathered inside VideoStage, on the big picture
@@ -1550,6 +1589,7 @@ export default function ChannelScreen(props: Props) {
                   {React.createElement(OUTPUT_ICON[audioRoute] ?? OUTPUT_ICON.SPEAKER_PHONE, {
                     size: 17, color: '#e6ebf1', off: outputMuted, background: '#0b0e14',
                   })}
+                  {levelling ? <LevelledIcon size={13} color="#e6ebf1" /> : null}
                   {/* The battery's mark before the figure, the same as the
                       phone's: a bare percentage beside the headset read
                       as a volume. */}
@@ -1866,18 +1906,7 @@ export default function ChannelScreen(props: Props) {
           // headset's mark inside the button: the one figure one checks
           // before walking off with it. Beside the word it made the
           // label too long.
-          icon={btBattery != null ? (
-            <View style={styles.iconWithFigure}>
-              {React.createElement(OUTPUT_ICON[audioRoute] ?? OUTPUT_ICON.SPEAKER_PHONE, {
-                size: 24, off: outputMuted, ...(outputMuted ? {} : ON_LIGHT),
-              })}
-              <Text style={[styles.iconFigure, !outputMuted && styles.iconFigureOnLight]}>
-                {btBattery}%
-              </Text>
-            </View>
-          ) : React.createElement(OUTPUT_ICON[audioRoute] ?? OUTPUT_ICON.SPEAKER_PHONE, {
-            off: outputMuted, ...(outputMuted ? {} : ON_LIGHT),
-          })}
+          icon={listenIcon}
           active={!outputMuted}
           onPress={press(() => onToggleOutputMute?.())}
           onLongPress={press(() => setRouteMenu(true))}
@@ -3298,6 +3327,12 @@ const styles = StyleSheet.create({
   cardMark: { marginTop: 12 },
   cardMarkRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconWithFigure: { alignItems: 'center', justifyContent: 'center' },
+  // the levelled voice's tag, at the output icon's lower right corner
+  levelTag: {
+    position: 'absolute', right: -8, bottom: -5, borderRadius: 8, padding: 1,
+    backgroundColor: '#2a2d33',
+  },
+  levelTagOnLight: { backgroundColor: ON_LIGHT.background },
   markWithFigure: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   iconFigure: { color: '#e6ebf1', fontSize: 9, fontWeight: '700', lineHeight: 10, marginTop: -1 },
   iconFigureOnLight: { color: '#1e1f22' },
