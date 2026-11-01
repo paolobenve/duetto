@@ -218,6 +218,10 @@ declare module 'duetto-platform' {
     state(): Promise<string | false>;
     /** Gives back the function to stop listening. */
     subscribe(cb: (state: string) => void): () => void;
+    /** whether this phone can level: "" not known yet, "yes", "no:why" */
+    available(): Promise<string | false>;
+    /** Gives back the function to stop listening. */
+    onAvailable(cb: (available: string) => void): () => void;
   };
 
   /** What the video side of this phone can do. */

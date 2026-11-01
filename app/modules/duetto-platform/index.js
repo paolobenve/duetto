@@ -338,8 +338,17 @@ export const Leveller = isAndroid && NativeLeveller
         const sub = emitter.addListener('duetto-leveller', (s) => cb(String(s)));
         return () => sub.remove();
       },
+      /** whether this phone can level: "" not known yet, "yes", "no:why" */
+      available: () => call(NativeLeveller, 'available'),
+      /** Calls `cb(available)` when it is known, or changes. */
+      onAvailable(cb) {
+        const emitter = new NativeEventEmitter(NativeLeveller);
+        const sub = emitter.addListener('duetto-leveller-available', (s) => cb(String(s)));
+        return () => sub.remove();
+      },
     }
-  : { setWanted: unavailable, setGain: unavailable, state: unavailable, subscribe: () => () => {} };
+  : { setWanted: unavailable, setGain: unavailable, state: unavailable, subscribe: () => () => {},
+      available: () => Promise.resolve('no:not-android'), onAvailable: () => () => {} };
 
 export const Codecs = isAndroid && NativeCodecs
   ? { hasHardwareVp9Encoder: () => call(NativeCodecs, 'hasHardwareVp9Encoder') }

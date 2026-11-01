@@ -19,7 +19,9 @@ class LevellerModule(private val ctx: ReactApplicationContext) :
     ReactContextBaseJavaModule(ctx) {
 
     init {
-        Leveller.listener = { state -> tell(state) }
+        Leveller.listener = { state -> tell(EVENT, state) }
+        Leveller.availableListener = { a -> tell(AVAILABLE_EVENT, a) }
+        Leveller.probe(ctx)
     }
 
     override fun getName() = "DuettoLeveller"
@@ -33,13 +35,15 @@ class LevellerModule(private val ctx: ReactApplicationContext) :
 
     @ReactMethod fun state(p: Promise) = p.resolve(Leveller.state)
 
-    private fun tell(state: String) {
+    @ReactMethod fun available(p: Promise) = p.resolve(Leveller.available)
+
+    private fun tell(event: String, state: String) {
         if (!ctx.hasActiveReactInstance()) return
         try {
             ctx.getJSModule(
                 com.facebook.react.modules.core.DeviceEventManagerModule
                     .RCTDeviceEventEmitter::class.java,
-            ).emit(EVENT, state)
+            ).emit(event, state)
         } catch (_: Exception) {
             // Only the telling is lost: the voice is levelled or not all the same.
         }
@@ -47,5 +51,6 @@ class LevellerModule(private val ctx: ReactApplicationContext) :
 
     companion object {
         const val EVENT = "duetto-leveller"
+        const val AVAILABLE_EVENT = "duetto-leveller-available"
     }
 }

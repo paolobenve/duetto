@@ -187,6 +187,8 @@ type Props = {
    * on.
    */
   onLive?: (patch: Partial<DuoConfig>) => void;
+  /** false where this phone cannot level the voice: its choices are not shown */
+  levellerUsable?: boolean;
   /** whether the server carries reports to the beta testers' work items */
   reportsOpen?: boolean;
   /** a newer Duetto for this phone, and where: see updateFor */
@@ -214,7 +216,7 @@ type Props = {
 export default function SettingsScreen({
   initial, onForgetPair, onSwitchPair, onRenamePair, onChangeServer, onLeaveServer, onHandover, onRepair, onHaveCode,
   onClose, onOpenSetup,
-  onVolumeTest,
+  onVolumeTest, levellerUsable = true,
   vp9Here, vp9Peer, onQualityChange, onLive, reportsOpen, update, onReport, onInviteToWorkItem,
   canInvite, canAddPair, people = [], invitations = [], inviteAnswer,
   onAskPeople, onInvite, onForget, onForgetInvitation, pending = [], onForgetPending,
@@ -1137,7 +1139,9 @@ export default function SettingsScreen({
             <Switch value={!!(cfg.richerAudio)} {...SWITCH_COLOURS} />
           </View>
         </TouchableOpacity>
-        {/* The other's voice at nearly one level, here: see Leveller.kt. */}
+        {/* The other's voice at nearly one level, here: see Leveller.kt.
+            Only where the phone can. */}
+        {levellerUsable ? (<>
         <Text style={styles.sectionHint}>{t('settings.levelVoice')}</Text>
         <Text style={styles.hint}>{t('settings.levelVoiceNote')}</Text>
         <View style={styles.group}>
@@ -1160,6 +1164,7 @@ export default function SettingsScreen({
             );
           })}
         </View>
+        </>) : null}
         {/* What moves the sound by itself. Each a switch of its own; the
             second only makes sense under the first. */}
         {([

@@ -9,6 +9,8 @@
  */
 package com.duetto.platform
 
+import android.content.Context
+import android.media.AudioManager
 import android.media.audiofx.DynamicsProcessing
 import android.os.Build
 import android.util.Log
@@ -200,18 +202,12 @@ object Leveller {
     @RequiresApi(Build.VERSION_CODES.P)
     private fun create() {
         try {
-            val cfg = DynamicsProcessing.Config.Builder(
-                DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION,
-                channels, false, 0, true, 2, false, 0, true,
-            ).build()
-            cfg.setMbcBandAllChannelsTo(0, band())
-            cfg.setMbcBandAllChannelsTo(1, highBand())
-            cfg.setLimiterAllChannelsTo(limiter())
-            val d = DynamicsProcessing(0, session, cfg)
+            val d = DynamicsProcessing(0, session, config(channels))
             d.enabled = true
             val missing = engineMissing(d)
             if (missing != null) {
                 try { d.release() } catch (_: Exception) { /* noop */ }
+                tellAvailable("no:$missing")
                 say("failed:$missing")
                 return
             }
@@ -223,6 +219,84 @@ object Leveller {
             say("failed:${e.javaClass.simpleName}(${e.message.orEmpty().take(60)})")
         }
     }
+
+    @RequiresApi(Build.VERSION_CODES.P)
+    private fun config(channelCount: Int): DynamicsProcessing.Config {
+        val cfg = DynamicsProcessing.Config.Builder(
+            DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION,
+            channelCount, false, 0, true, 2, false, 0, true,
+        ).build()
+        cfg.setMbcBandAllChannelsTo(0, band())
+        cfg.setMbcBandAllChannelsTo(1, highBand())
+        cfg.setLimiterAllChannelsTo(limiter())
+        return cfg
+    }
+
+    /*
+     * Whether this phone can level at all, known before anybody asks:
+     * where it cannot, its choices are not shown (Paolo, 1 November).
+     * Tried once per version of the app and of Android, at the start,
+     * on a session of its own with nothing playing, and kept. A refusal
+     * by an exception may be of the moment, and is tried again at the
+     * next start; an engine missing, or an Android too old, is kept.
+     */
+    /** "" not known yet, "yes", or "no:why" */
+    @Volatile var available = ""
+        private set
+    @Volatile var availableListener: ((String) -> Unit)? = null
+
+    private fun tellAvailable(s: String) {
+        if (s.isEmpty() || s == available) return
+        available = s
+        availableListener?.invoke(s)
+    }
+
+    fun probe(context: Context) {
+        val ctx = context.applicationContext
+        Thread({ probeNow(ctx) }, "duetto-leveller-probe").start()
+    }
+
+    private fun probeNow(ctx: Context) {
+        try {
+            val prefs = ctx.getSharedPreferences("duetto_leveller", Context.MODE_PRIVATE)
+            val key = "${Build.FINGERPRINT}|${appVersion(ctx)}="
+            val saved = prefs.getString("probe", null)
+            if (saved != null && saved.startsWith(key)) {
+                tellAvailable(saved.removePrefix(key))
+                return
+            }
+            val result = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) "no:android-too-old"
+                else tryOnce(ctx)
+            if (result == "yes" || result.startsWith("no:no-engine") || result == "no:android-too-old") {
+                prefs.edit().putString("probe", key + result).apply()
+            }
+            tellAvailable(result)
+        } catch (e: Exception) {
+            Log.w(TAG, "leveller probe: ${e.message}")
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.P)
+    private fun tryOnce(ctx: Context): String {
+        val am = ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val sid = am.generateAudioSessionId()
+        if (sid <= 0) return ""
+        var d: DynamicsProcessing? = null
+        return try {
+            d = DynamicsProcessing(0, sid, config(1))
+            engineMissing(d)?.let { "no:$it" } ?: "yes"
+        } catch (e: Exception) {
+            "no:${e.javaClass.simpleName}(${e.message.orEmpty().take(60)})"
+        } finally {
+            try { d?.release() } catch (_: Exception) { /* noop */ }
+        }
+    }
+
+    private fun appVersion(ctx: Context): Long = try {
+        val info = ctx.packageManager.getPackageInfo(ctx.packageName, 0)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) info.longVersionCode
+        else @Suppress("DEPRECATION") info.versionCode.toLong()
+    } catch (_: Exception) { 0L }
 
     /**
      * Whether the effect really has an engine behind it: the ceiling set

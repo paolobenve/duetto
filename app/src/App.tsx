@@ -2329,7 +2329,26 @@ export default function App() {
    * side says when it really works - WebRTC's track playing, the effect
    * hung on it - and only then the level moves from the track to it.
    */
-  const levelWanted = cfg?.levelVoice === true;
+  /**
+   * Whether this phone can level at all, tried by the native side at the
+   * start: where it cannot, the choices are not shown and nothing is
+   * asked of it. Not known yet, they are.
+   */
+  const [levellerAvailable, setLevellerAvailable] = useState('');
+  useEffect(() => {
+    const known = (a: string) => {
+      if (!a) return;
+      setLevellerAvailable((was) => {
+        if (was !== a) Journal.mark(`leveller:available:${a}`).catch(() => { /* noop */ });
+        return a;
+      });
+    };
+    const stop = Leveller.onAvailable(known);
+    Leveller.available().then((a) => { if (a) known(a); }).catch(() => { /* noop */ });
+    return stop;
+  }, []);
+  const levellerUsable = !levellerAvailable.startsWith('no');
+  const levelWanted = cfg?.levelVoice === true && levellerUsable;
   const [levellerState, setLevellerState] = useState('off');
   const levellerOn = levellerState.startsWith('on');
   useEffect(() => {
@@ -7203,6 +7222,7 @@ export default function App() {
         <StatusBar barStyle="light-content" />
         <SettingsScreen
           initial={cfg}
+          levellerUsable={levellerUsable}
           onVolumeTest={runVolumeTest}
           onChangeServer={() => setScreen('welcome')}
           onLeaveServer={onLeaveServer}
@@ -7418,7 +7438,7 @@ export default function App() {
         levelChoice={levelWanted ? 'on' : 'off'}
         levellerState={levellerState}
         // The same setting as in the Settings, for this connection.
-        onLevelChoice={(c) => setCfg((prev) => {
+        onLevelChoice={!levellerUsable ? undefined : (c) => setCfg((prev) => {
           if (!prev) return prev;
           Journal.mark(`command:level-voice:${c}`).catch(() => { /* noop */ });
           return saveCfg({ ...prev, levelVoice: c === 'on' });
