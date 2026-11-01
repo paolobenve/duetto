@@ -5,6 +5,24 @@ Two pieces: the **signalling server** (compulsory) and **coturn** for the fallba
 
 ## 1. The signalling server
 
+The quick way, on a Linux machine with systemd - a Raspberry Pi with Debian or Raspberry Pi
+OS included - is the script, run on the server from a copy of the repository:
+
+```bash
+sudo apt install git nodejs npm         # Node 18 or newer: Debian trixie has 20
+git clone https://gitlab.com/paolobenve/duetto.git
+sudo bash duetto/server/deploy/install.sh --domain YOUR_DOMAIN
+```
+
+It does the steps of this section in one go: the service's user, the code in
+`/opt/duetto/server`, the smoke test (once more with longer times, if a slow machine misses
+the first), the settings in `/etc/duetto/server.env` with a new key of the house - which it
+prints once, at the end - and the service, started and asked `/healthz`. Run again, after a
+`git pull`, it updates the code and restarts the service, and leaves the settings, the list
+of phones and a unit of your own as they are. HTTPS and the relay stay with sections 2 and
+3. The steps by hand follow, for whoever wants to see them or has a machine of another
+shape.
+
 On the server:
 
 ```bash
