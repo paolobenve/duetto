@@ -517,7 +517,12 @@ export function useAudioRoute(
           headsetWas.current = selected === 'BLUETOOTH' || selected === 'WIRED_HEADSET';
           if (headsetGone) {
             fallBack(builtIn.current);
-          } else if (selected) {
+          } else if (selected && selected === wanted.current) {
+            // Only the output wanted, as for the call's own word: moving
+            // from one connection to another, between the call closed and
+            // the next one up, the library says its own earpiece for a
+            // moment, and that was taken for the phone's output used last -
+            // the headset switched off later went to the ear (1 November).
             noteBuiltIn(selected);
           }
 
