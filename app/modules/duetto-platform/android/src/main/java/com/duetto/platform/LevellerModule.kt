@@ -33,8 +33,6 @@ class LevellerModule(private val ctx: ReactApplicationContext) :
 
     @ReactMethod fun state(p: Promise) = p.resolve(Leveller.state)
 
-    @ReactMethod fun takeOut(p: Promise) = p.resolve(Leveller.takeOut())
-
     private fun tell(state: String) {
         if (!ctx.hasActiveReactInstance()) return
         try {

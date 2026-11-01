@@ -330,10 +330,9 @@ export const Leveller = isAndroid && NativeLeveller
   ? {
       setWanted: (on) => call(NativeLeveller, 'setWanted', !!on),
       setGain: (gain) => call(NativeLeveller, 'setGain', Number(gain) || 0),
+      /** "light", "medium" or "strong" */
       /** "on:time" or "on:frequency", "off", "waiting", or "failed:why" */
       state: () => call(NativeLeveller, 'state'),
-      /** the mean power of what came out since the last call, dBFS: see Leveller.kt */
-      takeOut: () => call(NativeLeveller, 'takeOut'),
       /** Calls `cb(state)` at every change. Gives back the function to stop. */
       subscribe(cb) {
         const emitter = new NativeEventEmitter(NativeLeveller);
@@ -341,7 +340,7 @@ export const Leveller = isAndroid && NativeLeveller
         return () => sub.remove();
       },
     }
-  : { setWanted: unavailable, setGain: unavailable, state: unavailable, takeOut: () => Promise.resolve(''), subscribe: () => () => {} };
+  : { setWanted: unavailable, setGain: unavailable, state: unavailable, subscribe: () => () => {} };
 
 export const Codecs = isAndroid && NativeCodecs
   ? { hasHardwareVp9Encoder: () => call(NativeCodecs, 'hasHardwareVp9Encoder') }

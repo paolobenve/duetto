@@ -216,8 +216,6 @@ declare module 'duetto-platform' {
     setGain(gain: number): Promise<boolean>;
     /** "on:time" or "on:frequency", "off", "waiting", or "failed:why" */
     state(): Promise<string | false>;
-    /** what came out since the last call, dBFS rounded; "" for nothing, "failed:why" once */
-    takeOut(): Promise<string>;
     /** Gives back the function to stop listening. */
     subscribe(cb: (state: string) => void): () => void;
   };

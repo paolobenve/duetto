@@ -307,11 +307,6 @@ function candidateType(candidate: string): string {
   return m ? m[1] : '?';
 }
 
-/** A gain as whole decibels, for the journal: silence as -96. */
-function gainDb(g: number): number {
-  return g > 0 ? Math.round(20 * Math.log10(g)) : -96;
-}
-
 export class ChannelSession {
   private pc: RTCPeerConnection | null = null;
   private localStream: MediaStream | null = null;
@@ -487,15 +482,6 @@ export class ChannelSession {
   private throughAllowed = true;
   /** the leveller is working: the level goes to it, the track plays whole */
   private levelling = false;
-  /** the level last applied, as a gain: for the journal's levels */
-  private gainNow = 1;
-  /**
-   * The leveller's curve, measured: what arrived and what came out over
-   * the same stretch, "in>out" in dBFS, gathered for a line a minute.
-   */
-  private levelPairs: string[] = [];
-  private levelPairsSince = 0;
-  private levelMeterSaid = false;
   /** the battery, told to the other side for their diagnostics */
   private battery: { percent: number; charging: boolean } | null = null;
   /** the network carrying us, told with the battery: with diagnostics on */
@@ -2342,11 +2328,9 @@ export class ChannelSession {
         if (!(dT > 0) || !(dE >= 0)) return '';
         return dE > 0 ? (10 * Math.log10(dE / dT)).toFixed(0) : '-96';
       };
-      const rxDb = level(energy.rx, this.voicePrev.rx);
-      Journal.voice(level(energy.mic, this.voicePrev.mic), rxDb)
+      Journal.voice(level(energy.mic, this.voicePrev.mic), level(energy.rx, this.voicePrev.rx))
         .catch(() => { /* noop */ });
       this.voicePrev = energy;
-      Leveller.takeOut().then((outDb) => this.noteLevels(rxDb, outDb)).catch(() => { /* noop */ });
       if (cells.audio || cells.video) {
         const a = cells.audio;
         const v = cells.video;
@@ -3488,9 +3472,6 @@ export class ChannelSession {
     // would give it, no louder.
     const base = this.peerGain === 0 && this.heardThrough ? this.throughGain : this.peerGain;
     const gain = this.hushed ? 0 : this.ducked ? base * 0.25 : base;
-    // The pairs gathered so far belong to the level they were heard at.
-    if (Math.abs(gainDb(gain) - gainDb(this.gainNow)) >= 1) this.flushLevels();
-    this.gainNow = gain;
     // Levelled, the level comes after the compressor, which would undo
     // it on the track: see Leveller.kt. Silence stays on the track.
     if (this.levelling) Leveller.setGain(gain).catch(() => { /* noop */ });
@@ -3530,42 +3511,9 @@ export class ChannelSession {
     Journal.mark(`talk-through:${on ? 'on' : 'off'}`).catch(() => { /* noop */ });
   }
 
-  /**
-   * One reading of the leveller's curve: what arrived, from WebRTC's
-   * energy counters, and what came out, from the meter after the
-   * compressor (Leveller.kt). Only while a voice arrives, and not while
-   * the voice is hushed. Asked for on 1 November, the compressor having
-   * been tuned twice on paper: a line a minute, "levels:on|off:<level
-   * in dB>:in>out,in>out,...".
-   */
-  private noteLevels(inDb: string, outDb: string) {
-    if (outDb.startsWith('failed')) {
-      if (!this.levelMeterSaid) Journal.mark(`levels:${outDb}`).catch(() => { /* noop */ });
-      this.levelMeterSaid = true;
-      return;
-    }
-    if (inDb !== '' && outDb !== '' && Number(inDb) > -60 && this.gainNow > 0) {
-      this.levelPairs.push(`${inDb}>${outDb}`);
-    }
-    const now = Date.now();
-    if (!this.levelPairsSince) this.levelPairsSince = now;
-    if (now - this.levelPairsSince >= 60_000) this.flushLevels();
-  }
-
-  private flushLevels() {
-    if (this.levelPairs.length) {
-      const g = gainDb(this.gainNow);
-      Journal.mark(`levels:${this.levelling ? 'on' : 'off'}:${g >= 0 ? '+' : ''}${g}:${this.levelPairs.join(',')}`)
-        .catch(() => { /* noop */ });
-    }
-    this.levelPairs = [];
-    this.levelPairsSince = Date.now();
-  }
-
   /** The leveller started or stopped working: the level moves to it, or back. */
   setLevelling(on: boolean) {
     if (on === this.levelling) return;
-    this.flushLevels();
     this.levelling = on;
     this.applyGain();
   }
