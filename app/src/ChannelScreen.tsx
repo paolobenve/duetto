@@ -1883,10 +1883,12 @@ export default function ChannelScreen(props: Props) {
         />
         {/* The voice both ways, a button each: the microphone - what
             they hear of me - and the output - what I hear of them -
-            silenced by a touch. Held down, either opens where one
-            speaks and hears from: on Android the microphone follows
-            the output. The output's own little button under the scale
-            is gone into this one. */}
+            silenced by a touch. Held down, the output opens what one
+            hears: where, how loud, levelled or not. The microphone
+            opens nothing: it has no choices of its own - on Android it
+            follows the output - and a menu all about the other's voice
+            under it was the wrong one. The output's own little button
+            under the scale is gone into this one. */}
         <CircleButton
           covered={covered}
           name={audioOn ? 'mic' : 'mic-off'}
@@ -1896,7 +1898,6 @@ export default function ChannelScreen(props: Props) {
           icon={<MicrophoneIcon off={!audioOn} {...(audioOn ? ON_LIGHT : {})} />}
           active={audioOn}
           onPress={press(onToggleAudio)}
-          onLongPress={press(() => setRouteMenu(true))}
         />
         <CircleButton
           covered={covered}
