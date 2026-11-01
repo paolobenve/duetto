@@ -476,7 +476,7 @@ export const fr: Dictionary = {
     richerVoice: 'Voix plus riche',
     richerVoiceNote: 'Double le plafond de l’audio, d’environ 4 à 8kB/s : la voix cesse de sonner téléphonique. Ça coûte 4 kB/s de plus par direction. Ça vaut pour les deux téléphones : ce que tu entends, c’est l’autre qui l’envoie.\nAvec la vidéo allumée, il monte tout seul, activée ou non : à côté d’un demi-mégabit de vidéo ces 4 kB/s passent inaperçus, et renoncer à la bonne voix pour les économiser serait une mauvaise affaire. Il compte de nouveau quand la vidéo s’éteint.',
     levelVoice: 'Voix nivelée',
-    levelVoiceNote: 'La voix de l’autre rapprochée d’un seul niveau : les sons faibles sont montés, les forts tenus sous un plafond. Seulement sur ce téléphone, sur ce que tu entends ; le volume reste le tien. Depuis Android 9.',
+    levelVoiceNote: 'La voix de l’autre rapprochée d’un seul niveau : les sons faibles sont montés, les forts baissés. Seulement sur ce téléphone, sur ce que tu entends ; le volume reste le tien. Depuis Android 9.',
     levelVoice_off: 'Désactivée',
     levelVoice_on: 'Activée',
     earOnProximity: 'À l\'oreille, dans l\'écouteur',

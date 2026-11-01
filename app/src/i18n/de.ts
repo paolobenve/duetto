@@ -476,7 +476,7 @@ export const de: Dictionary = {
     richerVoice: 'Vollere Stimme',
     richerVoiceNote: 'Sie verdoppelt die Obergrenze des Tons, von etwa 4 auf 8kB/s: die Stimme klingt nicht mehr nach Telefon. Das kostet 4 kB/s mehr in jede Richtung. Es gilt für beide Telefone: was du hörst, schickt die andere Person.\nMit eingeschaltetem Video geht es von selbst hinauf, ob an oder aus: neben einem halben Megabit Video fallen diese 4 kB/s nicht auf, und eine gute Stimme dafür aufzugeben wäre ein schlechter Handel. Geht das Video aus, zählt es wieder.',
     levelVoice: 'Ausgeglichene Stimme',
-    levelVoiceNote: 'Die Stimme der anderen Person näher an einen Pegel gebracht: Leises wird angehoben, Lautes bleibt unter einer Obergrenze. Nur auf diesem Telefon, für das, was du hörst; die Lautstärke bleibt deine. Ab Android 9.',
+    levelVoiceNote: 'Die Stimme der anderen Person näher an einen Pegel gebracht: Leises wird angehoben, Lautes gesenkt. Nur auf diesem Telefon, für das, was du hörst; die Lautstärke bleibt deine. Ab Android 9.',
     levelVoice_off: 'Aus',
     levelVoice_on: 'An',
     earOnProximity: 'Am Ohr in den Hörer',

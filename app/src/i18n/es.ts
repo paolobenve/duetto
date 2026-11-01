@@ -476,7 +476,7 @@ export const es: Dictionary = {
     richerVoice: 'Voz más rica',
     richerVoiceNote: 'Duplica el techo del audio, de unos 4 a 8kB/s: la voz deja de sonar telefónica. Cuesta 4 kB/s más por dirección. Vale para los dos teléfonos: lo que oyes lo manda la otra persona.\nCon el video encendido sube solo, activada o no: al lado de medio megabit de video esos 4 kB/s no se notan, y renunciar a la voz buena por ahorrarlos sería un mal negocio. Vuelve a contar cuando el video se apaga.',
     levelVoice: 'Voz nivelada',
-    levelVoiceNote: 'La voz de la otra persona acercada a un solo nivel: los sonidos débiles se suben, los fuertes se quedan bajo un techo. Solo en este teléfono, en lo que oyes tú; el volumen sigue siendo el tuyo. Desde Android 9.',
+    levelVoiceNote: 'La voz de la otra persona acercada a un solo nivel: los sonidos débiles se suben, los fuertes se bajan. Solo en este teléfono, en lo que oyes tú; el volumen sigue siendo el tuyo. Desde Android 9.',
     levelVoice_off: 'Apagada',
     levelVoice_on: 'Encendida',
     earOnProximity: 'Al oído, al auricular',
