@@ -40,6 +40,14 @@ sudo install -m 640 .env.example /etc/duetto/server.env    # it is fine as it is
 echo 'DEVICES_FILE=/var/lib/duetto/devices.json' | sudo tee -a /etc/duetto/server.env
 ```
 
+The test runs the server with its times shrunk - a heartbeat of 400 ms instead of 30 s -
+so that it lasts half a minute and not a quarter of an hour, and the times are tight. On a
+small board, still busy after the install, a timeout or two may fail with nothing wrong in
+the server: `SMOKE_SLOW=4 npm run test:smoke` makes every time four times as long, and if
+it passes so, the machine is only slow. When it fails, its last lines say the Node
+version, the machine and where it stopped: those, with the `FAIL` lines, are what to paste
+when asking for help.
+
 From now on the settings are changed with `sudoedit /etc/duetto/server.env`, and read by
 the service at its next start.
 

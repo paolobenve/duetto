@@ -14,7 +14,7 @@
 import { spawn } from 'node:child_process';
 import { WebSocket } from 'ws';
 import { generateKeyPairSync, sign } from 'node:crypto';
-import { tmpdir } from 'node:os';
+import { tmpdir, arch, cpus, loadavg, totalmem } from 'node:os';
 import { unlinkSync } from 'node:fs';
 
 const PORT = 8799;
@@ -31,6 +31,17 @@ const URL = `ws://127.0.0.1:${PORT}`;
 // The real heartbeat is 30 seconds and 4 minutes: here everything is
 // shrunk, otherwise checking it would mean sitting and watching for a
 // quarter of an hour. The ratios between the times stay the same.
+
+/**
+ * How much slower than a PC the machine may be: SMOKE_SLOW=4 makes every
+ * time four times as long, the server's and the test's own waits alike,
+ * so the ratios still hold. Shrunk times are tight on purpose, and a
+ * small board still busy after an install can miss one by a fraction of
+ * a second while the real server, with its 30 seconds, would be fine.
+ * The times below are written for a PC; slow() is what reaches the clock.
+ */
+const SLOW = Math.max(1, Number(process.env.SMOKE_SLOW) || 1);
+const slow = (ms) => Math.round(ms * SLOW);
 /** The key of the house: every join in this test carries it. */
 const KEY = 'chiave-di-prova';
 
@@ -65,20 +76,20 @@ const srv = spawn('node', ['src/index.js'], {
     // it really arrives in the joining message.
     TURN_URL: 'turn:example.org:3478', TURN_USER: 'duo', TURN_PASS: 'secret',
     SERVER_KEY: KEY,
-    HEARTBEAT_ACTIVE_MS: String(HEARTBEAT_ACTIVE_MS),
-    HEARTBEAT_LISTENING_MS: String(HEARTBEAT_LISTENING_MS),
-    HEARTBEAT_TICK_MS: '50',
-    ANSWER_WAIT_MS: String(ANSWER_WAIT_MS),
-    PEER_LEFT_GRACE_MS: String(GRACE_MS),
+    HEARTBEAT_ACTIVE_MS: String(slow(HEARTBEAT_ACTIVE_MS)),
+    HEARTBEAT_LISTENING_MS: String(slow(HEARTBEAT_LISTENING_MS)),
+    HEARTBEAT_TICK_MS: String(slow(50)),
+    ANSWER_WAIT_MS: String(slow(ANSWER_WAIT_MS)),
+    PEER_LEFT_GRACE_MS: String(slow(GRACE_MS)),
     // A goodbye's half minute and a drop's minute, short enough to be
     // told apart here.
-    QUICK_RETURN_MS: '1000',
-    RECENT_MS: '4000',
+    QUICK_RETURN_MS: String(slow(1000)),
+    RECENT_MS: String(slow(4000)),
   },
   stdio: ['ignore', 'ignore', 'inherit'],
 });
 
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const wait = (ms) => new Promise((r) => setTimeout(r, slow(ms)));
 
 /** A client with a queue of messages, to wait for one specific type. */
 function client(port = PORT) {
@@ -104,7 +115,7 @@ function client(port = PORT) {
     // With a limit: a server that does not come up would otherwise
     // leave the whole test waiting for ever, saying nothing.
     open: () => new Promise((resolve, reject) => {
-      const t = setTimeout(() => reject(new Error('the server does not open')), 3000);
+      const t = setTimeout(() => reject(new Error('the server does not open')), slow(3000));
       ws.once('open', () => { clearTimeout(t); resolve(); });
     }),
     /** The number the server greeted us with, to be signed. */
@@ -116,13 +127,13 @@ function client(port = PORT) {
     /** Stops reading: from here on it no longer answers the pings. */
     die: () => ws.pause(),
     closed: (ms) => new Promise((r) => {
-      const t = setTimeout(() => r(false), ms);
+      const t = setTimeout(() => r(false), slow(ms));
       ws.once('close', () => { clearTimeout(t); r(true); });
     }),
     /** The code it was closed with, or null if still open after ms. */
     closeCode: (ms) => new Promise((r) => {
       if (closedWith !== null) { r(closedWith); return; }
-      const t = setTimeout(() => r(null), ms);
+      const t = setTimeout(() => r(null), slow(ms));
       ws.once('close', (code) => { clearTimeout(t); r(code); });
     }),
     expect(type) {
@@ -130,7 +141,7 @@ function client(port = PORT) {
       if (i !== -1) return Promise.resolve(queue.splice(i, 1)[0]);
       return new Promise((resolve, reject) => {
         waiters.push({ type, resolve });
-        setTimeout(() => reject(new Error(`timeout on "${type}"`)), 3000);
+        setTimeout(() => reject(new Error(`timeout on "${type}"`)), slow(3000));
       });
     },
     /** true if NO message of that type arrives within ms */
@@ -143,9 +154,12 @@ function client(port = PORT) {
 }
 
 let failures = 0;
+/** the last check that passed: where an error came, for whoever reads it */
+let lastOk = '(none yet)';
 const check = (cond, name) => {
   console.log(`${cond ? 'OK  ' : 'FAIL'}  ${name}`);
   if (!cond) failures++;
+  else lastOk = name;
 };
 
 try {
@@ -448,12 +462,12 @@ try {
   v2.send({ type: 'bye' });
   const saidBye = await v1.expect('peer-left');
   check(saidBye.reason === 'bye', 'whoever says goodbye is announced as gone, not as dropped');
-  check(typeof saidBye.at === 'number' && Date.now() - saidBye.at < 5000,
+  check(typeof saidBye.at === 'number' && Date.now() - saidBye.at < slow(5000),
     'and with the moment it happened');
 
   // Whoever comes in afterwards learns when, and how, the other left.
   v1.close();
-  await new Promise((r) => setTimeout(r, 200));
+  await wait(200);
   const v1b = client();
   await v1b.open();
   v1b.send({ type: 'join', key: KEY, room: 'goodbyes', name: 'V1', side: 'A', mode: 'listening' });
@@ -682,7 +696,7 @@ try {
   await new Promise((r) => mute.once('open', r));
   mute.send(JSON.stringify({ type: 'join', key: KEY, room: 'talkers2', name: 'M', side: 'A', mode: 'active' }));
   const muteGone = await new Promise((r) => {
-    const t = setTimeout(() => r(false), HEARTBEAT_ACTIVE_MS + ANSWER_WAIT_MS * 3);
+    const t = setTimeout(() => r(false), slow(HEARTBEAT_ACTIVE_MS + ANSWER_WAIT_MS * 3));
     mute.once('close', () => { clearTimeout(t); r(true); });
   });
   check(muteGone, 'silent and pongless is still dismissed');
@@ -760,7 +774,7 @@ try {
     const start = () => spawn('node', ['src/index.js'], {
       env: {
         ...process.env, PORT: String(PORTR), HOST: '127.0.0.1', SERVER_KEY: KEY,
-        DEVICES_FILE: FILER, PEER_LEFT_GRACE_MS: String(GRACE_MS),
+        DEVICES_FILE: FILER, PEER_LEFT_GRACE_MS: String(slow(GRACE_MS)),
       },
       stdio: ['ignore', 'ignore', 'inherit'],
     });
@@ -815,7 +829,7 @@ try {
     env: {
       ...process.env, PORT: String(PORT2), HOST: '127.0.0.1',
       AUTHORISED_KEYS: `anna:${anna.pub}`,
-      HEARTBEAT_TICK_MS: '50',
+      HEARTBEAT_TICK_MS: String(slow(50)),
     },
     stdio: ['ignore', 'ignore', 'inherit'],
   });
@@ -870,7 +884,7 @@ try {
       ...process.env, PORT: String(PORT3), HOST: '127.0.0.1',
       AUTHORISED_KEYS: `anna:${anna.pub}`,
       DEVICES_FILE: LIST_FILE,
-      HEARTBEAT_TICK_MS: '50',
+      HEARTBEAT_TICK_MS: String(slow(50)),
     },
     stdio: ['ignore', 'ignore', 'inherit'],
   });
@@ -1099,10 +1113,24 @@ try {
   a.close(); c0.close(); d.close(); e.close(); f.close();
 } catch (err) {
   console.error('Error in the test:', err.message);
+  console.error('  after:', lastOk);
   failures++;
 } finally {
   srv.kill('SIGTERM');
   await wait(200);
   console.log(failures === 0 ? '\nALL OK' : `\n${failures} FAILURES`);
+  // What is needed to read a failure from somewhere else: these lines,
+  // pasted with the FAILs above them, are enough.
+  if (failures > 0) {
+    const cpu = cpus();
+    console.log(`node ${process.version}, ${process.platform}/${arch()}, `
+      + `${cpu.length} cores (${cpu[0]?.model ?? '?'}), `
+      + `${Math.round(totalmem() / 2 ** 20)} MB, load ${loadavg().map((l) => l.toFixed(1)).join(' ')}, `
+      + `times x${SLOW}`);
+    if (SLOW < 4) {
+      console.log('If the failures are timeouts, the machine may only be slow: '
+        + 'SMOKE_SLOW=4 npm run test:smoke makes every time four times as long.');
+    }
+  }
   process.exit(failures === 0 ? 0 : 1);
 }
