@@ -487,7 +487,7 @@ export const en = {
     vp9OtherPhone: 'The other phone has no VP9 encoder in hardware. Both need it: there is one codec for the whole session.',
     audio: 'Audio',
     richerVoice: 'Richer voice',
-    richerVoiceNote: 'It doubles the audio ceiling, from about 4 to 8kB/s: the voice stops sounding like a telephone. It costs 4 kB/s more in each direction. It holds for both phones: what you hear is sent by the other person.\nWith the video on it goes up by itself, on or off: beside half a megabit of video those 4 kB/s go unnoticed, and giving up a good voice to save them would be a poor bargain. It counts again when the video goes off.',
+    richerVoiceNote: 'It doubles the audio ceiling, from about 4 to 8 kB/s (32 to 64 kbit/s): the voice stops sounding like a telephone. It costs 4 kB/s more in each direction. It holds for both phones: what you hear is sent by the other person.\nWith the video on it goes up by itself, on or off: beside half a megabit of video those 4 kB/s go unnoticed, and giving up a good voice to save them would be a poor bargain. It counts again when the video goes off.',
     levelVoice: 'Levelled voice',
     levelVoiceNote: 'The other person\'s voice brought towards one level: faint sounds are raised, loud ones brought down. Only on this phone, on what you hear; your volume stays yours. Android 9 and later.',
     levelVoice_off: 'Off',

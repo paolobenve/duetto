@@ -474,7 +474,7 @@ export const de: Dictionary = {
     vp9OtherPhone: 'Das andere Telefon hat keinen VP9-Kodierer in der Hardware. Beide brauchen ihn: für die ganze Sitzung gibt es nur einen Codec.',
     audio: 'Ton',
     richerVoice: 'Vollere Stimme',
-    richerVoiceNote: 'Sie verdoppelt die Obergrenze des Tons, von etwa 4 auf 8kB/s: die Stimme klingt nicht mehr nach Telefon. Das kostet 4 kB/s mehr in jede Richtung. Es gilt für beide Telefone: was du hörst, schickt die andere Person.\nMit eingeschaltetem Video geht es von selbst hinauf, ob an oder aus: neben einem halben Megabit Video fallen diese 4 kB/s nicht auf, und eine gute Stimme dafür aufzugeben wäre ein schlechter Handel. Geht das Video aus, zählt es wieder.',
+    richerVoiceNote: 'Sie verdoppelt die Obergrenze des Tons, von etwa 4 auf 8 kB/s (von 32 auf 64 kbit/s): die Stimme klingt nicht mehr nach Telefon. Das kostet 4 kB/s mehr in jede Richtung. Es gilt für beide Telefone: was du hörst, schickt die andere Person.\nMit eingeschaltetem Video geht es von selbst hinauf, ob an oder aus: neben einem halben Megabit Video fallen diese 4 kB/s nicht auf, und eine gute Stimme dafür aufzugeben wäre ein schlechter Handel. Geht das Video aus, zählt es wieder.',
     levelVoice: 'Ausgeglichene Stimme',
     levelVoiceNote: 'Die Stimme der anderen Person näher an einen Pegel gebracht: Leises wird angehoben, Lautes gesenkt. Nur auf diesem Telefon, für das, was du hörst; die Lautstärke bleibt deine. Ab Android 9.',
     levelVoice_off: 'Aus',

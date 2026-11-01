@@ -474,7 +474,7 @@ export const es: Dictionary = {
     vp9OtherPhone: 'El otro teléfono no tiene el codificador VP9 en hardware. Hace falta en los dos: el códec es uno solo para toda la sesión.',
     audio: 'Audio',
     richerVoice: 'Voz más rica',
-    richerVoiceNote: 'Duplica el techo del audio, de unos 4 a 8kB/s: la voz deja de sonar telefónica. Cuesta 4 kB/s más por dirección. Vale para los dos teléfonos: lo que oyes lo manda la otra persona.\nCon el video encendido sube solo, activada o no: al lado de medio megabit de video esos 4 kB/s no se notan, y renunciar a la voz buena por ahorrarlos sería un mal negocio. Vuelve a contar cuando el video se apaga.',
+    richerVoiceNote: 'Duplica el techo del audio, de unos 4 a 8 kB/s (de 32 a 64 kbit/s): la voz deja de sonar telefónica. Cuesta 4 kB/s más por dirección. Vale para los dos teléfonos: lo que oyes lo manda la otra persona.\nCon el video encendido sube solo, activada o no: al lado de medio megabit de video esos 4 kB/s no se notan, y renunciar a la voz buena por ahorrarlos sería un mal negocio. Vuelve a contar cuando el video se apaga.',
     levelVoice: 'Voz nivelada',
     levelVoiceNote: 'La voz de la otra persona acercada a un solo nivel: los sonidos débiles se suben, los fuertes se bajan. Solo en este teléfono, en lo que oyes tú; el volumen sigue siendo el tuyo. Desde Android 9.',
     levelVoice_off: 'Apagada',
