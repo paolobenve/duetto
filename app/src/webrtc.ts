@@ -83,6 +83,8 @@ export type ChannelEvents = {
     hand?: Hand;
     /** they let us talk through their silence: missing from an older app */
     talkThrough?: boolean;
+    /** they hear our voice levelled, the engine really at work: missing from an older app */
+    levelled?: boolean;
   }) => void;
   /**
    * Whether we are receiving a video track.
@@ -509,6 +511,12 @@ export class ChannelSession {
    * would otherwise have to ask out loud.
    */
   private ourOutput = 'SPEAKER_PHONE';
+  /**
+   * Whether the other's voice is levelled here, the engine really at
+   * work and not only chosen: said beside the output, for them to see
+   * that what they say reaches us levelled.
+   */
+  private ourLevelled = false;
 
   /** A connection is being built: whoever arrives later waits for this. */
   private creating: Promise<void> | null = null;
@@ -1481,6 +1489,7 @@ export class ChannelSession {
         restoring: msg.restoring === true,
         hand: msg.hand && typeof msg.hand === 'object' ? msg.hand : undefined,
         talkThrough: msg.talkThrough === true,
+        levelled: msg.levelled === true,
       });
       this.setPeerWatching(msg.watching !== false);
       // Not heard: listening off or at zero, or in another call.
@@ -3407,6 +3416,7 @@ export class ChannelSession {
       kind: 'state',
       audio: this.isAudioEnabled(),
       output: this.ourOutput,
+      levelled: this.ourLevelled,
       // The label, as the greeting says it: a build on its way to a
       // version calls itself "0.9.15-pre" there, and the bare number
       // here made two phones of the same version look different.
@@ -3453,6 +3463,13 @@ export class ChannelSession {
   setOutput(output: string) {
     if (output === this.ourOutput) return;
     this.ourOutput = output;
+    this.broadcastState();
+  }
+
+  /** The same for the levelled voice: see ourLevelled. */
+  setLevelled(on: boolean) {
+    if (on === this.ourLevelled) return;
+    this.ourLevelled = on;
     this.broadcastState();
   }
 

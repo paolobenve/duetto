@@ -105,7 +105,9 @@ export type SignalMessage =
       /** putting back how things were on coming in: not choices of the moment */
       restoring?: boolean;
       /** we let them talk through our silence: see talkThrough in webrtc.ts */
-      talkThrough?: boolean }
+      talkThrough?: boolean;
+      /** we hear their voice levelled: see ourLevelled in webrtc.ts */
+      levelled?: boolean }
   // "I did not leave: the phone closed the window on me."
   //
   // Sent by the headless presence when it takes the place of an app

@@ -1492,6 +1492,8 @@ export default function App() {
     volume?: number;
     /** they let us talk through their listening turned off; missing from an older app */
     talkThrough?: boolean;
+    /** they hear our voice levelled; missing from an older app */
+    levelled?: boolean;
   }>({ audio: true, video: false });
   /** their voice heard here through our listening turned off: see talkThrough in webrtc.ts */
   const [heardThrough, setHeardThrough] = useState(false);
@@ -2117,7 +2119,7 @@ export default function App() {
    */
   const peerStateRef = useRef<{
     audio?: boolean; video?: boolean; camera?: string; output?: string; busy?: boolean;
-    volume?: number;
+    volume?: number; levelled?: boolean;
   }>({});
 
   /**
@@ -2362,6 +2364,11 @@ export default function App() {
     });
     return stop;
   }, []);
+  // Said to the other, as the output is: the mark beside our output on
+  // their screen.
+  useEffect(() => {
+    sessionRef.current?.setLevelled(levellerOn);
+  }, [levellerOn, inChannel, sessionGen]);
   useEffect(() => {
     Leveller.setWanted(levelWanted).catch(() => { /* noop */ });
   }, [levelWanted]);
@@ -5511,12 +5518,15 @@ export default function App() {
           if (st.output && before.output !== st.output) {
             Journal.mark(`peer-audio-output:${st.output}`).catch(() => {});
           }
+          if ((before.levelled === true) !== (st.levelled === true)) {
+            Journal.mark(`peer-levelled:${st.levelled ? 'on' : 'off'}`).catch(() => {});
+          }
           if ((before.busy === true) !== (st.busy === true)) {
             Journal.mark(`peer-busy:${st.busy ? 'on' : 'off'}`).catch(() => {});
           }
           peerStateRef.current = {
             audio: st.audio, video: st.video, camera: st.camera, output: st.output,
-            busy: st.busy, volume: st.volume,
+            busy: st.busy, volume: st.volume, levelled: st.levelled,
           };
           // If they send us their state they are back, whatever the
           // countdown was saying: without stopping it, a moment later

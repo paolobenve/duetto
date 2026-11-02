@@ -682,6 +682,8 @@ type Props = {
     held?: number;
     /** they let us talk through their listening turned off */
     talkThrough?: boolean;
+    /** they hear our voice levelled: the mark beside their output */
+    levelled?: boolean;
   };
   /**
    * Held down, our voice through their silence: see talkThrough in
@@ -1313,9 +1315,16 @@ export default function ChannelScreen(props: Props) {
     const where = (peerState.output as AudioRoute) ?? 'SPEAKER_PHONE';
     const Icon = OUTPUT_ICON[where] ?? OUTPUT_ICON.SPEAKER_PHONE;
     // The background is what lets the crossing-out bar stand apart from
-    // the drawing: it changes with whatever the mark rests on.
-    return <Icon size={size} color="#e6ebf1" off={peerDeaf} background={background} />;
-  }, [peerState.output, peerDeaf]);
+    // the drawing: it changes with whatever the mark rests on. Beside
+    // it, the levelled voice's mark when they hear us levelled, as ours
+    // is beside our output.
+    return (
+      <>
+        <Icon size={size} color="#e6ebf1" off={peerDeaf} background={background} />
+        {peerState.levelled ? <LevelledIcon size={Math.round(size * 0.8)} color="#e6ebf1" /> : null}
+      </>
+    );
+  }, [peerState.output, peerState.levelled, peerDeaf]);
   const peerMicMark = React.useCallback((size: number, background: string) => (
     <MicrophoneIcon size={size} color="#e6ebf1" off={!peerState.audio} background={background} />
   ), [peerState.audio]);
@@ -1352,7 +1361,8 @@ export default function ChannelScreen(props: Props) {
   /**
    * The leveller really working on what we hear - not only chosen, not
    * waiting for a voice: its little mark beside our output (1 November).
-   * Ours only: it is about what this phone plays.
+   * It is about what this phone plays; theirs comes in their state, and
+   * goes beside their output (peerMark).
    */
   const levelling = !!props.levellerState?.startsWith('on');
 
