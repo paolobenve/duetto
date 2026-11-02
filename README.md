@@ -431,9 +431,11 @@ really lived on, day after day:
 | POCO X8 Pro (Xiaomi) | 16 · HyperOS 3.0 | the maker's own rules: auto-start has to be granted by hand, and the tick for unrestricted battery can stay grey even once it is |
 | Motorola edge 50 fusion | 14 | the phone that showed the volume keys moving the call volume index and changing nothing at all in the ear — which is why, in the channel, those keys are the app's |
 | Motorola moto g82 5G | 13 | |
+| Samsung Galaxy A34 5G | 16 | a beta tester's, on mobile data, since November 2026: the levelled voice works on it |
 
-It is a small sample: two makers and three versions of Android. On anything else it has
-never been switched on, which does not mean it will not work — it means nobody has looked.
+It is a small sample: three makers and three versions of Android, the Samsung for a few
+days only. On anything else it has never been switched on, which does not mean it will not
+work — it means nobody has looked.
 
 ⚠️ **Two system settings are indispensable**, and the app offers them at the end of the
 pairing (they can be opened again from *the cogwheel → Staying reachable*):
