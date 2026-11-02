@@ -532,8 +532,26 @@ Whether two Duettos understand each other is a third number, the protocol
 to its server, with the oldest it still understands; it is raised only when the way of
 talking changes so that an older Duetto would misunderstand. Whoever finds the other too
 old - or itself too old for the other - says so above the buttons, instead of a channel
-that half works. Every Duetto 1.x will talk to every other 1.x for as long as that number
-stands.
+that half works.
+
+### What 1.x promises
+
+From 1.0 on, and for as long as the first number is 1:
+
+- **Every app talks to every app.** A 1.0 and a 1.9 make a channel together: the protocol
+  stays readable by the oldest 1.x (`PROTOCOL_MIN` stays 1). A change that would leave a
+  1.x behind is a 2.0, not a 1.something.
+- **Every app works with every server.** An app does not make anybody update their
+  server, and a server does not make anybody update their app. A newer app on an older
+  server keeps the channel - pairing, presence, the call, voice, video, notifications -
+  and leaves out what that server cannot do yet, rather than half doing it.
+- **An update loses nothing.** Pairs, keys and settings carry over on the phones; on the
+  server, a newer 1.x reads the settings and the list of phones an older one wrote, with
+  no step by hand. Going back to an older server is not promised.
+- **What is new for the phones is announced.** When a server setting changes meaning or
+  a new one becomes worth setting, the CHANGELOG says so in the release that brings it.
+
+Before 1.0 none of this held: the 0.9s changed as they had to.
 
 The build number is a separate matter and goes up by itself at every compilation. It is
 what tells two APKs that call themselves the same version apart, so it is beside the

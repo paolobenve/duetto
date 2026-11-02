@@ -14,6 +14,10 @@ git clone https://gitlab.com/paolobenve/duetto.git
 sudo bash duetto/server/deploy/install.sh --domain YOUR_DOMAIN
 ```
 
+From 1.0 on, a server and the apps need not be updated together: any 1.x app works with
+any 1.x server, and a newer server reads what an older one wrote (README, *What 1.x
+promises*).
+
 It does the steps of this section in one go: the service's user, the code in
 `/opt/duetto/server`, the smoke test (once more with longer times, if a slow machine misses
 the first), the settings in `/etc/duetto/server.env` with a new key of the house - which it
