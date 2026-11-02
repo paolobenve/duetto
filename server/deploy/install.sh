@@ -75,6 +75,16 @@ if [ -n "$DOMAIN" ] && ! [[ "$DOMAIN" =~ ^[A-Za-z0-9.-]+$ ]]; then
   fail "--domain takes a bare name, like duetto.example.org: no https://, no path."
 fi
 
+# Asked, when not given and somebody is at the keyboard: it only goes
+# into settings written for the first time.
+if [ -z "$DOMAIN" ] && [ ! -f "$ENV_FILE" ] && [ -t 0 ]; then
+  echo "The name the phones will dial, like duetto.example.org"
+  read -r -p "(empty to write it in the settings later): " DOMAIN
+  if [ -n "$DOMAIN" ] && ! [[ "$DOMAIN" =~ ^[A-Za-z0-9.-]+$ ]]; then
+    fail "$DOMAIN is not a bare name, like duetto.example.org: no https://, no path."
+  fi
+fi
+
 SRC=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 DEST=$DIR/server
 [ -f "$SRC/src/index.js" ] || fail "$SRC does not look like Duetto's server folder."
@@ -227,6 +237,17 @@ cat <<EOF
    TURN_PASS (and STUN_URL) in $ENV_FILE, and: sudo systemctl restart $SERVICE
 4. Knock with a phone of yours first: in the app, the server's name. The first
    phone that knows the key of the house becomes the owner.
+EOF
+LAN=$(hostname -I 2>/dev/null | awk '{print $1}')
+cat <<EOF
+
+The ports to open towards this machine${LAN:+ ($LAN)}, on the router if it is at home:
+   TCP 443            HTTPS, through the proxy of step 2 (and TCP 80, if the
+                      certificate comes from Let's Encrypt by its web check)
+   TCP 5349           the relay over TLS, the one the phones use (step 3)
+   TCP+UDP 3478       STUN, for the phones to learn their public address
+   UDP 49160-49200    the relay's traffic (min-port/max-port in turnserver.conf)
+Port $PORT stays closed: the proxy reaches it on 127.0.0.1.
 EOF
 if [ -z "$DOMAIN" ] && [ -n "$KEY" ]; then
   echo "   With no --domain, write the name in HOST_NAMES, TURN_URL and STUN_URL"

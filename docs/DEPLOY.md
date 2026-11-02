@@ -20,8 +20,9 @@ the first), the settings in `/etc/duetto/server.env` with a new key of the house
 prints once, at the end - and the service, started and asked `/healthz`. Run again, after a
 `git pull`, it updates the code and restarts the service, and leaves the settings, the list
 of phones and a unit of your own as they are. HTTPS and the relay stay with sections 2 and
-3. The steps by hand follow, for whoever wants to see them or has a machine of another
-shape.
+3. Without `--domain` it asks for the name, and at the end it lists the ports to open
+towards the machine - on the router, for a server at home. The steps by hand follow, for
+whoever wants to see them or has a machine of another shape.
 
 On the server:
 
