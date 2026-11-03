@@ -771,6 +771,11 @@ export function leaveMail(room, payload, fromPub, until) {
 /**
  * The mail for a card, or for a room: taken, it is gone, and so is the
  * wait it answered - the room is the pair's from here on.
+ *
+ * Never by the card that wrote it. The phone that opened the link comes
+ * back, as the pair's presence, by the very room it left its key in,
+ * and it used to take its own letter there: the maker found an empty
+ * mailbox, and a pair made on one side only.
  */
 export function takeMail({ pub = '', room = '' } = {}) {
   const data = read();
@@ -778,7 +783,7 @@ export function takeMail({ pub = '', room = '' } = {}) {
   const mine = new Set(data.pending.filter((x) => (pub && x.ownerPub === pub) || (room && x.room === room))
     .map((x) => x.room));
   if (room) mine.add(room);
-  const items = data.mail.filter((x) => mine.has(x.room));
+  const items = data.mail.filter((x) => mine.has(x.room) && !(pub && x.from === pub));
   if (items.length === 0) return [];
   const rooms = new Set(items.map((x) => x.room));
   data.mail = data.mail.filter((x) => !rooms.has(x.room));

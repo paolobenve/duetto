@@ -353,6 +353,13 @@ try {
   let pm = await ask(mg.ws, { type: 'pair-mail', payload: { kind: 'pubkey', pub: 'GINO', name: 'gino' } });
   check('mail left', pm.type === 'pair-mail-result' && pm.ok === true, pm);
   mg.ws.close(); await sleep(100);
+  // Its presence comes back by the same room, before the maker does:
+  // the letter is not handed back to the phone that wrote it.
+  const back = await joinWith(PORT, gino, ROOM);
+  await sleep(300);
+  check('the writer back in the room does not take its own letter',
+    back.answer.type === 'joined' && !back.got.some((m) => m.type === 'mail'), back.got);
+  back.ws.close(); await sleep(100);
   ma = await join(PORT, anna, 'someotherroom', 'anna');
   check('maker back, elsewhere', ma.answer.type === 'joined', ma.answer);
   let mail = await nextMsg(ma.ws);
