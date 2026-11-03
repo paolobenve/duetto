@@ -851,4 +851,12 @@ export const it: Dictionary = {
     whyStopped: 'il telefono vecchio non ha finito: guardalo, dice cosa manca',
     whyOther: 'errore {code}',
   },
+
+  unread: {
+    title: 'Impostazioni non leggibili',
+    body: 'Duetto non riesce a leggere le sue impostazioni su questo telefono. Le tue connessioni non sono state toccate.',
+    byItself: 'Riprova da solo ogni pochi secondi, e appena ci riesce riparte come sempre. Se non si sblocca, prova a riavviare il telefono.',
+    retry: 'Riprova',
+    trying: 'Sto riprovando…',
+  },
 };

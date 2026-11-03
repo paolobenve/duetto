@@ -852,4 +852,12 @@ export const fr: Dictionary = {
     whyStopped: 'l’ancien téléphone n’a pas fini : regarde-le, il dit ce qui manque',
     whyOther: 'erreur {code}',
   },
+
+  unread: {
+    title: 'Réglages illisibles',
+    body: 'Duetto n’arrive pas à lire ses réglages sur ce téléphone. Tes liaisons n’ont pas été touchées.',
+    byItself: 'Il réessaie tout seul toutes les quelques secondes, et repart comme d’habitude dès qu’il y arrive. Si ça ne se débloque pas, essaie de redémarrer le téléphone.',
+    retry: 'Réessayer',
+    trying: 'Nouvel essai…',
+  },
 };

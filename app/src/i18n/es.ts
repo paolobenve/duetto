@@ -852,4 +852,12 @@ export const es: Dictionary = {
     whyStopped: 'el teléfono viejo no ha terminado: míralo, dice lo que falta',
     whyOther: 'error {code}',
   },
+
+  unread: {
+    title: 'Ajustes ilegibles',
+    body: 'Duetto no consigue leer sus ajustes en este teléfono. Tus conexiones no se han tocado.',
+    byItself: 'Lo vuelve a intentar solo cada pocos segundos, y en cuanto lo consigue sigue como siempre. Si no se desbloquea, prueba a reiniciar el teléfono.',
+    retry: 'Probar otra vez',
+    trying: 'Probando otra vez…',
+  },
 };

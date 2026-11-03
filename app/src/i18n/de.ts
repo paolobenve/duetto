@@ -852,4 +852,12 @@ export const de: Dictionary = {
     whyStopped: 'das alte Telefon ist nicht fertig geworden: sieh nach, es sagt, was fehlt',
     whyOther: 'Fehler {code}',
   },
+
+  unread: {
+    title: 'Einstellungen nicht lesbar',
+    body: 'Duetto kann seine Einstellungen auf diesem Telefon nicht lesen. Deine Verbindungen wurden nicht angerührt.',
+    byItself: 'Es versucht es alle paar Sekunden von selbst und macht wie gewohnt weiter, sobald es klappt. Wenn es sich nicht löst, starte das Telefon neu.',
+    retry: 'Noch einmal versuchen',
+    trying: 'Neuer Versuch…',
+  },
 };

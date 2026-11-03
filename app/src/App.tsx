@@ -47,6 +47,7 @@ import SettingsScreen from './SettingsScreen';
 import SetupScreen from './SetupScreen';
 import PairingScreen from './PairingScreen';
 import WelcomeScreen from './WelcomeScreen';
+import UnreadScreen from './UnreadScreen';
 import HandoverScreen from './HandoverScreen';
 import { leaveServer, knock, watchDoor, openDoorLine } from './door';
 import { emptyThisPhone } from './device';
@@ -84,7 +85,7 @@ import { avatarFor, peerAvatar } from './avatar';
 // No screen in between: either you are setting things up, or pairing,
 // or in the channel. Opening the app - from the icon or from a
 // notification - means going in.
-type Screen = 'loading' | 'welcome' | 'settings' | 'pairing' | 'setup' | 'channel' | 'handover';
+type Screen = 'loading' | 'welcome' | 'settings' | 'pairing' | 'setup' | 'channel' | 'handover' | 'unread';
 
 /**
  * How long the other person's seat is kept when their network drops.
@@ -99,6 +100,8 @@ type Screen = 'loading' | 'welcome' | 'settings' | 'pairing' | 'setup' | 'channe
 const RETURN_WAIT_MS = 6000;
 /** a newer Duetto put off with "Later" is offered again after this: see UpdateModal */
 const UPDATE_ASK_AGAIN_MS = 3 * 86400_000;
+/** how often a configuration that could not be read is read again: see readAgain */
+const REREAD_MS = 5_000;
 
 /**
  * How often our own journal goes to the other phone.
@@ -769,6 +772,8 @@ export default function App() {
    */
   const [arrived, setArrived] = useState<DuettoLink | null>(null);
   const arrivedRef = useRef<DuettoLink | null>(null);
+  /** the configuration could not be read: see openOn */
+  const unreadRef = useRef(false);
   useEffect(() => {
     const onLink = (url: string | null) => {
       if (!url) return;
@@ -800,6 +805,9 @@ export default function App() {
       // exactly as it does for a QR code held up by the other phone.
       arrivedRef.current = link;
       setArrived(link);
+      // The configuration not read: the link waits, and the welcome
+      // takes it once it is (see openOn).
+      if (unreadRef.current) return;
       setScreen('welcome');
     };
     // Cold start: the link that opened the app. The boot below asks
@@ -1144,8 +1152,9 @@ export default function App() {
   useEffect(() => {
     const take = () => {
       // Not before the configuration is read: taken, the word is gone,
-      // and with no connections to look it up in it would be lost.
-      if (!cfgRef.current) return;
+      // and with no connections to look it up in it would be lost. Nor
+      // while it could not be read (see loadConfig): none in it either.
+      if (!cfgRef.current || cfgRef.current.unread) return;
       Foreground.takeOpenedPair().then((got) => {
         const c = cfgRef.current;
         // "Enter" on a connection's line of the standing notification:
@@ -4023,41 +4032,87 @@ export default function App() {
   }, [sessionGen]);
 
   // --- start-up ------------------------------------------------------------
+  /**
+   * The screen the app opens on, for the configuration just read: at
+   * the start, and when one that could not be read is read at last.
+   */
+  const openOn = useCallback((c: DuoConfig) => {
+    unreadRef.current = c.unread === true;
+    // Not read (see loadConfig): not the welcome, which would set the
+    // phone up again on top of nothing - the screen that says so, and
+    // reads again.
+    if (c.unread) {
+      setScreen('unread');
+      return;
+    }
+    // Handing over to a new phone, and stopped half way - the app
+    // closed, the phone restarted: finishing it is all that is left.
+    if (c.handingOver) {
+      setHandover({ left: c.handingOver });
+      setScreen('handover');
+      return;
+    }
+    // Opened on an invitation or on a pairing code: the welcome,
+    // which has them in hand and knocks by itself.
+    if (arrivedRef.current) setScreen('welcome');
+    // No server yet: the welcome, which asks for the server and
+    // for nothing else until the server says what it needs.
+    else if (!isServerConfigured(c)) setScreen('welcome');
+    // No pair yet: the pairing, if the server has said what we are
+    // to it; otherwise the welcome, which knocks and finds out.
+    // No pair yet: the settings, where the server is and the two
+    // ways to a pair - not the code itself, which opens a room on
+    // the server at every start and leaves it there if nobody comes.
+    else if (!isPaired(c)) setScreen(opensHere(c) ? 'settings' : 'welcome');
+    // The system settings are offered once, as soon as there is a
+    // pair: before that there would be no sense explaining them.
+    else if (!c.setupShown) setScreen('setup');
+    // Opening the app means wanting to be in the channel: no buttons
+    // in between. The "waiting" state is for after pressing Leave.
+    else setScreen('channel');
+  }, []);
+
   useEffect(() => {
     (async () => {
       // Before the configuration: if it arrived later, the little
       // square would appear where it was born and then jump.
       await loadPipPosition();
-      let c = await loadConfig();
+      const c = await loadConfig();
+      if (c.unread) Journal.mark('config:unread').catch(() => { /* noop */ });
       setCfg(c);
       readOwnDeath();
-      // Handing over to a new phone, and stopped half way - the app
-      // closed, the phone restarted: finishing it is all that is left.
-      if (c.handingOver) {
-        setHandover({ left: c.handingOver });
-        setScreen('handover');
-        return;
-      }
-      // Opened on an invitation or on a pairing code: the welcome,
-      // which has them in hand and knocks by itself.
-      if (arrivedRef.current) setScreen('welcome');
-      // No server yet: the welcome, which asks for the server and
-      // for nothing else until the server says what it needs.
-      else if (!isServerConfigured(c)) setScreen('welcome');
-      // No pair yet: the pairing, if the server has said what we are
-      // to it; otherwise the welcome, which knocks and finds out.
-      // No pair yet: the settings, where the server is and the two
-      // ways to a pair - not the code itself, which opens a room on
-      // the server at every start and leaves it there if nobody comes.
-      else if (!isPaired(c)) setScreen(opensHere(c) ? 'settings' : 'welcome');
-      // The system settings are offered once, as soon as there is a
-      // pair: before that there would be no sense explaining them.
-      else if (!c.setupShown) setScreen('setup');
-      // Opening the app means wanting to be in the channel: no buttons
-      // in between. The "waiting" state is for after pressing Leave.
-      else setScreen('channel');
+      openOn(c);
     })();
-  }, []);
+  }, [openOn]);
+
+  /**
+   * The configuration that could not be read, read again: every few
+   * seconds while its screen is up, and at once at "Try again". Read,
+   * the app opens where it would have at the start.
+   */
+  const rereading = useRef<Promise<void> | null>(null);
+  const readAgain = useCallback((): Promise<void> => {
+    if (!rereading.current) {
+      rereading.current = (async () => {
+        const c = await loadConfig();
+        if (c.unread) return;
+        Journal.mark('config:read-again').catch(() => { /* noop */ });
+        setCfg(c);
+        openOn(c);
+      })().finally(() => { rereading.current = null; });
+    }
+    return rereading.current;
+  }, [openOn]);
+  const [retrying, setRetrying] = useState(false);
+  const retryByHand = useCallback(() => {
+    setRetrying(true);
+    readAgain().finally(() => { setRetrying(false); });
+  }, [readAgain]);
+  useEffect(() => {
+    if (screen !== 'unread') return;
+    const timer = setInterval(() => { readAgain(); }, REREAD_MS);
+    return () => clearInterval(timer);
+  }, [screen, readAgain]);
 
   /**
    * What, on changing, really forces the connection to be rebuilt.
@@ -7084,6 +7139,15 @@ export default function App() {
       <View style={styles.center}>
         <StatusBar barStyle="light-content" />
         <ActivityIndicator size="large" color="#2f7cf6" />
+      </View>
+    );
+  }
+
+  if (screen === 'unread') {
+    return (
+      <View style={styles.safe}>
+        <StatusBar barStyle="light-content" />
+        <UnreadScreen trying={retrying} onRetry={retryByHand} />
       </View>
     );
   }

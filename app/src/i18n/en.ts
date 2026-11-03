@@ -865,6 +865,14 @@ export const en = {
     whyStopped: 'the old phone has not finished: look at it, it says what is left',
     whyOther: 'error {code}',
   },
+
+  unread: {
+    title: 'Settings could not be read',
+    body: 'Duetto cannot read its settings on this phone. Your connections have not been touched.',
+    byItself: 'It tries again by itself every few seconds, and goes on as usual as soon as it can. If it does not clear, try restarting the phone.',
+    retry: 'Try again',
+    trying: 'Trying again…',
+  },
 };
 
 /**

@@ -270,6 +270,10 @@ function wanted(cfg: DuoConfig): Map<string, PairInfo> {
  * opened. Unavailable by choice, none.
  */
 export async function refreshStandby(cfg: DuoConfig | null): Promise<void> {
+  // A configuration that could not be read (see loadConfig) says nothing
+  // of who waits: taken at its word - no pairs - every connection
+  // waiting here went, the ones the presence had opened too.
+  if (cfg?.unread) return;
   if (cfg) diagnosticsOn = cfg.diagnostics === true;
   if (cfg) {
     latest.clear();
