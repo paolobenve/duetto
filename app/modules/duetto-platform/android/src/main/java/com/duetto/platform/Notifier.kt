@@ -224,6 +224,9 @@ object Notifier {
             // app on that connection. Without it, the extra is cleared -
             // FLAG_UPDATE_CURRENT would keep the last one's.
             putExtra(EXTRA_PAIR, pairId ?: "")
+            // Duetto's own word: without it the connection is nobody's
+            // to choose (see OpenedFrom).
+            putExtra(ChannelCommand.EXTRA, ChannelCommand.word(ctx))
         }
         val pending = PendingIntent.getActivity(
             ctx,
@@ -419,6 +422,8 @@ object Notifier {
         launch.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
         launch.putExtra(EXTRA_PAIR, pairId)
         launch.putExtra(EXTRA_ENTER, true)
+        // Duetto's own word: without it the activity reads neither (see OpenedFrom).
+        launch.putExtra(ChannelCommand.EXTRA, ChannelCommand.word(ctx))
         return PendingIntent.getActivity(
             ctx, ENTER_REQUESTS + slot, launch,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,

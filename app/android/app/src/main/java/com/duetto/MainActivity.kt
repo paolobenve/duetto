@@ -65,7 +65,7 @@ class MainActivity : ReactActivity() {
   override fun onNewIntent(intent: Intent) {
     ChannelCommand.vet(this, intent)
     super.onNewIntent(intent)
-    OpenedFrom.read(intent)
+    OpenedFrom.read(this, intent)
     PipModule.opened()
   }
 
@@ -73,7 +73,7 @@ class MainActivity : ReactActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     ChannelCommand.vet(this, intent)
     super.onCreate(savedInstanceState)
-    OpenedFrom.read(intent)
+    OpenedFrom.read(this, intent)
   }
 
   /** The little window begins or ends: the app changes its clothes. */
