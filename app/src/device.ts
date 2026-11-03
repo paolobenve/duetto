@@ -37,7 +37,16 @@ const KEY = 'duetto.device-key';
 
 export type DeviceKey = { pub: string; sec: string };
 
+/**
+ * What deviceKey throws when there is no card to show: the storage did
+ * not answer, or a new card could not be written down. Whoever knocks
+ * waits, and asks again later.
+ */
+export const CARD_UNREADABLE = 'card-unreadable';
+
 let mine: DeviceKey | null = null;
+/** the read under way, for whoever asks in the meantime */
+let reading: Promise<DeviceKey> | null = null;
 
 /**
  * The keys of this phone, made the first time they are asked for.
@@ -45,31 +54,72 @@ let mine: DeviceKey | null = null;
  * Kept in memory after the first read: it is asked for at every
  * connection, and reading storage each time would be a cost for
  * nothing.
+ *
+ * Made only when there is none. A read that fails is not "none": a
+ * card made then went over the one the server knows, and the phone was
+ * a stranger to it from that moment - its house given to nobody, the
+ * people it had let in left with an owner who never came back. So:
+ * - a storage that does not answer throws CARD_UNREADABLE, and the
+ *   knock waits;
+ * - something stored that is not a card is kept aside, under a name of
+ *   its own, before a new one goes in its place;
+ * - a new card that could not be written down is not used: the next
+ *   start would not have it, and what it had been given - a house, an
+ *   invitation spent - would be lost with it.
+ *
+ * Two asking at once - two connections at the first start - get the
+ * same card, not one each.
  */
-export async function deviceKey(): Promise<DeviceKey> {
-  if (mine) return mine;
+export function deviceKey(): Promise<DeviceKey> {
+  if (mine) return Promise.resolve(mine);
+  if (!reading) reading = readOrMake().finally(() => { reading = null; });
+  return reading;
+}
+
+async function readOrMake(): Promise<DeviceKey> {
+  let raw: string | null;
   try {
-    const raw = await AsyncStorage.getItem(KEY);
-    if (raw) {
-      const stored = JSON.parse(raw);
-      if (stored?.pub && stored?.sec) {
-        mine = stored;
-        return stored;
-      }
+    raw = await AsyncStorage.getItem(KEY);
+  } catch {
+    throw new Error(CARD_UNREADABLE);
+  }
+  if (raw !== null) {
+    const stored = asCard(raw);
+    if (stored) {
+      mine = stored;
+      return stored;
     }
-  } catch { /* unreadable: it is made again below */ }
+    try {
+      await AsyncStorage.setItem(`${KEY}.unreadable`, raw);
+    } catch {
+      throw new Error(CARD_UNREADABLE);
+    }
+  }
 
   const pair = nacl.sign.keyPair();
   const fresh: DeviceKey = {
     pub: encodeBase64(pair.publicKey),
     sec: encodeBase64(pair.secretKey),
   };
+  try {
+    await AsyncStorage.setItem(KEY, JSON.stringify(fresh));
+  } catch {
+    throw new Error(CARD_UNREADABLE);
+  }
   mine = fresh;
-  await AsyncStorage.setItem(KEY, JSON.stringify(fresh)).catch(() => {
-    /* Not written down: it will be another key next time, and the
-       server will not know it. Better than not connecting now. */
-  });
   return fresh;
+}
+
+/** The card stored, or null when what is stored is not one. */
+function asCard(raw: string): DeviceKey | null {
+  try {
+    const c = JSON.parse(raw);
+    return typeof c?.pub === 'string' && c.pub !== '' && typeof c?.sec === 'string' && c.sec !== ''
+      ? { pub: c.pub, sec: c.sec }
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 

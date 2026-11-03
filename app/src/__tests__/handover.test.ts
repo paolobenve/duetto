@@ -172,6 +172,11 @@ describe('what passes', () => {
     expect(b.handingOver).toBeUndefined();
   });
 
+  test('the mark of a configuration not read stays on its phone', () => {
+    expect(bundleOf({ ...oldConfig(), unread: true }).unread).toBeUndefined();
+    expect(fromBundle({ ...bundleOf(oldConfig()), unread: true })!.unread).toBeUndefined();
+  });
+
   test('the new phone checks what came', () => {
     expect(fromBundle(null)).toBeNull();
     expect(fromBundle([])).toBeNull();

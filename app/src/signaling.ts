@@ -10,7 +10,7 @@
 import { Foreground, Heartbeat, Journal } from 'duetto-platform';
 import { SignalCrypto } from './crypto';
 import { logger } from './log';
-import { deviceKey, deviceModel, deviceName } from './device';
+import { deviceKey, deviceModel, deviceName, type DeviceKey } from './device';
 import { signAtDoor } from './doorSign';
 import { VERSION_LABEL, BUILD } from './version';
 import { PROTOCOL_SAID } from './protocol';
@@ -340,6 +340,9 @@ const RECONNECT_MIN_MS = 500;
 /** How long to stand still when the server says we knock too often. */
 const TOO_MANY_WAIT_MS = 60_000;
 const RECONNECT_MAX_MS = 4000;
+/** The wait for a card that could not be read, doubled each time: see cardMissing. */
+const CARD_WAIT_MIN_MS = 2_000;
+const CARD_WAIT_MAX_MS = 60_000;
 /**
  * How long an attempt may stay "opening" before it is given up.
  *
@@ -460,6 +463,8 @@ export class Signaling {
    * still for a minute, which is the length of the window.
    */
   private pausedUntil = 0;
+  /** the sockets in a row that had no card to show */
+  private cardMissed = 0;
   private mode: Mode;
   /**
    * In the room, until the socket goes: losing it is what holds the
@@ -641,12 +646,20 @@ export class Signaling {
     if (this.joined || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
     this.joined = true;
     if (this.joinTimer) { clearTimeout(this.joinTimer); this.joinTimer = null; }
+    const ws = this.ws;
 
     let card: { pub: string; sig: string; sigv?: 2; host?: string } | null = null;
     if (this.nonce) {
+      await deviceName();
+      let key: DeviceKey;
       try {
-        await deviceName();
-        const key = await deviceKey();
+        key = await deviceKey();
+      } catch {
+        this.cardMissing(ws);
+        return;
+      }
+      this.cardMissed = 0;
+      try {
         // The server's name inside, when it asks for it: see doorSign.ts.
         card = { pub: key.pub, ...signAtDoor(key.sec, this.nonce, this.opts.serverUrl, this.door) };
       } catch {
@@ -676,6 +689,27 @@ export class Signaling {
       // A server from before does not read it, and lets in as it did.
       seat: this.opts.seat || undefined,
     });
+  }
+
+  /**
+   * No card to show (see deviceKey).
+   *
+   * Knocking without one is a "not allowed", 4006, and the app stops
+   * trying for good: a pair taken for lost because the storage did not
+   * answer once. The socket goes instead, as when the network drops,
+   * and the next one asks for the card again - after two seconds, then
+   * twice as long each time, up to a minute: a storage that never
+   * answers is not worth a knock every half second, all day.
+   */
+  private cardMissing(ws: WebSocket | null) {
+    this.cardMissed += 1;
+    const wait = Math.min(CARD_WAIT_MIN_MS * 2 ** (this.cardMissed - 1), CARD_WAIT_MAX_MS);
+    log('the card of this phone could not be read: trying again in', wait, 'ms');
+    if (this.cardMissed === 1) Journal.mark('server:card-unreadable').catch(() => { /* noop */ });
+    this.pausedUntil = Math.max(this.pausedUntil, Date.now() + wait);
+    // A newer socket, opened meanwhile, knocks for itself.
+    if (!ws || this.ws !== ws) return;
+    try { ws.close(); } catch { /* noop */ }
   }
 
   /** Asks the server who it lets in. Answered only to the owner's phones. */

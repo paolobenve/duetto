@@ -471,6 +471,8 @@ let starting: Promise<boolean> | null = null;
 let saidUnavailable = false;
 /** said once: the watchdog's net asks again every few minutes */
 let saidBroken = false;
+/** the same for a configuration that could not be read */
+let saidUnread = false;
 /** how often the presence sends its journal, at most: see swapJournal */
 const JOURNAL_IDLE_MS = 15 * 60 * 1000;
 
@@ -549,6 +551,19 @@ async function listenNow(): Promise<boolean> {
   saidUnavailable = false;
 
   const cfg = await loadConfig();
+  /**
+   * Not read is not "no pair". Taken for one, it told the watchdog
+   * there was nothing to listen for, and the watchdog stopped coming:
+   * the presence stayed down until the app was opened, or the phone
+   * restarted. Left as it is, its next round asks again.
+   */
+  if (cfg.unread) {
+    log('the configuration could not be read: trying again at the next round');
+    if (!saidUnread) Journal.mark('presence:skipped:unread').catch(() => { /* noop */ });
+    saidUnread = true;
+    return false;
+  }
+  saidUnread = false;
   // Here too, before the first line: the headless side has settings of
   // its own to read, and without this it would talk to a log nobody
   // asked for.

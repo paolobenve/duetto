@@ -17,7 +17,7 @@ import QrCode from './QrCode';
 import { t } from './i18n';
 import { displayServer, type DuoConfig } from './config';
 import { openDoorLine } from './door';
-import { deviceKey, deviceName } from './device';
+import { CARD_UNREADABLE, deviceKey, deviceName, type DeviceKey } from './device';
 import {
   Giving, Taking, finishMoving, formatFigures, keepIncoming, dropIncoming, incomingReady,
   type GiveView, type TakeView, type HandoverQr, type Moving,
@@ -160,7 +160,15 @@ function Give({ cfg, left, quiet, wake, moving, emptied, onClose }: GiveProps) {
   const start = useCallback(async () => {
     giving.current?.cancel();
     setView({ step: 'checking' });
-    const me = await deviceKey();
+    let me: DeviceKey;
+    try {
+      me = await deviceKey();
+    } catch {
+      // No card, no place to give (see deviceKey): nothing has moved.
+      mark(`failed:${CARD_UNREADABLE}`);
+      shown({ step: 'failed', why: CARD_UNREADABLE });
+      return;
+    }
     const g = new Giving({
       cfg,
       myPub: me.pub,
@@ -336,7 +344,15 @@ function Take({ qr, onTaken, onClose }: TakeProps) {
   useEffect(() => {
     let gone = false;
     (async () => {
-      const me = await deviceKey();
+      let me: DeviceKey;
+      try {
+        me = await deviceKey();
+      } catch {
+        // No card to take the place with (see deviceKey).
+        marker('take')(`failed:${CARD_UNREADABLE}`);
+        if (!gone) setView({ step: 'failed', why: CARD_UNREADABLE });
+        return;
+      }
       const model = await deviceName().catch(() => '');
       if (gone) return;
       const tk = new Taking({

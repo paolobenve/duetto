@@ -7,7 +7,7 @@
  * the LICENSE file at the root of the project, and at
  * <https://www.gnu.org/licenses/>.
  */
-import { deviceKey, deviceModel, deviceName } from './device';
+import { CARD_UNREADABLE, deviceKey, deviceModel, deviceName, type DeviceKey } from './device';
 import { signAtDoor } from './doorSign';
 import { VERSION_LABEL, BUILD } from './version';
 import type { ServerRole } from './config';
@@ -84,7 +84,8 @@ type Visit = {
  * with the socket still open for whatever comes next.
  *
  * Throws 'unreachable' when the socket cannot be opened, 'timeout'
- * when nothing comes back in time. A server too old to know the
+ * when nothing comes back in time, CARD_UNREADABLE when the phone has
+ * no card to show (see deviceKey). A server too old to know the
  * question answers "expected-join": that is a role of 'unknown', and
  * the app carries on as it did before the door existed.
  */
@@ -135,10 +136,20 @@ function visit(serverUrl: string, ask: DoorRequest): Promise<Visit> {
       // A message is an object: see Signaling.handle.
       if (!msg || typeof msg !== 'object') return;
       if (msg.type === 'hello' && !settled) {
+        await deviceName();
+        let key: DeviceKey;
+        try {
+          key = await deviceKey();
+        } catch {
+          // No card: knocking without one the answer is "stranger", and
+          // whoever watches the door reads it as this phone taken off
+          // the list. So no knock: the visit fails, as an unanswered
+          // one does, and whoever asked tries again later.
+          finish(() => { try { ws.close(); } catch { /* noop */ } reject(new Error(CARD_UNREADABLE)); });
+          return;
+        }
         let card: { pub: string; sig: string; sigv?: 2; host?: string } | null = null;
         try {
-          await deviceName();
-          const key = await deviceKey();
           // The server's name inside, when it asks for it: see doorSign.ts.
           card = { pub: key.pub, ...signAtDoor(key.sec, String(msg.nonce || ''), serverUrl, msg.door) };
         } catch { /* unable to sign: the server will say so */ }

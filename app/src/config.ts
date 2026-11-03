@@ -391,6 +391,13 @@ export type DuoConfig = {
    * way; then the phone empties itself. See handover.ts.
    */
   handingOver?: { to: string; servers: string[] };
+  /**
+   * The configuration could not be read: what is in memory is the
+   * defaults, not the person's pairs, and saveConfig refuses it - and
+   * whatever is made from it, since it travels in every copy. Never
+   * written down, never sent to another phone. See loadConfig.
+   */
+  unread?: true;
   /** the system settings have already been offered once */
   setupShown: boolean;
   /** the settings tab last looked at: it is where one comes back to */
@@ -717,12 +724,41 @@ export const DEFAULT_CONFIG: DuoConfig = {
   frontCamera: true,
 };
 
+/** The defaults, in place of a configuration that could not be read. */
+const UNREAD: DuoConfig = { ...DEFAULT_CONFIG, unread: true };
+
 const STORAGE_KEY = 'duetto.config.v3';
 
+/** The tries at reading it, and the wait before each. */
+const READ_WAITS_MS = [0, 250, 1000];
+
+/**
+ * The configuration as it is stored, or the defaults on a phone that
+ * has none.
+ *
+ * A read that fails is not a phone that has none. It used to give the
+ * defaults all the same, and the first setting saved afterwards - by
+ * the interface, or by the presence marking a pair broken - went over
+ * the stored one: every pair gone, for a storage that had not answered
+ * once. Now the read is tried again, a moment apart; if it never
+ * answers, the defaults come marked `unread`, which saveConfig will not
+ * write. Something stored that is not a configuration is kept aside,
+ * under a name of its own, before anything takes its place.
+ */
 export async function loadConfig(): Promise<DuoConfig> {
+  let raw: string | null = null;
+  let read = false;
+  for (const wait of READ_WAITS_MS) {
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    try {
+      raw = await AsyncStorage.getItem(STORAGE_KEY);
+      read = true;
+      break;
+    } catch { /* again, in a moment */ }
+  }
+  if (!read) return UNREAD;
+  if (!raw) return DEFAULT_CONFIG;
   try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_CONFIG;
     const stored = JSON.parse(raw);
     const cfg = withoutServerKeys(tidyPending(tidyPairs(oneDiagnostics({ ...DEFAULT_CONFIG, ...stored }))));
     // A key written by a version from before goes from the phone now,
@@ -730,7 +766,12 @@ export async function loadConfig(): Promise<DuoConfig> {
     if (hadServerKey(stored)) await saveConfig(cfg).catch(() => { /* next time */ });
     return cfg;
   } catch {
-    return DEFAULT_CONFIG;
+    try {
+      await AsyncStorage.setItem(`${STORAGE_KEY}.unreadable`, raw);
+      return DEFAULT_CONFIG;
+    } catch {
+      return UNREAD;
+    }
   }
 }
 
@@ -1076,7 +1117,9 @@ export function alignPairServer(cfg: DuoConfig): DuoConfig {
 }
 
 export async function saveConfig(cfg: DuoConfig): Promise<void> {
-  // Never written, whatever the screen in memory holds.
+  // Not over one that could not be read: see loadConfig.
+  if (cfg.unread) throw new Error('config-unread');
+  // No server's key written, whatever the screen in memory holds.
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(withoutServerKeys(cfg)));
 }
 

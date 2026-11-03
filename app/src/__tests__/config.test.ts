@@ -170,3 +170,67 @@ describe('the other side\'s new phone, answered', () => {
     expect(other.pairs.map((p) => p.newPhoneSeen)).toEqual([undefined, '2026-10-30']);
   });
 });
+
+describe('a configuration that could not be read is never written over', () => {
+  const STORED = 'duetto.config.v3';
+  const ASIDE = 'duetto.config.v3.unreadable';
+  const storage = AsyncStorage as jest.Mocked<typeof AsyncStorage>;
+  /** The storage as the mock makes it: a failure queued by one test is not the next one's. */
+  const real = { getItem: storage.getItem.getMockImplementation()!, setItem: storage.setItem.getMockImplementation()! };
+  const p1 = { id: 'p1', key: 'k-p1', side: 'A', serverUrl: 'wss://example.org/duetto/ws' } as PairInfo;
+  const mine: DuoConfig = {
+    ...DEFAULT_CONFIG, serverUrl: 'wss://example.org/duetto/ws', displayName: 'Anna', pair: p1, pairs: [p1],
+  };
+
+  beforeEach(async () => {
+    storage.getItem.mockReset().mockImplementation(real.getItem);
+    storage.setItem.mockReset().mockImplementation(real.setItem);
+    await AsyncStorage.clear();
+  });
+
+  test('a storage that never answers: the defaults, marked, and neither they nor what is made of them saved', async () => {
+    await saveConfig(mine);
+    const kept = await AsyncStorage.getItem(STORED);
+    const disk = new Error('disk');
+    storage.getItem.mockRejectedValueOnce(disk).mockRejectedValueOnce(disk).mockRejectedValueOnce(disk);
+    const cfg = await loadConfig();
+    expect(cfg.unread).toBe(true);
+    expect(cfg.pairs).toEqual([]);
+    await expect(saveConfig(cfg)).rejects.toThrow('config-unread');
+    await expect(saveConfig({ ...cfg, displayName: 'Bruno' })).rejects.toThrow('config-unread');
+    expect(await AsyncStorage.getItem(STORED)).toBe(kept);
+  });
+
+  test('one that answers at the second try: the configuration as it is', async () => {
+    await saveConfig(mine);
+    storage.getItem.mockRejectedValueOnce(new Error('disk'));
+    const cfg = await loadConfig();
+    expect(cfg.unread).toBeUndefined();
+    expect(cfg.pairs.map((p) => p.id)).toEqual(['p1']);
+  });
+
+  test('something stored that is not a configuration is kept aside, and the defaults then save', async () => {
+    await AsyncStorage.setItem(STORED, '{"pairs":[{"id"');
+    const cfg = await loadConfig();
+    expect(cfg.unread).toBeUndefined();
+    expect(cfg.pairs).toEqual([]);
+    expect(await AsyncStorage.getItem(ASIDE)).toBe('{"pairs":[{"id"');
+    await saveConfig({ ...cfg, displayName: 'Anna' });
+    expect(JSON.parse((await AsyncStorage.getItem(STORED)) || '{}').displayName).toBe('Anna');
+  });
+
+  test('not kept aside: marked, and left as it is', async () => {
+    await AsyncStorage.setItem(STORED, 'garbage');
+    storage.setItem.mockRejectedValueOnce(new Error('full'));
+    const cfg = await loadConfig();
+    expect(cfg.unread).toBe(true);
+    expect(await AsyncStorage.getItem(STORED)).toBe('garbage');
+  });
+
+  test('a phone with nothing stored: the defaults, unmarked, and they save', async () => {
+    const cfg = await loadConfig();
+    expect(cfg.unread).toBeUndefined();
+    await saveConfig({ ...cfg, displayName: 'Anna' });
+    expect(JSON.parse((await AsyncStorage.getItem(STORED)) || '{}').displayName).toBe('Anna');
+  });
+});

@@ -168,6 +168,8 @@ function cleaned(cfg: DuoConfig): DuoConfig {
     pairs,
   };
   delete out.handingOver;
+  // this phone's read, not the configuration's: see DuoConfig.unread
+  delete out.unread;
   return out;
 }
 
