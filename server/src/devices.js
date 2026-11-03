@@ -8,7 +8,9 @@
  * <https://www.gnu.org/licenses/>.
  */
 
-import { existsSync, readFileSync, writeFileSync, renameSync, statSync } from 'node:fs';
+import {
+  closeSync, copyFileSync, fsyncSync, openSync, readFileSync, renameSync, statSync, writeFileSync,
+} from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import path from 'node:path';
 
@@ -39,10 +41,11 @@ const FILE = process.env.DEVICES_FILE
 /** A week. Long enough to be handed over calmly, short enough to expire. */
 const INVITE_DAYS = Number(process.env.INVITE_DAYS || 7);
 
-const EMPTY = {
+/** An empty list, a new one each time: what one caller adds to it is nobody else's. */
+const empty = () => ({
   devices: [], invitations: [], rooms: [], broken: [], turn: {}, pending: [], mail: [], moments: null,
   secondKind: [],
-};
+});
 /** How long a pairing code waits for the other phone, at most. */
 const AWAIT_HOURS = Number(process.env.AWAIT_HOURS || 24);
 /** How long a broken room is remembered, for the side that has not heard. */
@@ -75,33 +78,82 @@ export function fileName() {
  */
 let cached = null;
 let cachedStamp = 0;
+/** The text of the last reading that worked: see cannotRead. */
+let lastGood = '';
+/** The file is there, and cannot be read: see cannotRead. */
+let unreadable = false;
+
+/** What the file says, the way the rest of the server expects it. */
+function shaped(parsed) {
+  return {
+    devices: Array.isArray(parsed.devices) ? parsed.devices : [],
+    invitations: Array.isArray(parsed.invitations) ? parsed.invitations : [],
+    rooms: Array.isArray(parsed.rooms) ? parsed.rooms : [],
+    broken: Array.isArray(parsed.broken) ? parsed.broken : [],
+    turn: parsed.turn && typeof parsed.turn === 'object' ? parsed.turn : {},
+    pending: Array.isArray(parsed.pending) ? parsed.pending : [],
+    mail: Array.isArray(parsed.mail) ? parsed.mail : [],
+    moments: parsed.moments && typeof parsed.moments === 'object' ? parsed.moments : null,
+    secondKind: Array.isArray(parsed.secondKind) ? parsed.secondKind : [],
+  };
+}
 
 export function read() {
+  let stamp;
   try {
-    if (!existsSync(FILE)) { cached = null; return { ...EMPTY }; }
-    const stamp = statSync(FILE).mtimeMs;
-    if (cached && stamp === cachedStamp) return cached;
-    const parsed = JSON.parse(readFileSync(FILE, 'utf8'));
-    cachedStamp = stamp;
-    cached = {
-      devices: Array.isArray(parsed.devices) ? parsed.devices : [],
-      invitations: Array.isArray(parsed.invitations) ? parsed.invitations : [],
-      rooms: Array.isArray(parsed.rooms) ? parsed.rooms : [],
-      broken: Array.isArray(parsed.broken) ? parsed.broken : [],
-      turn: parsed.turn && typeof parsed.turn === 'object' ? parsed.turn : {},
-      pending: Array.isArray(parsed.pending) ? parsed.pending : [],
-      mail: Array.isArray(parsed.mail) ? parsed.mail : [],
-      moments: parsed.moments && typeof parsed.moments === 'object' ? parsed.moments : null,
-      secondKind: Array.isArray(parsed.secondKind) ? parsed.secondKind : [],
-    };
-    return cached;
-  } catch {
-    // A broken file must not lock everybody out in silence: it is said
-    // out loud, and the door falls back on what the .env says.
-    console.warn(`[duetto] ${FILE} cannot be read: ignored`);
-    console.warn('[duetto] (whose is it? the service reads it as its own user)');
-    return { ...EMPTY };
+    stamp = statSync(FILE).mtimeMs;
+  } catch (e) {
+    // Not there at all: a house nobody has taken yet. Anything else -
+    // a folder the service may not look into - is a list that is there
+    // and cannot be read.
+    if (e.code === 'ENOENT') { cached = null; unreadable = false; return empty(); }
+    return cannotRead(e);
   }
+  if (cached && stamp === cachedStamp) return cached;
+  try {
+    const text = readFileSync(FILE, 'utf8');
+    const parsed = JSON.parse(text);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('not a list');
+    cachedStamp = stamp;
+    cached = shaped(parsed);
+    lastGood = text;
+    if (unreadable) console.warn(`[duetto] ${FILE} can be read again`);
+    unreadable = false;
+    return cached;
+  } catch (e) {
+    return cannotRead(e);
+  }
+}
+
+/**
+ * A list that is there and cannot be read - cut short, put wrong by
+ * hand, not the service's to read - is not an empty list.
+ *
+ * Taken for an empty one, it opened the door: the first card to knock
+ * took the house, and the list was written over with that card alone -
+ * every phone on it, every room and pair, gone. Now the server goes on
+ * with the last reading that worked, if there was one, and with the
+ * phones of the .env alone if not; the door stays shut, and nothing is
+ * written over the file until somebody puts it right. Said once, out
+ * loud, not at every knock.
+ */
+function cannotRead(e) {
+  if (!unreadable) {
+    console.warn(`[duetto] ${FILE} cannot be read (${e.message}): nothing will be written over it`);
+    console.warn(lastGood
+      ? '[duetto] going on with the list as it was last read; the door stays shut'
+      : '[duetto] the door stays shut: only the phones of the .env come in until it is put right');
+    console.warn(`[duetto] (whose is it? the service reads it as its own user; the list before the last write is ${FILE}.bak)`);
+  }
+  unreadable = true;
+  cached = null;
+  return lastGood ? shaped(JSON.parse(lastGood)) : empty();
+}
+
+/** Whether the list is there and cannot be read, which keeps the door shut. */
+export function listUnreadable() {
+  read();
+  return unreadable;
 }
 
 /**
@@ -119,9 +171,26 @@ export function read() {
  * read by the commands in tools/, which are run by a person.
  */
 export function write(data) {
+  // Over a list that cannot be read, nothing: what is in it may be all
+  // there is of the phones and their pairs (see cannotRead).
+  if (unreadable) {
+    cached = null;
+    return false;
+  }
   const temporary = `${FILE}.new`;
   try {
-    writeFileSync(temporary, `${JSON.stringify(data, null, 2)}\n`, { mode: 0o640 });
+    const fd = openSync(temporary, 'w', 0o640);
+    try {
+      writeFileSync(fd, `${JSON.stringify(data, null, 2)}\n`);
+      // On the disk before it takes the list's name: after a power cut
+      // the name could otherwise be found on an empty file.
+      fsyncSync(fd);
+    } finally {
+      closeSync(fd);
+    }
+    // The list before this write, kept beside it: one put wrong - by
+    // hand, or by the server itself - is one copy away from the last.
+    try { copyFileSync(FILE, `${FILE}.bak`); } catch { /* the first time, there is none */ }
     renameSync(temporary, FILE);
     // The memory in read() must not outlive what it remembers.
     cached = null;
@@ -205,7 +274,9 @@ export function useInvitation(code, pub, model = '', version = '') {
       seen: new Date().toISOString().slice(0, 10),
       since: new Date().toISOString(),
     });
-  write(data);
+  // Spent, or not taken: an invitation that cannot be written off the
+  // list would let in, one connection each, every phone that says it.
+  if (!write(data)) return null;
   return invitation.name;
 }
 

@@ -227,9 +227,15 @@ try {
   console.log(`Error in the test: ${e.message}`);
   failed++;
 } finally {
-  srv.kill();
+  // On its way out the server writes the list once more: waited for,
+  // or the list taken away here is written again after.
+  if (srv.exitCode === null && srv.signalCode === null) {
+    const gone = new Promise((resolve) => srv.once('exit', resolve));
+    srv.kill();
+    await gone;
+  }
   gitlab.close();
-  try { unlinkSync(FILE); } catch {}
+  for (const f of [FILE, `${FILE}.bak`]) { try { unlinkSync(f); } catch {} }
 }
 console.log(failed ? `\n${failed} FAILED` : '\nALL OK');
 process.exit(failed ? 1 : 0);

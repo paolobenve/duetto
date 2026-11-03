@@ -814,7 +814,7 @@ try {
     const gone2 = new Promise((r) => r2.once('exit', r));
     r2.kill('SIGTERM');
     await gone2;
-    try { unlinkSync(FILER); } catch { /* never written */ }
+    for (const f of [FILER, `${FILER}.bak`]) { try { unlinkSync(f); } catch { /* never written */ } }
   }
 
   // On the way out, it must leave on its own feet even with sockets
@@ -1106,9 +1106,12 @@ try {
     'a guest whose room was taken away is told the pair is broken');
   g8.close();
 
+  // On its way out it writes the list once more: waited for, or the
+  // list taken away here is written again after.
+  const gone3 = new Promise((r) => srv3.once('exit', r));
   srv3.kill('SIGTERM');
-  await wait(200);
-  try { unlinkSync(LIST_FILE); } catch { /* it was never written */ }
+  await gone3;
+  for (const f of [LIST_FILE, `${LIST_FILE}.bak`]) { try { unlinkSync(f); } catch { /* it was never written */ } }
 
   a.close(); c0.close(); d.close(); e.close(); f.close();
 } catch (err) {

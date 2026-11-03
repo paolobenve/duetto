@@ -127,6 +127,7 @@ if [ "$(cd "$DEST" && pwd -P)" != "$(cd "$SRC" && pwd -P)" ]; then
   # Copied over, never deleted: what was put there by hand stays. A
   # developer's .env and list are theirs, and nobody else's business.
   tar -C "$SRC" --exclude=./node_modules --exclude=./.env --exclude=./devices.json \
+    --exclude=./devices.json.bak --exclude=./devices.json.new \
     -cf - . | tar -C "$DEST" --no-same-owner -xf -
   echo "copied from $SRC"
 else

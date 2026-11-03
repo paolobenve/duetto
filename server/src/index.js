@@ -48,7 +48,7 @@ import {
   remove as removePerson, removeInvitation, removeRoom, roomOf, useInvitation, noteVisit,
   awaitRoom, pendingRoom, dropPending, leaveMail, takeMail, saveMoments, takeMoments,
   invitationOf, signsSecondKind, noteSecondKind, fileName as listFile,
-  placeOf, handOver, newPhoneIn, sitsIn,
+  placeOf, handOver, newPhoneIn, sitsIn, listUnreadable,
 } from './devices.js';
 import { credentialsFor as turnCredentials, drop as dropTurn } from './turn.js';
 import { bouncePage } from './linkPage.js';
@@ -400,9 +400,13 @@ function seatFits(token, check) {
   return kept.length === made.length && timingSafeEqual(made, kept);
 }
 
-/** Is the door shut? It is, as soon as one phone is on the list. */
+/**
+ * Is the door shut? It is, as soon as one phone is on the list - and
+ * while the list is there and cannot be read: who is on it is not known,
+ * and that is not "nobody" (see cannotRead in devices.js).
+ */
 function doorIsShut() {
-  return AUTHORISED_KEYS.size > 0 || listed().length > 0;
+  return AUTHORISED_KEYS.size > 0 || listUnreadable() || listed().length > 0;
 }
 
 const MAX_PER_ROOM = 2;
@@ -2311,7 +2315,7 @@ wss.on('close', () => clearInterval(heartbeat));
  * on the list, unless OPEN_DOOR=yes says the risk is understood - a
  * LAN behind a firewall, say.
  */
-const doorOpen = AUTHORISED_KEYS.size + listed().length === 0 && !SERVER_KEY;
+const doorOpen = !doorIsShut() && !SERVER_KEY;
 if (doorOpen && !LOOPBACK.test(HOST) && process.env.OPEN_DOOR !== 'yes') {
   console.error(`[duetto] refusing to start: the door is open and HOST=${HOST} is not loopback.\n`
     + '[duetto] The first phone to knock would become the owner of this server, and on a\n'
@@ -2326,9 +2330,11 @@ httpServer.listen(PORT, HOST, () => {
   const onTheList = AUTHORISED_KEYS.size + listed().length;
   console.log(`[duetto] door: ${onTheList > 0
     ? `${onTheList} phone(s) allowed in, by signature`
-    : SERVER_KEY
-      ? 'a key is asked for'
-      : 'open - anybody who knows the address can use this server'}`);
+    : listUnreadable()
+      ? 'shut - the list cannot be read'
+      : SERVER_KEY
+        ? 'a key is asked for'
+        : 'open - anybody who knows the address can use this server'}`);
   // Where the list is: one not found is a door that knows nobody, and
   // after a move the path is the first thing to look at.
   console.log(`[duetto] list: ${listFile()}`);

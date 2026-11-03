@@ -17,7 +17,14 @@
  * Taking one away needs no restart: the list is read at every knock.
  */
 import './settings.mjs';
-import { fileName, read, remove } from '../src/devices.js';
+import { fileName, listUnreadable, read, remove } from '../src/devices.js';
+
+// A list that is there and cannot be read is not written over, and
+// this command would only say it did something: nothing is done.
+if (listUnreadable()) {
+  console.error('nothing done: put the list right first (or back from its .bak)');
+  process.exit(1);
+}
 
 const args = process.argv.slice(2);
 const cut = args.indexOf('--remove');

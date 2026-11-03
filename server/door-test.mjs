@@ -24,6 +24,9 @@ const FILE_B = `${tmpdir()}/duetto-door-b-${process.pid}.json`;
 const FILE_H = `${tmpdir()}/duetto-door-h-${process.pid}.json`;
 const FILE_O = `${tmpdir()}/duetto-door-o-${process.pid}.json`;
 const FILE_C = `${tmpdir()}/duetto-door-c-${process.pid}.json`;
+/** A list cut short: the door stays shut, nothing written over it. */
+const PORT_X = 8788;
+const FILE_X = `${tmpdir()}/duetto-door-x-${process.pid}.json`;
 
 function phone() {
   const { publicKey, privateKey } = generateKeyPairSync('ed25519');
@@ -154,6 +157,15 @@ const srvO = start(PORT_O, FILE_O, { HOST_NAMES: 'duetto.test', OLD_SIGNATURES: 
 const srvC = start(PORT_C, FILE_C, { SERVER_KEY: 'apriti' });
 let logB = '';
 srvB.stdout.on('data', (d) => { logB += d; });
+/** The server of the list cut short, started later, and what it says. */
+let srvX = null;
+let logX = '';
+/** Stops a server and waits for it to be gone. */
+const stop = (p) => new Promise((resolve) => {
+  if (p.exitCode !== null || p.signalCode !== null) { resolve(); return; }
+  p.once('exit', resolve);
+  p.kill();
+});
 await sleep(700);
 try {
   const anna = phone(), bruno = phone(), carla = phone(), dario = phone();
@@ -573,15 +585,64 @@ try {
   r.ws.close();
   r = await knock(PORT_O, phone(), { v2: H });
   check('and the new way takes the house', r.answer.role === 'owner', r.answer); r.ws.close();
+
+  // --- a list that cannot be read --------------------------------------
+  // Cut short - a disk full, a hand edit gone wrong - a list is not an
+  // empty one: the door stays shut, the phones read before stay in, and
+  // nothing is written over it until somebody puts it right.
+  const startX = () => {
+    const p = spawn('node', ['src/index.js'], {
+      env: { ...process.env, PORT: String(PORT_X), HOST: '127.0.0.1', DEVICES_FILE: FILE_X, AUTHORISED_KEYS: '', SERVER_KEY: '' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    p.stdout.on('data', (d) => { logX += d; });
+    p.stderr.on('data', (d) => { logX += d; });
+    return p;
+  };
+  srvX = startX();
+  await sleep(700);
+  const xOwner = phone(), xStranger = phone();
+  r = await knock(PORT_X, xOwner, { name: 'owner' });
+  check('a list to cut short: the house taken', r.answer.role === 'owner' && r.answer.adopted === true, r.answer); r.ws.close();
+  r = await knock(PORT_X, xOwner, { name: 'owner', model: 'Pixel' }); r.ws.close();
+  await sleep(100);
+  const bak = JSON.parse(readFileSync(`${FILE_X}.bak`, 'utf8'));
+  check('the list before the last write is kept beside it', bak.devices.length === 1 && !bak.devices[0].model, bak);
+  const whole = readFileSync(FILE_X, 'utf8');
+  const cut = whole.slice(0, 40);
+  writeFileSync(FILE_X, cut);
+  r = await knock(PORT_X, xStranger, { name: 'stranger' });
+  check('cut short while running: a stranger does not take the house',
+    r.answer.role === 'stranger' && !r.answer.adopted && r.answer.hasOwner === true, r.answer); r.ws.close();
+  r = await knock(PORT_X, xOwner, { name: 'owner', model: 'Other' });
+  check('the owner, read before, is still the owner', r.answer.role === 'owner', r.answer); r.ws.close();
+  await sleep(100);
+  check('nothing written over it', readFileSync(FILE_X, 'utf8') === cut, readFileSync(FILE_X, 'utf8'));
+  check('said once, not at every knock', (logX.match(/cannot be read/g) || []).length === 1, logX);
+  await stop(srvX);
+  srvX = startX();
+  await sleep(700);
+  r = await knock(PORT_X, xStranger, { name: 'stranger' });
+  check('started on a list cut short: the door shut all the same',
+    r.answer.role === 'stranger' && !r.answer.adopted && r.answer.hasOwner === true, r.answer); r.ws.close();
+  const intoX = await join(PORT_X, xStranger, 'xroom', 'stranger');
+  check('and no room for a stranger', intoX.answer.type === 'error' && intoX.answer.error === 'not-allowed', intoX.answer);
+  intoX.ws.close();
+  await sleep(100);
+  check('and still nothing written over it, the way out included', readFileSync(FILE_X, 'utf8') === cut,
+    readFileSync(FILE_X, 'utf8'));
+  check('the door said shut at the start', logX.includes('door: shut - the list cannot be read'), logX);
+  writeFileSync(FILE_X, whole);
+  r = await knock(PORT_X, xOwner, { name: 'owner' });
+  check('put right, the list is read again', r.answer.role === 'owner', r.answer); r.ws.close();
 } finally {
-  srv.kill(); srvK.kill(); srvB.kill(); srvH.kill(); srvO.kill(); srvC.kill();
-  try { unlinkSync(FILE_C); } catch {}
-  try { unlinkSync(FILE_H); } catch {}
-  try { unlinkSync(FILE_O); } catch {}
-  try { unlinkSync(FILE_B); } catch {}
-  try { unlinkSync(FILE); } catch {}
+  // Each server writes the list once more on its way out: they are
+  // waited for, or what is taken away here is written again after.
+  await Promise.all([srv, srvK, srvB, srvH, srvO, srvC, srvX].filter(Boolean).map(stop));
+  for (const f of [FILE, FILE_K, FILE_B, FILE_H, FILE_O, FILE_C, FILE_X]) {
+    for (const g of [f, `${f}.bak`, `${f}.new`]) { try { unlinkSync(g); } catch {} }
+  }
   try { unlinkSync(ADMIN); unlinkSync(ADMIN_LOG); } catch {}
-  try { unlinkSync(FILE_K); } catch {}
 }
 console.log(failed ? `\n${failed} FAILED` : '\nALL OK');
 process.exit(failed ? 1 : 0);

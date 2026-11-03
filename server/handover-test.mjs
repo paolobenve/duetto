@@ -318,8 +318,16 @@ try {
   other.ws.close();
   for (const s of [n1, g1b, a2, b2]) s.ws.close();
 } finally {
-  srv.kill(); srvE.kill(); srvW.kill();
-  for (const f of [FILE, FILE_E, FILE_W, ADMIN, ADMIN_LOG]) { try { unlinkSync(f); } catch { /* noop */ } }
+  // On their way out the servers write the list once more: waited for,
+  // or the lists taken away here are written again after.
+  await Promise.all([srv, srvE, srvW].map((p) => new Promise((resolve) => {
+    if (p.exitCode !== null || p.signalCode !== null) { resolve(); return; }
+    p.once('exit', resolve);
+    p.kill();
+  })));
+  for (const f of [FILE, FILE_E, FILE_W].flatMap((x) => [x, `${x}.bak`]).concat(ADMIN, ADMIN_LOG)) {
+    try { unlinkSync(f); } catch { /* noop */ }
+  }
 }
 console.log(failed ? `\n${failed} FAILED` : '\nALL OK');
 process.exit(failed ? 1 : 0);

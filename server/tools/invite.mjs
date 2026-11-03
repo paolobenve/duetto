@@ -18,12 +18,19 @@
  * their phone written down under that name, and the code is spent.
  */
 import './settings.mjs';
-import { addInvitation, fileName, read } from '../src/devices.js';
+import { addInvitation, fileName, listUnreadable, read } from '../src/devices.js';
 
 const name = process.argv[2];
 if (!name) {
   console.error('use: npm run invite -- NAME');
   console.error('  the name is for you: it is what the list and the log will say.');
+  process.exit(1);
+}
+
+// A list that is there and cannot be read is not written over, and
+// this command would only say it did something: nothing is done.
+if (listUnreadable()) {
+  console.error('nothing done: put the list right first (or back from its .bak)');
   process.exit(1);
 }
 
