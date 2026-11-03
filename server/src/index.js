@@ -340,6 +340,11 @@ function whoIsThere(msg, nonce) {
   return null;
 }
 
+/** Whether this card is on the list, or in the settings: proved, it is somebody here. */
+function onTheList(pub) {
+  return !!pub && (AUTHORISED_KEYS.has(pub) || listed().some((d) => d.pub === pub));
+}
+
 /**
  * The other half of somebody's connection.
  *
@@ -452,6 +457,20 @@ const HEARTBEAT_LISTENING_MS = ms(process.env.HEARTBEAT_LISTENING_MS, 240_000);
 
 /** How often we look at who has run out. It costs nothing: two sockets. */
 const HEARTBEAT_TICK_MS = ms(process.env.HEARTBEAT_TICK_MS, 5_000);
+
+/**
+ * How long a connection may stay without being somebody.
+ *
+ * A phone says who it is in its first message: it joins a room, knocks
+ * at the door, comes to a hand-over. A connection that never did stayed
+ * open for ever - a WebSocket client answers the heartbeat by itself -
+ * and enough of them, opened by anybody who knows the address, take up
+ * every place the proxy in front has: two hundred, in a test, still
+ * there after twelve heartbeats. Now it is let go after this long. So is
+ * a stranger or a guest left at the door: the app closes its knocks, and
+ * nothing keeps such a phone there but a hand-over, which counts.
+ */
+const SILENT_MS = ms(process.env.SILENT_MS, 15_000);
 
 /**
  * How long the answer is waited for before the connection is given up for
@@ -1111,6 +1130,8 @@ wss.on('connection', (ws, req) => {
   ws.peerId = randomUUID();
   ws.roomId = null;
   ws.joined = false;
+  /** since when it is nobody: see SILENT_MS */
+  ws.idleSince = Date.now();
   ws.mode = 'listening';
   ws.side = null;     // 'A' or 'B': it identifies the device
   ws.replaced = false; // replaced by the same device
@@ -2201,8 +2222,16 @@ function answerDoor(ws, msg) {
   const hasOwner = doorIsShut();
   const needsKey = !!SERVER_KEY;
   const reply = (rest) => send(ws, { type: 'door', hasOwner, needsKey, ...rest });
+  // A refusal written where fail2ban reads it, in the words of the
+  // rooms' door (see deploy/fail2ban): a signature that is not one, a
+  // key or an invitation guessed wrong, a knock too many. A stranger
+  // who only asks what this server is to them is refused nothing. The
+  // door wrote none, and a flood of knocks went by unseen.
+  const turnedAway = (why) => console.log(`[duetto] turned away: ${(pub || 'no key').slice(0, 12)}`
+    + ` from ${ws.ip}, room -, at the door: ${why}, app ${cleanVersion(msg.version) || '?'}`);
 
   if (!pub || !signed(msg, ws.nonce)) {
+    turnedAway('bad-signature');
     reply({ role: 'stranger', error: 'bad-signature' });
     return;
   }
@@ -2210,8 +2239,13 @@ function answerDoor(ws, msg) {
   // go on from this socket (see openHandover).
   ws.card = pub;
   // Knocking counts like joining: keys and invitations are not to be
-  // guessed at the door any more than in the room.
-  if (tooManyJoins(ws.ip)) {
+  // guessed at the door any more than in the room. A card of the list
+  // guesses nothing, and is not counted: counted with the strangers, a
+  // flood of them kept its owner out as well - 650 knocks from six
+  // addresses, in a test, and the owner, from a seventh, was told
+  // "too many attempts".
+  if (!onTheList(pub) && tooManyJoins(ws.ip)) {
+    turnedAway('too-many-attempts');
     send(ws, { type: 'error', error: 'too-many-attempts' });
     ws.close(4004, 'too-many-attempts');
     return;
@@ -2229,11 +2263,13 @@ function answerDoor(ws, msg) {
   }
   // An invitation that whoIsThere did not spend is no invitation.
   if (msg.invite) {
+    turnedAway('bad-invite');
     reply({ role: 'stranger', error: 'bad-invite' });
     return;
   }
   const keySaid = String(msg.key || '') !== '';
   if (needsKey && keySaid && !keyIsRight(msg.key)) {
+    turnedAway('bad-key');
     reply({ role: 'stranger', error: 'bad-key' });
     return;
   }
@@ -2293,6 +2329,21 @@ function checkPresence(ws) {
 const heartbeat = setInterval(() => {
   const now = Date.now();
   for (const ws of wss.clients) {
+    // Let go a moment ago and still here: a client that does not
+    // answer the closing is not waited for.
+    if (ws.letGoAt) {
+      if (now - ws.letGoAt > 5_000) ws.terminate();
+      continue;
+    }
+    // Nobody, for too long: see SILENT_MS.
+    if (ws.joined || ws.atDoor || ws.handover) ws.idleSince = 0;
+    else if (!ws.idleSince) ws.idleSince = now;
+    else if (now - ws.idleSince > SILENT_MS) {
+      ws.letGoAt = now;
+      send(ws, { type: 'error', error: 'silent' });
+      try { ws.close(4007, 'silent'); } catch { /* noop */ }
+      continue;
+    }
     if (ws.pingSentAt) {
       // Asked and still silent: past the wait they are given up for dead.
       if (now - ws.pingSentAt > ANSWER_WAIT_MS) ws.terminate();

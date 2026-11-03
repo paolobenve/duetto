@@ -24,6 +24,9 @@ const FILE_B = `${tmpdir()}/duetto-door-b-${process.pid}.json`;
 const FILE_H = `${tmpdir()}/duetto-door-h-${process.pid}.json`;
 const FILE_O = `${tmpdir()}/duetto-door-o-${process.pid}.json`;
 const FILE_C = `${tmpdir()}/duetto-door-c-${process.pid}.json`;
+/** The door braked for strangers only, its refusals said, and the silent let go. */
+const PORT_F = 8786;
+const FILE_F = `${tmpdir()}/duetto-door-f-${process.pid}.json`;
 /** A list cut short: the door stays shut, nothing written over it. */
 const PORT_X = 8788;
 const FILE_X = `${tmpdir()}/duetto-door-x-${process.pid}.json`;
@@ -157,6 +160,11 @@ const srvO = start(PORT_O, FILE_O, { HOST_NAMES: 'duetto.test', OLD_SIGNATURES: 
 const srvC = start(PORT_C, FILE_C, { SERVER_KEY: 'apriti' });
 let logB = '';
 srvB.stdout.on('data', (d) => { logB += d; });
+// Six strangers' knocks a minute, all of them together, and a second
+// and a half for a connection to say who it is.
+const srvF = start(PORT_F, FILE_F, { SERVER_KEY: 'chiave', JOIN_LIMIT_ALL: '6', SILENT_MS: '1500', HEARTBEAT_TICK_MS: '200' });
+let logF = '';
+srvF.stdout.on('data', (d) => { logF += d; });
 /** The server of the list cut short, started later, and what it says. */
 let srvX = null;
 let logX = '';
@@ -537,7 +545,9 @@ try {
   const lines = logB.split('\n').filter(Boolean);
   const refusals = lines.filter((l) => l.includes('turned away'));
   check('fail2ban\'s filter finds the refusal, and the proxy\'s address in it',
-    refusals.length === 1 && banned(refusals[0]) === '10.0.0.11', refusals);
+    refusals.length === 2 && banned(refusals[1]) === '10.0.0.11', refusals);
+  check('and the knock braked at the door, with its own',
+    banned(refusals[0]) === '10.0.0.9' && refusals[0].includes('at the door: too-many-attempts'), refusals);
   check('and no other line of the server', lines.filter((l) => !l.includes('turned away')).every((l) => banned(l) === null),
     lines.filter((l) => !l.includes('turned away') && banned(l) !== null));
   // The card in the line is the client's writing: a "from" in it names nobody.
@@ -547,6 +557,42 @@ try {
   await sleep(100);
   const forgedLine = logB.split('\n').find((l) => l.includes('turned away: x from 6.6.6'));
   check('a "from" written in the card gets nobody else banned', !!forgedLine && banned(forgedLine) === '10.0.0.12', forgedLine);
+
+  // --- the door: strangers braked, owners not, refusals said ------------
+  // A flood of strangers' knocks used to brake the owner too, and wrote
+  // nothing fail2ban could read; a connection that said nothing stayed.
+  const fOwner = phone();
+  const fAt = (n) => ({ 'X-Forwarded-For': `10.1.0.${n}` });
+  r = await knock(PORT_F, fOwner, { key: 'chiave', name: 'owner' }, fAt(1));
+  check('braked door: the house taken with the key', r.answer.role === 'owner' && r.answer.adopted === true, r.answer);
+  r.ws.close();
+  const mute = new WebSocket(`ws://127.0.0.1:${PORT_F}`);
+  mute.on('error', () => { /* closed by the server: what is checked */ });
+  const muteCode = await closedWith(mute, 4000);
+  check('a connection that never says who it is: let go', muteCode === 4007, muteCode);
+  r = await knock(PORT_F, fOwner, { name: 'owner' }, fAt(1));
+  const ownerKept = await closedWith(r.ws, 2500);
+  check('the owner kept at the door is not', ownerKept === null, ownerKept);
+  r.ws.close();
+  r = await knock(PORT_F, phone(), {}, fAt(2));
+  const strangerGone = await closedWith(r.ws, 4000);
+  check('a stranger left at the door is', r.answer.role === 'stranger' && strangerGone === 4007, { answer: r.answer, strangerGone });
+  r = await knock(PORT_F, phone(), { invite: 'ZZZZ-ZZZZ' }, fAt(3)); r.ws.close();
+  r = await knock(PORT_F, phone(), { key: 'wrong' }, fAt(4)); r.ws.close();
+  r = await knock(PORT_F, { pub: phone().pub, signs: () => 'AAAA' }, {}, fAt(5)); r.ws.close();
+  r = await knock(PORT_F, phone(), {}, fAt(6)); r.ws.close();
+  r = await knock(PORT_F, phone(), {}, fAt(7)); r.ws.close();
+  check('six knocks of strangers a minute, all together: let through', r.answer.role === 'stranger', r.answer);
+  r = await knock(PORT_F, phone(), {}, fAt(8)); r.ws.close();
+  check('the seventh is braked', r.answer.error === 'too-many-attempts', r.answer);
+  r = await knock(PORT_F, fOwner, { name: 'owner' }, fAt(9)); r.ws.close();
+  check('and the owner, from yet another address, is not', r.answer.role === 'owner', r.answer);
+  await sleep(100);
+  const doorRefusals = logF.split('\n').filter((l) => l.includes('turned away'))
+    .map((l) => `${banned(l)} ${l.split('at the door: ')[1]?.split(',')[0]}`);
+  check('the door\'s refusals, each found by fail2ban with its address - and nothing for a stranger who only asks',
+    doorRefusals.join(' | ') === '10.1.0.3 bad-invite | 10.1.0.4 bad-key | 10.1.0.5 bad-signature | 10.1.0.8 too-many-attempts',
+    doorRefusals);
   // --- the signature bound to the server's name ------------------------
   // A server could hand a phone the number another server had just
   // picked, and walk in there with the signature: as that phone. With
@@ -638,8 +684,8 @@ try {
 } finally {
   // Each server writes the list once more on its way out: they are
   // waited for, or what is taken away here is written again after.
-  await Promise.all([srv, srvK, srvB, srvH, srvO, srvC, srvX].filter(Boolean).map(stop));
-  for (const f of [FILE, FILE_K, FILE_B, FILE_H, FILE_O, FILE_C, FILE_X]) {
+  await Promise.all([srv, srvK, srvB, srvH, srvO, srvC, srvF, srvX].filter(Boolean).map(stop));
+  for (const f of [FILE, FILE_K, FILE_B, FILE_H, FILE_O, FILE_C, FILE_F, FILE_X]) {
     for (const g of [f, `${f}.bak`, `${f}.new`]) { try { unlinkSync(g); } catch {} }
   }
   try { unlinkSync(ADMIN); unlinkSync(ADMIN_LOG); } catch {}
