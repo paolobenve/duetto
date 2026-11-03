@@ -403,6 +403,64 @@ try {
   check('the token takes it, and the seat kept its check when asked again', ms.answer.type === 'joined', ms.answer);
   ms.ws.close();
 
+  // A letter is thrown away by the maker of its code, and by nobody
+  // else: a member naming the room of somebody else's code leaves the
+  // letter where it is. And a letter is what the app writes - an object
+  // of a few hundred bytes - not anything a message can carry.
+  r = await knock(PORT, anna, { name: 'anna' });
+  const invElio = await askFor(r.ws, { type: 'invite', name: 'elio' }, 'invited');
+  r.ws.close();
+  const elio = phone(), pia = phone();
+  r = await knock(PORT, elio, { invite: invElio.code });
+  check('a member, at the door', r.answer.role === 'member', r.answer);
+  const elioDoor = r.ws;
+  const ROOM2 = 'waitroom2';
+  ma = await join(PORT, anna, ROOM2, 'anna');
+  // The owner is sent the list at every change, Elio's coming in too.
+  mw = await askFor(ma.ws, { type: 'await-room', until: Date.now() + 3600_000 }, 'awaiting');
+  check('another code waits', mw.type === 'awaiting' && mw.room === ROOM2, mw);
+  ma.ws.close(); await sleep(100);
+  mg = await join(PORT, pia, ROOM2, 'pia');
+  pm = await askFor(mg.ws, { type: 'pair-mail', payload: ['a', 'list'] }, 'pair-mail-result');
+  check('a letter that is not an object: refused', pm.ok === false && pm.error === 'bad-letter', pm);
+  pm = await askFor(mg.ws, { type: 'pair-mail', payload: { kind: 'pubkey', pub: 'P'.repeat(5000), name: 'pia' } },
+    'pair-mail-result');
+  check('a letter of five kilobytes: refused', pm.ok === false && pm.error === 'bad-letter', pm);
+  pm = await askFor(mg.ws, { type: 'pair-mail', payload: { kind: 'pubkey', pub: 'PIA', name: 'pia' } }, 'pair-mail-result');
+  check('the letter the app writes: left', pm.ok === true, pm);
+  mg.ws.close(); await sleep(100);
+  elioDoor.send(JSON.stringify({ type: 'forget', room: ROOM2 }));
+  await sleep(200);
+  elioDoor.close();
+  ma = await joinWith(PORT, anna, 'someotherroom', { name: 'anna' });
+  await sleep(300);
+  const keptMail = ma.got.find((m) => m.type === 'mail');
+  check('a member naming somebody else\'s room leaves its letter there',
+    keptMail?.items?.[0]?.room === ROOM2 && keptMail.items[0].payload?.pub === 'PIA', ma.got);
+
+  // A pair is broken by its own people. Gino, the guest of the first
+  // code's room, says it of a room of Anna's he never sat in, and of
+  // rooms that are nobody's: nothing is written down, nobody is told.
+  mg = await joinWith(PORT, gino, ROOM);
+  let toAnna = heard(ma.ws, 'pair-broken', 600);
+  mg.ws.send(JSON.stringify({ type: 'broken', room: 'someotherroom' }));
+  check('a guest saying somebody else\'s pair is broken: its owner is not told', (await toAnna) === null);
+  const brokenRooms = () => (JSON.parse(readFileSync(FILE, 'utf8')).broken || []).length;
+  const brokenBefore = brokenRooms();
+  for (let i = 0; i < 300; i += 1) mg.ws.send(JSON.stringify({ type: 'broken', room: `nobodys-${i}` }));
+  await askFor(mg.ws, { type: 'presence' }, 'presence');
+  const brokenAfter = brokenRooms();
+  check('300 rooms said broken by a guest: none written down', brokenAfter === brokenBefore, { brokenBefore, brokenAfter });
+  // His own pair he breaks, as before: the owner is told, wherever she is.
+  toAnna = heard(ma.ws, 'pair-broken', 1500);
+  mg.ws.send(JSON.stringify({ type: 'broken', room: ROOM }));
+  const ownPair = await toAnna;
+  check('his own pair he breaks: the owner is told, in another room', ownPair?.room === ROOM, ownPair);
+  mg.ws.close(); ma.ws.close(); await sleep(100);
+  ma = await join(PORT, anna, 'someotherroom', 'anna');
+  check('and the room of hers he named is not broken', ma.answer.type === 'joined' && ma.answer.broken === false, ma.answer);
+  ma.ws.close();
+
   // The page behind a link: bounces into the app, names host and code.
   const KEY = 'A'.repeat(43);
   // fetch does not let the Host header be set: the page names the one it was asked at.

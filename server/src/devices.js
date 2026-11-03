@@ -678,16 +678,32 @@ export function remove(name) {
  */
 function noteBroken(data, room) {
   const now = Date.now();
+  const before = (data.broken || []).length;
   data.broken = (data.broken || []).filter((b) => now - Date.parse(b.at) < BROKEN_DAYS * 86400_000);
-  if (!data.broken.some((b) => b.room === room)) {
-    data.broken.push({ room, at: new Date(now).toISOString() });
-  }
+  if (data.broken.some((b) => b.room === room)) return data.broken.length !== before;
+  data.broken.push({ room, at: new Date(now).toISOString() });
+  return true;
 }
 
+/** Written once: saying it again of the same room rewrites nothing. */
 export function markBroken(room) {
   const data = read();
-  noteBroken(data, room);
-  write(data);
+  if (noteBroken(data, room)) write(data);
+}
+
+/**
+ * Whether this phone sits in this room: as its owner, its second party
+ * or its guest. By the card; by the name for a seat written down before
+ * the cards were kept, and then only for a phone that may open rooms -
+ * a guest's name is its host's with a "+", never a seat's.
+ */
+export function sitsIn(room, pub, who, opens) {
+  const r = roomOf(room);
+  if (!r) return false;
+  const named = (name) => opens === true && !!who && !!name && name === who;
+  return (r.ownerPub ? r.ownerPub === pub : named(r.owner))
+    || (r.partnerPub ? r.partnerPub === pub : named(r.partner))
+    || (!!r.guest && r.guest === pub);
 }
 
 export function isBroken(room) {
@@ -748,15 +764,23 @@ export function pendingRoom(room) {
   return data.pending.find((x) => x.room === room) || null;
 }
 
-/** The maker takes the code back: the wait goes, and any mail with it. */
-export function dropPending(room, owner) {
+/**
+ * The maker takes the code back: the wait goes, and any mail with it.
+ *
+ * The maker's alone, known by the card that made the wait (by the name,
+ * for a wait from before the cards). The letter used to go for whoever
+ * asked: any phone that may open rooms, saying it forgot a room by that
+ * name, emptied the mailbox of somebody else's code.
+ */
+export function dropPending(room, owner, pub = '') {
   const data = read();
+  const mine = (x) => x.room === room && (x.ownerPub ? x.ownerPub === pub : x.owner === owner);
+  if (!data.pending.some(mine)) return 0;
   const before = data.pending.length + data.mail.length;
-  data.pending = data.pending.filter((x) => !(x.room === room && x.owner === owner));
+  data.pending = data.pending.filter((x) => !mine(x));
   data.mail = data.mail.filter((x) => x.room !== room);
-  const gone = before - data.pending.length - data.mail.length;
-  if (gone) write(data);
-  return gone;
+  write(data);
+  return before - data.pending.length - data.mail.length;
 }
 
 /** The other phone leaves its key for the maker: one letter per room. */

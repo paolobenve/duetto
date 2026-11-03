@@ -48,7 +48,7 @@ import {
   remove as removePerson, removeInvitation, removeRoom, roomOf, useInvitation, noteVisit,
   awaitRoom, pendingRoom, dropPending, leaveMail, takeMail, saveMoments, takeMoments,
   invitationOf, signsSecondKind, noteSecondKind, fileName as listFile,
-  placeOf, handOver, newPhoneIn,
+  placeOf, handOver, newPhoneIn, sitsIn,
 } from './devices.js';
 import { credentialsFor as turnCredentials, drop as dropTurn } from './turn.js';
 import { bouncePage } from './linkPage.js';
@@ -407,6 +407,18 @@ function doorIsShut() {
 
 const MAX_PER_ROOM = 2;
 const MAX_MESSAGE_BYTES = 256 * 1024;
+
+/**
+ * A letter for the maker of a code is a public key, a name and a proof:
+ * a few hundred bytes, in an object. It is kept in the list for up to a
+ * day, and the list is written whole at every change: anything a
+ * message could carry, a quarter of a megabyte a room, was being kept.
+ */
+const MAX_LETTER_BYTES = 4096;
+function isLetter(payload) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return false;
+  return Buffer.byteLength(JSON.stringify(payload)) <= MAX_LETTER_BYTES;
+}
 
 /**
  * How often the server taps each phone on the shoulder.
@@ -1560,7 +1572,7 @@ wss.on('connection', (ws, req) => {
       if (!ws.opens || !ws.roomId) { send(ws, { type: 'error', error: 'not-yours' }); return; }
       const untilMs = Number(msg.until) || 0;
       if (untilMs <= Date.now()) {
-        dropPending(ws.roomId, ws.who);
+        dropPending(ws.roomId, ws.who, ws.pub);
         send(ws, { type: 'awaiting', room: ws.roomId, until: null });
         return;
       }
@@ -1575,6 +1587,7 @@ wss.on('connection', (ws, req) => {
     if (msg.type === 'pair-mail') {
       const waiting = pendingRoom(ws.roomId);
       if (!waiting) { send(ws, { type: 'pair-mail-result', ok: false, error: 'not-waiting' }); return; }
+      if (!isLetter(msg.payload)) { send(ws, { type: 'pair-mail-result', ok: false, error: 'bad-letter' }); return; }
       const ok = leaveMail(ws.roomId, msg.payload, ws.pub, waiting.until);
       console.log(`[duetto] mail left in room ${ws.roomId.slice(0, 4)}… for ${waiting.owner}`);
       // The maker on line right now, in any room: handed over at once,
@@ -1706,14 +1719,28 @@ wss.on('connection', (ws, req) => {
  * One side has broken a pair: the other is told, now or later.
  *
  * Now, if they are in the room; later, at their next join, from the
- * list of broken rooms. Whoever says it must be somebody - a card the
- * server recognised, at the door or in a room - and anybody may say it
- * of any room: a guest breaks a pair as much as an owner does, and
- * saying it of a room one was never in does no harm.
+ * list of broken rooms. Whoever says it is one of the pair: the owner
+ * of the room, its second party or its guest - a guest breaks a pair as
+ * much as an owner does. A room the list does not know, by whoever is
+ * in it.
+ *
+ * Anybody of any room, it used to be, and that did harm: a guest -
+ * a phone nobody on the list ever looked at - could tell the owner,
+ * at every join, that a pair of theirs was broken, and could write
+ * thousands of rooms into the list, one rewrite of the whole file
+ * each, holding every other pair's messages up while it went on.
  */
 function pairBroken(ws, msg) {
   const room = typeof msg.room === 'string' ? msg.room.trim() : '';
   if (!room || room.length > 128) return;
+  const ours = roomOf(room) ? sitsIn(room, ws.pub, ws.who, ws.opens) : ws.joined && ws.roomId === room;
+  if (!ours) {
+    // Once per connection: a phone saying it over and over is not to
+    // fill the journal either.
+    if (!ws.saidNotOurs) console.log(`[duetto] ${ws.who || ws.name} says a pair is broken that is not theirs: ignored`);
+    ws.saidNotOurs = true;
+    return;
+  }
   markBroken(room);
   const told = tellPairBroken(room, ws);
   console.log(`[duetto] ${ws.who || ws.name} breaks a pair (${told} told now)`);
@@ -1986,7 +2013,7 @@ function ownersBusiness(ws, msg) {
     if (!ws.opens) { send(ws, { type: 'error', error: 'not-yours' }); return; }
     const room = String(msg.room);
     const guest = roomOf(room)?.guest;
-    dropPending(room, ws.who);
+    dropPending(room, ws.who, ws.pub);
     // A waiting code taken back is not a pair forgotten: if somebody
     // has come in as the room's guest in the meantime, the pair was
     // made on it and the room stays - a phone lost its pair this way,
