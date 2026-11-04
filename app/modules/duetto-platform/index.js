@@ -398,6 +398,8 @@ export const Journal = isAndroid && NativeJournal
       /** the rows not yet handed to the other side, and the cursor to confirm with markSent */
       unsent: () => call(NativeJournal, 'unsent'),
       markSent: (cursor) => call(NativeJournal, 'markSent', String(cursor || '')),
+      /** the journal emptied, every file of it: the old phone at the end of a hand-over */
+      forget: () => call(NativeJournal, 'forget'),
       /** the journal's files of the last days, ours and the other's, newest first: {name, text} */
       files: (days) => call(NativeReport, 'journalFiles', Math.max(1, Number(days) || 3)),
       /** Android's share sheet with those files */
@@ -427,6 +429,7 @@ export const Journal = isAndroid && NativeJournal
       installer: () => Promise.resolve(''),
       unsent: () => Promise.resolve({ text: '', cursor: '' }),
       markSent: unavailable,
+      forget: unavailable,
       appendOther: unavailable,
       path: () => Promise.resolve(''),
       lastDeath: () => Promise.resolve(null),

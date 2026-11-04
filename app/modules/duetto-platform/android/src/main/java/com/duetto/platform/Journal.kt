@@ -96,8 +96,65 @@ object Journal {
         COLUMNS.joinToString("\t") { cell(values[it]) } + "\n"
     /** appends a row, writing the header first when the file is new */
     private fun appendRow(file: File, line: String) {
-        if (!file.exists() || file.length() == 0L) file.writeText(HEADER + "\n")
+        if (!file.exists() || file.length() == 0L) {
+            file.writeText(HEADER + "\n")
+            // A day begun: the days past the keeping go, once a day.
+            file.parentFile?.let { prune(it) }
+        }
         file.appendText(line)
+    }
+
+    /**
+     * How many days the journal keeps.
+     *
+     * It says when the two talked, from where, on which network - the
+     * other side's too - and nothing stopped it growing for ever. A
+     * month is as far back as a question about a fault goes; a report
+     * sends three days.
+     */
+    const val KEEP_DAYS = 30
+    private const val DAY_MS = 86_400_000L
+    private val datedName = Regex("-(\\d{4}-\\d{2}-\\d{2})\\.(csv|log)$")
+
+    /** The files of the days past [KEEP_DAYS], ours and the other side's, gone. */
+    private fun prune(dir: File) {
+        try {
+            val now = System.currentTimeMillis()
+            val oldest = day(now - KEEP_DAYS * DAY_MS)
+            for (f in dir.listFiles() ?: return) {
+                val d = datedName.find(f.name)?.groupValues?.get(1)
+                // One with no day in its name, from an older build: by its age.
+                val old = if (d != null) d < oldest else now - f.lastModified() > KEEP_DAYS * DAY_MS
+                if (old) f.delete()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "journal: old days not cleared: ${e.message}")
+        }
+    }
+
+    /**
+     * The journal emptied: every file of it, ours and the other side's,
+     * where it lives and where it lived before, and where its sending to
+     * the other phone had got to. What the old phone does at the end of
+     * a hand-over (device.ts, emptyThisPhone): the journal says when the
+     * two talked and from where, and that phone is on its way to
+     * somebody else.
+     */
+    @Synchronized
+    fun forget(ctx: Context) {
+        val places = listOfNotNull(
+            File(ctx.filesDir, FOLDER),
+            ctx.getExternalFilesDir(null)?.let { File(it, FOLDER) },
+        )
+        for (dir in places) {
+            try {
+                dir.listFiles()?.forEach { it.delete() }
+            } catch (e: Exception) {
+                Log.w(TAG, "journal: not all of it emptied: ${e.message}")
+            }
+        }
+        ctx.getSharedPreferences(BootReceiver.PREFS, Context.MODE_PRIVATE).edit()
+            .remove(SENT_FILE).remove(SENT_LINES).apply()
     }
 
     /** The last death already written down: the others are old news. */

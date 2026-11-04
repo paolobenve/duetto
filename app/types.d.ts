@@ -250,6 +250,8 @@ declare module 'duetto-platform' {
     /** the rows not yet handed to the other side, and the cursor to confirm with markSent */
     unsent(): Promise<{ text: string; cursor: string }>;
     markSent(cursor: string): Promise<boolean>;
+    /** the journal emptied, every file of it: the old phone at the end of a hand-over */
+    forget(): Promise<boolean>;
     /** the journal's files of the last days, newest first */
     files(days: number): Promise<{ name: string; path: string; text: string }[]>;
     /** Android's share sheet with those files */

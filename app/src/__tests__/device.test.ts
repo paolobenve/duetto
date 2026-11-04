@@ -1,8 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Journal } from 'duetto-platform';
 import { CARD_UNREADABLE, deviceKey, emptyThisPhone } from '../device';
 
-// The native side is not here: the card needs none of it.
-jest.mock('duetto-platform', () => ({ Foreground: {} }));
+// The native side is not here: the card needs none of it, and of the
+// journal only that it is emptied with the phone.
+jest.mock('duetto-platform', () => ({
+  Foreground: {},
+  Journal: { forget: jest.fn(() => Promise.resolve(true)) },
+}));
 
 const KEY = 'duetto.device-key';
 const ASIDE = 'duetto.device-key.unreadable';
@@ -76,5 +81,17 @@ describe('the card of this phone', () => {
     // the next ask makes one again, and this time it is the one kept
     const made = await deviceKey();
     expect(await stored()).toEqual(made);
+  });
+
+  test('a phone emptied forgets its journal too', async () => {
+    await emptyThisPhone();
+    expect(Journal.forget).toHaveBeenCalledTimes(1);
+  });
+
+  test('a journal that will not go does not stop the emptying', async () => {
+    (Journal.forget as jest.Mock).mockRejectedValueOnce(new Error('disk'));
+    await AsyncStorage.setItem('duetto.config.v3', '{}');
+    await expect(emptyThisPhone()).resolves.toBeUndefined();
+    expect(await AsyncStorage.getItem('duetto.config.v3')).toBeNull();
   });
 });

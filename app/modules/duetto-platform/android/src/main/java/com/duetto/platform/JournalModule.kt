@@ -119,6 +119,13 @@ class JournalModule(private val ctx: ReactApplicationContext) :
         promise.resolve(true)
     }
 
+    /** The journal emptied, with the phone: see Journal.forget. */
+    @ReactMethod
+    fun forget(promise: Promise) {
+        Journal.forget(ctx)
+        promise.resolve(true)
+    }
+
     /** The lines from `fromLine` onwards, as a single text. */
 
     /**

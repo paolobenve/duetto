@@ -10,7 +10,7 @@
 
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Foreground } from 'duetto-platform';
+import { Foreground, Journal } from 'duetto-platform';
 import nacl from 'tweetnacl';
 import { encodeBase64 } from 'tweetnacl-util';
 
@@ -128,13 +128,16 @@ function asCard(raw: string): DeviceKey | null {
  * one of its keys in storage - the configuration with the pairs, the
  * card, the small memories - and the card in memory. It is what the old
  * phone does at the end of a hand-over (see handover.ts), once the new
- * one has it all. The journal stays, until Duetto is uninstalled.
+ * one has it all. The journal goes too: it says when the two talked and
+ * from where, the other side's included, and the phone is on its way to
+ * somebody else. It used to stay until Duetto was uninstalled.
  */
 export async function emptyThisPhone(): Promise<void> {
   const keys = (await AsyncStorage.getAllKeys().catch(() => [] as readonly string[]))
     .filter((k) => k.startsWith('duetto.'));
   if (keys.length > 0) await AsyncStorage.multiRemove([...keys]);
   mine = null;
+  await Journal.forget().catch(() => { /* what is left of it, is left */ });
 }
 
 /**

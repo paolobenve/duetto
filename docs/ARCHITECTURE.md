@@ -188,7 +188,8 @@ its own, so that nothing new comes in after - and sends what it has: the pairs, 
 waiting, the settings; not the phone's own (the permissions, the battery screen, the
 Bluetooth devices, a sound picked among its files). The new phone keeps it aside; then at
 every server where the old card sits, it gives its place to the new card (`handover`), the
-meeting's server last; the new phone starts, and the old one empties itself. Stopped
+meeting's server last; the new phone starts, and the old one empties itself, its journal
+included. Stopped
 before the place moved, nothing has changed; once it has started moving, `handingOver` in
 the configuration keeps the old phone quiet and finishes the moving, after a failure or a
 restart. The other side of each room is told (`peer-new-phone`) and asked once whether to

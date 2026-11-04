@@ -472,7 +472,9 @@ understanding, and whoever only wants to talk should not be carrying it around.
 
 What stays on either way is the journal's account of **what happens**: the app dying, a
 coming or going, a change of network. So a problem that has already happened can still be
-told afterwards, even by somebody who had never turned any of this on.
+told afterwards, even by somebody who had never turned any of this on. It keeps the last
+thirty days, and the old phone empties it at the end of a hand-over: it says when the two
+talked, and from where.
 
 With Diagnostics on and the phone plugged in:
 
