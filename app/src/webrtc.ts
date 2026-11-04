@@ -23,6 +23,7 @@ import { iceServers, VIDEO_PROFILES, CAPTURE_FPS } from './config';
 import type { Hand, Signaling, SignalMessage } from './signaling';
 import { VERSION_LABEL, BUILD } from './version';
 import { logger } from './log';
+import { LossWatch } from './shortPackets';
 
 /**
  * The channel session: audio always, video on request.
@@ -1294,8 +1295,11 @@ export class ChannelSession {
    * sheet - and dies with the session.
    */
   private shortThisTime = false;
+  /** short packets asked for by the road, not by anyone: see shortPackets.ts */
+  private shortForRoad = false;
+  private lossWatch = new LossWatch();
   private ptime(): number {
-    return this.cfg.shortPackets || this.shortThisTime ? 20 : 60;
+    return this.cfg.shortPackets || this.shortThisTime || this.shortForRoad ? 20 : 60;
   }
 
   /**
@@ -1314,6 +1318,29 @@ export class ChannelSession {
     if (!this.pc) return;
     if (this.polite) this.signaling.sendSignal({ kind: 'renegotiate', offer: true, why: 'packets' });
     else await this.negotiate();
+  }
+
+  /**
+   * One reading of the incoming voice, for the packets the road wants.
+   *
+   * Not told to the other side: the description this phone gives is
+   * what sets the other's packets, and a new pair of them going round
+   * is enough. With short packets chosen by hand there is nothing to
+   * watch, and the watch starts again when they are taken away.
+   */
+  private weighShortPackets(got: number, lost: number) {
+    if (this.cfg.shortPackets || this.shortThisTime) {
+      this.lossWatch.reset();
+      this.shortForRoad = false;
+      return;
+    }
+    const turn = this.lossWatch.add(Date.now(), got, lost);
+    if (!turn) return;
+    this.shortForRoad = turn.short;
+    Journal.mark(`packets:${this.ptime()}ms:road:loss=${turn.pct.toFixed(1)}`).catch(() => { /* noop */ });
+    if (!this.pc) return;
+    if (this.polite) this.signaling.sendSignal({ kind: 'renegotiate', offer: true, why: 'packets-road' });
+    else this.negotiate().catch(() => { /* noop */ });
   }
 
   private static thriftyAudio(sdp: string, ptime = 60): string {
@@ -2358,7 +2385,10 @@ export class ChannelSession {
         const dLost = r.lost - prev.lost;
         if (dGot + dLost === 0) continue;
         const pct = (100 * dLost) / (dGot + dLost);
-        if (kind === 'audio') audioIn = pct;
+        if (kind === 'audio') {
+          audioIn = pct;
+          this.weighShortPackets(dGot, dLost);
+        }
         cells[kind] = {
           in: pct.toFixed(1),
           out: r.far !== undefined ? (100 * r.far).toFixed(1) : '',
@@ -3636,6 +3666,9 @@ export class ChannelSession {
     // And no road: its numbers would stay in the journal's cells.
     this.lossLineAt = 0;
     this.emptyRoadInJournal();
+    // The next link is watched from scratch, and starts long.
+    this.lossWatch.reset();
+    this.shortForRoad = false;
     this.remoteStream?.getTracks().forEach((t) => t.stop());
     this.remoteStream = null;
     this.videoSender = null;

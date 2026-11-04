@@ -609,8 +609,6 @@ export type DuoConfig = {
    * default, as a phone call: the speaker is a choice, not a surprise.
    */
   outputOnEntry: 'earpiece' | 'asLeft';
-  /** the sheet that offers short packets when the road loses: "no, and do not ask again" turns it off */
-  lossAsk: boolean;
   /** the notice about that option was shown, at the first turn to the speaker */
   speakerNoticeShown: boolean;
   /** a Bluetooth earpiece that connects takes the sound at once */
@@ -713,7 +711,6 @@ export const DEFAULT_CONFIG: DuoConfig = {
   earEvenWithVideo: false,
   openInto: 'door',
   outputOnEntry: 'earpiece',
-  lossAsk: true,
   speakerNoticeShown: false,
   autoBluetooth: true,
   btDevices: {},

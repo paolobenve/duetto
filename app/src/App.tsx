@@ -6509,40 +6509,6 @@ export default function App() {
     if (tell) signalingRef.current?.sendSignal({ kind: 'shortPackets', on, permanent, at: when });
   }, [saveCfg]);
 
-  /**
-   * The road loses, the voice comes choppy: the sheet that offers
-   * short packets. Ten per cent of the incoming voice lost, over
-   * thirty seconds of readings, with the option off, the asking not
-   * refused for good, and not asked in the last ten minutes. Shown to
-   * whoever hears the damage: it is their other half's packets that
-   * shorten, and the choice goes to both.
-   */
-  const [lossSheet, setLossSheet] = useState(false);
-  const lossBadSince = useRef(0);
-  const lossAskedAt = useRef(0);
-  useEffect(() => {
-    const loss = videoStats.audioLossIn;
-    if (loss === null || loss === undefined || !inChannel) { lossBadSince.current = 0; return; }
-    if (loss < 10) { lossBadSince.current = 0; return; }
-    const now = Date.now();
-    if (!lossBadSince.current) { lossBadSince.current = now; return; }
-    if (now - lossBadSince.current < 30_000) return;
-    const c = cfgRef.current;
-    if (!c || c.lossAsk === false || c.shortPackets || lossSheet) return;
-    if (now - lossAskedAt.current < 10 * 60_000) return;
-    lossAskedAt.current = now;
-    lossBadSince.current = 0;
-    Journal.mark('loss:sheet').catch(() => {});
-    setLossSheet(true);
-  }, [videoStats.audioLossIn, inChannel, lossSheet]);
-  const onLossChoice = useCallback((choice: 'always' | 'once' | 'later' | 'never') => {
-    setLossSheet(false);
-    Journal.mark(`loss:sheet:${choice}`).catch(() => {});
-    if (choice === 'always') applyShortPackets(true, true, true);
-    else if (choice === 'once') applyShortPackets(true, true, false);
-    else if (choice === 'never') setCfg((prev) => (prev ? saveCfg({ ...prev, lossAsk: false }) : prev));
-  }, [applyShortPackets, saveCfg]);
-
   const applyAudio = useCallback((richer: boolean, tell: boolean, at = 0) => {
     if (!tell && theirsIsOlder(cfgRef.current?.richerAudioAt, at)) {
       Journal.mark(`peer-rich-voice:${richer ? 'yes' : 'no'}:older`).catch(() => {});
@@ -7663,8 +7629,6 @@ export default function App() {
         network={network}
         entered={inChannel}
         onEnter={() => { leftByHandAt.current = 0; Journal.mark('command:enter-card').catch(() => {}); enterChannel(); }}
-        lossSheet={lossSheet}
-        onLossChoice={onLossChoice}
         openInto={cfg.openInto ?? 'door'}
         onEnterAlways={() => {
           // Said from the door itself: from now on the app goes in by

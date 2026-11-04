@@ -654,11 +654,8 @@ type Props = {
   /** what opening the app does; the door offers to change it */
   openInto?: 'channel' | 'door';
   onEnterAlways?: () => void;
-  /** the road loses and the voice comes choppy: the sheet that offers short packets */
-  lossSheet?: boolean;
   /** a menu open over the channel, or none: the level's scale goes over it (see App) */
   onMenuOpen?: (open: boolean) => void;
-  onLossChoice?: (choice: 'always' | 'once' | 'later' | 'never') => void;
   connectionState: string;
   audioOn: boolean;
   videoOn: boolean;
@@ -774,7 +771,7 @@ type Props = {
  */
 export default function ChannelScreen(props: Props) {
   const {
-    entered, onEnter, openInto, onEnterAlways, lossSheet, onLossChoice, onMenuOpen, ownGain, network,
+    entered, onEnter, openInto, onEnterAlways, onMenuOpen, ownGain, network,
     connectionName, peerName, peerAvatar, peerPresent, peerDetached, peerTornDown, peerTornDownBy, videoStats, peerSendDelay, peerRecvDelay, delayTotalOnly, qualityLabel, showStats, controls, onSelectControls, news, newsStays, onNewsRead, peerGain, systemVolume, onChangeLevel,
     versionWarning, frontCamera, quality, onSelectQuality, localStream, remoteStream, status, connectionState,
     audioOn, videoOn, peerState, remoteHasVideo, remoteVideoKey, localVideoKey, localAspect, remoteAspect,
@@ -887,7 +884,7 @@ export default function ChannelScreen(props: Props) {
   const [alarmMenu, setAlarmMenu] = useState(false);
   // Any of them open: the volume keys' scale, under the menu with the
   // controls, comes up over it instead.
-  const menuOpen = routeMenu || volumesOpen || qualityMenu || leaveMenu || fadeMenu || alarmMenu || !!lossSheet;
+  const menuOpen = routeMenu || volumesOpen || qualityMenu || leaveMenu || fadeMenu || alarmMenu;
   const onMenuOpenRef = useRef(onMenuOpen);
   onMenuOpenRef.current = onMenuOpen;
   useEffect(() => { onMenuOpenRef.current?.(menuOpen); }, [menuOpen]);
@@ -2056,26 +2053,6 @@ export default function ChannelScreen(props: Props) {
               </TouchableOpacity>
             ))}
             <Text style={styles.sheetHint}>{t('channel.resolutionHint')}</Text>
-          </View>
-        </Pressable>
-      </SheetLayer>
-
-      {/* The road loses: four answers, and where the option lives. */}
-      <SheetLayer
-        visible={!!lossSheet}
-        onRequestClose={() => onLossChoice?.('later')}>
-        <Pressable style={styles.sheetBack} onPress={() => onLossChoice?.('later')}>
-          <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>{t('channel.lossTitle')}</Text>
-            <Text style={styles.sheetBody}>{t('channel.lossBody')}</Text>
-            {(['always', 'once', 'later', 'never'] as const).map((c) => (
-              <TouchableOpacity key={c} style={styles.sheetRow} onPress={() => onLossChoice?.(c)}>
-                <View style={styles.sheetText}>
-                  <Text style={styles.sheetLabel}>{t(`channel.loss_${c}`)}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-            <Text style={styles.sheetHint}>{t('channel.lossHint')}</Text>
           </View>
         </Pressable>
       </SheetLayer>
