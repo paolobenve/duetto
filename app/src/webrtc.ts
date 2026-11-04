@@ -24,6 +24,7 @@ import type { Hand, Signaling, SignalMessage } from './signaling';
 import { VERSION_LABEL, BUILD } from './version';
 import { logger } from './log';
 import { LossWatch } from './shortPackets';
+import { Freshness } from './road';
 
 /**
  * The channel session: audio always, video on request.
@@ -341,7 +342,7 @@ export class ChannelSession {
    *
    * Packets lost coming in, as we count them; packets lost going out,
    * as the other side reports them back; the jitter of what arrives
-   * and the round trip of the media. The screen shows the delays, but
+   * and the round trip of the ICE checks. The screen shows the delays, but
    * the journal used to keep none of this, and it is the first thing
    * to ask about a conversation that sounded broken over mobile data.
    * They go in six columns of the journal, on every line - numbers in
@@ -354,6 +355,13 @@ export class ChannelSession {
    */
   private lossPrev: Record<string, { got: number; lost: number }> = {};
   private lossLineAt = 0;
+  /**
+   * What goes out and the round trip are numbers received, not counted:
+   * written only while new ones keep coming (see road.ts). They used to
+   * go in with what came in, and with this phone's voice held they were
+   * the last report's, hours old.
+   */
+  private fresh = new Freshness();
   /**
    * Whether the journal's six columns have numbers in them now. Their
    * emptying used to hang on lossLineAt, which only diagnostics set:
@@ -1983,6 +1991,7 @@ export class ChannelSession {
     if (!pc?.getStats) return;
     try {
       const stats = await pc.getStats();
+      const readAt = Date.now();
       const out: VideoStats = {};
       let limit = '?';
       let framesEncodedSum = 0;
@@ -2023,10 +2032,6 @@ export class ChannelSession {
         if (!waited[kind]) waited[kind] = {};
         waited[kind][what] = (sum - was.sum) / (count - was.count);
       };
-      const forKind = (kind: string) => {
-        if (!waited[kind]) waited[kind] = {};
-        return waited[kind];
-      };
       /**
        * The winning pair, asked of the transport first.
        *
@@ -2054,11 +2059,19 @@ export class ChannelSession {
       if (selectedPairId && pairsById.get(selectedPairId)) {
         pairStat = pairsById.get(selectedPairId);
       }
+      /** the round trip for the journal: the ICE checks', while they are answered */
+      let pingRtt = '';
       if (pairStat) {
         const roundTrip = pairStat.currentRoundTripTime;
         out.latency = typeof roundTrip === 'number'
           ? Math.round(roundTrip * 1000)
           : null;
+        // They run with no media too, every few seconds: on a dead road
+        // no answer comes, and the last one's figure stays.
+        const answers = pairStat.responsesReceived ?? roundTrip;
+        if (out.latency !== null && this.fresh.moved('ping', `${pairStat.id}:${answers}`, readAt)) {
+          pingRtt = String(out.latency);
+        }
         const l = candidatesById.get(pairStat.localCandidateId);
         const rr = candidatesById.get(pairStat.remoteCandidateId);
         out.path =
@@ -2091,7 +2104,7 @@ export class ChannelSession {
       };
 
       const road: Record<string, {
-        got?: number; lost?: number; jitter?: number; far?: number; rtt?: number;
+        got?: number; lost?: number; jitter?: number; far?: number;
       }> = {};
       const onRoad = (kind: string) => (road[kind] ??= {});
       /** the voice's energy counters, out and in: see voicePrev */
@@ -2112,15 +2125,16 @@ export class ChannelSession {
           if (r.type === 'media-source') energy.mic = [r.totalAudioEnergy, r.totalSamplesDuration];
           if (r.type === 'inbound-rtp') energy.rx = [r.totalAudioEnergy, r.totalSamplesDuration];
         }
-        // The round trip of the media itself, which RTCP measures on
-        // the stream and not on the ICE ping.
+        // What the other side lost of what we sent, in its last report,
+        // if that report is a recent one: with our voice held no more
+        // come, and the last one's figure stays (see road.ts).
         if (r.type === 'remote-inbound-rtp') {
-          if (typeof r.roundTripTime === 'number') {
-            forKind(String(r.kind)).rtt = r.roundTripTime;
-            onRoad(String(r.kind)).rtt = r.roundTripTime;
+          const kind = String(r.kind);
+          const reports = r.roundTripTimeMeasurements ?? r.totalRoundTripTime;
+          if (typeof r.fractionLost === 'number'
+            && this.fresh.moved(`report:${kind}:${r.ssrc ?? ''}`, reports, readAt)) {
+            onRoad(kind).far = r.fractionLost;
           }
-          // What the other side lost of what we sent, in its last report.
-          if (typeof r.fractionLost === 'number') onRoad(String(r.kind)).far = r.fractionLost;
         }
         if (r.type === 'inbound-rtp') {
           const kind = String(r.kind);
@@ -2372,7 +2386,10 @@ export class ChannelSession {
       }
 
       // The road's losses, for the journal's six columns: see lossPrev.
-      const cells: Record<string, { in: string; out: string; jitter: string; rtt: string }> = {};
+      // What comes in is counted here, while it comes; what goes out and
+      // the round trip are written while they are current, whatever
+      // comes in (see `fresh`).
+      const cells: Record<string, { in: string; jitter: string }> = {};
       let audioIn: number | null = null;
       for (const kind of ['audio', 'video']) {
         const r = road[kind];
@@ -2391,11 +2408,13 @@ export class ChannelSession {
         }
         cells[kind] = {
           in: pct.toFixed(1),
-          out: r.far !== undefined ? (100 * r.far).toFixed(1) : '',
           jitter: r.jitter !== undefined ? String(Math.round(r.jitter * 1000)) : '',
-          rtt: r.rtt !== undefined ? String(Math.round(r.rtt * 1000)) : '',
         };
       }
+      const far = (kind: string) => {
+        const f = road[kind]?.far;
+        return f !== undefined ? (100 * f).toFixed(1) : '';
+      };
       out.audioLossIn = audioIn;
       // How loud the voice went out and came in since the last reading:
       // mean power over the stretch, in dBFS.
@@ -2410,12 +2429,18 @@ export class ChannelSession {
         voiceOut, voiceIn)
         .catch(() => { /* noop */ });
       this.voicePrev = energy;
-      if (cells.audio || cells.video) {
-        const a = cells.audio;
-        const v = cells.video;
-        Journal.road(a?.in ?? '', a?.out ?? '', a?.jitter ?? '', a?.rtt ?? '',
-          v?.in ?? '', v?.out ?? '').catch(() => { /* noop */ });
+      const aIn = cells.audio;
+      const vIn = cells.video;
+      const six = [aIn?.in ?? '', far('audio'), aIn?.jitter ?? '', pingRtt, vIn?.in ?? '', far('video')];
+      if (six.some((c) => c !== '')) {
+        Journal.road(six[0], six[1], six[2], six[3], six[4], six[5])
+          .catch(() => { /* noop */ });
         this.roadInJournal = true;
+      } else if (this.roadInJournal) {
+        // Nothing measured: the cells go empty rather than stale.
+        this.emptyRoadInJournal();
+      }
+      if (aIn || vIn) {
         if (this.diagnostics) {
           const now = Date.now();
           // "Bad" is said once per storm, not at every reading: a road
@@ -2438,10 +2463,9 @@ export class ChannelSession {
             Journal.mark(turnedBad ? 'loss:audio-bad' : 'loss').catch(() => { /* noop */ });
           }
         }
-      } else if (this.roadInJournal) {
-        // Nothing flows: the cells go empty rather than stale.
+      } else {
+        // Nothing comes in: when it comes again, its line goes at once.
         this.lossLineAt = 0;
-        this.emptyRoadInJournal();
       }
 
       out.carrying = this.mediaArrivedWithin(ChannelSession.CARRYING_MS);
@@ -2465,8 +2489,8 @@ export class ChannelSession {
         out.out ? limit : '',
         this.balanceCap !== null ? String(Math.round(this.balanceCap / 1000)) : '')
         .catch(() => { /* noop */ });
-      const losses = Object.values(cells).flatMap((c) => [c.in, c.out])
-        .filter((v) => v !== '').map(Number);
+      const losses = Object.entries(cells).flatMap(([kind, c]) => [c.in, far(kind)])
+        .filter((x) => x !== '').map(Number);
       this.weighGrainyIncoming(out.in ?? null, out.latency ?? null,
         losses.length ? Math.max(...losses) : null);
 
@@ -3666,6 +3690,7 @@ export class ChannelSession {
     // And no road: its numbers would stay in the journal's cells.
     this.lossLineAt = 0;
     this.emptyRoadInJournal();
+    this.fresh.reset();
     // The next link is watched from scratch, and starts long.
     this.lossWatch.reset();
     this.shortForRoad = false;
