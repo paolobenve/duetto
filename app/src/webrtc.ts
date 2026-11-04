@@ -395,8 +395,8 @@ export class ChannelSession {
   private lastOutbound: { ts: number; bytes: number } | null = null;
   private lastInbound: { ts: number; bytes: number } | null = null;
   /** the same for the voice, out and in: see the voice's rate below */
-  private lastAudioOut: { ts: number; bytes: number } | null = null;
-  private lastAudioIn: { ts: number; bytes: number } | null = null;
+  private lastAudioOut: { ts: number; bytes: number; packets: number } | null = null;
+  private lastAudioIn: { ts: number; bytes: number; packets: number } | null = null;
   /** the incoming video's frames received at the last sample */
   private lastInboundFrames: { ts: number; frames: number } | null = null;
   /** the frames decoded of their picture, as the last reading counted them: see renewIncomingVideo */
@@ -2130,6 +2130,18 @@ export class ChannelSession {
        */
       let voiceOut = '';
       let voiceIn = '';
+      /**
+       * And its packets a second, out and in: seventeen is sixty
+       * milliseconds each, fifty is twenty, which the bitrate does not
+       * tell apart. See Journal.voice.
+       */
+      const pace = (prev: { ts: number; packets: number } | null, ts: number, packets: number) => {
+        const dt = prev ? (ts - prev.ts) / 1000 : 0;
+        const delta = prev ? packets - prev.packets : -1;
+        return prev && dt > 0 && delta >= 0 ? String(Math.round(delta / dt)) : '';
+      };
+      let packetsOut = '';
+      let packetsIn = '';
       stats.forEach((r: any) => {
         if (r.kind === 'audio' && typeof r.totalAudioEnergy === 'number'
           && typeof r.totalSamplesDuration === 'number') {
@@ -2177,14 +2189,18 @@ export class ChannelSession {
         }
         if (r.kind === 'audio' && r.type === 'outbound-rtp') {
           const kbps = rate(this.lastAudioOut, r.timestamp, Number(r.bytesSent ?? 0));
-          this.lastAudioOut = { ts: r.timestamp, bytes: Number(r.bytesSent ?? 0) };
+          const packets = Number(r.packetsSent ?? 0);
+          packetsOut = pace(this.lastAudioOut, r.timestamp, packets);
+          this.lastAudioOut = { ts: r.timestamp, bytes: Number(r.bytesSent ?? 0), packets };
           const target = Number(r.targetBitrate);
           voiceOut = `${kbps ?? '?'}k${target > 0 ? `/${Math.round(target / 1000)}k` : ''}`;
           return;
         }
         if (r.kind === 'audio' && r.type === 'inbound-rtp') {
           const kbps = rate(this.lastAudioIn, r.timestamp, Number(r.bytesReceived ?? 0));
-          this.lastAudioIn = { ts: r.timestamp, bytes: Number(r.bytesReceived ?? 0) };
+          const packets = Number(r.packetsReceived ?? 0);
+          packetsIn = pace(this.lastAudioIn, r.timestamp, packets);
+          this.lastAudioIn = { ts: r.timestamp, bytes: Number(r.bytesReceived ?? 0), packets };
           voiceIn = `${kbps ?? '?'}k`;
         }
         if (r.kind !== 'video') return;
@@ -2434,7 +2450,7 @@ export class ChannelSession {
         return dE > 0 ? (10 * Math.log10(dE / dT)).toFixed(0) : '-96';
       };
       Journal.voice(level(energy.mic, this.voicePrev.mic), level(energy.rx, this.voicePrev.rx),
-        voiceOut, voiceIn)
+        voiceOut, voiceIn, packetsOut, packetsIn)
         .catch(() => { /* noop */ });
       this.voicePrev = energy;
       const aIn = cells.audio;

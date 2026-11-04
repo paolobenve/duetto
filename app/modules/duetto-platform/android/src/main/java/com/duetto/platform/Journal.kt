@@ -86,6 +86,9 @@ object Journal {
         // Last, so that a day's file begun by an older build keeps its
         // columns where its header says.
         "aOut", "aIn",
+        // the voice's packets a second, out and in: see voice(). Last
+        // for the same reason.
+        "aPktOut", "aPktIn",
     )
     val HEADER = COLUMNS.joinToString("\t")
     fun day(now: Long): String = dayFormat.format(Date(now - DAY_TURNS_AT_MS))
@@ -275,6 +278,8 @@ object Journal {
     @Volatile private var rxLevel = ""
     @Volatile private var aOut = ""
     @Volatile private var aIn = ""
+    @Volatile private var aPktOut = ""
+    @Volatile private var aPktIn = ""
     @Volatile private var vOut = ""
     @Volatile private var vIn = ""
     @Volatile private var bwe = ""
@@ -292,9 +297,14 @@ object Journal {
      * Asked for when a tester heard the voice too compressed: the
      * ceiling of "Richer voice" is a limit, and only these say what Opus
      * really sends.
+     *
+     * And the packets a second, out and in: seventeen is sixty
+     * milliseconds of voice each, fifty is twenty. The bitrate is the
+     * same either way, and short packets asked for during a call once
+     * changed nothing without anyone seeing it.
      */
-    fun voice(mic: String, rx: String, out: String, inn: String) {
-        micLevel = mic; rxLevel = rx; aOut = out; aIn = inn
+    fun voice(mic: String, rx: String, out: String, inn: String, pktOut: String, pktIn: String) {
+        micLevel = mic; rxLevel = rx; aOut = out; aIn = inn; aPktOut = pktOut; aPktIn = pktIn
     }
 
     /**
@@ -639,6 +649,8 @@ object Journal {
             values["rxLevel"] = rxLevel
             values["aOut"] = aOut
             values["aIn"] = aIn
+            values["aPktOut"] = aPktOut
+            values["aPktIn"] = aPktIn
             values["vOut"] = vOut
             values["vIn"] = vIn
             values["bwe"] = bwe

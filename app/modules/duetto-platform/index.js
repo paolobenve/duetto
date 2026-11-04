@@ -377,9 +377,9 @@ export const Journal = isAndroid && NativeJournal
       road: (loss, peerLoss, jitter, rtt, vLoss, vPeerLoss) =>
         call(NativeJournal, 'road', String(loss ?? ''), String(peerLoss ?? ''),
           String(jitter ?? ''), String(rtt ?? ''), String(vLoss ?? ''), String(vPeerLoss ?? '')),
-      /** how loud the voice is, out and in, in dBFS, and its bitrate out and in: '' for unknown */
-      voice: (mic, rx, out, inn) => call(NativeJournal, 'voice', String(mic ?? ''), String(rx ?? ''),
-        String(out ?? ''), String(inn ?? '')),
+      /** how loud the voice is, out and in, in dBFS, its bitrate and its packets a second: '' for unknown */
+      voice: (mic, rx, out, inn, pktOut, pktIn) => call(NativeJournal, 'voice', String(mic ?? ''), String(rx ?? ''),
+        String(out ?? ''), String(inn ?? ''), String(pktOut ?? ''), String(pktIn ?? '')),
       /** the picture out and in, the estimated bandwidth, the limit, our ceiling: '' for unknown */
       video: (out, inn, bwe, limit, cap) => call(NativeJournal, 'video', String(out ?? ''),
         String(inn ?? ''), String(bwe ?? ''), String(limit ?? ''), String(cap ?? '')),

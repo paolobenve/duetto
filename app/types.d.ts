@@ -234,8 +234,8 @@ declare module 'duetto-platform' {
     state(s: string): Promise<boolean>;
     /** who has the microphone open and who the camera, on both phones */
     using(mic: boolean, peerMic: boolean, peerVideo: boolean): Promise<boolean>;
-    /** how loud the voice is, out and in, and its bitrate out and in; '' where unknown */
-    voice(mic: string, rx: string, out?: string, inn?: string): Promise<boolean>;
+    /** how loud the voice is, out and in, its bitrate and its packets a second; '' where unknown */
+    voice(mic: string, rx: string, out?: string, inn?: string, pktOut?: string, pktIn?: string): Promise<boolean>;
     /** the picture out and in, the estimated bandwidth, the limit, our ceiling; '' where unknown */
     video(out: string, inn: string, bwe: string, limit: string, cap: string): Promise<boolean>;
     road(loss: string, peerLoss: string, jitter: string, rtt: string,
