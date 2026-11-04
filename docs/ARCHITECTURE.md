@@ -178,9 +178,19 @@ phones' secret, so a new phone can only get them from the old one. The old phone
 QR code - a server and 256 random bits, not a link - and the new one reads it from its
 first screen. The two meet at that server's door, in a meeting the server knows by a
 fingerprint of the secret (`handover-open`, `handover-join`); what they say is sealed with
-a key made of it, which the server never has. Both phones show six figures, to which each
-puts a share, and the new one commits to its share before it sees the old one's: whoever
-would sit in between, the server included, cannot make the two show the same figures.
+a key made of it, which the server never has. A QR code is seen, though - by a camera in
+the room, in a photo of the screen - so in their first words the two phones also give each
+other the public half of an X25519 key made for this meeting alone, and what goes after
+the figures - the pairs, "kept", "done" - is sealed with the secret and that exchange
+together: whoever saw the code and reads what passes through the server still opens only
+the first words, not the pairs. Both phones show six figures, to which each puts a share -
+and the two halves go in too - and the new one commits to its share before it sees the old
+one's: whoever would sit in between, the server included, cannot make the two show the
+same figures. The code says which hand-over it is: version 2, with the exchange; an old
+phone with an app from before shows version 1, which the new phone still reads, and that
+hand-over is the old one, sealed with the secret alone. An app from before does not read
+version 2: the new phone is brought up to date first. Nobody can make two phones with this
+app fall back to version 1, since the code goes from a screen to a camera.
 Whoever photographed the code and got there first is not the phone in the person's hand:
 that one says the code was taken and shows no figures, and the old phone names the other's
 model - the person cancels. Confirmed on the old phone, it goes quiet - no connection of
@@ -429,6 +439,7 @@ Off, two of them do not simply stop:
 | A third party who knows the server | open connections, unless there is a key | get into a pair without the code |
 | The TURN relay | forward packets | decrypt the media |
 | Whoever photographs a hand-over's QR code | join the meeting first | go unnoticed: the new phone in hand says the code was taken, and shows no figures to confirm |
+| Whoever photographs the code and reads what passes through the server | open the first words: the two cards, the new phone's model | open the pairs: after the figures, the words are sealed with an exchange between the two phones too - in the hand-over of version 2 |
 | Whoever photographs the code and also holds the server | sit between the two phones | make both show the same figures: each fixes its share before it sees the other's |
 
 The delicate moment is **the pairing alone**. Afterwards the key is 256 bits and random.

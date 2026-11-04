@@ -1,7 +1,7 @@
 import nacl from 'tweetnacl';
 import { encodeBase64 } from 'tweetnacl-util';
 import {
-  Giving, Taking, parseQr, qrText, newSecret, meetingId, meetingKey, figuresOf, commitmentTo,
+  Giving, Taking, parseQr, qrText, newSecret, meetingId, meetingKey, sealKey, figuresOf, commitmentTo,
   bundleOf, fromBundle, serversOf, keepIncoming, readIncoming, dropIncoming, finishMoving, isEmptyPhone,
   type GiveView, type TakeView, type Moving,
 } from '../handover';
@@ -47,6 +47,8 @@ function fakeServer() {
   const sitting = new Map<string, 'owner' | 'member' | 'guest'>();
   type Line = DoorLine & { card: string; hear: (m: any) => void };
   const meetings = new Map<string, { old: Line; neu: Line | null }>();
+  /** every envelope that went across, as the server sees it */
+  const relayed: string[] = [];
   const endOf = (line: Line, why: string) => {
     for (const [id, m] of meetings) {
       if (m.old !== line && m.neu !== line) continue;
@@ -68,6 +70,7 @@ function fakeServer() {
       else if (m.neu) line.hear({ type: 'handover-error', error: 'taken' });
       else { m.neu = line; m.old.hear({ type: 'handover-arrived' }); line.hear({ type: 'handover-joined' }); }
     } else if (obj.type === 'handover-msg') {
+      relayed.push(obj.payload);
       for (const m of meetings.values()) {
         if (m.old === line && m.neu) m.neu.hear(obj);
         else if (m.neu === line) m.old.hear(obj);
@@ -100,7 +103,7 @@ function fakeServer() {
     };
     return line;
   };
-  return { sitting, opener, meetings };
+  return { sitting, opener, meetings, relayed };
 }
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
@@ -117,9 +120,17 @@ describe('the QR code', () => {
   test('carries the server and the secret, and gives them back', () => {
     const secret = newSecret();
     expect(secret).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    expect(parseQr(qrText(SERVER, secret))).toEqual({ serverUrl: SERVER, secret });
+    expect(parseQr(qrText(SERVER, secret))).toEqual({ serverUrl: SERVER, secret, version: 2 });
     const own = 'ws://example.org:8787/custom';
-    expect(parseQr(qrText(own, secret))).toEqual({ serverUrl: own, secret });
+    expect(parseQr(qrText(own, secret))).toEqual({ serverUrl: own, secret, version: 2 });
+  });
+
+  test('version 2 is made, and the code of an app from before is still read', () => {
+    const secret = newSecret();
+    const text = qrText(SERVER, secret);
+    expect(text.startsWith('duetto-handover:2/')).toBe(true);
+    expect(parseQr(text.replace(':2/', ':1/'))).toEqual({ serverUrl: SERVER, secret, version: 1 });
+    expect(parseQr(text.replace(':2/', ':3/'))).toBeNull();
   });
 
   test('is not a link, and nothing else is one of these', () => {
@@ -150,6 +161,41 @@ describe('the six figures', () => {
     expect(figuresOf(s, o, n, so, sn)).toBe(f);
     const others = [figuresOf(s, o, card(), so, sn), figuresOf(s, o, n, key(), sn), figuresOf(s, o, n, so, key())];
     expect(others.filter((x) => x === f).length).toBeLessThan(2);
+  });
+
+  test('with the exchange, its two halves change them too', () => {
+    const [s, o, n, so, sn, ho, hn] = [newSecret(), card(), card(), key(), key(), key(), key()];
+    const f = figuresOf(s, o, n, so, sn, [ho, hn]);
+    expect(f).toMatch(/^\d{6}$/);
+    expect(figuresOf(s, o, n, so, sn, [ho, hn])).toBe(f);
+    const others = [figuresOf(s, o, n, so, sn), figuresOf(s, o, n, so, sn, [key(), hn]), figuresOf(s, o, n, so, sn, [ho, key()])];
+    expect(others.filter((x) => x === f).length).toBeLessThan(2);
+  });
+});
+
+describe('the exchange', () => {
+  test('the same key on both phones, another for another secret', () => {
+    const secret = newSecret();
+    const a = nacl.box.keyPair();
+    const b = nacl.box.keyPair();
+    const atOld = sealKey(secret, a, encodeBase64(b.publicKey), 'old')!;
+    const atNew = sealKey(secret, b, encodeBase64(a.publicKey), 'new')!;
+    expect(atOld).toHaveLength(32);
+    expect(encodeBase64(atNew)).toBe(encodeBase64(atOld));
+    expect(encodeBase64(atOld)).not.toBe(encodeBase64(meetingKey(secret)));
+    expect(encodeBase64(sealKey(newSecret(), a, encodeBase64(b.publicKey), 'old')!)).not.toBe(encodeBase64(atOld));
+  });
+
+  test('no key from a half that is no key', () => {
+    const a = nacl.box.keyPair();
+    const s = newSecret();
+    // Points that give nothing, whatever they meet: the key would be the secret's alone.
+    const one = new Uint8Array(32);
+    one[0] = 1;
+    expect(sealKey(s, a, encodeBase64(new Uint8Array(32)), 'old')).toBeNull();
+    expect(sealKey(s, a, encodeBase64(one), 'new')).toBeNull();
+    expect(sealKey(s, a, encodeBase64(new Uint8Array(16)), 'old')).toBeNull();
+    expect(sealKey(s, a, 'not a key', 'old')).toBeNull();
   });
 });
 
@@ -222,6 +268,47 @@ describe('the hand-over, from one phone to the other', () => {
     return { giving, taking, giveViews, takeViews, moves, kept, quieted: () => quieted, qr };
   }
 
+  /** Somebody with the secret alone, at the meeting as a new phone: words written by hand. */
+  async function newByHand(srv: ReturnType<typeof fakeServer>, secret: string) {
+    const box = new SignalCrypto(meetingKey(secret));
+    const line = await srv.opener(card())();
+    const heard: any[] = [];
+    line.listen((m) => heard.push(m));
+    line.send({ type: 'handover-join', id: meetingId(secret) });
+    await until(() => heard.some((m) => m.type === 'handover-joined'), 'joined');
+    return { heard, say: (w: any) => line.send({ type: 'handover-msg', payload: box.seal(w) }) };
+  }
+
+  /** An old phone written by hand: a meeting opened, a code of this version, and words said as given. */
+  async function oldByHand(srv: ReturnType<typeof fakeServer>, oldCard: string, version: 1 | 2) {
+    const secret = newSecret();
+    const box = new SignalCrypto(meetingKey(secret));
+    const line = await srv.opener(oldCard)();
+    const heard: any[] = [];
+    line.listen((m) => heard.push(m));
+    line.send({ type: 'handover-open', id: meetingId(secret) });
+    await until(() => heard.some((m) => m.type === 'handover-opened'), 'opened');
+    const words = (): any[] => heard.filter((m) => m.type === 'handover-msg').map((m) => box.open<any>(m.payload));
+    const word = (t: string) => words().find((w) => w?.t === t);
+    return {
+      secret,
+      line,
+      word,
+      say: (w: any, with_ = box) => line.send({ type: 'handover-msg', payload: with_.seal(w) }),
+      qr: parseQr(qrText(SERVER, secret).replace(':2/', `:${version}/`))!,
+    };
+  }
+
+  function takingFrom(srv: ReturnType<typeof fakeServer>, qr: ReturnType<typeof parseQr>, newCard: string) {
+    const views: TakeView[] = [];
+    const kept: DuoConfig[] = [];
+    const t = new Taking({
+      qr: qr!, myPub: newCard, model: 'Nuovo 1', open: srv.opener(newCard),
+      view: (v) => views.push(v), keep: async (c) => { kept.push(c); }, drop: async () => { kept.length = 0; },
+    });
+    return { t, views, kept };
+  }
+
   test('the same figures on both, then everything across, then the place', async () => {
     const srv = fakeServer();
     const oldCard = card();
@@ -250,6 +337,13 @@ describe('the hand-over, from one phone to the other', () => {
     expect(p.moves[0]).toEqual({ to: newCard, servers: [SERVER] });
     expect(p.moves[p.moves.length - 1]).toEqual({ to: newCard, servers: [] });
     expect(p.giving.moved).toBe(true);
+
+    // Whoever saw the code and read all that went across: the first words, not the pairs.
+    const box = new SignalCrypto(meetingKey(p.qr().secret));
+    const opened = srv.relayed.map((x) => box.open<any>(x));
+    expect(opened.filter(Boolean).map((w) => w.t)).toEqual(['hello', 'share', 'reveal']);
+    expect(srv.relayed.length).toBeGreaterThanOrEqual(5);
+    expect(JSON.stringify(opened)).not.toContain(oldConfig().pairs[0].id);
   });
 
   test('a photo of the code, used first: the real new phone finds it taken, and nothing goes', async () => {
@@ -282,18 +376,85 @@ describe('the hand-over, from one phone to the other', () => {
     const p = phones(srv, oldCard, card());
     await p.giving.start();
     await until(() => last(p.giveViews)?.step === 'code', 'a code');
-    const { secret } = p.qr();
-    const box = new SignalCrypto(meetingKey(secret));
-    const line = await srv.opener(card())();
-    const heard: any[] = [];
-    line.listen((m) => heard.push(m));
-    line.send({ type: 'handover-join', id: meetingId(secret) });
-    await until(() => heard.some((m) => m.type === 'handover-joined'), 'joined');
-    line.send({ type: 'handover-msg', payload: box.seal({ by: 'new', t: 'hello', pub: card(), commit: commitmentTo('one') }) });
-    await until(() => heard.some((m) => m.type === 'handover-msg'), 'the share');
-    line.send({ type: 'handover-msg', payload: box.seal({ by: 'new', t: 'reveal', share: 'another' }) });
+    const by = await newByHand(srv, p.qr().secret);
+    const dh = encodeBase64(nacl.box.keyPair().publicKey);
+    by.say({ by: 'new', t: 'hello', pub: card(), commit: commitmentTo('one'), dh });
+    await until(() => by.heard.some((m) => m.type === 'handover-msg'), 'the share');
+    by.say({ by: 'new', t: 'reveal', share: 'another' });
     await until(() => last(p.giveViews)?.step === 'failed', 'stopped');
     expect((last(p.giveViews) as any).why).toBe('mismatch');
+  });
+
+  test('a hello without its half, to a code of version 2: the old phone stops, and shares nothing', async () => {
+    const srv = fakeServer();
+    const oldCard = card();
+    srv.sitting.set(oldCard, 'owner');
+    const p = phones(srv, oldCard, card());
+    await p.giving.start();
+    await until(() => last(p.giveViews)?.step === 'code', 'a code');
+    const by = await newByHand(srv, p.qr().secret);
+    // As an app from before says it: with the secret alone.
+    by.say({ by: 'new', t: 'hello', pub: card(), commit: commitmentTo('one'), model: 'x' });
+    await until(() => last(p.giveViews)?.step === 'failed', 'stopped');
+    expect((last(p.giveViews) as any).why).toBe('mismatch');
+    expect(by.heard.some((m) => m.type === 'handover-msg')).toBe(false);
+  });
+
+  test('a share without its half, to a code of version 2: the new phone stops', async () => {
+    const srv = fakeServer();
+    const oldCard = card();
+    srv.sitting.set(oldCard, 'owner');
+    const old = await oldByHand(srv, oldCard, 2);
+    const n = takingFrom(srv, old.qr, card());
+    await n.t.start();
+    await until(() => !!old.word('hello'), 'the hello');
+    expect(typeof old.word('hello').dh).toBe('string');
+    old.say({ by: 'old', t: 'share', pub: oldCard, share: key() });
+    await until(() => last(n.views)?.step === 'failed', 'stopped');
+    expect((last(n.views) as any).why).toBe('mismatch');
+    expect(old.word('reveal')).toBeUndefined();
+  });
+
+  test('after the exchange, what is sealed with the secret alone is not taken', async () => {
+    const srv = fakeServer();
+    const oldCard = card();
+    srv.sitting.set(oldCard, 'owner');
+    const old = await oldByHand(srv, oldCard, 2);
+    const n = takingFrom(srv, old.qr, card());
+    await n.t.start();
+    await until(() => !!old.word('hello'), 'the hello');
+    old.say({ by: 'old', t: 'share', pub: oldCard, share: key(), dh: encodeBase64(nacl.box.keyPair().publicKey) });
+    await until(() => last(n.views)?.step === 'compare', 'the figures');
+    // Somebody with the secret, the server on their side: a configuration of their own.
+    old.say({ by: 'old', t: 'bundle', cfg: bundleOf(oldConfig()) });
+    await until(() => last(n.views)?.step === 'failed', 'stopped');
+    expect((last(n.views) as any).why).toBe('mismatch');
+    expect(n.kept).toHaveLength(0);
+  });
+
+  test('an old phone with an app from before: the hand-over of version 1, as it was', async () => {
+    const srv = fakeServer();
+    const oldCard = card();
+    const newCard = card();
+    srv.sitting.set(oldCard, 'member');
+    const old = await oldByHand(srv, oldCard, 1);
+    const n = takingFrom(srv, old.qr, newCard);
+    await n.t.start();
+    await until(() => !!old.word('hello'), 'the hello');
+    expect(old.word('hello').pub).toBe(newCard);
+    expect(old.word('hello').dh).toBeUndefined();
+    const share = key();
+    old.say({ by: 'old', t: 'share', pub: oldCard, share });
+    await until(() => !!old.word('reveal') && last(n.views)?.step === 'compare', 'the figures');
+    const shown = old.word('reveal').share;
+    expect(commitmentTo(shown)).toBe(old.word('hello').commit);
+    expect((last(n.views) as any).figures).toBe(figuresOf(old.secret, oldCard, newCard, share, shown));
+    old.say({ by: 'old', t: 'bundle', cfg: bundleOf(oldConfig()) });
+    await until(() => !!old.word('have'), 'kept');
+    expect(n.kept[0].pairs).toHaveLength(2);
+    old.line.send({ type: 'handover', to: newCard });
+    await until(() => last(n.views)?.step === 'done', 'started');
+    expect(srv.sitting.get(newCard)).toBe('member');
   });
 
   test('the old phone says no: the new one lets go of nothing it has not got', async () => {

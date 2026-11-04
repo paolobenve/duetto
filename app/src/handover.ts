@@ -45,6 +45,15 @@ import type { DoorLine } from './door';
  * so that nobody, not even with the server on their side, can make up a
  * phone that gives the same figures.
  *
+ * A QR code is seen, though - by a camera in the room, in a photo of
+ * the screen, over a shoulder - and whoever saw it and read what passes
+ * through the server would open the envelopes too, the pairs' keys
+ * among them. So in its first envelope each phone also gives the
+ * public half of a key made for this meeting alone (X25519), and what
+ * goes after the figures is sealed with the secret and the exchange of
+ * the two together: a key nobody makes by looking. Nor can anybody
+ * change the halves on the way: they are in the figures.
+ *
  * The order keeps the pairs: first they are on both phones, then the
  * place moves, then the old phone lets them go. Stopped half way, the
  * old phone still has everything; once the place has started moving,
@@ -54,14 +63,23 @@ import type { DoorLine } from './door';
 
 // --- The QR code -------------------------------------------------------------
 
-/** What the QR code says: a server, and a secret for this hand-over alone. */
-export type HandoverQr = { serverUrl: string; secret: string };
+/**
+ * What the QR code says: a server, a secret for this hand-over alone,
+ * and which hand-over it is.
+ */
+export type HandoverQr = { serverUrl: string; secret: string; version: 1 | 2 };
 
 /**
  * Not a link: a camera app that reads it finds nothing to open, and
  * nothing to pass on in a chat. Only Duetto's own reader knows it.
+ *
+ * Version 2 is the hand-over with the exchange. Version 1 is the one
+ * before, without it: an old phone with an app from before still shows
+ * it, and it is still read here. An app from before does not read
+ * version 2 - on the new phone, Duetto is to be brought up to date.
  */
-const QR_HEAD = 'duetto-handover:1/';
+const QR_HEAD = 'duetto-handover:2/';
+const QR_READ = /^duetto-handover:([12])\/([A-Za-z0-9_-]{43})\/(\S+)$/;
 
 const toUrl = (b64: string) => b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/[=]+$/, '');
 const hex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
@@ -79,12 +97,10 @@ export function qrText(serverUrl: string, secret: string): string {
 
 /** Reads a hand-over's QR code back; null for anything else. */
 export function parseQr(text: string): HandoverQr | null {
-  const t = (text || '').trim();
-  if (!t.startsWith(QR_HEAD)) return null;
-  const m = /^([A-Za-z0-9_-]{43})\/(\S+)$/.exec(t.slice(QR_HEAD.length));
+  const m = QR_READ.exec((text || '').trim());
   if (!m) return null;
-  const serverUrl = normalizeServerUrl(m[2]);
-  return serverUrl ? { serverUrl, secret: m[1] } : null;
+  const serverUrl = normalizeServerUrl(m[3]);
+  return serverUrl ? { serverUrl, secret: m[2], version: m[1] === '1' ? 1 : 2 } : null;
 }
 
 /** The meeting's name at the server: a fingerprint of the secret. */
@@ -95,6 +111,25 @@ export function meetingId(secret: string): string {
 /** The key of the envelopes, made of the secret. */
 export function meetingKey(secret: string): Uint8Array {
   return sha512(`duetto-handover-key|${secret}`).slice(0, nacl.secretbox.keyLength);
+}
+
+/**
+ * The key of what goes after the figures: the secret, and the exchange
+ * of the two phones' halves - this phone's secret one, the other's
+ * public one. Null when the other's is no key to make one with: one of
+ * the few points that give the same result, known to all, whatever
+ * half they meet.
+ */
+export function sealKey(
+  secret: string, mine: nacl.BoxKeyPair, theirs: string, side: 'old' | 'new',
+): Uint8Array | null {
+  let dh: Uint8Array;
+  try { dh = nacl.scalarMult(mine.secretKey, decodeBase64(theirs)); } catch { return null; }
+  if (dh.every((b) => b === 0)) return null;
+  const own = encodeBase64(mine.publicKey);
+  const [ofOld, ofNew] = side === 'old' ? [own, theirs] : [theirs, own];
+  return sha512(`duetto-handover-seal|${secret}|${encodeBase64(dh)}|${ofOld}|${ofNew}`)
+    .slice(0, nacl.secretbox.keyLength);
 }
 
 // --- The six figures -----------------------------------------------------------
@@ -109,11 +144,16 @@ export function commitmentTo(share: string): string {
   return hex(sha512(`duetto-handover-commit|${share}`).slice(0, 32));
 }
 
-/** The six figures both phones show: the same, or somebody is in between. */
+/**
+ * The six figures both phones show: the same, or somebody is in between.
+ * `dh`: the public halves of the exchange - the old phone's, the new
+ * one's - in a hand-over that has one.
+ */
 export function figuresOf(
-  secret: string, oldPub: string, newPub: string, oldPart: string, newPart: string,
+  secret: string, oldPub: string, newPub: string, oldPart: string, newPart: string, dh?: [string, string],
 ): string {
-  const h = sha512(`duetto-handover-check|${secret}|${oldPub}|${newPub}|${oldPart}|${newPart}`);
+  const said = `${secret}|${oldPub}|${newPub}|${oldPart}|${newPart}`;
+  const h = sha512(dh ? `duetto-handover-check-2|${said}|${dh[0]}|${dh[1]}` : `duetto-handover-check|${said}`);
   const n = (h[0] * 2 ** 24 + h[1] * 2 ** 16 + h[2] * 2 ** 8 + h[3]) % 1_000_000;
   return String(n).padStart(6, '0');
 }
@@ -121,8 +161,11 @@ export function figuresOf(
 /** "123 456": read at a glance, on two screens side by side. */
 export const formatFigures = (f: string) => `${f.slice(0, 3)} ${f.slice(3)}`;
 
-/** A card: the public half of an Ed25519 key, 32 bytes in base64. */
-function isCard(pub: unknown): pub is string {
+/**
+ * A public key, 32 bytes in base64: a card - the public half of an
+ * Ed25519 key - or a phone's half of the exchange, of an X25519 one.
+ */
+function isPublicKey(pub: unknown): pub is string {
   if (typeof pub !== 'string' || pub.length > 64) return false;
   try { return decodeBase64(pub).length === 32; } catch { return false; }
 }
@@ -328,10 +371,15 @@ export async function finishMoving(m: Moving, o: {
   return true;
 }
 
-/** The words of the two phones, sealed: who says them, and what. */
+/**
+ * The words of the two phones, sealed: who says them, and what. `dh`,
+ * each phone's half of the exchange, in a hand-over of version 2: the
+ * first three words are sealed with the secret, the others with the
+ * exchange too.
+ */
 type Word =
-  | { by: 'new'; t: 'hello'; pub: string; commit: string; model?: string }
-  | { by: 'old'; t: 'share'; pub: string; share: string }
+  | { by: 'new'; t: 'hello'; pub: string; commit: string; model?: string; dh?: string }
+  | { by: 'old'; t: 'share'; pub: string; share: string; dh?: string }
   | { by: 'new'; t: 'reveal'; share: string }
   | { by: 'old'; t: 'bundle'; cfg: DuoConfig }
   | { by: 'new'; t: 'have' }
@@ -362,6 +410,10 @@ export class Giving {
   private places: string[] = [];
   private secret = '';
   private box: SignalCrypto | null = null;
+  /** this phone's half of the exchange, the other's, and the envelopes after the figures */
+  private dh = nacl.box.keyPair();
+  private newDh = '';
+  private after: SignalCrypto | null = null;
   private newPub = '';
   private newModel = '';
   private commit = '';
@@ -421,7 +473,7 @@ export class Giving {
     this.o.view({ step: 'sending' });
     await this.o.quiet().catch(() => { /* sent all the same */ });
     if (this.stage !== 'sending') return;
-    this.seal({ by: 'old', t: 'bundle', cfg: bundleOf(this.o.cfg()) });
+    this.seal({ by: 'old', t: 'bundle', cfg: bundleOf(this.o.cfg()) }, this.after);
     this.timer = setTimeout(() => this.fail('timeout'), HAVE_WAIT_MS);
   }
 
@@ -444,8 +496,11 @@ export class Giving {
     this.clearTimer();
     this.stage = 'opening';
     this.newPub = '';
+    this.newDh = '';
+    this.after = null;
     this.secret = newSecret();
     this.box = new SignalCrypto(meetingKey(this.secret));
+    this.dh = nacl.box.keyPair();
     let line: DoorLine;
     try { line = await this.o.open(this.main); } catch { this.fail('unreachable', this.main); return; }
     if (this.stage !== 'opening') { line.close(); return; }
@@ -477,22 +532,31 @@ export class Giving {
       case 'handover-closed':
         this.fail(msg.why === 'expired' ? 'expired' : 'closed');
         return;
-      case 'handover-msg':
-        this.word(this.box?.open<Word>(String(msg.payload || '')) ?? null);
+      case 'handover-msg': {
+        // After the figures, the one word that comes is sealed with the exchange.
+        const box = this.stage === 'sending' ? this.after : this.box;
+        this.word(box?.open<Word>(String(msg.payload || '')) ?? null);
         return;
+      }
       default:
     }
   }
 
   private word(w: Word | null) {
     if (w?.by === 'new' && w.t === 'hello' && this.stage === 'waiting') {
-      if (!isCard(w.pub) || !/^[0-9a-f]{64}$/.test(String(w.commit))) { this.fail('mismatch'); return; }
+      // A hello without its half does not come from a phone that read
+      // this code: whoever says it has the secret, and the hand-over
+      // from before, sealed with the secret alone.
+      const key = isPublicKey(w.dh) ? sealKey(this.secret, this.dh, w.dh, 'old') : null;
+      if (!key || !isPublicKey(w.pub) || !/^[0-9a-f]{64}$/.test(String(w.commit))) { this.fail('mismatch'); return; }
       this.newPub = w.pub;
+      this.newDh = String(w.dh);
+      this.after = new SignalCrypto(key);
       this.commit = w.commit;
       this.newModel = String(w.model || '').replace(/[^\p{L}\p{N} ._()+-]/gu, '').slice(0, 40);
       this.share = newShare();
       this.stage = 'shared';
-      this.seal({ by: 'old', t: 'share', pub: this.o.myPub, share: this.share });
+      this.seal({ by: 'old', t: 'share', pub: this.o.myPub, share: this.share, dh: encodeBase64(this.dh.publicKey) }, this.box);
       return;
     }
     if (w?.by === 'new' && w.t === 'reveal' && this.stage === 'shared') {
@@ -501,7 +565,8 @@ export class Giving {
       this.o.mark?.('compare');
       this.o.view({
         step: 'compare',
-        figures: figuresOf(this.secret, this.o.myPub, this.newPub, this.share, String(w.share)),
+        figures: figuresOf(this.secret, this.o.myPub, this.newPub, this.share, String(w.share),
+          [encodeBase64(this.dh.publicKey), this.newDh]),
         model: this.newModel,
       });
       return;
@@ -529,7 +594,7 @@ export class Giving {
       line: this.line ? { server: this.main, line: this.line } : null,
     });
     if (!ok) { this.stage = 'over'; this.closeLine(); return; }
-    this.seal({ by: 'old', t: 'done' });
+    this.seal({ by: 'old', t: 'done' }, this.after);
     this.stage = 'over';
     this.o.mark?.('done');
     this.closeLine();
@@ -541,8 +606,8 @@ export class Giving {
     this.fail('closed');
   }
 
-  private seal(w: Word) {
-    if (this.box) this.line?.send({ type: 'handover-msg', payload: this.box.seal(w) });
+  private seal(w: Word, box: SignalCrypto | null) {
+    if (box) this.line?.send({ type: 'handover-msg', payload: box.seal(w) });
   }
 
   private fail(why: string, server?: string, late = false) {
@@ -589,6 +654,10 @@ export class Taking {
   private stage: 'connecting' | 'hello' | 'compare' | 'keeping' | 'have' | 'over' = 'connecting';
   private readonly box: SignalCrypto;
   private readonly share = newShare();
+  /** a code of version 2: this phone's half of the exchange, and the envelopes after the figures */
+  private readonly v2: boolean;
+  private readonly dh = nacl.box.keyPair();
+  private after: SignalCrypto | null = null;
   private got: DuoConfig | null = null;
   private watching: ReturnType<typeof setTimeout> | null = null;
 
@@ -606,6 +675,7 @@ export class Taking {
     mark?: (word: string) => void;
   }) {
     this.box = new SignalCrypto(meetingKey(o.qr.secret));
+    this.v2 = o.qr.version !== 1;
   }
 
   async start(): Promise<void> {
@@ -645,17 +715,23 @@ export class Taking {
       case 'handover-joined':
         if (this.stage !== 'connecting') return;
         this.stage = 'hello';
-        this.o.mark?.('joined');
-        this.seal({ by: 'new', t: 'hello', pub: this.o.myPub, commit: commitmentTo(this.share), model: this.o.model });
+        this.o.mark?.(this.v2 ? 'joined' : 'joined:v1');
+        this.seal({
+          by: 'new', t: 'hello', pub: this.o.myPub, commit: commitmentTo(this.share), model: this.o.model,
+          ...(this.v2 ? { dh: encodeBase64(this.dh.publicKey) } : {}),
+        }, this.box);
         return;
       case 'handover-error':
       case 'error':
         if (this.stage === 'have') return;
         this.fail(reasonOf(msg));
         return;
-      case 'handover-msg':
-        this.word(this.box.open<Word>(String(msg.payload || '')));
+      case 'handover-msg': {
+        // The secret's envelopes until the figures, the exchange's after them.
+        const box = this.stage === 'connecting' || this.stage === 'hello' ? this.box : this.after;
+        this.word(box?.open<Word>(String(msg.payload || '')) ?? null);
         return;
+      }
       case 'handover-done':
         if (this.stage === 'have') this.finish();
         return;
@@ -678,11 +754,22 @@ export class Taking {
 
   private word(w: Word | null) {
     if (w?.by === 'old' && w.t === 'share' && this.stage === 'hello') {
-      if (!isCard(w.pub) || typeof w.share !== 'string' || w.share.length > 64) { this.fail('mismatch'); return; }
-      this.seal({ by: 'new', t: 'reveal', share: this.share });
+      if (!isPublicKey(w.pub) || typeof w.share !== 'string' || w.share.length > 64) { this.fail('mismatch'); return; }
+      let dh: [string, string] | undefined;
+      if (this.v2) {
+        const key = isPublicKey(w.dh) ? sealKey(this.o.qr.secret, this.dh, w.dh, 'new') : null;
+        if (!key) { this.fail('mismatch'); return; }
+        this.after = new SignalCrypto(key);
+        dh = [String(w.dh), encodeBase64(this.dh.publicKey)];
+      } else {
+        // An old phone with an app from before: the hand-over sealed
+        // with the secret alone, as that app makes it.
+        this.after = this.box;
+      }
+      this.seal({ by: 'new', t: 'reveal', share: this.share }, this.box);
       this.stage = 'compare';
       this.o.mark?.('compare');
-      this.o.view({ step: 'compare', figures: figuresOf(this.o.qr.secret, w.pub, this.o.myPub, w.share, this.share) });
+      this.o.view({ step: 'compare', figures: figuresOf(this.o.qr.secret, w.pub, this.o.myPub, w.share, this.share, dh) });
       return;
     }
     if (w?.by === 'old' && w.t === 'bundle' && this.stage === 'compare') {
@@ -695,7 +782,7 @@ export class Taking {
         this.got = cfg;
         this.stage = 'have';
         this.o.mark?.(`kept:${cfg.pairs.length}`);
-        this.seal({ by: 'new', t: 'have' });
+        this.seal({ by: 'new', t: 'have' }, this.after);
         this.o.view({ step: 'waiting' });
       }).catch(() => {
         this.stage = 'compare';
@@ -742,8 +829,8 @@ export class Taking {
     this.o.view({ step: 'done', cfg: this.got });
   }
 
-  private seal(w: Word) {
-    this.line?.send({ type: 'handover-msg', payload: this.box.seal(w) });
+  private seal(w: Word, box: SignalCrypto | null) {
+    if (box) this.line?.send({ type: 'handover-msg', payload: box.seal(w) });
   }
 
   private fail(why: string) {
