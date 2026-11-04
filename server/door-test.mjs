@@ -530,6 +530,17 @@ try {
   check('with stay=1 the page does not bounce', !page.includes('location.replace'), page.slice(-200));
   const r404 = await fetch(`http://127.0.0.1:${PORT}/duetto/x/12345678`);
   check('an unknown path is not a page', r404.status === 426, r404.status);
+  // From the start of the path, and the link made again of its pieces:
+  // whatever came around them stays out of the page and its scripts.
+  const before = await fetch(`http://${HOST}/elsewhere/duetto/p/12345678/${KEY}`);
+  check('a link\'s path with something before it: not a page', before.status === 426, before.status);
+  page = await (await fetch(`http://${HOST}/duetto/p/12345678/${KEY}/?from=chat`)).text();
+  {
+    const js = page.match(/<script>\n([\s\S]*?)\ndocument\.getElementById/)?.[1] || '';
+    const made = new Function('location', `${js}; return { link };`)({ hash: '' });
+    check('the link handed on is made of its pieces, not of the address as it came',
+      made.link === `https://${HOST}/duetto/p/12345678/${KEY}`, made);
+  }
 
   // The address is the one the proxy wrote, the last in X-Forwarded-For:
   // what the client puts before it neither escapes the brake nor gets

@@ -152,13 +152,21 @@ function languageOf(req) {
 }
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+/**
+ * A value written into a script: JSON, with "<" as its escape, so that
+ * nothing in it can close the script and open another. What goes in is
+ * made of the checked pieces only; this is the second lock.
+ */
+const js = (v) => JSON.stringify(v).replace(/</g, '\\u003c');
 
 /**
  * The page for this request, or null when the address is not a link of
  * ours. `latest` is the latest release (see releases.js), or null.
  */
 export function bouncePage(req, latest) {
-  const m = String(req.url || '').match(/\/duetto\/(p|i)\/([A-Za-z0-9-]{4,12})(?:\/([A-Za-z0-9_-]{43}))?\/?(?:[?#].*)?$/);
+  // From the start of the path: anything before "/duetto/" was taken
+  // in, and came back in the page and in its scripts.
+  const m = String(req.url || '').match(/^\/duetto\/(p|i)\/([A-Za-z0-9-]{4,12})(?:\/([A-Za-z0-9_-]{43}))?\/?(?:[?#].*)?$/);
   if (!m) return null;
   const kind = m[1] === 'p' ? 'pair' : 'invite';
   const code = m[2];
@@ -167,7 +175,9 @@ export function bouncePage(req, latest) {
   if (!host) return null;
   const path = `${host}/${kind}/${code}${key ? `/${key}` : ''}`;
   const app = `duetto://${path}`;
-  const bare = `https://${host}${String(req.url).replace(/[?#].*$/, '')}`;
+  // The link again, made of the pieces just checked - not of the
+  // address as it came.
+  const bare = `https://${host}/duetto/${m[1]}/${code}${key ? `/${key}` : ''}`;
   const intent = `intent://${path}#Intent;scheme=duetto;package=com.duetto;`
     + `S.browser_fallback_url=${encodeURIComponent(`${bare}?stay=1`)};end`;
   const shown = kind === 'pair' ? `${code.slice(0, 4)} ${code.slice(4)}` : code;
@@ -190,15 +200,15 @@ export function bouncePage(req, latest) {
    */
   const secretJs = kind === 'pair' && key
     ? `var s = /^#[A-Za-z0-9_-]{22}$/.test(location.hash) ? location.hash.slice(1) : '';
-var app = ${JSON.stringify(app)} + (s ? '/' + s : '');
-var intent = ${JSON.stringify(`intent://${path}`)} + (s ? '/' + s : '')
+var app = ${js(app)} + (s ? '/' + s : '');
+var intent = ${js(`intent://${path}`)} + (s ? '/' + s : '')
   + '#Intent;scheme=duetto;package=com.duetto;S.browser_fallback_url='
-  + encodeURIComponent(${JSON.stringify(`${bare}?stay=1`)} + (s ? '#' + s : '')) + ';end';
-var link = ${JSON.stringify(bare)} + (s ? '#' + s : '');`
+  + encodeURIComponent(${js(`${bare}?stay=1`)} + (s ? '#' + s : '')) + ';end';
+var link = ${js(bare)} + (s ? '#' + s : '');`
     : `var s = '';
-var app = ${JSON.stringify(app)};
-var intent = ${JSON.stringify(intent)};
-var link = ${JSON.stringify(bare)};`;
+var app = ${js(app)};
+var intent = ${js(intent)};
+var link = ${js(bare)};`;
   const byHand = `<p>${esc(kind === 'pair' ? w.byHandPair : w.byHandInvite)}</p>
 <p><code>${esc(host)}</code><br><code>${esc(shown)}</code></p>`;
   const fdroid = `<a class="get" href="${FDROID}">F-Droid</a>`;
