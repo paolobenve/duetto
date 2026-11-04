@@ -40,3 +40,25 @@ export class Freshness {
     this.seen.clear();
   }
 }
+
+/** The packets counted coming in, at one reading. */
+export type Counted = { got: number; lost: number };
+
+/**
+ * What came in since the previous reading, and how much of it was lost.
+ *
+ * The lost counter can go down: a packet counted lost that arrives late
+ * comes off it. Such a reading used to be thrown away whole, losses
+ * newer than the late packet with it; now it counts what it got, and
+ * no loss below zero. A received counter that went down is a new
+ * connection's: nothing to compare, the reading starts the next one.
+ * Null when nothing came in.
+ */
+export function lossStep(prev: Counted | undefined, now: Counted):
+  { got: number; lost: number; pct: number } | null {
+  if (!prev || now.got < prev.got) return null;
+  const got = now.got - prev.got;
+  const lost = Math.max(0, now.lost - prev.lost);
+  if (got + lost === 0) return null;
+  return { got, lost, pct: (100 * lost) / (got + lost) };
+}

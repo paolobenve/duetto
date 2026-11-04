@@ -24,7 +24,7 @@ import type { Hand, Signaling, SignalMessage } from './signaling';
 import { VERSION_LABEL, BUILD } from './version';
 import { logger } from './log';
 import { LossWatch } from './shortPackets';
-import { Freshness } from './road';
+import { Freshness, lossStep } from './road';
 
 /**
  * The channel session: audio always, video on request.
@@ -966,6 +966,9 @@ export class ChannelSession {
     this.lastInboundFrames = null;
     this.lastWait = {};
     this.termsLogged = '';
+    // A new link counts its packets from zero: compared with the old
+    // one's, its first reading would be a made-up loss.
+    this.lossPrev = {};
     if (!this.statsTimer) this.startStats();
 
     /**
@@ -2396,15 +2399,12 @@ export class ChannelSession {
         if (!r || r.got === undefined || r.lost === undefined) continue;
         const prev = this.lossPrev[kind];
         this.lossPrev[kind] = { got: r.got, lost: r.lost };
-        // A rebuilt connection starts its counters again: skip the tick.
-        if (!prev || r.got < prev.got || r.lost < prev.lost) continue;
-        const dGot = r.got - prev.got;
-        const dLost = r.lost - prev.lost;
-        if (dGot + dLost === 0) continue;
-        const pct = (100 * dLost) / (dGot + dLost);
+        const came = lossStep(prev, { got: r.got, lost: r.lost });
+        if (!came) continue;
+        const pct = came.pct;
         if (kind === 'audio') {
           audioIn = pct;
-          this.weighShortPackets(dGot, dLost);
+          this.weighShortPackets(came.got, came.lost);
         }
         cells[kind] = {
           in: pct.toFixed(1),
@@ -3691,6 +3691,7 @@ export class ChannelSession {
     this.lossLineAt = 0;
     this.emptyRoadInJournal();
     this.fresh.reset();
+    this.lossPrev = {};
     // The next link is watched from scratch, and starts long.
     this.lossWatch.reset();
     this.shortForRoad = false;

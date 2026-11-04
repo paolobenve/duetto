@@ -1,4 +1,4 @@
-import { Freshness, FRESH_MS } from '../road';
+import { Freshness, FRESH_MS, lossStep } from '../road';
 
 describe('a number from the statistics is current', () => {
   test('while its counter moves', () => {
@@ -50,5 +50,27 @@ describe('a number from the statistics is current', () => {
     f.moved('audio', 4, 0);
     f.reset();
     expect(f.moved('audio', 4, 100_000)).toBe(true);
+  });
+});
+
+describe('what came in since the last reading', () => {
+  test('got and lost, and the share lost', () => {
+    expect(lossStep({ got: 100, lost: 2 }, { got: 190, lost: 12 })).toEqual({ got: 90, lost: 10, pct: 10 });
+  });
+
+  test('a late packet coming off the lost counter is no loss, and what came in counts', () => {
+    expect(lossStep({ got: 100, lost: 5 }, { got: 150, lost: 3 })).toEqual({ got: 50, lost: 0, pct: 0 });
+  });
+
+  test('a new connection, its counters started again: nothing to compare', () => {
+    expect(lossStep({ got: 5000, lost: 40 }, { got: 80, lost: 0 })).toBeNull();
+  });
+
+  test('no first reading, nothing to compare', () => {
+    expect(lossStep(undefined, { got: 80, lost: 0 })).toBeNull();
+  });
+
+  test('nothing came in', () => {
+    expect(lossStep({ got: 80, lost: 1 }, { got: 80, lost: 1 })).toBeNull();
   });
 });
