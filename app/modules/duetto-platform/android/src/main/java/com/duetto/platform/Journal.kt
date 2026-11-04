@@ -1059,7 +1059,11 @@ object Journal {
                 file.appendText(if (text.endsWith("\n")) text else text + "\n")
                 return
             }
-            val body = text.split('\n').filter { it.isNotEmpty() && !it.startsWith("time\t") }
+            // A row already here came twice: sent again by a phone whose
+            // first sending was never marked as gone (an app before
+            // build 557 could send the same rows twice in one second).
+            val here = if (file.exists()) file.readLines().toHashSet() else emptySet()
+            val body = text.split('\n').filter { it.isNotEmpty() && !it.startsWith("time\t") && it !in here }
             if (body.isEmpty()) return
             appendRow(file, body.joinToString("\n") + "\n")
         } catch (e: Exception) {

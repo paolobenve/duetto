@@ -25,7 +25,17 @@ export const JOURNAL_PIECE = 180 * 1024;
  * hold the connection together, and the mark of what has gone is the
  * same for both, so nothing goes twice.
  */
-export async function sendJournalOver(sig: Signaling | null): Promise<void> {
+export function sendJournalOver(sig: Signaling | null): Promise<void> {
+  // One sending at a time: two at once - the way back to the server and
+  // the other side coming back, in the same second - read the same rows
+  // before either had marked them gone, and both sent them.
+  if (!sending) sending = sendNow(sig).finally(() => { sending = null; });
+  return sending;
+}
+
+let sending: Promise<void> | null = null;
+
+async function sendNow(sig: Signaling | null): Promise<void> {
   if (!sig?.connected) return;
   try {
     const { text, cursor } = await Journal.unsent();
