@@ -353,6 +353,14 @@ export class ChannelSession {
    */
   private lossPrev: Record<string, { got: number; lost: number }> = {};
   private lossLineAt = 0;
+  /**
+   * Whether the journal's six columns have numbers in them now. Their
+   * emptying used to hang on lossLineAt, which only diagnostics set:
+   * with diagnostics off, once nothing flowed the cells kept the last
+   * numbers for hours - a beta tester's journal had one loss, one jitter
+   * and one round trip on every line of a day.
+   */
+  private roadInJournal = false;
   private lossAudioWasBad = false;
   /** since when the incoming voice has lost under one in a hundred; 0 while it does not */
   private lossAudioGoodSince = 0;
@@ -1929,6 +1937,13 @@ export class ChannelSession {
     if (!this.statsBeat) this.statsBeat = Heartbeat.subscribe(() => { this.logOutboundVideo(); });
   }
 
+  /** The journal's six columns of the road, emptied: nothing measured. */
+  private emptyRoadInJournal() {
+    if (!this.roadInJournal) return;
+    this.roadInJournal = false;
+    Journal.road('', '', '', '', '', '').catch(() => { /* noop */ });
+  }
+
   /** Follows the diagnostics switch: it changes the pace above. */
   setDiagnostics(on: boolean) {
     if (on === this.diagnostics) return;
@@ -2370,6 +2385,7 @@ export class ChannelSession {
         const v = cells.video;
         Journal.road(a?.in ?? '', a?.out ?? '', a?.jitter ?? '', a?.rtt ?? '',
           v?.in ?? '', v?.out ?? '').catch(() => { /* noop */ });
+        this.roadInJournal = true;
         if (this.diagnostics) {
           const now = Date.now();
           // "Bad" is said once per storm, not at every reading: a road
@@ -2392,10 +2408,10 @@ export class ChannelSession {
             Journal.mark(turnedBad ? 'loss:audio-bad' : 'loss').catch(() => { /* noop */ });
           }
         }
-      } else if (this.lossLineAt) {
+      } else if (this.roadInJournal) {
         // Nothing flows: the cells go empty rather than stale.
         this.lossLineAt = 0;
-        Journal.road('', '', '', '', '', '').catch(() => { /* noop */ });
+        this.emptyRoadInJournal();
       }
 
       out.carrying = this.mediaArrivedWithin(ChannelSession.CARRYING_MS);
@@ -3617,6 +3633,9 @@ export class ChannelSession {
     // the next one starts again from the user's setting.
     this.heavyVideo = false;
     this.events.onVideoStats?.({});
+    // And no road: its numbers would stay in the journal's cells.
+    this.lossLineAt = 0;
+    this.emptyRoadInJournal();
     this.remoteStream?.getTracks().forEach((t) => t.stop());
     this.remoteStream = null;
     this.videoSender = null;
