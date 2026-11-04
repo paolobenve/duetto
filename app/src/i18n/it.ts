@@ -810,6 +810,7 @@ export const it: Dictionary = {
     showCode: 'Mostra il codice',
     checking: 'Chiedo ai server…',
     codeHint: 'Inquadralo con il telefono nuovo. Vale ancora {left}, e una volta sola: non mostrarlo a nessun altro.',
+    codeOld: 'Se il telefono nuovo dice che non è un codice di Duetto, ha un Duetto più vecchio: aggiornalo e riprova.',
     expired: 'Il codice è scaduto.',
     again: 'Un codice nuovo',
     compareTitle: 'Lo stesso numero?',

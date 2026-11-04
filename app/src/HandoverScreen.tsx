@@ -267,6 +267,8 @@ function Give({ cfg, left, quiet, wake, moving, emptied, onClose }: GiveProps) {
             <QrCode text={view.qr} size={Math.min(width - 52, 320)} />
           </View>
           <Text style={styles.body}>{t('handover.codeHint', { left: clock(view.until - now) })}</Text>
+          {/* An app from before reads only the old code: see handover.ts. */}
+          <Text style={styles.body}>{t('handover.codeOld')}</Text>
           <Secondary label={t('handover.cancel')} onPress={cancel} />
         </>
       );

@@ -811,6 +811,7 @@ export const fr: Dictionary = {
     showCode: 'Montrer le code',
     checking: 'Je demande aux serveurs…',
     codeHint: 'Vise-le avec le nouveau téléphone. Il vaut encore {left}, et une seule fois : ne le montre à personne d’autre.',
+    codeOld: 'Si le nouveau téléphone dit que ce n’est pas un code Duetto, son Duetto est plus ancien : mets-le à jour et réessaie.',
     expired: 'Le code a expiré.',
     again: 'Un nouveau code',
     compareTitle: 'Le même nombre ?',

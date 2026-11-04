@@ -824,6 +824,7 @@ export const en = {
     showCode: 'Show the code',
     checking: 'Asking the servers…',
     codeHint: 'Scan it with the new phone. It is good for {left} more, and once only: do not show it to anybody else.',
+    codeOld: 'If the new phone says this is not a Duetto code, its Duetto is older: update it and try again.',
     expired: 'The code has run out.',
     again: 'A new code',
     compareTitle: 'The same number?',
