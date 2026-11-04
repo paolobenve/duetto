@@ -348,10 +348,10 @@ export class ChannelSession {
    * They go in six columns of the journal, on every line - numbers in
    * cells, so a day can be drawn - refreshed at every reading; and a
    * line of its own is forced every thirty seconds while media flows,
-   * with diagnostics on, and at once when the voice coming in starts
-   * losing more than two packets in a hundred, which is where one
-   * begins to hear it. The loss is counted over the interval, not
-   * since the start: an old storm must not colour a calm minute.
+   * either way, with diagnostics on, and at once when the voice coming
+   * in starts losing five packets in a hundred. The loss is counted
+   * over the interval, not since the start: an old storm must not
+   * colour a calm minute.
    */
   private lossPrev: Record<string, { got: number; lost: number }> = {};
   private lossLineAt = 0;
@@ -2464,7 +2464,12 @@ export class ChannelSession {
         // Nothing measured: the cells go empty rather than stale.
         this.emptyRoadInJournal();
       }
-      if (aIn || vIn) {
+      // A line also while only our voice goes out and the other side
+      // reports on it: with their listening off nothing comes in, and
+      // what they lost of it went unwritten - a moto sent music for
+      // minutes without a line.
+      const reported = far('audio') !== '' || far('video') !== '';
+      if (aIn || vIn || reported) {
         if (this.diagnostics) {
           const now = Date.now();
           // "Bad" is said once per storm, not at every reading: a road
@@ -2488,7 +2493,8 @@ export class ChannelSession {
           }
         }
       } else {
-        // Nothing comes in: when it comes again, its line goes at once.
+        // Nothing comes in, and nothing is reported of what goes out:
+        // when something is, its line goes at once.
         this.lossLineAt = 0;
       }
 
