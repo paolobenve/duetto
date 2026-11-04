@@ -201,6 +201,7 @@ object Journal {
      * system half (volVoice) - and a journal read the morning after
      * showed 12/12 while the person had been listening at 46%, with
      * nobody able to say from the file alone how loud it really was.
+     * 0 with the listening off, as the other side is told.
      * -1 = the app has not said yet, and nothing is written.
      */
     @Volatile private var heardLevel = -1

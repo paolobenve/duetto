@@ -6732,8 +6732,12 @@ export default function App() {
   useEffect(() => { levelRef.current = level; }, [level]);
   // Said to the journal at every change: the periodic line carries the
   // system half already, and without the product nobody could say from
-  // the file how loud it really was.
-  useEffect(() => { Journal.level(Math.round(level * 100)).catch(() => {}); }, [level]);
+  // the file how loud it really was. Zero with the listening off, as
+  // the other side is told (setHeardLevel): it holds its voice then, and
+  // a journal with nothing coming in all day could not say why.
+  useEffect(() => {
+    Journal.level(outputMuted ? 0 : Math.round(level * 100)).catch(() => {});
+  }, [level, outputMuted]);
   useEffect(() => {
     const c = cfgRef.current;
     if (!c?.pair) return;
