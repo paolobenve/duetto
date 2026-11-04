@@ -79,15 +79,16 @@ the service at its next start.
 The door shuts by itself: the first phone that knocks at a server nobody has taken becomes
 its owner, and from then on a stranger is turned away before being told anything — the TURN
 credentials included. On a public address, though, "the first phone that knocks" may not
-be yours. One line in the settings makes the first knock have to know a word:
+be yours. One line in the settings makes the first knock have to know a word. The installer
+writes one, made for this server; by hand, this makes one:
 
 ```bash
-openssl rand -hex 12          # something like 3f9c1a77e4b20d58c6a1
+openssl rand -hex 12
 ```
 
-```
-SERVER_KEY=3f9c1a77e4b20d58c6a1
-```
+and the 24 characters it prints go after `SERVER_KEY=` in `/etc/duetto/server.env`, alone
+on that line: no quotes, no spaces, nothing after them. A word copied from a page is a word
+anybody may have read: the key is the one made on this machine.
 
 The app asks for it when the server does, and only then, and keeps it nowhere. It does two
 things: it decides who may take the house, and it brings the owner home — a reinstalled
