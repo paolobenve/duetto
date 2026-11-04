@@ -182,7 +182,7 @@ way of noticing that it was passed on.
 
 ```bash
 sudo -u duetto npm run devices                      # who is on the list, and what is still invited
-sudo -u duetto npm run devices -- --remove anna     # takes a phone away, at the next knock
+sudo -u duetto npm run devices -- --remove anna     # takes a phone away: let go within a minute, relay user dropped
 ```
 
 **Whoever you let in brings their own people.** Anna does not need an invitation for the
@@ -391,8 +391,11 @@ With one TURN credential shared by everybody, whoever takes it out of a phone ke
 relay for good, and a phone taken off the list keeps it too. Coturn has a user database
 (`/var/lib/turn/turndb` on Debian) that it consults at every request, and the server can
 keep one user per phone in it: made the first time the phone is let in, handed to that
-phone alone with `joined`, dropped when the phone leaves, is taken off, or its pair is
-forgotten. The shared credential stays in `turnserver.conf` as the fallback.
+phone alone with `joined`, dropped when the phone leaves, is taken off - from the app or
+at the terminal - or its pair is forgotten. The shared credential stays in
+`turnserver.conf` as the fallback, and is handed out only where a phone's own user cannot
+be there yet: to the other half of a pair coming into its room the first time, and when
+the making fails.
 
 The making and the dropping are plain writes to that database with `sqlite3` (the
 long-term key coturn keeps is `md5("user:realm:password")`, never the password). The

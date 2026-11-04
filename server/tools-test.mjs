@@ -14,6 +14,7 @@
 // letting it write a list of its own. Run from this directory:
 // `npm run test:tools`.
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -74,6 +75,33 @@ try {
 
   r = run('invite', ['carla'], { DUETTO_ENV: path.join(DIR, 'missing.env'), DEVICES_FILE: OTHER });
   check('no settings file is no fault', r.code === 0 && invitedIn(OTHER).includes('carla'), r);
+
+  // Taken away at the terminal as from the app: the relay users go too,
+  // the person's and those of whoever they had brought along - each by
+  // the relay's own command, which the command waits for.
+  const LIST_R = path.join(DIR, 'remove.json');
+  const ADMIN = path.join(DIR, 'turn-admin.sh');
+  const ADMIN_LOG = path.join(DIR, 'turn-admin.log');
+  writeFileSync(ADMIN, `#!/bin/sh\necho "$@" >> ${ADMIN_LOG}\n`);
+  chmodSync(ADMIN, 0o755);
+  writeFileSync(LIST_R, JSON.stringify({
+    devices: [
+      { name: 'anna', pub: 'PUB-ANNA', since: '2026-11-01T00:00:00.000Z' },
+      { name: 'bruno', pub: 'PUB-BRUNO', since: '2026-11-01T00:00:00.000Z' },
+    ],
+    rooms: [{ room: 'r1', owner: 'anna', guest: 'PUB-GUEST' }, { room: 'r2', owner: 'bruno', guest: 'PUB-OTHER' }],
+    turn: { 'PUB-ANNA': { user: 'annasrelay01', pass: 'x' }, 'PUB-BRUNO': { user: 'brunosrelay1', pass: 'y' } },
+  }));
+  r = run('devices', ['--remove', 'anna'],
+    { DUETTO_ENV: path.join(DIR, 'missing.env'), DEVICES_FILE: LIST_R, TURN_ADMIN_CMD: ADMIN });
+  const asked = existsSync(ADMIN_LOG) ? readFileSync(ADMIN_LOG, 'utf8') : '';
+  const guestUser = createHash('sha256').update('PUB-GUEST').digest('hex').slice(0, 12);
+  const after = JSON.parse(readFileSync(LIST_R, 'utf8'));
+  check('taken off at the terminal: off the list', r.code === 0 && r.out.includes('taken off the list')
+    && after.devices.every((d) => d.name !== 'anna'), r);
+  check('and their relay user dropped, and their guest\'s',
+    asked.includes('del annasrelay01') && asked.includes(`del ${guestUser}`) && !('PUB-ANNA' in after.turn), { asked, turn: after.turn });
+  check('nobody else\'s', !asked.includes('brunosrelay1') && 'PUB-BRUNO' in after.turn, { asked, turn: after.turn });
 
   // Root reads whatever it likes: the case is for everybody else.
   if (process.getuid?.() !== 0) {

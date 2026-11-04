@@ -38,6 +38,7 @@
 // pairIds and do not see one another.
 // -------------------------------------------------------------
 
+import { existsSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { WebSocketServer } from 'ws';
 import {
@@ -79,6 +80,18 @@ const reportsOpen = () => !!(GITLAB_TOKEN && GITLAB_PROJECT);
 const TURN_URL = process.env.TURN_URL || '';
 const TURN_USER = process.env.TURN_USER || '';
 const TURN_PASS = process.env.TURN_PASS || '';
+
+/**
+ * This card's relay user, made in the background if it has none (see
+ * turn.js): asked for as soon as a card has its place, so that the
+ * first `joined` already carries it. The shared credentials stand in
+ * only for a phone that comes straight into a room - the other half of
+ * a pair, the first time - and when the making fails: they are the
+ * net under the first call, and nobody's to keep.
+ */
+function relayUserFor(pub) {
+  if (TURN_URL && TURN_PASS && pub) turnCredentials(pub);
+}
 
 /** To be sent to the clients so they know how to reach the relay. */
 function turnConfig(ws) {
@@ -471,6 +484,9 @@ const HEARTBEAT_TICK_MS = ms(process.env.HEARTBEAT_TICK_MS, 5_000);
  * nothing keeps such a phone there but a hand-over, which counts.
  */
 const SILENT_MS = ms(process.env.SILENT_MS, 15_000);
+
+/** How often the phones here by their card are looked for on the list: see offTheList. */
+const LIST_CHECK_MS = ms(process.env.LIST_CHECK_MS, 60_000);
 
 /**
  * How long the answer is waited for before the connection is given up for
@@ -2048,8 +2064,10 @@ function handPlaceOver(ws, msg) {
     + ` to a new phone ${to.slice(0, 12)}… (${moved.rooms.length} room(s)${moved.owner ? ', the owner' : ''})`);
   // The old card is nobody here from now on: its relay user goes, and
   // so does every connection it still has - this one too, as far as
-  // the server is concerned, once it has heard the answer.
+  // the server is concerned, once it has heard the answer. The new
+  // card's is made now, for its first coming in.
   dropTurn(old);
+  relayUserFor(to);
   ws.card = null;
   ws.pub = '';
   ws.who = null;
@@ -2331,6 +2349,11 @@ function answerDoor(ws, msg) {
     ws.opens = known.opens === true;
     ws.invites = known.invites === true;
     ws.atDoor = true;
+    // Its own relay user, made now if it has none, in the background:
+    // a phone just let in by an invitation comes into its first room a
+    // moment later, and gets its own credentials there instead of the
+    // shared ones - which a phone taken off the list would keep.
+    relayUserFor(pub);
     reply({ role: ws.invites ? 'owner' : 'member', name: ws.who });
     return;
   }
@@ -2428,6 +2451,32 @@ const heartbeat = setInterval(() => {
 }, HEARTBEAT_TICK_MS);
 
 wss.on('close', () => clearInterval(heartbeat));
+
+/**
+ * A phone taken off the list at the terminal is let go.
+ *
+ * Taken away from the app, its connections are closed at once (see
+ * ownersBusiness). From the terminal - `npm run devices -- --remove`,
+ * another process - the list changed under the server, and a phone
+ * already in went on as before, in its room, until it came back to the
+ * door: hours, on a steady network. So every phone here by its card is
+ * looked for on the list now and then, and one not there any more is
+ * told and let go, as the app's taking away does. Only with a list
+ * that is there and reads: with none, there is nobody to be off it,
+ * and one that cannot be read says nothing of who is on it.
+ */
+const offTheList = setInterval(() => {
+  if (!doorIsShut() || listUnreadable() || !existsSync(listFile())) return;
+  for (const ws of wss.clients) {
+    if (ws.letGoAt || ws.opens !== true || !ws.pub || !(ws.joined || ws.atDoor)) continue;
+    if (onTheList(ws.pub)) continue;
+    console.log(`[duetto] ${ws.who || `phone ${ws.pub.slice(0, 12)}…`} is not on the list any more: let go`);
+    ws.letGoAt = Date.now();
+    send(ws, { type: 'removed' });
+    try { ws.close(4006, 'removed'); } catch { /* noop */ }
+  }
+}, LIST_CHECK_MS);
+wss.on('close', () => clearInterval(offTheList));
 
 /*
  * A door left open on a public address is a house for the first

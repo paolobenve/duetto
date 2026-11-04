@@ -4,7 +4,7 @@
 // and brings the owner home, invitations made at the door and spent
 // once, the guest known in one room, and the strangers turned away with
 // a reason. Run from this directory: `npm run test:door`.
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { WebSocket } from 'ws';
 import { createHash, generateKeyPairSync, sign } from 'node:crypto';
 import { tmpdir } from 'node:os';
@@ -30,6 +30,9 @@ const FILE_F = `${tmpdir()}/duetto-door-f-${process.pid}.json`;
 /** A list cut short: the door stays shut, nothing written over it. */
 const PORT_X = 8788;
 const FILE_X = `${tmpdir()}/duetto-door-x-${process.pid}.json`;
+/** A phone taken off the list at the terminal, while it is in: let go. */
+const PORT_L = 8785;
+const FILE_L = `${tmpdir()}/duetto-door-l-${process.pid}.json`;
 
 function phone() {
   const { publicKey, privateKey } = generateKeyPairSync('ed25519');
@@ -168,6 +171,9 @@ srvF.stdout.on('data', (d) => { logF += d; });
 /** The server of the list cut short, started later, and what it says. */
 let srvX = null;
 let logX = '';
+/** The server whose list changes under it, started later, and what it says. */
+let srvL = null;
+let logL = '';
 /** Stops a server and waits for it to be gone. */
 const stop = (p) => new Promise((resolve) => {
   if (p.exitCode !== null || p.signalCode !== null) { resolve(); return; }
@@ -258,15 +264,30 @@ try {
   check('the owner comes back', a.answer.type === 'joined', a.answer); a.ws.close(); await sleep(200);
   b = await join(PORT, bruno, '33334444', 'bruno');
   check('a fresh room: anybody on the list opens it', b.answer.type === 'joined', b.answer); b.ws.close(); await sleep(200);
-  // The relay: the first time the shared credential, while the phone's
-  // own user is being made; from then on its own, and dropped when it goes.
-  check('first join: the shared relay credential', b.answer.turn && b.answer.turn.username === 'shared', b.answer.turn);
-  await sleep(300);
+  // The relay: a phone let in at the door has its own user made there,
+  // and its first room already brings it - the shared credential never
+  // reaches it. Its own from then on, and dropped when it goes.
+  const first = b.answer.turn && b.answer.turn.username;
+  check('first join after the door: a relay user of its own already',
+    /^[0-9a-f]{12}$/.test(first || '') && b.answer.turn.credential !== 'shared', b.answer.turn);
   b = await join(PORT, bruno, '33334444', 'bruno');
   const own = b.answer.turn && b.answer.turn.username;
-  check('then a relay user of its own', /^[0-9a-f]{12}$/.test(own || '') && b.answer.turn.credential !== 'shared', b.answer.turn);
+  check('and the same one after', own === first && b.answer.turn.credential !== 'shared', b.answer.turn);
   check('made through the admin', readFileSync(ADMIN_LOG, 'utf8').includes(`add ${own} `), readFileSync(ADMIN_LOG, 'utf8'));
   b.ws.close(); await sleep(200);
+  // The other half of a pair comes straight into a room, with no door
+  // before: there, the first time, the shared credential is the net
+  // under the first call, while its own user is made.
+  const guest = phone();
+  a = await join(PORT, anna, '55556666', 'anna');
+  let g = await join(PORT, guest, '55556666', 'guest');
+  check('a guest\'s first join: the shared relay credential', g.answer.type === 'joined'
+    && g.answer.turn && g.answer.turn.username === 'shared', g.answer);
+  g.ws.close(); await sleep(300);
+  g = await join(PORT, guest, '55556666', 'guest');
+  check('then a relay user of its own', /^[0-9a-f]{12}$/.test(g.answer.turn?.username || '')
+    && g.answer.turn.credential !== 'shared', g.answer.turn);
+  g.ws.close(); a.ws.close(); await sleep(200);
   r = await knock(PORT, bruno); await ask(r.ws, { type: 'leave' }); r.ws.close();
   await sleep(300);
   check('leaving drops the relay user', readFileSync(ADMIN_LOG, 'utf8').includes(`del ${own}`), readFileSync(ADMIN_LOG, 'utf8'));
@@ -681,11 +702,45 @@ try {
   writeFileSync(FILE_X, whole);
   r = await knock(PORT_X, xOwner, { name: 'owner' });
   check('put right, the list is read again', r.answer.role === 'owner', r.answer); r.ws.close();
+
+  // --- taken off the list at the terminal, while in ------------------------
+  // The app's taking away closes the phone's connections at once; the
+  // terminal is another process, and the server finds out by looking.
+  srvL = spawn('node', ['src/index.js'], {
+    env: { ...process.env, PORT: String(PORT_L), HOST: '127.0.0.1', DEVICES_FILE: FILE_L,
+      AUTHORISED_KEYS: '', SERVER_KEY: '', LIST_CHECK_MS: '300', RELEASES_PROJECT: 'off' },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  srvL.stdout.on('data', (d) => { logL += d; });
+  srvL.stderr.on('data', (d) => { logL += d; });
+  await sleep(700);
+  const lOwner = phone(), lia = phone();
+  r = await knock(PORT_L, lOwner, { name: 'owner' });
+  const lOwnerWs = r.ws;
+  const lInv = await askFor(lOwnerWs, { type: 'invite', name: 'lia' }, 'invited');
+  r = await knock(PORT_L, lia, { invite: lInv.code }); r.ws.close();
+  const inL = await join(PORT_L, lia, '77778888', 'lia');
+  check('in her room, on the list', inL.answer.type === 'joined', inL.answer);
+  const heardL = [];
+  inL.ws.on('message', (d) => heardL.push(JSON.parse(d.toString())));
+  const closedL = new Promise((resolve) => inL.ws.on('close', (code) => resolve(code)));
+  await sleep(500);
+  check('a phone on the list is left where it is', inL.ws.readyState === WebSocket.OPEN, inL.ws.readyState);
+  const cli = spawnSync('node', ['tools/devices.mjs', '--remove', 'lia'], {
+    env: { ...process.env, DEVICES_FILE: FILE_L, DUETTO_ENV: `${FILE_L}.no-settings` }, encoding: 'utf8',
+  });
+  check('taken off at the terminal', cli.status === 0 && cli.stdout.includes('taken off the list'), cli);
+  const codeL = await Promise.race([closedL, sleep(3000).then(() => 'still open')]);
+  check('and let go within the check, told why', codeL === 4006 && heardL.some((m) => m.type === 'removed'),
+    { codeL, heardL });
+  check('said in the log', /lia is not on the list any more: let go/.test(logL), logL);
+  check('the owner, on the list, still in', lOwnerWs.readyState === WebSocket.OPEN, lOwnerWs.readyState);
+  lOwnerWs.close();
 } finally {
   // Each server writes the list once more on its way out: they are
   // waited for, or what is taken away here is written again after.
-  await Promise.all([srv, srvK, srvB, srvH, srvO, srvC, srvF, srvX].filter(Boolean).map(stop));
-  for (const f of [FILE, FILE_K, FILE_B, FILE_H, FILE_O, FILE_C, FILE_F, FILE_X]) {
+  await Promise.all([srv, srvK, srvB, srvH, srvO, srvC, srvF, srvX, srvL].filter(Boolean).map(stop));
+  for (const f of [FILE, FILE_K, FILE_B, FILE_H, FILE_O, FILE_C, FILE_F, FILE_X, FILE_L]) {
     for (const g of [f, `${f}.bak`, `${f}.new`]) { try { unlinkSync(g); } catch {} }
   }
   try { unlinkSync(ADMIN); unlinkSync(ADMIN_LOG); } catch {}

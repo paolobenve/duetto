@@ -14,10 +14,13 @@
  *   npm run devices                 what there is
  *   npm run devices -- --remove anna   takes a phone away, at once
  *
- * Taking one away needs no restart: the list is read at every knock.
+ * Taking one away needs no restart: the list is read at every knock,
+ * and a phone of theirs still connected is let go within a minute
+ * (offTheList, in index.js).
  */
 import './settings.mjs';
 import { fileName, listUnreadable, read, remove } from '../src/devices.js';
+import { drop as dropTurn } from '../src/turn.js';
 
 // A list that is there and cannot be read is not written over, and
 // this command would only say it did something: nothing is done.
@@ -35,41 +38,54 @@ if (cut >= 0) {
     console.error('use: npm run devices -- --remove NAME');
     process.exit(1);
   }
+  // As the app takes somebody away (ownersBusiness, in index.js): the
+  // relay users of their phones go too, and those of whoever they had
+  // brought along, whose rooms go with them. Left in coturn's
+  // database, they stayed good for whoever had their credentials.
+  const before = read();
+  const cards = before.devices.filter((d) => d.name === name).map((d) => d.pub);
+  const guests = before.rooms.filter((r) => r.owner === name && r.guest).map((r) => r.guest);
   const gone = remove(name);
   console.log(gone
-    ? `${name}: ${gone} phone(s) taken off the list, and out at the next knock.`
+    ? `${name}: ${gone} phone(s) taken off the list; still connected, let go within a minute.`
     : `${name}: nobody by that name on the list.`);
-  process.exit(0);
+  // Each dropped by a command of its own, which says how it went: the
+  // process ends when the last one has.
+  for (const pub of [...cards, ...guests]) dropTurn(pub);
+} else {
+  show();
 }
 
-const { devices, invitations, rooms } = read();
-console.log(`${fileName()}\n`);
+function show() {
+  const { devices, invitations, rooms } = read();
+  console.log(`${fileName()}\n`);
 
-if (devices.length === 0) console.log('No phone on the list: the door is open.');
-else {
-  console.log('Phones on the list:');
-  for (const d of devices) {
-    const card = d.pub.length > 16 ? `${d.pub.slice(0, 8)}…${d.pub.slice(-6)}` : d.pub;
-    // How many connections they have opened, and how many of those
-    // brought somebody along. There is no ceiling on this - a phone is
-    // in one connection at a time, so many rooms cost sockets and not
-    // conversations - but a strange number is worth seeing.
-    const theirs = rooms.filter((r) => r.owner === d.name);
-    const brought = theirs.filter((r) => r.guest).length;
-    const also = theirs.length
-      ? `   ${theirs.length} connection(s), ${brought} with somebody along`
-      : '';
-    // Which Duetto, and when last seen: blank for an app too old to say.
-    const runs = d.version ? `  ${d.version}` : '  (version unknown)';
-    const seen = d.seen ? `  seen ${d.seen}` : '';
-    console.log(`  ${d.name.padEnd(12)} ${card}   since ${d.since.slice(0, 10)}${runs}${seen}${also}`);
+  if (devices.length === 0) console.log('No phone on the list: the door is open.');
+  else {
+    console.log('Phones on the list:');
+    for (const d of devices) {
+      const card = d.pub.length > 16 ? `${d.pub.slice(0, 8)}…${d.pub.slice(-6)}` : d.pub;
+      // How many connections they have opened, and how many of those
+      // brought somebody along. There is no ceiling on this - a phone is
+      // in one connection at a time, so many rooms cost sockets and not
+      // conversations - but a strange number is worth seeing.
+      const theirs = rooms.filter((r) => r.owner === d.name);
+      const brought = theirs.filter((r) => r.guest).length;
+      const also = theirs.length
+        ? `   ${theirs.length} connection(s), ${brought} with somebody along`
+        : '';
+      // Which Duetto, and when last seen: blank for an app too old to say.
+      const runs = d.version ? `  ${d.version}` : '  (version unknown)';
+      const seen = d.seen ? `  seen ${d.seen}` : '';
+      console.log(`  ${d.name.padEnd(12)} ${card}   since ${d.since.slice(0, 10)}${runs}${seen}${also}`);
+    }
   }
-}
 
-const live = invitations.filter((i) => Date.parse(i.expires) > Date.now());
-if (live.length > 0) {
-  console.log('\nInvitations not yet used:');
-  for (const i of live) {
-    console.log(`  ${i.code}   for ${i.name}, until ${i.expires.slice(0, 10)}`);
+  const live = invitations.filter((i) => Date.parse(i.expires) > Date.now());
+  if (live.length > 0) {
+    console.log('\nInvitations not yet used:');
+    for (const i of live) {
+      console.log(`  ${i.code}   for ${i.name}, until ${i.expires.slice(0, 10)}`);
+    }
   }
 }
