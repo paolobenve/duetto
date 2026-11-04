@@ -821,9 +821,10 @@ async function gitlab(path, init = {}) {
 /**
  * The work item of the person named on the invitation: among the open
  * ones whose title holds the name, the one titled "Beta tester: ..."
- * first - the title our link puts - else the first found.
+ * first - the title our link puts - else the first found. `betaOnly`:
+ * a beta tester's or none, as a report wants (see whereReportGoes).
  */
-async function findWorkItem(name) {
+async function findWorkItem(name, { betaOnly = false } = {}) {
   const clean = String(name || '').trim();
   if (!clean || clean === 'Someone') return null;
   const list = await gitlab(
@@ -832,9 +833,79 @@ async function findWorkItem(name) {
   if (!Array.isArray(list) || list.length === 0) return null;
   const lower = clean.toLowerCase();
   const titled = list.filter((i) => String(i.title || '').toLowerCase().includes(lower));
-  const beta = titled.find((i) => /^beta tester\b/i.test(String(i.title || '')));
-  const pick = beta || titled[0] || null;
+  const betas = titled.filter((i) => BETA_TITLE.test(String(i.title || '')));
+  // "Lore" is in "Beta tester: Lorenzo" as well: the one whose title
+  // says the name and nothing else comes first.
+  const beta = betas.find((i) => String(i.title).replace(BETA_TITLE, '').trim().toLowerCase() === lower)
+    || betas[0];
+  const pick = beta || (betaOnly ? null : titled[0]) || null;
   return pick ? { iid: pick.iid, url: pick.web_url, beta: pick === beta } : null;
+}
+/** "Beta tester: Name", the title the link of the README puts. */
+const BETA_TITLE = /^beta tester\b\s*[:\-–—]?\s*/i;
+
+/**
+ * Where a report goes, and in whose name it is told: a beta tester's
+ * work item, and no other.
+ *
+ * The name the app says - "Name on the work item", in its settings -
+ * used to choose among every work item open, and anybody let in could
+ * write in the project's name on any of them. Now the list chooses: a
+ * phone let in by an invitation reports on the work item of that
+ * invitation's name, the other half of a pair on the work item of
+ * whoever brought it along - known here by that name and a "+", see
+ * asGuest. The name said in the app is still what it was made for:
+ * the invitation's name that finds no work item, or a phone of the
+ * house's owner, who was invited by nobody. A name said finds nothing
+ * but a beta tester's either.
+ *
+ * Told in the name that found the work item: in its title already, it
+ * says nothing the work item does not.
+ */
+async function whereReportGoes(ws, said) {
+  const known = String(ws.who || '');
+  const host = ws.opens === true ? known : known.replace(/\+$/, '');
+  const byList = host ? await findWorkItem(host, { betaOnly: true }) : null;
+  if (byList) return { item: byList, who: ws.opens === true ? host : `${host}+` };
+  const bySaid = said && said !== 'Someone' ? await findWorkItem(said, { betaOnly: true }) : null;
+  return bySaid ? { item: bySaid, who: said } : null;
+}
+
+/**
+ * One line of what a phone says of itself - its Duetto, its make -
+ * for a note: no line break, no sign that is not text, no backquote;
+ * then it goes between backquotes, where GitLab reads nothing.
+ *
+ * It went in as it came. A line break and then "/close", "/title ..."
+ * or "/confidential", and GitLab, reading the start of every line of a
+ * note for a quick action, would have done it with the project's token.
+ */
+function oneLine(raw, max = 80) {
+  return String(raw || '').replace(/[\p{Cc}\p{Zl}\p{Zp}`]/gu, ' ')
+    .replace(/\s+/g, ' ').trim().slice(0, max);
+}
+const code = (s) => (s ? `\`${s}\`` : '');
+
+/**
+ * Somebody's words, written in the project's name: shown, and nothing
+ * more.
+ *
+ * GitLab acts on what a note says: "@name" mails that person, "#12" or
+ * a link to another work item writes a line on it - in any project it
+ * can see - and a link or a picture is followed by whoever reads it,
+ * or loaded for them. A report is anybody's words. So a sign of
+ * markdown is written as itself, with a backslash before it; between
+ * "@", "#", "!", "&", "$", "%" and what follows, and inside "://", goes
+ * a joiner nobody sees, which GitLab does not read across. Line breaks
+ * are the caller's: one line goes in here.
+ */
+const JOINER = '\u2060';
+function inert(line) {
+  return String(line || '')
+    .replace(/[\p{Cc}\p{Zl}\p{Zp}]/gu, ' ')
+    .replace(/[\\`*_[\]<>|~]/g, '\\$&')
+    .replace(/([@#!&$%])(?=\S)/g, `$1${JOINER}`)
+    .replace(/:\/\//g, `:${JOINER}//`);
 }
 
 const REPORT_MAX_BYTES = 6 * 1024 * 1024;
@@ -980,12 +1051,12 @@ async function handleReport(ws, msg) {
     reportsBegun.set(who, begun);
     ws.report = {
       // The name on the work item, when the person says one: the
-      // invitation's name may be wrong, or there may be no invitation
-      // - the other side of a pair is a tester too.
-      name: cleanName(String(msg.name || '')).slice(0, 80),
+      // invitation's name may find none, or there may be no invitation
+      // - the house's owner. See whereReportGoes.
+      name: saidName(String(msg.name || '')),
       text: String(msg.text || '').slice(0, 20000),
-      version: String(msg.version || '').slice(0, 80),
-      phone: String(msg.phone || '').slice(0, 80),
+      version: oneLine(msg.version),
+      phone: oneLine(msg.phone),
       files: new Map(),
       bytes: 0,
     };
@@ -1009,14 +1080,14 @@ async function handleReport(ws, msg) {
   }
   if (part !== 'end') return;
   ws.report = null;
-  // The name said in the app first; else the invitation's, which the
-  // list knows; else the name the app shows of itself.
-  const who = r.name && r.name !== 'Someone' ? r.name : (ws.who || cleanName(ws.name));
-  const item = await findWorkItem(who);
-  if (!item) {
+  const where = await whereReportGoes(ws, r.name);
+  if (!where) {
     send(ws, { type: 'report-result', ok: false, error: 'no-work-item' });
     return;
   }
+  const { item, who } = where;
+  const shown = inert(who);
+  const version = r.version ? `Duetto ${code(r.version)}` : '';
   const attachments = [];
   for (const [name, text] of r.files) {
     const form = new FormData();
@@ -1024,8 +1095,10 @@ async function handleReport(ws, msg) {
     const up = await gitlab('/uploads', { method: 'POST', body: form });
     if (up && up.markdown) attachments.push(up.markdown);
   }
+  // Each line quoted, so that none starts a quick action; and each
+  // made inert. A carriage return alone is a line break too.
   const quoted = r.text.trim()
-    ? r.text.trim().split('\n').map((l) => `> ${l}`).join('\n')
+    ? r.text.trim().split(/\r\n?|\n/).map((l) => `> ${inert(l)}`).join('\n')
     : '';
   /*
    * The journal in an internal note: the work item is open to anybody,
@@ -1040,13 +1113,13 @@ async function handleReport(ws, msg) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        body: `Journal of ${who}'s report, Duetto ${r.version}: ${attachments.join(' ')}`,
+        body: `Journal of _${shown}_'s report${version ? `, ${version}` : ''}: ${attachments.join(' ')}`,
         internal: true,
       }),
     });
   }
   const body = [
-    `**Report from _${who}_** · Duetto ${r.version} · ${r.phone}`,
+    [`**Report from _${shown}_**`, version, code(r.phone)].filter(Boolean).join(' · '),
     quoted,
     attachments.length ? 'Journal: in an internal note, for the developers only.' : '',
   ].filter(Boolean).join('\n\n');

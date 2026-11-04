@@ -28,6 +28,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const issues = [
   { iid: 1, title: 'Beta tester: Mario', web_url: 'http://gitlab.test/1' },
   { iid: 2, title: 'Security: a hole', web_url: 'http://gitlab.test/2' },
+  // Carla's name is in Carlotta's title too, and Carlotta's comes first.
+  { iid: 4, title: 'Beta tester: Carlotta', web_url: 'http://gitlab.test/4' },
+  { iid: 3, title: 'Beta tester: Carla', web_url: 'http://gitlab.test/3' },
 ];
 /** @type {{ method: string, path: string, body: string }[]} */
 let calls = [];
@@ -222,6 +225,70 @@ try {
   mem.send({ type: 'report', part: 'begin', name: 'Mario', text: 'the seventh' });
   answer = await mem.expect('report-result');
   check('the seventh in the hour: too many', answer?.ok === false && answer.error === 'too-many', answer);
+
+  // --- where a report goes, and what it says ---
+  // A member with a work item of their own, a member with none, and
+  // the other half of a pair: the list chooses, and the name said in
+  // the app only when the list's finds nothing - a beta tester's, even
+  // then.
+  own.send({ type: 'invite', name: 'Carla' });
+  const carla = await own.expect('invited');
+  own.send({ type: 'invite', name: 'Dario' });
+  const dario = await own.expect('invited');
+  const car = await inRoom(phone(), 'carla-room', { invite: carla.code });
+  const dar = await inRoom(phone(), 'dario-room', { invite: dario.code });
+  const report = async (c, begin) => {
+    c.send({ type: 'report', part: 'begin', ...begin });
+    c.send({ type: 'report', part: 'end' });
+    return c.expect('report-result');
+  };
+
+  calls = [];
+  answer = await report(car, { name: 'Mario', text: 'mine' });
+  check('a member with a work item: there, whatever name is said - and not the one that only holds the name',
+    answer?.ok === true && notes().length === 1 && notes()[0].path === '/issues/3/notes',
+    { answer, notes: seen(notes()) });
+
+  calls = [];
+  answer = await report(dar, { name: 'Security', text: 'elsewhere' });
+  check('a name said that finds no beta tester\'s work item: refused, and nothing written',
+    answer?.ok === false && answer.error === 'no-work-item' && notes().length === 0,
+    { answer, notes: seen(notes()) });
+  calls = [];
+  answer = await report(dar, { name: 'Mario', text: 'for Mario' });
+  check('a member with none: the name said, among the beta testers\'',
+    answer?.ok === true && notes().length === 1 && notes()[0].path === '/issues/1/notes',
+    { answer, notes: seen(notes()) });
+
+  // The other half of Carla's pair, let in beside her: on her work item.
+  const gue = await inRoom(phone(), 'carla-room');
+  calls = [];
+  answer = await report(gue, { name: 'Mario', text: 'from the other side' });
+  const told = notes().map((n) => JSON.parse(n.body).body).join('\n');
+  check('the other half of a pair: on the work item of whoever brought it, said so',
+    answer?.ok === true && notes().length === 1 && notes()[0].path === '/issues/3/notes'
+      && told.includes('Carla+'), { answer, notes: seen(notes()), told });
+
+  // What a phone says goes in as words, never as commands.
+  calls = [];
+  answer = await report(car, {
+    name: 'Mario',
+    version: '0.9.22 · build 556\n/close',
+    phone: 'POCO\r\n/title taken\u2028/confidential',
+    text: 'it rings\r/lock\n@all see #2 and !1: https://gitlab.test/p/duetto/-/issues/2'
+      + ' ![p](//elsewhere.test/p.png) <img src=x> [here](https://elsewhere.test) `x`',
+  });
+  const written = notes().map((n) => JSON.parse(n.body).body);
+  const lines = written.flatMap((b) => b.split(/\r\n?|\n|\u2028|\u2029/));
+  check('a report whose fields break lines: written', answer?.ok === true && written.length === 1,
+    { answer, written });
+  check('no line of it starts a quick action', lines.every((l) => !l.trimStart().startsWith('/')), lines);
+  check('the version and the phone on one line each, as code',
+    written.some((b) => b.includes('`0.9.22 · build 556 /close`') && b.includes('`POCO /title taken /confidential`')),
+    written);
+  check('no mention, no reference, no link, no picture, no tag, no code',
+    written.every((b) => !/@all|#2|!1|:\/\/|!\[|(?<!\\)\[|(?<!\\)<|(?<!\\)`x/.test(b)), written);
+  car.close(); dar.close(); gue.close();
   mem.close(); own.close();
 } catch (e) {
   console.log(`Error in the test: ${e.message}`);
