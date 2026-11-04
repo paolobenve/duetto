@@ -1169,6 +1169,10 @@ export default function App() {
           switchToCaller(id);
           return;
         }
+        // Touched, the call's notification has been seen: its card goes
+        // too, instead of staying with a button for the channel the
+        // touch has just brought us to.
+        setCallAlert((was) => (was?.pairId === id ? null : was));
         if (c.pair?.id === id) return;
         Journal.mark(`standby:opened-for:${id.slice(0, 8)}`).catch(() => { /* noop */ });
         onSwitchPairRef.current?.(id);
@@ -7153,6 +7157,15 @@ export default function App() {
   }
 
   /**
+   * The call card's button takes us to the channel of the connection
+   * that called, so it is there only while that is another connection.
+   * Once we are on it - by the touch of the call's notification, or by
+   * hand - "Go to the channel of …" would send us where we already are.
+   */
+  const callerElsewhere = callAlert?.pairId && callAlert.pairId !== cfg.pair?.id
+    ? callAlert.pairId : undefined;
+
+  /**
    * A newer Duetto, offered at a quiet moment: the app in front, on the
    * channel or in the settings, not while the two are talking or a call
    * rings; once a version, and again three days after "Later".
@@ -7376,8 +7389,8 @@ export default function App() {
         {callAlert ? <CallAlert
           text={callAlert.text}
           onClose={() => setCallAlert(null)}
-          switchName={callAlert.pairId ? switchName(callAlert.pairId) : undefined}
-          onSwitch={callAlert.pairId ? () => switchToCaller(callAlert.pairId!) : undefined}
+          switchName={callerElsewhere ? switchName(callerElsewhere) : undefined}
+          onSwitch={callerElsewhere ? () => switchToCaller(callerElsewhere) : undefined}
         /> : null}
         {diagAskedBy ? <DiagnosticsAskCard
           name={askerName(cfg)}
@@ -7644,8 +7657,8 @@ export default function App() {
       {callAlert && !inPip ? <CallAlert
           text={callAlert.text}
           onClose={() => setCallAlert(null)}
-          switchName={callAlert.pairId ? switchName(callAlert.pairId) : undefined}
-          onSwitch={callAlert.pairId ? () => switchToCaller(callAlert.pairId!) : undefined}
+          switchName={callerElsewhere ? switchName(callerElsewhere) : undefined}
+          onSwitch={callerElsewhere ? () => switchToCaller(callerElsewhere) : undefined}
         /> : null}
       {/* Asked for this phone's diagnostics: see diagnosticsAsk.ts. */}
       {diagAskedBy && !inPip ? <DiagnosticsAskCard
