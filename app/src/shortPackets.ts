@@ -81,3 +81,28 @@ export class LossWatch {
     this.short = false;
   }
 }
+
+/**
+ * Our own description, asking the other side for `ptime` milliseconds
+ * a packet on the line libwebrtc reads.
+ *
+ * The length goes among Opus's parameters, and libwebrtc moves it to
+ * an `a=ptime` line of its own when it writes the description. Offering
+ * or answering again, it copies that line from the description in
+ * force; reading one, it lets the line win over the parameter. So a
+ * length changed during a call went out with the old one on that line,
+ * and nothing changed until a new link: in a browser, with the POCO
+ * asking for twenty, the moto went on sending seventeen packets a
+ * second, sixty milliseconds each. The line, where there is one, now
+ * says the length asked for; with none, as in a link's first offer,
+ * the parameter is enough.
+ *
+ * Only for our own descriptions: on the other's, that line is what it
+ * asks of our encoder.
+ */
+export function askPacketLength(sdp: string, ptime: number): string {
+  return sdp
+    .split(/(?=^m=)/m)
+    .map((part) => (part.startsWith('m=audio') ? part.replace(/^a=ptime:\d+/m, `a=ptime:${ptime}`) : part))
+    .join('');
+}

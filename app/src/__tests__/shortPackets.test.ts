@@ -1,4 +1,4 @@
-import { LossWatch, LONG_AFTER_MS } from '../shortPackets';
+import { LossWatch, LONG_AFTER_MS, askPacketLength } from '../shortPackets';
 
 /** readings every `every` ms, `got` and `lost` each, from `from`; the last answer */
 function feed(w: LossWatch, from: number, n: number, every: number, got: number, lost: number) {
@@ -68,5 +68,39 @@ describe('short packets for the road', () => {
     const w = new LossWatch();
     expect(w.add(0, -5, 0)).toBeNull();
     expect(w.add(0, 0, 0)).toBeNull();
+  });
+});
+
+describe('the length our own description asks for', () => {
+  // a description offered again, shaped: libwebrtc has copied the old
+  // length onto a line of its own, beside the new parameter
+  const sdp = [
+    'v=0', 'o=- 1 2 IN IP4 127.0.0.1', 's=-', 't=0 0',
+    'm=audio 9 UDP/TLS/RTP/SAVPF 111 63',
+    'a=rtpmap:111 opus/48000/2',
+    'a=fmtp:111 minptime=10;useinbandfec=1;usedtx=1;ptime=20;maxptime=120',
+    'a=ptime:60',
+    'a=maxptime:120',
+    'm=video 9 UDP/TLS/RTP/SAVPF 96',
+    'a=rtpmap:96 VP8/90000',
+    'a=ptime:60',
+    '',
+  ].join('\r\n');
+
+  test('goes on the line libwebrtc reads, in the voice alone', () => {
+    const [voice, video] = askPacketLength(sdp, 20).split('m=video');
+    expect(voice).toContain('a=ptime:20\r\n');
+    expect(voice).not.toContain('a=ptime:60');
+    expect(voice).toContain('a=maxptime:120\r\n');
+    expect(video).toContain('a=ptime:60');
+  });
+
+  test('and back', () => {
+    expect(askPacketLength(askPacketLength(sdp, 20), 60)).toBe(sdp);
+  });
+
+  test('with no such line, as in a first offer, the parameter is enough', () => {
+    const first = sdp.replace(/a=ptime:60\r\n/g, '');
+    expect(askPacketLength(first, 20)).toBe(first);
   });
 });

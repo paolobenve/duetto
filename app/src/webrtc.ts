@@ -23,7 +23,7 @@ import { iceServers, VIDEO_PROFILES, CAPTURE_FPS } from './config';
 import type { Hand, Signaling, SignalMessage } from './signaling';
 import { VERSION_LABEL, BUILD } from './version';
 import { logger } from './log';
-import { LossWatch } from './shortPackets';
+import { LossWatch, askPacketLength } from './shortPackets';
 import { Freshness, lossStep } from './road';
 
 /**
@@ -1252,8 +1252,16 @@ export class ChannelSession {
    * talking. Both are asked for in the SDP: libwebrtc reads them from
    * the description it RECEIVES, so ours is shaped too, before it goes
    * out, for the other side - an older app included - to send the same
-   * way; and theirs is shaped on arrival, for our encoder.
+   * way; and theirs is shaped on arrival, for our encoder. All but the
+   * length, there: the other's description says it on an `a=ptime`
+   * line, which wins over the parameter, and it is the other side's to
+   * choose - see askPacketLength.
    */
+  private ownAudio(sdp: string): string {
+    const ptime = this.ptime();
+    return askPacketLength(ChannelSession.thriftyAudio(sdp, ptime), ptime);
+  }
+
   /**
    * The other side's description, shaped for OUR encoder.
    *
@@ -1487,7 +1495,7 @@ export class ChannelSession {
       this.makingOffer = true;
       const offer = await pc.createOffer({});
       await pc.setLocalDescription(
-        new RTCSessionDescription({ type: offer.type, sdp: ChannelSession.thriftyAudio(offer.sdp, this.ptime()) }),
+        new RTCSessionDescription({ type: offer.type, sdp: this.ownAudio(offer.sdp) }),
       );
       const desc = pc.localDescription!;
       log('offer sent');
@@ -1594,7 +1602,7 @@ export class ChannelSession {
       if (msg.type === 'offer') {
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(
-          new RTCSessionDescription({ type: answer.type, sdp: ChannelSession.thriftyAudio(answer.sdp, this.ptime()) }),
+          new RTCSessionDescription({ type: answer.type, sdp: this.ownAudio(answer.sdp) }),
         );
         log('answer sent - directions:',
           ((pc as any).getTransceivers?.() ?? [])
@@ -1716,7 +1724,7 @@ export class ChannelSession {
           try {
             const offer = await pc.createOffer({ iceRestart: true });
             await pc.setLocalDescription(
-              new RTCSessionDescription({ type: offer.type, sdp: ChannelSession.thriftyAudio(offer.sdp, this.ptime()) }),
+              new RTCSessionDescription({ type: offer.type, sdp: this.ownAudio(offer.sdp) }),
             );
             this.signaling.sendSignal({
               kind: 'desc', type: 'offer', sdp: pc.localDescription.sdp,
@@ -1731,7 +1739,7 @@ export class ChannelSession {
       // Older versions: the same thing, with an offer.
       const offer = await pc.createOffer({ iceRestart: true });
       await pc.setLocalDescription(
-        new RTCSessionDescription({ type: offer.type, sdp: ChannelSession.thriftyAudio(offer.sdp, this.ptime()) }),
+        new RTCSessionDescription({ type: offer.type, sdp: this.ownAudio(offer.sdp) }),
       );
       this.signaling.sendSignal({
         kind: 'desc', type: 'offer', sdp: pc.localDescription.sdp,
