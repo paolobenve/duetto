@@ -1149,13 +1149,21 @@ export default function App() {
    * return to the front.
    */
   const cfgLoaded = !!cfg;
+  /**
+   * The word of the notification that opened the app, as `take` below
+   * asked for it: coming back to the front reads it too, before going
+   * into the channel in use (see the re-entry, further down).
+   */
+  const openedAsked = useRef<Promise<string | null> | null>(null);
   useEffect(() => {
     const take = () => {
       // Not before the configuration is read: taken, the word is gone,
       // and with no connections to look it up in it would be lost. Nor
       // while it could not be read (see loadConfig): none in it either.
-      if (!cfgRef.current || cfgRef.current.unread) return;
-      Foreground.takeOpenedPair().then((got) => {
+      if (!cfgRef.current || cfgRef.current.unread) { openedAsked.current = null; return; }
+      const asked = Foreground.takeOpenedPair();
+      openedAsked.current = asked;
+      asked.then((got) => {
         const c = cfgRef.current;
         // "Enter" on a connection's line of the standing notification:
         // onto it, and in.
@@ -4002,7 +4010,27 @@ export default function App() {
           Journal.mark('reentry-skipped:just-left').catch(() => {});
           return;
         }
-        enterChannelRef.current?.();
+        // Opened by the touch of a notification for another connection,
+        // the app goes there (see takeOpenedPair, above), and not into
+        // its channel: it used to go into this one first, for a second,
+        // the camera on, and the other side heard us arrive and leave.
+        // The word is read once the take above has asked for it: both
+        // run on this same change, in no order to count on.
+        const inUse = cfgRef.current?.pair?.id;
+        setTimeout(() => {
+          (openedAsked.current ?? Promise.resolve(null)).catch(() => null).then((got) => {
+            const enter = !!got && got.startsWith('enter:');
+            const id = enter ? got!.slice('enter:'.length) : got;
+            const elsewhere = !!id && id !== inUse && !!cfgRef.current?.pairs.some((p) => p.id === id);
+            // "Enter" on a line of the notification goes in by itself.
+            if (enter || elsewhere) {
+              Journal.mark(`reentry-skipped:opened-for${enter ? ':enter' : ''}`).catch(() => {});
+              return;
+            }
+            if (inChannelRef.current || appStateRef.current !== 'active') return;
+            enterChannelRef.current?.();
+          });
+        }, 0);
       }
     });
     return () => sub.remove();
