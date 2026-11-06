@@ -583,7 +583,6 @@ object Calls {
      */
     fun setRoute(route: String): Boolean {
         val c = connection ?: return false
-        if (c.state != Connection.STATE_ACTIVE) return false
         val r = when (route) {
             "EARPIECE" -> CallAudioState.ROUTE_EARPIECE
             "BLUETOOTH" -> CallAudioState.ROUTE_BLUETOOTH
@@ -591,6 +590,10 @@ object Calls {
             "SPEAKER_PHONE" -> CallAudioState.ROUTE_SPEAKER
             else -> return false
         }
+        // Another output, held or not: the speaker is not put back over
+        // it after a call (DuettoConnection.otherOutputChosen).
+        if (r != CallAudioState.ROUTE_SPEAKER) c.otherOutputChosen()
+        if (c.state != Connection.STATE_ACTIVE) return false
         return try {
             @Suppress("DEPRECATION")
             c.setAudioRoute(r)
@@ -754,6 +757,26 @@ class DuettoConnection : Connection() {
         }, SPEAKER_BACK_MS)
     }
 
+    /** The second look of speakerBack, waiting: see otherOutputChosen. */
+    private val lookAgain = Runnable { speakerBack(again = false) }
+
+    /**
+     * Another output asked for by the app (Calls.setRoute), held or not:
+     * the speaker is not put back over it. A choice by hand, or the
+     * earpiece with the phone brought to the ear, a moment after a call,
+     * would be undone by the look that follows. The speaker asked for
+     * changes nothing: it is what is put back here, and asked for while
+     * we are held it is refused, not done. From any thread.
+     */
+    fun otherOutputChosen() {
+        clock.post {
+            clock.removeCallbacks(lookAgain)
+            if (!earByHold) return@post
+            earByHold = false
+            Calls.say("route:no-speaker-after-hold")
+        }
+    }
+
     /**
      * The speaker asked for, if the sound is still at the ear: a headset
      * that took it meanwhile keeps it. Looked at once more a moment
@@ -774,7 +797,9 @@ class DuettoConnection : Connection() {
             null -> { /* not told yet: looked at again */ }
             else -> return
         }
-        if (again) clock.postDelayed({ speakerBack(again = false) }, SPEAKER_CONFIRM_MS)
+        if (!again) return
+        clock.removeCallbacks(lookAgain)
+        clock.postDelayed(lookAgain, SPEAKER_CONFIRM_MS)
     }
 
     override fun onHold() {
