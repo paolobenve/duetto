@@ -195,13 +195,15 @@ object Calls {
      * ours came back seven seconds into it - so JavaScript says, when
      * the audio is given back to us; and DuettoConnection.watch, when
      * the telephone's mode is left or another app's call is gone. The
-     * channel's volume comes back with it (giveBack).
+     * channel's output and volume come back with it (backFromHold,
+     * giveBack).
      */
     fun resume() {
         val c = connection ?: return
         if (c.state != Connection.STATE_HOLDING) return
         c.setActive()
         say("resumed")
+        c.backFromHold()
         outputMoved()
     }
 
@@ -722,6 +724,57 @@ class DuettoConnection : Connection() {
     private companion object {
         /** See otherAppGone. */
         const val OTHER_GONE_MS = 5000L
+        /** See backFromHold: the wait the app had, and the check after it. */
+        const val SPEAKER_BACK_MS = 300L
+        const val SPEAKER_CONFIRM_MS = 1500L
+    }
+
+    /**
+     * Moved to the ear by the hold (onHold): on resuming, back to the
+     * speaker - here, and not only in JavaScript.
+     *
+     * The app put it back 300 ms after our call came back, with a timer
+     * of JavaScript's, and those stand still while the app is behind - as
+     * it is after a telephone call - unless the task with no interface
+     * runs (PresenceService), which a Duetto opened by hand does not
+     * have. On the POCO, from 7 October to 6 November: without that task
+     * the channel stayed at the ear until Duetto was opened 18 times of
+     * 31, once for 82 minutes; with it, the speaker came back 46 times
+     * of 47.
+     */
+    private var earByHold = false
+
+    /** Our call active again: the speaker back, if the hold took it to the ear. From any thread. */
+    fun backFromHold() {
+        clock.postDelayed({
+            // Held again meanwhile: it waits for the next resuming.
+            if (state != STATE_ACTIVE || !earByHold) return@postDelayed
+            earByHold = false
+            speakerBack(again = true)
+        }, SPEAKER_BACK_MS)
+    }
+
+    /**
+     * The speaker asked for, if the sound is still at the ear: a headset
+     * that took it meanwhile keeps it. Looked at once more a moment
+     * later, if it was asked for or Android could not say yet where the
+     * sound was: Telecom, giving its focus to a call, can put back its
+     * own default, the earpiece, over a speaker just asked for - on
+     * 6 November, 7 ms after the speaker was pressed on a telephone call
+     * just answered.
+     */
+    private fun speakerBack(again: Boolean) {
+        if (state != STATE_ACTIVE) return
+        when (Calls.whereNow()) {
+            "EARPIECE" -> try {
+                @Suppress("DEPRECATION")
+                setAudioRoute(CallAudioState.ROUTE_SPEAKER)
+                Calls.say("route:speaker-after-hold")
+            } catch (_: Exception) { return }
+            null -> { /* not told yet: looked at again */ }
+            else -> return
+        }
+        if (again) clock.postDelayed({ speakerBack(again = false) }, SPEAKER_CONFIRM_MS)
     }
 
     override fun onHold() {
@@ -735,13 +788,15 @@ class DuettoConnection : Connection() {
          * The output is telecom's for every call at once, and the call
          * just answered took ours: on speaker in the channel, a phone
          * call opened on speaker too. Headsets are left alone - there
-         * the call belongs in them. Our output is put back on resuming.
+         * the call belongs in them. Our output is put back on resuming
+         * (backFromHold).
          */
         if (lastRoute == CallAudioState.ROUTE_SPEAKER) {
             try {
                 @Suppress("DEPRECATION")
                 setAudioRoute(CallAudioState.ROUTE_EARPIECE)
                 Calls.say("route:call-to-ear")
+                earByHold = true
             } catch (_: Exception) { /* the call keeps the speaker */ }
         }
         setOnHold()
@@ -769,6 +824,7 @@ class DuettoConnection : Connection() {
         clock.removeCallbacks(watch)
         setActive()
         Calls.say("resumed")
+        backFromHold()
         Calls.outputMoved()
     }
 
