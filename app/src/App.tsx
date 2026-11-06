@@ -588,11 +588,12 @@ export default function App() {
     /**
      * The channel's call is on hold (Calls.kt): a real call - a phone
      * call, a WhatsApp call, a Meet call - was answered. While it lasts
-     * nothing is asked back, and only Android says it is over: the audio
+     * nothing is asked back, and two things say it is over: the audio
      * returning by itself (AUDIOFOCUS_GAIN), or the native side giving
-     * the call back ('resumed'). Asked for, the audio would have been
-     * granted in the middle of a WhatsApp call, and taken from it; and
-     * another app's voice stopping says nothing either: see
+     * the call back ('resumed'), which watches the telephone's mode and
+     * another app's call gone for good. Asked for, the audio would have
+     * been granted in the middle of a WhatsApp call, and taken from it;
+     * and another app's voice stopping for a moment says nothing: see
      * 'other-call:over' below.
      */
     let held = false;
@@ -690,11 +691,12 @@ export default function App() {
          */
         if (st === 'other-call:over') {
           otherCall = false;
-          // Held, ours does not come back by this road: only Android's
-          // say that the other call ended (see held). Meet's voice stops
-          // for a moment while it opens its call, and taking ours back
-          // then put Meet on hold - which Meet takes as the end of its
-          // call: in, and out after a second.
+          // Held, ours does not come back from here: the native side
+          // does it, once the other call has been gone a few seconds
+          // (DuettoConnection.otherAppGone). Meet's voice stops for a
+          // moment while it opens its call, and taking ours back then
+          // put Meet on hold - which Meet takes as the end of its call:
+          // in, and out after a second.
           back('other-call-over');
         } else {
           otherCall = true;

@@ -193,7 +193,8 @@ object Calls {
      * does not give it back: it is up to the app. The audio mode could
      * not say when - a WhatsApp call is in the same mode as ours, and
      * ours came back seven seconds into it - so JavaScript says, when
-     * the audio is given back to us.
+     * the audio is given back to us; and DuettoConnection.watch, when
+     * the telephone's mode is left or another app's call is gone.
      */
     fun resume() {
         val c = connection ?: return
@@ -363,6 +364,16 @@ object Calls {
     private var voiceBeside = false
     private var otherCall = false
 
+    /** Another app's call, as the microphone and the speaker say now. */
+    val otherCallNow: Boolean get() = otherCall
+
+    /**
+     * The last moment another app's call was seen (uptime ms): the
+     * moment it came, or the moment it went. See DuettoConnection.watch.
+     */
+    @Volatile var otherCallSeenAt = 0L
+        private set
+
     /**
      * Our own call's sound, which is not somebody else's call.
      *
@@ -394,6 +405,7 @@ object Calls {
         val now = micTaken || voiceBeside
         if (now == otherCall) return
         otherCall = now
+        otherCallSeenAt = SystemClock.uptimeMillis()
         say(if (now) "other-call:${if (micTaken) "mic" else "voice"}" else "other-call:over")
     }
 
@@ -536,10 +548,14 @@ class DuettoConnection : Connection() {
      * still ours, and the net was never cast - so it is watched all the
      * hold long, and only a mode seen and then left counts. A WhatsApp
      * call never enters it, and the net stays quiet there.
+     *
+     * And a second net, for another app's call through telecom - Meet's:
+     * see otherAppGone.
      */
     private val clock = Handler(Looper.getMainLooper())
     private var clearReadings = 0
     private var sawInCall = false
+    private var heldAt = 0L
     private val watch = object : Runnable {
         override fun run() {
             if (state != STATE_HOLDING) return
@@ -552,8 +568,37 @@ class DuettoConnection : Connection() {
                 Calls.resume()
                 return
             }
+            if (!sawInCall && otherAppGone()) {
+                Calls.appCtx?.let { Journal.sample(it, "call:other-app-gone") }
+                Calls.resume()
+                return
+            }
             clock.postDelayed(this, 1000)
         }
+    }
+
+    /**
+     * Another app's call through telecom, ended: Meet's, Signal's.
+     *
+     * Telecom gives back nothing when it ends - not the focus, not the
+     * audio, which it keeps for the call left, ours on hold - and the
+     * mode is ours all along, "communication": the net above never moves
+     * (6/11). What says it is the other app itself, its voice and its
+     * microphone gone (Calls.watchOthers): seen during this hold, and
+     * gone for OTHER_GONE_MS in a row. While Meet opens its call they
+     * come and go within a second, and taking ours back then would put
+     * Meet on hold - which Meet takes as the end of its call.
+     */
+    private fun otherAppGone(): Boolean {
+        if (Calls.otherCallNow) return false
+        // Seen during this hold: it went after the hold began.
+        if (Calls.otherCallSeenAt < heldAt) return false
+        return SystemClock.uptimeMillis() - Calls.otherCallSeenAt >= OTHER_GONE_MS
+    }
+
+    private companion object {
+        /** See otherAppGone. */
+        const val OTHER_GONE_MS = 5000L
     }
 
     override fun onHold() {
@@ -579,6 +624,7 @@ class DuettoConnection : Connection() {
         clock.removeCallbacks(watch)
         clearReadings = 0
         sawInCall = false
+        heldAt = SystemClock.uptimeMillis()
         clock.postDelayed(watch, 1000)
     }
 
