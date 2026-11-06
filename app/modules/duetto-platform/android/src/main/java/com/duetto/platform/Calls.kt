@@ -194,13 +194,15 @@ object Calls {
      * not say when - a WhatsApp call is in the same mode as ours, and
      * ours came back seven seconds into it - so JavaScript says, when
      * the audio is given back to us; and DuettoConnection.watch, when
-     * the telephone's mode is left or another app's call is gone.
+     * the telephone's mode is left or another app's call is gone. The
+     * channel's volume comes back with it (giveBack).
      */
     fun resume() {
         val c = connection ?: return
         if (c.state != Connection.STATE_HOLDING) return
         c.setActive()
         say("resumed")
+        outputMoved()
     }
 
     /**
@@ -215,11 +217,30 @@ object Calls {
     private var ringtone: Ringtone? = null
     private var callback: Any? = null
 
+    /** The phone ringing, by its call state. */
+    @Volatile private var ringing = false
+
     /**
-     * The call volume as it was before the phone rang, while it is held
-     * at the bottom: see hushWaitingBeeps.
+     * The channel's call volume, output by output, written down when a
+     * telephone call comes to take the line - at its ringing, or at the
+     * hold for a call made from here - and given back when the channel is
+     * on that output again (giveBack).
+     *
+     * Android keeps one call volume for each output - the speaker, the
+     * earpiece, a headset - and the channel and a telephone call share
+     * it. A call made louder or softer on the speaker left the channel at
+     * that volume after it: 36 of the 65 calls counted under
+     * hushWaitingBeeps. The other's voice comes back as it was.
      */
-    private var volumeBeforeRing: Int? = null
+    private val kept = mutableMapOf<String, Int>()
+
+    /** Outputs taken to the bottom for the waiting beeps, owed their volume. */
+    private val hushed = mutableSetOf<String>()
+
+    private const val CALL_STREAM = AudioManager.STREAM_VOICE_CALL
+
+    private fun bottom(am: AudioManager): Int =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) am.getStreamMinVolume(CALL_STREAM) else 1
 
     /**
      * The call-waiting beeps, made faint.
@@ -227,23 +248,29 @@ object Calls {
      * Android plays them on the call volume, through the output in use -
      * the speaker, often - and the call volume is the one Duetto keeps
      * high for the other's voice: they came out very loud. While the
-     * phone rings the call volume goes to its bottom, and back as soon as
-     * the ringing is over - answered, refused or missed - so that the
-     * caller is heard at the volume of before. The other's voice in the
-     * channel is fainter for those seconds too: somebody is calling.
+     * phone rings the call volume of that output goes to its bottom. The
+     * other's voice in the channel is fainter for those seconds too:
+     * somebody is calling.
+     *
+     * It goes back up on the same output (giveBack). It used to go back
+     * the moment the ringing was over, on whatever output was in use -
+     * and answering moves our call to the ear first (onHold): the
+     * earpiece got the speaker's volume, and the speaker stayed at the
+     * bottom. Of 65 calls answered on the POCO with the channel on the
+     * speaker, 13 October to 6 November, 16 gave the channel back at 1
+     * of 12, and in 49 the call put on the speaker began at 1 too.
      */
-    private fun hushWaitingBeeps(ctx: Context) {
-        if (volumeBeforeRing != null) return
+    private fun hushWaitingBeeps(ctx: Context, where: String?) {
         // An option, on unless switched off (see setQuietWaitingBeeps).
         if (!ctx.getSharedPreferences(PREFS_CALLS, Context.MODE_PRIVATE).getBoolean(KEY_QUIET_BEEPS, true)) return
+        // An output not known could not be given its volume back.
+        if (where == null || where in hushed) return
         try {
             val am = ctx.getSystemService(AudioManager::class.java) ?: return
-            val stream = AudioManager.STREAM_VOICE_CALL
-            val floor = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) am.getStreamMinVolume(stream) else 1
-            val now = am.getStreamVolume(stream)
-            if (now <= floor) return
-            volumeBeforeRing = now
-            am.setStreamVolume(stream, floor, 0)
+            val now = am.getStreamVolume(CALL_STREAM)
+            if (now <= bottom(am)) return
+            hushed.add(where)
+            am.setStreamVolume(CALL_STREAM, bottom(am), 0)
             Journal.sample(ctx, "call:waiting-beeps-hushed:$now")
         } catch (e: Exception) {
             Log.w(TAG, "waiting beeps: ${e.message}")
@@ -258,21 +285,107 @@ object Calls {
     private const val PREFS_CALLS = "duetto_calls"
     private const val KEY_QUIET_BEEPS = "quiet_waiting_beeps"
 
-    private fun restoreAfterRing(ctx: Context) {
-        val before = volumeBeforeRing ?: return
-        volumeBeforeRing = null
+    /**
+     * The channel's volume where it is now, written down (see kept). An
+     * output hushed for the beeps keeps the volume written at the
+     * ringing: the bottom is not the channel's. Gives back the output,
+     * when it is known.
+     */
+    private fun keepVolume(ctx: Context): String? {
+        val where = whereNow() ?: return null
+        if (where in hushed) return where
         try {
-            ctx.getSystemService(AudioManager::class.java)
-                ?.setStreamVolume(AudioManager.STREAM_VOICE_CALL, before, 0)
+            val now = ctx.getSystemService(AudioManager::class.java)?.getStreamVolume(CALL_STREAM)
+                ?: return where
+            kept[where] = now
+            Journal.sample(ctx, "call:volume-kept:$where:$now")
         } catch (e: Exception) {
-            Log.w(TAG, "waiting beeps, volume back: ${e.message}")
+            Log.w(TAG, "call volume not kept: ${e.message}")
         }
+        return where
+    }
+
+    /** A call takes the line: the channel's volume, before ours goes to the ear. */
+    fun keepForHold() {
+        appCtx?.let { keepVolume(it) }
+    }
+
+    /**
+     * The call volume given back, on the output in use.
+     *
+     * Android sets the volume of the output in use and of no other, so
+     * this is asked whenever that may have changed - the ringing over,
+     * the output moved, our call back. An output hushed for the beeps
+     * goes back up as soon as the ringing is over: a call answered and
+     * put on the speaker is heard at the volume of before, not at the
+     * bottom. And with our call active again, an output written down
+     * gets the channel's own volume, however the call left it.
+     */
+    private fun giveBack() {
+        if (ringing) return
+        val ctx = appCtx ?: return
+        val where = whereNow() ?: return
+        val mine = kept[where] ?: return
+        try {
+            val am = ctx.getSystemService(AudioManager::class.java) ?: return
+            var now = am.getStreamVolume(CALL_STREAM)
+            // Still at the bottom: nobody moved it meanwhile.
+            if (hushed.remove(where) && now <= bottom(am) && mine > now) {
+                am.setStreamVolume(CALL_STREAM, mine, 0)
+                now = mine
+                Journal.sample(ctx, "call:volume-back:$where:$mine")
+            }
+            if (connection?.state != Connection.STATE_ACTIVE) return
+            kept.remove(where)
+            if (now != mine) {
+                am.setStreamVolume(CALL_STREAM, mine, 0)
+                Journal.sample(ctx, "call:volume-back:$where:$mine")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "call volume back: ${e.message}")
+        }
+    }
+
+    /** The output may have moved, or our call come back: see giveBack. From any thread. */
+    fun outputMoved() {
+        clock.post { giveBack() }
+    }
+
+    /**
+     * The output in use, followed (Android 12 on): Android's own word
+     * when it moves, for the volume owed to an output - telecom does not
+     * always say it (whereNow).
+     */
+    private var outputCb: Any? = null
+
+    fun watchOutput(ctx: Context) {
+        appCtx = ctx.applicationContext
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || outputCb != null) return
+        try {
+            val am = ctx.getSystemService(AudioManager::class.java) ?: return
+            val l = AudioManager.OnCommunicationDeviceChangedListener { giveBack() }
+            am.addOnCommunicationDeviceChangedListener(ctx.mainExecutor, l)
+            outputCb = l
+        } catch (e: Exception) {
+            Log.w(TAG, "output not followed: ${e.message}")
+        }
+    }
+
+    private fun unwatchOutput() {
+        val l = outputCb ?: return
+        outputCb = null
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+        try {
+            appCtx?.getSystemService(AudioManager::class.java)
+                ?.removeOnCommunicationDeviceChangedListener(l as AudioManager.OnCommunicationDeviceChangedListener)
+        } catch (_: Exception) { /* noop */ }
     }
 
     private fun onCallState(state: Int) {
         val ctx = appCtx ?: return
-        if (state == TelephonyManager.CALL_STATE_RINGING && connection?.state == Connection.STATE_ACTIVE) {
-            hushWaitingBeeps(ctx)
+        ringing = state == TelephonyManager.CALL_STATE_RINGING
+        if (ringing && connection?.state == Connection.STATE_ACTIVE) {
+            hushWaitingBeeps(ctx, keepVolume(ctx))
             val am = ctx.getSystemService(AudioManager::class.java)
             if (am?.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
             if (ringtone?.isPlaying == true) return
@@ -293,7 +406,7 @@ object Calls {
             }
         } else {
             stopRinging()
-            restoreAfterRing(ctx)
+            giveBack()
         }
     }
 
@@ -320,8 +433,13 @@ object Calls {
             } else {
                 @Suppress("DEPRECATION")
                 val l = object : PhoneStateListener() {
+                    // On the thread that made it - the module's, when the
+                    // permission came later: to the main one, with the
+                    // volumes it keeps (kept, hushed).
                     @Deprecated("Deprecated in Java")
-                    override fun onCallStateChanged(state: Int, number: String?) = onCallState(state)
+                    override fun onCallStateChanged(state: Int, number: String?) {
+                        clock.post { onCallState(state) }
+                    }
                 }
                 @Suppress("DEPRECATION")
                 tm.listen(l, PhoneStateListener.LISTEN_CALL_STATE)
@@ -334,6 +452,7 @@ object Calls {
 
     private fun unwatchRinging() {
         stopRinging()
+        ringing = false
         val cb = callback ?: return
         callback = null
         val tm = appCtx?.getSystemService(TelephonyManager::class.java) ?: return
@@ -523,6 +642,10 @@ object Calls {
         stopWaiting()
         unwatchOthers()
         unwatchRinging()
+        unwatchOutput()
+        // An output left at the bottom for the beeps is still owed its
+        // volume, the next time it is in use; the channel's own ends here.
+        clock.post { kept.keys.retainAll(hushed) }
         val c = connection ?: return
         connection = null
         try {
@@ -604,6 +727,8 @@ class DuettoConnection : Connection() {
     override fun onHold() {
         // A real call was answered: ours waits, and says so.
         Calls.stopRingingNow()
+        // The channel's volume, while the output is still ours: see Calls.kept.
+        Calls.keepForHold()
         /**
          * To the ear, if we were on speaker.
          *
@@ -637,12 +762,14 @@ class DuettoConnection : Connection() {
         if (r == lastRoute) return
         lastRoute = r
         Calls.say("route:${Calls.routeName(r)}")
+        Calls.outputMoved()
     }
 
     override fun onUnhold() {
         clock.removeCallbacks(watch)
         setActive()
         Calls.say("resumed")
+        Calls.outputMoved()
     }
 
     /** Closed by the system, not by us: the channel is told. */
@@ -675,6 +802,7 @@ class DuettoConnectionService : ConnectionService() {
         Calls.connection = c
         Calls.say("active")
         Calls.watchRinging(this)
+        Calls.watchOutput(this)
         return c
     }
 
