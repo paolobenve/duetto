@@ -178,8 +178,19 @@ function deathWhen(when: number): string {
  * from then until this very moment nobody could reach this phone. It is
  * the only phone that can tell it, and the person holding it is the one
  * who can do something about it.
+ *
+ * Except when it may not have been the phone. "Closed by the user" is
+ * what Android writes for Force stop in the settings, for a swipe out of
+ * the recents on the phones where that stops apps, and for a cleaning
+ * app that stops it, without saying which. On 6 November a force stop
+ * made for a test came back as "The phone closed Duetto: the app was
+ * closed", with the battery advice, as if the phone had done it. So the
+ * three ways are named, and the advice is for when the person did not
+ * close it. A force stop through adb is written the same way, but only
+ * whoever develops the app uses it, and knows.
  */
 export function myDeathStory(when: number, cause: string): string {
+  if (cause === 'closed-by-user') return t('death.mineClosedStory', { when: deathWhen(when) });
   return t('death.mineStory', { when: deathWhen(when), why: deathWhy(cause) });
 }
 

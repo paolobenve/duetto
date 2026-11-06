@@ -146,6 +146,7 @@ export const it: Dictionary = {
     // smentita del presente. Prima ciò che è vero ora, poi la storia.
     story: '{who} è di nuovo raggiungibile{channel} dalle {back}. Non lo era {when}: {why}.',
     mineStory: 'Il telefono ha chiuso Duetto {when}: {why}. Da allora non eri raggiungibile, fino a ora. Se si ripete, togli a Duetto i limiti in sottofondo nelle impostazioni della batteria del telefono.',
+    mineClosedStory: 'Duetto è stato chiuso {when} in uno di questi tre modi: dalle impostazioni del telefono, togliendolo dalle app recenti o con un’app di pulizia. Da allora non eri raggiungibile, fino a ora. Se non l’hai chiuso tu, togli a Duetto i limiti in sottofondo nelle impostazioni della batteria del telefono.',
     sinceTime: 'dalle {time}',
   },
 

@@ -147,6 +147,7 @@ export const de: Dictionary = {
     atTime: 'um {time}',
     story: '{who} ist wieder erreichbar{channel} seit {back}. Nicht erreichbar {when}: {why}.',
     mineStory: 'Das Telefon hat Duetto {when} geschlossen: {why}. Von da an bis jetzt warst du nicht erreichbar. Wenn es wieder vorkommt, nimm Duetto in den Akku-Einstellungen des Telefons die Grenzen im Hintergrund weg.',
+    mineClosedStory: 'Duetto wurde {when} auf eine dieser drei Arten geschlossen: über die Einstellungen des Telefons, durch Wegwischen aus den letzten Apps oder von einer Aufräum-App. Von da an bis jetzt warst du nicht erreichbar. Wenn du es nicht selbst geschlossen hast, nimm Duetto in den Akku-Einstellungen des Telefons die Grenzen im Hintergrund weg.',
     sinceTime: 'seit {time}',
   },
 

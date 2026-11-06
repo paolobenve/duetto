@@ -147,6 +147,7 @@ export const pt: Dictionary = {
     atTime: 'às {time}',
     story: '{who} está de novo alcançável{channel} desde as {back}. Não estava {when}: {why}.',
     mineStory: 'O telefone fechou o Duetto {when}: {why}. Desde então até agora você não estava acessível. Se acontecer de novo, tire do Duetto os limites em segundo plano nas configurações de bateria do telefone.',
+    mineClosedStory: 'O Duetto foi fechado {when} de uma destas três formas: pelas configurações do telefone, tirando-o dos apps recentes ou por um app de limpeza. Desde então até agora você não estava acessível. Se não foi você quem o fechou, tire do Duetto os limites em segundo plano nas configurações de bateria do telefone.',
     sinceTime: 'desde as {time}',
   },
 

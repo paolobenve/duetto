@@ -158,6 +158,7 @@ export const en = {
     // denial of the present. What is true now leads; the story follows.
     story: '{who} is reachable again{channel} since {back}. Not reachable {when}: {why}.',
     mineStory: 'The phone closed Duetto {when}: {why}. You were unreachable from then until now. If it happens again, lift the background limits on Duetto in the phone\'s battery settings.',
+    mineClosedStory: 'Duetto was closed {when} in one of these three ways: from the phone\'s settings, by swiping it out of the recent apps, or by a cleaning app. You were unreachable from then until now. If you did not close it, lift the background limits on Duetto in the phone\'s battery settings.',
     sinceTime: 'since {time}',
   },
 
