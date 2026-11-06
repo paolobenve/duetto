@@ -145,11 +145,19 @@ const KNOWN_PARTS: Record<string, string> = {
  * Duetto went with it - and says so only in the description: "stop
  * com.google.android.webview due to installPackageLI". The cause itself
  * reads "unknown", and the story said "nobody knows why".
+ *
+ * An update can also close the app twice. If the app is back up before
+ * Android has finished replacing it, it is closed again a couple of
+ * seconds later, and that one is written "closed by the user", with
+ * "stop com.duetto due to pkg removed". Only the last closing is read,
+ * and the notice told of an app closed by hand after an update. An
+ * uninstall writes the same words, and needs no notice either: whoever
+ * uninstalled knows.
  */
 export function deathCause(
   m: { cause: string; description?: string; updatedName?: string },
 ): string {
-  const up = /stop\s+(\S+)\s+due to installPackage/i.exec(m.description || '');
+  const up = /stop\s+(\S+)\s+due to (?:installPackage|pkg removed)/i.exec(m.description || '');
   if (up) {
     const pkg = up[1];
     if (pkg === 'com.duetto') return 'updated-self';
