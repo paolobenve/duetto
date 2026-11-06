@@ -175,6 +175,45 @@ try {
     && notes().length === 1 && notes()[0].path === '/issues/2/notes', { answer, notes: seen(notes()) });
   check('and that work item, not a beta tester\'s, is left as it is', opened().length === 0, seen(opened()));
 
+  // --- the day each invitation was written, kept with it ---
+  // The list as it is now: what was pushed to the owner before is old news.
+  const listNow = async (c) => {
+    c.send({ type: 'people' });
+    await sleep(150);
+    let last = null;
+    for (let m = await c.expect('people', 50); m; m = await c.expect('people', 50)) last = m;
+    return last;
+  };
+  const notedOf = (list, code) => list?.invitations?.find((i) => i.code === code)?.noted;
+  const today = new Date().toISOString().slice(0, 10);
+  let list = await listNow(own);
+  check('an invitation the server wrote is marked, with the day',
+    notedOf(list, mario.code) === today && notedOf(list, security.code) === today, list?.invitations);
+  own.send({ type: 'invite', name: 'Dora' });
+  const dora = await own.expect('invited');
+  list = await listNow(own);
+  check('one not written yet is not', notedOf(list, dora.code) === '', list?.invitations);
+  mem.send({ type: 'invite-noted', code: dora.code });
+  answer = await mem.expect('error');
+  check('a member may not mark one', answer?.error === 'not-yours', answer);
+  own.send({ type: 'invite-noted', code: 'ZZZZ-ZZZZ' });
+  own.send({ type: 'invite-noted', code: bruno.code });
+  list = await listNow(own);
+  check('the owner, with a code this house never made or one spent: nothing marked',
+    notedOf(list, dora.code) === '' && notedOf(list, bruno.code) === undefined, list?.invitations);
+  own.send({ type: 'invite-noted', code: dora.code.toLowerCase() });
+  list = await listNow(own);
+  check('the owner, who wrote it with a token of its own: marked', notedOf(list, dora.code) === today, list?.invitations);
+  // A second owner's phone sees it too, without asking: it is the list's.
+  const own2 = await inRoom(owner, 'owner-room-again');
+  await sleep(150);
+  while (await own2.expect('people', 50)) { /* whatever it was given on coming in */ }
+  own.send({ type: 'forget', code: dora.code });
+  const pushed = await own2.expect('people');
+  check('the list pushed to every phone of the owner carries the marks',
+    notedOf(pushed, mario.code) === today && notedOf(pushed, dora.code) === undefined, pushed?.invitations);
+  own2.close();
+
   // --- the reports ---
   calls = [];
   mem.send({ type: 'report', part: 'begin', name: 'Mario', text: 'hello' });

@@ -252,6 +252,27 @@ export function invitationOf(code) {
 }
 
 /**
+ * The day an invitation was written on its work item, kept with it.
+ *
+ * The phone used to keep it, and alone: a hand-over empties the old
+ * phone without carrying it, and after one, on 31 October, three
+ * invitations already written showed again the button that writes
+ * them - where a second note would only repeat the first. Kept here, it
+ * is the invitation's, for every phone of the owner, until it is used
+ * or runs out. A day, as everything on the list.
+ *
+ * The invitation's name when it is marked now; null when it already
+ * was, or no invitation of this house, still good, has that code.
+ */
+export function noteInvitation(code) {
+  const data = read();
+  const invitation = liveInvitation(data, code);
+  if (!invitation || invitation.noted) return null;
+  invitation.noted = new Date().toISOString().slice(0, 10);
+  return write(data) ? invitation.name : null;
+}
+
+/**
  * Takes an invitation and writes the phone that used it down.
  *
  * The invitation goes at the same moment: it was for one phone, and the

@@ -48,7 +48,7 @@ import {
   addInvitation, takeHouse, isBroken, markBroken, noteGuest, noteRoom, mayOpen, read, refresh,
   remove as removePerson, removeInvitation, removeRoom, roomOf, useInvitation, noteVisit,
   awaitRoom, pendingRoom, dropPending, leaveMail, takeMail, saveMoments, takeMoments,
-  invitationOf, signsSecondKind, noteSecondKind, fileName as listFile,
+  invitationOf, noteInvitation, signsSecondKind, noteSecondKind, fileName as listFile,
   placeOf, handOver, newPhoneIn, sitsIn, listUnreadable,
 } from './devices.js';
 import { credentialsFor as turnCredentials, drop as dropTurn } from './turn.js';
@@ -1033,6 +1033,8 @@ async function handleInviteNote(ws, msg) {
   });
   console.log(`[duetto] invitation for ${name} written on ${item.url}`);
   send(ws, { type: 'invite-note-result', ok: true, url: item.url });
+  // And kept with the invitation, for every phone of the owner: see noteInvitation.
+  if (noteInvitation(code)) tellOwners();
 }
 
 /**
@@ -2108,7 +2110,7 @@ function tellNewPhone(room, day, cards) {
 }
 
 function isOwnersBusiness(type) {
-  return type === 'invite' || type === 'people' || type === 'forget';
+  return type === 'invite' || type === 'people' || type === 'forget' || type === 'invite-noted';
 }
 
 /**
@@ -2159,6 +2161,15 @@ function ownersBusiness(ws, msg) {
     send(ws, { type: 'invited', name, code: made.code, days: made.days });
     // And the list right after, without being asked: the invitation
     // just made belongs in it, and one round trip is enough.
+  }
+  if (msg.type === 'invite-noted') {
+    // Written by the phone, with a token of its own, or before this
+    // server kept the day: it did not see the note go, and is told.
+    // Nothing to tell the owners when it knew already, or the
+    // invitation is gone.
+    const name = noteInvitation(msg.code);
+    if (!name) return;
+    console.log(`[duetto] ${ws.who} says the invitation for ${cleanName(name)} is on its work item`);
   }
   if (msg.type === 'forget') {
     if (msg.room) {
@@ -2231,7 +2242,10 @@ function peopleMessage(ws) {
     })),
     invitations: invitations
       .filter((i) => Date.parse(i.expires) > Date.now())
-      .map((i) => ({ name: i.name, code: i.code, expires: i.expires })),
+      // `noted`: the day it was written on its work item, '' while it
+      // is not (see noteInvitation). A server that keeps no such day
+      // sends no field, and the phone has only its own mark.
+      .map((i) => ({ name: i.name, code: i.code, expires: i.expires, noted: i.noted || '' })),
   };
 }
 
