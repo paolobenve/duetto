@@ -197,6 +197,8 @@ type Props = {
   onReport?: (text: string, withJournal: boolean) => Promise<ReportOutcome>;
   /** an invitation, written on the work item of the person it is for */
   onInviteToWorkItem?: (name: string, link: string, expires: string) => Promise<ReportOutcome>;
+  /** an invitation this phone knows is on its work item, for a server that keeps the day */
+  onInviteNoted?: (code: string) => void;
   /**
    * Asking the other phone of the connection in use to turn its
    * diagnostics on: see diagnosticsAsk.ts. None before a pair.
@@ -218,7 +220,7 @@ export default function SettingsScreen({
   onClose, onOpenSetup,
   onVolumeTest, levellerUsable = true,
   vp9Here, vp9Peer, onQualityChange, onLive, reportsOpen, update, onReport, onInviteToWorkItem,
-  canInvite, canAddPair, people = [], invitations = [], inviteAnswer,
+  onInviteNoted, canInvite, canAddPair, people = [], invitations = [], inviteAnswer,
   onAskPeople, onInvite, onForget, onForgetInvitation, pending = [], onForgetPending,
   diagAsk,
 }: Props) {
@@ -592,6 +594,13 @@ export default function SettingsScreen({
    * The invitations already written on their work item: said so, and no
    * longer a button - a second note would only repeat the first. Kept
    * on the phone, the codes still listed only.
+   *
+   * The phone's mark alone was lost with a hand-over, which empties the
+   * old phone without carrying it: on 31 October three invitations
+   * already written offered the button again. A server that keeps the
+   * day says it with each invitation (`noted`), and that mark is the
+   * invitation's, for every phone of the owner; this one stays for the
+   * servers that keep none.
    */
   const [notedOn, setNotedOn] = useState<string[]>([]);
   useEffect(() => {
@@ -599,6 +608,22 @@ export default function SettingsScreen({
       .then((raw) => { if (raw) setNotedOn(JSON.parse(raw)); })
       .catch(() => { /* noop */ });
   }, []);
+  const isNoted = (i: InvitationOnServer) => !!i.noted || notedOn.includes(i.code);
+  /**
+   * What this phone knows and the server, keeping the day, does not:
+   * written with the phone's own token, or before the server kept it.
+   * Told once while the screen is up; never to a server that keeps no
+   * day, which would not know the message.
+   */
+  const toldNoted = useRef(new Set<string>());
+  useEffect(() => {
+    if (!onInviteNoted) return;
+    for (const i of invitations) {
+      if (i.noted !== '' || !notedOn.includes(i.code) || toldNoted.current.has(i.code)) continue;
+      toldNoted.current.add(i.code);
+      onInviteNoted(i.code);
+    }
+  }, [invitations, notedOn, onInviteNoted]);
   const noteSent = (code: string) => {
     setNotedOn((was) => {
       const listed = new Set(invitations.map((x) => x.code));
@@ -1046,7 +1071,7 @@ export default function SettingsScreen({
                   <TouchableOpacity onPress={() => shareInvite(i.code)}>
                     <Text style={styles.linkInline}>{t('settings.share')}</Text>
                   </TouchableOpacity>
-                  {notedOn.includes(i.code) ? (
+                  {isNoted(i) ? (
                     <Text style={[styles.linkInline, styles.linkDone]}>{t('settings.toWorkItemDone')}</Text>
                   ) : (
                     <TouchableOpacity onPress={() => inviteToWorkItem(i)}>

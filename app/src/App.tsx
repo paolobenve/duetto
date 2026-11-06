@@ -7334,6 +7334,7 @@ export default function App() {
           update={update}
           onReport={sendReport}
           onInviteToWorkItem={sendInviteNote}
+          onInviteNoted={(code) => signalingRef.current?.sendInviteNoted(code)}
           onQualityChange={(q) => applyQuality(q, true)}
           canInvite={canInvite}
         canAddPair={canAddPair}

@@ -401,7 +401,17 @@ export type PersonOnServer = {
   newPhone?: string;
 };
 
-export type InvitationOnServer = { name: string; code: string; expires: string };
+export type InvitationOnServer = {
+  name: string;
+  code: string;
+  expires: string;
+  /**
+   * The day it was written on its work item (YYYY-MM-DD), '' while it
+   * is not. Absent from a server that keeps no such day: there the
+   * phone's own mark is all there is (see SettingsScreen's notedOn).
+   */
+  noted?: string;
+};
 
 export type SignalingOptions = {
   serverUrl: string;
@@ -792,7 +802,13 @@ export class Signaling {
             version: String(p.version || ''),
             newPhone: isDay(p.newPhone) ? String(p.newPhone) : '',
           })),
-          msg.invitations ?? [],
+          (Array.isArray(msg.invitations) ? msg.invitations : []).map((i: any) => ({
+            name: String(i?.name || ''),
+            code: String(i?.code || ''),
+            expires: String(i?.expires || ''),
+            // Only from a server that keeps the day: see InvitationOnServer.
+            ...(typeof i?.noted === 'string' ? { noted: isDay(i.noted) ? i.noted : '' } : {}),
+          })),
         );
         break;
 
@@ -1122,6 +1138,15 @@ export class Signaling {
   /** an invitation to be written on the work item of the person named */
   sendInviteNote(name: string, link: string, expires: string) {
     this.rawSend({ type: 'invite-note', name, link, expires });
+  }
+
+  /**
+   * An invitation this phone knows is on its work item, told to a
+   * server that keeps the day and does not know it: written with the
+   * phone's own token, or before the server kept it.
+   */
+  sendInviteNoted(code: string) {
+    this.rawSend({ type: 'invite-noted', code });
   }
 
   get connected(): boolean {
