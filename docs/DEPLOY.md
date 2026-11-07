@@ -548,7 +548,7 @@ sudo mkdir -p /etc/coturn-certs
 sudo cp -L /etc/letsencrypt/live/YOUR_DOMAIN/fullchain.pem \
            /etc/letsencrypt/live/YOUR_DOMAIN/privkey.pem /etc/coturn-certs/
 sudo chown turnserver:turnserver /etc/coturn-certs/*.pem && sudo chmod 600 /etc/coturn-certs/*.pem
-sudoedit /opt/duetto/server/deploy/letsencrypt-coturn-hook.sh   # LINEAGE=...
+sudoedit /opt/duetto/server/deploy/letsencrypt-coturn-hook.sh   # LINEAGE=..., TLS_DOOR=...
 sudo install -m 755 /opt/duetto/server/deploy/letsencrypt-coturn-hook.sh \
      /etc/letsencrypt/renewal-hooks/deploy/coturn
 

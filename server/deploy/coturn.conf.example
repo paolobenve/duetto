@@ -73,7 +73,8 @@ user=duetto:PUT_A_LONG_PASSWORD_HERE
 #   sudo chmod 600 /etc/coturn-certs/*.pem
 # A copy goes stale at the first renewal: the deploy hook
 # (letsencrypt-coturn-hook.sh, in this directory) refreshes it and
-# restarts coturn. Install it once:
+# has coturn reread it, without the restart that would cut the calls
+# on the relay. Install it once:
 #   sudo install -m 755 letsencrypt-coturn-hook.sh /etc/letsencrypt/renewal-hooks/deploy/coturn
 cert=/etc/coturn-certs/fullchain.pem
 pkey=/etc/coturn-certs/privkey.pem
