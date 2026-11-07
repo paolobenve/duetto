@@ -196,6 +196,26 @@ export const DEFAULT_ASPECT = 9 / 16;
 const log = logger('[duetto-rtc]');
 
 /**
+ * A camera track that nobody sends any more, handed back to the library.
+ *
+ * stop() only stops the capture. What the library sets up for each
+ * camera track - a thread and a graphics context of its own, with their
+ * memory - stays until release(), and Duetto never called it: every
+ * switch-on left one more behind, for as long as the process lived. On
+ * 7 November the POCO had 11 of those threads after 11 openings, and the
+ * Edge, after four days and some 35 openings, could not have a graphics
+ * context any more: first its hardware encoder failed to start, then
+ * the camera itself - "AbortError" at every switch-on, leaving and
+ * becoming unavailable included, as that does not end the process.
+ *
+ * Only once no sender holds it: a sender describes its track whenever
+ * the link is described, and a track handed back can no longer answer.
+ */
+function handBack(track: MediaStreamTrack): void {
+  try { track.release(); } catch { /* already gone */ }
+}
+
+/**
  * The two ceilings for the voice, and when the video decides for them.
  *
  * Thirty-two kbit/s is roughly what Opus sends a voice at by default;
@@ -3102,6 +3122,9 @@ export class ChannelSession {
       if (old) {
         local.removeTrack(old);
         try { old.stop(); } catch { /* noop */ }
+        // Sent by nobody any more, it is handed back (see handBack). The
+        // other side sees no difference: the old track films nothing.
+        if (await this.unsendVideo()) handBack(old);
       }
       // Still wanted, until a new track is there.
       this.cameraLost = true;
@@ -3412,6 +3435,22 @@ export class ChannelSession {
     }
   }
 
+  /**
+   * The live video sender emptied. True when no live sender holds a
+   * track any more: the one taken out can then be handed back (handBack).
+   */
+  private async unsendVideo(): Promise<boolean> {
+    const sender: any = this.liveVideoSender();
+    if (!sender) return true;
+    try {
+      await sender.replaceTrack(null);
+      return true;
+    } catch (e) {
+      log('replaceTrack(null) failed:', String(e));
+      return false;
+    }
+  }
+
   /** Switches the camera off: empties the channel and really releases it. */
   disableVideo(): Promise<boolean> {
     return this.onCamera('off', () => this.disableVideoNow());
@@ -3422,19 +3461,13 @@ export class ChannelSession {
     this.cameraLost = false;
     this.scheduleCamera();
 
-    const senderOff: any = this.liveVideoSender();
-    if (senderOff) {
-      // The channel stays open and ready for the next switch-on.
-      try {
-        await senderOff.replaceTrack(null);
-      } catch (e) {
-        log('replaceTrack(null) failed:', String(e));
-      }
-    }
+    // The channel stays open and ready for the next switch-on.
+    const unsent = await this.unsendVideo();
 
     if (track && this.localStream) {
       this.localStream.removeTrack(track);
       track.stop(); // frees the camera and turns Android's indicator off
+      if (unsent) handBack(track);
       log('camera off, track', track.id);
     }
 
@@ -3756,7 +3789,15 @@ export class ChannelSession {
     this.detachPeer();
     this.linkedOnce = false;
     this.balanceHoldUntil = 0;
-    this.localStream?.getTracks().forEach((t) => t.stop());
+    // The link is closed, so no sender holds the camera: out of the
+    // stream, as at a switch-off, and handed back.
+    const local = this.localStream;
+    for (const t of local?.getTracks() ?? []) {
+      t.stop();
+      if (t.kind !== 'video' || !local) continue;
+      local.removeTrack(t);
+      handBack(t);
+    }
     this.localStream = null;
     this.events.onLocalStream?.(null);
   }
